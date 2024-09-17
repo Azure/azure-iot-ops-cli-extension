@@ -13,15 +13,21 @@ from ...common import DEFAULT_DATAFLOW_PROFILE, CheckTaskStatus, ResourceState
 from ..base import get_namespaced_pods_by_prefix
 from ..edge_api.dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
 from ..support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_OPERATOR_PREFIX, DATAFLOW_PROFILE_POD_PREFIX
-from .base import CheckManager, check_post_deployment, get_resources_by_name, get_resources_grouped_by_namespace
+from .base import (
+    CheckManager,
+    check_post_deployment,
+    get_resources_by_name,
+    get_resources_grouped_by_namespace,
+)
 from .base.display import basic_property_display, colorize_string
-from .base.pod import process_pod_status
+from .base.pod import evaluate_pod_health
 from .base.resource import filter_resources_by_name
 from .common import (
     DEFAULT_PADDING,
     DEFAULT_PROPERTY_DISPLAY_COLOR,
     PADDING_SIZE,
     CoreServiceResourceKinds,
+    DataFlowEndpointAuthenticationType,
     DataflowEndpointType,
     DataflowOperationType,
     ResourceOutputDetailLevel,
@@ -52,6 +58,135 @@ dataflow_endpoint_target = "dataflowendpoints.connectivity.iotoperations.azure.c
 dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com"
 
 valid_source_endpoint_types = [DataflowEndpointType.kafka.value, DataflowEndpointType.mqtt.value]
+
+
+def _process_dataflow_resource_status(
+    check_manager: CheckManager,
+    target_name: str,
+    namespace: str,
+    status: dict,
+    resource_name: str,
+    resource_kind: str,
+    detail_level: int,
+    padding: int,
+):
+    # status is overall optional, no evals if no status
+    if not status:
+        return
+
+    inner_padding = padding + PADDING_SIZE
+    provisioning_status_enum = CheckTaskStatus.skipped
+    runtime_status_enum = CheckTaskStatus.skipped
+
+    # provisioning Status (always optional)
+    provisioning_status = status.get("provisioningStatus")
+    if provisioning_status:
+        # status - summary
+        provisioning_status_status = provisioning_status.get("status")
+
+        # override enum value with errors if they exist
+        provisioning_status_error = provisioning_status.get("error")
+        provisioning_status_failure_cause = provisioning_status.get("failureCause")
+        provisioning_status_enum = (
+            CheckTaskStatus.error
+            if provisioning_status_error or provisioning_status_failure_cause
+            else ResourceState.map_to_status(provisioning_status_status)
+        )
+
+        provisioning_status_display = f"Provisioning Status: {{{colorize_string(color=provisioning_status_enum.color, value=provisioning_status_status)}}}"
+
+        # if not summary, display output / message
+        if detail_level > ResourceOutputDetailLevel.summary.value:
+            provisioning_status_output = provisioning_status.get("output", {})
+            # output object has no schema, but expecting "message" property to have details
+            provisioning_status_output_message = provisioning_status_output.get("message")
+            # if no "message" property, just use the entire object as output
+            provisioning_status_output_display = provisioning_status_output_message or provisioning_status_output
+
+            provisioning_status_display += f" - {colorize_string(provisioning_status_output_display)}"
+
+        # status display
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(provisioning_status_display, (0, 0, 0, padding)),
+        )
+
+        # display error, failure cause
+        if provisioning_status_error:
+            message = provisioning_status_error.get("message")
+            code = provisioning_status_error.get("code")
+            error_text = f"{code}: {message}"
+            error_display = f"Error: {{{colorize_string(color=CheckTaskStatus.error.color, value=error_text)}}}"
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding(error_display, (0, 0, 0, padding))
+            )
+        # show failure cause
+        if provisioning_status_failure_cause:
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=basic_property_display(
+                    label="Failure Cause", value=provisioning_status_failure_cause, padding=inner_padding
+                ),
+            )
+
+        # logErrors on detail level 1
+        provisioning_status_log_errors = provisioning_status.get("logErrors")
+        if detail_level > ResourceOutputDetailLevel.summary.value and provisioning_status_log_errors:
+            check_manager.add_display(
+                target_name=target_name,
+                namespace=namespace,
+                display=Padding("Log Errors:", (0, 0, 0, inner_padding)),
+            )
+
+    # runtime status (required for profiles)
+    runtime_status = status.get("runtimeStatus", {})
+    if runtime_status:
+        # calculate status
+        runtime_level = runtime_status.get("level")
+        runtime_status_enum = ResourceState.map_to_status(runtime_level)
+        description = runtime_status.get("description")
+
+        # create display
+        runtime_status_display = (
+            f"Runtime Status: {{{colorize_string(color=runtime_status_enum.color, value=runtime_status.get('level'))}}}"
+        )
+        if description and detail_level > ResourceOutputDetailLevel.summary.value:
+            runtime_status_display += f" - {colorize_string(description)}"
+        check_manager.add_display(
+            target_name=target_name,
+            namespace=namespace,
+            display=Padding(runtime_status_display, (0, 0, 0, padding)),
+        )
+    elif resource_kind == DataflowResourceKinds.DATAFLOWPROFILE.value:
+        runtime_status_enum = CheckTaskStatus.error
+
+    # add evals if necessary
+    if provisioning_status_enum != CheckTaskStatus.skipped:
+        # todo - add error object to eval value?
+        status_obj = {"status.provisioningStatus.status": provisioning_status_status}
+        if provisioning_status_error:
+            status_obj["status.provisioningStatus.error"] = provisioning_status_error
+        check_manager.add_target_eval(
+            target_name=target_name,
+            namespace=namespace,
+            status=provisioning_status_enum.value,
+            resource_name=resource_name,
+            resource_kind=resource_kind,
+            value=status_obj,
+        )
+    if runtime_status_enum != CheckTaskStatus.skipped:
+        check_manager.add_target_eval(
+            target_name=target_name,
+            namespace=namespace,
+            status=runtime_status_enum.value,
+            resource_name=resource_name,
+            resource_kind=resource_kind,
+            value={"status.runtimeStatus.level": runtime_status.get("level")},
+        )
 
 
 def _process_dataflow_sourcesettings(
@@ -90,7 +225,9 @@ def _process_dataflow_sourcesettings(
         endpoint_type_status_string = "valid" if endpoint_type_valid else f"has invalid type: {endpoint_type}"
 
     endpoint_ref_display = colorize_string(value=endpoint_ref_string, color=endpoint_ref_status.color)
-    endpoint_validity_display = colorize_string(color=endpoint_type_status.color, value=endpoint_type_status_string)
+    endpoint_validity_display = colorize_string(
+        color=endpoint_type_status.color, value=endpoint_type_status_string
+    )
 
     # valid endpoint ref eval
     check_manager.add_target_eval(
@@ -129,7 +266,9 @@ def _process_dataflow_sourcesettings(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding("[red]Invalid source endpoint reference[/red]", (0, 0, 0, padding - PADDING_SIZE)),
+            display=Padding(
+                "[red]Invalid source endpoint reference[/red]", (0, 0, 0, padding - PADDING_SIZE)
+            ),
         )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -152,7 +291,9 @@ def _process_dataflow_sourcesettings(
         data_sources = settings.get("dataSources", [])
         if data_sources:
             check_manager.add_display(
-                target_name=target, namespace=namespace, display=Padding("Data Sources:", (0, 0, 0, inner_padding))
+                target_name=target,
+                namespace=namespace,
+                display=Padding("Data Sources:", (0, 0, 0, inner_padding)),
             )
             for data_source in data_sources:
                 check_manager.add_display(
@@ -170,7 +311,9 @@ def _process_dataflow_transformationsettings(
     # only show details on non-summary
     if detail_level > ResourceOutputDetailLevel.summary.value:
         check_manager.add_display(
-            target_name=target, namespace=namespace, display=Padding("\nBuilt-In Transformation:", (0, 0, 0, padding))
+            target_name=target,
+            namespace=namespace,
+            display=Padding("\nBuilt-In Transformation:", (0, 0, 0, padding)),
         )
         padding += PADDING_SIZE
         inner_padding = padding + PADDING_SIZE
@@ -178,7 +321,9 @@ def _process_dataflow_transformationsettings(
         def _process_inputs(inputs: List[str]):
             if inputs:
                 check_manager.add_display(
-                    target_name=target, namespace=namespace, display=Padding("Inputs:", (0, 0, 0, inner_padding))
+                    target_name=target,
+                    namespace=namespace,
+                    display=Padding("Inputs:", (0, 0, 0, inner_padding)),
                 )
                 for input in inputs:
                     check_manager.add_display(
@@ -325,7 +470,9 @@ def _process_dataflow_destinationsettings(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding("[red]Invalid destination endpoint reference[/red]", (0, 0, 0, padding - PADDING_SIZE)),
+            display=Padding(
+                "[red]Invalid destination endpoint reference[/red]", (0, 0, 0, padding - PADDING_SIZE)
+            ),
         )
     # only show destination on verbose
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -342,16 +489,87 @@ def _process_dataflow_destinationsettings(
 
 
 def _process_endpoint_authentication(
-    endpoint_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int
+    endpoint_settings: dict, check_manager: CheckManager, target: str, namespace: str, padding: int, detail_level: int
 ) -> None:
-    auth = endpoint_settings.get("authentication", {})
+    auth_property_dict = {
+        DataFlowEndpointAuthenticationType.access_token.value: {
+            "key": "accessTokenSettings",
+            "displays": [
+                ("Secret Reference", "secretRef"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.system_assigned.value: {
+            "key": "systemAssignedManagedIdentitySettings",
+            "displays": [
+                ("Audience", "audience"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.user_assigned.value: {
+            "key": "userAssignedManagedIdentitySettings",
+            "displays": [
+                ("Client ID", "clientId"),
+                ("Scope", "scope"),
+                ("Tenant ID", "tenantId"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.x509.value: {
+            "key": "x509CertificateSettings",
+            "displays": [
+                ("Secret Ref", "secretRef"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.service_account_token.value: {
+            "key": "serviceAccountTokenSettings",
+            "displays": [
+                ("Audience", "audience"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.sasl.value: {
+            "key": "saslSettings",
+            "displays": [
+                ("Type", "saslType"),
+                ("Secret Ref", "secretRef"),
+            ],
+        },
+        DataFlowEndpointAuthenticationType.anonymous.value: {
+            "key": "anonymousSettings",
+            "displays": [],
+        },
+    }
+
+    auth: dict = endpoint_settings.get("authentication", {})
     auth_method = auth.get("method")
+
+    # display unkown auth method
+    if auth_method not in auth_property_dict:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(f"[red]Unknown authentication method: {auth_method}", (0, 0, 0, padding)),
+        )
+        return
+
+    # display auth method
     check_manager.add_display(
         target_name=target,
         namespace=namespace,
         display=basic_property_display(label="Authentication Method", value=auth_method, padding=padding),
     )
-    # TODO - add displays for various auth types (refs, identity names, etc)
+
+    # show details for various auth methods
+    if detail_level > ResourceOutputDetailLevel.detail.value:
+        auth_properties: dict = auth_property_dict.get(auth_method, {})
+        auth_settings_key = auth_properties.get("key")
+        auth_obj = auth.get(auth_settings_key)
+        if auth_obj:
+            for label, key in auth_properties.get("displays", []):
+                val = auth_obj.get(key)
+                if val:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=basic_property_display(label=label, value=val, padding=padding + PADDING_SIZE),
+                    )
 
 
 def _process_endpoint_TLS(
@@ -399,6 +617,7 @@ def _process_endpoint_mqttsettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -423,7 +642,11 @@ def _process_endpoint_mqttsettings(
         tls = settings.get("tls", {})
         if tls:
             _process_endpoint_TLS(
-                tls_settings=tls, check_manager=check_manager, target=target, namespace=namespace, padding=padding
+                tls_settings=tls,
+                check_manager=check_manager,
+                target=target,
+                namespace=namespace,
+                padding=padding,
             )
 
 
@@ -452,6 +675,7 @@ def _process_endpoint_kafkasettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -474,7 +698,11 @@ def _process_endpoint_kafkasettings(
         tls = settings.get("tls", {})
         if tls:
             _process_endpoint_TLS(
-                tls_settings=tls, check_manager=check_manager, target=target, namespace=namespace, padding=padding
+                tls_settings=tls,
+                check_manager=check_manager,
+                target=target,
+                namespace=namespace,
+                padding=padding,
             )
 
         # batching
@@ -520,6 +748,7 @@ def _process_endpoint_fabriconelakesettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -577,6 +806,7 @@ def _process_endpoint_datalakestoragesettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -620,6 +850,7 @@ def _process_endpoint_dataexplorersettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
     if detail_level > ResourceOutputDetailLevel.detail.value:
@@ -662,6 +893,7 @@ def _process_endpoint_localstoragesettings(
         target=target,
         namespace=namespace,
         padding=INNER_PADDING,
+        detail_level=detail_level,
     )
 
 
@@ -674,8 +906,8 @@ def check_dataflows_deployment(
     evaluate_funcs = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE: evaluate_core_service_runtime,
         DataflowResourceKinds.DATAFLOWPROFILE: evaluate_dataflow_profiles,
-        DataflowResourceKinds.DATAFLOW: evaluate_dataflows,
         DataflowResourceKinds.DATAFLOWENDPOINT: evaluate_dataflow_endpoints,
+        DataflowResourceKinds.DATAFLOW: evaluate_dataflows,
     }
 
     return check_post_deployment(
@@ -731,13 +963,12 @@ def evaluate_core_service_runtime(
             ),
         )
 
-        process_pod_status(
+        evaluate_pod_health(
             check_manager=check_manager,
-            target_service_pod=f"pod/{DATAFLOW_OPERATOR_PREFIX}",
             target=CoreServiceResourceKinds.RUNTIME_RESOURCE.value,
             pods=pods,
             namespace=namespace,
-            display_padding=PADDING + 2,
+            padding=PADDING + 2,
             detail_level=detail_level,
         )
 
@@ -814,7 +1045,10 @@ def evaluate_dataflows(
         )
 
         endpoints = [
-            {"name": endpoint.get("metadata", {}).get("name"), "type": endpoint.get("spec", {}).get("endpointType")}
+            {
+                "name": endpoint.get("metadata", {}).get("name"),
+                "type": endpoint.get("spec", {}).get("endpointType"),
+            }
             for endpoint in all_endpoints
         ]
 
@@ -857,10 +1091,24 @@ def evaluate_dataflows(
                 )
                 continue
 
+            status = dataflow.get("status", {})
+            _process_dataflow_resource_status(
+                check_manager=check_manager,
+                target_name=target,
+                namespace=namespace,
+                status=status,
+                resource_name=dataflow_name,
+                resource_kind=DataflowResourceKinds.DATAFLOW.value,
+                detail_level=detail_level,
+                padding=INNER_PADDING,
+            )
+
             profile_ref = spec.get("profileRef")
             # profileRef is optional, only show an error if it exists but is invalid
             if profile_ref:
-                profile_ref_status = CheckTaskStatus.error if profile_ref not in profile_names else CheckTaskStatus.success
+                profile_ref_status = (
+                    CheckTaskStatus.error if profile_ref not in profile_names else CheckTaskStatus.success
+                )
 
                 # valid profileRef eval
                 check_manager.add_target_eval(
@@ -885,7 +1133,9 @@ def evaluate_dataflows(
                         target_name=target,
                         namespace=namespace,
                         display=Padding(
-                            colorize_string(color=profile_ref_status.color, value="Invalid Dataflow Profile reference"),
+                            colorize_string(
+                                color=profile_ref_status.color, value="Invalid Dataflow Profile reference"
+                            ),
                             (0, 0, 0, INNER_PADDING),
                         ),
                     )
@@ -952,7 +1202,9 @@ def evaluate_dataflows(
             sources_status = destinations_status = CheckTaskStatus.success.value
             if sources != 1:
                 sources_status = CheckTaskStatus.error.value
-                message = "Missing source operation" if sources == 0 else f"Too many source operations: {sources}"
+                message = (
+                    "Missing source operation" if sources == 0 else f"Too many source operations: {sources}"
+                )
                 check_manager.add_display(
                     target_name=target,
                     namespace=namespace,
@@ -1021,7 +1273,9 @@ def evaluate_dataflow_endpoints(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding(f"Dataflow Endpoints in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, PADDING)),
+            display=Padding(
+                f"Dataflow Endpoints in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, PADDING)
+            ),
         )
         for endpoint in list(endpoints):
             spec = endpoint.get("spec", {})
@@ -1047,6 +1301,17 @@ def evaluate_dataflow_endpoints(
                     f"\n- {endpoint_string} {detected_string}, {type_string}",
                     (0, 0, 0, PADDING),
                 ),
+            )
+            status = endpoint.get("status", {})
+            _process_dataflow_resource_status(
+                check_manager=check_manager,
+                target_name=target,
+                namespace=namespace,
+                status=status,
+                resource_name=endpoint_name,
+                resource_kind=DataflowResourceKinds.DATAFLOWENDPOINT.value,
+                detail_level=detail_level,
+                padding=INNER_PADDING,
             )
 
             # endpoint details at higher detail levels
@@ -1120,7 +1385,9 @@ def evaluate_dataflow_profiles(
         check_manager.add_display(
             target_name=target,
             namespace=namespace,
-            display=Padding(f"Dataflow Profiles in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, PADDING)),
+            display=Padding(
+                f"Dataflow Profiles in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, PADDING)
+            ),
         )
 
         # warn if no default dataflow profile (unless possibly filtered)
@@ -1139,31 +1406,21 @@ def evaluate_dataflow_profiles(
                     (0, 0, 0, PADDING),
                 ),
             )
-            profile_status = profile.get("status", {})
-            status_level = profile_status.get("configStatusLevel")
-            status_description = profile_status.get("statusDescription")
-            # add eval for status if present
-            if profile_status:
-                check_manager.add_target_eval(
-                    target_name=target,
-                    namespace=namespace,
-                    resource_name=profile_name,
-                    resource_kind=DataflowResourceKinds.DATAFLOWPROFILE.value,
-                    status=ResourceState.map_to_status(status_level).value,
-                    value={"status": profile_status},
-                )
-            # show status description (colorized) if it exists
-            if status_description:
-                check_manager.add_display(
-                    target_name=target,
-                    namespace=namespace,
-                    display=basic_property_display(
-                        label="Status",
-                        value=status_description,
-                        color=ResourceState.map_to_color(status_level),
-                        padding=INNER_PADDING,
-                    ),
-                )
+
+            # evaluate status
+            status = profile.get("status", {})
+            _process_dataflow_resource_status(
+                check_manager=check_manager,
+                target_name=target,
+                namespace=namespace,
+                status=status,
+                resource_name=profile_name,
+                resource_kind=DataflowResourceKinds.DATAFLOWPROFILE.value,
+                detail_level=detail_level,
+                padding=INNER_PADDING,
+            )
+
+            # instance count
             instance_count = spec.get("instanceCount")
             has_instances = instance_count is not None and int(instance_count) >= 0
             instance_status = CheckTaskStatus.success if has_instances else CheckTaskStatus.error
@@ -1180,7 +1437,10 @@ def evaluate_dataflow_profiles(
                     target_name=target,
                     namespace=namespace,
                     display=basic_property_display(
-                        label="Instance count", value=instance_count, color=instance_status.color, padding=INNER_PADDING
+                        label="Instance count",
+                        value=instance_count,
+                        color=instance_status.color,
+                        padding=INNER_PADDING,
                     ),
                 )
             else:
@@ -1225,7 +1485,9 @@ def evaluate_dataflow_profiles(
                                 check_manager.add_display(
                                     target_name=target,
                                     namespace=namespace,
-                                    display=basic_property_display(label=label, value=val, padding=log_inner_padding),
+                                    display=basic_property_display(
+                                        label=label, value=val, padding=log_inner_padding
+                                    ),
                                 )
 
                     # diagnostic metrics
@@ -1241,7 +1503,9 @@ def evaluate_dataflow_profiles(
                         target_name=target,
                         namespace=namespace,
                         display=basic_property_display(
-                            label="Prometheus Port", value=diagnostic_metrics_prometheusPort, padding=log_inner_padding
+                            label="Prometheus Port",
+                            value=diagnostic_metrics_prometheusPort,
+                            padding=log_inner_padding,
                         ),
                     )
 
@@ -1256,7 +1520,9 @@ def evaluate_dataflow_profiles(
                                 check_manager.add_display(
                                     target_name=target,
                                     namespace=namespace,
-                                    display=basic_property_display(label=label, value=val, padding=log_inner_padding),
+                                    display=basic_property_display(
+                                        label=label, value=val, padding=log_inner_padding
+                                    ),
                                 )
             # pod health - trailing `-` is important in case profiles have similar prefixes
             pod_prefix = f"{DATAFLOW_PROFILE_POD_PREFIX}{profile_name}-"
@@ -1267,13 +1533,12 @@ def evaluate_dataflow_profiles(
             )
             # only show pods if they exist
             if profile_pods:
-                process_pod_status(
+                evaluate_pod_health(
                     check_manager=check_manager,
-                    target_service_pod=f"pod/{pod_prefix}",
                     target=target,
                     pods=profile_pods,
                     namespace=namespace,
-                    display_padding=INNER_PADDING,
+                    padding=INNER_PADDING,
                     detail_level=detail_level,
                 )
 

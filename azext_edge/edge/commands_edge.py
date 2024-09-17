@@ -14,8 +14,9 @@ from knack.log import get_logger
 from .common import OpsServiceType
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.edge_api.orc import ORC_API_V1
+from .providers.edge_api import META_API_V1B1
 from .providers.orchestration.common import (
+    IdentityUsageType,
     KubernetesDistroType,
     TrustSourceType,
     MqMemoryProfile,
@@ -61,9 +62,11 @@ def check(
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
 
-    # by default - run prechecks if AIO is not deployed
-    run_pre = not ORC_API_V1.is_deployed() if pre_deployment_checks is None else pre_deployment_checks
-    run_post = True if post_deployment_checks is None else post_deployment_checks
+    aio_deployed = META_API_V1B1.is_deployed()
+    # by default - run prechecks if AIO is not deployed, otherwise use argument
+    run_pre = not aio_deployed if pre_deployment_checks is None else pre_deployment_checks
+    # by default - run postchecks if AIO is deployed, otherwise use argument
+    run_post = aio_deployed if post_deployment_checks is None else post_deployment_checks
 
     # only one of pre or post is explicity set to True
     if pre_deployment_checks and not post_deployment_checks:
@@ -109,29 +112,11 @@ def init(
     cluster_name: str,
     resource_group_name: str,
     schema_registry_resource_id: str,
-    cluster_namespace: str = DEFAULT_NAMESPACE,
-    location: Optional[str] = None,
-    custom_location_name: Optional[str] = None,
-    disable_rsync_rules: Optional[bool] = None,
-    instance_name: Optional[str] = None,
-    instance_description: Optional[str] = None,
-    dataflow_profile_instances: int = 1,
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
     trust_source: str = TrustSourceType.self_signed.value,
     enable_fault_tolerance: Optional[bool] = None,
     ops_config: Optional[List[str]] = None,
-    mi_user_assigned_identities: Optional[List[str]] = None,
-    # Broker
-    custom_broker_config_file: Optional[str] = None,
-    broker_memory_profile: str = MqMemoryProfile.medium.value,
-    broker_service_type: str = MqServiceType.cluster_ip.value,
-    broker_backend_partitions: int = 2,
-    broker_backend_workers: int = 2,
-    broker_backend_redundancy_factor: int = 2,
-    broker_frontend_workers: int = 2,
-    broker_frontend_replicas: int = 2,
-    add_insecure_listener: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     **kwargs,
@@ -140,20 +125,9 @@ def init(
     from .providers.orchestration import WorkManager
     from .util import (
         is_env_flag_enabled,
-        read_file_content,
     )
 
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
-
-    # TODO - @digimaun
-    custom_broker_config = None
-    if custom_broker_config_file:
-        custom_broker_config = json.loads(read_file_content(file_path=custom_broker_config_file))
-
-    if broker_service_type == MqServiceType.load_balancer.value and add_insecure_listener:
-        raise ArgumentUsageError(
-            f"--add-insecure-listener cannot be used when --broker-service-type is {MqServiceType.load_balancer.value}."
-        )
 
     work_manager = WorkManager(cmd)
     return work_manager.execute_ops_init(
@@ -161,30 +135,12 @@ def init(
         pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
-        cluster_namespace=cluster_namespace,
-        location=location,
-        custom_location_name=custom_location_name,
-        disable_rsync_rules=disable_rsync_rules,
-        instance_name=instance_name,
-        instance_description=instance_description,
-        add_insecure_listener=add_insecure_listener,
-        dataflow_profile_instances=dataflow_profile_instances,
         container_runtime_socket=container_runtime_socket,
         kubernetes_distro=kubernetes_distro,
         enable_fault_tolerance=enable_fault_tolerance,
         ops_config=ops_config,
         trust_source=trust_source,
         schema_registry_resource_id=schema_registry_resource_id,
-        mi_user_assigned_identities=mi_user_assigned_identities,
-        # Broker
-        custom_broker_config=custom_broker_config,
-        broker_memory_profile=broker_memory_profile,
-        broker_service_type=broker_service_type,
-        broker_backend_partitions=broker_backend_partitions,
-        broker_backend_workers=broker_backend_workers,
-        broker_backend_redundancy_factor=broker_backend_redundancy_factor,
-        broker_frontend_workers=broker_frontend_workers,
-        broker_frontend_replicas=broker_frontend_replicas,
     )
 
 
@@ -199,7 +155,6 @@ def create_instance(
     disable_rsync_rules: Optional[bool] = None,
     instance_description: Optional[str] = None,
     dataflow_profile_instances: int = 1,
-    mi_user_assigned_identities: Optional[List[str]] = None,
     # Broker
     custom_broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
@@ -248,7 +203,6 @@ def create_instance(
         instance_description=instance_description,
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
-        mi_user_assigned_identities=mi_user_assigned_identities,
         # Broker
         custom_broker_config=custom_broker_config,
         broker_memory_profile=broker_memory_profile,
@@ -265,7 +219,8 @@ def create_instance(
 def delete(
     cmd,
     resource_group_name: str,
-    instance_name: str,
+    instance_name: Optional[str] = None,
+    cluster_name: Optional[str] = None,
     confirm_yes: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     force: Optional[bool] = None,
@@ -276,6 +231,7 @@ def delete(
     return delete_ops_resources(
         cmd=cmd,
         instance_name=instance_name,
+        cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         confirm_yes=confirm_yes,
         no_progress=no_progress,
@@ -305,5 +261,49 @@ def update_instance(
         resource_group_name=resource_group_name,
         tags=tags,
         description=instance_description,
+        **kwargs,
+    )
+
+
+def instance_identity_assign(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    mi_user_assigned: str,
+    federated_credential_name: Optional[str] = None,
+    usage_type: IdentityUsageType = IdentityUsageType.dataflow.value,
+    **kwargs,
+) -> dict:
+    return Instances(cmd).add_mi_user_assigned(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        mi_user_assigned=mi_user_assigned,
+        federated_credential_name=federated_credential_name,
+        usage_type=usage_type,
+        **kwargs,
+    )
+
+
+def instance_identity_show(cmd, instance_name: str, resource_group_name: str) -> dict:
+    instance = Instances(cmd).show(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+    return instance.get("identity", {})
+
+
+def instance_identity_remove(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    mi_user_assigned: str,
+    federated_credential_name: Optional[str] = None,
+    **kwargs,
+) -> dict:
+    return Instances(cmd).remove_mi_user_assigned(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        mi_user_assigned=mi_user_assigned,
+        federated_credential_name=federated_credential_name,
         **kwargs,
     )

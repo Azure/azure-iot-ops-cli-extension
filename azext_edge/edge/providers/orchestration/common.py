@@ -22,14 +22,14 @@ ARC_CONFIG_MAP = "azure-clusterconfig"
 ARC_NAMESPACE = "azure-arc"
 
 # Key Vault KPIs
-KEYVAULT_DATAPLANE_API_VERSION = "7.4"  # TODO - @digimaun, maybe needed
-KEYVAULT_CLOUD_API_VERSION = "2022-07-01"  # TODO - @digimaun, maybe needed
+KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 
 # Custom Locations KPIs
 CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
 
 AIO_INSECURE_LISTENER_NAME = "default-insecure"
 AIO_INSECURE_LISTENER_SERVICE_NAME = "aio-broker-insecure"
+AIO_INSECURE_LISTENER_SERVICE_PORT = 1883
 
 
 class MqMode(Enum):
@@ -61,13 +61,17 @@ class TrustSourceType(Enum):
     # customer_managed = "CustomerManaged"  # TODO - @digimaun
 
 
+class IdentityUsageType(Enum):
+    dataflow = "dataflow"
+
+
 __all__ = [
     "MqMode",
     "MqMemoryProfile",
     "MqServiceType",
     "KubernetesDistroType",
     "TrustSourceType",
+    "IdentityUsageType",
     "DEFAULT_X509_CA_VALID_DAYS",
-    "KEYVAULT_DATAPLANE_API_VERSION",
     "KEYVAULT_CLOUD_API_VERSION",
 ]

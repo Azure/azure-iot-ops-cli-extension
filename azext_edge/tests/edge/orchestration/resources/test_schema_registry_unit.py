@@ -27,7 +27,7 @@ from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource, get_resource_id, find_request_by_url, ZEROED_SUBSCRIPTION
 
 SCHEMA_REGISTRY_RP = "Microsoft.DeviceRegistry"
-SCHEMA_REGISTRY_RP_API_VERSION = "2024-07-01-preview"
+SCHEMA_REGISTRY_RP_API_VERSION = "2024-09-01-preview"
 STORAGE_RP = "Microsoft.Storage"
 STORAGE_API_VERSION = "2023-05-01"
 RESOURCES_API_VERSION = "2024-03-01"
@@ -318,8 +318,6 @@ def test_schema_registry_create(
     create_registry_endpoint = get_schema_registry_endpoint(
         resource_group_name=resource_group_name, registry_name=registery_name
     )
-    # TODO - @digimaun - one-off remove
-    create_registry_endpoint = create_registry_endpoint.replace(SCHEMA_REGISTRY_RP, SCHEMA_REGISTRY_RP.lower())
 
     mocked_responses.add(
         method=responses.PUT,

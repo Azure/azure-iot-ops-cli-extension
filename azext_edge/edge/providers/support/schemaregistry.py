@@ -10,6 +10,7 @@ from knack.log import get_logger
 from .base import (
     DAY_IN_SECONDS,
     process_config_maps,
+    process_persistent_volume_claims,
     process_services,
     process_statefulset,
     process_v1_pods,
@@ -51,11 +52,18 @@ def fetch_services():
     )
 
 
+def fetch_persistent_volume_claims():
+    return process_persistent_volume_claims(
+        directory_path=SCHEMAS_DIRECTORY_PATH,
+        label_selector=SCHEMAS_NAME_LABEL,
+    )
+
+
 support_runtime_elements = {
     "statefulsets": fetch_stateful_sets,
     "configmaps": fetch_config_map,
     "services": fetch_services,
-    # TODO: @jiacju - capture pvc once service is ready
+    "persistentvolumeclaims": fetch_persistent_volume_claims,
 }
 
 

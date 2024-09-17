@@ -24,7 +24,7 @@ QUERIES = {
         | where properties.ExtensionType startswith 'microsoft.iotoperations'
             or properties.ExtensionType =~ 'microsoft.deviceregistry.assets'
             or properties.ExtensionType =~ 'microsoft.azurekeyvaultsecretsprovider'
-            or properties.ExtensionType =~ 'microsoft.secretsynccontroller'
+            or properties.ExtensionType =~ 'microsoft.azure.secretstore'
             or properties.ExtensionType =~ 'microsoft.openservicemesh'
             or properties.ExtensionType =~ 'microsoft.arc.containerstorage'
         | project id, name, apiVersion
@@ -51,7 +51,8 @@ QUERIES = {
         | where extendedLocation.name =~ '{custom_location_id}'
         | where type startswith 'microsoft.iotoperations'
             or type startswith 'microsoft.deviceregistry'
-        | project id, name, apiVersion
+            or type startswith 'microsoft.secretsync'
+        | project id, name, apiVersion, type
         """,
     "get_resource_sync_rules": """
         resources

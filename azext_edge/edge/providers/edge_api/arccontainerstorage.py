@@ -5,13 +5,8 @@
 # ----------------------------------------------------------------------------------------------
 
 from .base import EdgeResourceApi
-from ...common import ListableEnum
 
 
-class OrcResourceKinds(ListableEnum):
-    INSTANCE = "instance"
-    SOLUTION = "solution"
-    TARGET = "target"
-
-
-ORC_API_V1 = EdgeResourceApi(group="orchestrator.iotoperations.azure.com", version="v1", moniker="orc")
+ARCCONTAINERSTORAGE_API_V1 = EdgeResourceApi(
+    group="arccontainerstorage.azure.net", version="v1", moniker="arccontainerstorage"
+)

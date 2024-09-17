@@ -624,7 +624,10 @@ def test_evaluate_dataflows(
                         "endpointType": "kafka",
                         "kafkaSettings": {
                             "host": "kafkaHost",
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {
+                                "method": "SystemAssignedManagedIdentity",
+                                "systemAssignedManagedIdentitySettings": {"audience": "audience"},
+                            },
                             "cloudEventAttributes": "Propagate",
                             "consumerGroupId": None,
                             "compression": "compression",
@@ -643,7 +646,10 @@ def test_evaluate_dataflows(
                         "endpointType": "localstorage",
                         "localStorageSettings": {
                             "persistentVolumeClaimRef": "ref",
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {
+                                "method": "ServiceAccountToken",
+                                "serviceAccountTokenSettings": {"audience": "audience"},
+                            },
                         },
                     },
                 },
@@ -656,7 +662,10 @@ def test_evaluate_dataflows(
                         "endpointType": "fabriconelake",
                         "fabricOneLakeSettings": {
                             "host": "fabric_host",
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {
+                                "method": "XS509Certificate",
+                                "x509CertificateSettings": {"secretRef": "secret"},
+                            },
                             "names": {"lakehouseName": "lakehouse", "workspaceName": "workspaceName"},
                             "batching": {"latencySeconds": 2},
                         },
@@ -671,7 +680,10 @@ def test_evaluate_dataflows(
                         "endpointType": "datalakestorage",
                         "datalakeStorageSettings": {
                             "host": "datalakeHost",
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {
+                                "method": "Sasl",
+                                "saslSettings": {"saslType": "scramSha256", "secretRef": "secret"},
+                            },
                             "batching": {"latencySeconds": 12},
                         },
                     },
@@ -684,7 +696,7 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "dataExplorer",
                         "dataExplorerSettings": {
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {"method": "AccessToken", "accessTokenSettings": {"secretRef": "secret"}},
                             "database": "databse",
                             "host": "data_explorer_host",
                             "batching": {"latencySeconds": 3},
@@ -699,7 +711,14 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "mqtt",
                         "mqttSettings": {
-                            "authentication": {"method": "authMethod"},
+                            "authentication": {
+                                "method": "UserAssignedManagedIdentity",
+                                "userAssignedManagedIdentitySettings": {
+                                    "clientId": "clientId",
+                                    "scope": "scope",
+                                    "tenantId": "tenantId",
+                                },
+                            },
                             "host": "mqttHost",
                             "protocol": "Websockets",
                             "cloudEventAttributes": "CreateOrRemap",
@@ -861,6 +880,20 @@ def test_evaluate_dataflow_endpoints(
                             },
                         },
                     },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "success",
+                            "operationId": "operationId",
+                            "logErrors": True,
+                            "output": {
+                                "message": "message",
+                            },
+                        },
+                        "runtimeStatus": {
+                            "level": "ok",
+                            "description": "runtime status",
+                        },
+                    },
                 },
             ],
             # pods
@@ -878,6 +911,22 @@ def test_evaluate_dataflow_endpoints(
             ],
             # evaluations
             [
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        DEFAULT_DATAFLOW_PROFILE,
+                    ),
+                    ("value", {'status.provisioningStatus.status': 'success'}),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        DEFAULT_DATAFLOW_PROFILE,
+                    ),
+                    ("value", {'status.runtimeStatus.level': 'ok'}),
+                ],
                 [
                     ("status", "success"),
                     (
@@ -979,7 +1028,7 @@ def test_evaluate_dataflow_endpoints(
                 ],
             ],
         ),
-        # good profile, warning status
+        # good profile, error status
         (
             # profiles
             [
@@ -991,7 +1040,20 @@ def test_evaluate_dataflow_endpoints(
                     "spec": {
                         "instanceCount": 1,
                     },
-                    "status": {"configStatusLevel": "warn", "statusDescription": "this should display a warning"},
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "error",
+                            "error": {
+                                "code": "123",
+                                "message": "error message",
+                            },
+                            "failureCause": "failure cause",
+                        },
+                        "runtimeStatus": {
+                            "level": "ok",
+                            "description": "runtime status",
+                        },
+                    },
                 },
             ],
             # pods
@@ -1010,13 +1072,27 @@ def test_evaluate_dataflow_endpoints(
             # evaluations
             [
                 [
-                    ("status", "warning"),
+                    ("status", "error"),
                     (
                         "name",
                         DEFAULT_DATAFLOW_PROFILE,
                     ),
-                    ("value/status/configStatusLevel", "warn"),
-                    ("value/status/statusDescription", "this should display a warning"),
+                    (
+                        "value",
+                        {
+                            "status.provisioningStatus.error": {"code": "123", "message": "error message"},
+                            "status.provisioningStatus.status": "error",
+                        },
+                    ),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "value",
+                        {
+                            "status.runtimeStatus.level": "ok",
+                        },
+                    ),
                 ],
                 [
                     ("status", "success"),

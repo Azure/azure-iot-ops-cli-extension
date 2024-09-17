@@ -32,6 +32,7 @@ def mocked_azcli_cred_get_token(mocker):
         "azure.identity._credentials.azure_cli.AzureCliCredential.get_token",
     )
     type(patched()).expires_on = PropertyMock(return_value=sys.maxsize)
+    type(patched()).refresh_on = PropertyMock(return_value=sys.maxsize)
     yield patched
 
 

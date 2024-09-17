@@ -12,11 +12,11 @@ from knack.help_files import helps
 from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
     COMPAT_AKRI_APIS,
+    COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
-    COMPAT_ORC_APIS,
     COMPAT_DATAFLOW_APIS,
 )
 
@@ -41,7 +41,7 @@ def load_iotops_help():
         "iot ops support"
     ] = """
         type: group
-        short-summary: IoT Operations support command space.
+        short-summary: IoT Operations support operations.
     """
 
     helps[
@@ -53,11 +53,11 @@ def load_iotops_help():
             {{Supported service APIs}}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
-            - {COMPAT_ORC_APIS.as_str()}
             - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
+            - {COMPAT_ARCCONTAINERSTORAGE_APIS.as_str()}
 
             Note: logs from evicted pod will not be captured, as they are inaccessible. For details
             on why a pod was evicted, please refer to the related pod and node files.
@@ -79,6 +79,10 @@ def load_iotops_help():
         - name: Include mqtt broker traces in the support bundle. This is an alias for stats trace fetch capability.
           text: >
             az iot ops support create-bundle --ops-service broker --broker-traces
+
+        - name: Include arc container storage resources in the support bundle.
+          text: >
+            az iot ops support create-bundle --ops-service acs
     """
 
     helps[
@@ -126,7 +130,7 @@ def load_iotops_help():
         "iot ops broker"
     ] = """
         type: group
-        short-summary: Mqtt broker management and operations.
+        short-summary: Mqtt broker management.
     """
 
     helps[
@@ -448,23 +452,58 @@ def load_iotops_help():
         "iot ops init"
     ] = """
         type: command
-        short-summary: Bootstrap, configure and deploy IoT Operations to the target Arc-enabled cluster.
+        short-summary: Bootstrap the Arc-enabled cluster for IoT Operations deployment.
         long-summary: |
-                      For additional resources including how to Arc-enable a cluster see
-                      https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
+                      An Arc-enabled cluster is required to deploy IoT Operations. See the following resource for
+                      more info https://aka.ms/aziotops-arcconnect.
 
-                      IoT Operations depends on a service principal (SP) for Key Vault CSI driver secret synchronization.
+                      The init operation will do work in installing and configuring a foundation layer of edge
+                      services necessary for IoT Operations deployment.
 
-                      By default, init will do work in creating and configuring a suitable app registration
-                      via Microsoft Graph then apply it to the cluster.
+                      After the foundation layer has been installed the `az iot ops create` command should
+                      be used to deploy an instance.
+        examples:
+        - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+        - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             --enable-fault-tolerance
+    """
 
-                      You can short-circuit this work, by pre-creating an app registration, then providing values
-                      for --sp-app-id, --sp-object-id and --sp-secret. By providing the SP fields, no additional
-                      work via Microsoft Graph operations will be done.
+    helps[
+        "iot ops create"
+    ] = """
+        type: command
+        short-summary: Create an IoT Operations instance.
+        long-summary: |
+                      A succesful execution of init is required before running this command.
 
-                      Pre-creating an app registration is useful when the logged-in principal has constrained
-                      Entra Id permissions. For example in CI/automation scenarios, or an orgs separation of user
-                      responsibility.
+                      The result of the command nets an IoT Operations instance with
+                      a set of default resources configured for cohesive function.
+
+        examples:
+        - name: Create the target instance with minimum input.
+          text: >
+            az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+        - name: The following example adds customization to the default broker instance resource
+            as well as an instance description and tags.
+          text: >
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --broker-mem-profile High --broker-backend-workers 4 --description 'Contoso Factory'
+             --tags tier=testX1
+        - name: This example shows deploying an additional insecure (no authn or authz) broker listener
+            configured for port 1883 of service type load balancer. Useful for testing and/or demos.
+            Do not use the insecure option in production.
+          text: >
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --add-insecure-listener
+        - name: This form shows how to disable resource sync rules from the instance deployment,
+            which may be necessary due to lack of permissions to deploy them.
+          text: >
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --disable-rsync-rules
     """
 
     helps[
@@ -472,8 +511,12 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Delete IoT Operations from the cluster.
-        long-summary: The operation uses Azure Resource Graph to determine correlated resources.
-          Resource Graph being eventually consistent does not guarantee a synchronized state at the time of execution.
+        long-summary: |
+            The name of either the instance or cluster must be provided.
+
+            The operation uses Azure Resource Graph to determine correlated resources.
+            Resource Graph being eventually consistent does not guarantee a synchronized state at the
+            time of execution.
 
         examples:
         - name: Minimum input for complete deletion.
@@ -485,6 +528,9 @@ def load_iotops_help():
         - name: Force deletion regardless of warnings. May lead to errors.
           text: >
             az iot ops delete -n myinstance -g myresourcegroup --force
+        - name: Use cluster name instead of instance for lookup.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup
         - name: Reverse application of init.
           text: >
             az iot ops delete -n myinstance -g myresourcegroup --include-deps
@@ -546,22 +592,110 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops create"
+        "iot ops identity"
+    ] = """
+        type: group
+        short-summary: Instance identity management.
+    """
+
+    helps[
+        "iot ops identity assign"
     ] = """
         type: command
-        short-summary: Create an IoT Operations instance.
+        short-summary: Assign a user-assigned managed identity with the instance.
+        long-summary: |
+            This operation includes federation of the identity.
 
         examples:
-        - name: Create the target instance with minimum input.
+        - name: Assign and federate a desired user-assigned managed identity.
           text: >
-            az iot ops create --name myinstance --cluster mycluster -g myresourcegroup
+            az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
+        "iot ops identity show"
+    ] = """
+        type: command
+        short-summary: Show the instance identities.
+
+        examples:
+        - name: Show the identities associated with the target instance.
+          text: >
+            az iot ops identity show --name myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops identity remove"
+    ] = """
+        type: command
+        short-summary: Remove a user-assigned managed identity from the instance.
+        long-summary: |
+            This operation includes removing federation of the identity.
+
+        examples:
+        - name: Remove the desired user-assigned managed identity from the instance.
+          text: >
+            az iot ops identity remove --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
+        "iot ops secretsync"
+    ] = """
+        type: group
+        short-summary: Instance secret sync management.
+    """
+
+    helps[
+        "iot ops secretsync enable"
+    ] = """
+        type: command
+        short-summary: Enable secret sync for an instance.
+        long-summary: |
+            The operation handles federation, creation of a secret provider class
+            and role assignments of the managed identity to the target Key Vault.
+
+            Only one Secret Provider Class must be associated to the instance at a time.
+
+        examples:
+        - name: Enable the target instance for Key Vault secret sync.
+          text: >
+            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
+        - name: Same as prior example except flag to skip Key Vault role assignments.
+          text: >
+            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --skip-ra
+    """
+
+    helps[
+        "iot ops secretsync show"
+    ] = """
+        type: command
+        short-summary: Show the secret sync config associated with an instance.
+
+        examples:
+        - name: Show the secret sync config associated with an instance.
+          text: >
+            az iot ops secretsync show --name myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops secretsync disable"
+    ] = """
+        type: command
+        short-summary: Disable secret sync for an instance.
+
+        examples:
+        - name: Disable secret sync for an instance.
+          text: >
+            az iot ops secretsync disable --name myinstance -g myresourcegroup
     """
 
     helps[
         "iot ops asset"
     ] = """
         type: group
-        short-summary: Manage assets.
+        short-summary: Asset management.
     """
 
     helps[
@@ -977,7 +1111,7 @@ def load_iotops_help():
         "iot ops schema"
     ] = """
         type: group
-        short-summary: Schema management.
+        short-summary: Schema and registry management.
         long-summary: |
           Schemas are documents that describe data to enable processing and contextualization.
           Message schemas describe the format of a message and its contents.
