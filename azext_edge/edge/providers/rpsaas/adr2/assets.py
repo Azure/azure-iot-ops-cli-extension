@@ -94,11 +94,6 @@ class Assets(Queryable):
             "assetEndpointProfileRef": endpoint_profile,
             "events": _process_asset_sub_points("event_notifier", events),
         }
-        # TODO: replace with datapoint file?
-        # if dataset_file_path:
-        #     properties["datasets"].extend(
-        #         _process_asset_data_set_file_path(file_path=dataset_file_path)
-        #     )
         if events_file_path:
             properties["events"].extend(
                 _process_asset_sub_points_file_path(file_path=events_file_path)
@@ -511,7 +506,7 @@ class Assets(Queryable):
             resource_group_name=resource_group_name,
         )
         fieldnames = None
-        if extension in [FileType.csv.value, FileType.portal_csv.value]:
+        if extension in [FileType.portal_csv.value]:
             default_configuration = dataset.get("datasetConfiguration", "{}")
             fieldnames = _convert_sub_points_to_csv(
                 sub_points=dataset.get("dataPoints", []),
@@ -666,7 +661,7 @@ class Assets(Queryable):
             check_cluster=True
         )
         fieldnames = None
-        if extension in [FileType.csv.value, FileType.portal_csv.value]:
+        if extension in [FileType.portal_csv.value]:
             default_configuration = asset_props.get("defaultEventsConfiguration", "{}")
             fieldnames = _convert_sub_points_to_csv(
                 sub_points=asset_props.get("events", []),
