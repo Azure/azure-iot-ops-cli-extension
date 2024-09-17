@@ -37,7 +37,7 @@ def test_assert_above_min(value, minimum):
             _assert_above_min(
                 param=param, value=value, minimum=minimum
             )
-        assert param in e.error_msg
+        assert param in e.value.error_msg
     else:
         _assert_above_min(
             param=param, value=value, minimum=minimum
@@ -146,14 +146,56 @@ def test_build_opcua_config(original_config, req):
     assert res_security.get("securityPolicy") == req.get("security_policy", og_security.get("securityPolicy"))
 
 
+@pytest.mark.parametrize("asset_endpoint_profile_name", [None, generate_random_string()])
+@pytest.mark.parametrize("auth_mode", [None, generate_random_string()])
+@pytest.mark.parametrize("endpoint_profile_type", [None, generate_random_string()])
+@pytest.mark.parametrize("location", [None, generate_random_string()])
+@pytest.mark.parametrize("resource_group_name", [None, generate_random_string()])
+@pytest.mark.parametrize("target_address", [None, generate_random_string()])
+def test_build_query_body(
+    asset_endpoint_profile_name,
+    auth_mode,
+    endpoint_profile_type,
+    location,
+    resource_group_name,
+    target_address
+):
+    result = _build_query_body(
+        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        auth_mode=auth_mode,
+        endpoint_profile_type=endpoint_profile_type,
+        location=location,
+        resource_group_name=resource_group_name,
+        target_address=target_address
+    )
+    result = [line.strip() for line in result.split("|")]
+    assert result[-1] == "project id, customLocation, location, name, resourceGroup, provisioningState, tags, "\
+        "type, subscriptionId"
+    assert result[-2] == "extend provisioningState = properties.provisioningState"
+    assert result[-3] == "extend customLocation = tostring(extendedLocation.name)"
+
+    if resource_group_name:
+        assert f"where resourceGroup =~ \"{resource_group_name}\"" in result
+    if location:
+        assert f"where location =~ \"{location}\"" in result
+    if asset_endpoint_profile_name:
+        assert f"where name =~ \"{asset_endpoint_profile_name}\"" in result
+    if auth_mode:
+        assert f"where properties.authentication.method =~ \"{auth_mode}\"" in result
+    if endpoint_profile_type:
+        assert f"where properties.endpointProfileType =~ \"{endpoint_profile_type}\"" in result
+    if target_address:
+        assert f"where properties.targetAddress =~ \"{target_address}\"" in result
+
+
 @pytest.mark.parametrize("original_props", [
     None,
     {
-        "mode": generate_random_string(),
-        "x509Credentials": {"certificateReference": generate_random_string()},
+        "method": generate_random_string(),
+        "x509Credentials": {"certificateSecretName": generate_random_string()},
         "usernamePasswordCredentials": {
-            "usernameReference": generate_random_string(),
-            "passwordReference": generate_random_string(),
+            "usernameSecretName": generate_random_string(),
+            "passwordSecretName": generate_random_string(),
         },
     }
 ])
@@ -189,23 +231,23 @@ def test_process_authentication(
 
     if original_props is None:
         original_props = {}
-    expected_auth = req.get("auth_mode") or original_props.get("mode")
+    expected_auth = req.get("auth_mode") or original_props.get("method")
     if expected_auth is None and req.get("certificate_reference"):
         expected_auth = AEPAuthModes.certificate.value
     if expected_auth is None and req.get("password_reference"):
         expected_auth = AEPAuthModes.userpass.value
-    assert result.get("mode") == expected_auth
+    assert result.get("method") == expected_auth
 
-    if result.get("mode") == AEPAuthModes.anonymous.value:
+    if result.get("method") == AEPAuthModes.anonymous.value:
         assert result.get("x509Credentials") is None
         assert result.get("usernamePasswordCredentials") is None
-    elif result.get("mode") == AEPAuthModes.certificate.value:
-        assert result["x509Credentials"]["certificateReference"] == req["certificate_reference"]
+    elif result.get("method") == AEPAuthModes.certificate.value:
+        assert result["x509Credentials"]["certificateSecretName"] == req["certificate_reference"]
         assert result.get("usernamePasswordCredentials") is None
-    elif result.get("mode") == AEPAuthModes.userpass.value:
+    elif result.get("method") == AEPAuthModes.userpass.value:
         assert result.get("x509Credentials") is None
-        assert result["usernamePasswordCredentials"]["passwordReference"] == req["password_reference"]
-        assert result["usernamePasswordCredentials"]["usernameReference"] == req["username_reference"]
+        assert result["usernamePasswordCredentials"]["passwordSecretName"] == req["password_reference"]
+        assert result["usernamePasswordCredentials"]["usernameSecretName"] == req["username_reference"]
     else:
         assert result == original_props
 
@@ -286,12 +328,12 @@ def test_process_authentication_error(
     {
         "additionalConfiguration": generate_random_string(),
         "targetAddress": generate_random_string(),
-        "userAuthentication": {
-            "mode": generate_random_string(),
-            "x509Credentials": {"certificateReference": generate_random_string()},
+        "authentication": {
+            "method": generate_random_string(),
+            "x509Credentials": {"certificateSecretName": generate_random_string()},
             "usernamePasswordCredentials": {
-                "usernameReference": generate_random_string(),
-                "passwordReference": generate_random_string(),
+                "usernameSecretName": generate_random_string(),
+                "passwordSecretName": generate_random_string(),
             },
         }
     }
@@ -336,10 +378,10 @@ def test_update_properties(properties, req):
     assert properties.get("transportAuthentication", {}).get("ownCertificates") == expected_certs
 
     expected_auth = _process_authentication(
-        auth_props=properties.get("userAuthentication", {}),
+        auth_props=properties.get("authentication", {}),
         auth_mode=req.get("auth_mode"),
         certificate_reference=req.get("certificate_reference"),
         username_reference=req.get("username_reference"),
         password_reference=req.get("password_reference")
     )
-    assert properties.get("userAuthentication", {}) == expected_auth
+    assert properties.get("authentication", {}) == expected_auth

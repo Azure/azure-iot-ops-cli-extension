@@ -252,6 +252,7 @@ def _build_opcua_config(
 ):
     config = json.loads(original_config) if original_config else {}
 
+    # TODO: add in mins + expose
     if application_name:
         config["applicationName"] = application_name
     if keep_alive:

@@ -35,8 +35,9 @@ def generate_resource_id(
     resource_group_name: Optional[str] = None,
     resource_provider: Optional[str] = None,
     resource_path: Optional[str] = None,
+    resource_subscription: Optional[str] = None
 ) -> str:
-    resource_id = f"/subscriptions/{get_zeroed_subscription()}"
+    resource_id = f"/subscriptions/{resource_subscription or get_zeroed_subscription()}"
     if resource_group_name:
         resource_id += f"/resourceGroups/{resource_group_name}"
     if resource_provider:

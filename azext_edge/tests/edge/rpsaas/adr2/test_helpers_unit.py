@@ -8,6 +8,8 @@ import pytest
 import responses
 from ....generators import generate_random_string, BASE_URL, generate_resource_id
 
+CONNECTED_CLUSTER_API = "2024-07-15-preview"
+
 
 @pytest.fixture()
 def mocked_logger(mocker):
@@ -48,7 +50,7 @@ def test_check_cluster_connectivity(mocked_cmd, mocked_logger, mocked_responses:
     # get cluster (from custom location)
     mocked_responses.add(
         method=responses.GET,
-        url=f"{BASE_URL}{cl_resource['properties']['hostResourceId']}",
+        url=f"{BASE_URL}{cl_resource['properties']['hostResourceId']}".replace("resourceGroups", "resourcegroups"),
         json={"properties": {"connectivityStatus": "connected" if connected else "offline"}},
         status=200,
         content_type="application/json",
@@ -77,6 +79,7 @@ def test_get_extended_location(
             )
         },
         "id": generate_resource_id(
+            resource_subscription=subscription,
             resource_group_name=resource_group,
             resource_provider="Microsoft.IoTOperations/instances",
             resource_path=f"/{name}"
@@ -111,7 +114,7 @@ def test_get_extended_location(
     # get cluster (from custom location)
     mocked_responses.add(
         method=responses.GET,
-        url=f"{BASE_URL}{cl_resource['properties']['hostResourceId']}",
+        url=f"{BASE_URL}{cl_resource['properties']['hostResourceId']}".replace("resourceGroups", "resourcegroups"),
         json={
             "location": location,
             "properties": {"connectivityStatus": "connected" if connected else "offline"}
