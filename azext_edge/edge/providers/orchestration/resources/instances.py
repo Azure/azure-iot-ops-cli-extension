@@ -152,20 +152,18 @@ class Instances(Queryable):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         instance = self.show(name=name, resource_group_name=resource_group_name)
 
-        # TODO - @digimaun - need to think about this more.
-        # cluster_resource = self.get_resource_map(instance).connected_cluster.resource
-        # custom_location = self._get_associated_cl(instance)
-        # namespace = custom_location["properties"]["namespace"]
-        # oidc_issuer_url_key = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
-        # oidc_issuer = cluster_resource["properties"]["oidcIssuerProfile"][oidc_issuer_url_key]
+        cluster_resource = self.get_resource_map(instance).connected_cluster.resource
+        custom_location = self._get_associated_cl(instance)
+        namespace = custom_location["properties"]["namespace"]
+        oidc_issuer = self._ensure_oidc_issuer(cluster_resource)
 
-        # cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
-        # if not federated_credential_name:
-        #     federated_credential_name = get_fc_name(
-        #         cluster_name=cluster_resource["name"],
-        #         oidc_issuer=oidc_issuer,
-        #         subject=cred_subject,
-        #     )
+        cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
+        if not federated_credential_name:
+            federated_credential_name = get_fc_name(
+                cluster_name=cluster_resource["name"],
+                oidc_issuer=oidc_issuer,
+                subject=cred_subject,
+            )
         if federated_credential_name:
             self.unfederate_msi(mi_resource_id_container, federated_credential_name)
 
@@ -193,7 +191,6 @@ class Instances(Queryable):
         resource_group_name: str,
         mi_user_assigned: str,
         federated_credential_name: Optional[str] = None,
-        use_self_hosted_issuer: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -203,8 +200,7 @@ class Instances(Queryable):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         instance = self.show(name=name, resource_group_name=resource_group_name)
         cluster_resource = self.get_resource_map(instance).connected_cluster.resource
-        oidc_issuer_url_key = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
-        oidc_issuer = cluster_resource["properties"]["oidcIssuerProfile"][oidc_issuer_url_key]
+        oidc_issuer = self._ensure_oidc_issuer(cluster_resource)
         custom_location = self._get_associated_cl(instance)
         namespace = custom_location["properties"]["namespace"]
         cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
@@ -239,7 +235,6 @@ class Instances(Queryable):
         federated_credential_name: Optional[str] = None,
         spc_name: Optional[str] = None,
         skip_role_assignments: bool = False,
-        use_self_hosted_issuer: Optional[bool] = None,
         **kwargs,
     ):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
@@ -264,9 +259,7 @@ class Instances(Queryable):
             custom_location = self._get_associated_cl(instance)
             namespace = custom_location["properties"]["namespace"]
             cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_SECRETSYNC)
-
-            oidc_issuer_url_key = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
-            oidc_issuer = cluster_resource["properties"]["oidcIssuerProfile"][oidc_issuer_url_key]
+            oidc_issuer = self._ensure_oidc_issuer(cluster_resource)
 
             cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
             secretsync_spc = self._find_existing_spc(cl_resources)
@@ -379,7 +372,7 @@ class Instances(Queryable):
                 scope=keyvault["id"],
             )
 
-    def _ensure_oidc_issuer(self, cluster_resource: dict, use_self_hosted_issuer: Optional[bool] = None) -> str:
+    def _ensure_oidc_issuer(self, cluster_resource: dict) -> str:
         enabled_oidc = cluster_resource["properties"].get("oidcIssuerProfile", {}).get("enabled", False)
         enabled_wlif = (
             cluster_resource["properties"].get("securityProfile", {}).get("workloadIdentity", {}).get("enabled", False)
@@ -404,14 +397,10 @@ class Instances(Queryable):
             raise ValidationError(error)
 
         oidc_issuer_profile: dict = cluster_resource["properties"]["oidcIssuerProfile"]
-        oidc_issuer_key = "issuerUrl"
-        if use_self_hosted_issuer:
-            oidc_issuer_key = "selfHostedIssuerUrl"
-        oidc_issuer_url = oidc_issuer_profile.get(oidc_issuer_key)
-        if not oidc_issuer_url:
-            raise ValidationError(f"{oidc_issuer_key} is not configured.")
-
-        return oidc_issuer_key
+        issuer_url = oidc_issuer_profile.get("issuerUrl") or oidc_issuer_profile.get("selfHostedIssuerUrl")
+        if not issuer_url:
+            raise ValidationError("No issuer Url is available. Check cluster config.")
+        return issuer_url
 
     def federate_msi(
         self,

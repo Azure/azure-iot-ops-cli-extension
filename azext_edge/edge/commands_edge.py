@@ -272,7 +272,6 @@ def instance_identity_assign(
     mi_user_assigned: str,
     federated_credential_name: Optional[str] = None,
     usage_type: IdentityUsageType = IdentityUsageType.dataflow.value,
-    use_self_hosted_issuer: Optional[bool] = None,
     **kwargs,
 ) -> dict:
     return Instances(cmd).add_mi_user_assigned(
@@ -281,7 +280,6 @@ def instance_identity_assign(
         mi_user_assigned=mi_user_assigned,
         federated_credential_name=federated_credential_name,
         usage_type=usage_type,
-        use_self_hosted_issuer=use_self_hosted_issuer,
         **kwargs,
     )
 

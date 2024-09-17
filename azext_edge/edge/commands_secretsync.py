@@ -21,7 +21,6 @@ def secretsync_enable(
     keyvault_resource_id: str,
     spc_name: Optional[str] = None,
     skip_role_assignments: Optional[bool] = None,
-    use_self_hosted_issuer: Optional[bool] = None,
     **kwargs,
 ) -> dict:
     return Instances(cmd).enable_secretsync(
@@ -31,7 +30,6 @@ def secretsync_enable(
         keyvault_resource_id=keyvault_resource_id,
         spc_name=spc_name,
         skip_role_assignments=skip_role_assignments,
-        use_self_hosted_issuer=use_self_hosted_issuer,
         **kwargs,
     )
 
