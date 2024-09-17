@@ -120,7 +120,8 @@ def test_connected_cluster_queries(
         | where extendedLocation.name =~ '{target_custom_location}'
         | where type startswith 'microsoft.iotoperations'
             or type startswith 'microsoft.deviceregistry'
-        | project id, name, apiVersion
+            or type startswith 'microsoft.secretsync'
+        | project id, name, apiVersion, type
         """
     )
 

@@ -18,7 +18,6 @@ from .operations import (
     AssetEndpointProfilesOperations,
     AssetsOperations,
     BillingContainersOperations,
-    DevicesOperations,
     DiscoveredAssetEndpointProfilesOperations,
     DiscoveredAssetsOperations,
     OperationStatusOperations,
@@ -45,8 +44,6 @@ class MicrosoftDeviceRegistryManagementService:  # pylint: disable=client-accept
     :vartype assets: deviceregistry.mgmt.operations.AssetsOperations
     :ivar billing_containers: BillingContainersOperations operations
     :vartype billing_containers: deviceregistry.mgmt.operations.BillingContainersOperations
-    :ivar devices: DevicesOperations operations
-    :vartype devices: deviceregistry.mgmt.operations.DevicesOperations
     :ivar discovered_asset_endpoint_profiles: DiscoveredAssetEndpointProfilesOperations operations
     :vartype discovered_asset_endpoint_profiles:
      deviceregistry.mgmt.operations.DiscoveredAssetEndpointProfilesOperations
@@ -66,7 +63,7 @@ class MicrosoftDeviceRegistryManagementService:  # pylint: disable=client-accept
     :type credential: ~azure.core.credentials.TokenCredential
     :keyword endpoint: Service URL. Default value is "https://management.azure.com".
     :paramtype endpoint: str
-    :keyword api_version: Api Version. Default value is "2024-07-01-preview". Note that overriding
+    :keyword api_version: Api Version. Default value is "2024-09-01-preview". Note that overriding
      this default value may result in unsupported behavior.
     :paramtype api_version: str
     :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
@@ -97,7 +94,6 @@ class MicrosoftDeviceRegistryManagementService:  # pylint: disable=client-accept
         self.billing_containers = BillingContainersOperations(
             self._client, self._config, self._serialize, self._deserialize
         )
-        self.devices = DevicesOperations(self._client, self._config, self._serialize, self._deserialize)
         self.discovered_asset_endpoint_profiles = DiscoveredAssetEndpointProfilesOperations(
             self._client, self._config, self._serialize, self._deserialize
         )
