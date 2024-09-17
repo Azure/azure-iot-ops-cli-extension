@@ -629,8 +629,6 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Remove a user-assigned managed identity from the instance.
-        long-summary: |
-            This operation includes removing federation of the identity.
 
         examples:
         - name: Remove the desired user-assigned managed identity from the instance.
