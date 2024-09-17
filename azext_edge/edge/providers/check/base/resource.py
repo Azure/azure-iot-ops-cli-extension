@@ -474,4 +474,5 @@ def process_custom_resource_status(
 
 def validate_secret_ref(name: str, namespace: str) -> bool:
     secret = get_namespaced_secret(secret_name=name, namespace=namespace)
-    return secret != {}
+    is_valid = secret is not None or secret != {}
+    return is_valid
