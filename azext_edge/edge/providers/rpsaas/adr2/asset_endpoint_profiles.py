@@ -227,6 +227,11 @@ class AssetEndpointProfiles(Queryable):
 
 
 # Helpers
+def _assert_above_min(param: str, value: int, minimum: int = 0):
+    if value < minimum:
+        raise InvalidArgumentValueError(f"The parameter {param} needs to be at least {minimum}.")
+
+
 def _build_opcua_config(
     original_config: Optional[str] = None,
     application_name: Optional[str] = None,
@@ -305,11 +310,6 @@ def _build_opcua_config(
         config["security"]["securityPolicy"] = security_policy
 
     return json.dumps(config)
-
-
-def assert_above_zero(param: str, number: int):
-    if number < 0:
-        raise InvalidArgumentValueError(f"The parameter {param} needs to be a non-negative integer.")
 
 
 def _build_query_body(
