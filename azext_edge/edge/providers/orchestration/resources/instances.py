@@ -51,8 +51,12 @@ def get_spc_name(instance_name: str) -> str:
     return f"{instance_name}-spc"
 
 
-def get_fc_name(cluster_name: str, namespace: str, instance_name: str) -> str:
-    return f"{cluster_name}-" + url_safe_hash_phrase(f"{cluster_name}-{namespace}-{instance_name}")[:5]
+def get_fc_name(cluster_name: str, oidc_issuer: str, subject: str) -> str:
+    return url_safe_hash_phrase(f"{cluster_name}-{oidc_issuer}-{subject}")[:7]
+
+
+def get_cred_subject(namespace: str, service_account_name: str):
+    return f"system:serviceaccount:{namespace}:{service_account_name}"
 
 
 def get_enable_syntax(instanc_name: str, resource_group_name: str) -> str:
@@ -147,16 +151,23 @@ class Instances(Queryable):
     ):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         instance = self.show(name=name, resource_group_name=resource_group_name)
-        cluster_resource = self.get_resource_map(instance).connected_cluster.resource
-        custom_location = self._get_associated_cl(instance)
 
-        if not federated_credential_name:
-            federated_credential_name = get_fc_name(
-                cluster_name=cluster_resource["name"],
-                namespace=custom_location["properties"]["namespace"],
-                instance_name=instance["name"],
-            )
-        self.unfederate_msi(mi_resource_id_container, federated_credential_name)
+        # TODO - @digimaun - need to think about this more.
+        # cluster_resource = self.get_resource_map(instance).connected_cluster.resource
+        # custom_location = self._get_associated_cl(instance)
+        # namespace = custom_location["properties"]["namespace"]
+        # oidc_issuer_url_key = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
+        # oidc_issuer = cluster_resource["properties"]["oidcIssuerProfile"][oidc_issuer_url_key]
+
+        # cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
+        # if not federated_credential_name:
+        #     federated_credential_name = get_fc_name(
+        #         cluster_name=cluster_resource["name"],
+        #         oidc_issuer=oidc_issuer,
+        #         subject=cred_subject,
+        #     )
+        if federated_credential_name:
+            self.unfederate_msi(mi_resource_id_container, federated_credential_name)
 
         identity: dict = instance.get("identity", {})
         if not identity:
@@ -193,20 +204,23 @@ class Instances(Queryable):
         instance = self.show(name=name, resource_group_name=resource_group_name)
         cluster_resource = self.get_resource_map(instance).connected_cluster.resource
         oidc_issuer_url_key = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
+        oidc_issuer = cluster_resource["properties"]["oidcIssuerProfile"][oidc_issuer_url_key]
         custom_location = self._get_associated_cl(instance)
+        namespace = custom_location["properties"]["namespace"]
+        cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
+
         if not federated_credential_name:
             federated_credential_name = get_fc_name(
                 cluster_name=cluster_resource["name"],
-                namespace=custom_location["properties"]["namespace"],
-                instance_name=instance["name"],
+                oidc_issuer=oidc_issuer,
+                subject=cred_subject,
             )
         self.federate_msi(
             mi_resource_id_container,
-            oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"][oidc_issuer_url_key],
+            oidc_issuer=oidc_issuer,
+            subject=cred_subject,
             federated_credential_name=federated_credential_name,
-            namespace=custom_location["properties"]["namespace"],
         )
-
         identity: dict = instance.get("identity", {})
         if not identity or identity.get("type") == "None":
             identity["type"] = "UserAssigned"
@@ -248,8 +262,13 @@ class Instances(Queryable):
             resource_map = self.get_resource_map(instance)
             cluster_resource = resource_map.connected_cluster.resource
             custom_location = self._get_associated_cl(instance)
-            cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
+            namespace = custom_location["properties"]["namespace"]
+            cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_SECRETSYNC)
+
             oidc_issuer_url_key = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
+            oidc_issuer = cluster_resource["properties"]["oidcIssuerProfile"][oidc_issuer_url_key]
+
+            cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
             secretsync_spc = self._find_existing_spc(cl_resources)
             if secretsync_spc:
                 status.stop()
@@ -258,21 +277,18 @@ class Instances(Queryable):
                     f"Use 'az iot ops secretsync show -n {instance['name']} -g {resource_group_name}' for details."
                 )
                 return
+
             if not federated_credential_name:
-                federated_credential_name = (
-                    get_fc_name(
-                        cluster_name=cluster_resource["name"],
-                        namespace=custom_location["properties"]["namespace"],
-                        instance_name=instance["name"],
-                    )
-                    + "-ssc"
+                federated_credential_name = get_fc_name(
+                    cluster_name=cluster_resource["name"],
+                    oidc_issuer=oidc_issuer,
+                    subject=cred_subject,
                 )
             self.federate_msi(
                 mi_resource_id_container=mi_resource_id_container,
-                oidc_issuer=cluster_resource["properties"]["oidcIssuerProfile"][oidc_issuer_url_key],
+                oidc_issuer=oidc_issuer,
+                subject=cred_subject,
                 federated_credential_name=federated_credential_name,
-                namespace=custom_location["properties"]["namespace"],
-                service_account_name=SERVICE_ACCOUNT_SECRETSYNC,
             )
             spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_create_or_update(
                 resource_group_name=resource_group_name,
@@ -401,17 +417,15 @@ class Instances(Queryable):
         self,
         mi_resource_id_container: ResourceIdContainer,
         oidc_issuer: str,
+        subject: str,
         federated_credential_name: str,
-        namespace: str = "azure-iot-operations",
-        service_account_name: str = SERVICE_ACCOUNT_DATAFLOW,
     ):
-        cred_subject = f"system:serviceaccount:{namespace}:{service_account_name}"
         if self._find_federated_cred(
-            mi_resource_id_container=mi_resource_id_container, issuer_url=oidc_issuer, subject=cred_subject
+            mi_resource_id_container=mi_resource_id_container, issuer_url=oidc_issuer, subject=subject
         ):
-            logger.warning(
+            logger.debug(
                 f"This OIDC issuer '{oidc_issuer}'\n"
-                f"and subject '{cred_subject}' combo are already associated "
+                f"and subject '{subject}' combo are already associated "
                 f"with identity '{mi_resource_id_container.resource_name}'.\n"
                 "No new federated credential will be created."
             )
@@ -422,7 +436,7 @@ class Instances(Queryable):
             federated_identity_credential_resource_name=federated_credential_name,
             parameters={
                 "properties": {
-                    "subject": cred_subject,
+                    "subject": subject,
                     "audiences": ["api://AzureADTokenExchange"],
                     "issuer": oidc_issuer,
                 }
