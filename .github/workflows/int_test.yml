@@ -179,6 +179,16 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "OIDC Token exchange service"
+        run: |
+          while true; do
+            token_request=$ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            token_uri=$ACTIONS_ID_TOKEN_REQUEST_URL
+            token=$(curl -H "Authorization: bearer $token_request" "${token_uri}&audience=api://AzureADTokenExchange" | jq .value -r)
+            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -t ${{ secrets.AZURE_TENANT_ID }} --federated-token $token --output none
+            # Sleep for 4 minutes
+            sleep 240
+          done &
       - name: "ARC connect cluster"
         uses: azure/azure-iot-ops-cli-extension/.github/actions/connect-arc@dev
         with:
@@ -208,23 +218,6 @@ jobs:
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-init-int --skip-pkg-install -- --durations=0
-      - name: "Az CLI login refresh"
-        if: ${{ matrix.feature == 'default' }}
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "OIDC Token exchange service"
-        run: |
-          while true; do
-            token_request=$ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            token_uri=$ACTIONS_ID_TOKEN_REQUEST_URL
-            token=$(curl -H "Authorization: bearer $token_request" "${token_uri}&audience=api://AzureADTokenExchange" | jq .value -r)
-            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -t ${{ secrets.AZURE_TENANT_ID }} --federated-token $token --output none
-            # Sleep for 4 minutes
-            sleep 240
-          done &
       - name: "Tox Integration Tests"
         if: ${{ matrix.feature == 'default' && !inputs.use-container }}
         env:
@@ -263,12 +256,6 @@ jobs:
             -v "${tempLog}:/usr/src/azure-iot-ops/junit" \
             --network host \
             $(docker build ${{ env.EXTENSION_SOURCE_DIRECTORY }} -q)
-      - name: "Az CLI login refresh"
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle --svc auto
@@ -297,12 +284,6 @@ jobs:
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-init-int --skip-pkg-install -- --durations=0
-      - name: "Az CLI login refresh"
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Delete AIO resources"
         if: ${{ always() }}
         run: |
