@@ -164,8 +164,7 @@ class Instances(Queryable):
                 oidc_issuer=oidc_issuer,
                 subject=cred_subject,
             )
-        if federated_credential_name:
-            self.unfederate_msi(mi_resource_id_container, federated_credential_name)
+        self.unfederate_msi(mi_resource_id_container, federated_credential_name)
 
         identity: dict = instance.get("identity", {})
         if not identity:
