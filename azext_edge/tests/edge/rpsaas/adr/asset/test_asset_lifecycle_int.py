@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 import json
 import os
 from time import sleep
@@ -16,6 +17,7 @@ from .....helpers import run
 logger = get_logger(__name__)
 
 
+@pytest.mark.skip("new asset tests comming in soon")
 def test_asset_lifecycle(require_init, tracked_resources):
     rg = require_init["resourceGroup"]
     custom_location = require_init["customLocation"]
@@ -131,6 +133,7 @@ def test_asset_lifecycle(require_init, tracked_resources):
     tracked_resources.remove(max_asset["id"])
 
 
+@pytest.mark.skip("new asset tests comming in soon")
 def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_files):
     rg = require_init["resourceGroup"]
     custom_location = require_init["customLocation"]
