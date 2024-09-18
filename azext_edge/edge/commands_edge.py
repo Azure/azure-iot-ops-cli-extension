@@ -16,6 +16,7 @@ from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import META_API_V1B1
 from .providers.orchestration.common import (
+    IdentityUsageType,
     KubernetesDistroType,
     TrustSourceType,
     MqMemoryProfile,
@@ -260,5 +261,51 @@ def update_instance(
         resource_group_name=resource_group_name,
         tags=tags,
         description=instance_description,
+        **kwargs,
+    )
+
+
+def instance_identity_assign(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    mi_user_assigned: str,
+    federated_credential_name: Optional[str] = None,
+    usage_type: IdentityUsageType = IdentityUsageType.dataflow.value,
+    use_self_hosted_issuer: Optional[bool] = None,
+    **kwargs,
+) -> dict:
+    return Instances(cmd).add_mi_user_assigned(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        mi_user_assigned=mi_user_assigned,
+        federated_credential_name=federated_credential_name,
+        use_self_hosted_issuer=use_self_hosted_issuer,
+        usage_type=usage_type,
+        **kwargs,
+    )
+
+
+def instance_identity_show(cmd, instance_name: str, resource_group_name: str) -> dict:
+    instance = Instances(cmd).show(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+    return instance.get("identity", {})
+
+
+def instance_identity_remove(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    mi_user_assigned: str,
+    federated_credential_name: Optional[str] = None,
+    **kwargs,
+) -> dict:
+    return Instances(cmd).remove_mi_user_assigned(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        mi_user_assigned=mi_user_assigned,
+        federated_credential_name=federated_credential_name,
         **kwargs,
     )

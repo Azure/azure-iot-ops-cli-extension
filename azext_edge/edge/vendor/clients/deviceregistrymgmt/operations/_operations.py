@@ -48,7 +48,7 @@ def build_operations_list_request(**kwargs: Any) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -67,7 +67,7 @@ def build_asset_endpoint_profiles_list_by_subscription_request(subscription_id: 
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -93,7 +93,7 @@ def build_asset_endpoint_profiles_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -122,7 +122,7 @@ def build_asset_endpoint_profiles_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -160,7 +160,7 @@ def build_asset_endpoint_profiles_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -200,7 +200,7 @@ def build_asset_endpoint_profiles_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -239,7 +239,7 @@ def build_asset_endpoint_profiles_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -274,7 +274,7 @@ def build_assets_list_by_subscription_request(subscription_id: str, **kwargs: An
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -300,7 +300,7 @@ def build_assets_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -331,7 +331,7 @@ def build_assets_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -364,7 +364,7 @@ def build_assets_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -399,7 +399,7 @@ def build_assets_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -433,7 +433,7 @@ def build_assets_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -463,7 +463,7 @@ def build_billing_containers_list_by_subscription_request(subscription_id: str, 
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -489,7 +489,7 @@ def build_billing_containers_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -517,194 +517,13 @@ def build_billing_containers_get_request(
     return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_devices_list_by_subscription_request(subscription_id: str, **kwargs: Any) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/providers/Microsoft.DeviceRegistry/devices"
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-    }
-
-    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_devices_list_by_resource_group_request(
-    resource_group_name: str, subscription_id: str, **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = (
-        "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DeviceRegistry/devices"
-    )
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-    }
-
-    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_devices_get_request(
-    resource_group_name: str, device_name: str, subscription_id: str, **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DeviceRegistry/devices/{deviceName}"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "deviceName": _SERIALIZER.url("device_name", device_name, "str", max_length=64, min_length=3),
-    }
-
-    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_devices_create_or_replace_request(
-    resource_group_name: str, device_name: str, subscription_id: str, **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DeviceRegistry/devices/{deviceName}"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "deviceName": _SERIALIZER.url("device_name", device_name, "str", max_length=64, min_length=3),
-    }
-
-    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    if content_type is not None:
-        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_devices_update_request(
-    resource_group_name: str, device_name: str, subscription_id: str, **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DeviceRegistry/devices/{deviceName}"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "deviceName": _SERIALIZER.url("device_name", device_name, "str", max_length=64, min_length=3),
-    }
-
-    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    if content_type is not None:
-        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="PATCH", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_devices_delete_request(
-    resource_group_name: str, device_name: str, subscription_id: str, **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DeviceRegistry/devices/{deviceName}"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "deviceName": _SERIALIZER.url("device_name", device_name, "str", max_length=64, min_length=3),
-    }
-
-    _url: str = _format_url_section(_url, **path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
-
-
 def build_discovered_asset_endpoint_profiles_list_by_subscription_request(
     subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -730,7 +549,7 @@ def build_discovered_asset_endpoint_profiles_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -759,7 +578,7 @@ def build_discovered_asset_endpoint_profiles_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -797,7 +616,7 @@ def build_discovered_asset_endpoint_profiles_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -837,7 +656,7 @@ def build_discovered_asset_endpoint_profiles_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -876,7 +695,7 @@ def build_discovered_asset_endpoint_profiles_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -911,7 +730,7 @@ def build_discovered_assets_list_by_subscription_request(subscription_id: str, *
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -937,7 +756,7 @@ def build_discovered_assets_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -966,7 +785,7 @@ def build_discovered_assets_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1004,7 +823,7 @@ def build_discovered_assets_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1044,7 +863,7 @@ def build_discovered_assets_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1083,7 +902,7 @@ def build_discovered_assets_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1120,7 +939,7 @@ def build_operation_status_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1146,7 +965,7 @@ def build_schema_registries_list_by_subscription_request(subscription_id: str, *
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1172,7 +991,7 @@ def build_schema_registries_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1201,7 +1020,7 @@ def build_schema_registries_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1239,12 +1058,11 @@ def build_schema_registries_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
-    # TODO - @digimaun temp lowercased RP name
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/microsoft.deviceregistry/schemaRegistries/{schemaRegistryName}"  # pylint: disable=line-too-long
+    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.DeviceRegistry/schemaRegistries/{schemaRegistryName}"  # pylint: disable=line-too-long
     path_format_arguments = {
         "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
         "resourceGroupName": _SERIALIZER.url(
@@ -1280,7 +1098,7 @@ def build_schema_registries_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1319,7 +1137,7 @@ def build_schema_registries_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1356,7 +1174,7 @@ def build_schemas_list_by_schema_registry_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1393,7 +1211,7 @@ def build_schemas_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1434,7 +1252,7 @@ def build_schemas_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1476,7 +1294,7 @@ def build_schemas_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1516,7 +1334,7 @@ def build_schema_versions_list_by_schema_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1561,7 +1379,7 @@ def build_schema_versions_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1610,7 +1428,7 @@ def build_schema_versions_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1660,7 +1478,7 @@ def build_schema_versions_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-01-preview"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -3019,9 +2837,6 @@ class AssetEndpointProfilesOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
                           contains connectivity type specific further configuration (e.g. OPC UA,
@@ -3050,27 +2865,9 @@ class AssetEndpointProfilesOperations:
                           additionalConfiguration field holds further connector type specific
                           configuration.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -3304,9 +3101,6 @@ class AssetEndpointProfilesOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
                           contains connectivity type specific further configuration (e.g. OPC UA,
@@ -3335,27 +3129,9 @@ class AssetEndpointProfilesOperations:
                           additionalConfiguration field holds further connector type specific
                           configuration.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -3655,10 +3431,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -3709,9 +3485,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -3924,10 +3700,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -3978,9 +3754,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -4196,10 +3972,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -4250,9 +4026,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -4538,10 +4314,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -4592,9 +4368,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -4728,10 +4504,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -4782,9 +4558,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -4955,10 +4731,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -5009,9 +4785,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -5176,10 +4952,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -5230,9 +5006,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -5366,10 +5142,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -5420,9 +5196,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -5674,9 +5450,6 @@ class AssetsOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "attributes": {
                             "str": {}  # Optional. A set of key-value pairs that contain
@@ -5697,10 +5470,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -5746,9 +5519,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -5768,27 +5541,9 @@ class AssetsOperations:
                         "softwareRevision": "str"  # Optional. Revision number of the
                           software.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -5825,10 +5580,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -5879,9 +5634,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -6052,10 +5807,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -6106,9 +5861,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -6242,9 +5997,6 @@ class AssetsOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "attributes": {
                             "str": {}  # Optional. A set of key-value pairs that contain
@@ -6265,10 +6017,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -6314,9 +6066,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -6336,27 +6088,9 @@ class AssetsOperations:
                         "softwareRevision": "str"  # Optional. Revision number of the
                           software.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -6393,10 +6127,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -6447,9 +6181,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -6912,1743 +6646,6 @@ class BillingContainersOperations:
             return cls(pipeline_response, cast(JSON, deserialized), {})
 
         return cast(JSON, deserialized)
-
-
-class DevicesOperations:
-    """
-    .. warning::
-        **DO NOT** instantiate this class directly.
-
-        Instead, you should access the following operations through
-        :class:`~deviceregistry.mgmt.MicrosoftDeviceRegistryManagementService`'s
-        :attr:`devices` attribute.
-    """
-
-    def __init__(self, *args, **kwargs):
-        input_args = list(args)
-        self._client = input_args.pop(0) if input_args else kwargs.pop("client")
-        self._config = input_args.pop(0) if input_args else kwargs.pop("config")
-        self._serialize = input_args.pop(0) if input_args else kwargs.pop("serializer")
-        self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
-
-    @distributed_trace
-    def list_by_subscription(self, **kwargs: Any) -> Iterable[JSON]:
-        """List Device resources by subscription ID.
-
-        :return: An iterator like instance of JSON object
-        :rtype: ~azure.core.paging.ItemPaged[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # response body for status code(s): 200
-                response == {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = kwargs.pop("params", {}) or {}
-
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        def prepare_request(next_link=None):
-            if not next_link:
-
-                request = build_devices_list_by_subscription_request(
-                    subscription_id=self._config.subscription_id,
-                    api_version=self._config.api_version,
-                    headers=_headers,
-                    params=_params,
-                )
-                request.url = self._client.format_url(request.url)
-
-            else:
-                # make call to next link with the client's api-version
-                _parsed_next_link = urllib.parse.urlparse(next_link)
-                _next_request_params = case_insensitive_dict(
-                    {
-                        key: [urllib.parse.quote(v) for v in value]
-                        for key, value in urllib.parse.parse_qs(_parsed_next_link.query).items()
-                    }
-                )
-                _next_request_params["api-version"] = self._config.api_version
-                request = HttpRequest(
-                    "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
-                )
-                request.url = self._client.format_url(request.url)
-
-            return request
-
-        def extract_data(pipeline_response):
-            deserialized = pipeline_response.http_response.json()
-            list_of_elem = deserialized["value"]
-            if cls:
-                list_of_elem = cls(list_of_elem)  # type: ignore
-            return deserialized.get("nextLink") or None, iter(list_of_elem)
-
-        def get_next(next_link=None):
-            request = prepare_request(next_link)
-
-            _stream = False
-            pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-                request, stream=_stream, **kwargs
-            )
-            response = pipeline_response.http_response
-
-            if response.status_code not in [200]:
-                map_error(status_code=response.status_code, response=response, error_map=error_map)
-                raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-            return pipeline_response
-
-        return ItemPaged(get_next, extract_data)
-
-    @distributed_trace
-    def list_by_resource_group(self, resource_group_name: str, **kwargs: Any) -> Iterable[JSON]:
-        """List Device resources by resource group.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :return: An iterator like instance of JSON object
-        :rtype: ~azure.core.paging.ItemPaged[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # response body for status code(s): 200
-                response == {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = kwargs.pop("params", {}) or {}
-
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        def prepare_request(next_link=None):
-            if not next_link:
-
-                request = build_devices_list_by_resource_group_request(
-                    resource_group_name=resource_group_name,
-                    subscription_id=self._config.subscription_id,
-                    api_version=self._config.api_version,
-                    headers=_headers,
-                    params=_params,
-                )
-                request.url = self._client.format_url(request.url)
-
-            else:
-                # make call to next link with the client's api-version
-                _parsed_next_link = urllib.parse.urlparse(next_link)
-                _next_request_params = case_insensitive_dict(
-                    {
-                        key: [urllib.parse.quote(v) for v in value]
-                        for key, value in urllib.parse.parse_qs(_parsed_next_link.query).items()
-                    }
-                )
-                _next_request_params["api-version"] = self._config.api_version
-                request = HttpRequest(
-                    "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
-                )
-                request.url = self._client.format_url(request.url)
-
-            return request
-
-        def extract_data(pipeline_response):
-            deserialized = pipeline_response.http_response.json()
-            list_of_elem = deserialized["value"]
-            if cls:
-                list_of_elem = cls(list_of_elem)  # type: ignore
-            return deserialized.get("nextLink") or None, iter(list_of_elem)
-
-        def get_next(next_link=None):
-            request = prepare_request(next_link)
-
-            _stream = False
-            pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-                request, stream=_stream, **kwargs
-            )
-            response = pipeline_response.http_response
-
-            if response.status_code not in [200]:
-                map_error(status_code=response.status_code, response=response, error_map=error_map)
-                raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-            return pipeline_response
-
-        return ItemPaged(get_next, extract_data)
-
-    @distributed_trace
-    def get(self, resource_group_name: str, device_name: str, **kwargs: Any) -> JSON:
-        """Get a Device.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param device_name: Name of the device. Required.
-        :type device_name: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # response body for status code(s): 200
-                response == {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = kwargs.pop("params", {}) or {}
-
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        request = build_devices_get_request(
-            resource_group_name=resource_group_name,
-            device_name=device_name,
-            subscription_id=self._config.subscription_id,
-            api_version=self._config.api_version,
-            headers=_headers,
-            params=_params,
-        )
-        request.url = self._client.format_url(request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        if response.content:
-            deserialized = response.json()
-        else:
-            deserialized = None
-
-        if cls:
-            return cls(pipeline_response, cast(JSON, deserialized), {})
-
-        return cast(JSON, deserialized)
-
-    def _create_or_replace_initial(
-        self, resource_group_name: str, device_name: str, resource: Union[JSON, IO], **kwargs: Any
-    ) -> JSON:
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = kwargs.pop("params", {}) or {}
-
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        content_type = content_type or "application/json"
-        _json = None
-        _content = None
-        if isinstance(resource, (IOBase, bytes)):
-            _content = resource
-        else:
-            _json = resource
-
-        request = build_devices_create_or_replace_request(
-            resource_group_name=resource_group_name,
-            device_name=device_name,
-            subscription_id=self._config.subscription_id,
-            content_type=content_type,
-            api_version=self._config.api_version,
-            json=_json,
-            content=_content,
-            headers=_headers,
-            params=_params,
-        )
-        request.url = self._client.format_url(request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200, 201]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        response_headers = {}
-        if response.status_code == 200:
-            if response.content:
-                deserialized = response.json()
-            else:
-                deserialized = None
-
-        if response.status_code == 201:
-            response_headers["Azure-AsyncOperation"] = self._deserialize(
-                "str", response.headers.get("Azure-AsyncOperation")
-            )
-            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
-
-            if response.content:
-                deserialized = response.json()
-            else:
-                deserialized = None
-
-        if cls:
-            return cls(pipeline_response, cast(JSON, deserialized), response_headers)  # type: ignore
-
-        return cast(JSON, deserialized)  # type: ignore
-
-    @overload
-    def begin_create_or_replace(
-        self,
-        resource_group_name: str,
-        device_name: str,
-        resource: JSON,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> LROPoller[JSON]:
-        """Create a Device.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param device_name: Name of the device. Required.
-        :type device_name: str
-        :param resource: Resource create parameters. Required.
-        :type resource: JSON
-        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
-        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
-         operation to not poll, or pass in your own initialized polling object for a personal polling
-         strategy.
-        :paramtype polling: bool or ~azure.core.polling.PollingMethod
-        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
-         Retry-After header is present.
-        :return: An instance of LROPoller that returns JSON object
-        :rtype: ~azure.core.polling.LROPoller[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                resource = {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-
-                # response body for status code(s): 200, 201
-                response == {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @overload
-    def begin_create_or_replace(
-        self,
-        resource_group_name: str,
-        device_name: str,
-        resource: IO,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> LROPoller[JSON]:
-        """Create a Device.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param device_name: Name of the device. Required.
-        :type device_name: str
-        :param resource: Resource create parameters. Required.
-        :type resource: IO
-        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
-        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
-         operation to not poll, or pass in your own initialized polling object for a personal polling
-         strategy.
-        :paramtype polling: bool or ~azure.core.polling.PollingMethod
-        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
-         Retry-After header is present.
-        :return: An instance of LROPoller that returns JSON object
-        :rtype: ~azure.core.polling.LROPoller[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # response body for status code(s): 200, 201
-                response == {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @distributed_trace
-    def begin_create_or_replace(
-        self, resource_group_name: str, device_name: str, resource: Union[JSON, IO], **kwargs: Any
-    ) -> LROPoller[JSON]:
-        """Create a Device.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param device_name: Name of the device. Required.
-        :type device_name: str
-        :param resource: Resource create parameters. Is either a JSON type or a IO type. Required.
-        :type resource: JSON or IO
-        :keyword content_type: Body Parameter content-type. Known values are: 'application/json'.
-         Default value is None.
-        :paramtype content_type: str
-        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
-        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
-         operation to not poll, or pass in your own initialized polling object for a personal polling
-         strategy.
-        :paramtype polling: bool or ~azure.core.polling.PollingMethod
-        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
-         Retry-After header is present.
-        :return: An instance of LROPoller that returns JSON object
-        :rtype: ~azure.core.polling.LROPoller[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                resource = {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-
-                # response body for status code(s): 200, 201
-                response == {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = kwargs.pop("params", {}) or {}
-
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
-        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
-        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
-        if cont_token is None:
-            raw_result = self._create_or_replace_initial(
-                resource_group_name=resource_group_name,
-                device_name=device_name,
-                resource=resource,
-                content_type=content_type,
-                cls=lambda x, y, z: x,
-                headers=_headers,
-                params=_params,
-                **kwargs
-            )
-        kwargs.pop("error_map", None)
-
-        def get_long_running_output(pipeline_response):
-            response = pipeline_response.http_response
-            if response.content:
-                deserialized = response.json()
-            else:
-                deserialized = None
-            if cls:
-                return cls(pipeline_response, deserialized, {})  # type: ignore
-            return deserialized
-
-        if polling is True:
-            polling_method: PollingMethod = cast(
-                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "azure-async-operation"}, **kwargs)
-            )
-        elif polling is False:
-            polling_method = cast(PollingMethod, NoPolling())
-        else:
-            polling_method = polling
-        if cont_token:
-            return LROPoller.from_continuation_token(
-                polling_method=polling_method,
-                continuation_token=cont_token,
-                client=self._client,
-                deserialization_callback=get_long_running_output,
-            )
-        return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
-
-    def _update_initial(
-        self, resource_group_name: str, device_name: str, properties: Union[JSON, IO], **kwargs: Any
-    ) -> Optional[JSON]:
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = kwargs.pop("params", {}) or {}
-
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[Optional[JSON]] = kwargs.pop("cls", None)
-
-        content_type = content_type or "application/json"
-        _json = None
-        _content = None
-        if isinstance(properties, (IOBase, bytes)):
-            _content = properties
-        else:
-            _json = properties
-
-        request = build_devices_update_request(
-            resource_group_name=resource_group_name,
-            device_name=device_name,
-            subscription_id=self._config.subscription_id,
-            content_type=content_type,
-            api_version=self._config.api_version,
-            json=_json,
-            content=_content,
-            headers=_headers,
-            params=_params,
-        )
-        request.url = self._client.format_url(request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200, 202]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        deserialized = None
-        response_headers = {}
-        if response.status_code == 200:
-            if response.content:
-                deserialized = response.json()
-            else:
-                deserialized = None
-
-        if response.status_code == 202:
-            response_headers["Location"] = self._deserialize("str", response.headers.get("Location"))
-            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
-
-        if cls:
-            return cls(pipeline_response, deserialized, response_headers)
-
-        return deserialized
-
-    @overload
-    def begin_update(
-        self,
-        resource_group_name: str,
-        device_name: str,
-        properties: JSON,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> LROPoller[JSON]:
-        """Update a Device.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param device_name: Name of the device. Required.
-        :type device_name: str
-        :param properties: The resource properties to be updated. Required.
-        :type properties: JSON
-        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
-        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
-         operation to not poll, or pass in your own initialized polling object for a personal polling
-         strategy.
-        :paramtype polling: bool or ~azure.core.polling.PollingMethod
-        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
-         Retry-After header is present.
-        :return: An instance of LROPoller that returns JSON object
-        :rtype: ~azure.core.polling.LROPoller[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        }
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @overload
-    def begin_update(
-        self,
-        resource_group_name: str,
-        device_name: str,
-        properties: IO,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> LROPoller[JSON]:
-        """Update a Device.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param device_name: Name of the device. Required.
-        :type device_name: str
-        :param properties: The resource properties to be updated. Required.
-        :type properties: IO
-        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
-        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
-         operation to not poll, or pass in your own initialized polling object for a personal polling
-         strategy.
-        :paramtype polling: bool or ~azure.core.polling.PollingMethod
-        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
-         Retry-After header is present.
-        :return: An instance of LROPoller that returns JSON object
-        :rtype: ~azure.core.polling.LROPoller[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # response body for status code(s): 200
-                response == {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @distributed_trace
-    def begin_update(
-        self, resource_group_name: str, device_name: str, properties: Union[JSON, IO], **kwargs: Any
-    ) -> LROPoller[JSON]:
-        """Update a Device.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param device_name: Name of the device. Required.
-        :type device_name: str
-        :param properties: The resource properties to be updated. Is either a JSON type or a IO type.
-         Required.
-        :type properties: JSON or IO
-        :keyword content_type: Body Parameter content-type. Known values are: 'application/json'.
-         Default value is None.
-        :paramtype content_type: str
-        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
-        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
-         operation to not poll, or pass in your own initialized polling object for a personal polling
-         strategy.
-        :paramtype polling: bool or ~azure.core.polling.PollingMethod
-        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
-         Retry-After header is present.
-        :return: An instance of LROPoller that returns JSON object
-        :rtype: ~azure.core.polling.LROPoller[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # JSON input template you can fill out and use as your body input.
-                properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        }
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "location": "str",  # The geo-location where the resource lives. Required.
-                    "etag": "str",  # Optional. Resource Tag.
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "attributes": {
-                            "str": {}  # Optional. A set of key-value pairs that contain
-                              custom attributes set by the customer.
-                        },
-                        "deviceGroupId": "str",  # Optional. The AAD group the device is a
-                          member of.
-                        "deviceTemplateId": "str",  # Optional. Device Template Id used to
-                          create a device.
-                        "enabled": True,  # Optional. Default value is True. Indicates if the
-                          resource and identity are enabled or not. A disabled device cannot
-                          authenticate with AAD.
-                        "endpoints": {
-                            "assigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ],
-                            "unassigned": [
-                                {
-                                    "address": "str",  # Optional. Fully
-                                      qualified domain name.
-                                    "type": "str"  # Optional. Type of connection
-                                      endpoint.
-                                }
-                            ]
-                        },
-                        "externalDeviceId": "str",  # Optional. Gets the device Id provided
-                          by customer.
-                        "identity": {
-                            "principalId": "str",  # Optional. Principal id for the
-                              device resource.
-                            "tenantId": "str"  # Optional. Tenant id for the AAD tenant.
-                        },
-                        "manufacturer": "str",  # Optional. Hardware manufacturer name.
-                        "model": "str",  # Optional. Hardware model name.
-                        "operatingSystem": "str",  # Optional. operating system name.
-                        "operatingSystemVersion": "str",  # Optional. operating system
-                          version.
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Gets a unique identifier for this
-                          resource.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "tags": {
-                        "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = kwargs.pop("params", {}) or {}
-
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
-        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
-        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
-        if cont_token is None:
-            raw_result = self._update_initial(
-                resource_group_name=resource_group_name,
-                device_name=device_name,
-                properties=properties,
-                content_type=content_type,
-                cls=lambda x, y, z: x,
-                headers=_headers,
-                params=_params,
-                **kwargs
-            )
-        kwargs.pop("error_map", None)
-
-        def get_long_running_output(pipeline_response):
-            response = pipeline_response.http_response
-            if response.content:
-                deserialized = response.json()
-            else:
-                deserialized = None
-            if cls:
-                return cls(pipeline_response, deserialized, {})  # type: ignore
-            return deserialized
-
-        if polling is True:
-            polling_method: PollingMethod = cast(
-                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "location"}, **kwargs)
-            )
-        elif polling is False:
-            polling_method = cast(PollingMethod, NoPolling())
-        else:
-            polling_method = polling
-        if cont_token:
-            return LROPoller.from_continuation_token(
-                polling_method=polling_method,
-                continuation_token=cont_token,
-                client=self._client,
-                deserialization_callback=get_long_running_output,
-            )
-        return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
-
-    def _delete_initial(  # pylint: disable=inconsistent-return-statements
-        self, resource_group_name: str, device_name: str, **kwargs: Any
-    ) -> None:
-        error_map = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = kwargs.pop("params", {}) or {}
-
-        cls: ClsType[None] = kwargs.pop("cls", None)
-
-        request = build_devices_delete_request(
-            resource_group_name=resource_group_name,
-            device_name=device_name,
-            subscription_id=self._config.subscription_id,
-            api_version=self._config.api_version,
-            headers=_headers,
-            params=_params,
-        )
-        request.url = self._client.format_url(request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [202, 204]:
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        response_headers = {}
-        if response.status_code == 202:
-            response_headers["Location"] = self._deserialize("str", response.headers.get("Location"))
-            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
-
-        if cls:
-            return cls(pipeline_response, None, response_headers)
-
-    @distributed_trace
-    def begin_delete(self, resource_group_name: str, device_name: str, **kwargs: Any) -> LROPoller[None]:
-        """Delete a Device.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param device_name: Name of the device. Required.
-        :type device_name: str
-        :keyword str continuation_token: A continuation token to restart a poller from a saved state.
-        :keyword polling: By default, your polling method will be ARMPolling. Pass in False for this
-         operation to not poll, or pass in your own initialized polling object for a personal polling
-         strategy.
-        :paramtype polling: bool or ~azure.core.polling.PollingMethod
-        :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
-         Retry-After header is present.
-        :return: An instance of LROPoller that returns None
-        :rtype: ~azure.core.polling.LROPoller[None]
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = kwargs.pop("params", {}) or {}
-
-        cls: ClsType[None] = kwargs.pop("cls", None)
-        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
-        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
-        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
-        if cont_token is None:
-            raw_result = self._delete_initial(  # type: ignore
-                resource_group_name=resource_group_name,
-                device_name=device_name,
-                cls=lambda x, y, z: x,
-                headers=_headers,
-                params=_params,
-                **kwargs
-            )
-        kwargs.pop("error_map", None)
-
-        def get_long_running_output(pipeline_response):  # pylint: disable=inconsistent-return-statements
-            if cls:
-                return cls(pipeline_response, None, {})
-
-        if polling is True:
-            polling_method: PollingMethod = cast(
-                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "location"}, **kwargs)
-            )
-        elif polling is False:
-            polling_method = cast(PollingMethod, NoPolling())
-        else:
-            polling_method = polling
-        if cont_token:
-            return LROPoller.from_continuation_token(
-                polling_method=polling_method,
-                continuation_token=cont_token,
-                client=self._client,
-                deserialization_callback=get_long_running_output,
-            )
-        return LROPoller(self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
 
 
 class DiscoveredAssetEndpointProfilesOperations:
@@ -9669,9 +7666,6 @@ class DiscoveredAssetEndpointProfilesOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
                           contains connectivity type specific further configuration (e.g. OPC UA,
@@ -9692,27 +7686,9 @@ class DiscoveredAssetEndpointProfilesOperations:
                         "version": 0  # Optional. An integer that is incremented each time
                           the resource is modified.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -9902,9 +7878,6 @@ class DiscoveredAssetEndpointProfilesOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
                           contains connectivity type specific further configuration (e.g. OPC UA,
@@ -9925,27 +7898,9 @@ class DiscoveredAssetEndpointProfilesOperations:
                         "version": 0  # Optional. An integer that is incremented each time
                           the resource is modified.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -11720,9 +9675,6 @@ class DiscoveredAssetsOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "datasets": [
                             {
@@ -11808,27 +9760,9 @@ class DiscoveredAssetsOperations:
                         "version": 0  # Optional. An integer that is incremented each time
                           the resource is modified.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -12152,9 +10086,6 @@ class DiscoveredAssetsOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "datasets": [
                             {
@@ -12240,27 +10171,9 @@ class DiscoveredAssetsOperations:
                         "version": 0  # Optional. An integer that is incremented each time
                           the resource is modified.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -13626,39 +11539,23 @@ class SchemaRegistriesOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "identity": {
-                        "type": "str"  # Optional. The type of managed identity assigned to
-                          this resource. Known values are: "None" and "SystemAssigned".
+                        "type": "str",  # Type of managed service identity (either system
+                          assigned, or none). Required. Known values are: "None" and "SystemAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str"  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
                     },
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "description": "str",  # Optional. Human-readable description of the
                           schema registry.
                         "displayName": "str"  # Optional. Human-readable display name.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -13836,39 +11733,23 @@ class SchemaRegistriesOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "identity": {
-                        "type": "str"  # Optional. The type of managed identity assigned to
-                          this resource. Known values are: "None" and "SystemAssigned".
+                        "type": "str",  # Type of managed service identity (either system
+                          assigned, or none). Required. Known values are: "None" and "SystemAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str"  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
                     },
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "description": "str",  # Optional. Human-readable description of the
                           schema registry.
                         "displayName": "str"  # Optional. Human-readable display name.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
