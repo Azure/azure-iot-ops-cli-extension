@@ -8,7 +8,6 @@ from .base import EdgeResourceApi, EdgeApiManager
 from .clusterconfig import CLUSTER_CONFIG_API_V1
 from .mq import MQ_ACTIVE_API, MQTT_BROKER_API_V1B1, MqResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
-from .akri import AKRI_API_V0
 from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
 from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
 from .dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
@@ -25,7 +24,6 @@ __all__ = [
     "MQTT_BROKER_API_V1B1",
     "OPCUA_API_V1",
     "OpcuaResourceKinds",
-    "AKRI_API_V0",
     "KeyVaultResourceKinds",
     "KEYVAULT_API_V1",
     "DeviceRegistryResourceKinds",

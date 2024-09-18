@@ -10,7 +10,6 @@ from azure.cli.core.azclierror import ArgumentUsageError
 from azext_edge.edge.commands_edge import check
 from azext_edge.edge.providers.checks import run_checks
 from azext_edge.edge.providers.edge_api import (
-    AKRI_API_V0,
     DATAFLOW_API_V1B1,
     DEVICEREGISTRY_API_V1,
     MQ_ACTIVE_API,
@@ -274,7 +273,7 @@ def test_summary_checks(
             expected_status = status
     assert result["postDeployment"][0]["status"] == expected_status
     for service, status in [
-        (AKRI_API_V0.as_str(), akri_status),
+        ("Akri", akri_status),
         (MQ_ACTIVE_API.as_str(), broker_status),
         (DEVICEREGISTRY_API_V1.as_str(), deviceregistry_status),
         (OPCUA_API_V1.as_str(), opcua_status),

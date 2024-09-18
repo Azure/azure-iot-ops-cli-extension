@@ -227,15 +227,18 @@ def expected_status(
 def run_check_command(
     detail_level: str,
     ops_service: str,
-    resource_api: EdgeResourceApi,
+    resource_api: Optional[EdgeResourceApi] = None,
     resource_kind: Optional[str] = None,
     resource_match: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], bool]:
-    try:
-        aio_check = run(f"kubectl api-resources --api-group={resource_api.group}")
-        service_present = resource_api.group in aio_check
-    except CLIInternalError:
-        service_present = resource_api.is_deployed()
+    service_present = False
+
+    if resource_api:
+        try:
+            aio_check = run(f"kubectl api-resources --api-group={resource_api.group}")
+            service_present = resource_api.group in aio_check
+        except CLIInternalError:
+            service_present = resource_api.is_deployed()
     # note that the text decoder really does not like the emojis
     command = f"az iot ops check --as-object --ops-service {ops_service} --detail-level {detail_level} "
     if resource_kind:

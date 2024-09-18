@@ -9,10 +9,6 @@ from typing import Any, Dict, List
 
 from azext_edge.edge.providers.check.base.pod import evaluate_pod_health
 
-from ..edge_api import (
-    AKRI_API_V0,
-)
-
 from ..support.akri import AKRI_NAME_LABEL_V2
 
 from ..base import get_namespaced_pods_by_prefix
@@ -42,9 +38,6 @@ def check_akri_deployment(
     }
 
     return check_post_deployment(
-        api_info=AKRI_API_V0,
-        check_name="enumerateAkriApi",
-        check_desc="Enumerate Akri API resources",
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,

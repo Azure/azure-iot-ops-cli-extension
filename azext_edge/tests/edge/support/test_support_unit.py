@@ -16,7 +16,6 @@ import pytest
 from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import (
-    AKRI_API_V0,
     ARCCONTAINERSTORAGE_API_V1,
     CLUSTER_CONFIG_API_V1,
     DEVICEREGISTRY_API_V1,
@@ -27,15 +26,6 @@ from azext_edge.edge.providers.edge_api import (
     EdgeResourceApi,
 )
 from azext_edge.edge.providers.edge_api.meta import META_API_V1B1
-from azext_edge.edge.providers.support.akri import (
-    AKRI_AGENT_LABEL,
-    AKRI_APP_LABEL,
-    AKRI_DIRECTORY_PATH,
-    AKRI_INSTANCE_LABEL,
-    AKRI_NAME_LABEL_V2,
-    AKRI_SERVICE_LABEL,
-    AKRI_WEBHOOK_LABEL,
-)
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.arccontainerstorage import STORAGE_NAMESPACE
 from azext_edge.edge.providers.support.base import get_bundle_path
@@ -56,7 +46,6 @@ from azext_edge.edge.providers.support.opcua import (
 )
 from azext_edge.edge.providers.support.common import (
     COMPONENT_LABEL_FORMAT,
-    NAME_LABEL_FORMAT,
 )
 from azext_edge.edge.providers.support.schemaregistry import SCHEMAS_DIRECTORY_PATH, SCHEMAS_NAME_LABEL
 from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
@@ -75,7 +64,6 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQTT_BROKER_API_V1B1, MQ_ACTIVE_API],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, AKRI_API_V0],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, CLUSTER_CONFIG_API_V1],
         [MQTT_BROKER_API_V1B1, OPCUA_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1],
     ],
@@ -326,124 +314,6 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=OPCUA_NAME_LABEL,
                 directory_path=OPC_DIRECTORY_PATH,
-            )
-
-        if api in [AKRI_API_V0]:
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=AKRI_INSTANCE_LABEL,
-                directory_path=AKRI_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=AKRI_APP_LABEL,
-                directory_path=AKRI_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=NAME_LABEL_FORMAT.format(label=f"{AKRI_AGENT_LABEL}, {AKRI_WEBHOOK_LABEL}"),
-                directory_path=AKRI_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=AKRI_NAME_LABEL_V2,
-                directory_path=AKRI_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_INSTANCE_LABEL,
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_APP_LABEL,
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_NAME_LABEL_V2,
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_INSTANCE_LABEL,
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_APP_LABEL,
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=NAME_LABEL_FORMAT.format(label=AKRI_WEBHOOK_LABEL),
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_NAME_LABEL_V2,
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_SERVICE_LABEL,
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_INSTANCE_LABEL,
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=NAME_LABEL_FORMAT.format(label=AKRI_WEBHOOK_LABEL),
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_NAME_LABEL_V2,
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_daemon_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_INSTANCE_LABEL,
-                directory_path=AKRI_DIRECTORY_PATH,
-            )
-            assert_list_daemon_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=NAME_LABEL_FORMAT.format(label=AKRI_AGENT_LABEL),
-                directory_path=OPC_DIRECTORY_PATH,
-            )
-            assert_list_daemon_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=AKRI_NAME_LABEL_V2,
-                directory_path=AKRI_DIRECTORY_PATH,
             )
 
         if api in [DATAFLOW_API_V1B1]:
