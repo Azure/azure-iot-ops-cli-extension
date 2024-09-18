@@ -6,13 +6,7 @@
 
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import AKRI_API_V0
-from .helpers import (
-    check_custom_resource_files,
-    check_workload_resource_files,
-    get_file_map,
-    run_bundle_command
-)
+from .helpers import check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
 
@@ -24,18 +18,13 @@ def test_create_bundle_akri(init_setup, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)["aio"]
 
-    check_custom_resource_files(
-        file_objs=file_map,
-        resource_api=AKRI_API_V0,
-    )
-
-    expected_workload_types = ["daemonset", "deployment", "pod", "replicaset", "service"]
-    expected_types = set(expected_workload_types).union(AKRI_API_V0.kinds)
+    expected_workload_types = ["deployment", "pod", "replicaset"]
+    expected_types = set(expected_workload_types)
     assert set(file_map.keys()).issubset(expected_types)
 
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,
         prefixes="aio-akri",
-        bundle_path=bundle_path
+        bundle_path=bundle_path,
     )

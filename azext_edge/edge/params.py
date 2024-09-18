@@ -21,7 +21,6 @@ from ._validators import validate_namespace, validate_resource_name
 from .common import FileType, OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
-    AkriResourceKinds,
     DeviceRegistryResourceKinds,
     MqResourceKinds,
     OpcuaResourceKinds,
@@ -196,8 +195,6 @@ def load_iotops_arguments(self, _):
                         MqResourceKinds.BROKER.value,
                         MqResourceKinds.BROKER_LISTENER.value,
                         OpcuaResourceKinds.ASSET_TYPE.value,
-                        AkriResourceKinds.CONFIGURATION.value,
-                        AkriResourceKinds.INSTANCE.value,
                         DataflowResourceKinds.DATAFLOW.value,
                         DataflowResourceKinds.DATAFLOWENDPOINT.value,
                         DataflowResourceKinds.DATAFLOWPROFILE.value,
