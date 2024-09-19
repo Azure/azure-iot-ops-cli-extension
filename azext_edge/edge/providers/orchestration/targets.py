@@ -188,7 +188,6 @@ class InitTargets:
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "defaultDataflowinstanceCount": self.dataflow_profile_instances,
                 "brokerConfig": self.broker_config,
-                "trustConfig": "",
             },
             template_blueprint=M2_INSTANCE_TEMPLATE,
         )
