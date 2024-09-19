@@ -45,7 +45,7 @@ def create_opcua_asset_endpoint_profile(
 ) -> dict:
     return AssetEndpointProfiles(cmd).create(
         asset_endpoint_profile_name=asset_endpoint_profile_name,
-        endpoint_profile_type="OPCUA",
+        endpoint_profile_type="OpcUa",
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         target_address=target_address,

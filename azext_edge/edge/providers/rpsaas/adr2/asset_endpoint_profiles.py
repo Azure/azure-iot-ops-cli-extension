@@ -80,7 +80,7 @@ class AssetEndpointProfiles(Queryable):
         # Properties
         properties = {"endpointProfileType": endpoint_profile_type}
 
-        if endpoint_profile_type == "OPCUA":
+        if endpoint_profile_type == "OpcUa":
             properties["additionalConfiguration"] = _build_opcua_config(**additional_configuration)
         # TODO: add other connector types in
         _update_properties(

@@ -500,14 +500,16 @@ class Assets(Queryable):
         replace: Optional[bool] = False
     ):
         from ....util import dump_content_to_file
-        dataset = self.show_dataset(
+        asset = self.show(
             asset_name=asset_name,
-            dataset_name=dataset_name,
-            resource_group_name=resource_group_name,
+            resource_group_name=resource_group_name
         )
+        dataset = _get_dataset(asset, dataset_name)
         fieldnames = None
         if extension in [FileType.portal_csv.value]:
             default_configuration = dataset.get("datasetConfiguration", "{}")
+            if default_configuration == "{}":
+                default_configuration = asset["properties"].get("defaultDatasetsConfiguration", "{}")
             fieldnames = _convert_sub_points_to_csv(
                 sub_points=dataset.get("dataPoints", []),
                 sub_point_type="dataPoints",

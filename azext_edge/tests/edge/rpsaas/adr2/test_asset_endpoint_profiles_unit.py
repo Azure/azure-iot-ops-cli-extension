@@ -75,7 +75,7 @@ def test_create(
     assert call_body["tags"] == req.get("tags")
 
     call_body_props = call_body["properties"]
-    assert call_body_props["endpointProfileType"] == "OPCUA"
+    assert call_body_props["endpointProfileType"] == "OpcUa"
     assert call_body_props["targetAddress"] == target_address
 
     auth_props = call_body_props["authentication"]
