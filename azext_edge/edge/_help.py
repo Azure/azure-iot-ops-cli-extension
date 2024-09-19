@@ -842,16 +842,16 @@ def load_iotops_help():
         type: command
         short-summary: Add a data point to an asset dataset.
 
-        # examples:
-        # - name: Add a data point to an asset.
-        #   text: >
-        #     az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset dataset1 --data-source mydatasource --name data1
+        examples:
+        - name: Add a data point to an asset.
+          text: >
+            az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset dataset1 --data-source mydatasource --name data1
 
-        # - name: Add a data point to an asset with data point name, observability mode, custom queue size,
-        #         and custom sampling interval.
-        #   text: >
-        #     az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset dataset1 --data-source mydatasource --name data1
-        #     --observability-mode log --queue-size5 --sampling-interval 200
+        - name: Add a data point to an asset with data point name, observability mode, custom queue size,
+                and custom sampling interval.
+          text: >
+            az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset dataset1 --data-source mydatasource --name data1
+            --observability-mode log --queue-size5 --sampling-interval 200
     """
 
     helps[
@@ -860,19 +860,19 @@ def load_iotops_help():
         type: command
         short-summary: Export data points in an asset dataset.
         long-summary: The file name will be {asset_name}_{dataset_name}_dataPoints.{file_type}.
-        # examples:
-        # - name: Export all data points in an asset in JSON format.
-        #   text: >
-        #     az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1
-        # - name: Export all data points in an asset in CSV format in a specific output directory.
-        #   text: >
-        #     az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format csv --output-dir myAssetsFiles
-        # - name: Export all data points in an asset in CSV format that can be uploaded via the DOE portal.
-        #   text: >
-        #     az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format portal-csv
-        # - name: Export all data points in an asset in YAML format. Replace the file if one is present already.
-        #   text: >
-        #     az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format yaml --replace
+        examples:
+        - name: Export all data points in an asset in JSON format.
+          text: >
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1
+        - name: Export all data points in an asset in CSV format in a specific output directory.
+          text: >
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format csv --output-dir myAssetsFiles
+        - name: Export all data points in an asset in CSV format that can be uploaded via the DOE portal.
+          text: >
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format portal-csv
+        - name: Export all data points in an asset in YAML format. Replace the file if one is present already.
+          text: >
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format yaml --replace
     """
 
     helps[
@@ -881,13 +881,13 @@ def load_iotops_help():
         type: command
         short-summary: Import data points in an asset dataset. ### TODO: update once dup param is decided
         long-summary: For examples of file formats, please see aka.ms/aziotops-assets
-        # examples:
-        # - name: Import all data points from a file. These data points will be appended to the asset dataset's current data points. Data-points with duplicate dataSources will be ignored.
-        #   text: >
-        #     az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset dataset1 --input-file myasset_dataset1_dataPoints.csv
-        # - name: Import all data points from a file. These data points will be appended to the asset dataset's current data points. Data-points with duplicate dataSources will be replaced.
-        #   text: >
-        #     az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset dataset1 --input-file myasset_dataset1_dataPoints.json --replace
+        examples:
+        - name: Import all data points from a file. These data points will be appended to the asset dataset's current data points. Data-points with duplicate dataSources will be ignored.
+          text: >
+            az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset dataset1 --input-file myasset_dataset1_dataPoints.csv
+        - name: Import all data points from a file. These data points will be appended to the asset dataset's current data points. Data-points with duplicate dataSources will be replaced.
+          text: >
+            az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset dataset1 --input-file myasset_dataset1_dataPoints.json --replace
     """
 
     helps[
@@ -895,10 +895,10 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: List data points in an asset dataset.
-        # examples:
-        # - name: List all points in an asset dataset.
-        #   text: >
-        #     az iot ops asset dataset point list --asset myasset -g myresourcegroup --dataset dataset1
+        examples:
+        - name: List all points in an asset dataset.
+          text: >
+            az iot ops asset dataset point list --asset myasset -g myresourcegroup --dataset dataset1
     """
 
     helps[
@@ -907,10 +907,10 @@ def load_iotops_help():
         type: command
         short-summary: Remove a data point in an asset dataset.
 
-        # examples:
-        # - name: Remove a data point from an asset via the data point name.
-        #   text: >
-        #     az iot ops asset dataset point remove --asset myasset -g myresourcegroup --dataset dataset1 --name data1
+        examples:
+        - name: Remove a data point from an asset via the data point name.
+          text: >
+            az iot ops asset dataset point remove --asset myasset -g myresourcegroup --dataset dataset1 --name data1
     """
 
     helps[
@@ -926,16 +926,16 @@ def load_iotops_help():
         type: command
         short-summary: Add an event to an asset.
 
-        # examples:
-        # - name: Add an event to an asset.
-        #   text: >
-        #     az iot ops asset event add --asset myasset -g myresourcegroup --event-notifier eventId --name eventName
+        examples:
+        - name: Add an event to an asset.
+          text: >
+            az iot ops asset event add --asset myasset -g myresourcegroup --event-notifier eventId --name eventName
 
-        # - name: Add an event to an asset with event name, observability mode, custom queue size,
-        #         and custom sampling interval.
-        #   text: >
-        #     az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId --name eventName
-        #     --observability-mode log --queue-size 2 --sampling-interval 500
+        - name: Add an event to an asset with event name, observability mode, custom queue size,
+                and custom sampling interval.
+          text: >
+            az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId --name eventName
+            --observability-mode log --queue-size 2 --sampling-interval 500
     """
 
     helps[
@@ -992,10 +992,10 @@ def load_iotops_help():
         type: command
         short-summary: Remove an event in an asset.
 
-        # examples:
-        # - name: Remove an event from an asset via the event name.
-        #   text: >
-        #     az iot ops asset event remove --asset myasset -g myresourcegroup --name myevent
+        examples:
+        - name: Remove an event from an asset via the event name.
+          text: >
+            az iot ops asset event remove --asset myasset -g myresourcegroup --name myevent
     """
 
     helps[
@@ -1017,8 +1017,12 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create an asset endpoint profile with an OPCUA connector.
-        long-summary: Azure IoT OPC UA Broker (preview) uses the same client certificate for all secure
+        long-summary: |
+                      Azure IoT OPC UA Broker (preview) uses the same client certificate for all secure
                       channels between itself and the OPC UA servers that it connects to.
+
+                      For OPC UA connector arguments, a value of -1 means that parameter will not be used (ex: --session-reconnect-backoff -1 means that no exponential backoff should be used).
+                      A value of 0 means use the fastest practical rate (ex: --default-sampling-int 0 means use the fastest sampling interval possible for the server).
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >
@@ -1034,17 +1038,17 @@ def load_iotops_help():
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000
             --username-ref myusername --password-ref mypassword
-        # - name: Create an asset endpoint with certificate user authentication using the given given instance in the same resource group.
-        #   text: >
-        #     az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
-        #     --target-address opc.tcp://opcplc-000000:50000 --certificate-ref mycertificate.pem
-        # - name: Create an asset endpoint with anonymous user authentication and prefilled values for the OPCUA configuration using the given instance in the same resource group.
-        #   text: >
-        #     az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
-        #     --target-address opc.tcp://opcplc-000000:50000 --accept-untrusted-certs --application myopcuaconnector
-        #     --default-publishing-int 200 --default-queue-size 2 --default-sampling-int 50 --keep-alive 300 --run-asset-discovery
-        #     --security-mode sign --security-policy signonly --session-keep-alive 500 --session-reconnect-backoff 50 --session-reconnect-period 400
-        #     --session-timeout 550 --subscription-life-time 3000 --subscription-max-items 20
+        - name: Create an asset endpoint with certificate user authentication using the given given instance in the same resource group.
+          text: >
+            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+            --target-address opc.tcp://opcplc-000000:50000 --certificate-ref mycertificate.pem
+        - name: Create an asset endpoint with anonymous user authentication and prefilled values for the OPCUA configuration using the given instance in the same resource group.
+          text: >
+            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+            --target-address opc.tcp://opcplc-000000:50000 --accept-untrusted-certs --application myopcuaconnector
+            --default-publishing-int 200 --default-queue-size 2 --default-sampling-int 50 --keep-alive 300 --run-asset-discovery
+            --security-mode sign --security-policy signonly --session-keep-alive 500 --session-reconnect-backoff 50 --session-reconnect-period 400
+            --session-timeout 550 --subscription-life-time 3000 --subscription-max-items 20
     """
 
     helps[

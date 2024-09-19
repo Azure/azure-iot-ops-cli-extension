@@ -1019,7 +1019,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "keep_alive",
             options_list=["--keep-alive", "--ka"],
-            help="Keep alive in milliseconds. Minimum: 0. Recommended: 10000.",
+            help="Time in milliseconds after which a keep alive publish response is sent. Minimum: 0. "
+            "Recommended: 10000.",
             arg_group="Connector",
         )
         context.argument(  # TODO: change to disable
@@ -1038,7 +1039,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "session_keep_alive",
             options_list=["--session-keep-alive", "--ska"],
-            help="Session keep alive in milliseconds. Minimum: 0. Recommended: 10000.",
+            help="Time in milliseconds after which a session keep alive challenge is sent to detect "
+            "connection issues. Minimum: 0. Recommended: 10000.",
             arg_group="Connector",
         )
         context.argument(

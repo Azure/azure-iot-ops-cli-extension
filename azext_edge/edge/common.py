@@ -214,6 +214,11 @@ class AEPAuthModes(Enum):
     userpass = "UsernamePassword"
 
 
+class AEPTypes(Enum):
+    """Asset Endpoint Profile (connector) Types"""
+    # TODO: ensure this is the final enum
+    opcua = "OpcUa"
+
 class TopicRetain(Enum):
     """Set the retain flag for messages published to an MQTT broker."""
     keep = "Keep"
@@ -236,7 +241,6 @@ class SecurityPolicies(Enum):
     basic256sha256 = "Basic256Sha256"
     aes128 = "Aes128_Sha256_RsaOaep"
     aes256 = "Aes256_Sha256_RsaPss"
-
 
 
 class K8sSecretType(Enum):

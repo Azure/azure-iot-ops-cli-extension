@@ -16,7 +16,7 @@ from azure.cli.core.azclierror import (
 )
 from azext_edge.edge.util.common import assemble_nargs_to_dict
 
-from azext_edge.edge.providers.rpsaas.adr2.asset_endpoint_profiles import (
+from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
     _assert_above_min,
     _build_opcua_config,
     _build_query_body,

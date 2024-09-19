@@ -13,12 +13,12 @@ CONNECTED_CLUSTER_API = "2024-07-15-preview"
 
 @pytest.fixture()
 def mocked_logger(mocker):
-    yield mocker.patch("azext_edge.edge.providers.rpsaas.adr2.helpers.logger", autospec=True)
+    yield mocker.patch("azext_edge.edge.providers.rpsaas.adr.helpers.logger", autospec=True)
 
 
 @pytest.mark.parametrize("connected", [True, False])
 def test_check_cluster_connectivity(mocked_cmd, mocked_logger, mocked_responses: responses, connected: bool):
-    from azext_edge.edge.providers.rpsaas.adr2.helpers import check_cluster_connectivity
+    from azext_edge.edge.providers.rpsaas.adr.helpers import check_cluster_connectivity
     # base resource - should be ok if it is not an instance object
     resource = {
         "extendedLocation": {
@@ -65,7 +65,7 @@ def test_check_cluster_connectivity(mocked_cmd, mocked_logger, mocked_responses:
 def test_get_extended_location(
     mocked_cmd, mocked_logger, mocked_responses: responses, connected: bool, subscription: str
 ):
-    from azext_edge.edge.providers.rpsaas.adr2.helpers import get_extended_location
+    from azext_edge.edge.providers.rpsaas.adr.helpers import get_extended_location
     name = generate_random_string()
     resource_group = generate_random_string()
     location = generate_random_string()

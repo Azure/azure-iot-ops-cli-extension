@@ -511,7 +511,7 @@ def test_data_point_export(
     default_config = mock_asset_record["properties"].get("defaultDatasetsConfiguration", "{}")
     expected_fieldnames = None
     if extension in [FileType.portal_csv.value]:
-        from azext_edge.edge.providers.rpsaas.adr2.assets import _convert_sub_points_to_csv
+        from azext_edge.edge.providers.rpsaas.adr.assets import _convert_sub_points_to_csv
         expected_fieldnames = _convert_sub_points_to_csv(
             sub_points=dataset.get("dataPoints", []),
             sub_point_type="dataPoints",
@@ -538,7 +538,7 @@ def test_data_point_import(
     replace
 ):
     # remove logger warnings
-    mocker.patch("azext_edge.edge.providers.rpsaas.adr2.assets.logger")
+    mocker.patch("azext_edge.edge.providers.rpsaas.adr.assets.logger")
     dataset_name = "default"
     asset_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -838,7 +838,7 @@ def test_event_export(
     default_config = mock_asset_record["properties"].get("defaultEventsConfiguration", "{}")
     expected_fieldnames = None
     if extension in [FileType.portal_csv.value]:
-        from azext_edge.edge.providers.rpsaas.adr2.assets import _convert_sub_points_to_csv
+        from azext_edge.edge.providers.rpsaas.adr.assets import _convert_sub_points_to_csv
         expected_fieldnames = _convert_sub_points_to_csv(
             sub_points=mock_asset_record["properties"].get("events", []),
             sub_point_type="events",
@@ -865,7 +865,7 @@ def test_event_import(
     replace
 ):
     # remove logger warnings
-    mocker.patch("azext_edge.edge.providers.rpsaas.adr2.assets.logger")
+    mocker.patch("azext_edge.edge.providers.rpsaas.adr.assets.logger")
     asset_name = generate_random_string()
     resource_group_name = generate_random_string()
     dup_event_notifier = generate_random_string()

@@ -8,7 +8,8 @@ from typing import Dict, List, Optional
 
 from knack.log import get_logger
 
-from .providers.rpsaas.adr2.asset_endpoint_profiles import AssetEndpointProfiles
+from .providers.rpsaas.adr.asset_endpoint_profiles import AssetEndpointProfiles
+from .common import AEPTypes
 
 logger = get_logger(__name__)
 
@@ -26,7 +27,6 @@ def create_opcua_asset_endpoint_profile(
     password_reference: Optional[str] = None,
     username_reference: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
-    # connector args - hiding till I get more info on them
     application_name: Optional[str] = None,
     auto_accept_untrusted_server_certs: Optional[bool] = None,
     default_publishing_interval: Optional[int] = None,
@@ -45,7 +45,7 @@ def create_opcua_asset_endpoint_profile(
 ) -> dict:
     return AssetEndpointProfiles(cmd).create(
         asset_endpoint_profile_name=asset_endpoint_profile_name,
-        endpoint_profile_type="OpcUa",
+        endpoint_profile_type=AEPTypes.opcua.value,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         target_address=target_address,

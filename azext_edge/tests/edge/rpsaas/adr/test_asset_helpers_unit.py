@@ -11,7 +11,7 @@ import pytest
 from azure.cli.core.azclierror import InvalidArgumentValueError, RequiredArgumentMissingError
 from azext_edge.edge.util.common import assemble_nargs_to_dict
 
-from azext_edge.edge.providers.rpsaas.adr2.assets import (
+from azext_edge.edge.providers.rpsaas.adr.assets import (
     _build_asset_sub_point,
     _build_ordered_csv_conversion_map,
     _build_default_configuration,
@@ -582,7 +582,7 @@ def test_process_asset_sub_points_error(required_arg):
 @pytest.mark.parametrize("duplicates", [False, True])
 def test_process_asset_sub_points_file_path(mocker, req, duplicates):
     # remove logger warnings
-    mocker.patch("azext_edge.edge.providers.rpsaas.adr2.assets.logger")
+    mocker.patch("azext_edge.edge.providers.rpsaas.adr.assets.logger")
     # make things simplier with just using name
     point_key = "name" if req else None
     file_path = generate_random_string()
