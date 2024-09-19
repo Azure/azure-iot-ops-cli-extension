@@ -125,7 +125,7 @@ class InitTargets:
         deploy_params = {}
 
         for param in param_to_target:
-            if param in built_in_template_params and param_to_target[param]:
+            if param in built_in_template_params and param_to_target[param] is not None:
                 deploy_params[param] = {"value": param_to_target[param]}
 
         return template_copy, deploy_params
