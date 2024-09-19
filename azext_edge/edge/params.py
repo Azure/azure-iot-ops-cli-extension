@@ -21,7 +21,6 @@ from ._validators import validate_namespace, validate_resource_name
 from .common import FileType, OpsServiceType, SecurityModes, SecurityPolicies, TopicRetain
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
-    AkriResourceKinds,
     DeviceRegistryResourceKinds,
     MqResourceKinds,
     OpcuaResourceKinds,
@@ -105,6 +104,12 @@ def load_iotops_arguments(self, _):
             "federated_credential_name",
             options_list=["--fc"],
             help="The federated credential name.",
+        )
+        context.argument(
+            "use_self_hosted_issuer",
+            options_list=["--self-hosted-issuer"],
+            arg_type=get_three_state_flag(),
+            help="Use the self-hosted oidc issuer for federation.",
         )
 
     with self.argument_context("iot ops identity") as context:
@@ -190,8 +195,6 @@ def load_iotops_arguments(self, _):
                         MqResourceKinds.BROKER.value,
                         MqResourceKinds.BROKER_LISTENER.value,
                         OpcuaResourceKinds.ASSET_TYPE.value,
-                        AkriResourceKinds.CONFIGURATION.value,
-                        AkriResourceKinds.INSTANCE.value,
                         DataflowResourceKinds.DATAFLOW.value,
                         DataflowResourceKinds.DATAFLOWENDPOINT.value,
                         DataflowResourceKinds.DATAFLOWPROFILE.value,

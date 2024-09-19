@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from time import sleep
 from knack.log import get_logger
 from ....generators import generate_random_string

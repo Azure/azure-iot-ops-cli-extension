@@ -16,7 +16,6 @@ from ..providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
     MQTT_BROKER_API_V1B1,
     OPCUA_API_V1,
-    AKRI_API_V0,
     DEVICEREGISTRY_API_V1,
     DATAFLOW_API_V1B1,
     META_API_V1B1,
@@ -31,7 +30,6 @@ console = Console()
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
 COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
-COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
 COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1B1])
@@ -87,7 +85,7 @@ def build_bundle(
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
         },
-        OpsServiceType.akri.value: {"apis": COMPAT_AKRI_APIS, "prepare_bundle": prepare_akri_bundle},
+        OpsServiceType.akri.value: {"apis": None, "prepare_bundle": prepare_akri_bundle},
         OpsServiceType.deviceregistry.value: {
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,
@@ -110,7 +108,10 @@ def build_bundle(
         if ops_service in [OpsServiceType.auto.value, service_moniker]:
             deployed_apis = api_info["apis"].get_deployed() if api_info["apis"] else None
 
-            if not deployed_apis and service_moniker != OpsServiceType.schemaregistry.value:
+            if not deployed_apis and service_moniker not in [
+                OpsServiceType.schemaregistry.value,
+                OpsServiceType.akri.value,
+            ]:
                 expected_api_version = api_info["apis"].as_str()
                 logger.warning(
                     f"The following API(s) were not detected {expected_api_version}. "
@@ -126,7 +127,7 @@ def build_bundle(
                 bundle = bundle_method(deployed_apis)
             elif service_moniker == OpsServiceType.mq.value:
                 bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
-            elif service_moniker == OpsServiceType.schemaregistry.value:
+            elif service_moniker in [OpsServiceType.schemaregistry.value, OpsServiceType.akri.value]:
                 bundle = bundle_method(log_age_seconds)
             else:
                 bundle = bundle_method(log_age_seconds, deployed_apis)

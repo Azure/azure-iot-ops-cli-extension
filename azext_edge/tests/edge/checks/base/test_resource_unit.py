@@ -29,8 +29,6 @@ from azext_edge.edge.providers.check.base.resource import (
 )
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
 from azext_edge.edge.providers.edge_api import (
-    AKRI_API_V0,
-    AkriResourceKinds,
     MQ_ACTIVE_API,
     MqResourceKinds,
     OPCUA_API_V1,
@@ -48,62 +46,6 @@ from azext_edge.tests.edge.checks.conftest import generate_api_resource_list, ge
         excluded_resources, api_resources, expected_resource_map, status",
     [
         (MQ_ACTIVE_API, MqResourceKinds.list(), "mq", "MQ", None, [], {}, CheckTaskStatus.error.value),
-        (
-            AKRI_API_V0,
-            AkriResourceKinds.list(),
-            "akri",
-            "AKRI",
-            None,
-            generate_api_resource_list(
-                api_version=AKRI_API_V0.version,
-                group_version=AKRI_API_V0.as_str(),
-                resources=[
-                    {
-                        "categories": None,
-                        "group": None,
-                        "kind": "Instance",
-                        "name": "instances",
-                        "namespaced": True,
-                        "short_names": ["akrii"],
-                        "singular_name": "instance",
-                        "verbs": [
-                            "delete",
-                            "deletecollection",
-                            "get",
-                            "list",
-                            "patch",
-                            "create",
-                            "update",
-                            "watch",
-                        ],
-                    },
-                    {
-                        "categories": None,
-                        "group": None,
-                        "kind": "Configuration",
-                        "name": "configurations",
-                        "namespaced": True,
-                        "short_names": ["akric"],
-                        "singular_name": "configuration",
-                        "verbs": [
-                            "delete",
-                            "deletecollection",
-                            "get",
-                            "list",
-                            "patch",
-                            "create",
-                            "update",
-                            "watch",
-                        ],
-                    },
-                ],
-            ),
-            {
-                AkriResourceKinds.INSTANCE.value.capitalize(): True,
-                AkriResourceKinds.CONFIGURATION.value.capitalize(): True,
-            },
-            CheckTaskStatus.success.value,
-        ),
         (
             OPCUA_API_V1,
             OpcuaResourceKinds.list(),
@@ -742,9 +684,7 @@ def test_process_resource_properties(
         ),
     ],
 )
-def test_process_resource_property_by_type(
-    mocked_check_manager, properties, display_name, padding, expected_calls
-):
+def test_process_resource_property_by_type(mocked_check_manager, properties, display_name, padding, expected_calls):
     # Call the function being tested
     process_resource_property_by_type(
         check_manager=mocked_check_manager,

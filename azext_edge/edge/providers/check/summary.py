@@ -11,13 +11,7 @@ from rich.table import Table
 from rich.console import NewLine
 
 from ...common import CheckTaskStatus, OpsServiceType
-from ...providers.edge_api import (
-    AKRI_API_V0,
-    DATAFLOW_API_V1B1,
-    DEVICEREGISTRY_API_V1,
-    MQ_ACTIVE_API,
-    OPCUA_API_V1
-)
+from ...providers.edge_api import DATAFLOW_API_V1B1, DEVICEREGISTRY_API_V1, MQ_ACTIVE_API, OPCUA_API_V1
 from .akri import check_akri_deployment
 from .base import CheckManager
 from .base.display import colorize_string
@@ -46,7 +40,7 @@ def check_summary(
         ServiceCheck(
             svc=OpsServiceType.akri.value,
             title="Akri",
-            target=AKRI_API_V0.as_str(),
+            target="Akri",
             check_func=check_akri_deployment,
         ),
         ServiceCheck(
