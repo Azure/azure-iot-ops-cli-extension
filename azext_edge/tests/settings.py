@@ -20,9 +20,11 @@ class EnvironmentVariables(Enum):
     sp_object_id = "azext_edge_sp_object_id"
     sp_secret = "azext_edge_sp_secret"
     init_args = "azext_edge_init_args"
+    create_args = "azext_edge_create_args"
     skip_cluster_check = "azext_edge_skip_cluster_check"
     aio_cleanup = "azext_edge_aio_cleanup"
     init_continue_on_error = "azext_edge_init_continue_on_error"
+    init_redeployment = "azext_edge_init_redeployment"
 
 
 class Setting(object):

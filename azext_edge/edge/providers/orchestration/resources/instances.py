@@ -155,19 +155,22 @@ class Instances(Queryable):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         instance = self.show(name=name, resource_group_name=resource_group_name)
 
-        cluster_resource = self.get_resource_map(instance).connected_cluster.resource
-        custom_location = self._get_associated_cl(instance)
-        namespace = custom_location["properties"]["namespace"]
-        oidc_issuer = self._ensure_oidc_issuer(cluster_resource)
+        # TODO - @digimaun
+        # cluster_resource = self.get_resource_map(instance).connected_cluster.resource
+        # custom_location = self._get_associated_cl(instance)
+        # namespace = custom_location["properties"]["namespace"]
+        # oidc_issuer = self._ensure_oidc_issuer(cluster_resource)
 
-        cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
-        if not federated_credential_name:
-            federated_credential_name = get_fc_name(
-                cluster_name=cluster_resource["name"],
-                oidc_issuer=oidc_issuer,
-                subject=cred_subject,
-            )
-        self.unfederate_msi(mi_resource_id_container, federated_credential_name)
+        # cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
+        # if not federated_credential_name:
+        #     federated_credential_name = get_fc_name(
+        #         cluster_name=cluster_resource["name"],
+        #         oidc_issuer=oidc_issuer,
+        #         subject=cred_subject,
+        #     )
+        # TODO - @digimaun
+        if federated_credential_name:
+            self.unfederate_msi(mi_resource_id_container, federated_credential_name)
 
         identity: dict = instance.get("identity", {})
         if not identity:
@@ -193,6 +196,7 @@ class Instances(Queryable):
         resource_group_name: str,
         mi_user_assigned: str,
         federated_credential_name: Optional[str] = None,
+        use_self_hosted_issuer: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -202,7 +206,7 @@ class Instances(Queryable):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         instance = self.show(name=name, resource_group_name=resource_group_name)
         cluster_resource = self.get_resource_map(instance).connected_cluster.resource
-        oidc_issuer = self._ensure_oidc_issuer(cluster_resource)
+        oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
         custom_location = self._get_associated_cl(instance)
         namespace = custom_location["properties"]["namespace"]
         cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
@@ -237,14 +241,18 @@ class Instances(Queryable):
         federated_credential_name: Optional[str] = None,
         spc_name: Optional[str] = None,
         skip_role_assignments: bool = False,
+        use_self_hosted_issuer: Optional[bool] = None,
         **kwargs,
     ):
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         keyvault_resource_id_container = parse_resource_id(keyvault_resource_id)
         with console.status("Working...") as status:
-            keyvault: dict = self.resource_client.resources.get_by_id(
+            # TODO
+            self.resource_client.resources.get_by_id(
                 resource_id=keyvault_resource_id_container.resource_id, api_version=KEYVAULT_CLOUD_API_VERSION
             )
+            # TODO - @digimaun
+            self.msi_mgmt_client._config.subscription_id = mi_resource_id_container.subscription_id
             mi_user_assigned: dict = self.msi_mgmt_client.user_assigned_identities.get(
                 resource_group_name=mi_resource_id_container.resource_group_name,
                 resource_name=mi_resource_id_container.resource_name,
@@ -252,7 +260,7 @@ class Instances(Queryable):
             role_assignment_error = None
             if not skip_role_assignments:
                 role_assignment_error = self._attempt_keyvault_role_assignments(
-                    keyvault=keyvault, mi_user_assigned=mi_user_assigned
+                    keyvault_resource_id_container=keyvault_resource_id_container, mi_user_assigned=mi_user_assigned
                 )
 
             instance = self.show(name=name, resource_group_name=resource_group_name)
@@ -261,7 +269,7 @@ class Instances(Queryable):
             custom_location = self._get_associated_cl(instance)
             namespace = custom_location["properties"]["namespace"]
             cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_SECRETSYNC)
-            oidc_issuer = self._ensure_oidc_issuer(cluster_resource)
+            oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
 
             cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
             secretsync_spc = self._find_existing_spc(cl_resources)
@@ -352,7 +360,9 @@ class Instances(Queryable):
                     azure_key_vault_secret_provider_class_name=resource_id_container.resource_name,
                 )
 
-    def _attempt_keyvault_role_assignments(self, keyvault: dict, mi_user_assigned: dict) -> Optional[str]:
+    def _attempt_keyvault_role_assignments(
+        self, keyvault_resource_id_container: ResourceIdContainer, mi_user_assigned: dict
+    ) -> Optional[str]:
         """
         Returns error string if the role-assignment fails.
         """
@@ -360,10 +370,10 @@ class Instances(Queryable):
         try:
             for role_id in target_role_ids:
                 self.permission_manager.apply_role_assignment(
-                    scope=keyvault["id"],
+                    scope=keyvault_resource_id_container.resource_id,
                     principal_id=mi_user_assigned["properties"]["principalId"],
                     role_def_id=ROLE_DEF_FORMAT_STR.format(
-                        subscription_id=self.default_subscription_id,
+                        subscription_id=keyvault_resource_id_container.subscription_id,
                         role_id=role_id,
                     ),
                 )
@@ -371,10 +381,10 @@ class Instances(Queryable):
             return get_user_msg_warn_ra(
                 prefix=f"Role assignment failed with:\n{str(e)}.",
                 principal_id=mi_user_assigned["properties"]["principalId"],
-                scope=keyvault["id"],
+                scope=keyvault_resource_id_container.resource_id,
             )
 
-    def _ensure_oidc_issuer(self, cluster_resource: dict) -> str:
+    def _ensure_oidc_issuer(self, cluster_resource: dict, use_self_hosted_issuer: Optional[bool] = None) -> str:
         enabled_oidc = cluster_resource["properties"].get("oidcIssuerProfile", {}).get("enabled", False)
         enabled_wlif = (
             cluster_resource["properties"].get("securityProfile", {}).get("workloadIdentity", {}).get("enabled", False)
@@ -399,9 +409,10 @@ class Instances(Queryable):
             raise ValidationError(error)
 
         oidc_issuer_profile: dict = cluster_resource["properties"]["oidcIssuerProfile"]
-        issuer_url = oidc_issuer_profile.get("issuerUrl") or oidc_issuer_profile.get("selfHostedIssuerUrl")
+        issuer_key = "selfHostedIssuerUrl" if use_self_hosted_issuer else "issuerUrl"
+        issuer_url = oidc_issuer_profile.get(issuer_key)
         if not issuer_url:
-            raise ValidationError("No issuer Url is available. Check cluster config.")
+            raise ValidationError(f"No {issuer_key} is available. Check cluster config.")
         return issuer_url
 
     def federate_msi(
@@ -421,6 +432,8 @@ class Instances(Queryable):
                 "No new federated credential will be created."
             )
             return
+        # TODO - @digimaun
+        self.msi_mgmt_client._config.subscription_id = mi_resource_id_container.subscription_id
         self.msi_mgmt_client.federated_identity_credentials.create_or_update(
             resource_group_name=mi_resource_id_container.resource_group_name,
             resource_name=mi_resource_id_container.resource_name,
@@ -439,6 +452,8 @@ class Instances(Queryable):
         mi_resource_id_container: ResourceIdContainer,
         federated_credential_name: str,
     ):
+        # TODO - @digimaun
+        self.msi_mgmt_client._config.subscription_id = mi_resource_id_container.subscription_id
         self.msi_mgmt_client.federated_identity_credentials.delete(
             resource_group_name=mi_resource_id_container.resource_group_name,
             resource_name=mi_resource_id_container.resource_name,
@@ -448,6 +463,8 @@ class Instances(Queryable):
     def _find_federated_cred(
         self, mi_resource_id_container: ResourceIdContainer, issuer_url: str, subject: str
     ) -> Optional[dict]:
+        # TODO - @digimaun
+        self.msi_mgmt_client._config.subscription_id = mi_resource_id_container.subscription_id
         cred_iteratable = self.msi_mgmt_client.federated_identity_credentials.list(
             resource_group_name=mi_resource_id_container.resource_group_name,
             resource_name=mi_resource_id_container.resource_name,

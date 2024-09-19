@@ -11,7 +11,6 @@ from knack.help_files import helps
 
 from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
-    COMPAT_AKRI_APIS,
     COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
@@ -53,7 +52,6 @@ def load_iotops_help():
             {{Supported service APIs}}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
-            - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
@@ -96,7 +94,6 @@ def load_iotops_help():
             Note: Resource kind (--resources) and name (--resource-name) filtering can only be used with the '--svc' argument.
 
             {{Supported service APIs}}
-            - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
@@ -629,8 +626,6 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Remove a user-assigned managed identity from the instance.
-        long-summary: |
-            This operation includes removing federation of the identity.
 
         examples:
         - name: Remove the desired user-assigned managed identity from the instance.

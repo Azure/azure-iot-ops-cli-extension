@@ -43,36 +43,41 @@ def check_pre_deployment(
 
 
 def check_post_deployment(
-    api_info: EdgeResourceApi,
-    check_name: str,
-    check_desc: str,
     evaluate_funcs: Dict[ListableEnum, Callable],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    api_info: Optional[EdgeResourceApi] = None,
+    check_name: Optional[str] = None,
+    check_desc: Optional[str] = None,
     resource_kinds: Optional[List[str]] = None,
     resource_name: str = None,
     excluded_resources: Optional[List[str]] = None,
 ) -> List[dict]:
-    resource_enumeration, api_resources = enumerate_ops_service_resources(
-        api_info, check_name, check_desc, as_list, excluded_resources
-    )
-    results = [resource_enumeration]
-    lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
+    results = []
 
-    if lowercase_api_resources:
-        for resource, evaluate_func in evaluate_funcs.items():
-            should_check_resource = not resource_kinds or resource.value in resource_kinds
-            append_resource = False
-            # only add core service evaluation if there is no resource filter
-            if resource == CoreServiceResourceKinds.RUNTIME_RESOURCE and not resource_kinds:
-                append_resource = True
-            elif (resource and resource.value in lowercase_api_resources and should_check_resource):
-                append_resource = True
+    if api_info:
+        resource_enumeration, api_resources = enumerate_ops_service_resources(
+            api_info, check_name, check_desc, as_list, excluded_resources
+        )
+        results = [resource_enumeration]
+        lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
-            if append_resource:
-                results.append(
-                    evaluate_func(detail_level=detail_level, as_list=as_list, resource_name=resource_name)
-                )
+    for resource, evaluate_func in evaluate_funcs.items():
+        should_check_resource = not resource_kinds or resource.value in resource_kinds
+        append_resource = False
+        # only add core service evaluation if there is no resource filter
+        if resource == CoreServiceResourceKinds.RUNTIME_RESOURCE and not resource_kinds:
+            append_resource = True
+        elif (
+            resource
+            and lowercase_api_resources
+            and resource.value in lowercase_api_resources
+            and should_check_resource
+        ):
+            append_resource = True
+
+        if append_resource:
+            results.append(evaluate_func(detail_level=detail_level, as_list=as_list, resource_name=resource_name))
     return results
 
 
