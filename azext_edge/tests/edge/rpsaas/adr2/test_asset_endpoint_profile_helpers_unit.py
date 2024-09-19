@@ -32,16 +32,11 @@ from ....generators import generate_random_string
 @pytest.mark.parametrize("minimum", [-1, 0])
 def test_assert_above_min(value, minimum):
     param = generate_random_string()
+    result = _assert_above_min(param=param, value=value, minimum=minimum)
     if value < minimum:
-        with pytest.raises(InvalidArgumentValueError) as e:
-            _assert_above_min(
-                param=param, value=value, minimum=minimum
-            )
-        assert param in e.value.error_msg
+        assert param in result
     else:
-        _assert_above_min(
-            param=param, value=value, minimum=minimum
-        )
+        assert result == ""
 
 
 @pytest.mark.parametrize("original_config", [
@@ -144,6 +139,59 @@ def test_build_opcua_config(original_config, req):
     )
     assert res_security.get("securityMode") == req.get("security_mode", og_security.get("securityMode"))
     assert res_security.get("securityPolicy") == req.get("security_policy", og_security.get("securityPolicy"))
+
+
+@pytest.mark.parametrize("req",[
+    {
+        "application_name": generate_random_string(),
+        "auto_accept_untrusted_server_certs": False,
+        "default_publishing_interval": -2,
+        "default_sampling_interval": -2,
+        "default_queue_size": -2,
+        "keep_alive": -2,
+        "run_asset_discovery": True,
+        "session_timeout": -2,
+        "session_keep_alive": -2,
+        "session_reconnect_period": -2,
+        "session_reconnect_exponential_back_off": -2,
+        "security_policy": generate_random_string(),
+        "security_mode": generate_random_string(),
+        "sub_max_items": -2,
+        "sub_life_time": -2,
+    },
+    {
+        "default_publishing_interval": 100,
+        "default_sampling_interval": 100,
+        "default_queue_size": -2,
+        "session_timeout": 100,
+        "session_reconnect_exponential_back_off": -2,
+        "security_policy": generate_random_string(),
+        "security_mode": generate_random_string(),
+        "sub_max_items": 100,
+        "sub_life_time": -2,
+    },
+])
+def test_build_opcua_config_error(req):
+    with pytest.raises(InvalidArgumentValueError) as e:
+        _build_opcua_config(
+            **req
+        )
+    assert e.value.error_msg
+    min_dict = {
+        "default_publishing_interval": (-1, "--default-publishing-int"),
+        "default_sampling_interval": (-1, "--default-sampling-int"),
+        "default_queue_size": (0, "--default-queue-size"),
+        "keep_alive": (0, "--keep-alive"),
+        "session_timeout": (0, "--session-timeout"),
+        "session_keep_alive": (0, "--session-keep-alive"),
+        "session_reconnect_period": (0, "--session-reconnect-period"),
+        "session_reconnect_exponential_back_off": (-1, "--session-reconnect-backoff"),
+        "sub_max_items": (1, "--subscription-max-items"),
+        "sub_life_time": (0, "--subscription-life-time"),
+    }
+    expected_error_params = [param for param in req if (min_dict.get(param) is not None) and (req[param] < min_dict[param][0])]
+    for param in expected_error_params:
+        assert f"{min_dict[param][1]} needs to be at least {min_dict[param][0]}." in e.value.error_msg
 
 
 @pytest.mark.parametrize("asset_endpoint_profile_name", [None, generate_random_string()])

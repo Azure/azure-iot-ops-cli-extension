@@ -12,6 +12,7 @@ from ....helpers import run
 logger = get_logger(__name__)
 
 
+# TODO: update with OPCUA connector args
 def test_asset_endpoint_lifecycle(require_init, tracked_resources):
     rg = require_init["resourceGroup"]
     instance = require_init["instanceName"]

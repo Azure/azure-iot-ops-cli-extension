@@ -321,7 +321,6 @@ class Assets(Queryable):
             ev_queue_size=ev_queue_size,
         )
 
-        # use this over update since we want to make sure we get the tags in
         poller = self.update_ops.begin_create_or_replace(
             resource_group_name,
             asset_name,
@@ -464,7 +463,7 @@ class Assets(Queryable):
             resource_group_name=resource_group_name,
             check_cluster=True
         )
-        dataset = _get_dataset(asset, dataset_name)
+        dataset = _get_dataset(asset, dataset_name, create_if_none=True)
         if not dataset.get("dataPoints"):
             dataset["dataPoints"] = []
 
@@ -478,10 +477,11 @@ class Assets(Queryable):
         )
         dataset["dataPoints"].append(sub_point)
 
-        poller = self.update_ops.begin_update(
+        # note that update does not return the properties
+        poller = self.update_ops.begin_create_or_replace(
             resource_group_name,
             asset_name,
-            {"properties": {"datasets": asset["properties"]["datasets"]}}
+            asset
         )
         poller.wait()
         asset = poller.result()
@@ -510,7 +510,7 @@ class Assets(Queryable):
             default_configuration = dataset.get("datasetConfiguration", "{}")
             fieldnames = _convert_sub_points_to_csv(
                 sub_points=dataset.get("dataPoints", []),
-                sub_point_type="dataPoint",
+                sub_point_type="dataPoints",
                 default_configuration=default_configuration,
                 portal_friendly=extension == FileType.portal_csv.value
             )
@@ -539,24 +539,25 @@ class Assets(Queryable):
             check_cluster=True
         )
         # should get the direct object so this should be enough
-        dataset = _get_dataset(asset, dataset_name)
-        dataset["events"] = _process_asset_sub_points_file_path(
+        dataset = _get_dataset(asset, dataset_name, create_if_none=True)
+        dataset["dataPoints"] = _process_asset_sub_points_file_path(
             file_path=file_path,
             original_items=dataset.get("dataPoints", []),
             point_key="dataSource",
             replace=replace
         )
 
-        poller = self.update_ops.begin_update(
+        # note that update does not return the properties
+        poller = self.update_ops.begin_create_or_replace(
             resource_group_name,
             asset_name,
-            {"properties": {"datasets": asset["properties"]["datasets"]}}
+            asset
         )
         poller.wait()
         asset = poller.result()
         if not isinstance(asset, dict):
             asset = asset.as_dict()
-        return asset["properties"]["events"]
+        return _get_dataset(asset, dataset_name)["dataPoints"]
 
     def list_dataset_data_points(
         self,
@@ -587,10 +588,11 @@ class Assets(Queryable):
 
         dataset["dataPoints"] = [dp for dp in dataset.get("dataPoints", []) if dp["name"] != data_point_name]
 
-        poller = self.update_ops.begin_update(
+        # note that update does not return the properties
+        poller = self.update_ops.begin_create_or_replace(
             resource_group_name,
             asset_name,
-            {"properties": {"datasets": asset["properties"]["datasets"]}}
+            asset
         )
         poller.wait()
         asset = poller.result()
@@ -635,10 +637,11 @@ class Assets(Queryable):
         asset["properties"]["events"] = asset["properties"].get("events", [])
         asset["properties"]["events"].append(sub_point)
 
-        poller = self.update_ops.begin_update(
+        # note that update does not return the properties
+        poller = self.update_ops.begin_create_or_replace(
             resource_group_name,
             asset_name,
-            {"properties": {"events": asset["properties"]["events"]}}
+            asset
         )
         poller.wait()
         asset = poller.result()
@@ -659,7 +662,7 @@ class Assets(Queryable):
             asset_name=asset_name,
             resource_group_name=resource_group_name,
             check_cluster=True
-        )
+        )["properties"]
         fieldnames = None
         if extension in [FileType.portal_csv.value]:
             default_configuration = asset_props.get("defaultEventsConfiguration", "{}")
@@ -687,22 +690,23 @@ class Assets(Queryable):
         resource_group_name: str,
         replace: bool = False
     ):
-        asset_props = self.show(
+        asset = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
             check_cluster=True
-        )["properties"]
-        asset_props["events"] = _process_asset_sub_points_file_path(
+        )
+        asset["properties"]["events"] = _process_asset_sub_points_file_path(
             file_path=file_path,
-            original_items=asset_props.get("events", []),
+            original_items=asset["properties"].get("events", []),
             point_key="eventNotifier",
             replace=replace
         )
 
-        poller = self.update_ops.begin_update(
+        # note that update does not return the properties
+        poller = self.update_ops.begin_create_or_replace(
             resource_group_name,
             asset_name,
-            {"properties": {"events": asset_props["events"]}}
+            asset
         )
         poller.wait()
         asset = poller.result()
@@ -729,17 +733,20 @@ class Assets(Queryable):
         event_name: str,
         resource_group_name: str,
     ):
-        asset_props = self.show(
+        asset = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
             check_cluster=True
-        )["properties"]
-        asset_props["events"] = [ev for ev in asset_props.get("events", []) if ev["name"] != event_name]
+        )
+        asset["properties"]["events"] = [
+            ev for ev in asset["properties"].get("events", []) if ev["name"] != event_name
+        ]
 
-        poller = self.update_ops.begin_update(
+        # note that update does not return the properties
+        poller = self.update_ops.begin_create_or_replace(
             resource_group_name,
             asset_name,
-            {"properties": {"events": asset_props["events"]}}
+            asset
         )
         poller.wait()
         asset = poller.result()
@@ -749,18 +756,26 @@ class Assets(Queryable):
 
 
 # New Helpers
-def _get_dataset(asset: dict, dataset_name: str):
-    datasets = asset["properties"].get("datasets", [])
-    dataset = [dset for dset in datasets if dset["name"] == dataset_name]
+def _get_dataset(asset: dict, dataset_name: str, create_if_none: bool = False):
+    # ensure datasets will get populated if not there
+    asset["properties"]["datasets"] = asset["properties"].get("datasets", [])
+    datasets = asset["properties"]["datasets"]
+    matched_datasets = [dset for dset in datasets if dset["name"] == dataset_name]
     # Temporary convert empty names to default
-    if not dataset and dataset_name == "default":
-        dataset = [dset for dset in datasets if dset["name"] == ""]
-    if not dataset:
+    if not matched_datasets and dataset_name == "default":
+        matched_datasets = [dset for dset in datasets if dset["name"] == ""]
+    # create if add or import (and no datasets yet)
+    if not matched_datasets and create_if_none:
+        if dataset_name != "default":
+            raise InvalidArgumentValueError("Currently only one dataset with the name default is supported.")
+        matched_datasets = [{}]
+        datasets.extend(matched_datasets)
+    elif not matched_datasets:
         raise InvalidArgumentValueError(f"Dataset {dataset_name} not found in asset {asset['name']}.")
-    # should I check for more than one dataset? -> need to see if datasets can have the same name within an asset
+    # note: right now we can have datasets with the same name but this will not be allowed later
     # part of the temporary convert
-    dataset[0]["name"] = dataset_name
-    return dataset[0]
+    matched_datasets[0]["name"] = dataset_name
+    return matched_datasets[0]
 
 
 def _build_topic(

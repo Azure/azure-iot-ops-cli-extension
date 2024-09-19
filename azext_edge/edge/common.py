@@ -214,6 +214,27 @@ class AEPAuthModes(Enum):
     userpass = "UsernamePassword"
 
 
+class TopicRetain(Enum):
+    """Set the retain flag for messages published to an MQTT broker."""
+    keep = "Keep"
+    never = "Never"
+
+
+class SecurityModes(Enum):
+    """Security modes for OPCUA connector."""
+    none = "none"
+    sign = "sign"
+    sign_and_encrypt = "signAndEncrypt"
+
+
+class SecurityPolicies(Enum):
+    """Security policies for the OPCUA connector."""
+    none = "none"
+    basic256 = "Basic256Sha256"
+    aes128 = "Aes128_Sha256_RsaOaep"
+    aes256 = "Aes256_Sha256_RsaPss"
+
+
 class K8sSecretType(Enum):
     """
     Supported k8s secret types.

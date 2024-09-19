@@ -182,7 +182,7 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
 
         asset_events = run(
             f"az iot ops asset event remove -a {asset_name} -g {rg} "
-            f"--event-notifier {expected_events[1]['event_notifier']}"
+            f"--name {expected_events[1]['name']}"
         )
         assert len(asset_events) + 1 == len(expected_events)
 
@@ -197,24 +197,22 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
         "data_source": generate_random_string(),
         "name": generate_random_string()
     }]
-    command = f"az iot ops asset dataset data-point add -a {asset_name} -g {rg} --dataset default"
-    for arg, value in expected_data_points[1].items():
+    command = f"az iot ops asset dataset point add -a {asset_name} -g {rg} --dataset default"
+    for arg, value in expected_data_points[0].items():
         command += f" --{arg.replace('_', '-')} {value}"
 
     asset_data_points = run(command)
     assert len(asset_data_points) == len(expected_data_points)
-    for i in range(len(expected_data_points)):
-        assert_sub_point(asset_data_points[i], **expected_data_points[i])
+    assert_sub_point(asset_data_points[0], **expected_data_points[0])
 
     expected_data_points.append({
-        "capability_id": generate_random_string(),
         "data_source": generate_random_string(),
         "name": generate_random_string(),
         "observability_mode": "log",
         "queue_size": 1,
         "sampling_interval": 30,
     })
-    command = f"az iot ops asset dataset data-point add -a {asset_name} -g {rg} --dataset default"
+    command = f"az iot ops asset dataset point add -a {asset_name} -g {rg} --dataset default"
     for arg, value in expected_data_points[1].items():
         command += f" --{arg.replace('_', '-')} {value}"
 
@@ -223,32 +221,32 @@ def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_file
     for i in range(len(expected_data_points)):
         assert_sub_point(asset_data_points[i], **expected_data_points[i])
 
-    asset_datasets = run(f"az iot ops asset dataset list -a {asset_name} -g {rg} --dataset default")
+    asset_datasets = run(f"az iot ops asset dataset list -a {asset_name} -g {rg}")
     assert asset_datasets
     asset_data_points = asset_datasets[0]["dataPoints"]
     assert len(asset_data_points) == len(expected_data_points)
     for i in range(len(expected_data_points)):
         assert_sub_point(asset_data_points[i], **expected_data_points[i])
-    asset_data_points = run(f"az iot ops asset dataset data-point list -a {asset_name} -g {rg} --dataset default")
+    asset_data_points = run(f"az iot ops asset dataset point list -a {asset_name} -g {rg} --dataset default")
     assert len(asset_data_points) == len(expected_data_points)
     for i in range(len(expected_data_points)):
         assert_sub_point(asset_data_points[i], **expected_data_points[i])
 
     for file_type in FileType.list():
         data_file_path = run(
-            f"az iot ops asset dataset data-point export -a {asset_name} -g {rg} --dataset default -f {file_type}"
+            f"az iot ops asset dataset point export -a {asset_name} -g {rg} --dataset default -f {file_type}"
         )["file_path"]
         tracked_files.append(data_file_path)
         assert os.path.exists(data_file_path)
 
         asset_data_points = run(
-            f"az iot ops asset dataset data-point remove -a {asset_name} -g {rg}  --dataset default"
-            f"--data-source {expected_data_points[1]['data_source']}"
+            f"az iot ops asset dataset point remove -a {asset_name} -g {rg}  --dataset default "
+            f"--name {expected_data_points[1]['name']}"
         )
         assert len(asset_data_points) + 1 == len(expected_data_points)
 
         asset_data_points = run(
-            f"az iot ops asset dataset data-point import -a {asset_name} -g {rg} --dataset default "
+            f"az iot ops asset dataset point import -a {asset_name} -g {rg} --dataset default "
             f"--input-file {data_file_path}"
         )
         assert len(asset_data_points) == len(expected_data_points)
