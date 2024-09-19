@@ -152,10 +152,10 @@ class InitTargets:
             template_blueprint=M2_ENABLEMENT_TEMPLATE,
         )
 
-        # TODO - @digimaun potentially temp
+        # TODO - @digimaun temp
         esa_extension = template.get_resource_by_key("edge_storage_accelerator_extension")
         esa_extension["properties"]["extensionType"] = "microsoft.arc.containerstorage"
-        esa_extension["properties"]["version"] = "2.1.0-preview"
+        esa_extension["properties"]["version"] = "2.1.1-preview"
         esa_extension["properties"]["releaseTrain"] = "stable"
 
         esa_extension_config = {
@@ -188,7 +188,6 @@ class InitTargets:
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "defaultDataflowinstanceCount": self.dataflow_profile_instances,
                 "brokerConfig": self.broker_config,
-                "trustConfig": "",
             },
             template_blueprint=M2_INSTANCE_TEMPLATE,
         )
