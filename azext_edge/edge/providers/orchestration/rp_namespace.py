@@ -13,7 +13,6 @@ logger = get_logger(__name__)
 
 RP_NAMESPACE_SET = frozenset(
     [
-        "Microsoft.IoTOperationsOrchestrator",
         "Microsoft.IoTOperations",
         "Microsoft.DeviceRegistry",
         "Microsoft.SecretSyncController",

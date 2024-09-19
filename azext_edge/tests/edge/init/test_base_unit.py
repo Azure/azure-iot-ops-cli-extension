@@ -334,7 +334,6 @@ def test_register_providers(mocker, registration_state):
     )
 
     iot_ops_rps = [
-        "Microsoft.IoTOperationsOrchestrator",
         "Microsoft.IoTOperations",
         "Microsoft.DeviceRegistry",
         "Microsoft.SecretSyncController",
