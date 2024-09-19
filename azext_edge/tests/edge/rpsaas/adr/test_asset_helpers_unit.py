@@ -258,7 +258,7 @@ def test_build_topic(original_topic, topic_path, topic_retain):
     assert result["path"] == (topic_path or original.get("path"))
     assert result["retain"] == (topic_retain or original.get("retain") or "Never")
 
-# TODO: add extra stuffs
+
 @pytest.mark.parametrize("sub_points", [
     [{}, {}],
     [   # portal csv

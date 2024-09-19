@@ -956,7 +956,7 @@ def test_event_list(
         asset_name=asset_name, asset_resource_group=resource_group_name
     )
     if events_present:
-        mock_asset_record["properties"]["events"]= [{generate_random_string(): generate_random_string()}]
+        mock_asset_record["properties"]["events"] = [{generate_random_string(): generate_random_string()}]
 
     mocked_responses.add(
         method=responses.GET,

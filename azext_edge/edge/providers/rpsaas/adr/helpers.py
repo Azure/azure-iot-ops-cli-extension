@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from enum import Enum
 from knack.log import get_logger
 from typing import Dict, Optional
 from ...orchestration.resources import Instances

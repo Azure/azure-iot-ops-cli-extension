@@ -14,7 +14,6 @@ from azure.cli.core.azclierror import (
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
 )
-from azext_edge.edge.util.common import assemble_nargs_to_dict
 
 from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
     _assert_above_min,
@@ -22,7 +21,6 @@ from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
     _build_query_body,
     _process_authentication,
     _update_properties,
-    AEP_RESOURCE_TYPE,
     AEPAuthModes
 )
 from ....generators import generate_random_string
@@ -141,7 +139,7 @@ def test_build_opcua_config(original_config, req):
     assert res_security.get("securityPolicy") == req.get("security_policy", og_security.get("securityPolicy"))
 
 
-@pytest.mark.parametrize("req",[
+@pytest.mark.parametrize("req", [
     {
         "application_name": generate_random_string(),
         "auto_accept_untrusted_server_certs": False,
@@ -189,7 +187,9 @@ def test_build_opcua_config_error(req):
         "sub_max_items": (1, "--subscription-max-items"),
         "sub_life_time": (0, "--subscription-life-time"),
     }
-    expected_error_params = [param for param in req if (min_dict.get(param) is not None) and (req[param] < min_dict[param][0])]
+    expected_error_params = [
+        param for param in req if (min_dict.get(param) is not None) and (req[param] < min_dict[param][0])
+    ]
     for param in expected_error_params:
         assert f"{min_dict[param][1]} needs to be at least {min_dict[param][0]}." in e.value.error_msg
 

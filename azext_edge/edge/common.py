@@ -219,6 +219,7 @@ class AEPTypes(Enum):
     # TODO: ensure this is the final enum
     opcua = "OpcUa"
 
+
 class TopicRetain(Enum):
     """Set the retain flag for messages published to an MQTT broker."""
     keep = "Keep"
