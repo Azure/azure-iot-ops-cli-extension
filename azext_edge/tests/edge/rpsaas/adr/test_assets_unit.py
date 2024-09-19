@@ -385,7 +385,7 @@ def test_dataset_show(
 @pytest.mark.parametrize("sampling_interval", [True, 1000])
 def test_data_point_add(
     mocked_cmd,
-    mocked_responses,
+    mocked_responses: responses,
     mocked_check_cluster_connectivity,
     dataset_present,
     observability_mode,
@@ -453,7 +453,7 @@ def test_data_point_add(
 @pytest.mark.parametrize("replace", [False, True])
 def test_data_point_export(
     mocked_cmd,
-    mocked_responses,
+    mocked_responses: responses,
     mocked_dump_content_to_file,
     data_points_present,
     extension,
@@ -532,7 +532,7 @@ def test_data_point_export(
 def test_data_point_import(
     mocker,
     mocked_cmd,
-    mocked_responses,
+    mocked_responses: responses,
     mocked_check_cluster_connectivity,
     mocked_deserialize_file_content,
     replace
@@ -631,7 +631,7 @@ def test_data_point_import(
 @pytest.mark.parametrize("data_points_present", [True, False])
 def test_data_point_list(
     mocked_cmd,
-    mocked_responses,
+    mocked_responses: responses,
     data_points_present
 ):
     dataset_name = "default"
@@ -664,7 +664,7 @@ def test_data_point_list(
 
 def test_data_point_remove(
     mocked_cmd,
-    mocked_responses,
+    mocked_responses: responses,
     mocked_check_cluster_connectivity,
 ):
     dataset_name = "default"
@@ -728,7 +728,7 @@ def test_data_point_remove(
 @pytest.mark.parametrize("sampling_interval", [True, 1000])
 def test_event_add(
     mocked_cmd,
-    mocked_responses,
+    mocked_responses: responses,
     mocked_check_cluster_connectivity,
     observability_mode,
     queue_size,
@@ -784,7 +784,7 @@ def test_event_add(
 @pytest.mark.parametrize("replace", [False, True])
 def test_event_export(
     mocked_cmd,
-    mocked_responses,
+    mocked_responses: responses,
     mocked_dump_content_to_file,
     events_present,
     extension,
@@ -859,7 +859,7 @@ def test_event_export(
 def test_event_import(
     mocker,
     mocked_cmd,
-    mocked_responses,
+    mocked_responses: responses,
     mocked_check_cluster_connectivity,
     mocked_deserialize_file_content,
     replace
@@ -947,7 +947,7 @@ def test_event_import(
 @pytest.mark.parametrize("events_present", [True, False])
 def test_event_list(
     mocked_cmd,
-    mocked_responses,
+    mocked_responses: responses,
     events_present
 ):
     asset_name = generate_random_string()
@@ -976,7 +976,7 @@ def test_event_list(
 
 def test_event_remove(
     mocked_cmd,
-    mocked_responses,
+    mocked_responses: responses,
     mocked_check_cluster_connectivity,
 ):
     asset_name = generate_random_string()
