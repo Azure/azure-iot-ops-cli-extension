@@ -402,7 +402,6 @@ class Assets(Queryable):
         asset = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
-            check_cluster=True
         )
         return asset["properties"].get("datasets", [])
 
@@ -490,6 +489,7 @@ class Assets(Queryable):
 
         return _get_dataset(asset, dataset_name)["dataPoints"]
 
+    # TODO: unit test
     def export_dataset_data_points(
         self,
         asset_name: str,
@@ -525,6 +525,7 @@ class Assets(Queryable):
         )
         return {"file_path": file_path}
 
+    # TODO: unit test
     def import_dataset_data_points(
         self,
         asset_name: str,
@@ -565,12 +566,12 @@ class Assets(Queryable):
         dataset_name: str,
         resource_group_name: str,
     ):
-        asset = self.show(
+        dataset = self.show_dataset(
             asset_name=asset_name,
+            dataset_name=dataset_name,
             resource_group_name=resource_group_name,
-            check_cluster=True
         )
-        return _get_dataset(asset, dataset_name).get("dataPoints", [])
+        return dataset.get("dataPoints", [])
 
     def remove_dataset_data_point(
         self,
@@ -649,6 +650,7 @@ class Assets(Queryable):
             asset = asset.as_dict()
         return asset["properties"]["events"]
 
+    # TODO: unit test
     def export_events(
         self,
         asset_name: str,
@@ -661,7 +663,6 @@ class Assets(Queryable):
         asset_props = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
-            check_cluster=True
         )["properties"]
         fieldnames = None
         if extension in [FileType.portal_csv.value]:
@@ -683,6 +684,7 @@ class Assets(Queryable):
         )
         return {"file_path": file_path}
 
+    # TODO: unit test
     def import_events(
         self,
         asset_name: str,
@@ -722,7 +724,6 @@ class Assets(Queryable):
         asset = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
-            check_cluster=True
         )
 
         return asset["properties"].get("events", [])
@@ -894,13 +895,11 @@ def _build_asset_sub_point(
     event_notifier: Optional[str] = None,
     name: Optional[str] = None,
     observability_mode: Optional[str] = None,
-    # publishing_interval: Optional[int] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
 ) -> Dict[str, str]:
     custom_configuration = _build_default_configuration(
         original_configuration="{}",
-        # publishing_interval=publishing_interval,
         sampling_interval=sampling_interval,
         queue_size=queue_size
     )

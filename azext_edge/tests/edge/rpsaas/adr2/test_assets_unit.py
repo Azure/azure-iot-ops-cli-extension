@@ -9,7 +9,25 @@ import json
 import pytest
 import responses
 
-from azext_edge.edge.commands_assets import create_asset, delete_asset, list_assets, show_asset, update_asset
+from azext_edge.edge.commands_assets import (
+    create_asset,
+    delete_asset,
+    list_assets,
+    show_asset,
+    update_asset,
+    list_asset_datasets,
+    show_asset_dataset,
+    add_asset_data_point,
+    export_asset_data_points,
+    import_asset_events,
+    list_asset_data_points,
+    remove_asset_data_point,
+    add_asset_event,
+    export_asset_events,
+    import_asset_data_points,
+    list_asset_events,
+    remove_asset_event,
+)
 
 from .conftest import get_asset_mgmt_uri, get_asset_record
 from ....generators import generate_random_string
@@ -299,3 +317,362 @@ def test_asset_update(
     for arg in patched_up.call_args.kwargs:
         assert patched_up.call_args.kwargs[arg] == req.get(arg)
         assert call_body_props.get(arg) is None
+
+
+# Dataset
+@pytest.mark.parametrize("full", [True, False])
+def test_dataset_list(
+    mocked_cmd,
+    mocked_responses: responses,
+    full: bool
+):
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    mock_asset_record = get_asset_record(
+        asset_name=asset_name, asset_resource_group=resource_group_name, full=full
+    )
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+    result = list_asset_datasets(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name
+    )
+    assert result == mock_asset_record["properties"].get("datasets", [])
+
+
+def test_dataset_show(
+    mocked_cmd,
+    mocked_responses: responses,
+):
+    dataset_name = generate_random_string()
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    mock_asset_record = get_asset_record(
+        asset_name=asset_name, asset_resource_group=resource_group_name, full=True
+    )
+    dataset = {
+        "name": dataset_name,
+        "dataPoints": [{generate_random_string(): generate_random_string()}]
+    }
+    mock_asset_record["properties"]["datasets"].append(dataset)
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+    result = show_asset_dataset(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name
+    )
+    assert result == dataset
+
+
+# Dataset Data Points
+@pytest.mark.parametrize("dataset_present", [True, False])
+@pytest.mark.parametrize("observability_mode", [None, "log"])
+@pytest.mark.parametrize("queue_size", [True, 2])
+@pytest.mark.parametrize("sampling_interval", [True, 1000])
+def test_data_point_add(
+    mocked_cmd,
+    mocked_responses,
+    mocked_check_cluster_connectivity,
+    dataset_present,
+    observability_mode,
+    queue_size,
+    sampling_interval
+):
+    dataset_name = "default"
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    data_point_name = generate_random_string()
+    data_source = generate_random_string()
+    mock_asset_record = get_asset_record(
+        asset_name=asset_name, asset_resource_group=resource_group_name
+    )
+    if dataset_present:
+        dataset = {
+            "name": dataset_name,
+            "dataPoints": [{generate_random_string(): generate_random_string()}]
+        }
+        mock_asset_record["properties"]["datasets"] = [dataset]
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+    result_datapoints = [{generate_random_string(): generate_random_string()}]
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json={"properties": {"datasets": [{
+            "name": dataset_name,
+            "dataPoints": result_datapoints
+        }]}},
+        status=200,
+        content_type="application/json",
+    )
+    result = add_asset_data_point(
+        cmd=mocked_cmd,
+        dataset_name=dataset_name,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name,
+        data_point_name=data_point_name,
+        data_source=data_source,
+        observability_mode=observability_mode,
+        queue_size=queue_size,
+        sampling_interval=sampling_interval
+    )
+    assert result == result_datapoints
+    datasets = json.loads(mocked_responses.calls[-1].request.body)["properties"]["datasets"]
+    assert datasets
+    point = datasets[0]["dataPoints"][-1]
+    assert point["name"] == data_point_name
+    assert point["dataSource"] == data_source
+    assert point["observabilityMode"] == (observability_mode or "none").capitalize()
+    custom_config = json.loads(point["dataPointConfiguration"])
+    assert custom_config.get("queueSize") == queue_size
+    assert custom_config.get("samplingInterval") == sampling_interval
+
+
+@pytest.mark.parametrize("data_points_present", [True, False])
+def test_data_point_list(
+    mocked_cmd,
+    mocked_responses,
+    data_points_present
+):
+    dataset_name = "default"
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    mock_asset_record = get_asset_record(
+        asset_name=asset_name, asset_resource_group=resource_group_name
+    )
+    dataset = {"name": dataset_name}
+    if data_points_present:
+        dataset["dataPoints"] = [{generate_random_string(): generate_random_string()}]
+    mock_asset_record["properties"]["datasets"] = [dataset]
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    result = list_asset_data_points(
+        cmd=mocked_cmd,
+        dataset_name=dataset_name,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name
+    )
+    assert result == dataset.get("dataPoints", [])
+
+
+def test_data_point_remove(
+    mocked_cmd,
+    mocked_responses,
+    mocked_check_cluster_connectivity,
+):
+    dataset_name = "default"
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    data_point_name = generate_random_string()
+    alt_data_point_name = generate_random_string()
+    mock_asset_record = get_asset_record(
+        asset_name=asset_name, asset_resource_group=resource_group_name
+    )
+    dataset = {
+        "name": dataset_name,
+        "dataPoints": [
+            {
+                "name": data_point_name,
+                generate_random_string(): generate_random_string()
+            },
+            {
+                "name": alt_data_point_name,
+                generate_random_string(): generate_random_string()
+            }
+        ]
+    }
+    mock_asset_record["properties"]["datasets"] = [dataset]
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+    result_datapoints = [{generate_random_string(): generate_random_string()}]
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json={"properties": {"datasets": [{
+            "name": dataset_name,
+            "dataPoints": result_datapoints
+        }]}},
+        status=200,
+        content_type="application/json",
+    )
+    result = remove_asset_data_point(
+        cmd=mocked_cmd,
+        dataset_name=dataset_name,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name,
+        data_point_name=data_point_name,
+    )
+    assert result == result_datapoints
+    datasets = json.loads(mocked_responses.calls[-1].request.body)["properties"]["datasets"]
+    assert datasets
+    point_names = [point["name"] for point in datasets[0]["dataPoints"]]
+    assert data_point_name not in point_names
+    assert alt_data_point_name in point_names
+
+
+# Events
+@pytest.mark.parametrize("observability_mode", [None, "log"])
+@pytest.mark.parametrize("queue_size", [True, 2])
+@pytest.mark.parametrize("sampling_interval", [True, 1000])
+def test_event_add(
+    mocked_cmd,
+    mocked_responses,
+    mocked_check_cluster_connectivity,
+    observability_mode,
+    queue_size,
+    sampling_interval
+):
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    event_name = generate_random_string()
+    event_notifier = generate_random_string()
+    mock_asset_record = get_asset_record(
+        asset_name=asset_name, asset_resource_group=resource_group_name
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+    result_events = [{generate_random_string(): generate_random_string()}]
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json={"properties": {"events": result_events}},
+        status=200,
+        content_type="application/json",
+    )
+    result = add_asset_event(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        event_notifier=event_notifier,
+        observability_mode=observability_mode,
+        queue_size=queue_size,
+        sampling_interval=sampling_interval
+    )
+    assert result == result_events
+    events = json.loads(mocked_responses.calls[-1].request.body)["properties"]["events"]
+    assert events
+    assert events[-1]["name"] == event_name
+    assert events[-1]["eventNotifier"] == event_notifier
+    assert events[-1]["observabilityMode"] == (observability_mode or "none").capitalize()
+    custom_config = json.loads(events[-1]["eventConfiguration"])
+    assert custom_config.get("queueSize") == queue_size
+    assert custom_config.get("samplingInterval") == sampling_interval
+
+
+
+@pytest.mark.parametrize("events_present", [True, False])
+def test_event_list(
+    mocked_cmd,
+    mocked_responses,
+    events_present
+):
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    mock_asset_record = get_asset_record(
+        asset_name=asset_name, asset_resource_group=resource_group_name
+    )
+    if events_present:
+        mock_asset_record["properties"]["events"]= [{generate_random_string(): generate_random_string()}]
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    result = list_asset_events(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name
+    )
+    assert result == mock_asset_record["properties"].get("events", [])
+
+
+def test_event_remove(
+    mocked_cmd,
+    mocked_responses,
+    mocked_check_cluster_connectivity,
+):
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    event_name = generate_random_string()
+    alt_event_name = generate_random_string()
+    mock_asset_record = get_asset_record(
+        asset_name=asset_name, asset_resource_group=resource_group_name
+    )
+    mock_asset_record["properties"]["events"] = [
+        {
+            "name": event_name,
+            generate_random_string(): generate_random_string()
+        },
+        {
+            "name": alt_event_name,
+            generate_random_string(): generate_random_string()
+        }
+    ]
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+    result_events = [{generate_random_string(): generate_random_string()}]
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json={"properties": {"events": result_events}},
+        status=200,
+        content_type="application/json",
+    )
+    result = remove_asset_event(
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+    )
+    assert result == result_events
+    events = json.loads(mocked_responses.calls[-1].request.body)["properties"]["events"]
+    assert events
+    event_names = [event["name"] for event in events]
+    assert event_name not in event_names
+    assert alt_event_name in event_names

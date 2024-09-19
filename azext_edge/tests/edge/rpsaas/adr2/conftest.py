@@ -210,24 +210,29 @@ FULL_ASSET = {
             generate_random_string(): generate_random_string(),
             generate_random_string(): generate_random_string()
         },
-        "dataPoints": [
+        "datasets": [
             {
-                "capabilityId": generate_random_string(),
-                "dataPointConfiguration": "{\"samplingInterval\": 100, \"queueSize\": 50}",
-                "dataSource": generate_random_string(),
-                "name": generate_random_string(),
-                "observabilityMode": generate_random_string()
-            },
-            {
-                "dataPointConfiguration": "{}",
-                "dataSource": generate_random_string(),
-            },
-            {
-                "capabilityId": generate_random_string(),
-                "dataPointConfiguration": "{\"samplingInterval\": 100}",
-                "dataSource": generate_random_string(),
-                "name": generate_random_string(),
-                "observabilityMode": generate_random_string()
+                "name": "default",
+                "dataPoints": [
+                    {
+                        "capabilityId": generate_random_string(),
+                        "dataPointConfiguration": "{\"samplingInterval\": 100, \"queueSize\": 50}",
+                        "dataSource": generate_random_string(),
+                        "name": generate_random_string(),
+                        "observabilityMode": generate_random_string()
+                    },
+                    {
+                        "dataPointConfiguration": "{}",
+                        "dataSource": generate_random_string(),
+                    },
+                    {
+                        "capabilityId": generate_random_string(),
+                        "dataPointConfiguration": "{\"samplingInterval\": 100}",
+                        "dataSource": generate_random_string(),
+                        "name": generate_random_string(),
+                        "observabilityMode": generate_random_string()
+                    }
+                ]
             }
         ],
         "defaultDataPointsConfiguration": "{\"publishingInterval\": \"100\", \"samplingInterval\": \"10\","

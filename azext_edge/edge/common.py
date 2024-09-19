@@ -229,10 +229,14 @@ class SecurityModes(Enum):
 
 class SecurityPolicies(Enum):
     """Security policies for the OPCUA connector."""
+    # TODO: add in user friendly input mapping
     none = "none"
-    basic256 = "Basic256Sha256"
+    basic128 = "Basic128Rsa15"
+    basic256 = "Basic256"
+    basic256sha256 = "Basic256Sha256"
     aes128 = "Aes128_Sha256_RsaOaep"
     aes256 = "Aes256_Sha256_RsaPss"
+
 
 
 class K8sSecretType(Enum):
