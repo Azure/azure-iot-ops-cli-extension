@@ -154,6 +154,7 @@ class OpsServiceType(ListableEnum):
     dataflow = "dataflow"
     schemaregistry = "schemaregistry"
     arccontainerstorage = "acs"
+    secretsynccontroller = "ssc"
 
     @classmethod
     def list_check_services(cls):

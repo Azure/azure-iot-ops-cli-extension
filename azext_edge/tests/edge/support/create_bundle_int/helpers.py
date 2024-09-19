@@ -42,6 +42,7 @@ class NamespaceTuple(NamedTuple):
     arc: str
     aio: str
     acs: str
+    ssc: str
     usage_system: str
 
 
@@ -305,6 +306,7 @@ def process_top_levels(
     clusterconfig_namespace = None
     arc_namespace = None
     acs_namespace = None
+    ssc_namespace = None
 
     def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
@@ -323,6 +325,8 @@ def process_top_levels(
             arc_namespace = name
         elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
             acs_namespace = name
+        elif _get_namespace_determinating_files(name=name, folder="secretsynccontroller", file_prefix="deployment"):
+            ssc_namespace = name
         else:
             namespace = name
 
@@ -350,11 +354,18 @@ def process_top_levels(
         assert level_1["folders"] == ["arccontainerstorage"]
         assert not level_1["files"]
 
+    if ssc_namespace:
+        # remove empty ssc related folders
+        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, ssc_namespace))
+        assert level_1["folders"] == ["secretsynccontroller"]
+        assert not level_1["files"]
+
     logger.debug("Determined the following namespaces:")
     logger.debug(f"AIO namespace: {namespace}")
     logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
     logger.debug(f"ARC namespace: {arc_namespace}")
     logger.debug(f"ACS namespace: {acs_namespace}")
+    logger.debug(f"SSC namespace: {ssc_namespace}")
 
     return NamespaceTuple(
         arc=arc_namespace,
