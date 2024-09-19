@@ -152,10 +152,10 @@ class InitTargets:
             template_blueprint=M2_ENABLEMENT_TEMPLATE,
         )
 
-        # TODO - @digimaun potentially temp
+        # TODO - @digimaun temp
         esa_extension = template.get_resource_by_key("edge_storage_accelerator_extension")
         esa_extension["properties"]["extensionType"] = "microsoft.arc.containerstorage"
-        esa_extension["properties"]["version"] = "2.1.0-preview"
+        esa_extension["properties"]["version"] = "2.1.1-preview"
         esa_extension["properties"]["releaseTrain"] = "stable"
 
         esa_extension_config = {
