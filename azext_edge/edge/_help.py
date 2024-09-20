@@ -851,7 +851,7 @@ def load_iotops_help():
                 and custom sampling interval.
           text: >
             az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset dataset1 --data-source mydatasource --name data1
-            --observability-mode log --queue-size5 --sampling-interval 200
+            --observability-mode log --queue-size 5 --sampling-interval 200
     """
 
     helps[
