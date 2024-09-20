@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
 
 
-class MicrosoftSecretSyncController:
+class MicrosoftSecretSyncController:  # pylint: disable=client-accepts-api-version-keyword
     """Microsoft.SecretSyncController resource provider.
 
     :ivar operations: Operations operations

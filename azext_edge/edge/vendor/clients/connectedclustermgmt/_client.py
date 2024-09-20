@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
 
 
-class ConnectedKubernetesClient:
+class ConnectedKubernetesClient:  # pylint: disable=client-accepts-api-version-keyword
     """Azure Connected Cluster Resource Provider API for onboarding a Kubernetes Cluster to Azure Arc.
 
     :ivar connected_cluster: ConnectedClusterOperations operations

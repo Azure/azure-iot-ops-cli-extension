@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
 
 
-class MicrosoftDeviceRegistryManagementService:  # pylint: disable=too-many-instance-attributes
+class MicrosoftDeviceRegistryManagementService:  # pylint: disable=client-accepts-api-version-keyword,too-many-instance-attributes
     """Microsoft.DeviceRegistry Resource Provider management API.
 
     :ivar operations: Operations operations

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
 
 
-class KubernetesConfigurationClient:
+class KubernetesConfigurationClient:  # pylint: disable=client-accepts-api-version-keyword
     """KubernetesConfigurationClient.
 
     :ivar extensions: ExtensionsOperations operations
