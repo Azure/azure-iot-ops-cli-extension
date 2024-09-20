@@ -27,15 +27,15 @@ def test_create_bundle_ssc(init_setup, tracked_files):
 
     # SECRETSTORE
     check_custom_resource_files(
-        file_objs=file_map["secretstore"],
+        file_objs=file_map["ssc"],
         resource_api=SECRETSTORE_API_V1,
-        namespace=file_map["__namespaces__"]["secretstore"],
+        namespace=file_map["__namespaces__"]["ssc"],
     )
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     expected_types = set(expected_workload_types).union(SECRETSTORE_API_V1.kinds)
-    assert set(file_map["secretstore"].keys()).issubset(expected_types)
+    assert set(file_map["ssc"].keys()).issubset(expected_types)
     check_workload_resource_files(
-        file_objs=file_map["secretstore"],
+        file_objs=file_map["ssc"],
         expected_workload_types=expected_workload_types,
         prefixes=["secrets-store-sync-controller-manager", "manager-metrics-service"],
         bundle_path=bundle_path,

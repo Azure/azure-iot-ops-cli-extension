@@ -277,7 +277,8 @@ def get_file_map(
         file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
         file_map["__namespaces__"]["acs"] = acs_namespace
     elif ops_service == "ssc":
-        assert len(walk_result) == 1 + expected_default_walk_result
+        assert len(walk_result) == 2 + expected_default_walk_result
+        ops_path = path.join(BASE_ZIP_PATH, aio_namespace, "secretsynccontroller")
         ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, "secretsynccontroller")
         file_map["ssc"] = convert_file_names(walk_result[ssc_path]["files"])
         file_map["__namespaces__"]["ssc"] = ssc_namespace
