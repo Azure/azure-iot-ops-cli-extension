@@ -24,15 +24,15 @@ def test_create_bundle_ssc(init_setup, tracked_files):
     check_custom_resource_files(
         file_objs=file_map["aio"], resource_api=SECRETSYNC_API_V1, namespace=file_map["__namespaces__"]["aio"]
     )
+    check_custom_resource_files(
+        file_objs=file_map["aio"],
+        resource_api=SECRETSTORE_API_V1,
+        namespace=file_map["__namespaces__"]["aio"],
+    )
 
     # SECRETSTORE
-    check_custom_resource_files(
-        file_objs=file_map["ssc"],
-        resource_api=SECRETSTORE_API_V1,
-        namespace=file_map["__namespaces__"]["ssc"],
-    )
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
-    expected_types = set(expected_workload_types).union(SECRETSTORE_API_V1.kinds)
+    expected_types = set(expected_workload_types)
     assert set(file_map["ssc"].keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=file_map["ssc"],
