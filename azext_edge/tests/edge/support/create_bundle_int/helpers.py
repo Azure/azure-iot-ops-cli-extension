@@ -276,6 +276,9 @@ def get_file_map(
         acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
         file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
         file_map["__namespaces__"]["acs"] = acs_namespace
+
+        # no files for aio, skip the rest assertions
+        return file_map
     elif ops_service == "ssc":
         assert len(walk_result) == 2 + expected_default_walk_result
         ops_path = path.join(BASE_ZIP_PATH, aio_namespace, "secretsynccontroller")
