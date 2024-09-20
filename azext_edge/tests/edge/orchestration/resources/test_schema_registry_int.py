@@ -29,7 +29,6 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
     registry = run(
         f"az iot ops schema registry create -n {registry_name} -g {registry_rg} "
         f"--rn {registry_namespace1} --sa-resource-id {storage_account['id']} "
-        "--location eastus2euap"  # TODO: remove once avaliable in all regions
     )
     tracked_resources.append(registry["id"])
     assert_schema_registry(
@@ -77,7 +76,6 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
         f"--rn {registry_namespace2} --sa-resource-id {storage_account['id']} "
         f"--sa-container {sa_container} --desc {description} --display-name {display_name} "
         f"--tags {tags_str} --custom-role-id {role_id} "
-        "--location eastus2euap"  # TODO: remove once avaliable in all regions
     )
     tracked_resources.append(alt_registry["id"])
     assert_schema_registry(
