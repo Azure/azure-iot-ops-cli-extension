@@ -212,11 +212,14 @@ def test_show(mocked_cmd, mocked_responses: responses, discovered: bool):
     }
 ])
 def test_update(
+    mocker,
     mocked_cmd,
     mocked_check_cluster_connectivity,
     mocked_responses: responses,
     req: dict
 ):
+    # remove logger warnings
+    mocker.patch("azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles.logger")
     # use non discovered since delete shows the update_ops is selected correctly
     profile_name = generate_random_string()
     resource_group_name = generate_random_string()

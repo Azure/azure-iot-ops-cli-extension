@@ -140,40 +140,42 @@ def assert_opcua_props(result, **expected):
     result_config = json.loads(result["properties"]["additionalConfiguration"])
 
     if expected.get("application"):
-        result_config["applicationName"] = expected.get("application")
+        result_config["applicationName"] = expected["application"]
     if expected.get("keep_alive"):
-        result_config["keepAliveMilliseconds"] = expected.get("keep_alive")
+        result_config["keepAliveMilliseconds"] = expected["keep_alive"]
     if expected.get("run_asset_discovery") is not None:
-        result_config["runAssetDiscovery"] = expected.get("run_asset_discovery")
+        result_config["runAssetDiscovery"] = expected["run_asset_discovery"]
 
     # defaults
     if expected.get("default_publishing_int"):
-        result_config["defaults"]["publishingIntervalMilliseconds"] = expected.get("default_publishing_int")
+        result_config["defaults"]["publishingIntervalMilliseconds"] = expected["default_publishing_int"]
     if expected.get("default_sampling_int"):
-        result_config["defaults"]["samplingIntervalMilliseconds"] = expected.get("default_sampling_int")
+        result_config["defaults"]["samplingIntervalMilliseconds"] = expected["default_sampling_int"]
     if expected.get("default_queue_size"):
-        result_config["defaults"]["queueSize"] = expected.get("default_queue_size")
+        result_config["defaults"]["queueSize"] = expected["default_queue_size"]
 
     # session
     if expected.get("session_timeout"):
-        result_config["session"]["timeoutMilliseconds"] = expected.get("session_timeout")
+        result_config["session"]["timeoutMilliseconds"] = expected["session_timeout"]
     if expected.get("session_keep_alive"):
-        result_config["session"]["keepAliveIntervalMilliseconds"] = expected.get("session_keep_alive")
+        result_config["session"]["keepAliveIntervalMilliseconds"] = expected["session_keep_alive"]
     if expected.get("session_reconnect_period"):
-        result_config["session"]["reconnectPeriodMilliseconds"] = expected.get("session_reconnect_period")
+        result_config["session"]["reconnectPeriodMilliseconds"] = expected["session_reconnect_period"]
     if expected.get("session_reconnect_backoff"):
-        result_config["session"]["reconnectExponentialBackOffMilliseconds"] = expected.get("session_reconnect_backoff")
+        result_config["session"]["reconnectExponentialBackOffMilliseconds"] = expected["session_reconnect_backoff"]
 
     # subscription
     if expected.get("sub_life_time"):
-        result_config["subscription"]["maxItems"] = expected.get("sub_life_time")
+        result_config["subscription"]["maxItems"] = expected["sub_life_time"]
     if expected.get("sub_max_items"):
-        result_config["subscription"]["lifeTimeMilliseconds"] = expected.get("sub_max_items")
+        result_config["subscription"]["lifeTimeMilliseconds"] = expected["sub_max_items"]
 
     # security
     if expected.get("accept_untrusted_certs") is not None:
-        result_config["security"]["autoAcceptUntrustedServerCertificates"] = expected.get("accept_untrusted_certs")
+        result_config["security"]["autoAcceptUntrustedServerCertificates"] = expected["accept_untrusted_certs"]
     if expected.get("security_mode"):
-        result_config["security"]["securityMode"] = expected.get("security_mode")
+        result_config["security"]["securityMode"] = expected["security_mode"]
     if expected.get("security_policy"):
-        result_config["security"]["securityPolicy"] = expected.get("security_policy")
+        result_config["security"]["securityPolicy"] = (
+            "http://opcfoundation.org/UA/SecurityPolicy#" + expected["security_policy"]
+        )

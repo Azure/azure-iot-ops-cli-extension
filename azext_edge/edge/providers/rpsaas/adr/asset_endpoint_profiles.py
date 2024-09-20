@@ -322,7 +322,7 @@ def _build_opcua_config(
     if security_mode:
         config["security"]["securityMode"] = security_mode
     if security_policy:
-        config["security"]["securityPolicy"] = security_policy
+        config["security"]["securityPolicy"] = "http://opcfoundation.org/UA/SecurityPolicy#" + security_policy
 
     _raise_if_connector_error(connector_type="OPCUA", error_msg=error_msg)
     return json.dumps(config)

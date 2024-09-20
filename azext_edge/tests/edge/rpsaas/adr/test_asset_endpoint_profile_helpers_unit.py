@@ -136,7 +136,10 @@ def test_build_opcua_config(original_config, req):
         "auto_accept_untrusted_server_certs", og_security.get("autoAcceptUntrustedServerCertificates")
     )
     assert res_security.get("securityMode") == req.get("security_mode", og_security.get("securityMode"))
-    assert res_security.get("securityPolicy") == req.get("security_policy", og_security.get("securityPolicy"))
+    expected_policy = og_security.get("securityPolicy")
+    if req.get("security_policy"):
+        expected_policy = "http://opcfoundation.org/UA/SecurityPolicy#" + req["security_policy"]
+    assert res_security.get("securityPolicy") == expected_policy
 
 
 @pytest.mark.parametrize("req", [
@@ -270,8 +273,10 @@ def test_build_query_body(
     },
 ])
 def test_process_authentication(
-    original_props, req
+    mocker, original_props, req
 ):
+    # remove logger warnings
+    mocker.patch("azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles.logger")
     result = _process_authentication(
         auth_props=original_props,
         **req
@@ -409,7 +414,9 @@ def test_process_authentication_error(
         "certificate_reference": generate_random_string(),
     }
 ])
-def test_update_properties(properties, req):
+def test_update_properties(mocker, properties, req):
+    # remove logger warnings
+    mocker.patch("azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles.logger")
     # lazy way of copying to avoid having to make sure we copy possible the lists
     original_properties = deepcopy(properties)
     _update_properties(
