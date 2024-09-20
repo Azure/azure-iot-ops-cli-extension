@@ -75,7 +75,8 @@ def test_create(
     assert call_body["tags"] == req.get("tags")
 
     call_body_props = call_body["properties"]
-    assert call_body_props["endpointProfileType"] == "OPCUA"
+    # TODO: will change later
+    assert call_body_props["endpointProfileType"] == "OpcUa"
     assert call_body_props["targetAddress"] == target_address
 
     auth_props = call_body_props["authentication"]
@@ -89,6 +90,8 @@ def test_create(
         assert auth_props["method"] == "UsernamePassword"
     else:
         assert auth_props["method"] == "Anonymous"
+
+    assert call_body_props["additionalConfiguration"]
 
 
 @pytest.mark.parametrize("discovered", [False])  # TODO: discovered
@@ -209,11 +212,14 @@ def test_show(mocked_cmd, mocked_responses: responses, discovered: bool):
     }
 ])
 def test_update(
+    mocker,
     mocked_cmd,
     mocked_check_cluster_connectivity,
     mocked_responses: responses,
     req: dict
 ):
+    # remove logger warnings
+    mocker.patch("azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles.logger")
     # use non discovered since delete shows the update_ops is selected correctly
     profile_name = generate_random_string()
     resource_group_name = generate_random_string()

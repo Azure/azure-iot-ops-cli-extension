@@ -66,7 +66,7 @@ def mocked_get_extended_location(mocker):
         "cluster_location": generate_random_string()
     }
     mock = mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr2.helpers.get_extended_location",
+        "azext_edge.edge.providers.rpsaas.adr.helpers.get_extended_location",
         return_value=result,
         autospec=True
     )
@@ -77,7 +77,7 @@ def mocked_get_extended_location(mocker):
 @pytest.fixture()
 def mocked_check_cluster_connectivity(mocker):
     yield mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr2.helpers.check_cluster_connectivity",
+        "azext_edge.edge.providers.rpsaas.adr.helpers.check_cluster_connectivity",
         autospec=True
     )
 
@@ -167,7 +167,7 @@ def get_profile_record(
 
 
 # Paths for mocking
-ASSETS_PATH = "azext_edge.edge.providers.rpsaas.adr2.assets"
+ASSETS_PATH = "azext_edge.edge.providers.rpsaas.adr.assets"
 
 # Generic objects
 # Assets
@@ -210,24 +210,29 @@ FULL_ASSET = {
             generate_random_string(): generate_random_string(),
             generate_random_string(): generate_random_string()
         },
-        "dataPoints": [
+        "datasets": [
             {
-                "capabilityId": generate_random_string(),
-                "dataPointConfiguration": "{\"samplingInterval\": 100, \"queueSize\": 50}",
-                "dataSource": generate_random_string(),
-                "name": generate_random_string(),
-                "observabilityMode": generate_random_string()
-            },
-            {
-                "dataPointConfiguration": "{}",
-                "dataSource": generate_random_string(),
-            },
-            {
-                "capabilityId": generate_random_string(),
-                "dataPointConfiguration": "{\"samplingInterval\": 100}",
-                "dataSource": generate_random_string(),
-                "name": generate_random_string(),
-                "observabilityMode": generate_random_string()
+                "name": "default",
+                "dataPoints": [
+                    {
+                        "capabilityId": generate_random_string(),
+                        "dataPointConfiguration": "{\"samplingInterval\": 100, \"queueSize\": 50}",
+                        "dataSource": generate_random_string(),
+                        "name": generate_random_string(),
+                        "observabilityMode": generate_random_string()
+                    },
+                    {
+                        "dataPointConfiguration": "{}",
+                        "dataSource": generate_random_string(),
+                    },
+                    {
+                        "capabilityId": generate_random_string(),
+                        "dataPointConfiguration": "{\"samplingInterval\": 100}",
+                        "dataSource": generate_random_string(),
+                        "name": generate_random_string(),
+                        "observabilityMode": generate_random_string()
+                    }
+                ]
             }
         ],
         "defaultDataPointsConfiguration": "{\"publishingInterval\": \"100\", \"samplingInterval\": \"10\","
@@ -333,7 +338,7 @@ FULL_AEP = {
             },
             "runAssetDiscovery": True
         },
-        "endpointProfileType": "OPCUA",
+        "endpointProfileType": "OpcUa",
         "targetAddress": generate_random_string(),
         "authentication": {
             "method": "UsernamePassword",

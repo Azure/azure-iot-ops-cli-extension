@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 
 from knack.log import get_logger
 
-from .providers.rpsaas.adr2.assets import Assets
+from .providers.rpsaas.adr.assets import Assets
 
 logger = get_logger(__name__)
 
@@ -90,6 +90,7 @@ def delete_asset(
     return Assets(cmd).delete(asset_name=asset_name, resource_group_name=resource_group_name)
 
 
+# TODO: add in once GA
 def list_assets(
     cmd,
     # discovered: bool = False,  # TODO: discovered
@@ -319,7 +320,6 @@ def add_asset_data_point(
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
-    publishing_interval: Optional[int] = None,
 ):
     return Assets(cmd).add_dataset_data_point(
         asset_name=asset_name,
@@ -327,7 +327,6 @@ def add_asset_data_point(
         data_point_name=data_point_name,
         data_source=data_source,
         observability_mode=observability_mode,
-        publishing_interval=publishing_interval,
         queue_size=queue_size,
         sampling_interval=sampling_interval,
         resource_group_name=resource_group_name,
@@ -407,9 +406,8 @@ def add_asset_event(
     event_name: Optional[str] = None,
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
-    sampling_interval: Optional[int] = None,
-    publishing_interval: Optional[int] = None,
-    # topic_path: Optional[str] = None,  # TODO: hide non asset topics
+    sampling_interval: Optional[int] = None,  # Note: not in DOE
+    # topic_path: Optional[str] = None,  # TODO: expose once supported
     # topic_retain: Optional[str] = None
 ):
     return Assets(cmd).add_event(
@@ -419,7 +417,6 @@ def add_asset_event(
         observability_mode=observability_mode,
         queue_size=queue_size,
         sampling_interval=sampling_interval,
-        publishing_interval=publishing_interval,
         resource_group_name=resource_group_name,
         # topic_path=topic_path,
         # topic_retain=topic_retain
