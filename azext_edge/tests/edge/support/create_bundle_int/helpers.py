@@ -375,7 +375,7 @@ def process_top_levels(
     for namespace, folder in [
         (namespace, ops_service),
         (clusterconfig_namespace, "clusterconfig"),
-        (arc_namespace, ARC_AGENTS[0][0]),
+        (arc_namespace, "arcagents"),
         (acs_namespace, "arccontainerstorage"),
         (ssc_namespace, "secretsynccontroller"),
     ]:
