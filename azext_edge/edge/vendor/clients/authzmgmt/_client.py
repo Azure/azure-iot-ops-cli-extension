@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
 
 
-class AuthorizationManagementClient:  # pylint: disable=client-accepts-api-version-keyword
+class AuthorizationManagementClient:
     """Role based access control provides you a way to apply granular level policy administration down
     to individual resources or resource groups. These operations enable you to get deny
     assignments. A deny assignment describes the set of actions on resources that are denied for

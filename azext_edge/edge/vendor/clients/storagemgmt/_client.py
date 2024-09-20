@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
 
 
-class StorageManagementClient:  # pylint: disable=client-accepts-api-version-keyword,too-many-instance-attributes
+class StorageManagementClient:  # pylint: disable=too-many-instance-attributes
     """The Azure Storage Management API.
 
     :ivar blob_services: BlobServicesOperations operations

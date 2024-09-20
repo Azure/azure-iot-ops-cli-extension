@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
 
 
-class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts-api-version-keyword,too-many-instance-attributes
+class MicrosoftIoTOperationsManagementService:  # pylint: disable=too-many-instance-attributes
     """Microsoft.IoTOperations Resource Provider management API.
 
     :ivar operations: Operations operations

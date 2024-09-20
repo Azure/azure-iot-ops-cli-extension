@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from azure.core.credentials import TokenCredential
 
 
-class ManagedServiceIdentityClient:  # pylint: disable=client-accepts-api-version-keyword
+class ManagedServiceIdentityClient:
     """The Managed Service Identity Client.
 
     :ivar system_assigned_identities: SystemAssignedIdentitiesOperations operations
