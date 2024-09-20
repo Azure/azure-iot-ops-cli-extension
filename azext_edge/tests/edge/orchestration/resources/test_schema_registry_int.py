@@ -110,6 +110,7 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
         # delete does not return correct status code - remove once fixed
         if "ERROR: Operation returned an invalid status 'OK'" not in e.error_msg:
             raise e
+    tracked_resources.remove(registry["id"])
 
     list_registry_rg = run(f"az iot ops schema registry list -g {registry_rg}")
     list_registry_names = [reg["name"] for reg in list_registry_rg]
@@ -123,6 +124,7 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
         # delete does not return correct status code - remove once fixed
         if "ERROR: Operation returned an invalid status 'OK'" not in e.error_msg:
             raise e
+    tracked_resources.remove(alt_registry["id"])
 
 
 def assert_schema_registry(registry: dict, **expected):
