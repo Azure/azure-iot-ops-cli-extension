@@ -372,16 +372,16 @@ def process_top_levels(
     #     assert level_1["folders"] == ["secretsynccontroller"]
     #     assert not level_1["files"]
 
-    for namespace, folder in [
+    for namespace_folder, service in [
         (clusterconfig_namespace, "clusterconfig"),
         (arc_namespace, "arcagents"),
         (acs_namespace, "arccontainerstorage"),
         (ssc_namespace, "secretsynccontroller"),
     ]:
-        if namespace:
+        if namespace_folder:
             # remove empty folders in level 1
-            level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
-            assert level_1["folders"] == [folder]
+            level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace_folder))
+            assert level_1["folders"] == [service]
             assert not level_1["files"]
 
     # remove empty folders in level 2
