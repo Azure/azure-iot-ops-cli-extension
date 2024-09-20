@@ -373,7 +373,6 @@ def process_top_levels(
     #     assert not level_1["files"]
 
     for namespace, folder in [
-        (namespace, ops_service),
         (clusterconfig_namespace, "clusterconfig"),
         (arc_namespace, "arcagents"),
         (acs_namespace, "arccontainerstorage"),
