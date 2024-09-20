@@ -342,35 +342,58 @@ def process_top_levels(
         else:
             namespace = name
 
+    # if clusterconfig_namespace:
+    #     # remove empty billing related folders
+    #     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
+    #     assert level_1["folders"] == ["clusterconfig"]
+    #     assert not level_1["files"]
+    #     level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
+    #     assert level_2["folders"] == ["billing"]
+    #     assert not level_2["files"]
+
+    # if arc_namespace:
+    #     # remove empty arc related folders
+    #     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace))
+    #     assert level_1["folders"] == ["arcagents"]
+    #     assert not level_1["files"]
+    #     level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))
+    #     assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS]
+    #     assert not level_2["files"]
+
+    # if acs_namespace:
+    #     # remove empty acs related folders
+    #     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acs_namespace))
+    #     assert level_1["folders"] == ["arccontainerstorage"]
+    #     assert not level_1["files"]
+
+    # if ssc_namespace:
+    #     # remove empty ssc related folders
+    #     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, ssc_namespace))
+    #     assert level_1["folders"] == ["secretsynccontroller"]
+    #     assert not level_1["files"]
+
+    for namespace, folder in [
+        (namespace, ops_service),
+        (clusterconfig_namespace, "clusterconfig"),
+        (arc_namespace, ARC_AGENTS[0][0]),
+        (acs_namespace, "arccontainerstorage"),
+        (ssc_namespace, "secretsynccontroller"),
+    ]:
+        if namespace:
+            # remove empty folders in level 1
+            level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace))
+            assert level_1["folders"] == [folder]
+            assert not level_1["files"]
+
+    # remove empty folders in level 2
     if clusterconfig_namespace:
-        # remove empty billing related folders
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
-        assert level_1["folders"] == ["clusterconfig"]
-        assert not level_1["files"]
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
-
     if arc_namespace:
-        # remove empty arc related folders
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace))
-        assert level_1["folders"] == ["arcagents"]
-        assert not level_1["files"]
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))
         assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS]
         assert not level_2["files"]
-
-    if acs_namespace:
-        # remove empty acs related folders
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acs_namespace))
-        assert level_1["folders"] == ["arccontainerstorage"]
-        assert not level_1["files"]
-
-    if ssc_namespace:
-        # remove empty ssc related folders
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, ssc_namespace))
-        assert level_1["folders"] == ["secretsynccontroller"]
-        assert not level_1["files"]
 
     logger.debug("Determined the following namespaces:")
     logger.debug(f"AIO namespace: {namespace}")
