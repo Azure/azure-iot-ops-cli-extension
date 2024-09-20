@@ -1002,18 +1002,21 @@ def load_iotops_arguments(self, _):
             "default_publishing_interval",
             options_list=["--default-publishing-int", "--dpi"],
             help="Default publishing interval in milliseconds. Minimum: -1. Recommended: 1000",
+            type=int,
             arg_group="Connector",
         )
         context.argument(
             "default_sampling_interval",
             options_list=["--default-sampling-int", "--dsi"],
             help="Default sampling interval in milliseconds. Minimum: -1. Recommended: 1000.",
+            type=int,
             arg_group="Connector",
         )
         context.argument(
             "default_queue_size",
             options_list=["--default-queue-size", "--dqs"],
             help="Default queue size. Minimum: 0. Recommended: 1.",
+            type=int,
             arg_group="Connector",
         )
         context.argument(
@@ -1021,6 +1024,7 @@ def load_iotops_arguments(self, _):
             options_list=["--keep-alive", "--ka"],
             help="Time in milliseconds after which a keep alive publish response is sent. Minimum: 0. "
             "Recommended: 10000.",
+            type=int,
             arg_group="Connector",
         )
         context.argument(  # TODO: change to disable
@@ -1034,6 +1038,7 @@ def load_iotops_arguments(self, _):
             "session_timeout",
             options_list=["--session-timeout", "--st"],
             help="Session timeout in milliseconds. Minimum: 0. Recommended: 60000.",
+            type=int,
             arg_group="Connector",
         )
         context.argument(
@@ -1041,18 +1046,21 @@ def load_iotops_arguments(self, _):
             options_list=["--session-keep-alive", "--ska"],
             help="Time in milliseconds after which a session keep alive challenge is sent to detect "
             "connection issues. Minimum: 0. Recommended: 10000.",
+            type=int,
             arg_group="Connector",
         )
         context.argument(
             "session_reconnect_period",
             options_list=["--session-reconnect-period", "--srp"],
             help="Session reconnect period in milliseconds. Minimum: 0. Recommended: 2000.",
+            type=int,
             arg_group="Connector",
         )
         context.argument(
             "session_reconnect_exponential_back_off",
             options_list=["--session-reconnect-backoff", "--srb"],
             help="Session reconnect exponential back off in milliseconds. Minimum: -1. Recommended: 10000.",
+            type=int,
             arg_group="Connector",
         )
         context.argument(
@@ -1074,6 +1082,7 @@ def load_iotops_arguments(self, _):
             options_list=["--subscription-max-items", "--smi"],
             help="Maximum number of items that the connector can create for the subscription. "
             "Minimum: 1. Recommended: 1000.",
+            type=int,
             arg_group="Connector",
         )
         context.argument(
@@ -1081,6 +1090,7 @@ def load_iotops_arguments(self, _):
             options_list=["--subscription-life-time", "--slt"],
             help="Life time in milliseconds of the items created by the connector for the subscription. "
             "Minimum: 0. Recommended: 60000.",
+            type=int,
             arg_group="Connector",
         )
 

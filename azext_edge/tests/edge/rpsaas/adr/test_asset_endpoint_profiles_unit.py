@@ -75,6 +75,7 @@ def test_create(
     assert call_body["tags"] == req.get("tags")
 
     call_body_props = call_body["properties"]
+    # TODO: will change later
     assert call_body_props["endpointProfileType"] == "OpcUa"
     assert call_body_props["targetAddress"] == target_address
 
@@ -89,6 +90,8 @@ def test_create(
         assert auth_props["method"] == "UsernamePassword"
     else:
         assert auth_props["method"] == "Anonymous"
+
+    assert call_body_props["additionalConfiguration"]
 
 
 @pytest.mark.parametrize("discovered", [False])  # TODO: discovered
