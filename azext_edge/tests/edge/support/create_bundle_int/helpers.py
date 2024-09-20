@@ -280,9 +280,13 @@ def get_file_map(
         # no files for aio, skip the rest assertions
         return file_map
     elif ops_service == "ssc":
-        assert len(walk_result) == 2 + expected_default_walk_result
         ops_path = path.join(BASE_ZIP_PATH, aio_namespace, "secretsynccontroller")
         ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, "secretsynccontroller")
+        if ops_path not in walk_result:
+            # no crd created in aio namespace
+            assert len(walk_result) == 1 + expected_default_walk_result
+        else:
+            assert len(walk_result) == 2 + expected_default_walk_result
         file_map["ssc"] = convert_file_names(walk_result[ssc_path]["files"])
         file_map["__namespaces__"]["ssc"] = ssc_namespace
     elif ops_service == "deviceregistry":
