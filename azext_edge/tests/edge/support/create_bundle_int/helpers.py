@@ -239,7 +239,9 @@ def get_file_map(
     mq_traces: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    arc_namespace, aio_namespace, acs_namespace, c_namespace = process_top_levels(walk_result, ops_service)
+    arc_namespace, aio_namespace, acs_namespace, ssc_namespace, c_namespace = process_top_levels(
+        walk_result, ops_service
+    )
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -274,9 +276,11 @@ def get_file_map(
         acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
         file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
         file_map["__namespaces__"]["acs"] = acs_namespace
-
-        # no files for aio, skip the rest assertions
-        return file_map
+    elif ops_service == "ssc":
+        assert len(walk_result) == 1 + expected_default_walk_result
+        ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, "secretsynccontroller")
+        file_map["ssc"] = convert_file_names(walk_result[ssc_path]["files"])
+        file_map["__namespaces__"]["ssc"] = ssc_namespace
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
             assert len(walk_result) == expected_default_walk_result
@@ -371,6 +375,7 @@ def process_top_levels(
         arc=arc_namespace,
         aio=namespace,
         acs=acs_namespace,
+        ssc=ssc_namespace,
         usage_system=clusterconfig_namespace,
     )
 
