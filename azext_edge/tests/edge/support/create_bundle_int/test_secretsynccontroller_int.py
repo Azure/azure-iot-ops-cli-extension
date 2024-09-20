@@ -18,7 +18,7 @@ def test_create_bundle_ssc(init_setup, tracked_files):
 
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
-    file_map = get_file_map(walk_result, "secretsynccontroller")
+    file_map = get_file_map(walk_result, ops_service)
 
     # AIO
     check_custom_resource_files(
