@@ -79,7 +79,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
 
     # remove ssc resources in ssc namespace from walk_result from aio namespace assertion
     if namespace.ssc:
-        walk_result.pop(path.join(BASE_ZIP_PATH, namespace.ssc, "secretsynccontroller"), {})
+        walk_result.pop(path.join(BASE_ZIP_PATH, namespace.ssc, OpsServiceType.secretsynccontroller.value), {})
 
     # Level 2 and 3 - bottom
     is_billing_included = OpsServiceType.billing.value in expected_services
@@ -113,17 +113,11 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
 def _get_expected_services(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str, namespace: str
 ) -> List[str]:
-    expected_services = (
-        [ops_service] if ops_service != OpsServiceType.secretsynccontroller.value else ["secretsynccontroller"]
-    )
+    expected_services = [ops_service]
     if ops_service == OpsServiceType.auto.value:
         # these should always be generated
         expected_services = OpsServiceType.list()
         expected_services.remove(OpsServiceType.auto.value)
-
-        # folder name for secretsynccontroller is different from the service name
-        expected_services.remove(OpsServiceType.secretsynccontroller.value)
-        expected_services.append("secretsynccontroller")
         expected_services.sort()
 
     # device registry folder will not be created if there are no device registry resources
@@ -140,12 +134,12 @@ def _get_expected_services(
     ):
         expected_services.remove(OpsServiceType.arccontainerstorage.value)
 
-    # secretsynccontroller folder will not be created if there are no secretsynccontroller resources
+    # secretstore folder will not be created if there are no secretstore resources
     if (
-        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, "secretsynccontroller"))
-        and "secretsynccontroller" in expected_services
+        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.secretsynccontroller.value))
+        and OpsServiceType.secretsynccontroller.value in expected_services
     ):
-        expected_services.remove("secretsynccontroller")
+        expected_services.remove(OpsServiceType.secretsynccontroller.value)
 
     expected_services.append("meta")
     return expected_services

@@ -10,6 +10,7 @@ from os import path
 from zipfile import ZipFile
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
+from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from ....helpers import (
@@ -279,16 +280,16 @@ def get_file_map(
 
         # no files for aio, skip the rest assertions
         return file_map
-    elif ops_service == "ssc":
-        ops_path = path.join(BASE_ZIP_PATH, aio_namespace, "secretsynccontroller")
-        ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, "secretsynccontroller")
+    elif ops_service == OpsServiceType.secretsynccontroller.value:
+        ops_path = path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.secretsynccontroller.value)
+        ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretsynccontroller.value)
         if ops_path not in walk_result:
             # no crd created in aio namespace
             assert len(walk_result) == 1 + expected_default_walk_result
         else:
             assert len(walk_result) == 2 + expected_default_walk_result
-        file_map["ssc"] = convert_file_names(walk_result[ssc_path]["files"])
-        file_map["__namespaces__"]["ssc"] = ssc_namespace
+        file_map[OpsServiceType.secretsynccontroller.value] = convert_file_names(walk_result[ssc_path]["files"])
+        file_map["__namespaces__"][OpsServiceType.secretsynccontroller.value] = ssc_namespace
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
             assert len(walk_result) == expected_default_walk_result
@@ -337,7 +338,9 @@ def process_top_levels(
             arc_namespace = name
         elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
             acs_namespace = name
-        elif _get_namespace_determinating_files(name=name, folder="secretsynccontroller", file_prefix="deployment"):
+        elif _get_namespace_determinating_files(
+            name=name, folder=OpsServiceType.secretsynccontroller.value, file_prefix="deployment"
+        ):
             ssc_namespace = name
         else:
             namespace = name
@@ -346,7 +349,7 @@ def process_top_levels(
         (clusterconfig_namespace, "clusterconfig"),
         (arc_namespace, "arcagents"),
         (acs_namespace, "arccontainerstorage"),
-        (ssc_namespace, "secretsynccontroller"),
+        (ssc_namespace, OpsServiceType.secretsynccontroller.value),
     ]:
         if namespace_folder:
             # remove empty folders in level 1

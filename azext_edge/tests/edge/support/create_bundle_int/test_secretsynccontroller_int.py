@@ -33,9 +33,9 @@ def test_create_bundle_ssc(init_setup, tracked_files):
     # SECRETSTORE
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     expected_types = set(expected_workload_types)
-    assert set(file_map["ssc"].keys()).issubset(expected_types)
+    assert set(file_map[OpsServiceType.secretsynccontroller.value].keys()).issubset(expected_types)
     check_workload_resource_files(
-        file_objs=file_map["ssc"],
+        file_objs=file_map[OpsServiceType.secretsynccontroller.value],
         expected_workload_types=expected_workload_types,
         prefixes=["secrets-store-sync-controller-manager", "manager-metrics-service"],
         bundle_path=bundle_path,

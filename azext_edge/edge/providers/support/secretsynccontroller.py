@@ -21,7 +21,7 @@ from .base import (
 
 logger = get_logger(__name__)
 
-SSC_DIRECTORY_PATH = "secretsynccontroller"
+SSC_DIRECTORY_PATH = "secretstore"
 # TODO: Use common label once it is ready
 SSC_NAMESPACE = "azure-secret-store"
 
