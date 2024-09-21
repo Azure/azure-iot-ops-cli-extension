@@ -23,7 +23,7 @@ from ..orchestration.common import (
     AIO_INSECURE_LISTENER_SERVICE_PORT,
     MqServiceType,
 )
-from .common import KubernetesDistroType, TrustSourceType
+from .common import KubernetesDistroType
 from .template import (
     IOT_OPERATIONS_VERSION_MONIKER,
     M2_ENABLEMENT_TEMPLATE,
@@ -45,11 +45,11 @@ class InitTargets:
         enable_rsync_rules: Optional[bool] = None,
         instance_name: Optional[str] = None,
         instance_description: Optional[str] = None,
+        tags: Optional[dict] = None,
         enable_fault_tolerance: Optional[bool] = None,
         ops_config: Optional[List[str]] = None,
         ops_version: Optional[str] = None,
-        tags: Optional[dict] = None,
-        trust_source: str = TrustSourceType.self_signed.value,
+        trust_settings: Optional[List[str]] = None,
         # Dataflow
         dataflow_profile_instances: int = 1,
         # Broker
@@ -80,12 +80,12 @@ class InitTargets:
         self.deploy_resource_sync_rules = bool(enable_rsync_rules)
         self.instance_name = self._sanitize_k8s_name(instance_name)
         self.instance_description = instance_description
+        self.tags = tags
         self.enable_fault_tolerance = enable_fault_tolerance
         self.ops_config = assemble_nargs_to_dict(ops_config)
         self.ops_version = ops_version
-        self.trust_source = trust_source
-        self.tags = tags
-
+        self.trust_settings = assemble_nargs_to_dict(trust_settings)
+        self.trust_config = self.get_trust_settings_target_map()
         self.advanced_config = self.get_advanced_config_target_map()
 
         # Dataflow
@@ -150,7 +150,7 @@ class InitTargets:
                 "clusterName": self.cluster_name,
                 "kubernetesDistro": self.kubernetes_distro,
                 "containerRuntimeSocket": self.container_runtime_socket,
-                "trustSource": self.trust_source,
+                "trustConfig": self.trust_config,
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "advancedConfig": self.advanced_config,
             },
@@ -259,12 +259,33 @@ class InitTargets:
 
         return processed_config_map
 
-    def get_advanced_config_target_map(self):
+    def get_advanced_config_target_map(self) -> dict:
         processed_config_map = {}
         if self.enable_fault_tolerance:
             processed_config_map["edgeStorageAccelerator"] = {"faultToleranceEnabled": True}
 
         return {"advancedConfig": processed_config_map}
+
+    def get_trust_settings_target_map(self) -> dict:
+        source = "SelfSigned"
+        result = {"source": source}
+        if self.trust_settings:
+            target_settings: Dict[str, str] = {}
+            supported_keys = frozenset(["issuerName", "issuerKind", "configMapName", "configMapKey"])
+            result["source"] = "CustomerManaged"
+            trust_bundle_def = M2_ENABLEMENT_TEMPLATE.get_type_definition("_1.TrustBundleSettings")["properties"]
+            allowed_issuer_kinds: Optional[List[str]] = trust_bundle_def.get("issuerKind", {}).get("allowedValues")
+            for key in supported_keys:
+                if key not in self.trust_settings:
+                    raise InvalidArgumentValueError(f"{key} is a required trust setting/key.")
+                if key == "issuerKind":
+                    if allowed_issuer_kinds:
+                        if self.trust_settings[key] not in allowed_issuer_kinds:
+                            raise InvalidArgumentValueError(f"{key} allowed values are {allowed_issuer_kinds}.")
+                target_settings[key] = self.trust_settings[key]
+            result["settings"] = target_settings
+
+        return result
 
     # TODO - @digimaun
     def get_instance_kpis(self) -> dict:
