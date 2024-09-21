@@ -117,6 +117,7 @@ def init(
     trust_source: str = TrustSourceType.self_signed.value,
     enable_fault_tolerance: Optional[bool] = None,
     ops_config: Optional[List[str]] = None,
+    ops_version: Optional[str] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     **kwargs,
@@ -139,6 +140,7 @@ def init(
         kubernetes_distro=kubernetes_distro,
         enable_fault_tolerance=enable_fault_tolerance,
         ops_config=ops_config,
+        ops_version=ops_version,
         trust_source=trust_source,
         schema_registry_resource_id=schema_registry_resource_id,
     )
@@ -152,7 +154,7 @@ def create_instance(
     cluster_namespace: str = DEFAULT_NAMESPACE,
     location: Optional[str] = None,
     custom_location_name: Optional[str] = None,
-    disable_rsync_rules: Optional[bool] = None,
+    enable_rsync_rules: Optional[bool] = None,
     instance_description: Optional[str] = None,
     dataflow_profile_instances: int = 1,
     # Broker
@@ -198,7 +200,7 @@ def create_instance(
         cluster_namespace=cluster_namespace,
         location=location,
         custom_location_name=custom_location_name,
-        disable_rsync_rules=disable_rsync_rules,
+        enable_rsync_rules=enable_rsync_rules,
         instance_name=instance_name,
         instance_description=instance_description,
         add_insecure_listener=add_insecure_listener,
