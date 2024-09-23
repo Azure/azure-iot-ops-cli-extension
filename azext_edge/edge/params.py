@@ -18,7 +18,7 @@ from knack.arguments import CaseInsensitiveList
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
 from ._validators import validate_namespace, validate_resource_name
-from .common import FileType, OpsServiceType, SecurityModes, SecurityPolicies, TopicRetain
+from .common import FileType, OpsServiceType, SecurityModes, SecurityPolicies, TopicRetain, AEPAuthModes
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
     DeviceRegistryResourceKinds,
@@ -962,6 +962,7 @@ def load_iotops_arguments(self, _):
             options_list=["--authentication-mode", "--am"],
             help="Authentication Mode.",
             arg_group="Authentication",
+            arg_type=get_enum_type(AEPAuthModes)
         )
         context.argument(
             "certificate_reference",
