@@ -496,11 +496,11 @@ def load_iotops_help():
           text: >
              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
              --add-insecure-listener
-        - name: This form shows how to disable resource sync rules from the instance deployment,
-            which may be necessary due to lack of permissions to deploy them.
+        - name: This form shows how to enable resource sync for the instance deployment.
+            To enable resource sync role assignment write is necessary on the target resource group.
           text: >
              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
-             --disable-rsync-rules
+             --enable-rsync
     """
 
     helps[
