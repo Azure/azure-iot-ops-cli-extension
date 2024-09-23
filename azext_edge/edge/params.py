@@ -387,10 +387,10 @@ def load_iotops_arguments(self, _):
                 "If not provided the connected cluster location will be used.",
             )
             context.argument(
-                "disable_rsync_rules",
-                options_list=["--disable-rsync-rules"],
+                "enable_rsync_rules",
+                options_list=["--enable-rsync"],
                 arg_type=get_three_state_flag(),
-                help="Resource sync rules will not be included in the IoT Operations deployment.",
+                help="Resource sync rules will be included in the IoT Operations deployment.",
             )
             context.argument(
                 "ensure_latest",
@@ -501,6 +501,12 @@ def load_iotops_arguments(self, _):
                 action="extend",
                 help="IoT Operations arc extension custom configuration. Format is space-separated key=value pairs. "
                 "--ops-config can be used one or more times. For advanced use cases.",
+            )
+            context.argument(
+                "ops_version",
+                options_list=["--ops-version"],
+                help="Use to override the built-in IoT Operations arc extension version. ",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 "enable_fault_tolerance",
