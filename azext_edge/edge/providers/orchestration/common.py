@@ -6,8 +6,6 @@
 
 from enum import Enum
 
-from ...util.x509 import DEFAULT_VALID_DAYS as DEFAULT_X509_CA_VALID_DAYS
-
 # Urls
 ARM_ENDPOINT = "https://management.azure.com/"
 MCR_ENDPOINT = "https://mcr.microsoft.com/"
@@ -61,15 +59,3 @@ class KubernetesDistroType(Enum):
 
 class IdentityUsageType(Enum):
     dataflow = "dataflow"
-
-
-__all__ = [
-    "MqMode",
-    "MqMemoryProfile",
-    "MqServiceType",
-    "KubernetesDistroType",
-    "IdentityUsageType",
-    "DEFAULT_X509_CA_VALID_DAYS",
-    "KEYVAULT_CLOUD_API_VERSION",
-    "TRUST_SETTING_KEYS",
-]
