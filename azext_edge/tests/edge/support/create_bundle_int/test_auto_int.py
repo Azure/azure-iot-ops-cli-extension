@@ -52,8 +52,10 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         )
 
     # Level 0 - top
-    namespace = process_top_levels(walk_result, ops_service)
-    aio_namespace = namespace.aio
+    namespaces = process_top_levels(walk_result, ops_service)
+    aio_namespace = namespaces.get("aio")
+    acs_namespace = namespaces.get("acs")
+    ssc_namespace = namespaces.get("ssc")
 
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -74,12 +76,12 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             walk_result[path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.mq.value)]["folders"] = []
 
     # remove acs resources from walk_result from aio namespace assertion
-    if namespace.acs:
-        walk_result.pop(path.join(BASE_ZIP_PATH, namespace.acs, "arccontainerstorage"), {})
+    if acs_namespace:
+        walk_result.pop(path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage"), {})
 
     # remove ssc resources in ssc namespace from walk_result from aio namespace assertion
-    if namespace.ssc:
-        walk_result.pop(path.join(BASE_ZIP_PATH, namespace.ssc, OpsServiceType.secretstore.value), {})
+    if ssc_namespace:
+        walk_result.pop(path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretstore.value), {})
 
     # Level 2 and 3 - bottom
     is_billing_included = OpsServiceType.billing.value in expected_services

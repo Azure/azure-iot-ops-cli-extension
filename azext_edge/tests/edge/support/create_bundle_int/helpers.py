@@ -39,14 +39,6 @@ WORKLOAD_TYPES = [
 ]
 
 
-class NamespaceTuple(NamedTuple):
-    arc: str
-    aio: str
-    acs: str
-    ssc: str
-    usage_system: str
-
-
 def assert_file_names(files: List[str]):
     """Asserts file names."""
     for full_name in files:
@@ -240,9 +232,12 @@ def get_file_map(
     mq_traces: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    arc_namespace, aio_namespace, acs_namespace, ssc_namespace, c_namespace = process_top_levels(
-        walk_result, ops_service
-    )
+    namespaces = process_top_levels(walk_result, ops_service)
+    arc_namespace = namespaces.get("arc")
+    aio_namespace = namespaces.get("aio")
+    acs_namespace = namespaces.get("acs")
+    ssc_namespace = namespaces.get("ssc")
+    c_namespace = namespaces.get("usage_system")
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -308,7 +303,7 @@ def get_file_map(
 def process_top_levels(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
-) -> NamespaceTuple:
+) -> Dict[str, Union[str, None]]:
     level_0 = walk_result.pop(BASE_ZIP_PATH)
     for file in ["events.yaml", "nodes.yaml", "storage-classes.yaml", "azure-clusterconfig.yaml"]:
         assert file in level_0["files"]
@@ -374,13 +369,13 @@ def process_top_levels(
     logger.debug(f"ACS namespace: {acs_namespace}")
     logger.debug(f"SSC namespace: {ssc_namespace}")
 
-    return NamespaceTuple(
-        arc=arc_namespace,
-        aio=namespace,
-        acs=acs_namespace,
-        ssc=ssc_namespace,
-        usage_system=clusterconfig_namespace,
-    )
+    return {
+        "arc": arc_namespace,
+        "aio": namespace,
+        "acs": acs_namespace,
+        "ssc": ssc_namespace,
+        "usage_system": clusterconfig_namespace,
+    }
 
 
 def run_bundle_command(
