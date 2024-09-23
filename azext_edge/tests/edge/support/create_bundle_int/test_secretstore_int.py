@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 def test_create_bundle_ssc(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
-    ops_service = OpsServiceType.secretsynccontroller.value
+    ops_service = OpsServiceType.secretstore.value
 
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
@@ -33,9 +33,9 @@ def test_create_bundle_ssc(init_setup, tracked_files):
     # SECRETSTORE
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     expected_types = set(expected_workload_types)
-    assert set(file_map[OpsServiceType.secretsynccontroller.value].keys()).issubset(expected_types)
+    assert set(file_map[OpsServiceType.secretstore.value].keys()).issubset(expected_types)
     check_workload_resource_files(
-        file_objs=file_map[OpsServiceType.secretsynccontroller.value],
+        file_objs=file_map[OpsServiceType.secretstore.value],
         expected_workload_types=expected_workload_types,
         prefixes=["secrets-store-sync-controller-manager", "manager-metrics-service"],
         bundle_path=bundle_path,
