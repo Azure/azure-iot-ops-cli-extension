@@ -23,7 +23,7 @@ JSON = MutableMapping[str, Any]  # pylint: disable=unsubscriptable-object
 ensure_azure_namespace_path()
 
 from azure.core.pipeline.policies import HttpLoggingPolicy, UserAgentPolicy
-from azure.identity import AzureCliCredential, ClientSecretCredential
+from azure.identity import AzureCliCredential
 
 AZURE_CLI_CREDENTIAL = AzureCliCredential()
 
@@ -122,7 +122,7 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
     )
 
 
-REGISTRY_API_VERSION = "2024-07-01-preview"
+REGISTRY_API_VERSION = "2024-09-01-preview"
 
 
 def get_registry_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftDeviceRegistryManagementService":
@@ -181,11 +181,6 @@ def get_authz_client(subscription_id: str, **kwargs) -> "AuthorizationManagement
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
         **kwargs,
     )
-
-
-def get_token_from_sp_credential(tenant_id: str, client_id: str, client_secret: str, scope: str) -> str:
-    client_secret_cred = ClientSecretCredential(tenant_id=tenant_id, client_id=client_id, client_secret=client_secret)
-    return client_secret_cred.get_token(scope).token
 
 
 def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC) -> JSON:
