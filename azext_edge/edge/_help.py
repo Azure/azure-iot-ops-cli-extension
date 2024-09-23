@@ -1023,6 +1023,8 @@ def load_iotops_help():
 
                       For OPC UA connector arguments, a value of -1 means that parameter will not be used (ex: --session-reconnect-backoff -1 means that no exponential backoff should be used).
                       A value of 0 means use the fastest practical rate (ex: --default-sampling-int 0 means use the fastest sampling interval possible for the server).
+
+                      For more information on how to create an OPCUA connector, please see aka.ms/opcua_quickstart
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >
@@ -1044,8 +1046,8 @@ def load_iotops_help():
             --target-address opc.tcp://opcplc-000000:50000 --certificate-ref mycertificate.pem
         - name: Create an asset endpoint with anonymous user authentication and recommended values for the OPCUA configuration using the given instance in the same resource group.
                 Note that for successfully using the connector, you will need to have the OPC PLC service deployed on your cluster and the target address must point to the service.
-                If the OPC PLC service is in the same namespace as AIO, the target address should be formatted as: opc.tcp://{opc-plc-service-name}:{service-port}
-                Otherwise, include the service namespace like so: opc.tcp://{opc-plc-service-name}.{service-namespace}:{service-port}
+                If the OPC PLC service is in the same namespace as AIO, the target address should be formatted as `opc.tcp://{opc-plc-service-name}:{service-port}`
+                Otherwise, include the service namespace like so `opc.tcp://{opc-plc-service-name}.{service-namespace}:{service-port}`
           text: >
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000 --accept-untrusted-certs --application myopcuaconnector
