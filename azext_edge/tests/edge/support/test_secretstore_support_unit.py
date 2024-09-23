@@ -8,7 +8,7 @@ import random
 
 from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.support.secretsynccontroller import (
+from azext_edge.edge.providers.support.secretstore import (
     SSC_DIRECTORY_PATH,
     SSC_NAMESPACE,
 )
@@ -42,7 +42,7 @@ def test_create_bundle_ssc(
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(
         None,
-        ops_service=OpsServiceType.secretsynccontroller.value,
+        ops_service=OpsServiceType.secretstore.value,
         bundle_dir=a_bundle_dir,
         log_age_seconds=since_seconds,
     )

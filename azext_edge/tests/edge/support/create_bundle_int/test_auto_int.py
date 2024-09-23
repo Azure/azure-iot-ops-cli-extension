@@ -79,7 +79,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
 
     # remove ssc resources in ssc namespace from walk_result from aio namespace assertion
     if namespace.ssc:
-        walk_result.pop(path.join(BASE_ZIP_PATH, namespace.ssc, OpsServiceType.secretsynccontroller.value), {})
+        walk_result.pop(path.join(BASE_ZIP_PATH, namespace.ssc, OpsServiceType.secretstore.value), {})
 
     # Level 2 and 3 - bottom
     is_billing_included = OpsServiceType.billing.value in expected_services
@@ -136,10 +136,10 @@ def _get_expected_services(
 
     # secretstore folder will not be created if there are no secretstore resources
     if (
-        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.secretsynccontroller.value))
-        and OpsServiceType.secretsynccontroller.value in expected_services
+        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.secretstore.value))
+        and OpsServiceType.secretstore.value in expected_services
     ):
-        expected_services.remove(OpsServiceType.secretsynccontroller.value)
+        expected_services.remove(OpsServiceType.secretstore.value)
 
     expected_services.append("meta")
     return expected_services

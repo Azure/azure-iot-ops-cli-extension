@@ -280,16 +280,16 @@ def get_file_map(
 
         # no files for aio, skip the rest assertions
         return file_map
-    elif ops_service == OpsServiceType.secretsynccontroller.value:
-        ops_path = path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.secretsynccontroller.value)
-        ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretsynccontroller.value)
+    elif ops_service == OpsServiceType.secretstore.value:
+        ops_path = path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.secretstore.value)
+        ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretstore.value)
         if ops_path not in walk_result:
             # no crd created in aio namespace
             assert len(walk_result) == 1 + expected_default_walk_result
         else:
             assert len(walk_result) == 2 + expected_default_walk_result
-        file_map[OpsServiceType.secretsynccontroller.value] = convert_file_names(walk_result[ssc_path]["files"])
-        file_map["__namespaces__"][OpsServiceType.secretsynccontroller.value] = ssc_namespace
+        file_map[OpsServiceType.secretstore.value] = convert_file_names(walk_result[ssc_path]["files"])
+        file_map["__namespaces__"][OpsServiceType.secretstore.value] = ssc_namespace
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
             assert len(walk_result) == expected_default_walk_result
@@ -339,7 +339,7 @@ def process_top_levels(
         elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
             acs_namespace = name
         elif _get_namespace_determinating_files(
-            name=name, folder=OpsServiceType.secretsynccontroller.value, file_prefix="deployment"
+            name=name, folder=OpsServiceType.secretstore.value, file_prefix="deployment"
         ):
             ssc_namespace = name
         else:
@@ -349,7 +349,7 @@ def process_top_levels(
         (clusterconfig_namespace, "clusterconfig"),
         (arc_namespace, "arcagents"),
         (acs_namespace, "arccontainerstorage"),
-        (ssc_namespace, OpsServiceType.secretsynccontroller.value),
+        (ssc_namespace, OpsServiceType.secretstore.value),
     ]:
         if namespace_folder:
             # remove empty folders in level 1

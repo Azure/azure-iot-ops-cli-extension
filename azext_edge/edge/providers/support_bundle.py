@@ -36,7 +36,7 @@ COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1
 COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
 COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1B1])
 COMPAT_ARCCONTAINERSTORAGE_APIS = EdgeApiManager(resource_apis=[ARCCONTAINERSTORAGE_API_V1])
-COMPAT_SECRETSYNCCONTROLLER_APIS = EdgeApiManager(resource_apis=[SECRETSYNC_API_V1, SECRETSTORE_API_V1])
+COMPAT_SECRETSTORE_APIS = EdgeApiManager(resource_apis=[SECRETSYNC_API_V1, SECRETSTORE_API_V1])
 
 
 def build_bundle(
@@ -60,7 +60,7 @@ def build_bundle(
     from .support.meta import prepare_bundle as prepare_meta_bundle
     from .support.schemaregistry import prepare_bundle as prepare_schema_registry_bundle
     from .support.arccontainerstorage import prepare_bundle as prepare_arccontainerstorage_bundle
-    from .support.secretsynccontroller import prepare_bundle as prepare_secretsynccontroller_bundle
+    from .support.secretstore import prepare_bundle as prepare_secretstore_bundle
 
     def collect_default_works(
         pending_work: dict,
@@ -106,9 +106,9 @@ def build_bundle(
             "apis": COMPAT_ARCCONTAINERSTORAGE_APIS,
             "prepare_bundle": prepare_arccontainerstorage_bundle,
         },
-        OpsServiceType.secretsynccontroller.value: {
-            "apis": COMPAT_SECRETSYNCCONTROLLER_APIS,
-            "prepare_bundle": prepare_secretsynccontroller_bundle,
+        OpsServiceType.secretstore.value: {
+            "apis": COMPAT_SECRETSTORE_APIS,
+            "prepare_bundle": prepare_secretstore_bundle,
         },
     }
 
