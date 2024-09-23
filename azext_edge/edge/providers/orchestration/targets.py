@@ -21,6 +21,8 @@ from ..orchestration.common import (
     AIO_INSECURE_LISTENER_NAME,
     AIO_INSECURE_LISTENER_SERVICE_NAME,
     AIO_INSECURE_LISTENER_SERVICE_PORT,
+    TRUST_ISSUER_KIND_KEY,
+    TRUST_SETTING_KEYS,
     MqServiceType,
 )
 from .common import KubernetesDistroType
@@ -271,14 +273,13 @@ class InitTargets:
         result = {"source": source}
         if self.trust_settings:
             target_settings: Dict[str, str] = {}
-            supported_keys = frozenset(["issuerName", "issuerKind", "configMapName", "configMapKey"])
             result["source"] = "CustomerManaged"
             trust_bundle_def = M2_ENABLEMENT_TEMPLATE.get_type_definition("_1.TrustBundleSettings")["properties"]
             allowed_issuer_kinds: Optional[List[str]] = trust_bundle_def.get("issuerKind", {}).get("allowedValues")
-            for key in supported_keys:
+            for key in TRUST_SETTING_KEYS:
                 if key not in self.trust_settings:
                     raise InvalidArgumentValueError(f"{key} is a required trust setting/key.")
-                if key == "issuerKind":
+                if key == TRUST_ISSUER_KIND_KEY:
                     if allowed_issuer_kinds:
                         if self.trust_settings[key] not in allowed_issuer_kinds:
                             raise InvalidArgumentValueError(f"{key} allowed values are {allowed_issuer_kinds}.")

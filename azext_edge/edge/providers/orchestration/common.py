@@ -31,7 +31,8 @@ AIO_INSECURE_LISTENER_NAME = "default-insecure"
 AIO_INSECURE_LISTENER_SERVICE_NAME = "aio-broker-insecure"
 AIO_INSECURE_LISTENER_SERVICE_PORT = 1883
 
-TRUST_SETTING_KEYS = frozenset(["issuerName", "issuerKind", "configMapName", "configMapKey"])
+TRUST_ISSUER_KIND_KEY = "issuerKind"
+TRUST_SETTING_KEYS = frozenset(["issuerName", TRUST_ISSUER_KIND_KEY, "configMapName", "configMapKey"])
 
 
 class MqMode(Enum):
