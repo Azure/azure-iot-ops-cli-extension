@@ -528,7 +528,7 @@ def load_iotops_arguments(self, _):
                 "trust_settings",
                 options_list=["--trust-settings"],
                 nargs="+",
-                action="extend",
+                action="store",
                 help="Settings for user provided trust bundle. Used for component TLS. Format is space-separated "
                 f"key=value pairs. The following keys are required: `{'`, `'.join(TRUST_SETTING_KEYS)}`. If not "
                 "used, a system provided self-signed trust bundle is configured.",
