@@ -21,9 +21,11 @@ from ..orchestration.common import (
     AIO_INSECURE_LISTENER_NAME,
     AIO_INSECURE_LISTENER_SERVICE_NAME,
     AIO_INSECURE_LISTENER_SERVICE_PORT,
+    TRUST_ISSUER_KIND_KEY,
+    TRUST_SETTING_KEYS,
     MqServiceType,
 )
-from .common import KubernetesDistroType, TrustSourceType
+from .common import KubernetesDistroType
 from .template import (
     IOT_OPERATIONS_VERSION_MONIKER,
     M2_ENABLEMENT_TEMPLATE,
@@ -42,13 +44,14 @@ class InitTargets:
         cluster_namespace: str = "azure-iot-operations",
         location: Optional[str] = None,
         custom_location_name: Optional[str] = None,
-        disable_rsync_rules: Optional[bool] = None,
+        enable_rsync_rules: Optional[bool] = None,
         instance_name: Optional[str] = None,
         instance_description: Optional[str] = None,
+        tags: Optional[dict] = None,
         enable_fault_tolerance: Optional[bool] = None,
         ops_config: Optional[List[str]] = None,
-        tags: Optional[dict] = None,
-        trust_source: str = TrustSourceType.self_signed.value,
+        ops_version: Optional[str] = None,
+        trust_settings: Optional[List[str]] = None,
         # Dataflow
         dataflow_profile_instances: int = 1,
         # Broker
@@ -76,13 +79,16 @@ class InitTargets:
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
         self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
-        self.deploy_resource_sync_rules: bool = not disable_rsync_rules
+        self.deploy_resource_sync_rules = bool(enable_rsync_rules)
         self.instance_name = self._sanitize_k8s_name(instance_name)
         self.instance_description = instance_description
+        self.tags = tags
         self.enable_fault_tolerance = enable_fault_tolerance
         self.ops_config = assemble_nargs_to_dict(ops_config)
-        self.trust_source = trust_source
-        self.tags = tags
+        self.ops_version = ops_version
+        self.trust_settings = assemble_nargs_to_dict(trust_settings)
+        self.trust_config = self.get_trust_settings_target_map()
+        self.advanced_config = self.get_advanced_config_target_map()
 
         # Dataflow
         self.dataflow_profile_instances = self._sanitize_int(dataflow_profile_instances)
@@ -146,32 +152,19 @@ class InitTargets:
                 "clusterName": self.cluster_name,
                 "kubernetesDistro": self.kubernetes_distro,
                 "containerRuntimeSocket": self.container_runtime_socket,
-                "trustSource": self.trust_source,
+                "trustConfig": self.trust_config,
                 "schemaRegistryId": self.schema_registry_resource_id,
+                "advancedConfig": self.advanced_config,
             },
             template_blueprint=M2_ENABLEMENT_TEMPLATE,
         )
 
-        # TODO - @digimaun temp
-        esa_extension = template.get_resource_by_key("edge_storage_accelerator_extension")
-        esa_extension["properties"]["extensionType"] = "microsoft.arc.containerstorage"
-        esa_extension["properties"]["version"] = "2.1.1-preview"
-        esa_extension["properties"]["releaseTrain"] = "stable"
-
-        esa_extension_config = {
-            "edgeStorageConfiguration.create": "true",
-            "feature.diskStorageClass": "default,local-path",
-        }
-        if self.enable_fault_tolerance:
-            esa_extension_config["feature.diskStorageClass"] = "acstor-arccontainerstorage-storage-pool"
-            esa_extension_config["acstorConfiguration.create"] = "true"
-            esa_extension_config["acstorConfiguration.properties.diskMountPoint"] = "/mnt"
-
-        esa_extension["properties"]["configurationSettings"] = esa_extension_config
-
         if self.ops_config:
             aio_default_config: Dict[str, str] = template.content["variables"]["defaultAioConfigurationSettings"]
             aio_default_config.update(self.ops_config)
+
+        if self.ops_version:
+            template.content["variables"]["VERSIONS"]["aio"] = self.ops_version
 
         # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
         return template.content, parameters
@@ -210,15 +203,6 @@ class InitTargets:
             broker_listener["name"] = f"{self.instance_name}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
             dataflow_profile["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_PROFILE}"
             dataflow_endpoint["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_ENDPOINT}"
-
-        # TODO - @digimaun
-        # if self.mi_user_assigned_identities:
-        #     mi_user_payload = {}
-        #     for mi in self.mi_user_assigned_identities:
-        #         mi_user_payload[mi] = {}
-        #     instance["identity"] = {}
-        #     instance["identity"]["type"] = "UserAssigned"
-        #     instance["identity"]["userAssignedIdentities"] = mi_user_payload
 
         if self.custom_broker_config:
             if "properties" in self.custom_broker_config:
@@ -276,6 +260,34 @@ class InitTargets:
             raise InvalidArgumentValueError("\n".join(validation_errors))
 
         return processed_config_map
+
+    def get_advanced_config_target_map(self) -> dict:
+        processed_config_map = {}
+        if self.enable_fault_tolerance:
+            processed_config_map["edgeStorageAccelerator"] = {"faultToleranceEnabled": True}
+
+        return processed_config_map
+
+    def get_trust_settings_target_map(self) -> dict:
+        source = "SelfSigned"
+        result = {"source": source}
+        if self.trust_settings:
+            target_settings: Dict[str, str] = {}
+            result["source"] = "CustomerManaged"
+            trust_bundle_def = M2_ENABLEMENT_TEMPLATE.get_type_definition("_1.TrustBundleSettings")["properties"]
+            allowed_issuer_kinds: Optional[List[str]] = trust_bundle_def.get(TRUST_ISSUER_KIND_KEY, {}).get(
+                "allowedValues"
+            )
+            for key in TRUST_SETTING_KEYS:
+                if key not in self.trust_settings:
+                    raise InvalidArgumentValueError(f"{key} is a required trust setting/key.")
+                if key == TRUST_ISSUER_KIND_KEY:
+                    if allowed_issuer_kinds and self.trust_settings[key] not in allowed_issuer_kinds:
+                        raise InvalidArgumentValueError(f"{key} allowed values are {allowed_issuer_kinds}.")
+                target_settings[key] = self.trust_settings[key]
+            result["settings"] = target_settings
+
+        return result
 
     # TODO - @digimaun
     def get_instance_kpis(self) -> dict:
