@@ -259,7 +259,7 @@ class FileType(ListableEnum):
     """
 
     json = "json"
-    portal_csv = "portal-csv"
+    csv = "csv"
     yaml = "yaml"
 
 

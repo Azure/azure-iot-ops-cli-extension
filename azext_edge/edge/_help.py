@@ -711,7 +711,8 @@ def load_iotops_help():
           text: >
             az iot ops asset create --name myasset -g myresourcegroup --endpoint-profile myassetendpoint --instance myinstance
 
-        - name: Create an asset using the given instance in a different resource group and subscription.
+        - name: Create an asset using the given instance in a different resource group and subscription. Note that the Digital
+                Operations Experience may not display the asset if it is in a different subscription from the instance.
           text: >
             az iot ops asset create --name myasset -g myresourcegroup --endpoint-profile myassetendpoint --instance myinstance
             --instance-resource-group myinstanceresourcegroup --instance-subscription myinstancesubscription
@@ -728,7 +729,7 @@ def load_iotops_help():
             event_notifier=EventNotifier2 name=myEvent2 --dataset-publish-int 1250 --dataset-queue-size 2 --dataset-sample-int 30
             --event-publish-int 750 --event-queue-size 3 --event-sample-int 50
             --description 'Description for a test asset.'
-            --documentation-uri www.help.com --external-asset-id 000-000-1234 --hardware-revision 10.0
+            --documentation-uri www.contoso.com --external-asset-id 000-000-1234 --hardware-revision 10.0
             --product-code XXX100 --software-revision 0.1 --manufacturer Contoso
             --manufacturer-uri constoso.com --model AssetModel --serial-number 000-000-ABC10
             --custom-attribute work_location=factory
@@ -779,7 +780,7 @@ def load_iotops_help():
                 and software revision.
           text: >
             az iot ops asset update --name myasset -g myresourcegroup --description "Updated test asset description."
-            --documentation-uri www.help2.com --hardware-revision 11.0
+            --documentation-uri www.contoso.com --hardware-revision 11.0
             --product-code XXX102 --software-revision 0.2
 
         - name: Update an asset's manufacturer, manufacturer uri, model, serial number, and custom attribute.
@@ -839,7 +840,7 @@ def load_iotops_help():
         "iot ops asset dataset point"
     ] = """
         type: group
-        short-summary: Manage data points in an asset dataset.
+        short-summary: Manage data-points in an asset dataset.
     """
 
     helps[
@@ -864,19 +865,16 @@ def load_iotops_help():
         "iot ops asset dataset point export"
     ] = """
         type: command
-        short-summary: Export data points in an asset dataset.
+        short-summary: Export data-points in an asset dataset.
         long-summary: The file name will be {asset_name}_{dataset_name}_dataPoints.{file_type}.
         examples:
-        - name: Export all data points in an asset in JSON format.
+        - name: Export all data-points in an asset in JSON format.
           text: >
             az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1
-        - name: Export all data points in an asset in CSV format in a specific output directory.
+        - name: Export all data-points in an asset in CSV format in a specific output directory that can be uploaded via the Digital Operations Experience.
           text: >
             az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format csv --output-dir myAssetsFiles
-        - name: Export all data points in an asset in CSV format that can be uploaded via the DOE portal.
-          text: >
-            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format portal-csv
-        - name: Export all data points in an asset in YAML format. Replace the file if one is present already.
+        - name: Export all data-points in an asset in YAML format. Replace the file if one is present already.
           text: >
             az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format yaml --replace
     """
@@ -885,13 +883,13 @@ def load_iotops_help():
         "iot ops asset dataset point import"
     ] = """
         type: command
-        short-summary: Import data points in an asset dataset. ### TODO: update once dup param is decided
+        short-summary: Import data-points in an asset dataset.
         long-summary: For examples of file formats, please see aka.ms/aziotops-assets
         examples:
-        - name: Import all data points from a file. These data points will be appended to the asset dataset's current data points. Data-points with duplicate dataSources will be ignored.
+        - name: Import all data-points from a file. These data-points will be appended to the asset dataset's current data-points. Data-points with duplicate dataSources will be ignored.
           text: >
             az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset dataset1 --input-file myasset_dataset1_dataPoints.csv
-        - name: Import all data points from a file. These data points will be appended to the asset dataset's current data points. Data-points with duplicate dataSources will be replaced.
+        - name: Import all data-points from a file. These data-points will be appended to the asset dataset's current data-points. Data-points with duplicate dataSources will be replaced.
           text: >
             az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset dataset1 --input-file myasset_dataset1_dataPoints.json --replace
     """
@@ -900,7 +898,7 @@ def load_iotops_help():
         "iot ops asset dataset point list"
     ] = """
         type: command
-        short-summary: List data points in an asset dataset.
+        short-summary: List data-points in an asset dataset.
         examples:
         - name: List all points in an asset dataset.
           text: >
@@ -954,12 +952,9 @@ def load_iotops_help():
         - name: Export all events in an asset in JSON format.
           text: >
             az iot ops asset event export --asset myasset -g myresourcegroup
-        - name: Export all events in an asset in CSV format in a specific output directory.
+        - name: Export all events in an asset in CSV format in a specific output directory that can be uploaded to the Digital Operations Experience.
           text: >
             az iot ops asset event export --asset myasset -g myresourcegroup --format csv --output-dir myAssetFiles
-        - name: Export all events in an asset in CSV format that can be uploaded to the DOE portal.
-          text: >
-            az iot ops asset event export --asset myasset -g myresourcegroup --format portal-csv
         - name: Export all events in an asset in YAML format. Replace the file if one is present already.
           text: >
             az iot ops asset event export --asset myasset -g myresourcegroup --format yaml --replace
@@ -1030,13 +1025,14 @@ def load_iotops_help():
                       For OPC UA connector arguments, a value of -1 means that parameter will not be used (ex: --session-reconnect-backoff -1 means that no exponential backoff should be used).
                       A value of 0 means use the fastest practical rate (ex: --default-sampling-int 0 means use the fastest sampling interval possible for the server).
 
-                      For more information on how to create an OPCUA connector, please see aka.ms/opcua_quickstart
+                      For more information on how to create an OPCUA connector, please see aka.ms/opcua-quickstart
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000
-        - name: Create an asset endpoint with anonymous user authentication using the given instance in a different resource group and subscription.
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in a different resource group and subscription. Note that the Digital
+                Operations Experience may not display the asset endpoint profile if it is in a different subscription from the instance.
           text: >
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --instance-resource-group myinstanceresourcegroup --instance-subscription myinstancesubscription
@@ -1052,8 +1048,8 @@ def load_iotops_help():
             --target-address opc.tcp://opcplc-000000:50000 --certificate-ref mycertificate.pem
         - name: Create an asset endpoint with anonymous user authentication and recommended values for the OPCUA configuration using the given instance in the same resource group.
                 Note that for successfully using the connector, you will need to have the OPC PLC service deployed on your cluster and the target address must point to the service.
-                If the OPC PLC service is in the same namespace as AIO, the target address should be formatted as `opc.tcp://{opc-plc-service-name}:{service-port}`
-                Otherwise, include the service namespace like so `opc.tcp://{opc-plc-service-name}.{service-namespace}:{service-port}`
+                If the OPC PLC service is in the same cluster and namespace as AIO, the target address should be formatted as `opc.tcp://{opc-plc-service-name}:{service-port}`
+                If the OPC PLC service is in the same cluster but different namespace as AIO, include the service namespace like so `opc.tcp://{opc-plc-service-name}.{service-namespace}:{service-port}`
           text: >
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000 --accept-untrusted-certs --application myopcuaconnector

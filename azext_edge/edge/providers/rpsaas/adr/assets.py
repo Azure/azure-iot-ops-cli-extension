@@ -410,7 +410,7 @@ class Assets(Queryable):
         )
         dataset = _get_dataset(asset, dataset_name)
         fieldnames = None
-        if extension in [FileType.portal_csv.value]:
+        if extension in [FileType.csv.value]:
             default_configuration = dataset.get("datasetConfiguration", "{}")
             if default_configuration == "{}":
                 default_configuration = asset["properties"].get("defaultDatasetsConfiguration", "{}")
@@ -418,7 +418,7 @@ class Assets(Queryable):
                 sub_points=dataset.get("dataPoints", []),
                 sub_point_type="dataPoints",
                 default_configuration=default_configuration,
-                portal_friendly=extension == FileType.portal_csv.value
+                portal_friendly=extension == FileType.csv.value
             )
             extension = extension.replace("-", ".")
         file_path = dump_content_to_file(
@@ -567,13 +567,13 @@ class Assets(Queryable):
             resource_group_name=resource_group_name,
         )["properties"]
         fieldnames = None
-        if extension in [FileType.portal_csv.value]:
+        if extension in [FileType.csv.value]:
             default_configuration = asset_props.get("defaultEventsConfiguration", "{}")
             fieldnames = _convert_sub_points_to_csv(
                 sub_points=asset_props.get("events", []),
                 sub_point_type="events",
                 default_configuration=default_configuration,
-                portal_friendly=extension == FileType.portal_csv.value
+                portal_friendly=extension == FileType.csv.value
             )
             extension = extension.replace("-", ".")
         file_path = dump_content_to_file(

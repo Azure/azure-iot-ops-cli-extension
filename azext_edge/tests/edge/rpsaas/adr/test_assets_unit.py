@@ -510,7 +510,7 @@ def test_data_point_export(
 
     default_config = mock_asset_record["properties"].get("defaultDatasetsConfiguration", "{}")
     expected_fieldnames = None
-    if extension in [FileType.portal_csv.value]:
+    if extension in [FileType.csv.value]:
         from azext_edge.edge.providers.rpsaas.adr.assets import _convert_sub_points_to_csv
         expected_fieldnames = _convert_sub_points_to_csv(
             sub_points=dataset.get("dataPoints", []),
@@ -837,7 +837,7 @@ def test_event_export(
 
     default_config = mock_asset_record["properties"].get("defaultEventsConfiguration", "{}")
     expected_fieldnames = None
-    if extension in [FileType.portal_csv.value]:
+    if extension in [FileType.csv.value]:
         from azext_edge.edge.providers.rpsaas.adr.assets import _convert_sub_points_to_csv
         expected_fieldnames = _convert_sub_points_to_csv(
             sub_points=mock_asset_record["properties"].get("events", []),
