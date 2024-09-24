@@ -275,7 +275,9 @@ class InitTargets:
             target_settings: Dict[str, str] = {}
             result["source"] = "CustomerManaged"
             trust_bundle_def = M2_ENABLEMENT_TEMPLATE.get_type_definition("_1.TrustBundleSettings")["properties"]
-            allowed_issuer_kinds: Optional[List[str]] = trust_bundle_def.get(TRUST_ISSUER_KIND_KEY, {}).get("allowedValues")
+            allowed_issuer_kinds: Optional[List[str]] = trust_bundle_def.get(TRUST_ISSUER_KIND_KEY, {}).get(
+                "allowedValues"
+            )
             for key in TRUST_SETTING_KEYS:
                 if key not in self.trust_settings:
                     raise InvalidArgumentValueError(f"{key} is a required trust setting/key.")
