@@ -266,7 +266,7 @@ class InitTargets:
         if self.enable_fault_tolerance:
             processed_config_map["edgeStorageAccelerator"] = {"faultToleranceEnabled": True}
 
-        return {"advancedConfig": processed_config_map}
+        return processed_config_map
 
     def get_trust_settings_target_map(self) -> dict:
         source = "SelfSigned"
