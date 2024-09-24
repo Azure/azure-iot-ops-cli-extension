@@ -270,7 +270,7 @@ def test_broker_checks(
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("resource_name", [None, "mock*", "mock-name"])
 @pytest.mark.parametrize(
-    "listener, service, conditions, evaluations",
+    "listener, service, listener_conditions, listener_evaluations, service_conditions, service_evaluations",
     [
         (
             # listener
@@ -288,7 +288,7 @@ def test_broker_checks(
                 status={"loadBalancer": {"ingress": [{"ip": "127.0.0.1"}]}},
                 spec={"clusterIP": "127.0.0.1"},
             ),
-            # conditions str
+            # listener conditions str
             [
                 "len(brokerlisteners)>=1",
                 "status",
@@ -296,7 +296,7 @@ def test_broker_checks(
                 "spec.serviceName",
                 "status",
             ],
-            # evaluations
+            # listener evaluations
             [
                 [
                     ("status", "success"),
@@ -313,6 +313,23 @@ def test_broker_checks(
                     ("value/spec/serviceType", "loadbalancer"),
                     ("value/spec/port", 8080),
                     ("value/spec/authenticationEnabled", "True"),
+                ],
+            ],
+            # service conditions str
+            [
+                "listener_service",
+                "status",
+                "len(status.loadBalancer.ingress[*].ip)>=1",
+            ],
+            # service evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/listener_service", "service/name"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/status", {"loadBalancer": {"ingress": [{"ip": "127.0.0.1"}]}}),
                 ],
             ],
         ),
@@ -332,7 +349,7 @@ def test_broker_checks(
                 status={"loadBalancer": {"ingress": [{"ip": "127.0.0.1"}]}},
                 spec={"clusterIP": "127.0.0.1"},
             ),
-            # conditions str
+            # listener conditions str
             [
                 "len(brokerlisteners)>=1",
                 "status",
@@ -340,7 +357,7 @@ def test_broker_checks(
                 "spec.serviceName",
                 "status",
             ],
-            # evaluations
+            # listener evaluations
             [
                 [
                     ("status", "success"),
@@ -359,6 +376,22 @@ def test_broker_checks(
                     ("value/spec/authenticationEnabled", "True"),
                 ],
             ],
+            # service conditions str
+            [
+                "listener_service",
+                "spec.clusterIP",
+            ],
+            # service evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("value/listener_service", "service/name"),
+                ],
+                [
+                    ("status", "success"),
+                    ("value/spec.clusterIP", "127.0.0.1"),
+                ],
+            ],
         ),
     ],
 )
@@ -367,8 +400,10 @@ def test_broker_listener_checks(
     mock_evaluate_mq_pod_health,
     listener,
     service,
-    conditions,
-    evaluations,
+    listener_conditions,
+    listener_evaluations,
+    service_conditions,
+    service_evaluations,
     detail_level,
     resource_name,
 ):
@@ -388,9 +423,20 @@ def test_broker_listener_checks(
     result = evaluate_broker_listeners(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalBrokerListeners"
+
+    # check listener target
     assert namespace in result["targets"]["brokerlisteners.mqttbroker.iotoperations.azure.com"]
     target = result["targets"]["brokerlisteners.mqttbroker.iotoperations.azure.com"][namespace]
 
     # conditions
-    assert_conditions(target, conditions)
-    assert_evaluations(target, evaluations)
+    assert_conditions(target, listener_conditions)
+    assert_evaluations(target, listener_evaluations)
+
+    # check service target
+    service_name = listener["spec"]["serviceName"]
+    assert namespace in result["targets"][f"service/{service_name}"]
+    target = result["targets"][f"service/{service_name}"][namespace]
+
+    # conditions
+    assert_conditions(target, service_conditions)
+    assert_evaluations(target, service_evaluations)
