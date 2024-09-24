@@ -18,7 +18,6 @@ from .providers.edge_api import META_API_V1B1
 from .providers.orchestration.common import (
     IdentityUsageType,
     KubernetesDistroType,
-    TrustSourceType,
     MqMemoryProfile,
     MqServiceType,
 )
@@ -114,7 +113,7 @@ def init(
     schema_registry_resource_id: str,
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
-    trust_source: str = TrustSourceType.self_signed.value,
+    trust_settings: Optional[List[str]] = None,
     enable_fault_tolerance: Optional[bool] = None,
     ops_config: Optional[List[str]] = None,
     ops_version: Optional[str] = None,
@@ -141,7 +140,7 @@ def init(
         enable_fault_tolerance=enable_fault_tolerance,
         ops_config=ops_config,
         ops_version=ops_version,
-        trust_source=trust_source,
+        trust_settings=trust_settings,
         schema_registry_resource_id=schema_registry_resource_id,
     )
 
