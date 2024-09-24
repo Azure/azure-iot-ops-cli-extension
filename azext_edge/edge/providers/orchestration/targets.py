@@ -280,9 +280,8 @@ class InitTargets:
                 if key not in self.trust_settings:
                     raise InvalidArgumentValueError(f"{key} is a required trust setting/key.")
                 if key == TRUST_ISSUER_KIND_KEY:
-                    if allowed_issuer_kinds:
-                        if self.trust_settings[key] not in allowed_issuer_kinds:
-                            raise InvalidArgumentValueError(f"{key} allowed values are {allowed_issuer_kinds}.")
+                    if allowed_issuer_kinds and self.trust_settings[key] not in allowed_issuer_kinds:
+                        raise InvalidArgumentValueError(f"{key} allowed values are {allowed_issuer_kinds}.")
                 target_settings[key] = self.trust_settings[key]
             result["settings"] = target_settings
 
