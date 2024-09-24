@@ -19,7 +19,7 @@ class TemplateBlueprint(NamedTuple):
     commit_id: str
     content: Dict[str, Any]
 
-    def get_type_definition(self, key: str) -> Optional[dict]:
+    def get_type_definition(self, key: str) -> dict:
         return self.content["definitions"].get(key, {"properties": {}})
 
     @property
