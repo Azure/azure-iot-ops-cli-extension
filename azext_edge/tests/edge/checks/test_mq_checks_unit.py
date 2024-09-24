@@ -326,7 +326,6 @@ def test_broker_checks(
                 [
                     ("status", "success"),
                     ("value/listener_service", "service/name"),
-                    # ("value/status", {"loadBalancer": {"ingress": [{"ip": "127.0.0.1"}]}}),
                 ],
                 [
                     ("status", "success"),
