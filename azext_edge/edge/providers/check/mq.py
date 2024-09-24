@@ -145,6 +145,8 @@ def evaluate_broker_listeners(
         )
 
         processed_services = {}
+        added_broker_ref_condition = False
+
         for listener in listeners:
             auth_metadata = listener["metadata"]
 
@@ -165,7 +167,7 @@ def evaluate_broker_listeners(
                 target_name=target_listeners,
                 namespace=namespace,
                 resource_name=listener_name,
-                detail_level=detail_level,
+                added_condition=added_broker_ref_condition,
             )
 
             listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}. {ref_display}"
@@ -357,6 +359,13 @@ def evaluate_broker_listeners(
                 value=listener_eval_value,
                 resource_name=listener_name,
             )
+
+        # remove duplicate conditions
+        listener_conditions = check_manager.targets.get(target_listeners, {}).get(namespace, {}).get("conditions", [])
+        listener_conditions = list(set(listener_conditions))
+        check_manager.set_target_conditions(
+            target_name=target_listeners, namespace=namespace, conditions=listener_conditions
+        )
 
     return check_manager.as_dict(as_list)
 
@@ -667,7 +676,7 @@ def evaluate_broker_authentications(
     )
 
     target_authentications = "brokerauthentications.mqttbroker.iotoperations.azure.com"
-    auth_conditions = ["spec.authenticationMethods"]
+    auth_conditions = ["len(spec.authenticationMethods)"]
     all_authentications = get_resources_by_name(
         api_info=MQ_ACTIVE_API,
         kind=MqResourceKinds.BROKER_AUTHENTICATION,
@@ -704,6 +713,7 @@ def evaluate_broker_authentications(
         )
 
         authentications = list(authentications)
+        added_broker_ref_condition = False
 
         for auth in authentications:
             auth_name = auth["metadata"]["name"]
@@ -719,7 +729,7 @@ def evaluate_broker_authentications(
                 target_name=target_authentications,
                 namespace=namespace,
                 resource_name=auth_name,
-                detail_level=detail_level,
+                added_condition=added_broker_ref_condition,
             )
 
             auth_desc = f"\n- Broker Authentication {{[bright_blue]{auth_name}[/bright_blue]}}. {ref_display}"
@@ -765,7 +775,7 @@ def evaluate_broker_authentications(
                 target_name=target_authentications,
                 namespace=namespace,
                 status=auth_methods_eval_status,
-                value={"spec.authenticationMethods": auth_methods},
+                value={"len(spec.authenticationMethods)": len(auth_methods)},
                 resource_name=auth_name,
             )
 
@@ -840,6 +850,7 @@ def evaluate_broker_authorizations(
         )
 
         authorizations = list(authorizations)
+        added_broker_ref_condition = False
 
         for authz in authorizations:
             authz_name = authz["metadata"]["name"]
@@ -853,7 +864,7 @@ def evaluate_broker_authorizations(
                 target_name=target_authorizations,
                 namespace=namespace,
                 resource_name=authz_name,
-                detail_level=detail_level,
+                added_condition=added_broker_ref_condition,
             )
 
             authz_desc = f"\n- Broker Authorization {{[bright_blue]{authz_name}[/bright_blue]}}. {ref_display}"
@@ -914,7 +925,7 @@ def evaluate_broker_authorizations(
                     padding=14,
                 )
 
-            check_manager.set_target_conditions(
+            check_manager.add_target_conditions(
                 target_name=target_authorizations,
                 namespace=namespace,
                 conditions=authz_conditions,
@@ -929,7 +940,7 @@ def _evaluate_broker_reference(
     target_name: str,
     namespace: str,
     resource_name: str,
-    detail_level: int = ResourceOutputDetailLevel.summary.value,
+    added_condition: bool,
 ) -> str:
     broker_reference = [ref for ref in owner_reference if ref.get("kind").lower() == MqResourceKinds.BROKER.value]
     if not broker_reference:
@@ -938,11 +949,14 @@ def _evaluate_broker_reference(
 
     # should only have one broker reference
     broker_reference_name = broker_reference[0].get("name")
-    check_manager.add_target_conditions(
-        target_name=target_name,
-        namespace=namespace,
-        conditions=["valid(brokerRef)"],
-    )
+
+    if not added_condition:
+        check_manager.add_target_conditions(
+            target_name=target_name,
+            namespace=namespace,
+            conditions=["valid(brokerRef)"],
+        )
+        added_condition = True
 
     valid_broker_refs = _get_valid_references(kind=MqResourceKinds.BROKER, namespace=namespace)
     ref_eval_status = CheckTaskStatus.success.value
@@ -1239,7 +1253,7 @@ def _check_authentication_method(
     conditions = []
     method_type = method.get("method")
     method_eval_status = CheckTaskStatus.success.value
-    method_eval_value = method
+    method_eval_value = {"method": method}
 
     # TODO: repetitive conditions
     if method_type.lower() == "custom":
@@ -1247,10 +1261,10 @@ def _check_authentication_method(
         setting = method.get("customSettings", {})
 
         if not setting:
-            method_display = "- Custom Method: [red]not found[/red]."
+            method_display = f"- Custom Method: {{[bright_blue]{method_type}[/bright_blue]}} [red]not found[/red]."
             method_eval_status = CheckTaskStatus.error.value
         else:
-            method_display = f"- Custom method: [green]{method_type}[/green]."
+            method_display = f"- Custom method: {{[bright_blue]{method_type}[/bright_blue]}} [green]detected[/green]."
         sub_check_results.append(
             CheckResult(
                 display=Padding(method_display, (0, 0, 0, 16)),
@@ -1267,10 +1281,12 @@ def _check_authentication_method(
             endpoint_display = "Endpoint [red]not found[/red]."
             method_eval_status = CheckTaskStatus.error.value
         elif not endpoint.lower().startswith("https://"):
-            endpoint_display = f"Endpoint: Invalid endpoint format [red]{endpoint}[/red]."
+            endpoint_display = (
+                f"Endpoint: [red]Invalid[/red] endpoint format {{[bright_blue]{endpoint}[/bright_blue]}}."
+            )
             method_eval_status = CheckTaskStatus.error.value
         else:
-            endpoint_display = f"Endpoint: [green]{endpoint}[/green]."
+            endpoint_display = f"Endpoint: {{[bright_blue]{endpoint}[/bright_blue]}} [green]detected[/green]."
 
         sub_check_results.append(
             CheckResult(
@@ -1284,7 +1300,6 @@ def _check_authentication_method(
 
         if auth:
             # check x509
-            secret_ref_condition = ["valid(spec.authenticationMethods[*].customSettings.auth.x509.secretRef)"]
             secret_ref = auth.get("x509", {}).get("secretRef")
             secret_ref_value = {"spec.authenticationMethods[*].customSettings.auth.x509.secretRef": secret_ref}
             validate_result = validate_ref(
@@ -1302,13 +1317,9 @@ def _check_authentication_method(
                 )
             )
 
-            # add condition separately for secret ref
-            check_manager.add_target_conditions(
-                target_name=target_authentications,
-                namespace=namespace,
-                conditions=secret_ref_condition,
-            )
+            conditions.append("valid(spec.authenticationMethods[*].customSettings.auth.x509.secretRef)")
 
+            # add eval separately for secret ref
             check_manager.add_target_eval(
                 target_name=target_authentications,
                 namespace=namespace,
@@ -1321,7 +1332,6 @@ def _check_authentication_method(
         ca_cert_config_map = setting.get("caCertConfigMap")
 
         if ca_cert_config_map:
-            ca_cert_config_map_condition = ["valid(spec.authenticationMethods[*].customSettings.caCertConfigMap)"]
             ca_cert_config_map_value = {
                 "spec.authenticationMethods[*].customSettings.caCertConfigMap": ca_cert_config_map
             }
@@ -1343,11 +1353,7 @@ def _check_authentication_method(
                 )
             )
 
-            check_manager.add_target_conditions(
-                target_name=target_authentications,
-                namespace=namespace,
-                conditions=ca_cert_config_map_condition,
-            )
+            conditions.append("valid(spec.authenticationMethods[*].customSettings.caCertConfigMap)")
 
             check_manager.add_target_eval(
                 target_name=target_authentications,
@@ -1374,10 +1380,10 @@ def _check_authentication_method(
         setting = method.get("x509Settings", {})
 
         if not setting:
-            method_display = "- x509 Method: [red]not found[/red]."
+            method_display = f"- x509 Method: {{[bright_blue]{method_type}[/bright_blue]}} [red]not found[/red]."
             method_eval_status = CheckTaskStatus.error.value
         else:
-            method_display = f"- x509 method: [green]{method_type}[/green]."
+            method_display = f"- x509 method: {{[bright_blue]{method_type}[/bright_blue]}} [green]detected[/green]."
 
         sub_check_results.append(
             CheckResult(
@@ -1428,9 +1434,6 @@ def _check_authentication_method(
         trusted_client_ca_cert = setting.get("trustedClientCaCert")
 
         if trusted_client_ca_cert:
-            trusted_client_ca_cert_condition = [
-                "valid(spec.authenticationMethods[*].x509Settings.trustedClientCaCert)"
-            ]
             trusted_client_ca_cert_value = {
                 "spec.authenticationMethods[*].x509Settings.trustedClientCaCert": trusted_client_ca_cert
             }
@@ -1452,11 +1455,7 @@ def _check_authentication_method(
                 )
             )
 
-            check_manager.add_target_conditions(
-                target_name=target_authentications,
-                namespace=namespace,
-                conditions=trusted_client_ca_cert_condition,
-            )
+            conditions.append("valid(spec.authenticationMethods[*].x509Settings.trustedClientCaCert)")
 
             check_manager.add_target_eval(
                 target_name=target_authentications,
@@ -1470,10 +1469,12 @@ def _check_authentication_method(
         setting = method.get("serviceAccountTokenSettings", {})
 
         if not setting:
-            method_display = "- Service Account Token Method: [red]not found[/red]."
+            method_display = (
+                f"- Service Account Token Method: {{[bright_blue]{method_type}[/bright_blue]}} [red]not found[/red]."
+            )
             method_eval_status = CheckTaskStatus.error.value
         else:
-            method_display = f"- Service Account Token Method: [green]{method_type}[/green]."
+            method_display = f"- Service Account Token Method: {{[bright_blue]{method_type}[/bright_blue]}} [green]detected[/green]."
         sub_check_results.append(
             CheckResult(
                 display=Padding(method_display, (0, 0, 0, 16)),
@@ -1489,7 +1490,7 @@ def _check_authentication_method(
             audiences_display = "Audiences [red]not found[/red]."
             method_eval_status = CheckTaskStatus.error.value
         else:
-            audiences_display = f"Audiences: [green]{str(audiences)}[/green]."
+            audiences_display = f"Audiences: [bright_blue]{str(audiences)}[/bright_blue] [green]detected[/green]."
 
         if detail_level != ResourceOutputDetailLevel.summary.value:
             sub_check_results.append(
@@ -1499,6 +1500,7 @@ def _check_authentication_method(
                 )
             )
     else:
+        conditions.append("spec.authenticationMethods[*].method")
         method_display = (
             f"- Unknown method type: [red]{method_type}[/red]." if method_type else "- Method [red]not found[/red]."
         )
@@ -1510,7 +1512,10 @@ def _check_authentication_method(
             )
         )
 
-    check_manager.add_target_conditions(
+    # remove duplicate conditions
+    check_conditions = check_manager.targets.get(target_authentications, {}).get(namespace, {}).get("conditions", [])
+    conditions = list(set(conditions + check_conditions))
+    check_manager.set_target_conditions(
         target_name=target_authentications,
         namespace=namespace,
         conditions=conditions,
