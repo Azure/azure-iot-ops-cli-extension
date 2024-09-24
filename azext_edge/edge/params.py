@@ -21,12 +21,12 @@ from ._validators import validate_namespace, validate_resource_name
 from .common import FileType, OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
-    AkriResourceKinds,
     DeviceRegistryResourceKinds,
     MqResourceKinds,
     OpcuaResourceKinds,
 )
 from .providers.orchestration.common import (
+    IdentityUsageType,
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
@@ -94,6 +94,30 @@ def load_iotops_arguments(self, _):
             "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
+        )
+        context.argument(
+            "mi_user_assigned",
+            options_list=["--mi-user-assigned"],
+            help="The resource Id for the desired user-assigned managed identity to use with the instance.",
+        )
+        context.argument(
+            "federated_credential_name",
+            options_list=["--fc"],
+            help="The federated credential name.",
+        )
+        context.argument(
+            "use_self_hosted_issuer",
+            options_list=["--self-hosted-issuer"],
+            arg_type=get_three_state_flag(),
+            help="Use the self-hosted oidc issuer for federation.",
+        )
+
+    with self.argument_context("iot ops identity") as context:
+        context.argument(
+            "usage_type",
+            options_list=["--usage"],
+            arg_type=get_enum_type(IdentityUsageType),
+            help="Indicates the usage type of the associated identity.",
         )
 
     with self.argument_context("iot ops show") as context:
@@ -171,8 +195,6 @@ def load_iotops_arguments(self, _):
                         MqResourceKinds.BROKER.value,
                         MqResourceKinds.BROKER_LISTENER.value,
                         OpcuaResourceKinds.ASSET_TYPE.value,
-                        AkriResourceKinds.CONFIGURATION.value,
-                        AkriResourceKinds.INSTANCE.value,
                         DataflowResourceKinds.DATAFLOW.value,
                         DataflowResourceKinds.DATAFLOWENDPOINT.value,
                         DataflowResourceKinds.DATAFLOWPROFILE.value,
@@ -231,13 +253,6 @@ def load_iotops_arguments(self, _):
             "endpoint_name",
             options_list=["--name", "-n"],
             help="Dataflow endpoint name.",
-        )
-
-    with self.argument_context("iot ops dataflow identity") as context:
-        context.argument(
-            "mi_user_assigned",
-            options_list=["--mi-user-assigned"],
-            help="The resource Id for the desired user-assigned managed identity to associate with the instance.",
         )
 
     with self.argument_context("iot ops broker") as context:
@@ -372,10 +387,10 @@ def load_iotops_arguments(self, _):
                 "If not provided the connected cluster location will be used.",
             )
             context.argument(
-                "disable_rsync_rules",
-                options_list=["--disable-rsync-rules"],
+                "enable_rsync_rules",
+                options_list=["--enable-rsync"],
                 arg_type=get_three_state_flag(),
-                help="Resource sync rules will not be included in the IoT Operations deployment.",
+                help="Resource sync rules will be included in the IoT Operations deployment.",
             )
             context.argument(
                 "ensure_latest",
@@ -479,22 +494,6 @@ def load_iotops_arguments(self, _):
                 help="Service type associated with the default mqtt broker listener.",
                 arg_group="Broker",
             )
-            # AKV CSI Driver TODO - @digimaun
-            # context.argument(
-            #     "keyvault_resource_id",
-            #     options_list=[
-            #         "--kv-resource-id",
-            #         context.deprecate(
-            #             target="--kv-id",
-            #             redirect="--kv-resource-id",
-            #             hide=True,
-            #         ),
-            #     ],
-            #     help="Key Vault ARM resource Id. Providing this resource Id will enable the client "
-            #     "to setup all necessary resources and cluster side configuration to enable "
-            #     "the Key Vault CSI driver for IoT Operations.",
-            #     arg_group="Key Vault CSI Driver",
-            # )
             context.argument(
                 "ops_config",
                 options_list=["--ops-config"],
@@ -502,6 +501,12 @@ def load_iotops_arguments(self, _):
                 action="extend",
                 help="IoT Operations arc extension custom configuration. Format is space-separated key=value pairs. "
                 "--ops-config can be used one or more times. For advanced use cases.",
+            )
+            context.argument(
+                "ops_version",
+                options_list=["--ops-version"],
+                help="Use to override the built-in IoT Operations arc extension version. ",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 "enable_fault_tolerance",
@@ -537,6 +542,25 @@ def load_iotops_arguments(self, _):
             "cluster_name",
             options_list=["--cluster"],
             help="Target cluster name for IoT Operations deletion.",
+        )
+
+    with self.argument_context("iot ops secretsync") as context:
+        context.argument(
+            "keyvault_resource_id",
+            options_list=["--kv-resource-id"],
+            help="Key Vault ARM resource Id.",
+        )
+        context.argument(
+            "spc_name",
+            options_list=["--spc"],
+            help="The secret provider class name for secret sync enablement. "
+            "The default pattern is '{instance_name}-spc'.",
+        )
+        context.argument(
+            "skip_role_assignments",
+            options_list=["--skip-ra"],
+            arg_type=get_three_state_flag(),
+            help="When used the role assignment step of the operation will be skipped.",
         )
 
     with self.argument_context("iot ops asset") as context:

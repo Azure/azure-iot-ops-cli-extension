@@ -10,7 +10,6 @@ from ._operations import Operations
 from ._operations import AssetEndpointProfilesOperations
 from ._operations import AssetsOperations
 from ._operations import BillingContainersOperations
-from ._operations import DevicesOperations
 from ._operations import DiscoveredAssetEndpointProfilesOperations
 from ._operations import DiscoveredAssetsOperations
 from ._operations import OperationStatusOperations
@@ -27,7 +26,6 @@ __all__ = [
     "AssetEndpointProfilesOperations",
     "AssetsOperations",
     "BillingContainersOperations",
-    "DevicesOperations",
     "DiscoveredAssetEndpointProfilesOperations",
     "DiscoveredAssetsOperations",
     "OperationStatusOperations",

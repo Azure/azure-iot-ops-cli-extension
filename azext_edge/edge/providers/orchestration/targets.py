@@ -42,11 +42,12 @@ class InitTargets:
         cluster_namespace: str = "azure-iot-operations",
         location: Optional[str] = None,
         custom_location_name: Optional[str] = None,
-        disable_rsync_rules: Optional[bool] = None,
+        enable_rsync_rules: Optional[bool] = None,
         instance_name: Optional[str] = None,
         instance_description: Optional[str] = None,
         enable_fault_tolerance: Optional[bool] = None,
         ops_config: Optional[List[str]] = None,
+        ops_version: Optional[str] = None,
         tags: Optional[dict] = None,
         trust_source: str = TrustSourceType.self_signed.value,
         # Dataflow
@@ -76,13 +77,16 @@ class InitTargets:
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
         self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
-        self.deploy_resource_sync_rules: bool = not disable_rsync_rules
+        self.deploy_resource_sync_rules = bool(enable_rsync_rules)
         self.instance_name = self._sanitize_k8s_name(instance_name)
         self.instance_description = instance_description
         self.enable_fault_tolerance = enable_fault_tolerance
         self.ops_config = assemble_nargs_to_dict(ops_config)
+        self.ops_version = ops_version
         self.trust_source = trust_source
         self.tags = tags
+
+        self.advanced_config = self.get_advanced_config_target_map()
 
         # Dataflow
         self.dataflow_profile_instances = self._sanitize_int(dataflow_profile_instances)
@@ -125,7 +129,7 @@ class InitTargets:
         deploy_params = {}
 
         for param in param_to_target:
-            if param in built_in_template_params and param_to_target[param]:
+            if param in built_in_template_params and param_to_target[param] is not None:
                 deploy_params[param] = {"value": param_to_target[param]}
 
         return template_copy, deploy_params
@@ -148,30 +152,17 @@ class InitTargets:
                 "containerRuntimeSocket": self.container_runtime_socket,
                 "trustSource": self.trust_source,
                 "schemaRegistryId": self.schema_registry_resource_id,
+                "advancedConfig": self.advanced_config,
             },
             template_blueprint=M2_ENABLEMENT_TEMPLATE,
         )
 
-        # TODO - @digimaun potentially temp
-        esa_extension = template.get_resource_by_key("edge_storage_accelerator_extension")
-        esa_extension["properties"]["extensionType"] = "microsoft.arc.containerstorage"
-        esa_extension["properties"]["version"] = "2.1.0-preview"
-        esa_extension["properties"]["releaseTrain"] = "stable"
-
-        esa_extension_config = {
-            "edgeStorageConfiguration.create": "true",
-            "feature.diskStorageClass": "default,local-path",
-        }
-        if self.enable_fault_tolerance:
-            esa_extension_config["feature.diskStorageClass"] = "acstor-arccontainerstorage-storage-pool"
-            esa_extension_config["acstorConfiguration.create"] = "true"
-            esa_extension_config["acstorConfiguration.properties.diskMountPoint"] = "/mnt"
-
-        esa_extension["properties"]["configurationSettings"] = esa_extension_config
-
         if self.ops_config:
             aio_default_config: Dict[str, str] = template.content["variables"]["defaultAioConfigurationSettings"]
             aio_default_config.update(self.ops_config)
+
+        if self.ops_version:
+            template.content["variables"]["VERSIONS"]["aio"] = self.ops_version
 
         # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
         return template.content, parameters
@@ -188,7 +179,6 @@ class InitTargets:
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "defaultDataflowinstanceCount": self.dataflow_profile_instances,
                 "brokerConfig": self.broker_config,
-                "trustConfig": "",
             },
             template_blueprint=M2_INSTANCE_TEMPLATE,
         )
@@ -211,15 +201,6 @@ class InitTargets:
             broker_listener["name"] = f"{self.instance_name}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
             dataflow_profile["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_PROFILE}"
             dataflow_endpoint["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_ENDPOINT}"
-
-        # TODO - @digimaun
-        # if self.mi_user_assigned_identities:
-        #     mi_user_payload = {}
-        #     for mi in self.mi_user_assigned_identities:
-        #         mi_user_payload[mi] = {}
-        #     instance["identity"] = {}
-        #     instance["identity"]["type"] = "UserAssigned"
-        #     instance["identity"]["userAssignedIdentities"] = mi_user_payload
 
         if self.custom_broker_config:
             if "properties" in self.custom_broker_config:
@@ -277,6 +258,13 @@ class InitTargets:
             raise InvalidArgumentValueError("\n".join(validation_errors))
 
         return processed_config_map
+
+    def get_advanced_config_target_map(self):
+        processed_config_map = {}
+        if self.enable_fault_tolerance:
+            processed_config_map["edgeStorageAccelerator"] = {"faultToleranceEnabled": True}
+
+        return {"advancedConfig": processed_config_map}
 
     # TODO - @digimaun
     def get_instance_kpis(self) -> dict:

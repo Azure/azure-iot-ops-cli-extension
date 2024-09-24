@@ -50,13 +50,13 @@ class TemplateBlueprint(NamedTuple):
 IOT_OPERATIONS_VERSION_MONIKER = "v0.7.0-preview"
 
 M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
-    commit_id="7f8a94d145d50ca1374d5fc7b99bb8725053e785",
+    commit_id="8a539f2fc0eb468d95fb05c4e92ba4fee923255a",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.29.47.4906", "templateHash": "15814050749892782988"}
+            "_generator": {"name": "bicep", "version": "0.30.3.12046", "templateHash": "6026035989572434192"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -218,9 +218,9 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "VERSIONS": {
                 "platform": "0.7.6",
-                "aio": "0.7.13",
+                "aio": "0.7.23",
                 "secretSyncController": "0.6.4",
-                "edgeStorageAccelerator": "2.1.0-preview",
+                "edgeStorageAccelerator": "2.1.1-preview",
                 "openServiceMesh": "1.2.9",
             },
             "TRAINS": {
@@ -237,7 +237,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 "serviceAccountAudience": "aio-internal",
                 "selfSignedIssuerName": "[format('{0}-aio-certificate-issuer', variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace)]",
             },
-            "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arcstorage-storage-pool')]",
+            "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arccontainerstorage-storage-pool')]",
             "nonFaultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'default,local-path')]",
             "kubernetesStorageClass": "[if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), variables('faultTolerantStorageClass'), variables('nonFaultTolerantStorageClass'))]",
             "defaultAioConfigurationSettings": {
@@ -256,7 +256,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 "akri.values.agent.host.containerRuntimeSocket": "[parameters('containerRuntimeSocket')]",
                 "akri.values.kubernetesDistro": "[toLower(parameters('kubernetesDistro'))]",
                 "mqttBroker.values.global.quickstart": "false",
-                "mqttBroker.values.operator.firstPartyMetricsOn": "false",
+                "mqttBroker.values.operator.firstPartyMetricsOn": "true",
                 "observability.metrics.enabled": "[format('{0}', variables('OBSERVABILITY_ENABLED'))]",
                 "observability.metrics.openTelemetryCollectorAddress": "[if(variables('OBSERVABILITY_ENABLED'), format('{0}', tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress')), '')]",
                 "observability.metrics.exportIntervalSeconds": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelExportIntervalSeconds'), 60))]",
@@ -325,6 +325,11 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                     "autoUpgradeMinorVersion": False,
                     "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'openServiceMesh'), 'version'), variables('VERSIONS').openServiceMesh)]",
                     "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'openServiceMesh'), 'train'), variables('TRAINS').openServiceMesh)]",
+                    "configurationSettings": {
+                        "osm.osm.enablePermissiveTrafficPolicy": "false",
+                        "osm.osm.featureFlags.enableWASMStats": "false",
+                        "osm.osm.configResyncInterval": "10s",
+                    },
                 },
                 "dependsOn": ["cluster"],
             },
@@ -415,13 +420,13 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
 )
 
 M2_INSTANCE_TEMPLATE = TemplateBlueprint(
-    commit_id="a8b2a062ec924104180751b8c279fad9370ccefb",
+    commit_id="9e8c02e3eaa706833f9d873a329a7b03e7daed88",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.29.47.4906", "templateHash": "9600794285819827823"}
+            "_generator": {"name": "bicep", "version": "0.30.3.12046", "templateHash": "6135662029956197269"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -579,7 +584,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
                 "defaultValue": "[format('location-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5)))]",
             },
             "clExtentionIds": {"type": "array", "items": {"type": "string"}},
-            "deployResourceSyncRules": {"type": "bool", "defaultValue": True},
+            "deployResourceSyncRules": {"type": "bool", "defaultValue": False},
             "userAssignedIdentity": {"type": "string", "nullable": True},
             "schemaRegistryId": {"type": "string"},
             "brokerConfig": {"$ref": "#/definitions/_1.BrokerConfig", "nullable": True},
@@ -810,7 +815,6 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
 )
 
 
-# TODO - @digimaun
 def get_insecure_listener(instance_name: str, broker_name: str) -> dict:
     return {
         "type": "Microsoft.IoTOperations/instances/brokers/listeners",

@@ -13,15 +13,18 @@ from enum import Enum
 class EnvironmentVariables(Enum):
     rg = "azext_edge_rg"
     cluster = "azext_edge_cluster"
+    instance = "azext_edge_instance"
     context_name = "azext_edge_context_name"
     kv = "azext_edge_kv"
     sp_app_id = "azext_edge_sp_app_id"
     sp_object_id = "azext_edge_sp_object_id"
     sp_secret = "azext_edge_sp_secret"
     init_args = "azext_edge_init_args"
+    create_args = "azext_edge_create_args"
     skip_cluster_check = "azext_edge_skip_cluster_check"
     aio_cleanup = "azext_edge_aio_cleanup"
     init_continue_on_error = "azext_edge_init_continue_on_error"
+    init_redeployment = "azext_edge_init_redeployment"
 
 
 class Setting(object):

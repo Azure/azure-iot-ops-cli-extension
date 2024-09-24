@@ -16,6 +16,7 @@ from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import META_API_V1B1
 from .providers.orchestration.common import (
+    IdentityUsageType,
     KubernetesDistroType,
     TrustSourceType,
     MqMemoryProfile,
@@ -116,6 +117,7 @@ def init(
     trust_source: str = TrustSourceType.self_signed.value,
     enable_fault_tolerance: Optional[bool] = None,
     ops_config: Optional[List[str]] = None,
+    ops_version: Optional[str] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     **kwargs,
@@ -138,6 +140,7 @@ def init(
         kubernetes_distro=kubernetes_distro,
         enable_fault_tolerance=enable_fault_tolerance,
         ops_config=ops_config,
+        ops_version=ops_version,
         trust_source=trust_source,
         schema_registry_resource_id=schema_registry_resource_id,
     )
@@ -151,7 +154,7 @@ def create_instance(
     cluster_namespace: str = DEFAULT_NAMESPACE,
     location: Optional[str] = None,
     custom_location_name: Optional[str] = None,
-    disable_rsync_rules: Optional[bool] = None,
+    enable_rsync_rules: Optional[bool] = None,
     instance_description: Optional[str] = None,
     dataflow_profile_instances: int = 1,
     # Broker
@@ -197,7 +200,7 @@ def create_instance(
         cluster_namespace=cluster_namespace,
         location=location,
         custom_location_name=custom_location_name,
-        disable_rsync_rules=disable_rsync_rules,
+        enable_rsync_rules=enable_rsync_rules,
         instance_name=instance_name,
         instance_description=instance_description,
         add_insecure_listener=add_insecure_listener,
@@ -260,5 +263,51 @@ def update_instance(
         resource_group_name=resource_group_name,
         tags=tags,
         description=instance_description,
+        **kwargs,
+    )
+
+
+def instance_identity_assign(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    mi_user_assigned: str,
+    federated_credential_name: Optional[str] = None,
+    usage_type: IdentityUsageType = IdentityUsageType.dataflow.value,
+    use_self_hosted_issuer: Optional[bool] = None,
+    **kwargs,
+) -> dict:
+    return Instances(cmd).add_mi_user_assigned(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        mi_user_assigned=mi_user_assigned,
+        federated_credential_name=federated_credential_name,
+        use_self_hosted_issuer=use_self_hosted_issuer,
+        usage_type=usage_type,
+        **kwargs,
+    )
+
+
+def instance_identity_show(cmd, instance_name: str, resource_group_name: str) -> dict:
+    instance = Instances(cmd).show(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+    return instance.get("identity", {})
+
+
+def instance_identity_remove(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    mi_user_assigned: str,
+    federated_credential_name: Optional[str] = None,
+    **kwargs,
+) -> dict:
+    return Instances(cmd).remove_mi_user_assigned(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        mi_user_assigned=mi_user_assigned,
+        federated_credential_name=federated_credential_name,
         **kwargs,
     )

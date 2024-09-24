@@ -1247,7 +1247,7 @@ def _evaluate_listener_service(
         )
 
         if listener_spec_service_type.lower() == "loadbalancer":
-            check_manager.set_target_conditions(
+            check_manager.add_target_conditions(
                 target_name=target_listener_service,
                 namespace=namespace,
                 conditions=[
@@ -1258,7 +1258,7 @@ def _evaluate_listener_service(
             ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
 
             service_status = associated_service.get("status", {})
-            load_balancer = service_status.get("c", {})
+            load_balancer = service_status.get("loadBalancer", {})
             ingress_rules: List[dict] = load_balancer.get("ingress", [])
 
             if not ingress_rules:
@@ -1301,10 +1301,10 @@ def _evaluate_listener_service(
                 target_name=target_listener_service,
                 namespace=namespace,
                 status=listener_service_eval_status,
-                value=service_status,
+                value={"status": service_status},
             )
         elif listener_spec_service_type.lower() == "clusterip":
-            check_manager.set_target_conditions(
+            check_manager.add_target_conditions(
                 target_name=target_listener_service,
                 namespace=namespace,
                 conditions=["spec.clusterIP"],
