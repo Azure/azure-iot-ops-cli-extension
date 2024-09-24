@@ -607,9 +607,9 @@ def test_process_asset_sub_points_file_path(mocker, req, duplicates):
         **req
     )
     mocked_deserialize.assert_called_with(file_path=file_path)
-    if req.get("replace") or not point_key:
+    if not point_key:
         assert result == file_points
-    elif duplicates:
+    elif duplicates and not req.get("replace"):
         # first is not a duplicate
         assert file_points[0] in result
         assert file_points[1] not in result

@@ -619,10 +619,10 @@ def test_data_point_import(
     # check the duplicate point
     if replace:
         point = file_dataset["dataPoints"][0]
-        assert cloud_dataset["dataPoints"][1]["dataSource"] not in point_map
+        assert file_dataset["dataPoints"][1]["dataSource"] in point_map
     else:
         point = cloud_dataset["dataPoints"][0]
-        assert cloud_dataset["dataPoints"][1]["dataSource"] in point_map
+    assert cloud_dataset["dataPoints"][1]["dataSource"] in point_map
     assert point_map[dup_data_source]["dataPointConfiguration"] == point["dataPointConfiguration"]
     assert point_map[dup_data_source]["name"] == point["name"]
     assert point_map[dup_data_source]["observabilityMode"] == point["observabilityMode"]
@@ -935,10 +935,10 @@ def test_event_import(
     # check the duplicate point
     if replace:
         point = file_events[0]
-        assert cloud_events[1]["eventNotifier"] not in point_map
+        assert file_events[1]["eventNotifier"] in point_map
     else:
         point = cloud_events[0]
-        assert cloud_events[1]["eventNotifier"] in point_map
+    assert cloud_events[1]["eventNotifier"] in point_map
     assert point_map[dup_event_notifier]["eventConfiguration"] == point["eventConfiguration"]
     assert point_map[dup_event_notifier]["name"] == point["name"]
     assert point_map[dup_event_notifier]["observabilityMode"] == point["observabilityMode"]
