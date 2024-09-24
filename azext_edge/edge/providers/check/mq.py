@@ -7,7 +7,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from azext_edge.edge.providers.check.base.resource import validate_secret_ref
+from azext_edge.edge.providers.check.base.resource import validate_ref
 
 from azext_edge.edge.providers.check.base.display import add_display_and_eval
 
@@ -42,6 +42,7 @@ from .common import (
     BROKER_DIAGNOSTICS_PROPERTIES,
     CheckResult,
     ResourceOutputDetailLevel,
+    ValidationResourceType,
 )
 
 from ...providers.edge_api import MQ_ACTIVE_API, MqResourceKinds
@@ -659,6 +660,7 @@ def evaluate_broker_authentications(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_name: str = None,
 ) -> Dict[str, Any]:
+
     check_manager = CheckManager(
         check_name="evalBrokerAuthentications",
         check_desc="Evaluate MQTT Broker Authentications",
@@ -768,238 +770,14 @@ def evaluate_broker_authentications(
             )
 
             for method in auth_methods:
-                conditions = []
-                method_type = method.get("method")
-                method_eval_status = CheckTaskStatus.success.value
-                method_eval_value = method
-                if method_type.lower() == "custom":
-                    conditions.append("spec.authenticationMethods[*].customSettings")
-                    setting = method.get("customSettings", {})
-
-                    if not setting:
-                        method_display = "- Custom Method: [red]not found[/red]."
-                        method_eval_status = CheckTaskStatus.error.value
-                    else:
-                        method_display = f"- Custom method: [green]{method_type}[/green]."
-                    sub_check_results.append(
-                        CheckResult(
-                            display=Padding(method_display, (0, 0, 0, 16)),
-                            eval_status=method_eval_status,
-                        )
-                    )
-
-                    # endpoint
-                    endpoint = setting.get("endpoint", "")
-
-                    conditions.append("spec.authenticationMethods[*].customSettings.endpoint")
-
-                    if not endpoint:
-                        endpoint_display = "Endpoint [red]not found[/red]."
-                        method_eval_status = CheckTaskStatus.error.value
-                    elif not endpoint.lower().startswith("https://"):
-                        endpoint_display = f"Endpoint: Invalid endpoint format [red]{endpoint}[/red]."
-                        method_eval_status = CheckTaskStatus.error.value
-                    else:
-                        endpoint_display = f"Endpoint: [green]{endpoint}[/green]."
-
-                    sub_check_results.append(
-                        CheckResult(
-                            display=Padding(endpoint_display, (0, 0, 0, 20)),
-                            eval_status=method_eval_status,
-                        )
-                    )
-
-                    # auth
-                    auth = setting.get("auth")
-
-                    if auth:
-                        # check x509
-                        secret_ref_status = CheckTaskStatus.success.value
-                        secret_ref_condition = [
-                            "valid(spec.authenticationMethods[*].customSettings.auth.x509.secretRef)"
-                        ]
-                        secret_ref = auth.get("x509", {}).get("secretRef")
-                        secret_ref_value = {
-                            "spec.authenticationMethods[*].customSettings.auth.x509.secretRef": secret_ref
-                        }
-                        is_ref_valid = validate_secret_ref(
-                            namespace=namespace,
-                            name=secret_ref,
-                        )
-                        secret_ref_display = "X.509 Client Certificate Secret reference: {}."
-
-                        if not is_ref_valid:
-                            secret_ref_display = secret_ref_display.format(
-                                f"[red]Invalid[/red] secret reference [red]{secret_ref}[/red]."
-                            )
-                            secret_ref_status = CheckTaskStatus.error.value
-                        else:
-                            secret_ref_display = secret_ref_display.format(
-                                f"[green]Valid[/green] secret reference [green]{secret_ref}[/green]."
-                            )
-
-                        sub_check_results.append(
-                            CheckResult(
-                                display=Padding(secret_ref_display, (0, 0, 0, 20)),
-                                eval_status=secret_ref_status,
-                            )
-                        )
-
-                        # add condition separately for secret ref
-                        check_manager.add_target_conditions(
-                            target_name=target_authentications,
-                            namespace=namespace,
-                            conditions=secret_ref_condition,
-                        )
-
-                        check_manager.add_target_eval(
-                            target_name=target_authentications,
-                            namespace=namespace,
-                            status=secret_ref_status,
-                            value=secret_ref_value,
-                            resource_name=auth_name,
-                        )
-
-                    for prop_name, prop_value in {
-                        "CA certificate Config Map": setting.get("caCertConfigMap"),
-                        "HTTP Headers": setting.get("headers", {}).get("additionalProperties"),
-                    }.items():
-                        if prop_value:
-                            sub_check_results.append(
-                                CheckResult(
-                                    display=Padding(
-                                        f"{prop_name}: [bright_blue]{prop_value}[/bright_blue]", (0, 0, 0, 20)
-                                    ),
-                                    eval_status=None,
-                                ),
-                            )
-
-                    # display rest of the properties
-                elif method_type.lower() == "x509":
-                    conditions.append("spec.authenticationMethods[*].x509Settings")
-                    setting = method.get("x509Settings", {})
-
-                    if not setting:
-                        method_display = "- x509 Method: [red]not found[/red]."
-                        method_eval_status = CheckTaskStatus.error.value
-                    else:
-                        method_display = f"- x509 method: [green]{method_type}[/green]."
-
-                    sub_check_results.append(
-                        CheckResult(
-                            display=Padding(method_display, (0, 0, 0, 16)),
-                            eval_status=method_eval_status,
-                        )
-                    )
-
-                    # authorizationAttributes
-                    auth_attrs = setting.get("authorizationAttributes", {}).get("additionalProperties")
-
-                    if auth_attrs:
-                        conditions.append("spec.authenticationMethods[*].x509Settings.authorizationAttributes")
-                        attributes_additional_properties = setting.get("authorizationAttributes", {}).get(
-                            "additionalProperties", {}
-                        )
-
-                        # attributes
-                        attributes = attributes_additional_properties.get("attributes")
-                        if not attributes:
-                            attributes_display = "Authorization Attributes [red]not found[/red]."
-                            method_eval_status = CheckTaskStatus.error.value
-                        else:
-                            attributes_display = f"Authorization Attributes: [green]{attributes}[/green]."
-                        sub_check_results.append(
-                            CheckResult(
-                                display=Padding(attributes_display, (0, 0, 0, 20)),
-                                eval_status=CheckTaskStatus.success.value,
-                            )
-                        )
-
-                        # subject
-                        subject = attributes_additional_properties.get("subject")
-
-                        if not subject:
-                            subject_display = "Subject [red]not found[/red]."
-                            method_eval_status = CheckTaskStatus.error.value
-                        else:
-                            subject_display = f"Subject: [green]{subject}[/green]."
-                        sub_check_results.append(
-                            CheckResult(
-                                display=Padding(subject_display, (0, 0, 0, 20)),
-                                eval_status=CheckTaskStatus.success.value,
-                            )
-                        )
-
-                    # trustedClientCaCert
-                    trusted_client_ca_cert = setting.get("trustedClientCaCert")
-
-                    if trusted_client_ca_cert:
-                        sub_check_results.append(
-                            CheckResult(
-                                display=Padding(
-                                    f"Trusted Client CA Cert: {{[cyan]{trusted_client_ca_cert}[/cyan]}}", (0, 0, 0, 20)
-                                ),
-                                eval_status=None,
-                            )
-                        )
-                elif method_type.lower() == "serviceaccounttoken":
-                    conditions.append("spec.authenticationMethods[*].serviceAccountTokenSettings")
-                    setting = method.get("serviceAccountTokenSettings", {})
-
-                    if not setting:
-                        method_display = "- Service Account Token Method: [red]not found[/red]."
-                        method_eval_status = CheckTaskStatus.error.value
-                    else:
-                        method_display = f"- Service Account Token Method: [green]{method_type}[/green]."
-                    sub_check_results.append(
-                        CheckResult(
-                            display=Padding(method_display, (0, 0, 0, 16)),
-                            eval_status=method_eval_status,
-                        )
-                    )
-
-                    # audiences
-                    audiences = setting.get("audiences")
-                    conditions.append("spec.authenticationMethods[*].serviceAccountTokenSettings.audiences")
-
-                    if not audiences:
-                        audiences_display = "Audiences [red]not found[/red]."
-                        method_eval_status = CheckTaskStatus.error.value
-                    else:
-                        audiences_display = f"Audiences: [green]{str(audiences)}[/green]."
-
-                    if detail_level != ResourceOutputDetailLevel.summary.value:
-                        sub_check_results.append(
-                            CheckResult(
-                                display=Padding(audiences_display, (0, 0, 0, 20)),
-                                eval_status=CheckTaskStatus.success.value,
-                            )
-                        )
-                else:
-                    method_display = (
-                        f"- Unknown method type: [red]{method_type}[/red]."
-                        if method_type
-                        else "- Method [red]not found[/red]."
-                    )
-                    method_eval_status = CheckTaskStatus.error.value
-                    sub_check_results.append(
-                        CheckResult(
-                            display=Padding(method_display, (0, 0, 0, 16)),
-                            eval_status=method_eval_status,
-                        )
-                    )
-
-                check_manager.add_target_conditions(
-                    target_name=target_authentications,
+                _check_authentication_method(
+                    check_manager=check_manager,
+                    target_authentications=target_authentications,
                     namespace=namespace,
-                    conditions=conditions,
-                )
-                check_manager.add_target_eval(
-                    target_name=target_authentications,
-                    namespace=namespace,
-                    status=method_eval_status,
-                    value=method_eval_value,
                     resource_name=auth_name,
+                    method=method,
+                    sub_check_results=sub_check_results,
+                    detail_level=detail_level,
                 )
 
             _display_sub_check_results(
@@ -1431,7 +1209,7 @@ def _display_sub_check_results(
         ):
             text = result.display.renderable.replace("- ", "")
             errors_displays.append(text)
-        elif (detail_level == ResourceOutputDetailLevel.detail.value and result.eval_status != None) or (
+        elif (detail_level == ResourceOutputDetailLevel.detail.value and result.eval_status is not None) or (
             detail_level == ResourceOutputDetailLevel.verbose.value
         ):
             check_manager.add_display(
@@ -1447,3 +1225,300 @@ def _display_sub_check_results(
             namespace=namespace,
             display=Padding(error_display, (0, 0, 0, parent_padding + 4)),
         )
+
+
+def _check_authentication_method(
+    method: dict,
+    check_manager: CheckManager,
+    target_authentications: str,
+    namespace: str,
+    sub_check_results: List[CheckResult],
+    resource_name: str,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> None:
+    conditions = []
+    method_type = method.get("method")
+    method_eval_status = CheckTaskStatus.success.value
+    method_eval_value = method
+
+    # TODO: repetitive conditions
+    if method_type.lower() == "custom":
+        conditions.append("spec.authenticationMethods[*].customSettings")
+        setting = method.get("customSettings", {})
+
+        if not setting:
+            method_display = "- Custom Method: [red]not found[/red]."
+            method_eval_status = CheckTaskStatus.error.value
+        else:
+            method_display = f"- Custom method: [green]{method_type}[/green]."
+        sub_check_results.append(
+            CheckResult(
+                display=Padding(method_display, (0, 0, 0, 16)),
+                eval_status=method_eval_status,
+            )
+        )
+
+        # endpoint
+        endpoint = setting.get("endpoint", "")
+
+        conditions.append("spec.authenticationMethods[*].customSettings.endpoint")
+
+        if not endpoint:
+            endpoint_display = "Endpoint [red]not found[/red]."
+            method_eval_status = CheckTaskStatus.error.value
+        elif not endpoint.lower().startswith("https://"):
+            endpoint_display = f"Endpoint: Invalid endpoint format [red]{endpoint}[/red]."
+            method_eval_status = CheckTaskStatus.error.value
+        else:
+            endpoint_display = f"Endpoint: [green]{endpoint}[/green]."
+
+        sub_check_results.append(
+            CheckResult(
+                display=Padding(endpoint_display, (0, 0, 0, 20)),
+                eval_status=method_eval_status,
+            )
+        )
+
+        # auth
+        auth = setting.get("auth")
+
+        if auth:
+            # check x509
+            secret_ref_condition = ["valid(spec.authenticationMethods[*].customSettings.auth.x509.secretRef)"]
+            secret_ref = auth.get("x509", {}).get("secretRef")
+            secret_ref_value = {"spec.authenticationMethods[*].customSettings.auth.x509.secretRef": secret_ref}
+            validate_result = validate_ref(
+                namespace=namespace,
+                name=secret_ref,
+                ref_type=ValidationResourceType.secret,
+            )
+            secret_ref_display = "X.509 Client Certificate Secret reference: {}"
+            secret_ref_status = CheckTaskStatus.success.value if validate_result[1] else CheckTaskStatus.error.value
+
+            sub_check_results.append(
+                CheckResult(
+                    display=Padding(secret_ref_display.format(validate_result[0]), (0, 0, 0, 20)),
+                    eval_status=secret_ref_status,
+                )
+            )
+
+            # add condition separately for secret ref
+            check_manager.add_target_conditions(
+                target_name=target_authentications,
+                namespace=namespace,
+                conditions=secret_ref_condition,
+            )
+
+            check_manager.add_target_eval(
+                target_name=target_authentications,
+                namespace=namespace,
+                status=secret_ref_status,
+                value=secret_ref_value,
+                resource_name=f"secret/{secret_ref}",
+            )
+
+        # caCertConfigMap
+        ca_cert_config_map = setting.get("caCertConfigMap")
+
+        if ca_cert_config_map:
+            ca_cert_config_map_condition = ["valid(spec.authenticationMethods[*].customSettings.caCertConfigMap)"]
+            ca_cert_config_map_value = {
+                "spec.authenticationMethods[*].customSettings.caCertConfigMap": ca_cert_config_map
+            }
+            validate_result = validate_ref(
+                namespace=namespace,
+                name=ca_cert_config_map,
+                ref_type=ValidationResourceType.configmap,
+            )
+
+            ca_cert_config_map_display = "CA Certificate Config Map: {}"
+            ca_cert_config_map_status = (
+                CheckTaskStatus.success.value if validate_result[1] else CheckTaskStatus.error.value
+            )
+
+            sub_check_results.append(
+                CheckResult(
+                    display=Padding(ca_cert_config_map_display.format(validate_result[0]), (0, 0, 0, 20)),
+                    eval_status=ca_cert_config_map_status,
+                )
+            )
+
+            check_manager.add_target_conditions(
+                target_name=target_authentications,
+                namespace=namespace,
+                conditions=ca_cert_config_map_condition,
+            )
+
+            check_manager.add_target_eval(
+                target_name=target_authentications,
+                namespace=namespace,
+                status=ca_cert_config_map_status,
+                value=ca_cert_config_map_value,
+                resource_name=f"configmap/{ca_cert_config_map}",
+            )
+
+        # headers
+        headers = setting.get("headers", {}).get("additionalProperties")
+
+        if headers:
+            sub_check_results.append(
+                CheckResult(
+                    display=Padding(f"HTTP Headers: [bright_blue]{headers}[/bright_blue]", (0, 0, 0, 20)),
+                    eval_status=None,
+                ),
+            )
+
+        # display rest of the properties
+    elif method_type.lower() == "x509":
+        conditions.append("spec.authenticationMethods[*].x509Settings")
+        setting = method.get("x509Settings", {})
+
+        if not setting:
+            method_display = "- x509 Method: [red]not found[/red]."
+            method_eval_status = CheckTaskStatus.error.value
+        else:
+            method_display = f"- x509 method: [green]{method_type}[/green]."
+
+        sub_check_results.append(
+            CheckResult(
+                display=Padding(method_display, (0, 0, 0, 16)),
+                eval_status=method_eval_status,
+            )
+        )
+
+        # authorizationAttributes
+        auth_attrs = setting.get("authorizationAttributes", {}).get("additionalProperties")
+
+        if auth_attrs:
+            conditions.append("spec.authenticationMethods[*].x509Settings.authorizationAttributes")
+            attributes_additional_properties = setting.get("authorizationAttributes", {}).get(
+                "additionalProperties", {}
+            )
+
+            # attributes
+            attributes = attributes_additional_properties.get("attributes")
+            if not attributes:
+                attributes_display = "Authorization Attributes [red]not found[/red]."
+                method_eval_status = CheckTaskStatus.error.value
+            else:
+                attributes_display = f"Authorization Attributes: [green]{attributes}[/green]."
+            sub_check_results.append(
+                CheckResult(
+                    display=Padding(attributes_display, (0, 0, 0, 20)),
+                    eval_status=CheckTaskStatus.success.value,
+                )
+            )
+
+            # subject
+            subject = attributes_additional_properties.get("subject")
+
+            if not subject:
+                subject_display = "Subject [red]not found[/red]."
+                method_eval_status = CheckTaskStatus.error.value
+            else:
+                subject_display = f"Subject: [green]{subject}[/green]."
+            sub_check_results.append(
+                CheckResult(
+                    display=Padding(subject_display, (0, 0, 0, 20)),
+                    eval_status=CheckTaskStatus.success.value,
+                )
+            )
+
+        # trustedClientCaCert
+        trusted_client_ca_cert = setting.get("trustedClientCaCert")
+
+        if trusted_client_ca_cert:
+            trusted_client_ca_cert_condition = [
+                "valid(spec.authenticationMethods[*].x509Settings.trustedClientCaCert)"
+            ]
+            trusted_client_ca_cert_value = {
+                "spec.authenticationMethods[*].x509Settings.trustedClientCaCert": trusted_client_ca_cert
+            }
+            validate_result = validate_ref(
+                namespace=namespace,
+                name=trusted_client_ca_cert,
+                ref_type=ValidationResourceType.configmap,
+            )
+
+            trusted_client_ca_cert_display = "Trusted Client CA Cert: {}"
+            trusted_client_ca_cert_status = (
+                CheckTaskStatus.success.value if validate_result[1] else CheckTaskStatus.error.value
+            )
+
+            sub_check_results.append(
+                CheckResult(
+                    display=Padding(trusted_client_ca_cert_display.format(validate_result[0]), (0, 0, 0, 20)),
+                    eval_status=trusted_client_ca_cert_status,
+                )
+            )
+
+            check_manager.add_target_conditions(
+                target_name=target_authentications,
+                namespace=namespace,
+                conditions=trusted_client_ca_cert_condition,
+            )
+
+            check_manager.add_target_eval(
+                target_name=target_authentications,
+                namespace=namespace,
+                status=trusted_client_ca_cert_status,
+                value=trusted_client_ca_cert_value,
+                resource_name=f"configmap/{trusted_client_ca_cert}",
+            )
+    elif method_type.lower() == "serviceaccounttoken":
+        conditions.append("spec.authenticationMethods[*].serviceAccountTokenSettings")
+        setting = method.get("serviceAccountTokenSettings", {})
+
+        if not setting:
+            method_display = "- Service Account Token Method: [red]not found[/red]."
+            method_eval_status = CheckTaskStatus.error.value
+        else:
+            method_display = f"- Service Account Token Method: [green]{method_type}[/green]."
+        sub_check_results.append(
+            CheckResult(
+                display=Padding(method_display, (0, 0, 0, 16)),
+                eval_status=method_eval_status,
+            )
+        )
+
+        # audiences
+        audiences = setting.get("audiences")
+        conditions.append("spec.authenticationMethods[*].serviceAccountTokenSettings.audiences")
+
+        if not audiences:
+            audiences_display = "Audiences [red]not found[/red]."
+            method_eval_status = CheckTaskStatus.error.value
+        else:
+            audiences_display = f"Audiences: [green]{str(audiences)}[/green]."
+
+        if detail_level != ResourceOutputDetailLevel.summary.value:
+            sub_check_results.append(
+                CheckResult(
+                    display=Padding(audiences_display, (0, 0, 0, 20)),
+                    eval_status=CheckTaskStatus.success.value,
+                )
+            )
+    else:
+        method_display = (
+            f"- Unknown method type: [red]{method_type}[/red]." if method_type else "- Method [red]not found[/red]."
+        )
+        method_eval_status = CheckTaskStatus.error.value
+        sub_check_results.append(
+            CheckResult(
+                display=Padding(method_display, (0, 0, 0, 16)),
+                eval_status=method_eval_status,
+            )
+        )
+
+    check_manager.add_target_conditions(
+        target_name=target_authentications,
+        namespace=namespace,
+        conditions=conditions,
+    )
+    check_manager.add_target_eval(
+        target_name=target_authentications,
+        namespace=namespace,
+        status=method_eval_status,
+        value=method_eval_value,
+        resource_name=resource_name,
+    )

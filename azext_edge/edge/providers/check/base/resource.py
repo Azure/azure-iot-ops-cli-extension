@@ -16,8 +16,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .check_manager import CheckManager
 from .display import process_value_color
-from ..common import COLOR_STR_FORMAT, PADDING_SIZE, CheckResult, ResourceOutputDetailLevel
-from ...base import get_cluster_custom_api, get_namespaced_secret
+from ..common import COLOR_STR_FORMAT, PADDING_SIZE, ResourceOutputDetailLevel, ValidationResourceType
+from ...base import get_cluster_custom_api, get_namespaced_configmap, get_namespaced_secret
 from ...edge_api import EdgeResourceApi
 from ....common import CheckTaskStatus, ResourceState
 
@@ -472,7 +472,17 @@ def process_custom_resource_status(
                 )
 
 
-def validate_secret_ref(name: str, namespace: str) -> bool:
-    secret = get_namespaced_secret(secret_name=name, namespace=namespace)
-    is_valid = secret is not None or secret != {}
-    return is_valid
+def validate_ref(name: str, namespace: str, ref_type: ValidationResourceType) -> Tuple[str, bool]:
+    ref_obj = None
+    text = ""
+    if ref_type == ValidationResourceType.secret:
+        ref_obj = get_namespaced_secret(secret_name=name, namespace=namespace)
+    elif ref_type == ValidationResourceType.configmap:
+        ref_obj == get_namespaced_configmap(cm_name=name, namespace=namespace)
+    is_valid = bool(ref_obj)
+
+    if is_valid:
+        text = f"[green]Valid[/green] {ref_type.value} reference {{[green]{name}[/green]}}."
+    else:
+        text = f"[red]Invalid[/red] {ref_type.value} reference {{[red]{name}[/red]}}."
+    return text, is_valid

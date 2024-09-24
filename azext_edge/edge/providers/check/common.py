@@ -36,6 +36,15 @@ class DataSourceStageType(ListableEnum):
     sql = "input/mssql"
 
 
+class ValidationResourceType(ListableEnum):
+    """
+    Validation resource type.
+    """
+
+    secret = "secret"
+    configmap = "configmap"
+
+
 ERROR_NO_DETAIL = "<No detail available>"
 
 POD_CONDITION_TEXT_MAP = {
