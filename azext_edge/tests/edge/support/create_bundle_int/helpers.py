@@ -5,11 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
+from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from ....helpers import (
@@ -36,13 +37,6 @@ WORKLOAD_TYPES = [
     "service",
     "statefulset",
 ]
-
-
-class NamespaceTuple(NamedTuple):
-    arc: str
-    aio: str
-    acs: str
-    usage_system: str
 
 
 def assert_file_names(files: List[str]):
@@ -238,7 +232,12 @@ def get_file_map(
     mq_traces: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
     # Remove all files that will not be checked
-    arc_namespace, aio_namespace, acs_namespace, c_namespace = process_top_levels(walk_result, ops_service)
+    namespaces = process_top_levels(walk_result, ops_service)
+    arc_namespace = namespaces.get("arc")
+    aio_namespace = namespaces.get("aio")
+    acs_namespace = namespaces.get("acs")
+    ssc_namespace = namespaces.get("ssc")
+    c_namespace = namespaces.get("usage_system")
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -276,6 +275,16 @@ def get_file_map(
 
         # no files for aio, skip the rest assertions
         return file_map
+    elif ops_service == OpsServiceType.secretstore.value:
+        ops_path = path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.secretstore.value)
+        ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretstore.value)
+        if ops_path not in walk_result:
+            # no crd created in aio namespace
+            assert len(walk_result) == 1 + expected_default_walk_result
+        else:
+            assert len(walk_result) == 2 + expected_default_walk_result
+        file_map[OpsServiceType.secretstore.value] = convert_file_names(walk_result[ssc_path]["files"])
+        file_map["__namespaces__"][OpsServiceType.secretstore.value] = ssc_namespace
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
             assert len(walk_result) == expected_default_walk_result
@@ -294,7 +303,7 @@ def get_file_map(
 def process_top_levels(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
-) -> NamespaceTuple:
+) -> Dict[str, Union[str, None]]:
     level_0 = walk_result.pop(BASE_ZIP_PATH)
     for file in ["events.yaml", "nodes.yaml", "storage-classes.yaml", "azure-clusterconfig.yaml"]:
         assert file in level_0["files"]
@@ -305,6 +314,7 @@ def process_top_levels(
     clusterconfig_namespace = None
     arc_namespace = None
     acs_namespace = None
+    ssc_namespace = None
 
     def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
@@ -323,45 +333,49 @@ def process_top_levels(
             arc_namespace = name
         elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
             acs_namespace = name
+        elif _get_namespace_determinating_files(
+            name=name, folder=OpsServiceType.secretstore.value, file_prefix="deployment"
+        ):
+            ssc_namespace = name
         else:
             namespace = name
 
+    for namespace_folder, service in [
+        (clusterconfig_namespace, "clusterconfig"),
+        (arc_namespace, "arcagents"),
+        (acs_namespace, "arccontainerstorage"),
+        (ssc_namespace, OpsServiceType.secretstore.value),
+    ]:
+        if namespace_folder:
+            # remove empty folders in level 1
+            level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace_folder))
+            assert level_1["folders"] == [service]
+            assert not level_1["files"]
+
+    # remove empty folders in level 2
     if clusterconfig_namespace:
-        # remove empty billing related folders
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace))
-        assert level_1["folders"] == ["clusterconfig"]
-        assert not level_1["files"]
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
         assert level_2["folders"] == ["billing"]
         assert not level_2["files"]
-
     if arc_namespace:
-        # remove empty arc related folders
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace))
-        assert level_1["folders"] == ["arcagents"]
-        assert not level_1["files"]
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))
         assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS]
         assert not level_2["files"]
-
-    if acs_namespace:
-        # remove empty acs related folders
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acs_namespace))
-        assert level_1["folders"] == ["arccontainerstorage"]
-        assert not level_1["files"]
 
     logger.debug("Determined the following namespaces:")
     logger.debug(f"AIO namespace: {namespace}")
     logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
     logger.debug(f"ARC namespace: {arc_namespace}")
     logger.debug(f"ACS namespace: {acs_namespace}")
+    logger.debug(f"SSC namespace: {ssc_namespace}")
 
-    return NamespaceTuple(
-        arc=arc_namespace,
-        aio=namespace,
-        acs=acs_namespace,
-        usage_system=clusterconfig_namespace,
-    )
+    return {
+        "arc": arc_namespace,
+        "aio": namespace,
+        "acs": acs_namespace,
+        "ssc": ssc_namespace,
+        "usage_system": clusterconfig_namespace,
+    }
 
 
 def run_bundle_command(
