@@ -279,9 +279,7 @@ def process_resource_property_by_type(
             return
 
         display_text = f"{display_name}:"
-        check_manager.add_display(
-            target_name=target_name, namespace=namespace, display=Padding(display_text, padding)
-        )
+        check_manager.add_display(target_name=target_name, namespace=namespace, display=Padding(display_text, padding))
 
         for property in properties:
             display_text = f"- {display_name} {properties.index(property) + 1}"
@@ -308,14 +306,10 @@ def process_resource_property_by_type(
             display_text = f"[cyan]{properties}[/cyan]"
             padding = (0, 0, 0, padding_left + 4)
 
-        check_manager.add_display(
-            target_name=target_name, namespace=namespace, display=Padding(display_text, padding)
-        )
+        check_manager.add_display(target_name=target_name, namespace=namespace, display=Padding(display_text, padding))
     elif isinstance(properties, dict):
         display_text = f"{display_name}:"
-        check_manager.add_display(
-            target_name=target_name, namespace=namespace, display=Padding(display_text, padding)
-        )
+        check_manager.add_display(target_name=target_name, namespace=namespace, display=Padding(display_text, padding))
         for prop, value in properties.items():
             display_text = f"{prop}: [cyan]{value}[/cyan]"
             check_manager.add_display(
@@ -363,9 +357,7 @@ def validate_one_of_conditions(
         eval_status = CheckTaskStatus.error.value
 
     one_of_condition = f"oneOf({conditions_names})"
-    check_manager.add_target_conditions(
-        target_name=target_name, namespace=namespace, conditions=[one_of_condition]
-    )
+    check_manager.add_target_conditions(target_name=target_name, namespace=namespace, conditions=[one_of_condition])
     check_manager.add_target_eval(
         target_name=target_name,
         namespace=namespace,
@@ -467,9 +459,7 @@ def process_custom_resource_status(
             if prop_value:
                 status_text = f"{prop_name} {{{decorate_resource_status(prop_value.get('status'))}}}."
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
-                    status_description = prop_value.get("statusDescription") or prop_value.get(
-                        "output", {}
-                    ).get("message")
+                    status_description = prop_value.get("description") or prop_value.get("output", {}).get("message")
                     if status_description:
                         status_text = status_text.replace(".", f", [cyan]{status_description}[/cyan].")
 
