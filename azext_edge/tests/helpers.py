@@ -153,7 +153,7 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
     """
     import subprocess
 
-    result = subprocess.run(command, check=False, shell=shell_mode, text=True, capture_output=True)
+    result = subprocess.run(command, check=False, shell=shell_mode, text=True, capture_output=True, encoding="utf-8")
     if expect_failure and result.returncode == 0:
         raise CLIInternalError(f"Command `{command}` did not fail as expected.")
     elif not expect_failure and result.returncode != 0:
