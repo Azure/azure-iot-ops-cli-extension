@@ -697,6 +697,7 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Asset management.
+        long-summary: For more information on asset management, please see aka.ms/asset-overview
     """
 
     helps[
@@ -711,11 +712,11 @@ def load_iotops_help():
           text: >
             az iot ops asset create --name myasset -g myresourcegroup --endpoint-profile myassetendpoint --instance myinstance
 
-        - name: Create an asset using the given instance in a different resource group and subscription. Note that the Digital
+        - name: Create an asset using the given instance in a different resource group but same subscription. Note that the Digital
                 Operations Experience may not display the asset if it is in a different subscription from the instance.
           text: >
             az iot ops asset create --name myasset -g myresourcegroup --endpoint-profile myassetendpoint --instance myinstance
-            --instance-resource-group myinstanceresourcegroup --instance-subscription myinstancesubscription
+            --instance-resource-group myinstanceresourcegroup
 
         - name: Create a disabled asset using a file containing events.
           text: >
@@ -1019,7 +1020,7 @@ def load_iotops_help():
         type: command
         short-summary: Create an asset endpoint profile with an OPCUA connector.
         long-summary: |
-                      Azure IoT OPC UA Broker (preview) uses the same client certificate for all secure
+                      Azure IoT OPC UA Connector (preview) uses the same client certificate for all secure
                       channels between itself and the OPC UA servers that it connects to.
 
                       For OPC UA connector arguments, a value of -1 means that parameter will not be used (ex: --session-reconnect-backoff -1 means that no exponential backoff should be used).
@@ -1031,11 +1032,11 @@ def load_iotops_help():
           text: >
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000
-        - name: Create an asset endpoint with anonymous user authentication using the given instance in a different resource group and subscription. Note that the Digital
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in a different resource group but same subscription. Note that the Digital
                 Operations Experience may not display the asset endpoint profile if it is in a different subscription from the instance.
           text: >
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
-            --instance-resource-group myinstanceresourcegroup --instance-subscription myinstancesubscription
+            --instance-resource-group myinstanceresourcegroup
             --target-address opc.tcp://opcplc-000000:50000
         - name: Create an asset endpoint with username-password user authentication using the given instance in the same resource group.
           text: >
@@ -1048,8 +1049,9 @@ def load_iotops_help():
             --target-address opc.tcp://opcplc-000000:50000 --certificate-ref mycertificate.pem
         - name: Create an asset endpoint with anonymous user authentication and recommended values for the OPCUA configuration using the given instance in the same resource group.
                 Note that for successfully using the connector, you will need to have the OPC PLC service deployed on your cluster and the target address must point to the service.
-                If the OPC PLC service is in the same cluster and namespace as AIO, the target address should be formatted as `opc.tcp://{opc-plc-service-name}:{service-port}`
-                If the OPC PLC service is in the same cluster but different namespace as AIO, include the service namespace like so `opc.tcp://{opc-plc-service-name}.{service-namespace}:{service-port}`
+                If the OPC PLC service is in the same cluster and namespace as IoT Ops, the target address should be formatted as `opc.tcp://{opc-plc-service-name}:{service-port}`
+                If the OPC PLC service is in the same cluster but different namespace as IoT Ops, include the service namespace like so `opc.tcp://{opc-plc-service-name}.{service-namespace}:{service-port}`
+                For more information, please see aka.ms/opcua-quickstart
           text: >
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000 --accept-untrusted-certs --application myopcuaconnector
