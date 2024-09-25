@@ -213,7 +213,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                 status={
                     "runtimeStatus": {
                         "status": ResourceState.running.value,
-                        "statusDescription": "All replicas are running.",
+                        "description": "All replicas are running.",
                     }
                 },
             ),
@@ -250,7 +250,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                         {
                             "runtimeStatus": {
                                 "status": ResourceState.running.value,
-                                "statusDescription": "All replicas are running.",
+                                "description": "All replicas are running.",
                             }
                         },
                     ),
@@ -309,7 +309,7 @@ def test_broker_checks(
                     "port": 8080,
                     "authenticationEnabled": "True",
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
             ),
             # service obj
             generate_resource_stub(
@@ -331,7 +331,7 @@ def test_broker_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
                     ),
                 ],
                 [
@@ -370,7 +370,7 @@ def test_broker_checks(
                     "port": 8080,
                     "authenticationEnabled": "True",
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
             ),
             # service obj
             generate_resource_stub(
@@ -392,7 +392,7 @@ def test_broker_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
                     ),
                 ],
                 [
