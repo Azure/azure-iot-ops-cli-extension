@@ -7,11 +7,10 @@ done
 
 # create local k3s cluster
 echo "Creating k3d cluster"
+k3d cluster delete
 k3d cluster create \
 -p '1883:1883@loadbalancer' \
--p '8883:8883@loadbalancer' \
--p '6001:6001@loadbalancer' \
--p '4000:80@loadbalancer'
+-p '8883:8883@loadbalancer'
 
 # write kubeconfig
 k3d kubeconfig get k3s-default > ~/.kube/config
@@ -31,6 +30,8 @@ echo "Install AZ CLI EDGE"
 azdev setup -c EDGE
 
 echo "Installing local dev extension"
+# install dev requirements (overrides setuptools)
+pip install -r dev_requirements.txt
 pip install -U --target ~/.azure/cliextensions/azure-iot-ops .
 
 # setup tox environment dependencies in parallel, but don't run tests
@@ -41,7 +42,7 @@ tox -np -e lint,python,coverage
 echo "Install complete, please activate your environment with 'source env/bin/activate'"
 echo "This should automatically occur the next time you connect to the codespace"
 
-# Run the following to connect your cluster to ARC and install PAS
+# Run the following to connect your cluster to ARC
 # RESOURCE_GROUP=[your_cluster_resource_group]
 # az login [--use-device-code]
 #
@@ -50,4 +51,3 @@ echo "This should automatically occur the next time you connect to the codespace
 #
 # az connectedk8s connect -n $CODESPACE_NAME -g $RESOURCE_GROUP
 # az connectedk8s enable-features -n $CODESPACE_NAME -g $RESOURCE_GROUP --features cluster-connect custom-locations
-# az iot ops init --cluster $CODESPACE_NAME -g $RESOURCE_GROUP [--create-sync-rules]
