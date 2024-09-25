@@ -47,8 +47,8 @@ def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str) -> str:
     )
 
 
-def get_spc_name(instance_name: str) -> str:
-    return f"{instance_name}-spc"
+def get_spc_name(cluster_name: str, resource_group_name: str, instance_name: str) -> str:
+    return "spc-ops-" + url_safe_hash_phrase(f"{cluster_name}-{resource_group_name}-{instance_name}")[:7]
 
 
 def get_fc_name(cluster_name: str, oidc_issuer: str, subject: str) -> str:
@@ -292,7 +292,12 @@ class Instances(Queryable):
             )
             spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_create_or_update(
                 resource_group_name=resource_group_name,
-                azure_key_vault_secret_provider_class_name=spc_name or get_spc_name(instance["name"]),
+                azure_key_vault_secret_provider_class_name=spc_name
+                or get_spc_name(
+                    cluster_name=cluster_resource["name"],
+                    resource_group_name=resource_group_name,
+                    instance_name=instance["name"],
+                ),
                 resource={
                     "location": cluster_resource["location"],
                     "extendedLocation": instance["extendedLocation"],
