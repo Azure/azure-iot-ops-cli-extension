@@ -1048,7 +1048,7 @@ def load_iotops_help():
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000 --certificate-ref mycertificate.pem
         - name: Create an asset endpoint with anonymous user authentication and recommended values for the OPCUA configuration using the given instance in the same resource group.
-                Note that for successfully using the connector, you will need to have the OPC PLC service deployed on your cluster and the target address must point to the service.
+                Note that for successfully using the connector, you will need to have the OPC PLC service deployed and the target address must point to the service.
                 If the OPC PLC service is in the same cluster and namespace as IoT Ops, the target address should be formatted as `opc.tcp://{opc-plc-service-name}:{service-port}`
                 If the OPC PLC service is in the same cluster but different namespace as IoT Ops, include the service namespace like so `opc.tcp://{opc-plc-service-name}.{service-namespace}:{service-port}`
                 For more information, please see aka.ms/opcua-quickstart
