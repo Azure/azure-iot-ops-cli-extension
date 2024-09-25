@@ -857,7 +857,7 @@ def test_calculate_status(resource_state, expected_status):
         # Scenario 1: Both runtimeStatus and provisioningStatus are provided with summary detail level.
         (
             {
-                "runtimeStatus": {"status": "Running", "statusDescription": "All good"},
+                "runtimeStatus": {"status": "Running", "description": "All good"},
                 "provisioningStatus": {"status": "Success"},
             },
             ResourceOutputDetailLevel.summary.value,
@@ -870,7 +870,7 @@ def test_calculate_status(resource_state, expected_status):
                     status="success",
                     value={
                         "status": {
-                            "runtimeStatus": {"status": "Running", "statusDescription": "All good"},
+                            "runtimeStatus": {"status": "Running", "description": "All good"},
                             "provisioningStatus": {"status": "Success"},
                         }
                     },
@@ -897,7 +897,7 @@ def test_calculate_status(resource_state, expected_status):
         # Scenario 3: Both statuses, verbose detail level.
         (
             {
-                "runtimeStatus": {"status": "Running", "statusDescription": "All good"},
+                "runtimeStatus": {"status": "Running", "description": "All good"},
                 "provisioningStatus": {"status": "Success"},
             },
             ResourceOutputDetailLevel.verbose.value,
@@ -914,7 +914,7 @@ def test_calculate_status(resource_state, expected_status):
                     status="success",
                     value={
                         "status": {
-                            "runtimeStatus": {"status": "Running", "statusDescription": "All good"},
+                            "runtimeStatus": {"status": "Running", "description": "All good"},
                             "provisioningStatus": {"status": "Success"},
                         }
                     },
