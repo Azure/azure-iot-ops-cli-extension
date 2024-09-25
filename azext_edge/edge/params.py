@@ -592,7 +592,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "instance_subscription",
             options_list=["--instance-subscription", "--is"],
-            help="Instance subscription id. If not provided, asset subscription id will be used."
+            help="Instance subscription id. If not provided, asset subscription id will be used.",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "custom_attributes",
