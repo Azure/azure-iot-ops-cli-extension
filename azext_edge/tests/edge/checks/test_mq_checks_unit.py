@@ -66,7 +66,12 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     },
                     "mode": "distributed",
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={
+                    "runtimeStatus": {
+                        "status": ResourceState.running.value,
+                        "description": "All replicas are running.",
+                    }
+                },
             ),
             # service obj
             generate_resource_stub(
@@ -98,7 +103,12 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {
+                            "runtimeStatus": {
+                                "status": ResourceState.running.value,
+                                "description": "All replicas are running.",
+                            }
+                        },
                     ),
                 ],
                 [
@@ -129,7 +139,10 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     },
                 },
                 status={
-                    "runtimeStatus": {"status": ResourceState.starting.value, "statusDescription": ""},
+                    "runtimeStatus": {
+                        "status": ResourceState.starting.value,
+                        "description": "Waiting for all replicas to report ready.",
+                    },
                 },
             ),
             # service obj
@@ -157,7 +170,12 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.starting.value, "statusDescription": ""}},
+                        {
+                            "runtimeStatus": {
+                                "status": ResourceState.starting.value,
+                                "description": "Waiting for all replicas to report ready.",
+                            }
+                        },
                     ),
                 ],
                 [
@@ -192,7 +210,12 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     },
                     "mode": "distributed",
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={
+                    "runtimeStatus": {
+                        "status": ResourceState.running.value,
+                        "statusDescription": "All replicas are running.",
+                    }
+                },
             ),
             # service obj
             generate_resource_stub(
@@ -224,7 +247,12 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {
+                            "runtimeStatus": {
+                                "status": ResourceState.running.value,
+                                "statusDescription": "All replicas are running.",
+                            }
+                        },
                     ),
                 ],
                 [
