@@ -30,17 +30,17 @@ logger = get_logger(__name__)
 def support_bundle(
     cmd,
     log_age_seconds: int = 60 * 60 * 24,
-    ops_service: str = OpsServiceType.auto.value,
     bundle_dir: Optional[str] = None,
     include_mq_traces: Optional[bool] = None,
     context_name: Optional[str] = None,
+    ops_services: Optional[List[str]] = None,
 ) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.support_bundle import build_bundle
 
     bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir)
     return build_bundle(
-        ops_service=ops_service,
+        ops_services=ops_services,
         bundle_path=str(bundle_path),
         log_age_seconds=log_age_seconds,
         include_mq_traces=include_mq_traces,

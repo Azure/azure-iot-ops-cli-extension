@@ -130,11 +130,15 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops support") as context:
         context.argument(
-            "ops_service",
+            "ops_services",
+            nargs="?",
+            action="append",
             options_list=["--ops-service", "--svc"],
             choices=CaseInsensitiveList(OpsServiceType.list()),
             help="The IoT Operations service the support bundle creation should apply to. "
-            "If auto is selected, the operation will detect which services are available.",
+            "If auto is selected, the operation will detect which services are available. "
+            "If no service is provided, the operation will default to auto. "
+            "--ops-service can be used one or more times.",
         )
         context.argument(
             "log_age_seconds",

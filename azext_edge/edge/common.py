@@ -145,7 +145,6 @@ class OpsServiceType(ListableEnum):
     IoT Operations service type.
     """
 
-    auto = "auto"
     mq = "broker"
     opcua = "opcua"
     akri = "akri"
