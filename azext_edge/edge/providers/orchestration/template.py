@@ -50,7 +50,7 @@ class TemplateBlueprint(NamedTuple):
 IOT_OPERATIONS_VERSION_MONIKER = "v0.7.0-preview"
 
 M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
-    commit_id="8a539f2fc0eb468d95fb05c4e92ba4fee923255a",
+    commit_id="755d7d8b866d1c33f24ccc866eb9cfaaeda5af95",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
@@ -218,7 +218,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "VERSIONS": {
                 "platform": "0.7.6",
-                "aio": "0.7.26",
+                "aio": "0.7.29",
                 "secretSyncController": "0.6.4",
                 "edgeStorageAccelerator": "2.1.1-preview",
                 "openServiceMesh": "1.2.9",
