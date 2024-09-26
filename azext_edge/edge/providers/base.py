@@ -366,19 +366,6 @@ def delete_namespaced_custom_object(
             raise RuntimeError(error_msg)
 
 
-def get_namespaced_configmap(namespace: str, cm_name: str) -> dict:
-    result = None
-    try:
-        v1_api = client.CoreV1Api()
-        result = v1_api.read_namespaced_config_map(namespace=namespace, name=cm_name)
-    except ApiException as ae:
-        error_msg = str(ae)
-        logger.debug(msg=error_msg)
-    else:
-        if result:
-            return generic.sanitize_for_serialization(obj=result)
-
-
 def create_namespaced_configmap(
     namespace: str, cm_name: str, data: Dict[str, str], delete_first: bool = False
 ) -> dict:

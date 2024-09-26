@@ -14,6 +14,8 @@ from kubernetes.client.models import (
 from rich.padding import Padding
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from azext_edge.edge.providers.k8s.config_map import get_config_map
+
 from .check_manager import CheckManager
 from .display import process_value_color
 from ..common import COLOR_STR_FORMAT, PADDING_SIZE, ResourceOutputDetailLevel, ValidationResourceType
@@ -478,7 +480,7 @@ def validate_ref(name: str, namespace: str, ref_type: ValidationResourceType) ->
     if ref_type == ValidationResourceType.secret:
         ref_obj = get_namespaced_secret(secret_name=name, namespace=namespace)
     elif ref_type == ValidationResourceType.configmap:
-        ref_obj == get_namespaced_configmap(cm_name=name, namespace=namespace)
+        ref_obj == get_config_map(name=name, namespace=namespace)
     is_valid = bool(ref_obj)
 
     if is_valid:
