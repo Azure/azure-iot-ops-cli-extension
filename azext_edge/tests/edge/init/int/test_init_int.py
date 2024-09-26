@@ -74,6 +74,10 @@ def init_test_setup(settings, tracked_resources):
             f"az iot ops delete --cluster {settings.env.azext_edge_cluster} -g {settings.env.azext_edge_rg} "
             "-y --no-progress --force --include-deps"
         )
+    else:
+        # if the init + create worked - make sure that schema reg + storage account aren't deleted
+        tracked_resources.remove(storage_account['id'])
+        tracked_resources.remove(registry['id'])
 
 
 @pytest.mark.init_scenario_test
@@ -81,7 +85,7 @@ def test_init_scenario(
     init_test_setup, tracked_files
 ):
     additional_init_args = init_test_setup["additionalInitArgs"] or ""
-    _process_additional_args(additional_init_args)
+    init_arg_dict = _process_additional_args(additional_init_args)
     additional_create_args = init_test_setup["additionalCreateArgs"] or ""
     create_arg_dict = _process_additional_args(additional_create_args)
     _process_broker_config_file_arg(create_arg_dict, tracked_files)
@@ -96,7 +100,7 @@ def test_init_scenario(
     # TODO: assert return once there is a return for init
     run(command)
 
-    assert_aio_init(cluster_name=cluster_name, resource_group=resource_group)
+    assert_aio_init(cluster_name=cluster_name, resource_group=resource_group, **init_arg_dict)
 
     # create command
     create_command = f"az iot ops create -g {resource_group} --cluster {cluster_name} "\
@@ -113,13 +117,11 @@ def test_init_scenario(
 
     # Missing:
     # init
-    # --ops-config
     # --kubernetes-distro + runtime-socket
     # --enable-fault-tolerance
     # --trust-source (one param)
     # create
     # --cluster-namespace
-    # --broker-config-file
 
     try:
         for assertion in [
@@ -149,6 +151,8 @@ def test_init_scenario(
 def assert_aio_init(
     cluster_name: str,
     resource_group: str,
+    ops_config: str,
+    **_,
 ):
     # check extensions installed
     cluster_id = run(
@@ -163,14 +167,21 @@ def assert_aio_init(
     while extension_result.get("nextLink"):
         extension_result = run(f"az rest --method GET --url {extension_result['nextLink']}")
         extensions.extend(extension_result["value"])
-    aio_extensions = []
+    iot_ops_ext = None,
+    iot_ops_platform_ext = None
     for ext in extensions:
-        if ext["properties"]["extensionType"] in (
-            "microsoft.iotoperations", "microsoft.iotoperations.platform"
-        ):
-            aio_extensions.append(ext["name"])
+        if ext["properties"]["extensionType"] == "microsoft.iotoperations":
+            iot_ops_ext = ext
+        elif ext["properties"]["extensionType"] == "microsoft.iotoperations.platform":
+            iot_ops_platform_ext = ext
 
-    if len(aio_extensions) < 2:
+    if ops_config:
+        ops_config = assemble_nargs_to_dict(ops_config.split())
+        configs = iot_ops_ext["properties"]["configurationSettings"]
+        for key, value in ops_config.items():
+            assert configs[key] == value
+
+    if not all([iot_ops_platform_ext, iot_ops_ext]):
         raise AssertionError(
             "Extensions for AIO are missing. These are the extensions "
             f"on the cluster: {[ext['name'] for ext in extensions]}."
