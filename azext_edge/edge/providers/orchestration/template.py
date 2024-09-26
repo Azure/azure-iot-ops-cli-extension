@@ -56,7 +56,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.3.12046", "templateHash": "6026035989572434192"}
+            "_generator": {"name": "bicep", "version": "0.30.3.12046", "templateHash": "8058727987213176464"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -218,7 +218,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "VERSIONS": {
                 "platform": "0.7.6",
-                "aio": "0.7.23",
+                "aio": "0.7.26",
                 "secretSyncController": "0.6.4",
                 "edgeStorageAccelerator": "2.1.1-preview",
                 "openServiceMesh": "1.2.9",
