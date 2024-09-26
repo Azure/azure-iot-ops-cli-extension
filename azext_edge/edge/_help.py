@@ -467,6 +467,12 @@ def load_iotops_help():
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --enable-fault-tolerance
+        - name: This example highlights trust settings for a user provided cert manager config.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=ClusterIssuer
+             issuerName=trust-manager-selfsigned-issuer
+
     """
 
     helps[

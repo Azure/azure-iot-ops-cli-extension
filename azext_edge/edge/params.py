@@ -30,7 +30,7 @@ from .providers.orchestration.common import (
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
-    TrustSourceType,
+    TRUST_SETTING_KEYS,
 )
 
 
@@ -426,7 +426,9 @@ def load_iotops_arguments(self, _):
             context.argument(
                 "custom_broker_config_file",
                 options_list=["--broker-config-file"],
-                help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
+                help="Path to a json file with custom broker config properties. "
+                "File config content is used over individual broker config parameters. "
+                "Useful for advanced scenarios. "
                 "The expected format is described at https://aka.ms/aziotops-broker-config.",
                 arg_group="Broker",
             )
@@ -525,10 +527,13 @@ def load_iotops_arguments(self, _):
                 arg_group="Dataflow",
             )
             context.argument(
-                "trust_source",
-                arg_type=get_enum_type(TrustSourceType),
-                options_list=["--trust-source"],
-                help="Indicates whether a built-in self-signed or user managed trust bundle config should be used.",
+                "trust_settings",
+                options_list=["--trust-settings"],
+                nargs="+",
+                action="store",
+                help="Settings for user provided trust bundle. Used for component TLS. Format is space-separated "
+                f"key=value pairs. The following keys are required: `{'`, `'.join(TRUST_SETTING_KEYS)}`. If not "
+                "used, a system provided self-signed trust bundle is configured.",
                 arg_group="Trust",
             )
 

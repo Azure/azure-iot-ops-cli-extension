@@ -5,8 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import Enum
-from ...util.x509 import DEFAULT_VALID_DAYS as DEFAULT_X509_CA_VALID_DAYS
-
 
 # Urls
 ARM_ENDPOINT = "https://management.azure.com/"
@@ -30,6 +28,9 @@ CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
 AIO_INSECURE_LISTENER_NAME = "default-insecure"
 AIO_INSECURE_LISTENER_SERVICE_NAME = "aio-broker-insecure"
 AIO_INSECURE_LISTENER_SERVICE_PORT = 1883
+
+TRUST_ISSUER_KIND_KEY = "issuerKind"
+TRUST_SETTING_KEYS = frozenset(["issuerName", TRUST_ISSUER_KIND_KEY, "configMapName", "configMapKey"])
 
 
 class MqMode(Enum):
@@ -56,22 +57,5 @@ class KubernetesDistroType(Enum):
     microk8s = "MicroK8s"
 
 
-class TrustSourceType(Enum):
-    self_signed = "SelfSigned"
-    # customer_managed = "CustomerManaged"  # TODO - @digimaun
-
-
 class IdentityUsageType(Enum):
     dataflow = "dataflow"
-
-
-__all__ = [
-    "MqMode",
-    "MqMemoryProfile",
-    "MqServiceType",
-    "KubernetesDistroType",
-    "TrustSourceType",
-    "IdentityUsageType",
-    "DEFAULT_X509_CA_VALID_DAYS",
-    "KEYVAULT_CLOUD_API_VERSION",
-]
