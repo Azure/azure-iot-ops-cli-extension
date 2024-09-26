@@ -19,7 +19,7 @@ from azext_edge.edge.providers.k8s.config_map import get_config_map
 from .check_manager import CheckManager
 from .display import process_value_color
 from ..common import COLOR_STR_FORMAT, PADDING_SIZE, ResourceOutputDetailLevel, ValidationResourceType
-from ...base import get_cluster_custom_api, get_namespaced_configmap, get_namespaced_secret
+from ...base import get_cluster_custom_api, get_namespaced_secret
 from ...edge_api import EdgeResourceApi
 from ....common import CheckTaskStatus, ResourceState
 
@@ -461,9 +461,7 @@ def process_custom_resource_status(
             if prop_value:
                 status_text = f"{prop_name} {{{decorate_resource_status(prop_value.get('status'))}}}."
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
-                    status_description = prop_value.get("statusDescription") or prop_value.get("output", {}).get(
-                        "message"
-                    )
+                    status_description = prop_value.get("description") or prop_value.get("output", {}).get("message")
                     if status_description:
                         status_text = status_text.replace(".", f", [cyan]{status_description}[/cyan].")
 

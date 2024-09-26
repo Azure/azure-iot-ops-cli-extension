@@ -223,6 +223,8 @@ jobs:
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-int --skip-pkg-install -- --durations=0
+          coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
+          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Containerized tests"
         if: ${{ matrix.feature == 'default' && inputs.use-container }}
         env:
