@@ -9,6 +9,8 @@ Help definitions for Digital Twins commands.
 
 from knack.help_files import helps
 
+from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
+
 from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
     COMPAT_ARCCONTAINERSTORAGE_APIS,
@@ -56,6 +58,8 @@ def load_iotops_help():
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
             - {COMPAT_ARCCONTAINERSTORAGE_APIS.as_str()}
+            - {SECRETSYNC_API_V1.as_str()}
+            - {SECRETSTORE_API_V1.as_str()}
 
             Note: logs from evicted pod will not be captured, as they are inaccessible. For details
             on why a pod was evicted, please refer to the related pod and node files.
@@ -81,6 +85,10 @@ def load_iotops_help():
         - name: Include arc container storage resources in the support bundle.
           text: >
             az iot ops support create-bundle --ops-service acs
+
+        - name: Include secretstore resources in the support bundle.
+          text: >
+            az iot ops support create-bundle --ops-service secretstore
     """
 
     helps[
