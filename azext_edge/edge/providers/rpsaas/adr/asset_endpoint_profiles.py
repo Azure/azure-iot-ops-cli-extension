@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+from rich.console import Console
 from typing import TYPE_CHECKING, Dict, Iterable, Optional, Union
 
 from knack.log import get_logger
@@ -21,7 +22,7 @@ from .user_strings import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG,
 )
-from ....util.az_client import get_registry_mgmt_client
+from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state
 from ....util.queryable import Queryable
 from ....common import AEPAuthModes, AEPTypes
 
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
         AssetEndpointProfilesOperations as AEPOperations
     )
 
+console = Console()
 logger = get_logger(__name__)
 AEP_RESOURCE_TYPE = "Microsoft.DeviceRegistry/assetEndpointProfiles"
 DISCOVERED_AEP_RESOURCE_TYPE = "Microsoft.DeviceRegistry/discoveredAssetEndpointProfiless"
@@ -104,11 +106,14 @@ class AssetEndpointProfiles(Queryable):
             "properties": properties,
             "tags": tags,
         }
-        return self.ops.begin_create_or_replace(
-            resource_group_name,
-            asset_endpoint_profile_name,
-            resource=aep_body
-        )
+
+        with console.status(f"Creating {asset_endpoint_profile_name}..."):
+            poller = self.ops.begin_create_or_replace(
+                resource_group_name,
+                asset_endpoint_profile_name,
+                resource=aep_body
+            )
+            return wait_for_terminal_state(poller)
 
     def delete(self, asset_endpoint_profile_name: str, resource_group_name: str):
         self.show(
@@ -116,10 +121,12 @@ class AssetEndpointProfiles(Queryable):
             resource_group_name=resource_group_name,
             check_cluster=True
         )
-        return self.update_ops.begin_delete(
-            resource_group_name,
-            asset_endpoint_profile_name,
-        )
+        with console.status(f"Deleting {asset_endpoint_profile_name}..."):
+            poller = self.update_ops.begin_delete(
+                resource_group_name,
+                asset_endpoint_profile_name,
+            )
+            return wait_for_terminal_state(poller)
 
     def show(
         self, asset_endpoint_profile_name: str, resource_group_name: str, check_cluster: bool = False
@@ -219,11 +226,13 @@ class AssetEndpointProfiles(Queryable):
             certificate_reference=certificate_reference,
         )
         # use this over update since we want to make sure we get the tags in
-        return self.update_ops.begin_create_or_replace(
-            resource_group_name,
-            asset_endpoint_profile_name,
-            original_aep
-        )
+        with console.status(f"Updating {asset_endpoint_profile_name}..."):
+            poller = self.update_ops.begin_create_or_replace(
+                resource_group_name,
+                asset_endpoint_profile_name,
+                original_aep
+            )
+            return wait_for_terminal_state(poller)
 
 
 # Helpers

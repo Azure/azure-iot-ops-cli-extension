@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+from rich.console import Console
 from typing import TYPE_CHECKING, Dict, List, Iterable, Optional, Union
 from knack.log import get_logger
 from azure.cli.core.azclierror import (
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     )
 
 
+console = Console()
 logger = get_logger(__name__)
 ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/assets"
 DISCOVERED_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/discoveredAssets"
@@ -135,11 +137,13 @@ class Assets(Queryable):
             "properties": properties,
             "tags": tags,
         }
-        return self.ops.begin_create_or_replace(
-            resource_group_name,
-            asset_name,
-            resource=asset_body
-        )
+        with console.status(f"Creating {asset_name}..."):
+            poller = self.ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                resource=asset_body
+            )
+            return wait_for_terminal_state(poller)
 
     def delete(self, asset_name: str, resource_group_name: str):
         self.show(
@@ -147,10 +151,12 @@ class Assets(Queryable):
             resource_group_name=resource_group_name,
             check_cluster=True
         )
-        return self.update_ops.begin_delete(
-            resource_group_name,
-            asset_name,
-        )
+        with console.status(f"Deleting {asset_name}..."):
+            poller = self.update_ops.begin_delete(
+                resource_group_name,
+                asset_name,
+            )
+            return wait_for_terminal_state(poller)
 
     def show(
         self, asset_name: str, resource_group_name: str, check_cluster: bool = False
@@ -318,12 +324,13 @@ class Assets(Queryable):
             ev_queue_size=ev_queue_size,
         )
 
-        poller = self.update_ops.begin_create_or_replace(
-            resource_group_name,
-            asset_name,
-            original_asset
-        )
-        return poller
+        with console.status(f"Updating {asset_name}..."):
+            poller = self.update_ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                original_asset
+            )
+            return wait_for_terminal_state(poller)
 
     # Dataset
     # TODO: multi-dataset support
@@ -381,12 +388,13 @@ class Assets(Queryable):
         dataset["dataPoints"].append(sub_point)
 
         # note that update does not return the properties
-        poller = self.update_ops.begin_create_or_replace(
-            resource_group_name,
-            asset_name,
-            asset
-        )
-        asset = wait_for_terminal_state(poller)
+        with console.status(f"Updating {asset_name}..."):
+            poller = self.update_ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
+            asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
 
@@ -452,12 +460,13 @@ class Assets(Queryable):
         )
 
         # note that update does not return the properties
-        poller = self.update_ops.begin_create_or_replace(
-            resource_group_name,
-            asset_name,
-            asset
-        )
-        asset = wait_for_terminal_state(poller)
+        with console.status(f"Updating {asset_name}..."):
+            poller = self.update_ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
+            asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return _get_dataset(asset, dataset_name)["dataPoints"]
@@ -492,12 +501,13 @@ class Assets(Queryable):
         dataset["dataPoints"] = [dp for dp in dataset.get("dataPoints", []) if dp["name"] != data_point_name]
 
         # note that update does not return the properties
-        poller = self.update_ops.begin_create_or_replace(
-            resource_group_name,
-            asset_name,
-            asset
-        )
-        asset = wait_for_terminal_state(poller)
+        with console.status(f"Updating {asset_name}..."):
+            poller = self.update_ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
+            asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
 
@@ -538,12 +548,13 @@ class Assets(Queryable):
         asset["properties"]["events"].append(sub_point)
 
         # note that update does not return the properties
-        poller = self.update_ops.begin_create_or_replace(
-            resource_group_name,
-            asset_name,
-            asset
-        )
-        asset = wait_for_terminal_state(poller)
+        with console.status(f"Updating {asset_name}..."):
+            poller = self.update_ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
+            asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
@@ -601,12 +612,13 @@ class Assets(Queryable):
         )
 
         # note that update does not return the properties
-        poller = self.update_ops.begin_create_or_replace(
-            resource_group_name,
-            asset_name,
-            asset
-        )
-        asset = wait_for_terminal_state(poller)
+        with console.status(f"Updating {asset_name}..."):
+            poller = self.update_ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
+            asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
@@ -639,12 +651,13 @@ class Assets(Queryable):
         ]
 
         # note that update does not return the properties
-        poller = self.update_ops.begin_create_or_replace(
-            resource_group_name,
-            asset_name,
-            asset
-        )
-        asset = wait_for_terminal_state(poller)
+        with console.status(f"Updating {asset_name}..."):
+            poller = self.update_ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
+            asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
