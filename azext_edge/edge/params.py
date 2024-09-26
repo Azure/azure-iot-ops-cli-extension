@@ -598,7 +598,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "custom_attributes",
             options_list=["--custom-attribute", "--attr"],
-            help="Space-separated key=value pairs corresponding to additional custom attributes for the asset.",
+            help="Space-separated key=value pairs corresponding to additional custom attributes for the asset. "
+            "This parameter can be used more than once.",
             nargs="+",
             arg_group="Additional Info",
             action="extend",
@@ -613,39 +614,35 @@ def load_iotops_arguments(self, _):
             "`observability_mode` (None, Gauge, Counter, Histogram, or Log), `sampling_interval` (int), "
             "`queue_size` (int). "
             "--data can be used 1 or more times. Review help examples for full parameter usage",
-            arg_group="Additional Info",
+            arg_group="Data-point",
         )
         context.argument(
             "data_points_file_path",
             options_list=["--data-file", "--df"],
             help="File path for the file containing the data points. The following file types are supported: "
             f"{', '.join(FileType.list())}.",
-            arg_group="Additional Info",
+            arg_group="Data-point",
         )
         context.argument(
             "description",
             options_list=["--description", "-d"],
             help="Description.",
-            arg_group="Additional Info",
         )
         context.argument(
             "display_name",
             options_list=["--display-name", "--dn"],
             help="Display name.",
-            arg_group="Additional Info",
         )
         context.argument(
             "disabled",
             options_list=["--disable"],
             help="Disable an asset.",
-            arg_group="Additional Info",
             arg_type=get_three_state_flag(),
         )
         context.argument(
             "discovered",
             options_list=["--discovered"],
             help="Flag to determine if an asset was discovered on the cluster.",
-            arg_group="Additional Info",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -664,14 +661,14 @@ def load_iotops_arguments(self, _):
             "`name` (required), `observability_mode` (none or log), `sampling_interval` "
             "(int), `queue_size` (int). "
             "--event can be used 1 or more times. Review help examples for full parameter usage",
-            arg_group="Additional Info",
+            arg_group="Event",
         )
         context.argument(
             "events_file_path",
             options_list=["--event-file", "--ef"],
             help="File path for the file containing the events. The following file types are supported: "
             f"{', '.join(FileType.list())}.",
-            arg_group="Additional Info",
+            arg_group="Event",
         )
         context.argument(
             "external_asset_id",
@@ -823,6 +820,7 @@ def load_iotops_arguments(self, _):
             "custom_attributes",
             options_list=["--custom-attribute", "--attr"],
             help="Space-separated key=value pairs corresponding to additional custom attributes for the asset. "
+            "This parameter can be used more than once."
             'To remove a custom attribute, please set the attribute\'s value to "".',
             nargs="+",
             arg_group="Additional Info",
@@ -947,6 +945,17 @@ def load_iotops_arguments(self, _):
             help="Asset Endpoint Profile name.",
         )
         context.argument(
+            "instance_resource_group",
+            options_list=["--instance-resource-group", "--ig"],
+            help="Instance resource group. If not provided, asset endpoint profile resource group will be used."
+        )
+        context.argument(
+            "instance_subscription",
+            options_list=["--instance-subscription", "--is"],
+            help="Instance subscription id. If not provided, asset endpoint profile subscription id will be used.",
+            deprecate_info=context.deprecate(hide=True),
+        )
+        context.argument(
             "discovered",
             options_list=["--discovered"],
             help="Flag to determine if an asset endpoint profile was discovered on the cluster.",
@@ -1040,7 +1049,7 @@ def load_iotops_arguments(self, _):
             type=int,
             arg_group="Connector",
         )
-        context.argument(  # TODO: change to disable
+        context.argument(
             "run_asset_discovery",
             options_list=["--run-asset-discovery", "--rad"],
             help="Flag to determine if asset discovery should be run.",
