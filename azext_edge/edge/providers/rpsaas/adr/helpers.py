@@ -37,7 +37,7 @@ def get_extended_location(
 
     instance_name: str representing the instance name
     instance_resource_group: str representing the instance resource group
-    instance_instance_subscriptionname: str representing the instance subscription
+    instance_subscription: str representing the instance subscription
         (if it is different from the current one)
     """
     instance_provider = Instances(cmd=cmd, subscription_id=instance_subscription)

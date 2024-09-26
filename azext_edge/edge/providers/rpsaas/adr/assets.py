@@ -16,8 +16,7 @@ from azure.cli.core.azclierror import (
 from .user_strings import INVALID_OBSERVABILITY_MODE_ERROR
 from ....util import assemble_nargs_to_dict
 from ....common import FileType
-# TODO: push these into util init
-from ....util.az_client import get_registry_mgmt_client
+from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state
 from ....util.queryable import Queryable
 
 if TYPE_CHECKING:
@@ -30,8 +29,8 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/assets"
 DISCOVERED_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/discoveredAssets"
-VALID_DATA_OBSERVABILITY_MODES = ["None", "Gauge", "Counter", "Histogram", "Log"]
-VALID_EVENT_OBSERVABILITY_MODES = ["None", "Log"]
+VALID_DATA_OBSERVABILITY_MODES = frozenset(["None", "Gauge", "Counter", "Histogram", "Log"])
+VALID_EVENT_OBSERVABILITY_MODES = frozenset(["None", "Log"])
 
 
 class Assets(Queryable):
@@ -387,8 +386,7 @@ class Assets(Queryable):
             asset_name,
             asset
         )
-        poller.wait()
-        asset = poller.result()
+        asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
 
@@ -459,8 +457,7 @@ class Assets(Queryable):
             asset_name,
             asset
         )
-        poller.wait()
-        asset = poller.result()
+        asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return _get_dataset(asset, dataset_name)["dataPoints"]
@@ -500,8 +497,7 @@ class Assets(Queryable):
             asset_name,
             asset
         )
-        poller.wait()
-        asset = poller.result()
+        asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
 
@@ -547,8 +543,7 @@ class Assets(Queryable):
             asset_name,
             asset
         )
-        poller.wait()
-        asset = poller.result()
+        asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
@@ -611,8 +606,7 @@ class Assets(Queryable):
             asset_name,
             asset
         )
-        poller.wait()
-        asset = poller.result()
+        asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
@@ -650,8 +644,7 @@ class Assets(Queryable):
             asset_name,
             asset
         )
-        poller.wait()
-        asset = poller.result()
+        asset = wait_for_terminal_state(poller)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
