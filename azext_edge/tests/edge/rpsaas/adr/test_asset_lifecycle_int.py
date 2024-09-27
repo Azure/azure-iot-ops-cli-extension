@@ -110,11 +110,15 @@ def test_asset_lifecycle(require_init, tracked_resources):
     )
 
     run(f"az iot ops asset delete -n {max_asset_name} -g {rg}")
-    sleep(30)
-    asset_list = run(f"az iot ops asset query --instance {instance}")
-    asset_names = [asset["name"] for asset in asset_list]
-    assert max_asset_name not in asset_names
-    tracked_resources.remove(max_asset["id"])
+    tries = 0
+    while tries < 4:
+        sleep(30)
+        asset_list = run(f"az iot ops asset query --instance {instance}")
+        asset_names = [asset["name"] for asset in asset_list]
+        if max_asset_name not in asset_names:
+            tracked_resources.remove(max_asset["id"])
+            return
+    raise AssertionError(f"{max_asset_name} not deleted.")
 
 
 def test_asset_sub_point_lifecycle(require_init, tracked_resources, tracked_files):

@@ -102,7 +102,7 @@ def test_asset_create(
         resource_group_name=resource_group_name,
         instance_name=instance_name,
         **req
-    ).result()
+    )
     assert result == mock_asset_record
     call_body = json.loads(mocked_responses.calls[0].request.body)
     extended_location = mocked_get_extended_location.original_return_value
@@ -305,7 +305,7 @@ def test_asset_update(
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         **req
-    ).result()
+    )
     assert result == mock_asset_record
     assert len(mocked_responses.calls) == 2
     call_body = json.loads(mocked_responses.calls[-1].request.body)

@@ -249,6 +249,7 @@ def _raise_if_connector_error(connector_type: str, error_msg: str):
         )
 
 
+# TODO: use jsonschema lib
 def _build_opcua_config(
     original_config: Optional[str] = None,
     application_name: Optional[str] = None,
