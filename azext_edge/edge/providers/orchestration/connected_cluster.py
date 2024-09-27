@@ -73,7 +73,7 @@ class ConnectedCluster:
         # TODO - @digimaun - temp necessary due to circular import
         from ..orchestration.resources import ConnectedClusters
 
-        self.clusters = ConnectedClusters(cmd)
+        self.clusters = ConnectedClusters(cmd, subscription_id)
 
     @property
     def resource_id(self) -> str:

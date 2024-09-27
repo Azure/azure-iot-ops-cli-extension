@@ -123,7 +123,14 @@ def load_iotops_commands(self, _):
         cmd_group.command("update", "update_asset")
 
     with self.command_group(
-        "iot ops asset data-point",
+        "iot ops asset dataset",
+        command_type=asset_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("list", "list_asset_datasets")
+        cmd_group.show_command("show", "show_asset_dataset")
+
+    with self.command_group(
+        "iot ops asset dataset point",
         command_type=asset_resource_ops,
     ) as cmd_group:
         cmd_group.command("add", "add_asset_data_point")
@@ -146,19 +153,16 @@ def load_iotops_commands(self, _):
         "iot ops asset endpoint",
         command_type=aep_resource_ops,
     ) as cmd_group:
-        cmd_group.command("create", "create_asset_endpoint_profile")
         cmd_group.command("delete", "delete_asset_endpoint_profile")
         cmd_group.command("query", "query_asset_endpoint_profiles")
         cmd_group.show_command("show", "show_asset_endpoint_profile")
         cmd_group.command("update", "update_asset_endpoint_profile")
 
     with self.command_group(
-        "iot ops asset endpoint certificate",
+        "iot ops asset endpoint create",
         command_type=aep_resource_ops,
     ) as cmd_group:
-        cmd_group.command("add", "add_asset_endpoint_profile_transport_auth")
-        cmd_group.command("list", "list_asset_endpoint_profile_transport_auth")
-        cmd_group.command("remove", "remove_asset_endpoint_profile_transport_auth")
+        cmd_group.command("opcua", "create_opcua_asset_endpoint_profile")
 
     with self.command_group(
         "iot ops schema registry",

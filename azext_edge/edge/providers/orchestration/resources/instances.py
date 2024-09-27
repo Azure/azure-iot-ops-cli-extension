@@ -67,10 +67,12 @@ def get_enable_syntax(instanc_name: str, resource_group_name: str) -> str:
 
 
 class Instances(Queryable):
-    def __init__(self, cmd):
-        super().__init__(cmd=cmd)
+    def __init__(self, cmd, subscription_id: Optional[str] = None):
+        # TODO: make sure this works correctly
+        # TODO: longer term pattern?
+        super().__init__(cmd=cmd, subscriptions=[subscription_id] if subscription_id else None)
         self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            subscription_id=self.subscriptions[0],
         )
         self.msi_mgmt_client = get_msi_mgmt_client(
             subscription_id=self.default_subscription_id,
@@ -114,6 +116,7 @@ class Instances(Queryable):
             cmd=self.cmd,
             cluster_name=resource_id_container.resource_name,
             resource_group_name=resource_id_container.resource_group_name,
+            subscription_id=resource_id_container.subscription_id,
             defer_refresh=True,
         )
 

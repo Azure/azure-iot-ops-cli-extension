@@ -1,16 +1,20 @@
 iot ops asset create:
   parameters:
-    cluster_resource_group:
+    instance_resource_group:
       rule_exclusions:
       - parameter_should_not_end_in_resource_group
-    custom_location_resource_group:
-      rule_exclusions:
-      - parameter_should_not_end_in_resource_group
-iot ops asset endpoint create:
+iot ops asset query:
   parameters:
-    cluster_resource_group:
+    instance_resource_group:
       rule_exclusions:
       - parameter_should_not_end_in_resource_group
-    custom_location_resource_group:
+iot ops asset endpoint create opcua:
+  parameters:
+    instance_resource_group:
+      rule_exclusions:
+      - parameter_should_not_end_in_resource_group
+iot ops asset endpoint query:
+  parameters:
+    instance_resource_group:
       rule_exclusions:
       - parameter_should_not_end_in_resource_group
