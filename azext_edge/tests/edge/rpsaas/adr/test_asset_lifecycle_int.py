@@ -14,6 +14,8 @@ from ....generators import generate_random_string
 from ....helpers import run
 
 logger = get_logger(__name__)
+QUERY_RETRIES = 4
+QUERY_RETRY_INT = 30
 
 
 def test_asset_lifecycle(require_init, tracked_resources):
@@ -110,9 +112,8 @@ def test_asset_lifecycle(require_init, tracked_resources):
     )
 
     run(f"az iot ops asset delete -n {max_asset_name} -g {rg}")
-    tries = 0
-    while tries < 4:
-        sleep(30)
+    for _ in range(QUERY_RETRIES):
+        sleep(QUERY_RETRY_INT)
         asset_list = run(f"az iot ops asset query --instance {instance}")
         asset_names = [asset["name"] for asset in asset_list]
         if max_asset_name not in asset_names:
