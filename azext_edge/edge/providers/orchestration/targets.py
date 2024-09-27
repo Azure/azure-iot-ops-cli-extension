@@ -70,7 +70,6 @@ class InitTargets:
         **_,
     ):
         self.cluster_name = cluster_name
-        self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
         self.resource_group_name = resource_group_name
         # TODO - @digimaun
         if schema_registry_resource_id:
