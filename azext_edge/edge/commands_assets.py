@@ -247,7 +247,7 @@ def add_asset_data_point(
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
-    replace:  Optional[bool] = None
+    replace: Optional[bool] = None
 ):
     return Assets(cmd).add_dataset_data_point(
         asset_name=asset_name,
@@ -336,7 +336,7 @@ def add_asset_event(
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,  # Note: not in DOE
-    replace:  Optional[bool] = None
+    replace: Optional[bool] = None
 ):
     return Assets(cmd).add_event(
         asset_name=asset_name,

@@ -473,7 +473,7 @@ def test_data_point_add_error(
         "name": dataset_name,
         "dataPoints": [
             {"name": data_point_name, generate_random_string(): generate_random_string()},
-            {"name": generate_random_string(), generate_random_string():generate_random_string()}
+            {"name": generate_random_string(), generate_random_string(): generate_random_string()}
         ]
     }
     mock_asset_record["properties"]["datasets"] = [dataset]
