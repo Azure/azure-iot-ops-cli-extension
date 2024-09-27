@@ -42,10 +42,16 @@ class ClusterContainer:
 
 
 class IoTOperationsResourceMap:
-    def __init__(self, cmd, cluster_name: str, resource_group_name: str, defer_refresh: bool = False):
+    def __init__(
+        self,
+        cmd,
+        cluster_name: str,
+        resource_group_name: str,
+        subscription_id: Optional[str] = None,
+        defer_refresh: bool = False
+    ):
         from azure.cli.core.commands.client_factory import get_subscription_id
-
-        self.subscription_id = get_subscription_id(cli_ctx=cmd.cli_ctx)
+        self.subscription_id = subscription_id or get_subscription_id(cli_ctx=cmd.cli_ctx)
         self.connected_cluster = ConnectedCluster(
             cmd=cmd,
             subscription_id=self.subscription_id,
