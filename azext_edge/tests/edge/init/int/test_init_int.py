@@ -423,8 +423,8 @@ DEFAULT_BROKER_CONFIG = {
             "spanChannelCapacity": 1000
         }
     },
-        "generateResourceLimits": {
-            "cpu": "Disabled"
+    "generateResourceLimits": {
+        "cpu": "Disabled"
     },
     "memoryProfile": "Medium",
 }
