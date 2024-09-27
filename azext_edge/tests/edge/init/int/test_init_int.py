@@ -245,7 +245,7 @@ def assert_aio_instance(
     instance_sub_list = run("az iot ops list")
     assert instance_name in [inst["name"] for inst in instance_sub_list]
 
-    update - ultimate sadness
+    # update - ultimate sadness
     description = generate_random_string()
     tags = f"{generate_random_string()}={generate_random_string()}"
     instance_update = run(
