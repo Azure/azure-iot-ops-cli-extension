@@ -151,7 +151,7 @@ def test_init_scenario(
 def assert_aio_init(
     cluster_name: str,
     resource_group: str,
-    ops_config: str,
+    ops_config: Optional[str] = None,
     **_,
 ):
     # check extensions installed
@@ -240,12 +240,12 @@ def assert_aio_instance(
     assert "azure-iot-operations-platform" in tree
 
     # list failed to return collection response YAY
-    # instance_rg_list = run(f"az iot ops list -g {resource_group}")
-    # assert instance_name in [inst["name"] for inst in instance_rg_list]
-    # instance_sub_list = run("az iot ops list")
-    # assert instance_name in [inst["name"] for inst in instance_sub_list]
+    instance_rg_list = run(f"az iot ops list -g {resource_group}")
+    assert instance_name in [inst["name"] for inst in instance_rg_list]
+    instance_sub_list = run("az iot ops list")
+    assert instance_name in [inst["name"] for inst in instance_sub_list]
 
-    # update
+    update - ultimate sadness
     description = generate_random_string()
     tags = f"{generate_random_string()}={generate_random_string()}"
     instance_update = run(
