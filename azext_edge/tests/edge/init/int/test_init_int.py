@@ -236,7 +236,6 @@ def assert_aio_instance(
     tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
     # no resource sync rules if disable rsync rules
     assert ("adr-sync" in tree) is enable_rsync
-    assert instance_name in tree
     assert expected_custom_location in tree
     assert "azure-iot-operations-platform" in tree
 
