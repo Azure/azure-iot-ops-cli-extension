@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from azext_edge.edge.providers.check.base.resource import validate_ref
 
-from azext_edge.edge.providers.check.base.display import add_display_and_eval
+from azext_edge.edge.providers.check.base.display import add_display_and_eval, colorize_string
 
 from .base import (
     CheckManager,
@@ -867,7 +867,7 @@ def evaluate_broker_authorizations(
                 added_condition=added_broker_ref_condition,
             )
 
-            authz_desc = f"\n- Broker Authorization {{[bright_blue]{authz_name}[/bright_blue]}}. {ref_display}"
+            authz_desc = f"\n- Broker Authorization {{{colorize_string(authz_name)}}}. {ref_display}"
             check_manager.add_display(
                 target_name=target_authorizations,
                 namespace=namespace,
@@ -893,9 +893,9 @@ def evaluate_broker_authorizations(
             authz_policies_eval_status = CheckTaskStatus.success.value
 
             if authz_policies:
-                authz_policies_desc = "Authorization Policies [green]detected[/green]."
+                authz_policies_desc = f"Authorization Policies {colorize_string(color='green', value='detected')}."
             else:
-                authz_policies_desc = "Authorization Policies [red]not detected[/red]."
+                authz_policies_desc = f"Authorization Policies {colorize_string(color='red', value='not detected')}."
                 authz_policies_eval_status = CheckTaskStatus.error.value
 
             if (
@@ -963,11 +963,11 @@ def _evaluate_broker_reference(
     ref_eval_value = {}
 
     if broker_reference_name not in valid_broker_refs:
-        ref_display = f"[red]Invalid[/red] broker reference {{[red]{broker_reference_name}[/red]}}."
+        ref_display = f"{colorize_string(color='red', value='Invalid')} broker reference {{{colorize_string(color='red', value=broker_reference_name)}}}."
         ref_eval_status = CheckTaskStatus.error.value
         ref_eval_value["valid(spec.brokerRef)"] = False
     else:
-        ref_display = f"[green]Valid[/green] broker reference {{[green]{broker_reference_name}[/green]}}."
+        ref_display = f"{colorize_string(color='green', value='Valid')} broker reference {{{colorize_string(color='green', value=broker_reference_name)}}}."
         ref_eval_value["valid(spec.brokerRef)"] = True
 
     check_manager.add_target_eval(
@@ -1009,7 +1009,7 @@ def _evaluate_listener_service(
             target_name=target_listeners,
             namespace=namespace,
             display=Padding(
-                f"\n[red]Unable[/red] to fetch service {{[red]{listener_spec_service_name}[/red]}}.",
+                f"\n{colorize_string(color='red', value='Unable')} to fetch service {{{colorize_string(color='red', value=listener_spec_service_name)}}}.",
                 (0, 0, 0, 12),
             ),
         )
@@ -1033,7 +1033,7 @@ def _evaluate_listener_service(
             target_name=target_listener_service,
             namespace=namespace,
             display=Padding(
-                f"Service {{[bright_blue]{listener_spec_service_name}[/bright_blue]}} of type [bright_blue]{listener_spec_service_type}[/bright_blue]",
+                f"Service {{{colorize_string(listener_spec_service_name)}}} of type {colorize_string(listener_spec_service_type)}",
                 (0, 0, 0, 8),
             ),
         )
@@ -1047,7 +1047,7 @@ def _evaluate_listener_service(
                     "len(status.loadBalancer.ingress[*].ip)>=1",
                 ],
             )
-            ingress_rules_desc = "- Expecting [bright_blue]>=1[/bright_blue] ingress rule. {}"
+            ingress_rules_desc = f"- Expecting {colorize_string(">=1")} ingress rule. "
 
             service_status = associated_service.get("status", {})
             load_balancer = service_status.get("loadBalancer", {})
@@ -1055,16 +1055,16 @@ def _evaluate_listener_service(
 
             if not ingress_rules:
                 listener_service_eval_status = CheckTaskStatus.warning.value
-                ingress_count_colored = "[red]Detected 0[/red]."
+                ingress_count_colored = f"{colorize_string(color='red', value='Detected 0')}."
             else:
-                ingress_count_colored = f"[green]Detected {len(ingress_rules)}[/green]."
+                ingress_count_colored = f"{colorize_string(color='green', value=len(ingress_rules))}."
 
             if detail_level != ResourceOutputDetailLevel.summary.value:
                 check_manager.add_display(
                     target_name=target_listener_service,
                     namespace=namespace,
                     display=Padding(
-                        ingress_rules_desc.format(ingress_count_colored),
+                        ingress_rules_desc + ingress_count_colored,
                         (0, 0, 0, 12),
                     ),
                 )
@@ -1080,7 +1080,7 @@ def _evaluate_listener_service(
                 ip = ingress.get("ip")
                 if ip:
                     if detail_level != ResourceOutputDetailLevel.summary.value:
-                        rule_desc = f"- ip: [green]{ip}[/green]"
+                        rule_desc = f"- ip: {colorize_string(color='green', value=ip)}"
                         check_manager.add_display(
                             target_name=target_listener_service,
                             namespace=namespace,
@@ -1106,9 +1106,9 @@ def _evaluate_listener_service(
             cluster_ip_desc = "Cluster IP: {}"
             if not cluster_ip:
                 listener_service_eval_status = CheckTaskStatus.warning.value
-                cluster_ip_desc = cluster_ip_desc.format("[yellow]Undetermined[/yellow]")
+                cluster_ip_desc = cluster_ip_desc.format(colorize_string(color='yellow', value='Undetermined'))
             else:
-                cluster_ip_desc = cluster_ip_desc.format(f"[cyan]{cluster_ip}[/cyan]")
+                cluster_ip_desc = cluster_ip_desc.format(colorize_string(cluster_ip))
 
             if detail_level != ResourceOutputDetailLevel.summary.value:
                 check_manager.add_display(
@@ -1143,8 +1143,8 @@ def _evaluate_broker_diagnostics_service(
             value=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE} not found in namespace {namespace}",
             resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
         )
-        diag_service_desc_suffix = "[red]not detected[/red]."
-        diag_service_desc = f"Diagnostics Service {{[bright_blue]{AIO_BROKER_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+        diag_service_desc_suffix = colorize_string(color='red', value='not detected')
+        diag_service_desc = f"Diagnostics Service {{{colorize_string(AIO_BROKER_DIAGNOSTICS_SERVICE)}}} {diag_service_desc_suffix}."
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
@@ -1164,8 +1164,8 @@ def _evaluate_broker_diagnostics_service(
             value={"spec": {"clusterIP": clusterIP, "ports": ports}},
             resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
         )
-        diag_service_desc_suffix = "[green]detected[/green]."
-        diag_service_desc = f"\nDiagnostics Service {{[bright_blue]{AIO_BROKER_DIAGNOSTICS_SERVICE}[/bright_blue]}} {diag_service_desc_suffix}"
+        diag_service_desc_suffix = colorize_string(color='green', value='detected')
+        diag_service_desc = f"\nDiagnostics Service {{{colorize_string(AIO_BROKER_DIAGNOSTICS_SERVICE)}}} {diag_service_desc_suffix}."
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
@@ -1180,9 +1180,9 @@ def _evaluate_broker_diagnostics_service(
                     target_name=target_brokers,
                     namespace=namespace,
                     display=Padding(
-                        f"[cyan]{port.get('name')}[/cyan] "
-                        f"port [bright_blue]{port.get('port')}[/bright_blue] "
-                        f"protocol [cyan]{port.get('protocol')}[/cyan]",
+                        f"{colorize_string(port.get('name'))} "
+                        f"port {colorize_string(port.get('port'))} "
+                        f"protocol {colorize_string(port.get('protocol'))}",
                         (0, 0, 0, 16),
                     ),
                 )
@@ -1261,10 +1261,10 @@ def _check_authentication_method(
         setting = method.get("customSettings", {})
 
         if not setting:
-            method_display = f"- Custom Method: {{[bright_blue]{method_type}[/bright_blue]}} [red]not found[/red]."
+            method_display = f"- Custom Method: {{{colorize_string(method_type)}}} {colorize_string(color='red', value='not found')}."
             method_eval_status = CheckTaskStatus.error.value
         else:
-            method_display = f"- Custom method: {{[bright_blue]{method_type}[/bright_blue]}} [green]detected[/green]."
+            method_display = f"- Custom method: {{{colorize_string(method_type)}}} {colorize_string(color='green', value='detected')}."
         sub_check_results.append(
             CheckResult(
                 display=Padding(method_display, (0, 0, 0, 16)),
@@ -1278,15 +1278,15 @@ def _check_authentication_method(
         conditions.append("spec.authenticationMethods[*].customSettings.endpoint")
 
         if not endpoint:
-            endpoint_display = "Endpoint [red]not found[/red]."
+            endpoint_display = f"Endpoint {colorize_string(color='red', value='not found')}."
             method_eval_status = CheckTaskStatus.error.value
         elif not endpoint.lower().startswith("https://"):
             endpoint_display = (
-                f"Endpoint: [red]Invalid[/red] endpoint format {{[bright_blue]{endpoint}[/bright_blue]}}."
+                f"Endpoint: {colorize_string(color='red', value='Invalid')} endpoint format {{{colorize_string(endpoint)}}}."
             )
             method_eval_status = CheckTaskStatus.error.value
         else:
-            endpoint_display = f"Endpoint: {{[bright_blue]{endpoint}[/bright_blue]}} [green]detected[/green]."
+            endpoint_display = f"Endpoint: {{{colorize_string(endpoint)}}} {colorize_string(color='red', value='detected')}."
 
         sub_check_results.append(
             CheckResult(
