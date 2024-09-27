@@ -280,7 +280,9 @@ def get_file_map(
         ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretstore.value)
         if ops_path not in walk_result:
             # no crd created in aio namespace
+            # since crd is the only resource type uner aio, skip the rest assertions
             assert len(walk_result) == 1 + expected_default_walk_result
+            pytest.skip(f"No bundles created for {ops_service}.")
         else:
             assert len(walk_result) == 2 + expected_default_walk_result
         file_map[OpsServiceType.secretstore.value] = convert_file_names(walk_result[ssc_path]["files"])
