@@ -127,13 +127,17 @@ def evaluate_broker_listeners(
 
         listeners = list(listeners)
         listeners_count = len(listeners)
-        listener_count_desc = "- Expecting [bright_blue]>=1[/bright_blue] broker listeners per namespace. {}"
+        listener_count_desc = f"- Expecting {colorize_string('>=1')} broker listeners per namespace. "
         listeners_eval_status = CheckTaskStatus.success.value
 
         if listeners_count >= 1:
-            listener_count_desc = listener_count_desc.format(f"[green]Detected {listeners_count}[/green].")
+            listener_count_desc = (
+                listener_count_desc + f"{colorize_string(color='green', value=f'Detected {listeners_count}')}."
+            )
         else:
-            listener_count_desc = listener_count_desc.format(f"[yellow]Detected {listeners_count}[/yellow].")
+            listener_count_desc = (
+                listener_count_desc + f"{colorize_string(color='yellow', value=f'Detected {listeners_count}')}."
+            )
             check_manager.set_target_status(
                 target_name=target_listeners, namespace=namespace, status=CheckTaskStatus.warning.value
             )
@@ -170,7 +174,7 @@ def evaluate_broker_listeners(
                 added_condition=added_broker_ref_condition,
             )
 
-            listener_desc = f"\n- Broker Listener {{[bright_blue]{listener_name}[/bright_blue]}}. {ref_display}"
+            listener_desc = f"\n- Broker Listener {{{colorize_string(listener_name)}}}. {ref_display}"
             check_manager.add_display(
                 target_name=target_listeners,
                 namespace=namespace,
@@ -205,7 +209,7 @@ def evaluate_broker_listeners(
                                 target_name=target_listeners,
                                 namespace=namespace,
                                 display=Padding(
-                                    f"{label}: [bright_blue]{val}[/bright_blue]",
+                                    f"{label}: {colorize_string(val)}",
                                     (0, 0, 0, 12),
                                 ),
                             )
@@ -227,14 +231,10 @@ def evaluate_broker_listeners(
                     authn_eval_status = CheckTaskStatus.success.value
 
                     if authn not in valid_authns:
-                        authn_display = (
-                            f"Authentication reference: [red]Invalid[/red] reference {{[red]{authn}[/red]}}."
-                        )
+                        authn_display = f"Authentication reference: {colorize_string(color='red', value='Invalid')} reference {{{colorize_string(color='red', value=authn)}}}."
                         authn_eval_status = CheckTaskStatus.error.value
                     else:
-                        authn_display = (
-                            f"Authentication reference: [green]Valid[/green] reference {{[green]{authn}[/green]}}."
-                        )
+                        authn_display = f"Authentication reference: {colorize_string(color='green', value='Valid')} reference {{{colorize_string(color='green', value=authn)}}}."
 
                     if (
                         detail_level > ResourceOutputDetailLevel.summary.value
@@ -271,14 +271,10 @@ def evaluate_broker_listeners(
                     authz_eval_status = CheckTaskStatus.success.value
 
                     if authz not in valid_authzs:
-                        authz_display = (
-                            f"Authorization reference: [red]Invalid[/red] reference {{[red]{authz}[/red]}}."
-                        )
+                        authz_display = f"Authorization reference: {colorize_string(color='red', value='Invalid')} reference {{{colorize_string(color='red', value=authz)}}}."
                         authz_eval_status = CheckTaskStatus.error.value
                     else:
-                        authz_display = (
-                            f"Authorization reference: [green]Valid[/green] reference {{[green]{authz}[/green]}}."
-                        )
+                        authz_display = f"Authorization reference: {colorize_string(color='green', value='Valid')} reference {{{colorize_string(color='green', value=authz)}}}."
 
                     if (
                         detail_level > ResourceOutputDetailLevel.summary.value
@@ -409,13 +405,17 @@ def evaluate_brokers(
         )
         brokers = list(brokers)
         brokers_count = len(brokers)
-        brokers_count_text = "- Expecting [bright_blue]1[/bright_blue] broker resource per namespace. {}."
+        brokers_count_text = f"- Expecting {colorize_string('1')} broker resource per namespace. "
         broker_eval_status = CheckTaskStatus.success.value
 
         if brokers_count == 1:
-            brokers_count_text = brokers_count_text.format(f"[green]Detected {brokers_count}[/green]")
+            brokers_count_text = (
+                brokers_count_text + f"{colorize_string(color='green', value=f'Detected {brokers_count}')}."
+            )
         else:
-            brokers_count_text = brokers_count_text.format(f"[red]Detected {brokers_count}[/red]")
+            brokers_count_text = (
+                brokers_count_text + f"{colorize_string(color='red', value=f'Detected {brokers_count}')}."
+            )
             check_manager.set_target_status(
                 target_name=target_brokers, namespace=namespace, status=CheckTaskStatus.error.value
             )
@@ -431,7 +431,7 @@ def evaluate_brokers(
             broker_diagnostics = broker_spec["diagnostics"]
             broker_status_state = b.get("status", {})
 
-            target_broker_text = f"\n- Broker {{[bright_blue]{broker_name}[/bright_blue]}}"
+            target_broker_text = f"\n- Broker {{{colorize_string(broker_name)}}}"
             check_manager.add_display(
                 target_name=target_brokers,
                 namespace=namespace,
@@ -475,15 +475,16 @@ def evaluate_brokers(
                     target_name=target_brokers,
                     namespace=namespace,
                     display=Padding(
-                        "[magenta]spec.cardinality is undefined![/magenta]",
+                        f"cardinality {colorize_string(color='red', value='not detected')}.",
                         (0, 0, 0, 16),
                     ),
                 )
             else:
-                backend_cardinality_desc = "- Expecting backend partitions [bright_blue]>=1[/bright_blue]. {}"
-                backend_redundancy_desc = "- Expecting backend redundancy factor [bright_blue]>=1[/bright_blue]. {}"
-                backend_workers_desc = "- Expecting backend workers [bright_blue]>=1[/bright_blue]. {}"
-                frontend_cardinality_desc = "- Expecting frontend replicas [bright_blue]>=1[/bright_blue]. {}"
+                check_condition_colored_text = colorize_string(">=1")
+                backend_cardinality_desc = f"- Expecting backend partitions {check_condition_colored_text}. "
+                backend_redundancy_desc = f"- Expecting backend redundancy factor {check_condition_colored_text}. "
+                backend_workers_desc = f"- Expecting backend workers {check_condition_colored_text}. "
+                frontend_cardinality_desc = f"- Expecting frontend replicas {check_condition_colored_text}. "
 
                 backend_chain = broker_cardinality.get("backendChain", {})
                 backend_partition_count: Optional[int] = backend_chain.get("partitions")
@@ -492,27 +493,36 @@ def evaluate_brokers(
                 frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
 
                 if backend_partition_count and backend_partition_count >= 1:
-                    backend_chain_count_colored = f"[green]Actual {backend_partition_count}[/green]."
+                    backend_chain_count_colored = (
+                        f"{colorize_string(color='green', value=f'Actual {backend_partition_count}')}."
+                    )
                 else:
-                    backend_chain_count_colored = f"[red]Actual {backend_partition_count}[/red]."
+                    backend_chain_count_colored = (
+                        f"{colorize_string(color='red', value=f'Actual {backend_partition_count}')}."
+                    )
                     broker_eval_status = CheckTaskStatus.error.value
 
                 if backend_redundancy and backend_redundancy >= 1:
-                    backend_replicas_colored = f"[green]Actual {backend_redundancy}[/green]."
+                    backend_replicas_colored = (
+                        f"{colorize_string(color='green', value=f'Actual {backend_redundancy}')}."
+                    )
                 else:
-                    backend_replicas_colored = f"[red]Actual {backend_redundancy}[/red]."
+                    backend_replicas_colored = f"{colorize_string(color='red', value=f'Actual {backend_redundancy}')}."
                     broker_eval_status = CheckTaskStatus.error.value
 
                 if backend_workers and backend_workers >= 1:
-                    backend_workers_colored = f"[green]Actual {backend_workers}[/green]."
+                    backend_workers_colored = f"{colorize_string(color='green', value=f'Actual {backend_workers}')}."
                 else:
-                    backend_workers_colored = f"[red]Actual {backend_workers}[/red]."
+                    backend_workers_colored = f"{colorize_string(color='red', value=f'Actual {backend_workers}')}."
                     broker_eval_status = CheckTaskStatus.error.value
 
                 if frontend_replicas and frontend_replicas >= 1:
-                    frontend_replicas_colored = f"[green]Actual {frontend_replicas}[/green]."
+                    frontend_replicas_colored = (
+                        f"{colorize_string(color='green', value=f'Actual {frontend_replicas}')}."
+                    )
                 else:
-                    frontend_replicas_colored = f"[red]Actual {frontend_replicas}[/red]."
+                    frontend_replicas_colored = f"{colorize_string(color='red', value=f'Actual {frontend_replicas}')}."
+                    broker_eval_status = CheckTaskStatus.error.value
 
                 # show cardinality display on non-summary detail_levels
                 if detail_level != ResourceOutputDetailLevel.summary.value:
@@ -523,10 +533,10 @@ def evaluate_brokers(
                     )
 
                     for display in [
-                        backend_cardinality_desc.format(backend_chain_count_colored),
-                        backend_redundancy_desc.format(backend_replicas_colored),
-                        backend_workers_desc.format(backend_workers_colored),
-                        frontend_cardinality_desc.format(frontend_replicas_colored),
+                        backend_cardinality_desc + backend_chain_count_colored,
+                        backend_redundancy_desc + backend_replicas_colored,
+                        backend_workers_desc + backend_workers_colored,
+                        frontend_cardinality_desc + frontend_replicas_colored,
                     ]:
                         check_manager.add_display(
                             target_name=target_brokers,
@@ -584,7 +594,7 @@ def evaluate_brokers(
                     target_name=target_brokers,
                     namespace=namespace,
                     display=Padding(
-                        "[yellow]Unable to fetch broker diagnostics.[/yellow]",
+                        colorize_string(color="yellow", value="Unable to fetch broker diagnostics."),
                         diagnostic_detail_padding,
                     ),
                 )
@@ -636,7 +646,7 @@ def evaluate_brokers(
                     add_display_and_eval(
                         check_manager=check_manager,
                         target_name=target_brokers,
-                        display_text=f"{prefix}* [yellow]not detected[/yellow].",
+                        display_text=f"{prefix}* {colorize_string(color='yellow', value='not detected')}.",
                         eval_status=CheckTaskStatus.warning.value,
                         eval_value=None,
                         resource_name=prefix,
@@ -709,7 +719,10 @@ def evaluate_broker_authentications(
         check_manager.add_display(
             target_name=target_authentications,
             namespace=namespace,
-            display=Padding(f"Broker Authentications in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
+            display=Padding(
+                f"Broker Authentications in namespace {{{colorize_string(color='purple', value=namespace)}}}",
+                (0, 0, 0, 8),
+            ),
         )
 
         authentications = list(authentications)
@@ -732,7 +745,7 @@ def evaluate_broker_authentications(
                 added_condition=added_broker_ref_condition,
             )
 
-            auth_desc = f"\n- Broker Authentication {{[bright_blue]{auth_name}[/bright_blue]}}. {ref_display}"
+            auth_desc = f"\n- Broker Authentication {{{colorize_string(auth_name)}}}. {ref_display}"
             check_manager.add_display(
                 target_name=target_authentications,
                 namespace=namespace,
@@ -755,13 +768,15 @@ def evaluate_broker_authentications(
 
             # check authentication methods
             auth_methods = auth_spec.get("authenticationMethods", [])
-            auth_methods_desc = "Expecting [bright_blue]>=1[/bright_blue] authentication methods. {}"
+            auth_methods_desc = f"Expecting {colorize_string('>=1')} authentication methods. "
             auth_methods_eval_status = CheckTaskStatus.success.value
 
             if len(auth_methods) >= 1:
-                auth_methods_desc = auth_methods_desc.format(f"[green]Detected {len(auth_methods)}[/green].")
+                auth_methods_desc = (
+                    auth_methods_desc + f"Detected {colorize_string(color='green', value=len(auth_methods))}."
+                )
             else:
-                auth_methods_desc = auth_methods_desc.format(f"[red]Detected {len(auth_methods)}[/red].")
+                auth_methods_desc = auth_methods_desc + f"{colorize_string(color='red', value='Not Detected')}."
                 auth_methods_eval_status = CheckTaskStatus.error.value
 
             sub_check_results.append(
@@ -1047,7 +1062,7 @@ def _evaluate_listener_service(
                     "len(status.loadBalancer.ingress[*].ip)>=1",
                 ],
             )
-            ingress_rules_desc = f"- Expecting {colorize_string(">=1")} ingress rule. "
+            ingress_rules_desc = f"- Expecting {colorize_string('>=1')} ingress rule. "
 
             service_status = associated_service.get("status", {})
             load_balancer = service_status.get("loadBalancer", {})
@@ -1106,7 +1121,7 @@ def _evaluate_listener_service(
             cluster_ip_desc = "Cluster IP: {}"
             if not cluster_ip:
                 listener_service_eval_status = CheckTaskStatus.warning.value
-                cluster_ip_desc = cluster_ip_desc.format(colorize_string(color='yellow', value='Undetermined'))
+                cluster_ip_desc = cluster_ip_desc.format(colorize_string(color="yellow", value="Undetermined"))
             else:
                 cluster_ip_desc = cluster_ip_desc.format(colorize_string(cluster_ip))
 
@@ -1143,8 +1158,10 @@ def _evaluate_broker_diagnostics_service(
             value=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE} not found in namespace {namespace}",
             resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
         )
-        diag_service_desc_suffix = colorize_string(color='red', value='not detected')
-        diag_service_desc = f"Diagnostics Service {{{colorize_string(AIO_BROKER_DIAGNOSTICS_SERVICE)}}} {diag_service_desc_suffix}."
+        diag_service_desc_suffix = colorize_string(color="red", value="not detected")
+        diag_service_desc = (
+            f"Diagnostics Service {{{colorize_string(AIO_BROKER_DIAGNOSTICS_SERVICE)}}} {diag_service_desc_suffix}."
+        )
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
@@ -1164,8 +1181,10 @@ def _evaluate_broker_diagnostics_service(
             value={"spec": {"clusterIP": clusterIP, "ports": ports}},
             resource_name=f"service/{AIO_BROKER_DIAGNOSTICS_SERVICE}",
         )
-        diag_service_desc_suffix = colorize_string(color='green', value='detected')
-        diag_service_desc = f"\nDiagnostics Service {{{colorize_string(AIO_BROKER_DIAGNOSTICS_SERVICE)}}} {diag_service_desc_suffix}."
+        diag_service_desc_suffix = colorize_string(color="green", value="detected")
+        diag_service_desc = (
+            f"\nDiagnostics Service {{{colorize_string(AIO_BROKER_DIAGNOSTICS_SERVICE)}}} {diag_service_desc_suffix}."
+        )
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
@@ -1281,12 +1300,12 @@ def _check_authentication_method(
             endpoint_display = f"Endpoint {colorize_string(color='red', value='not found')}."
             method_eval_status = CheckTaskStatus.error.value
         elif not endpoint.lower().startswith("https://"):
-            endpoint_display = (
-                f"Endpoint: {colorize_string(color='red', value='Invalid')} endpoint format {{{colorize_string(endpoint)}}}."
-            )
+            endpoint_display = f"Endpoint: {colorize_string(color='red', value='Invalid')} endpoint format {{{colorize_string(endpoint)}}}."
             method_eval_status = CheckTaskStatus.error.value
         else:
-            endpoint_display = f"Endpoint: {{{colorize_string(endpoint)}}} {colorize_string(color='red', value='detected')}."
+            endpoint_display = (
+                f"Endpoint: {{{colorize_string(endpoint)}}} {colorize_string(color='red', value='detected')}."
+            )
 
         sub_check_results.append(
             CheckResult(
@@ -1369,7 +1388,7 @@ def _check_authentication_method(
         if headers:
             sub_check_results.append(
                 CheckResult(
-                    display=Padding(f"HTTP Headers: [bright_blue]{headers}[/bright_blue]", (0, 0, 0, 20)),
+                    display=Padding(f"HTTP Headers: {colorize_string(headers)}", (0, 0, 0, 20)),
                     eval_status=None,
                 ),
             )
@@ -1380,10 +1399,12 @@ def _check_authentication_method(
         setting = method.get("x509Settings", {})
 
         if not setting:
-            method_display = f"- x509 Method: {{[bright_blue]{method_type}[/bright_blue]}} [red]not found[/red]."
+            method_display = (
+                f"- x509 Method: {{{colorize_string(method_type)}}} {colorize_string(color='red', value='not found')}."
+            )
             method_eval_status = CheckTaskStatus.error.value
         else:
-            method_display = f"- x509 method: {{[bright_blue]{method_type}[/bright_blue]}} [green]detected[/green]."
+            method_display = f"- x509 method: {{{colorize_string(method_type)}}} {colorize_string(color='green', value='detected')}."
 
         sub_check_results.append(
             CheckResult(
@@ -1404,10 +1425,10 @@ def _check_authentication_method(
             # attributes
             attributes = attributes_additional_properties.get("attributes")
             if not attributes:
-                attributes_display = "Authorization Attributes [red]not found[/red]."
+                attributes_display = f"Authorization Attributes {colorize_string(color='red', value='not found')}."
                 method_eval_status = CheckTaskStatus.error.value
             else:
-                attributes_display = f"Authorization Attributes: [green]{attributes}[/green]."
+                attributes_display = f"Authorization Attributes: {colorize_string(color='green', value=attributes)}."
             sub_check_results.append(
                 CheckResult(
                     display=Padding(attributes_display, (0, 0, 0, 20)),
@@ -1419,10 +1440,10 @@ def _check_authentication_method(
             subject = attributes_additional_properties.get("subject")
 
             if not subject:
-                subject_display = "Subject [red]not found[/red]."
+                subject_display = f"Subject {colorize_string(color='red', value='not found')}."
                 method_eval_status = CheckTaskStatus.error.value
             else:
-                subject_display = f"Subject: [green]{subject}[/green]."
+                subject_display = f"Subject: {colorize_string(color='green', value=subject)}."
             sub_check_results.append(
                 CheckResult(
                     display=Padding(subject_display, (0, 0, 0, 20)),
@@ -1469,12 +1490,10 @@ def _check_authentication_method(
         setting = method.get("serviceAccountTokenSettings", {})
 
         if not setting:
-            method_display = (
-                f"- Service Account Token Method: {{[bright_blue]{method_type}[/bright_blue]}} [red]not found[/red]."
-            )
+            method_display = f"- Service Account Token Method: {{{colorize_string(method_type)}}} {colorize_string(color='red', value='not found')}."
             method_eval_status = CheckTaskStatus.error.value
         else:
-            method_display = f"- Service Account Token Method: {{[bright_blue]{method_type}[/bright_blue]}} [green]detected[/green]."
+            method_display = f"- Service Account Token Method: {{{colorize_string(method_type)}}} {colorize_string(color='green', value='detected')}."
         sub_check_results.append(
             CheckResult(
                 display=Padding(method_display, (0, 0, 0, 16)),
@@ -1487,10 +1506,12 @@ def _check_authentication_method(
         conditions.append("spec.authenticationMethods[*].serviceAccountTokenSettings.audiences")
 
         if not audiences:
-            audiences_display = "Audiences [red]not found[/red]."
+            audiences_display = f"Audiences {colorize_string(color='red', value='not found')}."
             method_eval_status = CheckTaskStatus.error.value
         else:
-            audiences_display = f"Audiences: [bright_blue]{str(audiences)}[/bright_blue] [green]detected[/green]."
+            audiences_display = (
+                f"Audiences: {colorize_string(str(audiences))} {colorize_string(color='green', value='detected')}."
+            )
 
         if detail_level != ResourceOutputDetailLevel.summary.value:
             sub_check_results.append(
@@ -1502,7 +1523,9 @@ def _check_authentication_method(
     else:
         conditions.append("spec.authenticationMethods[*].method")
         method_display = (
-            f"- Unknown method type: [red]{method_type}[/red]." if method_type else "- Method [red]not found[/red]."
+            f"- Unknown method type: {colorize_string(color='red', value=method_type)}."
+            if method_type
+            else f"- Method {colorize_string(color='red', value='not found')}."
         )
         method_eval_status = CheckTaskStatus.error.value
         sub_check_results.append(
