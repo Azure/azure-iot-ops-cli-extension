@@ -127,7 +127,7 @@ class SchemaRegistries(Queryable):
             permission_manager = PermissionManager(storage_id_container.subscription_id)
             try:
                 permission_manager.apply_role_assignment(
-                    scope=storage_account["id"],
+                    scope=blob_container["id"],
                     principal_id=result["identity"]["principalId"],
                     role_def_id=target_role_def,
                 )
@@ -137,7 +137,7 @@ class SchemaRegistries(Queryable):
                     get_user_msg_warn_ra(
                         prefix=f"Role assignment failed with:\n{str(e)}.",
                         principal_id=result["identity"]["principalId"],
-                        scope=storage_account["id"],
+                        scope=blob_container["id"],
                     )
                 )
 
