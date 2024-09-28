@@ -83,7 +83,6 @@ def check_post_deployment(
 
 def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
     from kubernetes.client.models import VersionInfo
-    from packaging import version
 
     from ..common import MIN_K8S_VERSION
 
@@ -97,8 +96,10 @@ def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
     )
 
     try:
+        from packaging import version
+
         version_details: VersionInfo = version_client.get_code()
-    except ApiException as ae:
+    except Exception as ae:
         logger.debug(str(ae))
         api_error_text = UNABLE_TO_DETERMINE_VERSION_MSG
         check_manager.add_target_eval(
