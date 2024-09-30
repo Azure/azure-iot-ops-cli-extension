@@ -289,4 +289,4 @@ jobs:
       - name: "Delete connected cluster"
         if: ${{ always() }}
         run: |
-          az connectedk8s delete --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
+          az resource delete  -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
