@@ -63,10 +63,9 @@ class IndexManager:
         self.config_dir = self.cli_ctx.config.config_dir
 
     def upgrade_available(self, force_refresh: Optional[bool] = False) -> Optional[str]:
-        from packaging import version
-
         try:
             # Import here for exception safety
+            from packaging import version
             from azure.cli.core._session import Session
 
             self.iot_ops_session = Session(encoding="utf8")

@@ -18,12 +18,8 @@ from ...common import (
 from ...util import assemble_nargs_to_dict
 from ...util.az_client import parse_resource_id
 from ..orchestration.common import (
-    AIO_INSECURE_LISTENER_NAME,
-    AIO_INSECURE_LISTENER_SERVICE_NAME,
-    AIO_INSECURE_LISTENER_SERVICE_PORT,
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
-    MqServiceType,
 )
 from .common import KubernetesDistroType
 from .template import (
@@ -70,7 +66,6 @@ class InitTargets:
         **_,
     ):
         self.cluster_name = cluster_name
-        self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
         self.resource_group_name = resource_group_name
         # TODO - @digimaun
         if schema_registry_resource_id:
@@ -288,43 +283,3 @@ class InitTargets:
             result["settings"] = target_settings
 
         return result
-
-    # TODO - @digimaun
-    def get_instance_kpis(self) -> dict:
-        default_listener_port: int = M2_INSTANCE_TEMPLATE.content["variables"]["MQTT_SETTINGS"]["brokerListenerPort"]
-        default_listener_service_name: str = M2_INSTANCE_TEMPLATE.content["variables"]["MQTT_SETTINGS"][
-            "brokerListenerServiceName"
-        ]
-
-        instance_kpis = {
-            "instance": {
-                "name": self.instance_name,
-                "description": self.instance_description,
-                "resourceSync": {"enabled": self.deploy_resource_sync_rules},
-                "location": self.location,
-                "broker": {
-                    DEFAULT_BROKER: {
-                        "listener": {
-                            DEFAULT_BROKER_LISTENER: {
-                                "port": default_listener_port,
-                                "serviceName": default_listener_service_name,
-                                "serviceType": self.broker_service_type,
-                            }
-                        },
-                    },
-                    "authn": {DEFAULT_BROKER_AUTHN: {}},
-                },
-                "dataflows": {
-                    "profile": {DEFAULT_DATAFLOW_PROFILE: {"instanceCount": self.dataflow_profile_instances}},
-                    "endpoint": {DEFAULT_DATAFLOW_ENDPOINT: {}},
-                },
-            }
-        }
-        if self.add_insecure_listener:
-            instance_kpis["instance"]["listener"][AIO_INSECURE_LISTENER_NAME] = {
-                "port": AIO_INSECURE_LISTENER_SERVICE_PORT,
-                "serviceName": AIO_INSECURE_LISTENER_SERVICE_NAME,
-                "serviceType": MqServiceType.load_balancer.value,
-            }
-
-        return instance_kpis
