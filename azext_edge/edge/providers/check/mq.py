@@ -1304,7 +1304,7 @@ def _check_authentication_method(
             method_eval_status = CheckTaskStatus.error.value
         else:
             endpoint_display = (
-                f"Endpoint: {{{colorize_string(endpoint)}}} {colorize_string(color='red', value='detected')}."
+                f"Endpoint: {{{colorize_string(endpoint)}}} {colorize_string(color='green', value='detected')}."
             )
 
         sub_check_results.append(
