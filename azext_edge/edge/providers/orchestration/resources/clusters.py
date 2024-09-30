@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from knack.log import get_logger
 
@@ -23,10 +23,10 @@ if TYPE_CHECKING:
 
 
 class ConnectedClusters(Queryable):
-    def __init__(self, cmd):
-        super().__init__(cmd=cmd)
+    def __init__(self, cmd, subscription_id: Optional[str] = None):
+        super().__init__(cmd=cmd, subscriptions=[subscription_id] if subscription_id else None)
         self.connectedk8s_mgmt_client = get_connectedk8s_mgmt_client(
-            subscription_id=self.default_subscription_id,
+            subscription_id=self.subscriptions[0],
         )
         self.ops: "ConnectedClusterOperations" = self.connectedk8s_mgmt_client.connected_cluster
         self.extensions: ClusterExtensions = ClusterExtensions(cmd)
