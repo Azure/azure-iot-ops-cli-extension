@@ -6,7 +6,6 @@
 
 from functools import partial
 from knack.log import get_logger
-from kubernetes.client.exceptions import ApiException
 from rich.padding import Padding
 from typing import Any, Callable, Dict, List, Optional
 

@@ -18,12 +18,8 @@ from ...common import (
 from ...util import assemble_nargs_to_dict
 from ...util.az_client import parse_resource_id
 from ..orchestration.common import (
-    AIO_INSECURE_LISTENER_NAME,
-    AIO_INSECURE_LISTENER_SERVICE_NAME,
-    AIO_INSECURE_LISTENER_SERVICE_PORT,
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
-    MqServiceType,
 )
 from .common import KubernetesDistroType
 from .template import (
