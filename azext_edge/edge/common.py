@@ -214,6 +214,36 @@ class AEPAuthModes(Enum):
     userpass = "UsernamePassword"
 
 
+class AEPTypes(Enum):
+    """Asset Endpoint Profile (connector) Types"""
+    # TODO: ensure this is the final enum
+    opcua = "OpcUa"
+
+
+class TopicRetain(Enum):
+    """Set the retain flag for messages published to an MQTT broker."""
+    keep = "Keep"
+    never = "Never"
+
+
+class SecurityModes(Enum):
+    """Security modes for OPCUA connector."""
+    none = "none"
+    sign = "sign"
+    sign_and_encrypt = "signAndEncrypt"
+
+
+class SecurityPolicies(Enum):
+    """Security policies for the OPCUA connector."""
+    # TODO: add in user friendly input mapping
+    none = "none"
+    basic128 = "Basic128Rsa15"
+    basic256 = "Basic256"
+    basic256sha256 = "Basic256Sha256"
+    aes128 = "Aes128_Sha256_RsaOaep"
+    aes256 = "Aes256_Sha256_RsaPss"
+
+
 class K8sSecretType(Enum):
     """
     Supported k8s secret types.
@@ -228,9 +258,8 @@ class FileType(ListableEnum):
     Supported file types/extensions for bulk asset operations.
     """
 
-    csv = "csv"
     json = "json"
-    portal_csv = "portal-csv"
+    csv = "csv"
     yaml = "yaml"
 
 

@@ -15,41 +15,43 @@ from azext_edge.edge.providers.rpsaas.adr.assets import (
     _build_asset_sub_point,
     _build_ordered_csv_conversion_map,
     _build_default_configuration,
+    _build_query_body,
+    _build_topic,
     _convert_sub_points_from_csv,
     _convert_sub_points_to_csv,
+    _get_dataset,
     _process_asset_sub_points,
+    _process_asset_sub_points_file_path,
     _process_custom_attributes,
     _update_properties,
     VALID_DATA_OBSERVABILITY_MODES,
     VALID_EVENT_OBSERVABILITY_MODES
 )
 
-from .....generators import generate_random_string
+from ....generators import generate_random_string
 
 
 @pytest.mark.parametrize("data_source", [None, generate_random_string()])
 @pytest.mark.parametrize("event_notifier", [None, generate_random_string()])
-@pytest.mark.parametrize("capability_id", [None, generate_random_string()])
 @pytest.mark.parametrize("name", [None, generate_random_string()])
 @pytest.mark.parametrize("observability_mode", [None, "log"])
 @pytest.mark.parametrize("queue_size", [None, 20])
 @pytest.mark.parametrize("sampling_interval", [None, 33])
 def test_build_asset_sub_point(
-    data_source, event_notifier, capability_id, name, observability_mode, queue_size, sampling_interval
+    data_source, event_notifier, name, observability_mode, queue_size, sampling_interval
 ):
     result = _build_asset_sub_point(
         data_source=data_source,
         event_notifier=event_notifier,
-        capability_id=capability_id,
         name=name,
         observability_mode=observability_mode,
         queue_size=queue_size,
-        sampling_interval=sampling_interval
+        sampling_interval=sampling_interval,
     )
 
-    assert result["capabilityId"] == (capability_id or name)
     assert result["name"] == name
-    assert result["observabilityMode"] == (observability_mode or "none")
+    expected_mode: str = observability_mode or "None"
+    assert result["observabilityMode"] == expected_mode.capitalize()
 
     custom_configuration = {}
     if data_source:
@@ -157,7 +159,106 @@ def test_build_ordered_csv_conversion_map(sub_point_type, portal_friendly):
     assert list(result.keys()) == expected_order
 
 
-# TODO: add extra stuffs
+@pytest.mark.parametrize("req", [
+    {},
+    {
+        "asset_name": generate_random_string(),
+        "default_topic_path": generate_random_string(),
+        "default_topic_retain": generate_random_string(),
+        "description": generate_random_string(),
+        "disabled": True,
+        "display_name": generate_random_string(),
+        "documentation_uri": generate_random_string(),
+        "endpoint_profile": generate_random_string(),
+        "external_asset_id": generate_random_string(),
+        "hardware_revision": generate_random_string(),
+        "location": generate_random_string(),
+        "manufacturer": generate_random_string(),
+        "manufacturer_uri": generate_random_string(),
+        "model": generate_random_string(),
+        "product_code": generate_random_string(),
+        "resource_group_name": generate_random_string(),
+        "serial_number": generate_random_string(),
+        "software_revision": generate_random_string(),
+    },
+    {
+        "disabled": False,
+        "external_asset_id": generate_random_string(),
+        "hardware_revision": generate_random_string(),
+    }
+])
+def test_build_query_body(req):
+    result = _build_query_body(**req)
+    assert result.endswith(
+        "| extend customLocation = tostring(extendedLocation.name) "
+        "| extend provisioningState = properties.provisioningState "
+        "| project id, customLocation, location, name, resourceGroup, provisioningState, tags, "
+        "type, subscriptionId "
+    )
+    query_list = [line.strip() for line in result.split("|")]
+    if req.get("resource_group_name"):
+        assert f'where resourceGroup =~ \"{req["resource_group_name"]}\"' in query_list
+    if req.get("location"):
+        assert f'where location =~ \"{req["location"]}\"' in query_list
+    if req.get("asset_name"):
+        assert f'where name =~ \"{req["asset_name"]}\"' in query_list
+    if req.get("default_topic_path"):
+        assert f'where properties.defaultTopic.path =~ \"{req["default_topic_path"]}\"' in query_list
+    if req.get("default_topic_retain"):
+        assert f'where properties.defaultTopic.retain =~ \"{req["default_topic_retain"]}\"' in query_list
+    if req.get("description"):
+        assert f'where properties.description =~ \"{req["description"]}\"' in query_list
+    if req.get("display_name"):
+        assert f'where properties.displayName =~ \"{req["display_name"]}\"' in query_list
+    if req.get("disabled") is not None:
+        assert f'where properties.enabled == {not req["disabled"]}' in query_list
+    if req.get("documentation_uri"):
+        assert f'where properties.documentationUri =~ \"{req["documentation_uri"]}\"' in query_list
+    if req.get("endpoint_profile"):
+        assert f'where properties.assetEndpointProfileUri =~ \"{req["endpoint_profile"]}\"' in query_list
+    if req.get("external_asset_id"):
+        assert f'where properties.externalAssetId =~ \"{req["external_asset_id"]}\"' in query_list
+    if req.get("hardware_revision"):
+        assert f'where properties.hardwareRevision =~ \"{req["hardware_revision"]}\"' in query_list
+    if req.get("manufacturer"):
+        assert f'where properties.manufacturer =~ \"{req["manufacturer"]}\"' in query_list
+    if req.get("manufacturer_uri"):
+        assert f'where properties.manufacturerUri =~ \"{req["manufacturer_uri"]}\"' in query_list
+    if req.get("model"):
+        assert f'where properties.model =~ \"{req["model"]}\"' in query_list
+    if req.get("product_code"):
+        assert f'where properties.productCode =~ \"{req["product_code"]}\"' in query_list
+    if req.get("serial_number"):
+        assert f'where properties.serialNumber =~ \"{req["serial_number"]}\"' in query_list
+    if req.get("software_revision"):
+        assert f'where properties.softwareRevision =~ \"{req["software_revision"]}\"' in query_list
+
+
+@pytest.mark.parametrize("original_topic", [
+    None,
+    {"path": generate_random_string(), "retain": generate_random_string()}
+])
+@pytest.mark.parametrize("topic_path", [None, generate_random_string()])
+@pytest.mark.parametrize("topic_retain", [None, generate_random_string()])
+def test_build_topic(original_topic, topic_path, topic_retain):
+    if not original_topic and not topic_path:
+        with pytest.raises(RequiredArgumentMissingError):
+            _build_topic(
+                original_topic=original_topic,
+                topic_path=topic_path,
+                topic_retain=topic_retain
+            )
+        return
+    original = deepcopy(original_topic) if original_topic else {}
+    result = _build_topic(
+        original_topic=original_topic,
+        topic_path=topic_path,
+        topic_retain=topic_retain
+    )
+    assert result["path"] == (topic_path or original.get("path"))
+    assert result["retain"] == (topic_retain or original.get("retain") or "Never")
+
+
 @pytest.mark.parametrize("sub_points", [
     [{}, {}],
     [   # portal csv
@@ -250,9 +351,12 @@ def test_convert_sub_points_from_csv(sub_points):
         assert sub_points[i].get("dataSource") == original_copy[i].get(
             "NodeID", original_copy[i].get("Data Source")
         )
-        assert sub_points[i].get("observabilityMode") == original_copy[i].get(
+        expected_mode = original_copy[i].get(
             "ObservabilityMode", original_copy[i].get("Observability Mode")
         )
+        if expected_mode:
+            expected_mode = expected_mode.capitalize()
+        assert sub_points[i].get("observabilityMode") == expected_mode
 
         if "Sampling Interval Milliseconds" in original_copy[i] or "QueueSize" in original_copy[i]:
             config_key = "eventConfiguration" if event_notifier else "dataPointConfiguration"
@@ -339,6 +443,41 @@ def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_p
             )
 
 
+@pytest.mark.parametrize("datasets", [
+    [{"name": "", "dataPoints": generate_random_string()}],
+    [{"name": "default", "dataPoints": generate_random_string()}],
+])
+@pytest.mark.parametrize("dataset_name", ["default", generate_random_string()])
+def test_get_dataset(datasets, dataset_name):
+    expected = deepcopy(datasets[0])
+    if dataset_name != "default":
+        expected = {"name": dataset_name, "dataPoints": generate_random_string()}
+        datasets.append(expected)
+    result = _get_dataset(
+        asset={"properties": {"datasets": datasets}},
+        dataset_name=dataset_name
+    )
+    assert result["name"] == dataset_name
+    assert result["dataPoints"] == expected["dataPoints"]
+
+
+@pytest.mark.parametrize("dataset_name", ["default", generate_random_string()])
+def test_get_dataset_error(dataset_name):
+    with pytest.raises(InvalidArgumentValueError):
+        _get_dataset(
+            asset={"name": generate_random_string(), "properties": {}},
+            dataset_name=dataset_name
+        )
+    with pytest.raises(InvalidArgumentValueError):
+        _get_dataset(
+            asset={
+                "name": generate_random_string(),
+                "properties": {"datasets": [{"name": generate_random_string()}]}
+            },
+            dataset_name=dataset_name
+        )
+
+
 @pytest.mark.parametrize("required_arg", ["data_source", "event_notifier"])
 @pytest.mark.parametrize("sub_points", [
     None,
@@ -348,7 +487,6 @@ def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_p
         [
             "sampling_interval=10",
             "queue_size=1000",
-            f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
             "observability_mode=none",
         ]
@@ -362,21 +500,18 @@ def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_p
     [
         [
             "sampling_interval=10",
-            f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
             "observability_mode=none",
         ],
         [
             "sampling_interval=10",
             "queue_size=1000",
-            f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
             "observability_mode=log",
         ],
         [
             "sampling_interval=10",
             "queue_size=1000",
-            f"capability_id={generate_random_string()}",
             f"name={generate_random_string()}",
             "observability_mode=none",
         ]
@@ -388,7 +523,7 @@ def test_process_asset_sub_points(required_arg, sub_points):
         for i in range(len(sub_points_copy)):
             processed_point = []
             for arg in sub_points_copy[i]:
-                if not (arg.startswith("capability_id") or arg.startswith("sampling_interval")):
+                if not arg.startswith("sampling_interval"):
                     processed_point.append(arg)
             sub_points_copy[i] = processed_point
     if sub_points_copy:
@@ -427,6 +562,61 @@ def test_process_asset_sub_points_error(required_arg):
     assert f"does not support {invalid_arg}." in e.value.error_msg
 
 
+@pytest.mark.parametrize("req", [
+    {},
+    {
+        "original_items": [{
+            "name": generate_random_string(),
+            generate_random_string(): generate_random_string()
+        }],
+        "replace": False,
+    },
+    {
+        "original_items": [{
+            "name": generate_random_string(),
+            generate_random_string(): generate_random_string()
+        }],
+        "replace": True
+    }
+])
+@pytest.mark.parametrize("duplicates", [False, True])
+def test_process_asset_sub_points_file_path(mocker, req, duplicates):
+    # remove logger warnings
+    mocker.patch("azext_edge.edge.providers.rpsaas.adr.assets.logger")
+    # make things simplier with just using name
+    point_key = "name" if req else None
+    file_path = generate_random_string()
+    file_points = [{
+        point_key: generate_random_string(),
+        generate_random_string(): generate_random_string()
+    }]
+    # add a duplicate with a different secondary value
+    if duplicates and req:
+        file_points.append({
+            point_key: req["original_items"][0][point_key],
+            generate_random_string(): generate_random_string()
+        })
+    mocked_deserialize = mocker.patch(
+        "azext_edge.edge.util.deserialize_file_content",
+        return_value=deepcopy(file_points),
+        autospec=True
+    )
+    result = _process_asset_sub_points_file_path(
+        file_path=file_path,
+        point_key=point_key,
+        **req
+    )
+    mocked_deserialize.assert_called_with(file_path=file_path)
+    if not point_key:
+        assert result == file_points
+    elif duplicates and not req.get("replace"):
+        # first is not a duplicate
+        assert file_points[0] in result
+        assert file_points[1] not in result
+    else:
+        assert file_points[0] in result
+
+
 @pytest.mark.parametrize("current_attributes", [{}, {"example1": generate_random_string()}])
 @pytest.mark.parametrize("custom_attributes", [
     [f"example1={generate_random_string()}", f"{generate_random_string()}={generate_random_string()}"],
@@ -453,10 +643,11 @@ def test_process_custom_attributes(current_attributes, custom_attributes):
     {
         "assetType": generate_random_string(),
         "attributes": {generate_random_string(): generate_random_string()},
-        "defaultDataPointsConfiguration": "{\"publishingInterval\": \"100\", \"samplingInterval\""
+        "defaultDatasetsConfiguration": "{\"publishingInterval\": \"100\", \"samplingInterval\""
         ": \"10\", \"queueSize\": \"2\"}",
         "defaultEventsConfiguration": "{\"publishingInterval\": \"200\", \"samplingInterval\": "
         "\"20\", \"queueSize\": \"3\"}",
+        "defaultTopic": {"path": generate_random_string(), "retain": "Never"},
         "description": generate_random_string(),
         "displayName": generate_random_string(),
         "documentationUri": generate_random_string(),
@@ -479,7 +670,7 @@ def test_process_custom_attributes(current_attributes, custom_attributes):
             f"{generate_random_string()}={generate_random_string()}"
         ],
         "disabled": False,
-        "dp_queue_size": 4,
+        "ds_queue_size": 4,
         "ev_publishing_interval": 200,
         "ev_sampling_interval": 123,
     },
@@ -487,7 +678,8 @@ def test_process_custom_attributes(current_attributes, custom_attributes):
         "custom_attributes": [
             f"{generate_random_string()}={generate_random_string()}"
         ],
-        "asset_type": generate_random_string(),
+        "default_topic_path": generate_random_string(),
+        "default_topic_retain": generate_random_string(),
         "description": generate_random_string(),
         "disabled": True,
         "display_name": generate_random_string(),
@@ -500,9 +692,9 @@ def test_process_custom_attributes(current_attributes, custom_attributes):
         "product_code": generate_random_string(),
         "serial_number": generate_random_string(),
         "software_revision": generate_random_string(),
-        "dp_publishing_interval": 10,
-        "dp_sampling_interval": 5,
-        "dp_queue_size": 4,
+        "ds_publishing_interval": 10,
+        "ds_sampling_interval": 5,
+        "ds_queue_size": 4,
         "ev_publishing_interval": 200,
         "ev_sampling_interval": 123,
         "ev_queue_size": 65,
@@ -515,7 +707,6 @@ def test_update_properties(properties, req):
         **req
     )
 
-    assert properties.get("assetType") == req.get("asset_type", original_properties.get("assetType"))
     assert properties.get("description") == req.get("description", original_properties.get("description"))
     assert properties.get("enabled") is not req.get("disabled", not original_properties.get("enabled"))
     assert properties.get("documentationUri") == req.get(
@@ -547,17 +738,25 @@ def test_update_properties(properties, req):
     assert properties.get("attributes", {}) == expected_attributes
 
     expected_default_data_points = _build_default_configuration(
-        original_configuration=properties.get("defaultDataPointsConfiguration", "{}"),
-        publishing_interval=req.get("dp_publishing_interval"),
-        sampling_interval=req.get("dp_sampling_interval"),
-        queue_size=req.get("dp_queue_size")
+        original_configuration=original_properties.get("defaultDatasetsConfiguration", "{}"),
+        publishing_interval=req.get("ds_publishing_interval"),
+        sampling_interval=req.get("ds_sampling_interval"),
+        queue_size=req.get("ds_queue_size")
     )
-    assert properties["defaultDataPointsConfiguration"] == expected_default_data_points
+    assert properties["defaultDatasetsConfiguration"] == expected_default_data_points
 
     expected_default_events = _build_default_configuration(
-        original_configuration=properties.get("defaultEventsConfiguration", "{}"),
+        original_configuration=original_properties.get("defaultEventsConfiguration", "{}"),
         publishing_interval=req.get("ev_publishing_interval"),
         sampling_interval=req.get("ev_sampling_interval"),
         queue_size=req.get("ev_queue_size")
     )
     assert properties["defaultEventsConfiguration"] == expected_default_events
+
+    if any([req.get("default_topic_path"), req.get("default_topic_retain")]):
+        expected_topic = _build_topic(
+            original_topic=original_properties.get("defaultTopic"),
+            topic_path=req.get("default_topic_path"),
+            topic_retain=req.get("default_topic_retain")
+        )
+        assert properties["defaultTopic"] == expected_topic
