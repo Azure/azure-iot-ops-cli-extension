@@ -478,7 +478,7 @@ def validate_ref(name: str, namespace: str, ref_type: ValidationResourceType) ->
     if ref_type == ValidationResourceType.secret:
         ref_obj = get_namespaced_secret(secret_name=name, namespace=namespace)
     elif ref_type == ValidationResourceType.configmap:
-        ref_obj == get_config_map(name=name, namespace=namespace)
+        ref_obj = get_config_map(name=name, namespace=namespace)
     is_valid = bool(ref_obj)
 
     if is_valid:
