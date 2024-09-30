@@ -131,7 +131,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops support") as context:
         context.argument(
             "ops_services",
-            nargs="?",
+            nargs="+",
             action="append",
             options_list=["--ops-service", "--svc"],
             choices=CaseInsensitiveList(OpsServiceType.list()),
