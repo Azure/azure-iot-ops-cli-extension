@@ -42,7 +42,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     # command = f"az iot ops support create-bundle --broker-traces {mq_traces} " + "--ops-service {0}"
     command = f"az iot ops support create-bundle --broker-traces {mq_traces} "
     if bundle_dir:
-        command += f" --bundle-dir {bundle_dir}"
+        command += f" --bundle-dir {bundle_dir} "
         try:
             mkdir(bundle_dir)
             tracked_files.append(bundle_dir)
