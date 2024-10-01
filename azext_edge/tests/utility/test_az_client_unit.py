@@ -13,7 +13,7 @@ AZ_CLIENT_PATH = "azext_edge.edge.util.az_client"
 @pytest.mark.parametrize("done", [True, False])
 def test_wait_for_terminal_state(mocker, done):
     # could be fixture with param
-    sleep_patch = mocker.patch(f"{AZ_CLIENT_PATH}.sleep")
+    sleep_patch = mocker.patch("time.sleep")
     poll_num = 10
     mocker.patch(f"{AZ_CLIENT_PATH}.POLL_RETRIES", poll_num)
 
