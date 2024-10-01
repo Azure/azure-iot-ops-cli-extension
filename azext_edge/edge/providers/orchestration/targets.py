@@ -16,7 +16,7 @@ from ...common import (
     DEFAULT_DATAFLOW_PROFILE,
 )
 from ...util import assemble_nargs_to_dict
-from ...util.az_client import parse_resource_id
+from ...util.az_client import parse_resource_id, REGISTRY_API_VERSION
 from ..orchestration.common import (
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
@@ -171,8 +171,6 @@ class InitTargets:
         self.schema_registry_resource_id = ops_extension_config.get("schemaRegistry.values.resourceId")
         trust_source = ops_extension_config.get("trustSource")
 
-        # TODO - This conditional should be temporary until the AIO extension and instance are deployed
-        # in the same flow.
         if trust_source == "CustomerManaged":
             trust_issuer_name = ops_extension_config.get("trustBundleSettings.issuer.name")
             trust_issuer_kind = ops_extension_config.get("trustBundleSettings.issuer.kind")
@@ -203,6 +201,11 @@ class InitTargets:
         )
         instance = template.get_resource_by_key("aioInstance")
         instance["properties"]["description"] = self.instance_description
+
+        # TODO: this is temporary for this milestone. Next milestone it should change.
+        instance["properties"][
+            "schemaRegistryNamespace"
+        ] = f"[reference(parameters('schemaRegistryId'), '{REGISTRY_API_VERSION}').namespace]"
 
         if self.tags:
             instance["tags"] = self.tags
