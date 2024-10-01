@@ -89,7 +89,7 @@ def load_iotops_help():
         - name: Include secretstore resources in the support bundle.
           text: >
             az iot ops support create-bundle --ops-service secretstore
-        
+
         - name: Include multiple services in the support bundle with single --ops-service flag.
           text: >
             az iot ops support create-bundle --ops-service broker opcua deviceregistry
