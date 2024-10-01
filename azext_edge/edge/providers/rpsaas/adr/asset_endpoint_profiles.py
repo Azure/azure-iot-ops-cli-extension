@@ -113,9 +113,9 @@ class AssetEndpointProfiles(Queryable):
                 asset_endpoint_profile_name,
                 resource=aep_body
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **additional_configuration)
 
-    def delete(self, asset_endpoint_profile_name: str, resource_group_name: str):
+    def delete(self, asset_endpoint_profile_name: str, resource_group_name: str, **kwargs):
         self.show(
             asset_endpoint_profile_name=asset_endpoint_profile_name,
             resource_group_name=resource_group_name,
@@ -126,7 +126,7 @@ class AssetEndpointProfiles(Queryable):
                 resource_group_name,
                 asset_endpoint_profile_name,
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
     def show(
         self, asset_endpoint_profile_name: str, resource_group_name: str, check_cluster: bool = False
@@ -205,6 +205,7 @@ class AssetEndpointProfiles(Queryable):
         password_reference: Optional[str] = None,
         certificate_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
+        **kwargs
     ):
         # get the asset
         original_aep = self.show(
@@ -232,7 +233,7 @@ class AssetEndpointProfiles(Queryable):
                 asset_endpoint_profile_name,
                 original_aep
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
 
 # Helpers
@@ -267,6 +268,7 @@ def _build_opcua_config(
     security_mode: Optional[str] = None,
     sub_max_items: Optional[int] = None,
     sub_life_time: Optional[int] = None,
+    **_
 ) -> str:
     config = json.loads(original_config) if original_config else {}
 
