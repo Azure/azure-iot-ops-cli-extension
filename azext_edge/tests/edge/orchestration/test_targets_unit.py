@@ -54,6 +54,7 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "schemaRegistryId": "schema_registry_resource_id",
     "defaultDataflowinstanceCount": "dataflow_profile_instances",
     "brokerConfig": "broker_config",
+    "trustConfig": "trust_config",
 }
 
 
@@ -126,16 +127,7 @@ def test_init_targets(target_scenario: dict):
     if target_scenario.get("enable_fault_tolerance"):
         assert targets.advanced_config == {"edgeStorageAccelerator": {"faultToleranceEnabled": True}}
 
-    if target_scenario.get("trust_settings"):
-        assert targets.trust_config == {
-            "source": "CustomerManaged",
-            "settings": {
-                "issuerKind": target_scenario["trust_settings"]["issuerKind"],
-                "configMapKey": target_scenario["trust_settings"]["configMapKey"],
-                "issuerName": target_scenario["trust_settings"]["issuerName"],
-                "configMapName": target_scenario["trust_settings"]["configMapName"],
-            },
-        }
+    verify_user_trust_settings(targets, target_scenario)
 
     enablement_template, enablement_parameters = targets.get_ops_enablement_template()
     for parameter in enablement_parameters:
@@ -156,7 +148,17 @@ def test_init_targets(target_scenario: dict):
         assert enablement_template["variables"]["VERSIONS"]["aio"] == targets.ops_version
 
     extension_ids = [generate_random_string(), generate_random_string()]
-    instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids)
+    extension_config = {"schemaRegistry.values.resourceId": target_scenario.get("schema_registry_resource_id")}
+    target_scenario_has_user_trust = target_scenario.get("trust_settings")
+    if target_scenario_has_user_trust:
+        extension_config["trustSource"] = "CustomerManaged"
+        extension_config["trustBundleSettings.issuer.name"] = target_scenario["trust_settings"]["issuerName"]
+        extension_config["trustBundleSettings.issuer.kind"] = target_scenario["trust_settings"]["issuerKind"]
+        extension_config["trustBundleSettings.configMap.name"] = target_scenario["trust_settings"]["configMapName"]
+        extension_config["trustBundleSettings.configMap.key"] = target_scenario["trust_settings"]["configMapKey"]
+        targets.trust_config = None
+
+    instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids, extension_config)
     for parameter in instance_parameters:
         if parameter == "clExtentionIds":
             assert instance_parameters[parameter]["value"] == extension_ids
@@ -188,3 +190,22 @@ def test_init_targets(target_scenario: dict):
         assert instance_template["resources"]["broker_listener_insecure"] == get_insecure_listener(
             targets.instance_name, "default"
         )
+
+    verify_user_trust_settings(targets, target_scenario)
+
+
+def verify_user_trust_settings(targets: InitTargets, target_scenario: dict):
+    target_scenario_has_user_trust = target_scenario.get("trust_settings")
+    if not target_scenario_has_user_trust:
+        assert targets.trust_config == {"source": "SelfSigned"}
+        return
+
+    assert targets.trust_config == {
+        "source": "CustomerManaged",
+        "settings": {
+            "issuerKind": target_scenario["trust_settings"]["issuerKind"],
+            "configMapKey": target_scenario["trust_settings"]["configMapKey"],
+            "issuerName": target_scenario["trust_settings"]["issuerName"],
+            "configMapName": target_scenario["trust_settings"]["configMapName"],
+        },
+    }
