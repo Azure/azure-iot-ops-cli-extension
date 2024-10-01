@@ -132,7 +132,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "ops_services",
             nargs="+",
-            action="append",
+            action="extend",
             options_list=["--ops-service", "--svc"],
             choices=CaseInsensitiveList(OpsServiceType.list()),
             help="The IoT Operations service the support bundle creation should apply to. "

@@ -32,7 +32,7 @@ def support_bundle(
     bundle_dir: Optional[str] = None,
     include_mq_traces: Optional[bool] = None,
     context_name: Optional[str] = None,
-    ops_services: Optional[List[List[str]]] = None,
+    ops_services: Optional[List[str]] = None,
 ) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.support_bundle import build_bundle

@@ -42,7 +42,7 @@ COMPAT_SECRETSTORE_APIS = EdgeApiManager(resource_apis=[SECRETSYNC_API_V1, SECRE
 def build_bundle(
     bundle_path: str,
     log_age_seconds: Optional[int] = None,
-    ops_services: Optional[List[List[str]]] = None,
+    ops_services: Optional[List[str]] = None,
     include_mq_traces: Optional[bool] = None,
 ):
     from rich.live import Live
@@ -111,10 +111,11 @@ def build_bundle(
         },
     }
 
-    parsed_ops_services = assemble_ops_services(ops_services)
-
-    if not parsed_ops_services:
+    if not ops_services:
         parsed_ops_services = OpsServiceType.list()
+    else:
+        # remove duplicates
+        parsed_ops_services = list(set(ops_services))
 
     for ops_service in parsed_ops_services:
         # assign key and value to service_moniker and api_info
@@ -220,25 +221,6 @@ def write_zip(bundle: dict, file_path: str):
                         data = yaml.safe_dump(t["data"], indent=2)
                     myzip.writestr(zinfo_or_arcname=zinfo, data=data)
                     added_path[zinfo] = True
-
-
-def assemble_ops_services(hash_list: List[any]) -> List[str]:
-    result = []
-    if not hash_list:
-        return result
-    for hash in hash_list:
-        if isinstance(hash, str):
-            result.append(hash)
-        elif isinstance(hash, list):
-            result.extend(hash)
-        else:
-            logger.warning(
-                "Skipping processing of '%s', input format is string or list of strings.",
-                hash,
-            )
-
-    # remove duplicates
-    return list(set(result))
 
 
 def str_presenter(dumper, data):
