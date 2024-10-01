@@ -78,7 +78,8 @@ class Assets(Queryable):
         ev_sampling_interval: int = 500,
         ev_queue_size: int = 1,
         tags: Optional[Dict[str, str]] = None,
-        discovered: bool = False  # for quick discovered debugging
+        discovered: bool = False,  # for quick discovered debugging
+        **kwargs
     ):
         from .helpers import get_extended_location
         extended_location = get_extended_location(
@@ -143,9 +144,9 @@ class Assets(Queryable):
                 asset_name,
                 resource=asset_body
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
-    def delete(self, asset_name: str, resource_group_name: str):
+    def delete(self, asset_name: str, resource_group_name: str, **kwargs):
         self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
@@ -156,7 +157,7 @@ class Assets(Queryable):
                 resource_group_name,
                 asset_name,
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
     def show(
         self, asset_name: str, resource_group_name: str, check_cluster: bool = False
@@ -289,6 +290,7 @@ class Assets(Queryable):
         ev_sampling_interval: Optional[int] = None,
         ev_queue_size: Optional[int] = None,
         tags: Optional[Dict[str, str]] = None,
+        **kwargs
     ):
         # get the asset
         original_asset = self.show(
@@ -330,7 +332,7 @@ class Assets(Queryable):
                 asset_name,
                 original_asset
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
     # Dataset
     # TODO: multi-dataset support
@@ -368,7 +370,8 @@ class Assets(Queryable):
         observability_mode: Optional[str] = None,
         queue_size: Optional[int] = None,
         sampling_interval: Optional[int] = None,
-        replace: bool = False
+        replace: bool = False,
+        **kwargs
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -398,7 +401,7 @@ class Assets(Queryable):
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
 
@@ -447,7 +450,8 @@ class Assets(Queryable):
         dataset_name: str,
         file_path: str,
         resource_group_name: str,
-        replace: bool = False
+        replace: bool = False,
+        **kwargs
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -470,7 +474,7 @@ class Assets(Queryable):
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return _get_dataset(asset, dataset_name)["dataPoints"]
@@ -494,6 +498,7 @@ class Assets(Queryable):
         dataset_name: str,
         data_point_name: str,
         resource_group_name: str,
+        **kwargs,
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -511,7 +516,7 @@ class Assets(Queryable):
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
 
@@ -529,7 +534,8 @@ class Assets(Queryable):
         sampling_interval: Optional[int] = None,
         topic_path: Optional[str] = None,
         topic_retain: Optional[str] = None,
-        replace: bool = False
+        replace: bool = False,
+        **kwargs
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -564,7 +570,7 @@ class Assets(Queryable):
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
@@ -607,7 +613,8 @@ class Assets(Queryable):
         asset_name: str,
         file_path: str,
         resource_group_name: str,
-        replace: bool = False
+        replace: bool = False,
+        **kwargs
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -628,7 +635,7 @@ class Assets(Queryable):
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
@@ -650,6 +657,7 @@ class Assets(Queryable):
         asset_name: str,
         event_name: str,
         resource_group_name: str,
+        **kwargs
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -667,7 +675,7 @@ class Assets(Queryable):
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]

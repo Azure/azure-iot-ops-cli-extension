@@ -42,6 +42,7 @@ def create_opcua_asset_endpoint_profile(
     security_mode: Optional[str] = None,
     sub_max_items: Optional[int] = None,
     sub_life_time: Optional[int] = None,
+    **kwargs
 ) -> dict:
     return AssetEndpointProfiles(cmd).create(
         asset_endpoint_profile_name=asset_endpoint_profile_name,
@@ -70,7 +71,8 @@ def create_opcua_asset_endpoint_profile(
         security_policy=security_policy,
         security_mode=security_mode,
         sub_life_time=sub_life_time,
-        sub_max_items=sub_max_items
+        sub_max_items=sub_max_items,
+        **kwargs
     )
 
 
@@ -78,10 +80,12 @@ def delete_asset_endpoint_profile(
     cmd,
     asset_endpoint_profile_name: str,
     resource_group_name: str,
+    **kwargs
 ) -> dict:
     return AssetEndpointProfiles(cmd).delete(
         asset_endpoint_profile_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        **kwargs
     )
 
 
@@ -142,6 +146,7 @@ def update_asset_endpoint_profile(
     password_reference: Optional[str] = None,
     certificate_reference: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
+    **kwargs
 ) -> dict:
     return AssetEndpointProfiles(cmd).update(
         asset_endpoint_profile_name,
@@ -151,5 +156,6 @@ def update_asset_endpoint_profile(
         certificate_reference=certificate_reference,
         password_reference=password_reference,
         username_reference=username_reference,
-        tags=tags
+        tags=tags,
+        **kwargs
     )

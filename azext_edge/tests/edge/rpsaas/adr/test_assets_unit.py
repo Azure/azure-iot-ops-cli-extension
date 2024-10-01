@@ -102,6 +102,7 @@ def test_asset_create(
         endpoint_profile=endpoint_profile,
         resource_group_name=resource_group_name,
         instance_name=instance_name,
+        wait_sec=0,
         **req
     )
     assert result == mock_asset_record
@@ -171,6 +172,7 @@ def test_asset_delete(mocked_cmd, mocked_check_cluster_connectivity, mocked_resp
         cmd=mocked_cmd,
         asset_name=asset_name,
         resource_group_name=resource_group_name,
+        wait_sec=0,
     )
     assert len(mocked_responses.calls) == (3 if discovered else 2)
 
@@ -305,6 +307,7 @@ def test_asset_update(
         cmd=mocked_cmd,
         asset_name=asset_name,
         resource_group_name=resource_group_name,
+        wait_sec=0,
         **req
     )
     assert result == mock_asset_record
@@ -443,7 +446,8 @@ def test_data_point_add(
         observability_mode=observability_mode,
         queue_size=queue_size,
         sampling_interval=sampling_interval,
-        replace=replace
+        replace=replace,
+        wait_sec=0,
     )
     assert result == result_datapoints
     datasets = json.loads(mocked_responses.calls[-1].request.body)["properties"]["datasets"]
@@ -492,6 +496,7 @@ def test_data_point_add_error(
             resource_group_name=resource_group_name,
             data_point_name=data_point_name,
             data_source=generate_random_string(),
+            wait_sec=0,
         )
 
 
@@ -654,7 +659,8 @@ def test_data_point_import(
         dataset_name=dataset_name,
         resource_group_name=resource_group_name,
         file_path=file_path,
-        replace=replace
+        replace=replace,
+        wait_sec=0,
     )
 
     assert result == result_datapoints
@@ -761,6 +767,7 @@ def test_data_point_remove(
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         data_point_name=data_point_name,
+        wait_sec=0,
     )
     assert result == result_datapoints
     datasets = json.loads(mocked_responses.calls[-1].request.body)["properties"]["datasets"]
@@ -819,7 +826,8 @@ def test_event_add(
         event_notifier=event_notifier,
         observability_mode=observability_mode,
         queue_size=queue_size,
-        sampling_interval=sampling_interval
+        sampling_interval=sampling_interval,
+        wait_sec=0,
     )
     assert result == result_events
     events = json.loads(mocked_responses.calls[-1].request.body)["properties"]["events"]
@@ -861,6 +869,7 @@ def test_event_add_error(
             resource_group_name=resource_group_name,
             event_name=event_name,
             event_notifier=generate_random_string(),
+            wait_sec=0,
         )
 
 
@@ -1008,7 +1017,8 @@ def test_event_import(
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         file_path=file_path,
-        replace=replace
+        replace=replace,
+        wait_sec=0,
     )
 
     assert result == result_events
@@ -1102,6 +1112,7 @@ def test_event_remove(
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         event_name=event_name,
+        wait_sec=0,
     )
     assert result == result_events
     events = json.loads(mocked_responses.calls[-1].request.body)["properties"]["events"]
