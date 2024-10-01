@@ -27,7 +27,7 @@ def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
     cases.append((OpsServiceType.mq.value, True, None))
 
     # test "all services" bundle
-    cases.append((None, True, None))
+    cases.append((None, False, None))
     return cases
 
 
