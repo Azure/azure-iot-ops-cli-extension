@@ -373,15 +373,14 @@ class WorkManager:
                             "Foundational service installation not detected. "
                             "Instance deployment will not continue. Please run init."
                         )
-                    # Set the schema registry resource Id from the extension config
-                    self._targets.schema_registry_resource_id = self._extension_map[IOT_OPS_EXTENSION_TYPE][
-                        "properties"
-                    ]["configurationSettings"]["schemaRegistry.values.resourceId"]
 
                 instance_work_name = self._work_format_str.format(op="instance")
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)
                 instance_content, instance_parameters = self._targets.get_ops_instance_template(
-                    cl_extension_ids=[self._extension_map[ext]["id"] for ext in self._extension_map]
+                    cl_extension_ids=[self._extension_map[ext]["id"] for ext in self._extension_map],
+                    ops_extension_config=self._extension_map[IOT_OPS_EXTENSION_TYPE]["properties"][
+                        "configurationSettings"
+                    ],
                 )
                 self._deploy_template(
                     content=instance_content,
