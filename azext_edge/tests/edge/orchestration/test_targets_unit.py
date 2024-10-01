@@ -13,6 +13,7 @@ from azext_edge.edge.providers.orchestration.targets import (
     InitTargets,
     assemble_nargs_to_dict,
     get_insecure_listener,
+    REGISTRY_API_VERSION,
 )
 
 from ...generators import generate_random_string
@@ -171,6 +172,11 @@ def test_init_targets(target_scenario: dict):
         ), f"{parameter} value mismatch with targets {targets_key} value."
 
     assert instance_template["resources"]["aioInstance"]["properties"]["description"] == targets.instance_description
+
+    assert (
+        instance_template["resources"]["aioInstance"]["properties"]["schemaRegistryNamespace"]
+        == f"[reference(parameters('schemaRegistryId'), '{REGISTRY_API_VERSION}').namespace]"
+    )
 
     if targets.tags:
         assert instance_template["resources"]["aioInstance"]["tags"] == targets.tags
