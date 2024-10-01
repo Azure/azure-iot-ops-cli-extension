@@ -4,7 +4,9 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict, Optional, Union
+import json
+from typing import Dict, List, Optional, Union
+from os.path import isfile
 
 import pytest
 from knack.log import get_logger
@@ -72,6 +74,10 @@ def init_test_setup(settings, tracked_resources):
             f"az iot ops delete --cluster {settings.env.azext_edge_cluster} -g {settings.env.azext_edge_rg} "
             "-y --no-progress --force --include-deps"
         )
+    else:
+        # if the init + create worked - make sure that schema reg + storage account aren't deleted
+        tracked_resources.remove(storage_account['id'])
+        tracked_resources.remove(registry['id'])
 
 
 @pytest.mark.init_scenario_test
@@ -79,9 +85,10 @@ def test_init_scenario(
     init_test_setup, tracked_files
 ):
     additional_init_args = init_test_setup["additionalInitArgs"] or ""
-    _process_additional_args(additional_init_args)
+    init_arg_dict = _process_additional_args(additional_init_args)
     additional_create_args = init_test_setup["additionalCreateArgs"] or ""
     create_arg_dict = _process_additional_args(additional_create_args)
+    _process_broker_config_file_arg(create_arg_dict, tracked_files)
 
     cluster_name = init_test_setup["clusterName"]
     resource_group = init_test_setup["resourceGroup"]
@@ -93,7 +100,7 @@ def test_init_scenario(
     # TODO: assert return once there is a return for init
     run(command)
 
-    assert_aio_init(cluster_name=cluster_name, resource_group=resource_group)
+    assert_aio_init(cluster_name=cluster_name, resource_group=resource_group, **init_arg_dict)
 
     # create command
     create_command = f"az iot ops create -g {resource_group} --cluster {cluster_name} "\
@@ -110,13 +117,11 @@ def test_init_scenario(
 
     # Missing:
     # init
-    # --ops-config
     # --kubernetes-distro + runtime-socket
     # --enable-fault-tolerance
     # --trust-source (one param)
     # create
     # --cluster-namespace
-    # --broker-config-file
 
     try:
         for assertion in [
@@ -146,6 +151,8 @@ def test_init_scenario(
 def assert_aio_init(
     cluster_name: str,
     resource_group: str,
+    ops_config: Optional[str] = None,
+    **_,
 ):
     # check extensions installed
     cluster_id = run(
@@ -160,14 +167,21 @@ def assert_aio_init(
     while extension_result.get("nextLink"):
         extension_result = run(f"az rest --method GET --url {extension_result['nextLink']}")
         extensions.extend(extension_result["value"])
-    aio_extensions = []
+    iot_ops_ext = None,
+    iot_ops_platform_ext = None
     for ext in extensions:
-        if ext["properties"]["extensionType"] in (
-            "microsoft.iotoperations", "microsoft.iotoperations.platform"
-        ):
-            aio_extensions.append(ext["name"])
+        if ext["properties"]["extensionType"] == "microsoft.iotoperations":
+            iot_ops_ext = ext
+        elif ext["properties"]["extensionType"] == "microsoft.iotoperations.platform":
+            iot_ops_platform_ext = ext
 
-    if len(aio_extensions) < 2:
+    if ops_config:
+        ops_config = assemble_nargs_to_dict(ops_config.split())
+        configs = iot_ops_ext["properties"]["configurationSettings"]
+        for key, value in ops_config.items():
+            assert configs[key] == value
+
+    if not all([iot_ops_platform_ext, iot_ops_ext]):
         raise AssertionError(
             "Extensions for AIO are missing. These are the extensions "
             f"on the cluster: {[ext['name'] for ext in extensions]}."
@@ -181,7 +195,7 @@ def assert_aio_instance(
     custom_location: Optional[str] = None,
     description: Optional[str] = None,
     location: Optional[str] = None,
-    disable_rsync_rules: bool = False,
+    enable_rsync: bool = False,
     tags: Optional[str] = None,
     **_
 ):
@@ -221,18 +235,17 @@ def assert_aio_instance(
 
     tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
     # no resource sync rules if disable rsync rules
-    assert ("adr-sync" not in tree) is disable_rsync_rules
-    assert instance_name in tree
+    assert ("adr-sync" in tree) is enable_rsync
     assert expected_custom_location in tree
     assert "azure-iot-operations-platform" in tree
 
     # list failed to return collection response YAY
-    # instance_rg_list = run(f"az iot ops list -g {resource_group}")
-    # assert instance_name in [inst["name"] for inst in instance_rg_list]
-    # instance_sub_list = run("az iot ops list")
-    # assert instance_name in [inst["name"] for inst in instance_sub_list]
+    instance_rg_list = run(f"az iot ops list -g {resource_group}")
+    assert instance_name in [inst["name"] for inst in instance_rg_list]
+    instance_sub_list = run("az iot ops list")
+    assert instance_name in [inst["name"] for inst in instance_sub_list]
 
-    # update
+    # update - ultimate sadness
     description = generate_random_string()
     tags = f"{generate_random_string()}={generate_random_string()}"
     instance_update = run(
@@ -256,8 +269,6 @@ def assert_broker_args(
     broker_frontend_workers: Optional[str] = None,
     broker_listener_type: Optional[str] = None,
     broker_mem_profile: Optional[str] = None,
-    bfr: Optional[str] = None,
-    bfw: Optional[str] = None,
     bp: Optional[str] = None,
     br: Optional[str] = None,
     bw: Optional[str] = None,
@@ -267,10 +278,6 @@ def assert_broker_args(
     mp: Optional[str] = None,
     **_
 ):
-    if bfr:
-        broker_frontend_replicas = bfr
-    if bfw:
-        broker_frontend_workers = bfw
     if bp:
         broker_backend_part = bp
     if br:
@@ -291,6 +298,21 @@ def assert_broker_args(
     broker = broker[0]
     broker_name = broker["name"]
     assert broker_name == "default"
+
+    if broker_config_file:
+        with open(broker_config_file, "r", encoding="utf-8") as bcf:
+            broker_config = json.loads(bcf)
+            broker_mem_profile = broker_config.get("memoryProfile", "").lower()
+
+            broker_backend = broker_config.get("cardinality", {}).get("backendChain", {})
+            broker_backend_part = broker_backend.get("partitions")
+            broker_backend_rf = broker_backend.get("redundancyFactor")
+            broker_backend_workers = broker_backend.get("workers")
+
+            broker_frontend = broker_config.get("cardinality", {}).get("frontend", {})
+            broker_frontend_replicas = broker_frontend.get("replicas")
+            broker_frontend_workers = broker_frontend.get("workers")
+
     broker_props = broker["properties"]
     assert broker_props["memoryProfile"].lower() == (broker_mem_profile or "medium")
 
@@ -346,9 +368,62 @@ def _process_additional_args(additional_args: str) -> Dict[str, Union[str, bool]
     return arg_dict
 
 
+def _process_broker_config_file_arg(create_arg_dict: dict, tracked_files: List[str]):
+    if "broker_config_file" in create_arg_dict:
+        broker_config_path = create_arg_dict["broker_config_file"]
+        if not isfile(broker_config_path):
+            tracked_files.append(broker_config_path)
+            with open(broker_config_path, "w", encoding="utf-8") as bcf:
+                json.dump(DEFAULT_BROKER_CONFIG, bcf)
+
+
 def _strip_quotes(argument: Optional[str]) -> Optional[str]:
     if not argument:
         return argument
     if argument[0] == argument[-1] and argument[0] in ("'", '"'):
         argument = argument[1:-1]
     return argument
+
+
+DEFAULT_BROKER_CONFIG = {
+    "advanced": {
+        "encryptInternalTraffic": "Enabled"
+    },
+    "cardinality": {
+        "backendChain": {
+            "partitions": 2,
+            "redundancyFactor": 2,
+            "workers": 2
+        },
+        "frontend": {
+            "replicas": 2,
+            "workers": 2
+        }
+    },
+    "diagnostics": {
+        "logs": {
+            "level": "info"
+        },
+        "metrics": {
+            "prometheusPort": 9600
+        },
+        "selfCheck": {
+            "intervalSeconds": 30,
+            "mode": "Enabled",
+            "timeoutSeconds": 15
+        },
+        "traces": {
+            "cacheSizeMegabytes": 16,
+            "mode": "Enabled",
+            "selfTracing": {
+                "intervalSeconds": 30,
+                "mode": "Enabled"
+            },
+            "spanChannelCapacity": 1000
+        }
+    },
+    "generateResourceLimits": {
+        "cpu": "Disabled"
+    },
+    "memoryProfile": "Medium",
+}
