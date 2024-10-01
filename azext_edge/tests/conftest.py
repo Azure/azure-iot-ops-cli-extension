@@ -71,6 +71,9 @@ def tracked_files():
 
 
 @pytest.fixture
-def mocked_responses():
+def mocked_responses(mocker):
+    # Mock sleep so we dont need to wait for responses
+    mocker.patch("time.sleep")
+
     with responses.RequestsMock() as rsps:
         yield rsps

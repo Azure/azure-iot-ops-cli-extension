@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import sys
-from time import sleep
 from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple
 
 from azure.cli.core.azclierror import ValidationError
@@ -185,6 +184,7 @@ def get_authz_client(subscription_id: str, **kwargs) -> "AuthorizationManagement
 
 def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC) -> JSON:
     # resource client does not handle sigint well
+    from time import sleep
     counter = 0
     while counter < POLL_RETRIES:
         sleep(wait_sec)
@@ -197,6 +197,7 @@ def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC) 
 def wait_for_terminal_states(
     *pollers: "LROPoller", retries: int = POLL_RETRIES, wait_sec: int = POLL_WAIT_SEC, **_
 ) -> Tuple["LROPoller"]:
+    from time import sleep
     counter = 0
     while counter < retries:
         sleep(wait_sec)
