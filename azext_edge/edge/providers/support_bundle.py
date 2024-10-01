@@ -77,7 +77,6 @@ def build_bundle(
         pending_work["meta"] = prepare_meta_bundle(log_age_seconds, deployed_meta_apis)
 
     pending_work = {k: {} for k in OpsServiceType.list()}
-    # pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
         OpsServiceType.mq.value: {"apis": COMPAT_MQTT_BROKER_APIS, "prepare_bundle": prepare_mq_bundle},

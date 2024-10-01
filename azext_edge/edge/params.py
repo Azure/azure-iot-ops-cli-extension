@@ -136,8 +136,7 @@ def load_iotops_arguments(self, _):
             options_list=["--ops-service", "--svc"],
             choices=CaseInsensitiveList(OpsServiceType.list()),
             help="The IoT Operations service the support bundle creation should apply to. "
-            "If auto is selected, the operation will detect which services are available. "
-            "If no service is provided, the operation will default to auto. "
+            "If no service is provided, the operation will default to capture all services. "
             "--ops-service can be used one or more times.",
         )
         context.argument(
@@ -584,14 +583,12 @@ def load_iotops_arguments(self, _):
             help="Asset endpoint profile name.",
         )
         context.argument(
-            "instance_name",
-            options_list=["--instance"],
-            help="Instance name to associate the created asset with."
+            "instance_name", options_list=["--instance"], help="Instance name to associate the created asset with."
         )
         context.argument(
             "instance_resource_group",
             options_list=["--instance-resource-group", "--ig"],
-            help="Instance resource group. If not provided, asset resource group will be used."
+            help="Instance resource group. If not provided, asset resource group will be used.",
         )
         context.argument(
             "instance_subscription",
@@ -968,7 +965,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "instance_resource_group",
             options_list=["--instance-resource-group", "--ig"],
-            help="Instance resource group. If not provided, asset endpoint profile resource group will be used."
+            help="Instance resource group. If not provided, asset endpoint profile resource group will be used.",
         )
         context.argument(
             "instance_subscription",
@@ -998,7 +995,7 @@ def load_iotops_arguments(self, _):
             options_list=["--authentication-mode", "--am"],
             help="Authentication Mode.",
             arg_group="Authentication",
-            arg_type=get_enum_type(AEPAuthModes)
+            arg_type=get_enum_type(AEPAuthModes),
         )
         context.argument(
             "certificate_reference",

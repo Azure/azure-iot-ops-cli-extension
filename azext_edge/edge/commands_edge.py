@@ -11,7 +11,6 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 from azure.cli.core.azclierror import ArgumentUsageError
 from knack.log import get_logger
 
-from .common import OpsServiceType
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import META_API_V1B1
