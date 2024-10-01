@@ -5,20 +5,20 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
+from typing import Any, Callable, Dict, List, Optional
+
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from rich.padding import Padding
-from typing import Any, Callable, Dict, List, Optional
 
+from ....common import CheckTaskStatus, ListableEnum
+from ....providers.edge_api import EdgeResourceApi
+from ...base import client
+from ..common import CoreServiceResourceKinds, ResourceOutputDetailLevel
 from .check_manager import CheckManager
 from .node import check_nodes
 from .resource import enumerate_ops_service_resources
 from .user_strings import UNABLE_TO_DETERMINE_VERSION_MSG
-from ..common import CoreServiceResourceKinds, ResourceOutputDetailLevel
-from ...base import client
-from ....common import CheckTaskStatus, ListableEnum
-from ....providers.edge_api import EdgeResourceApi
-
 
 logger = get_logger(__name__)
 # TODO: unit test
@@ -83,7 +83,6 @@ def check_post_deployment(
 
 def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
     from kubernetes.client.models import VersionInfo
-    from packaging import version
 
     from ..common import MIN_K8S_VERSION
 
@@ -97,8 +96,10 @@ def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
     )
 
     try:
+        from packaging import version
+
         version_details: VersionInfo = version_client.get_code()
-    except ApiException as ae:
+    except (ApiException, ImportError) as ae:
         logger.debug(str(ae))
         api_error_text = UNABLE_TO_DETERMINE_VERSION_MSG
         check_manager.add_target_eval(

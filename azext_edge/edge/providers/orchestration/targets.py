@@ -18,12 +18,8 @@ from ...common import (
 from ...util import assemble_nargs_to_dict
 from ...util.az_client import parse_resource_id
 from ..orchestration.common import (
-    AIO_INSECURE_LISTENER_NAME,
-    AIO_INSECURE_LISTENER_SERVICE_NAME,
-    AIO_INSECURE_LISTENER_SERVICE_PORT,
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
-    MqServiceType,
 )
 from .common import KubernetesDistroType
 from .template import (
@@ -70,7 +66,6 @@ class InitTargets:
         **_,
     ):
         self.cluster_name = cluster_name
-        self.safe_cluster_name = self._sanitize_k8s_name(self.cluster_name)
         self.resource_group_name = resource_group_name
         # TODO - @digimaun
         if schema_registry_resource_id:
@@ -169,7 +164,28 @@ class InitTargets:
         # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
         return template.content, parameters
 
-    def get_ops_instance_template(self, cl_extension_ids: List[str]) -> Tuple[dict, dict]:
+    def get_ops_instance_template(
+        self, cl_extension_ids: List[str], ops_extension_config: Dict[str, str]
+    ) -> Tuple[dict, dict]:
+        # Set the schema registry resource Id from the extension config
+        self.schema_registry_resource_id = ops_extension_config.get("schemaRegistry.values.resourceId")
+        trust_source = ops_extension_config.get("trustSource")
+
+        # TODO - This conditional should be temporary until the AIO extension and instance are deployed
+        # in the same flow.
+        if trust_source == "CustomerManaged":
+            trust_issuer_name = ops_extension_config.get("trustBundleSettings.issuer.name")
+            trust_issuer_kind = ops_extension_config.get("trustBundleSettings.issuer.kind")
+            trust_configmap_name = ops_extension_config.get("trustBundleSettings.configMap.name")
+            trust_configmap_key = ops_extension_config.get("trustBundleSettings.configMap.key")
+            self.trust_settings = {
+                "issuerName": trust_issuer_name,
+                "issuerKind": trust_issuer_kind,
+                "configMapName": trust_configmap_name,
+                "configMapKey": trust_configmap_key,
+            }
+        self.trust_config = self.get_trust_settings_target_map()
+
         template, parameters = self._handle_apply_targets(
             param_to_target={
                 "clusterName": self.cluster_name,
@@ -181,6 +197,7 @@ class InitTargets:
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "defaultDataflowinstanceCount": self.dataflow_profile_instances,
                 "brokerConfig": self.broker_config,
+                "trustConfig": self.trust_config,
             },
             template_blueprint=M2_INSTANCE_TEMPLATE,
         )
@@ -288,43 +305,3 @@ class InitTargets:
             result["settings"] = target_settings
 
         return result
-
-    # TODO - @digimaun
-    def get_instance_kpis(self) -> dict:
-        default_listener_port: int = M2_INSTANCE_TEMPLATE.content["variables"]["MQTT_SETTINGS"]["brokerListenerPort"]
-        default_listener_service_name: str = M2_INSTANCE_TEMPLATE.content["variables"]["MQTT_SETTINGS"][
-            "brokerListenerServiceName"
-        ]
-
-        instance_kpis = {
-            "instance": {
-                "name": self.instance_name,
-                "description": self.instance_description,
-                "resourceSync": {"enabled": self.deploy_resource_sync_rules},
-                "location": self.location,
-                "broker": {
-                    DEFAULT_BROKER: {
-                        "listener": {
-                            DEFAULT_BROKER_LISTENER: {
-                                "port": default_listener_port,
-                                "serviceName": default_listener_service_name,
-                                "serviceType": self.broker_service_type,
-                            }
-                        },
-                    },
-                    "authn": {DEFAULT_BROKER_AUTHN: {}},
-                },
-                "dataflows": {
-                    "profile": {DEFAULT_DATAFLOW_PROFILE: {"instanceCount": self.dataflow_profile_instances}},
-                    "endpoint": {DEFAULT_DATAFLOW_ENDPOINT: {}},
-                },
-            }
-        }
-        if self.add_insecure_listener:
-            instance_kpis["instance"]["listener"][AIO_INSECURE_LISTENER_NAME] = {
-                "port": AIO_INSECURE_LISTENER_SERVICE_PORT,
-                "serviceName": AIO_INSECURE_LISTENER_SERVICE_NAME,
-                "serviceType": MqServiceType.load_balancer.value,
-            }
-
-        return instance_kpis
