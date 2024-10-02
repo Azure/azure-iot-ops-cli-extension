@@ -50,13 +50,13 @@ class TemplateBlueprint(NamedTuple):
 IOT_OPERATIONS_VERSION_MONIKER = "v0.7.0-preview"
 
 M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
-    commit_id="755d7d8b866d1c33f24ccc866eb9cfaaeda5af95",
+    commit_id="78864ae529f698cf1c9bf0be0a6957e6c9f3cf38",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.3.12046", "templateHash": "8058727987213176464"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "7995831049546950052"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -218,14 +218,14 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "VERSIONS": {
                 "platform": "0.7.6",
-                "aio": "0.7.29",
+                "aio": "0.7.31",
                 "secretSyncController": "0.6.4",
                 "edgeStorageAccelerator": "2.1.1-preview",
                 "openServiceMesh": "1.2.9",
             },
             "TRAINS": {
-                "platform": "integration",
-                "aio": "integration",
+                "platform": "preview",
+                "aio": "preview",
                 "secretSyncController": "preview",
                 "openServiceMesh": "stable",
                 "edgeStorageAccelerator": "stable",
@@ -420,13 +420,13 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
 )
 
 M2_INSTANCE_TEMPLATE = TemplateBlueprint(
-    commit_id="9e8c02e3eaa706833f9d873a329a7b03e7daed88",
+    commit_id="373335547851df70d512b7ec81aedfba0d660ae5",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.3.12046", "templateHash": "6135662029956197269"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "6194687573320740755"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
