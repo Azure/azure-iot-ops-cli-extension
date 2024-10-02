@@ -52,19 +52,19 @@ def test_aio_instance(instance_test_setup, tracked_resources):
     # instance name should be one of the resources
     assert instance_name in tree
 
-    instance_show = run(f"az iot ops show -n {instance_name} -g {resource_group}")
-    if instance_show.get("properties", {}).get("provisioningState") == "Succeeded":
-        pytest.skip("Cannot update instance that is not ready.")
-
     # create random resource to ensure it shows up in show tree
-    aep_name = generate_random_string()
+    aep_name = generate_random_string(force_lower=True)
     aep = run(
-        f"az iot ops asset endpoint opcua create -n {aep_name} -g {resource_group} "
+        f"az iot ops asset endpoint create opcua -n {aep_name} -g {resource_group} "
         f"--instance {instance_name} --target-address opc.tcp://opcplc-000000.azure-iot-operations:50000"
     )
     tracked_resources.append(aep["id"])
     tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
     assert aep_name in tree
+
+    instance_show = run(f"az iot ops show -n {instance_name} -g {resource_group}")
+    if instance_show.get("properties", {}).get("provisioningState") != "Succeeded":
+        pytest.skip("Cannot update instance that is not ready.")
 
     # update - ultimate sadness
     description = generate_random_string()
