@@ -10,7 +10,8 @@ shared: Define shared data types(enums) and constant strings for IoT Operations 
 """
 
 from enum import Enum
-from ...common import ListableEnum
+from typing import List, NamedTuple
+from ...common import CheckTaskStatus, ListableEnum
 
 
 class ResourceOutputDetailLevel(ListableEnum):
@@ -27,6 +28,7 @@ class DataSourceStageType(ListableEnum):
     """
     Data source stage type.
     """
+
     http = "input/http"
     influxdb = "input/influxdb"
     mqtt = "input/mqtt"
@@ -52,9 +54,8 @@ ASSET_DATAPOINT_PROPERTIES = [
 
 ASSET_PROPERTIES = [
     ("description", "Description", True),
-    ("assetType", "Asset Type", False),
     ("attributes", "Attributes", True),
-    ("defaultDataPointsConfiguration", "Default Data Points Configuration", False),
+    ("defaultDatasetsConfiguration", "Default Dataset Configuration", False),
     ("defaultEventsConfiguration", "Default Events Configuration", False),
     ("displayName", "Display Name", False),
     ("documentationUri", "Documentation Uri", False),
@@ -90,7 +91,7 @@ MAX_ASSET_EVENTS = 1000
 MAX_ASSET_DATAPOINTS = 1000
 
 # Check constants
-ALL_NAMESPACES_TARGET = '_all_'
+ALL_NAMESPACES_TARGET = "_all_"
 
 
 # when there are runtime resources related to the service but not
@@ -127,17 +128,42 @@ class DataflowEndpointType(ListableEnum):
     mqtt = "mqtt"
 
 
+class DataFlowEndpointAuthenticationType(ListableEnum):
+    """
+    Dataflow Endpoint Authentication Type:
+    """
+
+    access_token = "AccessToken"
+    system_assigned = "SystemAssignedManagedIdentity"
+    user_assigned = "UserAssignedManagedIdentity"
+    x509 = "X509Certificate"
+    service_account_token = "ServiceAccountToken"
+    anonymous = "Anonymous"
+    sasl = "Sasl"
+
+
+class PodStatusResult(NamedTuple):
+    display_strings: List[str]
+    eval_status: CheckTaskStatus
+
+
+class PodStatusConditionResult(NamedTuple):
+    condition_string: str
+    failed_reason: str
+    eval_status: CheckTaskStatus
+
+
 # Akri runtime attributes
 AKRI_PREFIX = "aio-akri-"
 
 # MQ runtime attributes
-AIO_MQ_DIAGNOSTICS_PROBE_PREFIX = "aio-mq-diagnostics-probe"
-AIO_MQ_FRONTEND_PREFIX = "aio-mq-dmqtt-frontend"
-AIO_MQ_BACKEND_PREFIX = "aio-mq-dmqtt-backend"
-AIO_MQ_AUTH_PREFIX = "aio-mq-dmqtt-authentication"
-AIO_MQ_HEALTH_MANAGER = "aio-mq-dmqtt-health-manager"
-AIO_MQ_OPERATOR = "aio-mq-operator"
-AIO_MQ_FLUENT_BIT = "aio-mq-fluent-bit"
+AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX = "aio-broker-diagnostics-probe"
+AIO_BROKER_FRONTEND_PREFIX = "aio-broker-frontend"
+AIO_BROKER_BACKEND_PREFIX = "aio-broker-backend"
+AIO_BROKER_AUTH_PREFIX = "aio-broker-authentication"
+AIO_BROKER_HEALTH_MANAGER = "aio-broker-health-manager"
+AIO_BROKER_OPERATOR = "aio-broker-operator"
+AIO_BROKER_FLUENT_BIT = "aio-broker-fluent-bit"
 
 # OPCUA runtime attributes
 AIO_OPCUA_PREFIX = "aio-opc-"
@@ -153,7 +179,7 @@ MIN_NODE_STORAGE = "30G"
 MIN_NODE_VCPU = "4"
 AIO_SUPPORTED_ARCHITECTURES = ["amd64"]  # someday arm64
 
-DISPLAY_BYTES_PER_GIGABYTE = 10 ** 9
+DISPLAY_BYTES_PER_GIGABYTE = 10**9
 
 # UI constants
 DEFAULT_PADDING = 8

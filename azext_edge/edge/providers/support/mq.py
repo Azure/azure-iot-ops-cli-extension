@@ -22,11 +22,9 @@ from .base import (
     process_v1_pods,
     process_daemonsets,
 )
-from .shared import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
-
-MQ_K8S_LABEL = "k8s-app in (aio-mq-fluent-bit)"
 
 MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_ACTIVE_API.label)
 MQ_DIRECTORY_PATH = MQ_ACTIVE_API.moniker
@@ -109,22 +107,11 @@ def fetch_replicasets():
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
-    processed = process_v1_pods(
+    return process_v1_pods(
         directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_NAME_LABEL,
         since_seconds=since_seconds,
     )
-
-    # TODO: @jiacju - will remove once label decision is finalized
-    processed.extend(
-        process_v1_pods(
-            directory_path=MQ_DIRECTORY_PATH,
-            label_selector=MQ_K8S_LABEL,
-            since_seconds=since_seconds,
-        )
-    )
-
-    return processed
 
 
 support_runtime_elements = {
@@ -136,10 +123,15 @@ support_runtime_elements = {
 
 
 def prepare_bundle(
-    apis: Iterable[EdgeResourceApi], log_age_seconds: int = DAY_IN_SECONDS, include_mq_traces: Optional[bool] = None
+    log_age_seconds: int = DAY_IN_SECONDS,
+    apis: Optional[Iterable[EdgeResourceApi]] = None,
+    include_mq_traces: Optional[bool] = None,
 ) -> dict:
     mq_to_run = {}
-    mq_to_run.update(assemble_crd_work(apis))
+
+    # when apis not found, still try to fetch other resources
+    if apis:
+        mq_to_run.update(assemble_crd_work(apis))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     if include_mq_traces:

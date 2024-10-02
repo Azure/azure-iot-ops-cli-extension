@@ -16,11 +16,12 @@ from ..providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
     MQTT_BROKER_API_V1B1,
     OPCUA_API_V1,
-    ORC_API_V1,
-    AKRI_API_V0,
     DEVICEREGISTRY_API_V1,
     DATAFLOW_API_V1B1,
     META_API_V1B1,
+    ARCCONTAINERSTORAGE_API_V1,
+    SECRETSYNC_API_V1,
+    SECRETSTORE_API_V1,
     EdgeApiManager,
 )
 
@@ -31,17 +32,17 @@ console = Console()
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
 COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1B1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
-COMPAT_ORC_APIS = EdgeApiManager(resource_apis=[ORC_API_V1])
-COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V0])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
 COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1B1])
+COMPAT_ARCCONTAINERSTORAGE_APIS = EdgeApiManager(resource_apis=[ARCCONTAINERSTORAGE_API_V1])
+COMPAT_SECRETSTORE_APIS = EdgeApiManager(resource_apis=[SECRETSYNC_API_V1, SECRETSTORE_API_V1])
 
 
 def build_bundle(
-    ops_service: str,
     bundle_path: str,
     log_age_seconds: Optional[int] = None,
+    ops_services: Optional[List[str]] = None,
     include_mq_traces: Optional[bool] = None,
 ):
     from rich.live import Live
@@ -51,69 +52,104 @@ def build_bundle(
     from .support.billing import prepare_bundle as prepare_billing_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
-    from .support.orc import prepare_bundle as prepare_symphony_bundle
     from .support.dataflow import prepare_bundle as prepare_dataflow_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
     from .support.akri import prepare_bundle as prepare_akri_bundle
-    from .support.otel import prepare_bundle as prepare_otel_bundle
+    from .support.arcagents import prepare_bundle as prepare_arcagents_bundle
     from .support.meta import prepare_bundle as prepare_meta_bundle
+    from .support.schemaregistry import prepare_bundle as prepare_schema_registry_bundle
+    from .support.arccontainerstorage import prepare_bundle as prepare_arccontainerstorage_bundle
+    from .support.secretstore import prepare_bundle as prepare_secretstore_bundle
+
+    def collect_default_works(
+        pending_work: dict,
+        log_age_seconds: Optional[int] = None,
+    ):
+        # arc agent resources
+        pending_work["arcagents"] = prepare_arcagents_bundle(log_age_seconds)
+
+        # Collect common resources if any AIO service is deployed with any service selected.
+        pending_work["common"] = prepare_shared_bundle()
+
+        # Collect meta resources if any AIO service is deployed with any service selected.
+        deployed_meta_apis = COMPAT_META_APIS.get_deployed()
+        pending_work["meta"] = prepare_meta_bundle(log_age_seconds, deployed_meta_apis)
 
     pending_work = {k: {} for k in OpsServiceType.list()}
-    pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
         OpsServiceType.mq.value: {"apis": COMPAT_MQTT_BROKER_APIS, "prepare_bundle": prepare_mq_bundle},
-        OpsServiceType.billing.value: {"apis": COMPAT_CLUSTER_CONFIG_APIS, "prepare_bundle": prepare_billing_bundle},
+        OpsServiceType.billing.value: {
+            "apis": COMPAT_CLUSTER_CONFIG_APIS,
+            "prepare_bundle": prepare_billing_bundle,
+        },
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
         },
-        OpsServiceType.orc.value: {
-            "apis": COMPAT_ORC_APIS,
-            "prepare_bundle": prepare_symphony_bundle,
-        },
-        OpsServiceType.akri.value: {"apis": COMPAT_AKRI_APIS, "prepare_bundle": prepare_akri_bundle},
+        OpsServiceType.akri.value: {"apis": None, "prepare_bundle": prepare_akri_bundle},
         OpsServiceType.deviceregistry.value: {
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,
         },
-        OpsServiceType.dataflow.value: {"apis": COMPAT_DATAFLOW_APIS, "prepare_bundle": prepare_dataflow_bundle},
+        OpsServiceType.dataflow.value: {
+            "apis": COMPAT_DATAFLOW_APIS,
+            "prepare_bundle": prepare_dataflow_bundle,
+        },
+        OpsServiceType.schemaregistry.value: {
+            "apis": None,
+            "prepare_bundle": prepare_schema_registry_bundle,
+        },
+        OpsServiceType.arccontainerstorage.value: {
+            "apis": COMPAT_ARCCONTAINERSTORAGE_APIS,
+            "prepare_bundle": prepare_arccontainerstorage_bundle,
+        },
+        OpsServiceType.secretstore.value: {
+            "apis": COMPAT_SECRETSTORE_APIS,
+            "prepare_bundle": prepare_secretstore_bundle,
+        },
     }
 
-    raise_on_404 = not (ops_service == OpsServiceType.auto.value)
+    if not ops_services:
+        parsed_ops_services = OpsServiceType.list()
+    else:
+        # remove duplicates
+        parsed_ops_services = list(set(ops_services))
 
-    for service_moniker, api_info in api_map.items():
-        if ops_service in [OpsServiceType.auto.value, service_moniker]:
-            deployed_apis = api_info["apis"].get_deployed(raise_on_404)
-            if deployed_apis:
-                bundle_method = api_info["prepare_bundle"]
-                # Check if the function takes a second argument
-                # TODO: Change to kwargs based pattern
-                if service_moniker == OpsServiceType.deviceregistry.value:
-                    bundle = bundle_method(deployed_apis)
-                elif service_moniker == OpsServiceType.mq.value:
-                    bundle = bundle_method(deployed_apis, log_age_seconds, include_mq_traces)
-                else:
-                    bundle = bundle_method(deployed_apis, log_age_seconds)
+    for ops_service in parsed_ops_services:
+        # assign key and value to service_moniker and api_info
+        service_moniker = [k for k, _ in api_map.items() if k == ops_service][0]
+        api_info = api_map.get(service_moniker)
+        deployed_apis = api_info["apis"].get_deployed() if api_info["apis"] else None
 
-                pending_work[service_moniker].update(bundle)
+        if not deployed_apis and service_moniker not in [
+            OpsServiceType.schemaregistry.value,
+            OpsServiceType.akri.value,
+        ]:
+            expected_api_version = api_info["apis"].as_str()
+            logger.warning(
+                f"The following API(s) were not detected {expected_api_version}. "
+                f"CR capture for {service_moniker} will be skipped. "
+                "Still attempting capture of runtime resources..."
+            )
 
-    # @digimaun - consider combining this work check with work count.
-    if not any(v for _, v in pending_work.items()):
-        logger.warning("No known IoT Operations services discovered on cluster.")
-        return
+        # still try fetching other resources even crds are not available due to api version mismatch
+        bundle_method = api_info["prepare_bundle"]
+        # Check if the function takes a second argument
+        # TODO: Change to kwargs based pattern
+        if service_moniker == OpsServiceType.deviceregistry.value:
+            bundle = bundle_method(deployed_apis)
+        elif service_moniker == OpsServiceType.mq.value:
+            bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
+        elif service_moniker in [OpsServiceType.schemaregistry.value, OpsServiceType.akri.value]:
+            bundle = bundle_method(log_age_seconds)
+        else:
+            bundle = bundle_method(log_age_seconds, deployed_apis)
 
-    if ops_service == OpsServiceType.auto.value:
-        # Only attempt to collect otel resources if any AIO service is deployed AND auto is used.
-        pending_work["otel"] = prepare_otel_bundle()
+        pending_work[service_moniker].update(bundle)
 
-    # Collect common resources if any AIO service is deployed with any service selected.
-    pending_work["common"] = prepare_shared_bundle()
-
-    # Collect meta resources if any AIO service is deployed with any service selected.
-    deployed_meta_apis = COMPAT_META_APIS.get_deployed()
-    pending_work["meta"] = prepare_meta_bundle(deployed_meta_apis, log_age_seconds)
+    collect_default_works(pending_work, log_age_seconds)
 
     total_work_count = 0
     for service in pending_work:

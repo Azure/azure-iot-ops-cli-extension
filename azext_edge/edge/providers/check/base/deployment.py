@@ -5,20 +5,20 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
+from typing import Any, Callable, Dict, List, Optional
+
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from rich.padding import Padding
-from typing import Any, Callable, Dict, List, Optional
 
+from ....common import CheckTaskStatus, ListableEnum
+from ....providers.edge_api import EdgeResourceApi
+from ...base import client
+from ..common import CoreServiceResourceKinds, ResourceOutputDetailLevel
 from .check_manager import CheckManager
 from .node import check_nodes
 from .resource import enumerate_ops_service_resources
 from .user_strings import UNABLE_TO_DETERMINE_VERSION_MSG
-from ..common import CoreServiceResourceKinds, ResourceOutputDetailLevel
-from ...base import client
-from ....common import CheckTaskStatus, ListableEnum
-from ....providers.edge_api import EdgeResourceApi
-
 
 logger = get_logger(__name__)
 # TODO: unit test
@@ -43,42 +43,46 @@ def check_pre_deployment(
 
 
 def check_post_deployment(
-    api_info: EdgeResourceApi,
-    check_name: str,
-    check_desc: str,
-    result: Dict[str, Any],
     evaluate_funcs: Dict[ListableEnum, Callable],
     as_list: bool = False,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
+    api_info: Optional[EdgeResourceApi] = None,
+    check_name: Optional[str] = None,
+    check_desc: Optional[str] = None,
     resource_kinds: Optional[List[str]] = None,
     resource_name: str = None,
     excluded_resources: Optional[List[str]] = None,
-) -> None:
-    resource_enumeration, api_resources = enumerate_ops_service_resources(
-        api_info, check_name, check_desc, as_list, excluded_resources
-    )
-    result["postDeployment"].append(resource_enumeration)
-    lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
+) -> List[dict]:
+    results = []
 
-    if lowercase_api_resources:
-        for resource, evaluate_func in evaluate_funcs.items():
-            should_check_resource = not resource_kinds or resource.value in resource_kinds
-            append_resource = False
-            # only add core service evaluation if there is no resource filter
-            if resource == CoreServiceResourceKinds.RUNTIME_RESOURCE and not resource_kinds:
-                append_resource = True
-            elif (resource and resource.value in lowercase_api_resources and should_check_resource):
-                append_resource = True
+    if api_info:
+        resource_enumeration, api_resources = enumerate_ops_service_resources(
+            api_info, check_name, check_desc, as_list, excluded_resources
+        )
+        results = [resource_enumeration]
+        lowercase_api_resources = {k.lower(): v for k, v in api_resources.items()}
 
-            if append_resource:
-                result["postDeployment"].append(
-                    evaluate_func(detail_level=detail_level, as_list=as_list, resource_name=resource_name)
-                )
+    for resource, evaluate_func in evaluate_funcs.items():
+        should_check_resource = not resource_kinds or resource.value in resource_kinds
+        append_resource = False
+        # only add core service evaluation if there is no resource filter
+        if resource == CoreServiceResourceKinds.RUNTIME_RESOURCE and not resource_kinds:
+            append_resource = True
+        elif (
+            resource
+            and lowercase_api_resources
+            and resource.value in lowercase_api_resources
+            and should_check_resource
+        ):
+            append_resource = True
+
+        if append_resource:
+            results.append(evaluate_func(detail_level=detail_level, as_list=as_list, resource_name=resource_name))
+    return results
 
 
 def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
     from kubernetes.client.models import VersionInfo
-    from packaging import version
 
     from ..common import MIN_K8S_VERSION
 
@@ -92,8 +96,10 @@ def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
     )
 
     try:
+        from packaging import version
+
         version_details: VersionInfo = version_client.get_code()
-    except ApiException as ae:
+    except (ApiException, ImportError) as ae:
         logger.debug(str(ae))
         api_error_text = UNABLE_TO_DETERMINE_VERSION_MSG
         check_manager.add_target_eval(

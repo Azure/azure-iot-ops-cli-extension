@@ -136,6 +136,15 @@ def settings():
 
 
 @pytest.fixture(scope="session")
+def settings_with_rg(settings):
+    from ..settings import EnvironmentVariables
+    settings.add_to_config(EnvironmentVariables.rg.value)
+    if not settings.env.azext_edge_rg:
+        pytest.skip("Cannot run test without resource group.")
+    yield settings
+
+
+@pytest.fixture(scope="session")
 def tracked_resources():
     resources = []
     yield resources
@@ -177,11 +186,11 @@ def cluster_connection(settings):
 def init_setup(request, cluster_connection, settings):
     from ..settings import EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.rg.value)
-    settings.add_to_config(EnvironmentVariables.cluster.value)
+    settings.add_to_config(EnvironmentVariables.instance.value)
 
     run("az iot ops verify-host")
     yield {
-        "clusterName": settings.env.azext_edge_cluster,
+        "instanceName": settings.env.azext_edge_instance,
         "resourceGroup": settings.env.azext_edge_rg,
     }
     return

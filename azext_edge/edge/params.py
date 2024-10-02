@@ -18,18 +18,19 @@ from knack.arguments import CaseInsensitiveList
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
 from ._validators import validate_namespace, validate_resource_name
-from .common import FileType, OpsServiceType
+from .common import FileType, OpsServiceType, SecurityModes, SecurityPolicies, TopicRetain, AEPAuthModes
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
-    AkriResourceKinds,
     DeviceRegistryResourceKinds,
     MqResourceKinds,
     OpcuaResourceKinds,
 )
 from .providers.orchestration.common import (
+    IdentityUsageType,
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
+    TRUST_SETTING_KEYS,
 )
 
 
@@ -73,20 +74,50 @@ def load_iotops_arguments(self, _):
             help="Force the operation to execute.",
         )
         context.argument(
+            "tags",
+            options_list=["--tags"],
+            arg_type=tags_type,
+            help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d. "
+            'Use --tags "" to remove all tags.',
+        )
+        context.argument(
             "instance_name",
             options_list=["--name", "-n"],
             help="IoT Operations instance name.",
         )
         context.argument(
-            "tags",
-            options_list=["--tags"],
-            arg_type=tags_type,
-            help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d",
+            "instance_description",
+            options_list=["--description"],
+            help="Description of the IoT Operations instance.",
         )
         context.argument(
-            "instance_description",
-            options_list=["--desc"],
-            help="Description of the IoT Operations instance.",
+            "broker_name",
+            options_list=["--broker", "-b"],
+            help="Mqtt broker name.",
+        )
+        context.argument(
+            "mi_user_assigned",
+            options_list=["--mi-user-assigned"],
+            help="The resource Id for the desired user-assigned managed identity to use with the instance.",
+        )
+        context.argument(
+            "federated_credential_name",
+            options_list=["--fc"],
+            help="The federated credential name.",
+        )
+        context.argument(
+            "use_self_hosted_issuer",
+            options_list=["--self-hosted-issuer"],
+            arg_type=get_three_state_flag(),
+            help="Use the self-hosted oidc issuer for federation.",
+        )
+
+    with self.argument_context("iot ops identity") as context:
+        context.argument(
+            "usage_type",
+            options_list=["--usage"],
+            arg_type=get_enum_type(IdentityUsageType),
+            help="Indicates the usage type of the associated identity.",
         )
 
     with self.argument_context("iot ops show") as context:
@@ -99,11 +130,14 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops support") as context:
         context.argument(
-            "ops_service",
+            "ops_services",
+            nargs="+",
+            action="extend",
             options_list=["--ops-service", "--svc"],
             choices=CaseInsensitiveList(OpsServiceType.list()),
             help="The IoT Operations service the support bundle creation should apply to. "
-            "If auto is selected, the operation will detect which services are available.",
+            "If no service is provided, the operation will default to capture all services. "
+            "--ops-service can be used one or more times.",
         )
         context.argument(
             "log_age_seconds",
@@ -164,8 +198,6 @@ def load_iotops_arguments(self, _):
                         MqResourceKinds.BROKER.value,
                         MqResourceKinds.BROKER_LISTENER.value,
                         OpcuaResourceKinds.ASSET_TYPE.value,
-                        AkriResourceKinds.CONFIGURATION.value,
-                        AkriResourceKinds.INSTANCE.value,
                         DataflowResourceKinds.DATAFLOW.value,
                         DataflowResourceKinds.DATAFLOWENDPOINT.value,
                         DataflowResourceKinds.DATAFLOWPROFILE.value,
@@ -233,7 +265,7 @@ def load_iotops_arguments(self, _):
             help="IoT Operations instance name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--name", "-n"],
             help="Mqtt broker name.",
         )
@@ -245,7 +277,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker listener name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -257,7 +289,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker authentication resource name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -269,7 +301,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker authorization resource name.",
         )
         context.argument(
-            "mq_broker_name",
+            "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
         )
@@ -327,316 +359,216 @@ def load_iotops_arguments(self, _):
             arg_group="Trace",
         )
 
-    with self.argument_context("iot ops init") as context:
-        context.argument(
-            "instance_name",
-            options_list=["--name", "-n"],
-            help="IoT Operations instance name. The default is in the form '{cluster_name}-ops-instance'.",
-        )
-        context.argument(
-            "cluster_name",
-            options_list=["--cluster"],
-            help="Target cluster name for IoT Operations deployment.",
-        )
-        context.argument(
-            "cluster_namespace",
-            options_list=["--cluster-namespace"],
-            help="The cluster namespace IoT Operations infra will be deployed to. Must be lowercase.",
-        )
-        context.argument(
-            "custom_location_name",
-            options_list=["--custom-location"],
-            help="The custom location name corresponding to the IoT Operations deployment. "
-            "The default is in the form '{cluster_name}-{token}-ops-init-cl'.",
-        )
-        context.argument(
-            "location",
-            options_list=["--location"],
-            help="The ARM location that will be used for provisioned RPSaaS collateral. "
-            "If not provided the connected cluster location will be used.",
-        )
-        context.argument(
-            "show_template",
-            options_list=["--show-template"],
-            arg_type=get_three_state_flag(),
-            help="Flag when set, will output the template intended for deployment.",
-            arg_group="Template",
-        )
-        context.argument(
-            "no_block",
-            options_list=["--no-block"],
-            arg_type=get_three_state_flag(),
-            help="Return immediately after the IoT Operations deployment has started.",
-        )
-        context.argument(
-            "no_deploy",
-            options_list=["--no-deploy"],
-            arg_type=get_three_state_flag(),
-            help="The IoT Operations deployment workflow will be skipped.",
-        )
-        context.argument(
-            "no_tls",
-            options_list=["--no-tls"],
-            arg_type=get_three_state_flag(),
-            help="The TLS configuration workflow will be skipped.",
-        )
-        context.argument(
-            "disable_rsync_rules",
-            options_list=["--disable-rsync-rules"],
-            arg_type=get_three_state_flag(),
-            help="Resource sync rules will not be included in the IoT Operations deployment.",
-        )
-        context.argument(
-            "ensure_latest",
-            options_list=["--ensure-latest"],
-            arg_type=get_three_state_flag(),
-            help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
-        )
-        # Akri
-        context.argument(
-            "container_runtime_socket",
-            options_list=["--runtime-socket"],
-            help="The default node path of the container runtime socket. If not provided (default), the "
-            "socket path is determined by --kubernetes-distro.",
-            arg_group="Akri",
-        )
-        context.argument(
-            "kubernetes_distro",
-            arg_type=get_enum_type(KubernetesDistroType),
-            options_list=["--kubernetes-distro"],
-            help="The Kubernetes distro to use for Akri configuration. The selected distro implies the "
-            "default container runtime socket path when no --runtime-socket value is provided.",
-            arg_group="Akri",
-        )
-        # OPC-UA Broker
-        context.argument(
-            "simulate_plc",
-            options_list=["--simulate-plc"],
-            arg_type=get_three_state_flag(),
-            help="Flag when set, will configure the OPC-UA broker installer to spin-up a PLC server.",
-            arg_group="OPC-UA Broker",
-        )
-        # MQ
-        context.argument(
-            "mq_broker_config_file",
-            options_list=["--broker-config-file"],
-            help="Path to a json file with custom broker config properties. Useful for advanced scenarios. "
-            "The expected format is described at https://aka.ms/aziotops-broker-config.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "mq_frontend_server_name",
-            options_list=["--broker-frontend-server"],
-            help="The mqtt broker frontend server name.",
-            arg_group="Broker",
-            deprecate_info=context.deprecate(hide=True),
-        )
-        context.argument(
-            "mq_listener_name",
-            options_list=["--broker-listener"],
-            help="The mqtt broker listener name.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "mq_broker_name",
-            options_list=["--broker"],
-            help="The mqtt broker name.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "mq_authn_name",
-            options_list=["--broker-authn"],
-            help="The mqtt broker authN name.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "mq_insecure",
-            options_list=[
-                "--add-insecure-listener",
-                context.deprecate(target="--mq-insecure", redirect="--add-insecure-listener", hide=True),
-            ],
-            arg_type=get_three_state_flag(),
-            help="When enabled the mqtt broker deployment will include a listener "
-            "bound to port 1883 with no authN or authZ."
-            "For non-production workloads only.",
-            arg_group="Broker",
-        )
-        # MQ cardinality
-        context.argument(
-            "mq_frontend_replicas",
-            type=int,
-            options_list=["--broker-frontend-replicas", "--bfr"],
-            help="Mqtt broker frontend replicas.",
-            arg_group="Broker Cardinality",
-        )
-        context.argument(
-            "mq_frontend_workers",
-            type=int,
-            options_list=["--broker-frontend-workers", "--bfw"],
-            help="Mqtt broker frontend workers.",
-            arg_group="Broker Cardinality",
-        )
-        context.argument(
-            "mq_backend_redundancy_factor",
-            type=int,
-            options_list=["--broker-backend-rf"],
-            help="Mqtt broker backend redundancy factor.",
-            arg_group="Broker Cardinality",
-        )
-        context.argument(
-            "mq_backend_workers",
-            type=int,
-            options_list=["--broker-backend-workers"],
-            help="Mqtt broker backend workers.",
-            arg_group="Broker Cardinality",
-        )
-        context.argument(
-            "mq_backend_partitions",
-            type=int,
-            options_list=["--broker-backend-part"],
-            help="Mqtt broker backend partitions.",
-            arg_group="Broker Cardinality",
-        )
-        context.argument(
-            "mq_memory_profile",
-            arg_type=get_enum_type(MqMemoryProfile),
-            options_list=["--broker-mem-profile"],
-            help="Mqtt broker memory profile.",
-            arg_group="Broker",
-        )
-        context.argument(
-            "mq_service_type",
-            arg_type=get_enum_type(MqServiceType),
-            options_list=["--broker-service-type"],
-            help="Mqtt broker service type.",
-            arg_group="Broker",
-        )
-        # AKV CSI Driver
-        context.argument(
-            "keyvault_resource_id",
-            options_list=["--kv-id"],
-            help="Key Vault ARM resource Id. Providing this resource Id will enable the client "
-            "to setup all necessary resources and cluster side configuration to enable "
-            "the Key Vault CSI driver for IoT Operations.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "keyvault_spc_secret_name",
-            options_list=["--kv-spc-secret-name"],
-            help="The Key Vault secret **name** to use as the default SPC secret. "
-            "If the secret does not exist, it will be created with a cryptographically secure placeholder value.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "disable_secret_rotation",
-            options_list=["--disable-rotation"],
-            arg_type=get_three_state_flag(),
-            help="Flag to disable secret rotation.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "rotation_poll_interval",
-            options_list=["--rotation-int"],
-            help="Rotation poll interval.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "csi_driver_version",
-            options_list=["--csi-ver"],
-            help="CSI driver extension version.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "csi_driver_config",
-            options_list=["--csi-config"],
-            nargs="+",
-            action="extend",
-            help="CSI driver extension custom configuration. Format is space-separated key=value pairs. "
-            "--csi-config can be used one or more times.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_app_id",
-            options_list=["--sp-app-id"],
-            help="Service principal app Id. If provided will be used for CSI driver setup. "
-            "Otherwise an app registration will be created. "
-            "**Required** if the logged in principal does not have permissions to query graph.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_object_id",
-            options_list=["--sp-object-id"],
-            help="Service principal (sp) object Id. If provided will be used for CSI driver setup. "
-            "Otherwise the object Id will be queried from the app Id - creating the sp if one does not exist. "
-            "**Required** if the logged in principal does not have permissions to query graph. "
-            "Use `az ad sp show --id <app Id> --query id -o tsv` to produce the proper object Id. "
-            "Alternatively using Portal you can navigate to Enterprise Applications in your Entra Id tenant.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_secret",
-            options_list=["--sp-secret"],
-            help="The secret corresponding to the provided service principal app Id. "
-            "If provided will be used for CSI driver setup. Otherwise a new secret will be created. "
-            "**Required** if the logged in principal does not have permissions to query graph.",
-            arg_group="Key Vault CSI Driver",
-        )
-        context.argument(
-            "service_principal_secret_valid_days",
-            options_list=["--sp-secret-valid-days"],
-            help="Option to control the duration in days of the init generated service principal secret. "
-            "Applicable if --sp-secret is not provided.",
-            arg_group="Key Vault CSI Driver",
-            type=int,
-        )
-        # TLS
-        context.argument(
-            "tls_ca_path",
-            options_list=["--ca-file"],
-            help="The path to the desired CA file in PEM format.",
-            arg_group="TLS",
-        )
-        context.argument(
-            "tls_ca_key_path",
-            options_list=["--ca-key-file"],
-            help="The path to the CA private key file in PEM format. !Required! when --ca-file is provided.",
-            arg_group="TLS",
-        )
-        context.argument(
-            "tls_ca_dir",
-            options_list=["--ca-dir"],
-            help="The local directory the generated test CA and private key will be placed in. "
-            "If no directory is provided no files will be written to disk. Applicable when no "
-            "--ca-file and --ca-key-file are provided.",
-            arg_group="TLS",
-        )
-        context.argument(
-            "tls_ca_valid_days",
-            options_list=["--ca-valid-days"],
-            help="Option to control the duration in days of the init generated x509 CA. "
-            "Applicable if --ca-file and --ca-key-file are not provided.",
-            arg_group="TLS",
-            type=int,
-        )
-        context.argument(
-            "template_path",
-            options_list=["--template-file"],
-            help="The path to a custom IoT Operations deployment template. Intended for advanced use cases.",
-            deprecate_info=context.deprecate(hide=True),
-        )
-        context.argument(
-            "dataflow_profile_instances",
-            type=int,
-            options_list=["--df-profile-instances"],
-            help="The instance count associated with the default dataflow profile.",
-            arg_group="Dataflow Profile",
-        )
+    for cmd_space in ["iot ops init", "iot ops create"]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "instance_name",
+                options_list=["--name", "-n"],
+                help="IoT Operations instance name. An instance name must be provided to "
+                "deploy an instance during init orchestration.",
+            )
+            context.argument(
+                "cluster_name",
+                options_list=["--cluster"],
+                help="Target cluster name for IoT Operations deployment.",
+            )
+            context.argument(
+                "cluster_namespace",
+                options_list=["--cluster-namespace"],
+                help="The cluster namespace IoT Operations infra will be deployed to. Must be lowercase.",
+            )
+            context.argument(
+                "custom_location_name",
+                options_list=["--custom-location"],
+                help="The custom location name corresponding to the IoT Operations deployment. "
+                "The default is in the form 'location-{hash(5)}'.",
+            )
+            context.argument(
+                "location",
+                options_list=["--location"],
+                help="The region that will be used for provisioned resource collateral. "
+                "If not provided the connected cluster location will be used.",
+            )
+            context.argument(
+                "enable_rsync_rules",
+                options_list=["--enable-rsync"],
+                arg_type=get_three_state_flag(),
+                help="Resource sync rules will be included in the IoT Operations deployment.",
+            )
+            context.argument(
+                "ensure_latest",
+                options_list=["--ensure-latest"],
+                arg_type=get_three_state_flag(),
+                help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
+            )
+            # Schema Registry
+            context.argument(
+                "schema_registry_resource_id",
+                options_list=["--sr-resource-id"],
+                help="The schema registry resource Id to use with IoT Operations.",
+            )
+            # Akri
+            context.argument(
+                "container_runtime_socket",
+                options_list=["--runtime-socket"],
+                help="The default node path of the container runtime socket. If not provided (default), the "
+                "socket path is determined by --kubernetes-distro.",
+                arg_group="Akri",
+            )
+            context.argument(
+                "kubernetes_distro",
+                arg_type=get_enum_type(KubernetesDistroType),
+                options_list=["--kubernetes-distro"],
+                help="The Kubernetes distro to use for Akri configuration. The selected distro implies the "
+                "default container runtime socket path when no --runtime-socket value is provided.",
+                arg_group="Akri",
+            )
+            # Broker
+            context.argument(
+                "custom_broker_config_file",
+                options_list=["--broker-config-file"],
+                help="Path to a json file with custom broker config properties. "
+                "File config content is used over individual broker config parameters. "
+                "Useful for advanced scenarios. "
+                "The expected format is described at https://aka.ms/aziotops-broker-config.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "add_insecure_listener",
+                options_list=[
+                    "--add-insecure-listener",
+                    context.deprecate(
+                        target="--mq-insecure",
+                        redirect="--add-insecure-listener",
+                        hide=True,
+                    ),
+                ],
+                arg_type=get_three_state_flag(),
+                help="When enabled the mqtt broker deployment will include a listener "
+                f"of service type {MqServiceType.load_balancer.value}, bound to port 1883 with no authN or authZ. "
+                "For non-production workloads only.",
+                arg_group="Broker",
+            )
+            # Broker Config
+            context.argument(
+                "broker_frontend_replicas",
+                type=int,
+                options_list=["--broker-frontend-replicas", "--fr"],
+                help="Mqtt broker frontend replicas. Min value: 1, max value: 16.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_frontend_workers",
+                type=int,
+                options_list=["--broker-frontend-workers", "--fw"],
+                help="Mqtt broker frontend workers. Min value: 1, max value: 16.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_backend_redundancy_factor",
+                type=int,
+                options_list=["--broker-backend-rf", "--br"],
+                help="Mqtt broker backend redundancy factor. Min value: 1, max value: 5.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_backend_workers",
+                type=int,
+                options_list=["--broker-backend-workers", "--bw"],
+                help="Mqtt broker backend workers. Min value: 1, max value: 16.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_backend_partitions",
+                type=int,
+                options_list=["--broker-backend-part", "--bp"],
+                help="Mqtt broker backend partitions. Min value: 1, max value: 16.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_memory_profile",
+                arg_type=get_enum_type(MqMemoryProfile),
+                options_list=["--broker-mem-profile", "--mp"],
+                help="Mqtt broker memory profile.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "broker_service_type",
+                arg_type=get_enum_type(MqServiceType),
+                options_list=["--broker-listener-type", "--lt"],
+                help="Service type associated with the default mqtt broker listener.",
+                arg_group="Broker",
+            )
+            context.argument(
+                "ops_config",
+                options_list=["--ops-config"],
+                nargs="+",
+                action="extend",
+                help="IoT Operations arc extension custom configuration. Format is space-separated key=value pairs. "
+                "--ops-config can be used one or more times. For advanced use cases.",
+            )
+            context.argument(
+                "ops_version",
+                options_list=["--ops-version"],
+                help="Use to override the built-in IoT Operations arc extension version. ",
+                deprecate_info=context.deprecate(hide=True),
+            )
+            context.argument(
+                "enable_fault_tolerance",
+                arg_type=get_three_state_flag(),
+                options_list=["--enable-fault-tolerance"],
+                help="Enable fault tolerance for Azure Arc Container Storage. At least 3 cluster nodes are required.",
+                arg_group="Container Storage",
+            )
+            context.argument(
+                "dataflow_profile_instances",
+                type=int,
+                options_list=["--df-profile-instances"],
+                help="The instance count associated with the default dataflow profile.",
+                arg_group="Dataflow",
+            )
+            context.argument(
+                "trust_settings",
+                options_list=["--trust-settings"],
+                nargs="+",
+                action="store",
+                help="Settings for user provided trust bundle. Used for component TLS. Format is space-separated "
+                f"key=value pairs. The following keys are required: `{'`, `'.join(TRUST_SETTING_KEYS)}`. If not "
+                "used, a system provided self-signed trust bundle is configured.",
+                arg_group="Trust",
+            )
 
     with self.argument_context("iot ops delete") as context:
+        context.argument(
+            "include_dependencies",
+            options_list=["--include-deps"],
+            arg_type=get_three_state_flag(),
+            help="Indicates the command should remove IoT Operations dependencies. "
+            "This option is intended to reverse the application of init.",
+        )
         context.argument(
             "cluster_name",
             options_list=["--cluster"],
             help="Target cluster name for IoT Operations deletion.",
+        )
+
+    with self.argument_context("iot ops secretsync") as context:
+        context.argument(
+            "keyvault_resource_id",
+            options_list=["--kv-resource-id"],
+            help="Key Vault ARM resource Id.",
+        )
+        context.argument(
+            "spc_name",
+            options_list=["--spc"],
+            help="The secret provider class name for secret sync enablement. "
+            "The default pattern is '{instance_name}-spc'.",
+        )
+        context.argument(
+            "skip_role_assignments",
+            options_list=["--skip-ra"],
+            arg_type=get_three_state_flag(),
+            help="When used the role assignment step of the operation will be skipped.",
         )
 
     with self.argument_context("iot ops asset") as context:
@@ -646,90 +578,72 @@ def load_iotops_arguments(self, _):
             help="Asset name.",
         )
         context.argument(
-            "endpoint",
-            options_list=["--endpoint"],
-            help="Asset endpoint name.",
+            "endpoint_profile",
+            options_list=["--endpoint-profile", "--ep"],
+            help="Asset endpoint profile name.",
+        )
+        context.argument(
+            "instance_name", options_list=["--instance"], help="Instance name to associate the created asset with."
+        )
+        context.argument(
+            "instance_resource_group",
+            options_list=["--instance-resource-group", "--ig"],
+            help="Instance resource group. If not provided, asset resource group will be used.",
+        )
+        context.argument(
+            "instance_subscription",
+            options_list=["--instance-subscription", "--is"],
+            help="Instance subscription id. If not provided, asset subscription id will be used.",
+            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "custom_attributes",
             options_list=["--custom-attribute", "--attr"],
-            help="Space-separated key=value pairs corresponding to additional custom attributes for the asset.",
+            help="Space-separated key=value pairs corresponding to additional custom attributes for the asset. "
+            "This parameter can be used more than once.",
             nargs="+",
             arg_group="Additional Info",
             action="extend",
-        )
-        context.argument(
-            "custom_location_name",
-            options_list=["--custom-location", "--cl"],
-            help="Custom location used to associate asset with cluster.",
-        )
-        context.argument(
-            "custom_location_resource_group",
-            options_list=["--custom-location-resource-group", "--clg"],
-            help="Resource group for custom location.",
-        )
-        context.argument(
-            "custom_location_subscription",
-            options_list=["--custom-location-subscription", "--cls"],
-            help="Subscription Id for custom location. If not provided, asset subscription Id will be used.",
-        )
-        context.argument(
-            "cluster_name",
-            options_list=["--cluster", "-c"],
-            help="Cluster to associate the asset with.",
-        )
-        context.argument(
-            "cluster_resource_group",
-            options_list=["--cluster-resource-group", "--cg"],
-            help="Resource group for cluster.",
-        )
-        context.argument(
-            "cluster_subscription",
-            options_list=["--cluster-subscription", "--cs"],
-            help="Subscription Id for cluster. If not provided, asset subscription Id will be used.",
-        )
-        context.argument(
-            "asset_type",
-            options_list=["--asset-type", "--at"],
-            help="Asset type.",
-            arg_group="Additional Info",
         )
         context.argument(
             "data_points",
             options_list=["--data"],
             nargs="+",
             action="append",
-            help="Space-separated key=value pairs corresponding to properties of the data point to create. "
-            "The following key values are supported: `capability_id`, `data_source` (required), `name`, "
-            "`observability_mode` (none, gauge, counter, histogram, or log), `sampling_interval` (int), "
+            help="Space-separated key=value pairs corresponding to properties of the data-point to create. "
+            "The following key values are supported: `data_source` (required), `name` (required), "
+            "`observability_mode` (None, Gauge, Counter, Histogram, or Log), `sampling_interval` (int), "
             "`queue_size` (int). "
             "--data can be used 1 or more times. Review help examples for full parameter usage",
-            arg_group="Additional Info",
+            arg_group="Data-point",
         )
         context.argument(
             "data_points_file_path",
             options_list=["--data-file", "--df"],
-            help="File path for the file containing the data points. The following file types are supported: "
+            help="File path for the file containing the data-points. The following file types are supported: "
             f"{', '.join(FileType.list())}.",
-            arg_group="Additional Info",
+            arg_group="Data-point",
         )
         context.argument(
             "description",
             options_list=["--description", "-d"],
             help="Description.",
-            arg_group="Additional Info",
         )
         context.argument(
             "display_name",
             options_list=["--display-name", "--dn"],
             help="Display name.",
-            arg_group="Additional Info",
         )
         context.argument(
             "disabled",
             options_list=["--disable"],
             help="Disable an asset.",
-            arg_group="Additional Info",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "discovered",
+            options_list=["--discovered"],
+            help="Flag to determine if an asset was discovered on the cluster.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -744,18 +658,18 @@ def load_iotops_arguments(self, _):
             nargs="+",
             action="append",
             help="Space-separated key=value pairs corresponding to properties of the event to create. "
-            "The following key values are supported: `capability_id`, `event_notifier` (required), "
-            "`name`, `observability_mode` (none or log), `sampling_interval` "
+            "The following key values are supported: `event_notifier` (required), "
+            "`name` (required), `observability_mode` (none or log), `sampling_interval` "
             "(int), `queue_size` (int). "
             "--event can be used 1 or more times. Review help examples for full parameter usage",
-            arg_group="Additional Info",
+            arg_group="Event",
         )
         context.argument(
             "events_file_path",
             options_list=["--event-file", "--ef"],
             help="File path for the file containing the events. The following file types are supported: "
             f"{', '.join(FileType.list())}.",
-            arg_group="Additional Info",
+            arg_group="Event",
         )
         context.argument(
             "external_asset_id",
@@ -806,22 +720,22 @@ def load_iotops_arguments(self, _):
             arg_group="Additional Info",
         )
         context.argument(
-            "dp_publishing_interval",
-            options_list=["--data-publish-int", "--dpi"],
-            help="Default publishing interval for data points.",
-            arg_group="Data Point Default",
+            "ds_publishing_interval",
+            options_list=["--dataset-publish-int", "--dpi"],
+            help="Default publishing interval for datasets.",
+            arg_group="Dataset Default",
         )
         context.argument(
-            "dp_sampling_interval",
-            options_list=["--data-sample-int", "--dsi"],
-            help="Default sampling interval (in milliseconds) for data points.",
-            arg_group="Data Point Default",
+            "ds_sampling_interval",
+            options_list=["--dataset-sample-int", "--dsi"],
+            help="Default sampling interval (in milliseconds) for datasets.",
+            arg_group="Dataset Default",
         )
         context.argument(
-            "dp_queue_size",
-            options_list=["--data-queue-size", "--dqs"],
-            help="Default queue size for data points.",
-            arg_group="Data Point Default",
+            "ds_queue_size",
+            options_list=["--dataset-queue-size", "--dqs"],
+            help="Default queue size for datasets.",
+            arg_group="Dataset Default",
         )
         context.argument(
             "ev_publishing_interval",
@@ -842,6 +756,19 @@ def load_iotops_arguments(self, _):
             arg_group="Event Default",
         )
         context.argument(
+            "default_topic_path",
+            options_list=["--topic-path", "--tp"],
+            help="Default topic path.",
+            arg_group="Topic Default",
+        )
+        context.argument(
+            "default_topic_retain",
+            options_list=["--topic-retain", "--tr"],
+            help="Default topic retain policy.",
+            arg_group="Topic Default",
+            arg_type=get_enum_type(TopicRetain),
+        )
+        context.argument(
             "tags",
             options_list=["--tags"],
             help="Asset resource tags. Property bag in key-value pairs with the following format: a=b c=d",
@@ -851,6 +778,11 @@ def load_iotops_arguments(self, _):
             "queue_size",
             options_list=["--queue-size", "--qs"],
             help="Custom queue size.",
+        )
+        context.argument(
+            "publishing_interval",
+            options_list=["--publishing-interval", "--pi"],
+            help="Custom publishing interval (in milliseconds).",
         )
         context.argument(
             "sampling_interval",
@@ -869,6 +801,11 @@ def load_iotops_arguments(self, _):
             options_list=["--output-dir", "--od"],
             help="Output directory for exported file.",
         )
+        context.argument(  # TODO: figure out better wording
+            "custom_query",
+            options_list=["--custom-query", "--cq"],
+            help="Custom query to use. All other query arguments will be ignored.",
+        )
 
     with self.argument_context("iot ops asset query") as context:
         context.argument(
@@ -884,25 +821,38 @@ def load_iotops_arguments(self, _):
             "custom_attributes",
             options_list=["--custom-attribute", "--attr"],
             help="Space-separated key=value pairs corresponding to additional custom attributes for the asset. "
+            "This parameter can be used more than once."
             'To remove a custom attribute, please set the attribute\'s value to "".',
             nargs="+",
             arg_group="Additional Info",
             action="extend",
         )
 
-    with self.argument_context("iot ops asset data-point") as context:
+    with self.argument_context("iot ops asset dataset") as context:
         context.argument(
             "asset_name",
             options_list=["--asset", "-a"],
             help="Asset name.",
         )
         context.argument(
+            "dataset_name",
+            options_list=["--name", "-n"],
+            help="Dataset name.",
+        )
+
+    with self.argument_context("iot ops asset dataset point") as context:
+        context.argument(
             "capability_id",
             options_list=["--capability-id", "--ci"],
-            help="Capability Id. If not provided, data point name will be used.",
+            help="Capability Id. If not provided, data-point name will be used.",
         )
         context.argument(
-            "name",
+            "dataset_name",
+            options_list=["--dataset", "-d"],
+            help="Dataset name.",
+        )
+        context.argument(
+            "data_point_name",
             options_list=["--name", "-n"],
             help="Data point name.",
         )
@@ -917,7 +867,15 @@ def load_iotops_arguments(self, _):
             help="Observability mode. Must be none, gauge, counter, histogram, or log.",
         )
 
-    with self.argument_context("iot ops asset data-point export") as context:
+    with self.argument_context("iot ops asset dataset point add") as context:
+        context.argument(
+            "replace",
+            options_list=["--replace"],
+            help="Replace the data-point if another data-point with the same name is present already.",
+            arg_type=get_three_state_flag(),
+        )
+
+    with self.argument_context("iot ops asset dataset point export") as context:
         context.argument(
             "replace",
             options_list=["--replace"],
@@ -925,18 +883,18 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
 
-    with self.argument_context("iot ops asset data-point import") as context:
+    with self.argument_context("iot ops asset dataset point import") as context:
         context.argument(
             "replace",
             options_list=["--replace"],
-            help="Replace all asset data points with those from the file. If false, the file data points "
-            "will be appended.",
+            help="Replace duplicate asset data-points with those from the file. If false, the file data-points "
+            "will be ignored. Duplicate asset data-points will be determined by name.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
             "file_path",
             options_list=["--input-file", "--if"],
-            help="File path for the file containing the data points. The following file types are supported: "
+            help="File path for the file containing the data-points. The following file types are supported: "
             f"{', '.join(FileType.list())}.",
         )
 
@@ -952,7 +910,7 @@ def load_iotops_arguments(self, _):
             help="Capability Id. If not provided, event name will be used.",
         )
         context.argument(
-            "name",
+            "event_name",
             options_list=["--name", "-n"],
             help="Event name.",
         )
@@ -967,6 +925,14 @@ def load_iotops_arguments(self, _):
             help="Observability mode. Must be none or log.",
         )
 
+    with self.argument_context("iot ops asset event add") as context:
+        context.argument(
+            "replace",
+            options_list=["--replace"],
+            help="Replace the event if another event with the same name is already present.",
+            arg_type=get_three_state_flag(),
+        )
+
     with self.argument_context("iot ops asset event export") as context:
         context.argument(
             "replace",
@@ -979,7 +945,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "replace",
             options_list=["--replace"],
-            help="Replace all asset events with those from the file. If false, the file events will be appended.",
+            help="Replace duplicate asset events with those from the file. If false, the file events "
+            "will be ignored. Duplicate asset events will be determined by name.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -993,32 +960,42 @@ def load_iotops_arguments(self, _):
         context.argument(
             "asset_endpoint_profile_name",
             options_list=["--name", "-n"],
-            help="Asset Endpoint name.",
+            help="Asset Endpoint Profile name.",
+        )
+        context.argument(
+            "instance_resource_group",
+            options_list=["--instance-resource-group", "--ig"],
+            help="Instance resource group. If not provided, asset endpoint profile resource group will be used.",
+        )
+        context.argument(
+            "instance_subscription",
+            options_list=["--instance-subscription", "--is"],
+            help="Instance subscription id. If not provided, asset endpoint profile subscription id will be used.",
+            deprecate_info=context.deprecate(hide=True),
+        )
+        context.argument(
+            "discovered",
+            options_list=["--discovered"],
+            help="Flag to determine if an asset endpoint profile was discovered on the cluster.",
+            arg_group="Additional Info",
+            arg_type=get_three_state_flag(),
         )
         context.argument(
             "target_address",
             options_list=["--target-address", "--ta"],
-            help="Target Address. Must be a valid local address.",
+            help="Target Address. Must be a valid local address that follows the opc.tcp protocol.",
         )
         context.argument(
-            "transport_authentication",
-            options_list=["--cert"],
-            nargs="+",
-            action="append",
-            help="Space-separated key=value pairs corresponding to certificates associated with the endpoint. "
-            "The following key values are supported: `secret` (required), `thumbprint` (required), `password`."
-            "--cert can be used 1 or more times. Review help examples for full parameter usage",
-        )
-        context.argument(
-            "additional_configuration",
-            options_list=["--additional-config", "--ac"],
-            help="Additional Configuration for the connectivity type (ex: OPC UA, Modbus, ONVIF).",
+            "endpoint_profile_type",
+            options_list=["--endpoint-profile-type", "--ept"],
+            help="Connector type for the endpoint profile.",
         )
         context.argument(
             "auth_mode",
             options_list=["--authentication-mode", "--am"],
             help="Authentication Mode.",
             arg_group="Authentication",
+            arg_type=get_enum_type(AEPAuthModes),
         )
         context.argument(
             "certificate_reference",
@@ -1040,68 +1017,170 @@ def load_iotops_arguments(self, _):
             arg_group="Authentication",
         )
         context.argument(
-            "custom_location_name",
-            options_list=["--custom-location", "--cl"],
-            help="Custom location used to associate asset endpoint with cluster.",
-            arg_group="Associated Resources",
+            "tags",
+            options_list=["--tags"],
+            help="Asset Endpoint Profile resource tags. Property bag in key-value pairs with the following "
+            "format: a=b c=d",
+            arg_type=tags_type,
+        )
+
+    with self.argument_context("iot ops asset endpoint create opcua") as context:
+        context.argument(
+            "application_name",
+            options_list=["--application", "--app"],
+            help="Application name. Will be used as the subject for any certificates generated by the connector.",
+            arg_group="Connector",
         )
         context.argument(
-            "custom_location_resource_group",
-            options_list=["--custom-location-resource-group", "--clg"],
-            help="Resource group for custom location.",
-            arg_group="Associated Resources",
+            "auto_accept_untrusted_server_certs",
+            options_list=["--accept-untrusted-certs", "--auc"],
+            help="Flag to enable auto accept untrusted server certificates.",
+            arg_type=get_three_state_flag(),
+            arg_group="Connector",
         )
         context.argument(
-            "custom_location_subscription",
-            options_list=["--custom-location-subscription", "--cls"],
-            help="Subscription Id for custom location.",
-            arg_group="Associated Resources",
+            "default_publishing_interval",
+            options_list=["--default-publishing-int", "--dpi"],
+            help="Default publishing interval in milliseconds. Minimum: -1. Recommended: 1000",
+            type=int,
+            arg_group="Connector",
         )
         context.argument(
-            "cluster_name",
-            options_list=["--cluster", "-c"],
-            help="Cluster to associate the asset with.",
-            arg_group="Associated Resources",
+            "default_sampling_interval",
+            options_list=["--default-sampling-int", "--dsi"],
+            help="Default sampling interval in milliseconds. Minimum: -1. Recommended: 1000.",
+            type=int,
+            arg_group="Connector",
         )
         context.argument(
-            "cluster_resource_group",
-            options_list=["--cluster-resource-group", "--cg"],
-            help="Resource group for cluster.",
-            arg_group="Associated Resources",
+            "default_queue_size",
+            options_list=["--default-queue-size", "--dqs"],
+            help="Default queue size. Minimum: 0. Recommended: 1.",
+            type=int,
+            arg_group="Connector",
         )
         context.argument(
-            "cluster_subscription",
-            options_list=["--cluster-subscription", "--cs"],
-            help="Subscription Id for cluster.",
-            arg_group="Associated Resources",
+            "keep_alive",
+            options_list=["--keep-alive", "--ka"],
+            help="Time in milliseconds after which a keep alive publish response is sent. Minimum: 0. "
+            "Recommended: 10000.",
+            type=int,
+            arg_group="Connector",
+        )
+        context.argument(
+            "run_asset_discovery",
+            options_list=["--run-asset-discovery", "--rad"],
+            help="Flag to determine if asset discovery should be run.",
+            arg_type=get_three_state_flag(),
+            arg_group="Connector",
+        )
+        context.argument(
+            "session_timeout",
+            options_list=["--session-timeout", "--st"],
+            help="Session timeout in milliseconds. Minimum: 0. Recommended: 60000.",
+            type=int,
+            arg_group="Connector",
+        )
+        context.argument(
+            "session_keep_alive",
+            options_list=["--session-keep-alive", "--ska"],
+            help="Time in milliseconds after which a session keep alive challenge is sent to detect "
+            "connection issues. Minimum: 0. Recommended: 10000.",
+            type=int,
+            arg_group="Connector",
+        )
+        context.argument(
+            "session_reconnect_period",
+            options_list=["--session-reconnect-period", "--srp"],
+            help="Session reconnect period in milliseconds. Minimum: 0. Recommended: 2000.",
+            type=int,
+            arg_group="Connector",
+        )
+        context.argument(
+            "session_reconnect_exponential_back_off",
+            options_list=["--session-reconnect-backoff", "--srb"],
+            help="Session reconnect exponential back off in milliseconds. Minimum: -1. Recommended: 10000.",
+            type=int,
+            arg_group="Connector",
+        )
+        context.argument(
+            "security_policy",
+            options_list=["--security-policy", "--sp"],
+            help="Security policy.",
+            arg_group="Connector",
+            arg_type=get_enum_type(SecurityPolicies),
+        )
+        context.argument(
+            "security_mode",
+            options_list=["--security-mode", "--sm"],
+            help="Security mode.",
+            arg_group="Connector",
+            arg_type=get_enum_type(SecurityModes),
+        )
+        context.argument(
+            "sub_max_items",
+            options_list=["--subscription-max-items", "--smi"],
+            help="Maximum number of items that the connector can create for the subscription. "
+            "Minimum: 1. Recommended: 1000.",
+            type=int,
+            arg_group="Connector",
+        )
+        context.argument(
+            "sub_life_time",
+            options_list=["--subscription-life-time", "--slt"],
+            help="Life time in milliseconds of the items created by the connector for the subscription. "
+            "Minimum: 0. Recommended: 60000.",
+            type=int,
+            arg_group="Connector",
+        )
+
+    with self.argument_context("iot ops schema registry") as context:
+        context.argument(
+            "schema_registry_name",
+            options_list=["--name", "-n"],
+            help="Schema registry name.",
+        )
+        context.argument(
+            "registry_namespace",
+            options_list=["--registry-namespace", "--rn"],
+            help="Schema registry namespace. Uniquely identifies a schema registry within a tenant.",
         )
         context.argument(
             "tags",
             options_list=["--tags"],
-            help="Asset Endpoint resource tags. Property bag in key-value pairs with the following format: a=b c=d",
             arg_type=tags_type,
-        )
-
-    with self.argument_context("iot ops asset endpoint certificate") as context:
-        context.argument(
-            "asset_endpoint_profile_name",
-            options_list=["--endpoint"],
-            help="Asset Endpoint name.",
+            help="Schema registry tags. Property bag in key-value pairs with the following format: a=b c=d. "
+            'Use --tags "" to remove all tags.',
         )
         context.argument(
-            "password_reference",
-            options_list=["--password-ref", "--pr"],
-            help="Reference for pem file that contains the certificate password.",
-            arg_group=None,
+            "description",
+            options_list=["--desc"],
+            help="Description for the schema registry.",
         )
         context.argument(
-            "secret_reference",
-            options_list=["--secret-ref", "--sr"],
-            help="Reference for the der file that contains the certificate. The referenced file should contain the "
-            "certificate and the key.",
+            "display_name",
+            options_list=["--display-name"],
+            help="Display name for the schema registry.",
         )
         context.argument(
-            "thumbprint",
-            options_list=["--thumbprint", "-t"],
-            help="Certificate thumbprint.",
+            "location",
+            options_list=["--location", "-l"],
+            help="Region to create the schema registry. "
+            "If no location is provided the resource group location will be used.",
+        )
+        context.argument(
+            "storage_account_resource_id",
+            options_list=["--sa-resource-id"],
+            help="Storage account resource Id to be used with the schema registry.",
+        )
+        context.argument(
+            "storage_container_name",
+            options_list=["--sa-container"],
+            help="Storage account container name where schemas will be stored.",
+        )
+        context.argument(
+            "custom_role_id",
+            options_list=["--custom-role-id"],
+            help="Fully qualified role definition Id in the following format: "
+            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
         )

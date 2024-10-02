@@ -42,10 +42,16 @@ class ClusterContainer:
 
 
 class IoTOperationsResourceMap:
-    def __init__(self, cmd, cluster_name: str, resource_group_name: str, defer_refresh: bool = False):
+    def __init__(
+        self,
+        cmd,
+        cluster_name: str,
+        resource_group_name: str,
+        subscription_id: Optional[str] = None,
+        defer_refresh: bool = False
+    ):
         from azure.cli.core.commands.client_factory import get_subscription_id
-
-        self.subscription_id = get_subscription_id(cli_ctx=cmd.cli_ctx)
+        self.subscription_id = subscription_id or get_subscription_id(cli_ctx=cmd.cli_ctx)
         self.connected_cluster = ConnectedCluster(
             cmd=cmd,
             subscription_id=self.subscription_id,
@@ -127,14 +133,16 @@ class IoTOperationsResourceMap:
 
         self._cluster_container = refreshed_cluster_container
 
-    def build_tree(self, category_color: str = "red") -> Tree:
+    def build_tree(self, hide_extensions: bool = False, category_color: str = "cyan") -> Tree:
         tree = Tree(f"[green]{self.connected_cluster.cluster_name}")
-        extensions_node = tree.add(label=f"[{category_color}]extensions")
-        [extensions_node.add(ext.display_name) for ext in self.extensions]
 
-        root_cl_node = tree.add(label=f"[{category_color}]customLocations")
+        if not hide_extensions:
+            extensions_node = tree.add(label=f"[{category_color}]extensions")
+            [extensions_node.add(ext.display_name) for ext in self.extensions]
+
         custom_locations = self.custom_locations
         if custom_locations:
+            root_cl_node = tree.add(label=f"[{category_color}]customLocations")
             for cl in custom_locations:
                 cl_node = root_cl_node.add(cl.display_name)
                 resource_sync_rules = self.get_resource_sync_rules(cl.resource_id)

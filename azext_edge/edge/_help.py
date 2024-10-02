@@ -9,14 +9,15 @@ Help definitions for Digital Twins commands.
 
 from knack.help_files import helps
 
+from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
+
 from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
-    COMPAT_AKRI_APIS,
+    COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
-    COMPAT_ORC_APIS,
     COMPAT_DATAFLOW_APIS,
 )
 
@@ -41,7 +42,7 @@ def load_iotops_help():
         "iot ops support"
     ] = """
         type: group
-        short-summary: IoT Operations support command space.
+        short-summary: IoT Operations support operations.
     """
 
     helps[
@@ -53,11 +54,12 @@ def load_iotops_help():
             {{Supported service APIs}}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
-            - {COMPAT_ORC_APIS.as_str()}
-            - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
+            - {COMPAT_ARCCONTAINERSTORAGE_APIS.as_str()}
+            - {SECRETSYNC_API_V1.as_str()}
+            - {SECRETSTORE_API_V1.as_str()}
 
             Note: logs from evicted pod will not be captured, as they are inaccessible. For details
             on why a pod was evicted, please refer to the related pod and node files.
@@ -79,19 +81,35 @@ def load_iotops_help():
         - name: Include mqtt broker traces in the support bundle. This is an alias for stats trace fetch capability.
           text: >
             az iot ops support create-bundle --ops-service broker --broker-traces
+
+        - name: Include arc container storage resources in the support bundle.
+          text: >
+            az iot ops support create-bundle --ops-service acs
+
+        - name: Include secretstore resources in the support bundle.
+          text: >
+            az iot ops support create-bundle --ops-service secretstore
+
+        - name: Include multiple services in the support bundle with single --ops-service flag.
+          text: >
+            az iot ops support create-bundle --ops-service broker opcua deviceregistry
+
+        - name: Include multiple services in the support bundle with multiple --ops-service flags.
+          text: >
+            az iot ops support create-bundle --ops-service broker --ops-service opcua --ops-service deviceregistry
     """
 
     helps[
         "iot ops check"
     ] = f"""
         type: command
-        short-summary: Evaluate cluster-side runtime health of deployed IoT Operations services.
+        short-summary: Evaluate cluster-side readiness and runtime health of deployed IoT Operations services.
         long-summary: |
-            The command by default shows a human friendly _summary_ view of the selected service.
-            More detail can be requested via `--detail-level`.
+            The command by default shows a high-level human friendly _summary_ view of all services.
+            Use the '--svc' option to specify checks for a single service, and configure verbosity via the `--detail-level` argument.
+            Note: Resource kind (--resources) and name (--resource-name) filtering can only be used with the '--svc' argument.
 
             {{Supported service APIs}}
-            - {COMPAT_AKRI_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
@@ -100,21 +118,21 @@ def load_iotops_help():
             For more information on cluster requirements, please check https://aka.ms/iot-ops-cluster-requirements
 
         examples:
-        - name: Basic usage. Checks `broker` health with summary output.
+        - name: Basic usage. Checks overall IoT Operations health with summary output.
           text: >
             az iot ops check
 
-        - name: Evaluates `broker` like prior example, however output is optimized for CI.
+        - name: Checks `broker` service health and configuration with detailed output.
           text: >
-            az iot ops check --as-object
+            az iot ops check --svc broker --detail-level 1
 
-        - name: Checks `opcua` health and configuration with detailed output.
+        - name: Evaluate only the `dataflow` service with output optimized for CI.
           text: >
-            az iot ops check --svc opcua --detail-level 1
+            az iot ops check --svc dataflow --as-object
 
-        - name: Checks 'deviceregistry' health, but constrains results to `asset` resources.
+        - name: Checks `deviceregistry` health with verbose output, but constrains results to `asset` resources.
           text: >
-            az iot ops check --svc deviceregistry --detail-level 1 --resources asset
+            az iot ops check --svc deviceregistry --detail-level 2 --resources asset
 
         - name: Use resource name to constrain results to `asset` resources with `my-asset-` name prefix
           text: >
@@ -125,7 +143,7 @@ def load_iotops_help():
         "iot ops broker"
     ] = """
         type: group
-        short-summary: Mqtt broker management and operations.
+        short-summary: Mqtt broker management.
     """
 
     helps[
@@ -150,7 +168,7 @@ def load_iotops_help():
           text: >
             az iot ops broker stats --raw
 
-        - name: Fetch all available mq traces from the diagnostics Protobuf endpoint.
+        - name: Fetch all available mqtt broker traces from the diagnostics Protobuf endpoint.
                 This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
                 A trace files last modified attribute will match the trace timestamp.
           text: >
@@ -186,6 +204,21 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker.
+
+        examples:
+        - name: Delete the broker called 'broker' in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops broker delete -n broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker delete -n broker --in mycluster-ops-instance -g myresourcegroup -y
+    """
+
+    helps[
         "iot ops broker listener"
     ] = """
         type: group
@@ -214,6 +247,21 @@ def load_iotops_help():
         - name: Enumerate all broker listeners associated with the default broker.
           text: >
             az iot ops broker listener list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker listener delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker listener.
+
+        examples:
+        - name: Delete the broker listener called 'listener' associated with broker 'broker'.
+          text: >
+            az iot ops broker listener delete -n listener -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker listener delete -n listener -b broker --in mycluster-ops-instance -g myresourcegroup -y
     """
 
     helps[
@@ -248,6 +296,21 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker authn delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker authentication resource.
+
+        examples:
+        - name: Delete the broker authentication resource called 'authn' associated with broker 'broker'.
+          text: >
+            az iot ops broker authn delete -n authn -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker authn delete -n authn -b broker --in mycluster-ops-instance -g myresourcegroup -y
+    """
+
+    helps[
         "iot ops broker authz"
     ] = """
         type: group
@@ -276,6 +339,21 @@ def load_iotops_help():
         - name: Enumerate all broker authorization resources associated with the default broker.
           text: >
             az iot ops broker authz list -b broker --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops broker authz delete"
+    ] = """
+        type: command
+        short-summary: Delete an mqtt broker authorization resource.
+
+        examples:
+        - name: Delete the broker authorization resource called 'authz' associated with broker 'broker'.
+          text: >
+            az iot ops broker authz delete -n authz -b broker --in mycluster-ops-instance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops broker authz delete -n authz -b broker --in mycluster-ops-instance -g myresourcegroup -y
     """
 
     helps[
@@ -387,57 +465,64 @@ def load_iotops_help():
         "iot ops init"
     ] = """
         type: command
-        short-summary: Bootstrap, configure and deploy IoT Operations to the target Arc-enabled cluster.
+        short-summary: Bootstrap the Arc-enabled cluster for IoT Operations deployment.
         long-summary: |
-                      For additional resources including how to Arc-enable a cluster see
-                      https://learn.microsoft.com/en-us/azure/iot-operations/deploy-iot-ops/howto-prepare-cluster
+                      An Arc-enabled cluster is required to deploy IoT Operations. See the following resource for
+                      more info https://aka.ms/aziotops-arcconnect.
 
-                      IoT Operations depends on a service principal (SP) for Key Vault CSI driver secret synchronization.
+                      The init operation will do work in installing and configuring a foundation layer of edge
+                      services necessary for IoT Operations deployment.
 
-                      By default, init will do work in creating and configuring a suitable app registration
-                      via Microsoft Graph then apply it to the cluster.
+                      After the foundation layer has been installed the `az iot ops create` command should
+                      be used to deploy an instance.
+        examples:
+        - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+        - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             --enable-fault-tolerance
+        - name: This example highlights trust settings for a user provided cert manager config.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=ClusterIssuer
+             issuerName=trust-manager-selfsigned-issuer
 
-                      You can short-circuit this work, by pre-creating an app registration, then providing values
-                      for --sp-app-id, --sp-object-id and --sp-secret. By providing the SP fields, no additional
-                      work via Microsoft Graph operations will be done.
+    """
 
-                      Pre-creating an app registration is useful when the logged-in principal has constrained
-                      Entra Id permissions. For example in CI/automation scenarios, or an orgs separation of user
-                      responsibility.
+    helps[
+        "iot ops create"
+    ] = """
+        type: command
+        short-summary: Create an IoT Operations instance.
+        long-summary: |
+                      A succesful execution of init is required before running this command.
+
+                      The result of the command nets an IoT Operations instance with
+                      a set of default resources configured for cohesive function.
 
         examples:
-        - name: Minimum input for complete setup. This includes Key Vault configuration, CSI driver deployment, TLS config and deployment of IoT Operations.
+        - name: Create the target instance with minimum input.
           text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id /subscriptions/2cb3a427-1abc-48d0-9d03-dd240819742a/resourceGroups/myresourcegroup/providers/Microsoft.KeyVault/vaults/mykeyvault
-
-        - name: Same setup as prior example, except with the usage of an existing app Id and a flag to include a simulated PLC server as part of the deployment.
-                Including the app Id will prevent init from creating an app registration.
+            az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+        - name: The following example adds customization to the default broker instance resource
+            as well as an instance description and tags.
           text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --simulate-plc
-
-        - name: To skip deployment and focus only on the Key Vault CSI driver and TLS config workflows simple pass in --no-deploy.
-                This can be useful when desiring to deploy from a different tool such as Portal.
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --broker-mem-profile High --broker-backend-workers 4 --description 'Contoso Factory'
+             --tags tier=testX1
+        - name: This example shows deploying an additional insecure (no authn or authz) broker listener
+            configured for port 1883 of service type load balancer. Useful for testing and/or demos.
+            Do not use the insecure option in production.
           text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-deploy
-
-        - name: To only deploy IoT Operations on a cluster that has already been prepped, simply omit --kv-id and include --no-tls.
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --add-insecure-listener
+        - name: This form shows how to enable resource sync for the instance deployment.
+            To enable resource sync role assignment write is necessary on the target resource group.
           text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --no-tls
-
-        - name: Use --no-block to do other work while the deployment is on-going vs waiting for the deployment to finish before starting the other work.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d --no-block
-
-        - name: This example shows providing values for --sp-app-id, --sp-object-id and --sp-secret. These values should reflect the desired service principal
-                that will be used for the Key Vault CSI driver secret synchronization. Please review the command summary for additional details.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d
-            --sp-object-id 224a7a3f-c63d-4923-8950-c4a85f0d2f29 --sp-secret $SP_SECRET
-
-        - name: To customize runtime configuration of the Key Vault CSI driver, --csi-config can be used. For example setting resource limits on the telegraf container dependency.
-          text: >
-            az iot ops init --cluster mycluster -g myresourcegroup --kv-id $KEYVAULT_ID --sp-app-id a14e216b-6802-4e9c-a6ac-844f9ffd230d
-            --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             --enable-rsync
     """
 
     helps[
@@ -445,19 +530,29 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Delete IoT Operations from the cluster.
-        long-summary: The operation uses Azure Resource Graph to determine correlated resources.
-          Resource Graph being eventually consistent does not guarantee a synchronized state at the time of execution.
+        long-summary: |
+            The name of either the instance or cluster must be provided.
+
+            The operation uses Azure Resource Graph to determine correlated resources.
+            Resource Graph being eventually consistent does not guarantee a synchronized state at the
+            time of execution.
 
         examples:
         - name: Minimum input for complete deletion.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup
+            az iot ops delete -n myinstance -g myresourcegroup
         - name: Skip confirmation prompt and continue to deletion process. Useful for CI scenarios.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup -y
+            az iot ops delete -n myinstance -g myresourcegroup -y
         - name: Force deletion regardless of warnings. May lead to errors.
           text: >
-            az iot ops delete --cluster mycluster -g myresourcegroup --force
+            az iot ops delete -n myinstance -g myresourcegroup --force
+        - name: Use cluster name instead of instance for lookup.
+          text: >
+            az iot ops delete --cluster mycluster -g myresourcegroup
+        - name: Reverse application of init.
+          text: >
+            az iot ops delete -n myinstance -g myresourcegroup --include-deps
     """
 
     helps[
@@ -516,10 +611,109 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops identity"
+    ] = """
+        type: group
+        short-summary: Instance identity management.
+    """
+
+    helps[
+        "iot ops identity assign"
+    ] = """
+        type: command
+        short-summary: Assign a user-assigned managed identity with the instance.
+        long-summary: |
+            This operation includes federation of the identity.
+
+        examples:
+        - name: Assign and federate a desired user-assigned managed identity.
+          text: >
+            az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
+        "iot ops identity show"
+    ] = """
+        type: command
+        short-summary: Show the instance identities.
+
+        examples:
+        - name: Show the identities associated with the target instance.
+          text: >
+            az iot ops identity show --name myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops identity remove"
+    ] = """
+        type: command
+        short-summary: Remove a user-assigned managed identity from the instance.
+
+        examples:
+        - name: Remove the desired user-assigned managed identity from the instance.
+          text: >
+            az iot ops identity remove --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+    """
+
+    helps[
+        "iot ops secretsync"
+    ] = """
+        type: group
+        short-summary: Instance secret sync management.
+    """
+
+    helps[
+        "iot ops secretsync enable"
+    ] = """
+        type: command
+        short-summary: Enable secret sync for an instance.
+        long-summary: |
+            The operation handles federation, creation of a secret provider class
+            and role assignments of the managed identity to the target Key Vault.
+
+            Only one Secret Provider Class must be associated to the instance at a time.
+
+        examples:
+        - name: Enable the target instance for Key Vault secret sync.
+          text: >
+            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
+        - name: Same as prior example except flag to skip Key Vault role assignments.
+          text: >
+            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --skip-ra
+    """
+
+    helps[
+        "iot ops secretsync show"
+    ] = """
+        type: command
+        short-summary: Show the secret sync config associated with an instance.
+
+        examples:
+        - name: Show the secret sync config associated with an instance.
+          text: >
+            az iot ops secretsync show --name myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops secretsync disable"
+    ] = """
+        type: command
+        short-summary: Disable secret sync for an instance.
+
+        examples:
+        - name: Disable secret sync for an instance.
+          text: >
+            az iot ops secretsync disable --name myinstance -g myresourcegroup
+    """
+
+    helps[
         "iot ops asset"
     ] = """
         type: group
-        short-summary: Manage assets.
+        short-summary: Asset management.
+        long-summary: For more information on asset management, please see aka.ms/asset-overview
     """
 
     helps[
@@ -527,86 +721,32 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create an asset.
-        long-summary: |
-                      Either custom location or cluster name must be provided. This command will check
-                      for the existance of the associated custom location and cluster and ensure that
-                      both are set up correctly with the microsoft.deviceregistry.assets extension.
-
-                      At least one data point or event must be defined during asset creation. For examples
-                      of file formats, please see aka.ms/aziotops-assets
+        long-summary: For examples of file formats, please see aka.ms/aziotops-assets
 
         examples:
-        - name: Create an asset using the given custom location.
+        - name: Create an asset using the given instance in the same resource group.
           text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --data data_source={data_source}
+            az iot ops asset create --name myasset -g myresourcegroup --endpoint-profile myassetendpoint --instance myinstance
 
-        - name: Create an asset using the given custom location and resource group for the custom location. The resource group
-                must be included if there are multiple custom locations with the same name within a subscription.
+        - name: Create an asset using the given instance in a different resource group but same subscription. Note that the Digital
+                Operations Experience may not display the asset if it is in a different subscription from the instance.
           text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
-            --custom-location-resource-group {custom_location_resource_group} --endpoint {endpoint} --data data_source={data_source}
+            az iot ops asset create --name myasset -g myresourcegroup --endpoint-profile myassetendpoint --instance myinstance
+            --instance-resource-group myinstanceresourcegroup
 
-        - name: Create an asset using the given cluster name. The resource group must be included if there are multiple clusters
-                with the same name within a subscription.
+        - name: Create a disabled asset using a file containing events.
           text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --cluster {cluster} --cluster-resource-group {cluster_resource_group}
-            --endpoint {endpoint} --event event_notifier={event_notifier}
-
-        - name: Create an asset using the given cluster name and custom location.
-          text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --cluster {cluster}
-            --custom-location {custom_location} --endpoint {endpoint} --event event_notifier={event_notifier}
-
-        - name: Create an asset with custom data point and event defaults.
-          text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --data-publish-int {data_point_publishing_interval}
-            --data-queue-size {data_point_queue_size} --data-sample-int {data_point_sampling_interval}
-            --event-publish-int {event_publishing_interval} --event-queue-size {event_queue_size}
-            --event-sample-int {event_sampling_interval} --event event_notifier={event_notifier}
-
-        - name: Create an asset with additional custom attributes.
-          text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --custom-attribute {attribute_key}={attribute_value} --custom-attribute {attribute_key}={attribute_value}
-
-        - name: Create an asset with custom asset type, description, documentation uri, external asset id, hardware revision,
-                product code, and software revision.
-          text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --asset-type {asset_type} --description {description}
-            --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
-            --product-code {product_code} --software-revision {software_revision} --data data_source={data_source}
-
-        - name: Create an asset with two events, manufacturer, manufacturer uri, model, serial number.
-          text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --event capability_id={capability_id} event_notifier={event_notifier}
-            name={name} observability_mode={observability_mode} sampling_interval={sampling_interval} queue_size={queue_size}
-            --event event_notifier={event_notifier} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
-            --serial-number {serial_number}
-
-        - name: Create a disabled asset with two data points.
-          text: >
-            az iot ops asset create --name {asset_name} -g {resource_group} --custom-location {custom_location}
-            --endpoint {endpoint} --disable --data capability_id={capability_id}
-            data_source={data_source} name={name} observability_mode={observability_mode} sampling_interval={sampling_interval}
-            queue_size={queue_size} --data data_source={data_source}
-
-        - name: Create an asset using a file containing data-points and another file containing events.
-          text: >
-            az iot ops asset create --name MyAsset -g MyRg --custom-location MyLocation --endpoint exampleEndpoint
-            --data-file /path/to/myasset_datapoints.json --event-file /path/to/myasset_events.csv
+            az iot ops asset create --name myasset -g myresourcegroup --endpoint-profile myassetendpoint --instance myinstance
+            --event-file /path/to/myasset_events.csv --disable
 
         - name: Create an asset with the given pre-filled values.
           text: >
-            az iot ops asset create --name MyAsset -g MyRg --custom-location MyLocation --endpoint exampleEndpoint
-            --data capability_id=myTagId data_source=NodeID1 name=myTagName1
-            observability_mode=counter sampling_interval=10 queue_size=2 --data
-            data_source=NodeID2 --data-publish-int 1000 --data-queue-size 1 --data-sample-int 30
-            --asset-type customAsset --description 'Description for a test asset.'
-            --documentation-uri www.help.com --external-asset-id 000-000-0000 --hardware-revision 10.0
+            az iot ops asset create --name myasset -g myresourcegroup --endpoint-profile myassetendpoint --instance myinstance
+            --event event_notifier=EventNotifier1 name=myEvent1 observability_mode=log sampling_interval=10 queue_size=2 --event
+            event_notifier=EventNotifier2 name=myEvent2 --dataset-publish-int 1250 --dataset-queue-size 2 --dataset-sample-int 30
+            --event-publish-int 750 --event-queue-size 3 --event-sample-int 50
+            --description 'Description for a test asset.'
+            --documentation-uri www.contoso.com --external-asset-id 000-000-1234 --hardware-revision 10.0
             --product-code XXX100 --software-revision 0.1 --manufacturer Contoso
             --manufacturer-uri constoso.com --model AssetModel --serial-number 000-000-ABC10
             --custom-attribute work_location=factory
@@ -621,10 +761,10 @@ def load_iotops_help():
         examples:
         - name: Query for assets that are disabled within a given resource group.
           text: >
-            az iot ops asset query -g {resource_group} --disabled
+            az iot ops asset query -g myresourcegroup --disabled
         - name: Query for assets that have the given model, manufacturer, and serial number.
           text: >
-            az iot ops asset query --model {model} --manufacturer {manufacturer} --serial-number {serial_number}
+            az iot ops asset query --model model1 --manufacturer contoso --serial-number 000-000-ABC10
     """
 
     helps[
@@ -636,7 +776,7 @@ def load_iotops_help():
         examples:
         - name: Show the details of an asset.
           text: >
-            az iot ops asset show --name {asset_name} -g {resource_group}
+            az iot ops asset show --name myasset -g myresourcegroup
     """
 
     helps[
@@ -644,32 +784,31 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update an asset.
-        long-summary: To update data points and events, please use the command groups `az iot ops asset data-point` and
-            `az iot ops asset events` respectively.
+        long-summary: To update datasets and events, please use the command groups `az iot ops asset dataset` and
+            `az iot ops asset event` respectively.
 
         examples:
-        - name: Update an asset's data point and event defaults.
+        - name: Update an asset's dataset and event defaults.
           text: >
-            az iot ops asset update --name {asset_name} -g {resource_group} --data-publish-int {data_point_publishing_interval}
-            --data-queue-size {data_point_queue_size} --data-sample-int {data_point_sampling_interval}
-            --event-publish-int {event_publishing_interval} --event-queue-size {event_queue_size}
-            --event-sample-int {event_sampling_interval}
+            az iot ops asset update --name myasset -g myresourcegroup --dataset-publish-int 1250 --dataset-queue-size 2 --dataset-sample-int 30
+            --event-publish-int 750 --event-queue-size 3 --event-sample-int 50
 
-        - name: Update an asset's asset type, description, documentation uri, external asset id, hardware revision, product code,
+        - name: Update an asset's description, documentation uri, hardware revision, product code,
                 and software revision.
           text: >
-            az iot ops asset update --name {asset_name} -g {resource_group} --asset-type {asset_type} --description {description}
-            --documentation-uri {documentation_uri} --external-asset-id {external_asset_id} --hardware-revision {hardware_revision}
-            --product-code {product_code} --software-revision {software_revision}
+            az iot ops asset update --name myasset -g myresourcegroup --description "Updated test asset description."
+            --documentation-uri www.contoso.com --hardware-revision 11.0
+            --product-code XXX102 --software-revision 0.2
 
         - name: Update an asset's manufacturer, manufacturer uri, model, serial number, and custom attribute.
           text: >
-            az iot ops asset update --name {asset_name} -g {resource_group} --manufacturer {manufacturer} --manufacturer-uri {manufacturer_uri} --model {model}
-            --serial-number {serial_number} --custom-attribute {attribute_key}={attribute_value}
+            az iot ops asset update --name myasset -g myresourcegroup --manufacturer Contoso
+            --manufacturer-uri constoso2.com --model NewAssetModel --serial-number 000-000-ABC11
+            --custom-attribute work_location=new_factory --custom-attribute secondary_work_location=factory
 
         - name: Disable an asset and remove a custom attribute called "work_site".
           text: >
-            az iot ops asset update --name {asset_name} -g {resource_group} --disable --custom-attribute work_site=""
+            az iot ops asset update --name myasset -g myresourcegroup --disable --custom-attribute work_site=""
     """
 
     helps[
@@ -680,101 +819,121 @@ def load_iotops_help():
         examples:
         - name: Delete an asset.
           text: >
-            az iot ops asset delete --name {asset_name} -g {resource_group}
+            az iot ops asset delete --name myasset -g myresourcegroup
     """
 
     helps[
-        "iot ops asset data-point"
+        "iot ops asset dataset"
     ] = """
         type: group
-        short-summary: Manage data points in an asset.
+        short-summary: Manage datasets in an asset.
+        long-summary: A dataset will be created once a point is created. See `az iot ops asset dataset point add` for more details.
     """
 
     helps[
-        "iot ops asset data-point add"
+        "iot ops asset dataset list"
     ] = """
         type: command
-        short-summary: Add a data point to an asset.
+        short-summary: List datasets within an asset.
+
+        examples:
+        - name: List datasets within an asset.
+          text: >
+            az iot ops asset dataset list -g myresourcegroup --asset myasset
+    """
+
+    helps[
+        "iot ops asset dataset show"
+    ] = """
+        type: command
+        short-summary: Show a dataset within an asset.
+
+        examples:
+        - name: Show the details of a dataset in an asset.
+          text: >
+            az iot ops asset dataset show -g myresourcegroup --asset myasset -n default
+    """
+
+    helps[
+        "iot ops asset dataset point"
+    ] = """
+        type: group
+        short-summary: Manage data-points in an asset dataset.
+    """
+
+    helps[
+        "iot ops asset dataset point add"
+    ] = """
+        type: command
+        short-summary: Add a data point to an asset dataset.
+        long-summary: If no datasets exist yet, this will create a new dataset. Currently, only one dataset is supported with the name "default".
 
         examples:
         - name: Add a data point to an asset.
           text: >
-            az iot ops asset data-point add --asset {asset} -g {resource_group} --data-source {data_source}
+            az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset default --data-source mydatasource --name data1
 
-        - name: Add a data point to an asset with capability id, data point name, observability mode, custom queue size,
+        - name: Add a data point to an asset with data point name, observability mode, custom queue size,
                 and custom sampling interval.
           text: >
-            az iot ops asset data-point add --asset {asset} -g {resource_group} --data-source {data_source} --name
-            {name} --capability-id {capability_id} --observability-mode {observability_mode} --queue-size
-            {queue_size} --sampling-interval {sampling_interval}
-
-        - name: Add a data point to an asset with the given pre-filled values.
-          text: >
-            az iot ops asset data-point add --asset MyAsset -g MyRG --data-source NodeID1 --name tagName1
-            --capability-id tagId1 --observability-mode log --queue-size 5 --sampling-interval 200
+            az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset default --data-source mydatasource --name data1
+            --observability-mode log --queue-size 5 --sampling-interval 200
     """
 
     helps[
-        "iot ops asset data-point export"
+        "iot ops asset dataset point export"
     ] = """
         type: command
-        short-summary: Export data points in an asset.
-        long-summary: The file name will be {asset_name}_dataPoints.{file_type}.
+        short-summary: Export data-points in an asset dataset.
+        long-summary: The file name will be {asset_name}_{dataset_name}_dataPoints.{file_type}.
         examples:
-        - name: Export all data points in an asset in JSON format.
+        - name: Export all data-points in an asset in JSON format.
           text: >
-            az iot ops asset data-point export --asset {asset} -g {resource_group}
-        - name: Export all data points in an asset in CSV format in a specific output directory.
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset default
+        - name: Export all data-points in an asset in CSV format in a specific output directory that can be uploaded via the Digital Operations Experience.
           text: >
-            az iot ops asset data-point export --asset {asset} -g {resource_group} --format csv --output-dir {output_directory}
-        - name: Export all data points in an asset in CSV format that can be uploaded via the DOE portal.
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset default --format csv --output-dir myAssetsFiles
+        - name: Export all data-points in an asset in YAML format. Replace the file if one is present already.
           text: >
-            az iot ops asset data-point export --asset {asset} -g {resource_group} --format portal-csv
-        - name: Export all data points in an asset in YAML format. Replace the file if one is present already.
-          text: >
-            az iot ops asset data-point export --asset {asset} -g {resource_group} --format yaml --replace
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset default --format yaml --replace
     """
 
     helps[
-        "iot ops asset data-point import"
+        "iot ops asset dataset point import"
     ] = """
         type: command
-        short-summary: Import data points in an asset.
+        short-summary: Import data-points in an asset dataset.
         long-summary: For examples of file formats, please see aka.ms/aziotops-assets
         examples:
-        - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be ignored.
+        - name: Import all data-points from a file. These data-points will be appended to the asset dataset's current data-points. Data-points with duplicate names will be ignored.
           text: >
-            az iot ops asset data-point import --asset {asset} -g {resource_group} --input-file {input_file}
-        - name: Import all data points from a file. These data points will be appended to the asset's current data points. Data-points with duplicate dataSources will be replaced.
+            az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset default --input-file myasset_default_dataPoints.csv
+        - name: Import all data-points from a file. These data-points will be appended to the asset dataset's current data-points. Data-points with duplicate names will replace the current asset data-points.
           text: >
-            az iot ops asset data-point import --asset {asset} -g {resource_group} --input-file {input_file} --replace
+            az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset default --input-file myasset_default_dataPoints.json --replace
     """
 
     helps[
-        "iot ops asset data-point list"
+        "iot ops asset dataset point list"
     ] = """
         type: command
-        short-summary: List data points in an asset.
+        short-summary: List data-points in an asset dataset.
         examples:
-        - name: List all data-points in an asset.
+        - name: List all points in an asset dataset.
           text: >
-            az iot ops asset data-point list --asset {asset} -g {resource_group}
+            az iot ops asset dataset point list --asset myasset -g myresourcegroup --dataset default
     """
 
     helps[
-        "iot ops asset data-point remove"
+        "iot ops asset dataset point remove"
     ] = """
         type: command
-        short-summary: Remove a data point in an asset.
+        short-summary: Remove a data point in an asset dataset.
 
         examples:
-        - name: Remove a data point from an asset via the data source.
-          text: >
-            az iot ops asset data-point remove --asset {asset} -g {resource_group} --data-source {data_source}
-
         - name: Remove a data point from an asset via the data point name.
           text: >
-            az iot ops asset data-point remove --asset {asset} -g {resource_group} --name {name}
+            az iot ops asset dataset point remove --asset myasset -g myresourcegroup --dataset default --name data1
     """
 
     helps[
@@ -793,19 +952,13 @@ def load_iotops_help():
         examples:
         - name: Add an event to an asset.
           text: >
-            az iot ops asset event add --asset {asset} -g {resource_group} --event-notifier {event_notifier}
+            az iot ops asset event add --asset myasset -g myresourcegroup --event-notifier eventId --name eventName
 
-        - name: Add an event to an asset with capability id, event name, observability mode, custom queue size,
+        - name: Add an event to an asset with event name, observability mode, custom queue size,
                 and custom sampling interval.
           text: >
-            az iot ops asset event add --asset {asset} -g {resource_group} --event-notifier {event_notifier}
-            --name {name} --capability-id {capability_id} --observability-mode
-            {observability_mode} --queue-size {queue_size} --sampling-interval {sampling_interval}
-
-        - name: Add an event to an asset with the given pre-filled values.
-          text: >
             az iot ops asset event add --asset MyAsset -g MyRG --event-notifier eventId --name eventName
-            --capability-id tagId1 --observability-mode log --queue-size 2 --sampling-interval 500
+            --observability-mode log --queue-size 2 --sampling-interval 500
     """
 
     helps[
@@ -813,20 +966,17 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Export events in an asset.
-        long-summary: The file name will be {asset_name}_dataPoints.{file_type}.
+        long-summary: The file name will be {asset_name}_events.{file_type}.
         examples:
         - name: Export all events in an asset in JSON format.
           text: >
-            az iot ops asset event export --asset {asset} -g {resource_group}
-        - name: Export all events in an asset in CSV format in a specific output directory.
+            az iot ops asset event export --asset myasset -g myresourcegroup
+        - name: Export all events in an asset in CSV format in a specific output directory that can be uploaded to the Digital Operations Experience.
           text: >
-            az iot ops asset event export --asset {asset} -g {resource_group} --format csv --output-dir {output_directory}
-        - name: Export all events in an asset in CSV format that can be uploaded to the DOE portal.
-          text: >
-            az iot ops asset event export --asset {asset} -g {resource_group} --format portal-csv
+            az iot ops asset event export --asset myasset -g myresourcegroup --format csv --output-dir myAssetFiles
         - name: Export all events in an asset in YAML format. Replace the file if one is present already.
           text: >
-            az iot ops asset event export --asset {asset} -g {resource_group} --format yaml --replace
+            az iot ops asset event export --asset myasset -g myresourcegroup --format yaml --replace
     """
 
     helps[
@@ -836,12 +986,12 @@ def load_iotops_help():
         short-summary: Import events in an asset.
         long-summary: For examples of file formats, please see aka.ms/aziotops-assets
         examples:
-        - name: Import all events from a file. These events will be appended to the asset's current events.
+        - name: Import all events from a file. These events will be appended to the asset's current events. Events with duplicate names will be ignored.
           text: >
-            az iot ops asset event import --asset {asset} -g {resource_group} --input-file {input_file}
-        - name: Import all events from a file. These events will replace the asset's current events.
+            az iot ops asset event import --asset myasset -g myresourcegroup --input-file myasset_events.yaml
+        - name: Import all events from a file. These events will appended the asset's current events. Events with duplicate names will replace the current asset events.
           text: >
-            az iot ops asset event import --asset {asset} -g {resource_group} --input-file {input_file} --replace
+            az iot ops asset event import --asset myasset -g myresourcegroup --input-file myasset_events.csv --replace
     """
 
     helps[
@@ -853,7 +1003,7 @@ def load_iotops_help():
         examples:
         - name: List all events in an asset.
           text: >
-            az iot ops asset event list --asset {asset} -g {resource_group}
+            az iot ops asset event list --asset myasset -g myresourcegroup
     """
 
     helps[
@@ -863,13 +1013,9 @@ def load_iotops_help():
         short-summary: Remove an event in an asset.
 
         examples:
-        - name: Remove an event from an asset via the event notifier.
-          text: >
-            az iot ops asset event remove --asset {asset} -g {resource_group} --event-notifier {event_notifier}
-
         - name: Remove an event from an asset via the event name.
           text: >
-            az iot ops asset event remove --asset {asset} -g {resource_group} --name {name}
+            az iot ops asset event remove --asset myasset -g myresourcegroup --name myevent
     """
 
     helps[
@@ -882,208 +1028,191 @@ def load_iotops_help():
     helps[
         "iot ops asset endpoint create"
     ] = """
-        type: command
-        short-summary: Create an asset endpoint.
-        long-summary: |
-                      Either custom location or cluster name must be provided. This command will check
-                      for the existance of the associated custom location and cluster and ensure that
-                      both are set up correctly with the microsoft.deviceregistry.assets extension.
+        type: group
+        short-summary: Create asset endpoint profiles.
+    """
 
-                      Azure IoT OPC UA Broker (preview) uses the same client certificate for all secure
+    helps[
+        "iot ops asset endpoint create opcua"
+    ] = """
+        type: command
+        short-summary: Create an asset endpoint profile with an OPCUA connector.
+        long-summary: |
+                      Azure IoT OPC UA Connector (preview) uses the same client certificate for all secure
                       channels between itself and the OPC UA servers that it connects to.
+
+                      For OPC UA connector arguments, a value of -1 means that parameter will not be used (ex: --session-reconnect-backoff -1 means that no exponential backoff should be used).
+                      A value of 0 means use the fastest practical rate (ex: --default-sampling-int 0 means use the fastest sampling interval possible for the server).
+
+                      For more information on how to create an OPCUA connector, please see aka.ms/opcua-quickstart
         examples:
-        - name: Create an asset endpoint with anonymous user authentication using the given custom location.
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >
-            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
-            --target-address {target_address}
-        - name: Create an asset endpoint with anonymous user authentication using the given custom location and resource group
-                for the custom location. The resource group must be included if there are multiple custom locations with the
-                same name within a subscription.
+            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+            --target-address opc.tcp://opcplc-000000:50000
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in a different resource group but same subscription. Note that the Digital
+                Operations Experience may not display the asset endpoint profile if it is in a different subscription from the instance.
           text: >
-            az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
-            --custom-location-resource-group {custom_location_resource_group} --target-address {target_address}
-        # - name: Create an asset endpoint with username-password user authentication using the given cluster name. The resource
-        #         group must be included if there are multiple clusters with the same name within a subscription.
-        #   text: >
-        #     az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
-        #     --cluster-resource-group {cluster_resource_group} --target-address {target_address}
-        #     --username-ref {username_reference} --password-ref {password_reference}
-        # - name: Create an asset endpoint with certificate user authentication and additional configuration using the given custom
-        #         location and cluster name.
-        #   text: >
-        #     az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --cluster {cluster}
-        #     --custom-location {custom_location} --target-address {target_address} --certificate-ref {certificate_reference}
-        #     --additional-config {additional_configuration}
-        # - name: Create an asset endpoint with anonymous user authentication with preconfigured owned certificates.
-        #   text: >
-        #     az iot ops asset endpoint create --name {asset_endpoint} -g {resource_group} --custom-location {custom_location}
-        #     --target-address {target_address} --cert secret={secret_reference} password={password_reference} thumbprint {thumbprint}
-        #     --cert secret={secret_reference} password={password_reference} thumbprint={thumbprint}
-        - name: Create an asset endpoint with username-password user authentication and preconfigurated owned certificates with
-                prefilled values.The username and password references are set via the Azure Keyvault Container Storage Interface
-                driver.
+            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+            --instance-resource-group myinstanceresourcegroup
+            --target-address opc.tcp://opcplc-000000:50000
+        - name: Create an asset endpoint with username-password user authentication using the given instance in the same resource group.
           text: >
-            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
-            --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
-            --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password" --cert secret=aio-opc-ua-broker-client-certificate
-            thumbprint=000000000000000000 password=aio-opc-ua-broker-client-certificate-password
-        - name: Create an asset endpoint with username-password user authentication and additional configuration with prefilled values
-                (powershell syntax example).
+            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+            --target-address opc.tcp://opcplc-000000:50000
+            --username-ref myusername --password-ref mypassword
+        - name: Create an asset endpoint with certificate user authentication using the given given instance in the same resource group.
           text: >
-            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
-            --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
-            --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password"
-            --additional-config '{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
-            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
-            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
-            \\\"autoAcceptUntrustedServerCertificates\\\": true}}'
-        - name: Create an asset endpoint with username-password user authentication and additional configuration with prefilled values
-                (cmd syntax example).
+            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+            --target-address opc.tcp://opcplc-000000:50000 --certificate-ref mycertificate.pem
+        - name: Create an asset endpoint with anonymous user authentication and recommended values for the OPCUA configuration using the given instance in the same resource group.
+                Note that for successfully using the connector, you will need to have the OPC PLC service deployed and the target address must point to the service.
+                If the OPC PLC service is in the same cluster and namespace as IoT Ops, the target address should be formatted as `opc.tcp://{opc-plc-service-name}:{service-port}`
+                If the OPC PLC service is in the same cluster but different namespace as IoT Ops, include the service namespace like so `opc.tcp://{opc-plc-service-name}.{service-namespace}:{service-port}`
+                For more information, please see aka.ms/opcua-quickstart
           text: >
-            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
-            --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
-            --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password"
-            --additional-config "{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
-            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
-            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
-            \\\"autoAcceptUntrustedServerCertificates\\\": true}}"
-        - name: Create an asset endpoint with username-password user authentication and additional configuration with prefilled values
-                (bash syntax example).
-          text: >
-            az iot ops asset endpoint create --name myAssetEndpoint -g myRG --cluster myCluster
-            --target-address "opc.tcp://opcplc-000000:50000" --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
-            --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password"
-            --additional-config '{"applicationName": "opcua-connector", "defaults": {
-            "publishingIntervalMilliseconds": 100,  "samplingIntervalMilliseconds": 500,  "queueSize": 15,},
-            "session": {"timeout": 60000}, "subscription": {"maxItems": 1000}, "security": {
-            "autoAcceptUntrustedServerCertificates": true}}'
+            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+            --target-address opc.tcp://opcplc-000000:50000 --accept-untrusted-certs --application myopcuaconnector
+            --default-publishing-int 1000 --default-queue-size 1 --default-sampling-int 1000 --keep-alive 10000 --run-asset-discovery
+            --security-mode sign --security-policy Basic256 --session-keep-alive 10000 --session-reconnect-backoff 10000 --session-reconnect-period 2000
+            --session-timeout 60000 --subscription-life-time 60000 --subscription-max-items 1000
     """
 
     helps[
         "iot ops asset endpoint query"
     ] = """
         type: command
-        short-summary: Query the Resource Graph for asset endpoints.
+        short-summary: Query the Resource Graph for asset endpoint profiles.
         examples:
-        - name: Query for asset endpoints that hae anonymous authentication.
+        - name: Query for asset endpoint profiles that have anonymous authentication.
           text: >
             az iot ops asset endpoint query --authentication-mode Anonymous
-        - name: Query for asset endpoints that have the given target address and custom location.
+        - name: Query for asset endpoint profiles that have the given target address and instance name.
           text: >
-            az iot ops asset endpoint query --target-address {target_address} --custom-location {custom_location}
+            az iot ops asset endpoint query --target-address opc.tcp://opcplc-000000:50000 --instance myinstance
     """
 
     helps[
         "iot ops asset endpoint show"
     ] = """
         type: command
-        short-summary: Show an asset endpoint.
+        short-summary: Show an asset endpoint profile.
         examples:
-        - name: Show the details of an asset endpoint.
+        - name: Show the details of an asset endpoint profile.
           text: >
-            az iot ops asset endpoint show --name {asset_endpoint} -g {resource_group}
+            az iot ops asset endpoint show --name myprofile -g myresourcegroup
     """
 
     helps[
         "iot ops asset endpoint update"
     ] = """
         type: command
-        short-summary: Update an asset endpoint.
+        short-summary: Update an asset endpoint profile.
         long-summary: To update owned certificates, please use the command group `az iot ops asset endpoint certificate`.
         examples:
-        - name: Update an asset endpoint's authentication mode to use anonymous user authentication.
+        - name: Update an asset endpoint profile's authentication mode to use anonymous user authentication.
           text: >
-            az iot ops asset endpoint update --name {asset_endpoint} -g {resource_group}
+            az iot ops asset endpoint update --name myprofile -g myresourcegroup
             --authentication-mode Anonymous
-        - name: Update an asset endpoint's username and password reference with prefilled values. This will transform the
+        - name: Update an asset endpoint profile's username and password reference with prefilled values. This will transform the
                 authentication mode to username-password if it is not so already.
           text: >
             az iot ops asset endpoint update --name myAssetEndpoint -g myRG
             --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
             --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password"
-        - name: Update an asset endpoint's target address and additional configuration with prefilled values
-                (powershell syntax example).
-          text: >
-            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
-            --target-address "opc.tcp://opcplc-000000:50000"
-            --additional-config '{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
-            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
-            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
-            \\\"autoAcceptUntrustedServerCertificates\\\": true}}'
-        - name: Update an asset endpoint's target address and additional configuration with prefilled values
-                (cmd syntax example).
-          text: >
-            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
-            --target-address "opc.tcp://opcplc-000000:50000"
-            --additional-config "{\\\"applicationName\\\": \\\"opcua-connector\\\", \\\"defaults\\\": {
-            \\\"publishingIntervalMilliseconds\\\": 100,  \\\"samplingIntervalMilliseconds\\\": 500,  \\\"queueSize\\\": 15,},
-            \\\"session\\\": {\\\"timeout\\\": 60000}, \\\"subscription\\\": {\\\"maxItems\\\": 1000}, \\\"security\\\": {
-            \\\"autoAcceptUntrustedServerCertificates\\\": true}}"
-        - name: Update an asset endpoint's target address and additional configuration with prefilled values
-                (bash syntax example).
-          text: >
-            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
-            --target-address "opc.tcp://opcplc-000000:50000"
-            --additional-config '{"applicationName": "opcua-connector", "defaults": {
-            "publishingIntervalMilliseconds": 100,  "samplingIntervalMilliseconds": 500,  "queueSize": 15,},
-            "session": {"timeout": 60000}, "subscription": {"maxItems": 1000}, "security": {
-            "autoAcceptUntrustedServerCertificates": true}}'
     """
 
     helps[
         "iot ops asset endpoint delete"
     ] = """
         type: command
-        short-summary: Delete an asset endpoint.
+        short-summary: Delete an asset endpoint profile.
         examples:
-        - name: Delete an asset endpoint.
+        - name: Delete an asset endpoint profile.
           text: >
-            az iot ops asset endpoint delete --name {asset_endpoint} -g {resource_group}
+            az iot ops asset endpoint delete --name myprofile -g myresourcegroup
     """
 
     helps[
-        "iot ops asset endpoint certificate"
+        "iot ops schema"
     ] = """
         type: group
-        short-summary: Manage owned certificates in an asset endpoint.
+        short-summary: Schema and registry management.
+        long-summary: |
+          Schemas are documents that describe data to enable processing and contextualization.
+          Message schemas describe the format of a message and its contents.
     """
 
     helps[
-        "iot ops asset endpoint certificate add"
+        "iot ops schema registry"
     ] = """
-        type: command
-        short-summary: Add an owned certificate to an asset endpoint.
-        examples:
-        - name: Add a certificate to an asset endpoint.
-          text: >
-            az iot ops asset endpoint certificate add --endpoint {asset_endpoint} -g {resource_group}
-            --secret-ref {secret_reference} --thumbprint {thumbprint} --password-ref {password_reference}
-        - name: Add a certificate to an asset endpoint that uses a password with prefilled values.
-          text: >
-            az iot ops asset endpoint certificate add --endpoint myAssetEndpoint -g myRG
-            --secret-ref "aio-opc-ua-broker-client/certificate" --thumbprint 000000000000000000
-            --password-ref "aio-opc-ua-broker-client/certificate-password"
+        type: group
+        short-summary: Schema registry management.
+        long-summary: |
+          A schema registry is a centralized repository for managing schemas. Schema registry enables
+          schema generation and retrieval both at the edge and in the cloud. It ensures consistency
+          and compatibility across systems by providing a single source of truth for schema
+          definitions.
     """
 
     helps[
-        "iot ops asset endpoint certificate list"
+        "iot ops schema registry show"
     ] = """
         type: command
-        short-summary: List owned certificates in an asset endpoint.
+        short-summary: Show details of a schema registry.
         examples:
-        - name: List all owned certificates in an asset endpoint.
+        - name: Show details of target schema registry 'myregistry'.
           text: >
-            az iot ops asset endpoint certificate list --endpoint {asset_endpoint} -g {resource_group}
+            az iot ops schema registry show --name myregistry -g myresourcegroup
     """
 
     helps[
-        "iot ops asset endpoint certificate remove"
+        "iot ops schema registry list"
     ] = """
         type: command
-        short-summary: Remove an owned certificate in an asset endpoint.
+        short-summary: List schema registries in a resource group or subscription.
         examples:
-        - name: Remove a certificate from an asset endpoint.
+        - name: List schema registeries in the resource group 'myresourcegroup'.
           text: >
-            az iot ops asset endpoint certificate remove --endpoint {asset_endpoint} -g {resource_group}
-            --thumbprint {thumbprint}
+            az iot ops schema registry list -g myresourcegroup
+        - name: List schema registeries in the default subscription filtering on a particular tag.
+          text: >
+            az iot ops schema registry list --query "[?tags.env == 'prod']"
+    """
+
+    helps[
+        "iot ops schema registry delete"
+    ] = """
+        type: command
+        short-summary: Delete a target schema registry.
+        examples:
+        - name: Delete schema registry 'myregistry'.
+          text: >
+            az iot ops schema registry delete -n myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema registry create"
+    ] = """
+        type: command
+        short-summary: Create a schema registry.
+        long-summary: |
+                      This operation will create a schema registry with system managed identity enabled.
+
+                      It will then assign the system identity the built-in "Storage Blob Data Contributor"
+                      role against the storage account scope by default. If necessary you can provide a custom
+                      role via --custom-role-id to use instead.
+
+                      If the indicated storage account container does not exist it will be created with default
+                      settings.
+        examples:
+        - name: Create a schema registry called 'myregistry' with minimum inputs.
+          text: >
+            az iot ops schema registry create -n myregistry -g myresourcegroup --registry-namespace myschemas
+            --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID
+        - name: Create a schema registry called 'myregistry' in region westus2 with additional customization.
+          text: >
+            az iot ops schema registry create -n myregistry -g myresourcegroup --registry-namespace myschemas
+            --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID --sa-container myschemacontainer
+            -l westus2 --desc 'Contoso factory X1 schemas' --display-name 'Contoso X1' --tags env=prod
     """

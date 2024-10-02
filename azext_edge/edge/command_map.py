@@ -9,9 +9,11 @@ Load CLI commands
 """
 from azure.cli.core.commands import CliCommandType
 
+schema_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_schema#{}")
 mq_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_mq#{}")
 dataflow_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_dataflow#{}")
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
+secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_secretsync#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
 
@@ -27,11 +29,28 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("check", "check")
         cmd_group.command("init", "init")
-        cmd_group.command("delete", "delete")
-        cmd_group.command("verify-host", "verify_host")
+        cmd_group.command("create", "create_instance")
+        cmd_group.command("update", "update_instance")
         cmd_group.show_command("show", "show_instance")
         cmd_group.command("list", "list_instances")
-        cmd_group.command("update", "update_instance")
+        cmd_group.command("delete", "delete")
+        cmd_group.command("verify-host", "verify_host")
+
+    with self.command_group(
+        "iot ops identity",
+        command_type=edge_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("assign", "instance_identity_assign")
+        cmd_group.command("remove", "instance_identity_remove")
+        cmd_group.show_command("show", "instance_identity_show")
+
+    with self.command_group(
+        "iot ops secretsync",
+        command_type=secretsync_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("enable", "secretsync_enable")
+        cmd_group.command("disable", "secretsync_disable")
+        cmd_group.show_command("show", "secretsync_show")
 
     with self.command_group(
         "iot ops support",
@@ -46,6 +65,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("stats", "stats")
         cmd_group.show_command("show", "show_broker")
         cmd_group.command("list", "list_brokers")
+        cmd_group.command("delete", "delete_broker")
 
     with self.command_group(
         "iot ops broker listener",
@@ -53,6 +73,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_broker_listener")
         cmd_group.command("list", "list_broker_listeners")
+        cmd_group.command("delete", "delete_broker_listener")
 
     with self.command_group(
         "iot ops broker authn",
@@ -60,6 +81,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_broker_authn")
         cmd_group.command("list", "list_broker_authns")
+        cmd_group.command("delete", "delete_broker_authn")
 
     with self.command_group(
         "iot ops broker authz",
@@ -67,6 +89,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_broker_authz")
         cmd_group.command("list", "list_broker_authzs")
+        cmd_group.command("delete", "delete_broker_authz")
 
     with self.command_group(
         "iot ops dataflow",
@@ -100,7 +123,14 @@ def load_iotops_commands(self, _):
         cmd_group.command("update", "update_asset")
 
     with self.command_group(
-        "iot ops asset data-point",
+        "iot ops asset dataset",
+        command_type=asset_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("list", "list_asset_datasets")
+        cmd_group.show_command("show", "show_asset_dataset")
+
+    with self.command_group(
+        "iot ops asset dataset point",
         command_type=asset_resource_ops,
     ) as cmd_group:
         cmd_group.command("add", "add_asset_data_point")
@@ -123,16 +153,22 @@ def load_iotops_commands(self, _):
         "iot ops asset endpoint",
         command_type=aep_resource_ops,
     ) as cmd_group:
-        cmd_group.command("create", "create_asset_endpoint_profile")
         cmd_group.command("delete", "delete_asset_endpoint_profile")
         cmd_group.command("query", "query_asset_endpoint_profiles")
         cmd_group.show_command("show", "show_asset_endpoint_profile")
         cmd_group.command("update", "update_asset_endpoint_profile")
 
     with self.command_group(
-        "iot ops asset endpoint certificate",
+        "iot ops asset endpoint create",
         command_type=aep_resource_ops,
     ) as cmd_group:
-        cmd_group.command("add", "add_asset_endpoint_profile_transport_auth")
-        cmd_group.command("list", "list_asset_endpoint_profile_transport_auth")
-        cmd_group.command("remove", "remove_asset_endpoint_profile_transport_auth")
+        cmd_group.command("opcua", "create_opcua_asset_endpoint_profile")
+
+    with self.command_group(
+        "iot ops schema registry",
+        command_type=schema_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("create", "create_registry")
+        cmd_group.show_command("show", "show_registry")
+        cmd_group.command("list", "list_registries")
+        cmd_group.command("delete", "delete_registry")

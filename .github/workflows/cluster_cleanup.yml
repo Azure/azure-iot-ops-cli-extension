@@ -41,7 +41,7 @@ on:
 
 env:
   RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
-  CLUSTER_PREFIX: ${{ inputs.cluster_prefix || 'az-iot-ops-test-cluster' }}
+  CLUSTER_PREFIX: ${{ inputs.cluster_prefix || 'opt' }}
   KEYVAULT_PREFIX: ${{ inputs.keyvault_prefix || 'opskv' }}
 
 permissions:

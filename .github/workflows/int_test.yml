@@ -8,7 +8,12 @@ on:
         required: true
         default: ops-cli-int-test-rg
       runtime-init-args:
-        description: Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments).
+        description: Additional INIT arguments (beyond cluster name, resource group, schema registry).
+        type: string
+        required: false
+        default: ''
+      runtime-create-args:
+        description: Additional CREATE arguments (beyond cluster name, resource group, instance name).
         type: string
         required: false
         default: ''
@@ -47,7 +52,12 @@ on:
         required: false
         default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
       runtime-init-args:
-        description: Additional init arguments (beyond cluster name, resource group, key vault, and service principal arguments).
+        description: Additional INIT arguments (beyond cluster name, resource group, schema registry).
+        type: string
+        required: false
+        default: ''
+      runtime-create-args:
+        description: Additional CREATE arguments (beyond cluster name, resource group, instance name).
         type: string
         required: false
         default: ''
@@ -68,30 +78,13 @@ permissions:
   id-token: 'write'
 
 env:
-  KV_NAME: "opskv${{ github.run_number }}x"
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
 
 jobs:
-  create_kv:
-    runs-on: ubuntu-22.04
-    steps:
-    - name: "Az CLI login"
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    - name: "Create Key Vault for clusters"
-      run: az keyvault create -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --enable-rbac-authorization false --tags run_number=${{ github.run_number }}
-
   test:
-    needs: [create_kv]
-    outputs:
-      CLUSTER_PREFIX: "iotopstest-${{ github.run_number }}"
-      RESOURCE_GROUP: ${{ env.RESOURCE_GROUP }}
-      KV_NAME: ${{ env.KV_NAME }}
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
+      INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.feature }}"
       CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
       EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
       K3S_VERSION: "v1.28.5+k3s1"
@@ -100,9 +93,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [custom-input, default, insecure-listener, no-syncrules, ca-certs]
+        feature: [custom-input, default, insecure-listener, syncrules, redeploy]
         runtime-args:
-          - ${{ inputs.runtime-init-args != '' }}
+          - ${{ inputs.runtime-init-args != '' || inputs.runtime-create-args != '' }}
         exclude:
           - feature: custom-input
             runtime-args: false
@@ -110,9 +103,9 @@ jobs:
             runtime-args: true
           - feature: insecure-listener
             runtime-args: true
-          - feature: no-syncrules
+          - feature: syncrules
             runtime-args: true
-          - feature: ca-certs
+          - feature: redeploy
             runtime-args: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
@@ -121,23 +114,23 @@ jobs:
         id: "init"
         run: |
           echo "NO_PREFLIGHT=false" >> $GITHUB_OUTPUT
-          if [[ ${{ matrix.feature }} == "default" ]]; then
-            echo "ARG=--ca-valid-days 3 --kv-spc-secret-name test-kv-secret --simulate-plc" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "insecure-listener" ]]; then
-            echo "ARG=--add-insecure-listener --broker-service-type LoadBalancer --csi-config telegraf.resources.limits.memory=500Mi telegraf.resources.limits.cpu=100m" >> $GITHUB_OUTPUT
+          if [[ ${{ matrix.feature }} == "insecure-listener" ]]; then
+            echo "CREATE_ARG=--add-insecure-listener --broker-listener-type NodePort" >> $GITHUB_OUTPUT
             echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "no-syncrules" ]]; then
-            echo "ARG=--disable-rsync-rules" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "ca-certs" ]]; then
-            echo "ARG=--ca-file \"${{ env.CA_FILE }}\" --ca-key-file \"${{ env.CA_KEY_FILE }}\"" >> $GITHUB_OUTPUT
-          else
-            echo "ARG=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} == "syncrules" ]]; then
+            echo "CREATE_ARG=--enable-rsync" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} == "redeploy" ]]; then
+            echo "REDEPLOY=True" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} != "default" ]]; then
+            echo "CREATE_ARG=${{ inputs.runtime-create-args }}" >> $GITHUB_OUTPUT
+            echo "INIT_ARGS=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
           fi
       - name: "Output variables for future steps"
         id: "env_out"
         run: |
           echo "RESOURCE_GROUP=${{ env.RESOURCE_GROUP }}" >> $GITHUB_OUTPUT
           echo "CLUSTER_NAME=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
+          echo "INSTANCE_NAME=${{ env.INSTANCE_NAME }}" >> $GITHUB_OUTPUT
       - name: "Setup python"
         uses: actions/setup-python@v5
         with:
@@ -182,6 +175,16 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "OIDC Token exchange service"
+        run: |
+          while true; do
+            token_request=$ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            token_uri=$ACTIONS_ID_TOKEN_REQUEST_URL
+            token=$(curl -H "Authorization: bearer $token_request" "${token_uri}&audience=api://AzureADTokenExchange" | jq .value -r)
+            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -t ${{ secrets.AZURE_TENANT_ID }} --federated-token $token --output none
+            # Sleep for 4 minutes
+            sleep 240
+          done &
       - name: "ARC connect cluster"
         uses: azure/azure-iot-ops-cli-extension/.github/actions/connect-arc@dev
         with:
@@ -198,72 +201,30 @@ jobs:
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -vv -e python-int --notest
-      - name: "Create CA certificates"
-        if: ${{ matrix.feature == 'ca-certs' }}
-        run: |
-          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-          >ca.conf cat <<-EOF
-          [ req ]
-          distinguished_name = req_distinguished_name
-          prompt = no
-          x509_extensions = v3_ca
-
-          [ req_distinguished_name ]
-          CN=Azure IoT Operations CLI IT non-prod
-
-          [ v3_ca ]
-          basicConstraints = critical, CA:TRUE
-          keyUsage = keyCertSign
-          subjectKeyIdentifier = hash
-          authorityKeyIdentifier = keyid
-          EOF
-          openssl ecparam -name prime256v1 -genkey -noout -out ${{ env.CA_KEY_FILE }}
-          openssl req -new -x509 -key ${{ env.CA_KEY_FILE }} -days 30 -config ca.conf -out ${{ env.CA_FILE }}
-          rm ca.conf
-      - name: "Get Keyvault ID"
-        id: "keyvault_id"
-        run: |
-          KV_ID=$(az keyvault show -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} -o tsv --query id)
-          echo "KV_ID=$KV_ID" >> $GITHUB_OUTPUT
       - name: "Tox INIT Integration Tests"
         env:
           AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
           azext_edge_init_continue_on_error: ${{ inputs.init-continue-on-error || '' }}
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_kv: ${{ steps.keyvault_id.outputs.KV_ID }}
-          azext_edge_init_args: ${{ steps.init.outputs.ARG }}
-          azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
-          azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
-          azext_edge_sp_secret: ${{ secrets.AIO_SP_SECRET || '' }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+          azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
+          azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
+          azext_edge_init_redeployment: ${{ steps.init.outputs.REDEPLOY }}
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-init-int --skip-pkg-install -- --durations=0
-      - name: "Az CLI login refresh"
-        if: ${{ matrix.feature == 'default' }}
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "OIDC Token exchange service"
-        run: |
-          while true; do
-            token_request=$ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            token_uri=$ACTIONS_ID_TOKEN_REQUEST_URL
-            token=$(curl -H "Authorization: bearer $token_request" "${token_uri}&audience=api://AzureADTokenExchange" | jq .value -r)
-            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -t ${{ secrets.AZURE_TENANT_ID }} --federated-token $token --output none
-            # Sleep for 4 minutes
-            sleep 240
-          done &
       - name: "Tox Integration Tests"
         if: ${{ matrix.feature == 'default' && !inputs.use-container }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-int --skip-pkg-install -- --durations=0
+          coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
+          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Containerized tests"
         if: ${{ matrix.feature == 'default' && inputs.use-container }}
         env:
@@ -293,12 +254,6 @@ jobs:
             -v "${tempLog}:/usr/src/azure-iot-ops/junit" \
             --network host \
             $(docker build ${{ env.EXTENSION_SOURCE_DIRECTORY }} -q)
-      - name: "Az CLI login refresh"
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle --svc auto
@@ -313,19 +268,17 @@ jobs:
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
           az iot ops verify-host
       - name: "Delete Cluster for redeployment"
-        if: ${{ matrix.feature == 'ca-certs' }}
+        if: ${{ matrix.feature == 'redeploy' }}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
       - name: "Redeploy cluster via tox"
-        if: ${{ matrix.feature == 'ca-certs' }}
+        if: ${{ matrix.feature == 'redeploy' }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_kv: ${{ steps.keyvault_id.outputs.KV_ID }}
-          azext_edge_init_args: ${{ steps.init.outputs.ARG }}
-          azext_edge_sp_app_id: ${{ secrets.AIO_SP_APP_ID || '' }}
-          azext_edge_sp_object_id: ${{ secrets.AIO_SP_OBJECT_ID || '' }}
-          azext_edge_sp_secret: ${{ secrets.AIO_SP_SECRET || '' }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+          azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
+          azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-init-int --skip-pkg-install -- --durations=0
@@ -336,18 +289,4 @@ jobs:
       - name: "Delete connected cluster"
         if: ${{ always() }}
         run: |
-          az connectedk8s delete --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
-
-  delete_kv:
-    if: ${{ always() }}
-    needs: [test]
-    runs-on: ubuntu-22.04
-    steps:
-    - name: "Az CLI login"
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    - name: "Delete Key Vault for clusters"
-      run: az keyvault delete -n ${{ env.KV_NAME }} -g ${{ env.RESOURCE_GROUP }} --no-wait
+          az resource delete  -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose

@@ -58,16 +58,17 @@ class ResourceState(Enum):
     K8s resource state.
     """
 
-    starting = "Starting"
-    running = "Running"
-    recovering = "Recovering"
-    succeeded = "Succeeded"
-    failed = "Failed"
-    waiting = "Waiting"
-    ok = "OK"
+    starting = "starting"
+    running = "running"
+    recovering = "recovering"
+    succeeded = "succeeded"
+    failed = "failed"
+    waiting = "waiting"
+    warning = "warning"
+    ok = "ok"
     warn = "warn"
-    error = "Error"
-    n_a = "N/A"
+    error = "error"
+    n_a = "n/a"
 
     @classmethod
     def map_to_color(cls, value) -> str:
@@ -75,6 +76,7 @@ class ResourceState(Enum):
 
     @classmethod
     def map_to_status(cls, value) -> CheckTaskStatus:
+        value = value.lower()
         status_map = {
             cls.starting.value: CheckTaskStatus.warning,
             cls.recovering.value: CheckTaskStatus.warning,
@@ -83,6 +85,7 @@ class ResourceState(Enum):
             cls.failed.value: CheckTaskStatus.error,
             cls.error.value: CheckTaskStatus.error,
             cls.waiting.value: CheckTaskStatus.warning,
+            cls.warning.value: CheckTaskStatus.warning,
         }
         return status_map.get(value, CheckTaskStatus.success)
 
@@ -92,14 +95,15 @@ class PodState(Enum):
     K8s pod state.
     """
 
-    pending = "Pending"
-    running = "Running"
-    succeeded = "Succeeded"
-    failed = "Failed"
-    unknown = "Unknown"
+    pending = "pending"
+    running = "running"
+    succeeded = "succeeded"
+    failed = "failed"
+    unknown = "unknown"
 
     @classmethod
     def map_to_status(cls, value) -> CheckTaskStatus:
+        value = value.lower()
         status_map = {
             cls.pending.value: CheckTaskStatus.warning,
             cls.unknown.value: CheckTaskStatus.warning,
@@ -141,14 +145,15 @@ class OpsServiceType(ListableEnum):
     IoT Operations service type.
     """
 
-    auto = "auto"
     mq = "broker"
     opcua = "opcua"
-    orc = "orc"
     akri = "akri"
     deviceregistry = "deviceregistry"
     billing = "billing"
     dataflow = "dataflow"
+    schemaregistry = "schemaregistry"
+    arccontainerstorage = "acs"
+    secretstore = "secretstore"
 
     @classmethod
     def list_check_services(cls):
@@ -209,6 +214,36 @@ class AEPAuthModes(Enum):
     userpass = "UsernamePassword"
 
 
+class AEPTypes(Enum):
+    """Asset Endpoint Profile (connector) Types"""
+    # TODO: ensure this is the final enum
+    opcua = "OpcUa"
+
+
+class TopicRetain(Enum):
+    """Set the retain flag for messages published to an MQTT broker."""
+    keep = "Keep"
+    never = "Never"
+
+
+class SecurityModes(Enum):
+    """Security modes for OPCUA connector."""
+    none = "none"
+    sign = "sign"
+    sign_and_encrypt = "signAndEncrypt"
+
+
+class SecurityPolicies(Enum):
+    """Security policies for the OPCUA connector."""
+    # TODO: add in user friendly input mapping
+    none = "none"
+    basic128 = "Basic128Rsa15"
+    basic256 = "Basic256"
+    basic256sha256 = "Basic256Sha256"
+    aes128 = "Aes128_Sha256_RsaOaep"
+    aes256 = "Aes256_Sha256_RsaPss"
+
+
 class K8sSecretType(Enum):
     """
     Supported k8s secret types.
@@ -222,9 +257,9 @@ class FileType(ListableEnum):
     """
     Supported file types/extensions for bulk asset operations.
     """
-    csv = "csv"
+
     json = "json"
-    portal_csv = "portal-csv"
+    csv = "csv"
     yaml = "yaml"
 
 
@@ -237,18 +272,24 @@ class BundleResourceKind(Enum):
     pvc = "PersistentVolumeClaim"
     job = "Job"
     cronjob = "CronJob"
+    configmap = "ConfigMap"
 
 
-# MQ runtime attributes
+# Broker runtime attributes
 
-AIO_MQ_RESOURCE_PREFIX = "aio-mq-"
-AIO_MQ_DIAGNOSTICS_SERVICE = "aio-mq-diagnostics-service"
-AIO_MQ_OPERATOR = "aio-mq-operator"
+AIO_BROKER_RESOURCE_PREFIX = "aio-broker-"
+AIO_BROKER_DIAGNOSTICS_SERVICE = "aio-broker-diagnostics-service"
 METRICS_SERVICE_API_PORT = 9600
 PROTOBUF_SERVICE_API_PORT = 9800
 
+# Broker constants
+DEFAULT_BROKER = "default"
+DEFAULT_BROKER_LISTENER = "default"
+DEFAULT_BROKER_AUTHN = "default"
+
 # Dataflow constants
-DEFAULT_DATAFLOW_PROFILE = "profile"
+DEFAULT_DATAFLOW_PROFILE = "default"
+DEFAULT_DATAFLOW_ENDPOINT = "default"
 
 # Init Env Control
 

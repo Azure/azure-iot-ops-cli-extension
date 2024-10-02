@@ -27,6 +27,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      id-token: write
     uses: ./.github/workflows/security_checks.yml
     with:
       continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}

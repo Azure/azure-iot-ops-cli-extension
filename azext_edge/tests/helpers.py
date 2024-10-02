@@ -9,7 +9,7 @@ import os
 import shutil
 from fnmatch import fnmatch
 from knack.log import get_logger
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from azure.cli.core.azclierror import CLIInternalError
 import pytest
 
@@ -29,12 +29,14 @@ def filter_resources(
     for item in kubectl_items.get("items", []):
         name = item["metadata"]["name"]
         # resources should not be added if
-        if not any([
-            # there is no valid resource match when looking for one
-            resource_match and not fnmatch(name, resource_match),
-            # or there is no valid prefix when looking for one
-            prefixes and not any(name.startswith(prefix) for prefix in prefixes)
-        ]):
+        if not any(
+            [
+                # there is no valid resource match when looking for one
+                resource_match and not fnmatch(name, resource_match),
+                # or there is no valid prefix when looking for one
+                prefixes and not any(name.startswith(prefix) for prefix in prefixes),
+            ]
+        ):
             filtered[name] = item
     return filtered
 
@@ -45,7 +47,7 @@ def find_extra_or_missing_names(
     expected_names: List[str],
     ignore_extras: bool = False,
     # TODO: remove once dynamic pods check logic is implemented
-    ignore_missing: bool = False
+    ignore_missing: bool = False,
 ):
     error_msg = []
     extra_names = [name for name in result_names if name not in expected_names]
@@ -61,9 +63,9 @@ def find_extra_or_missing_names(
 
     if error_msg:
         if ignore_missing:
-            logger.warning('\n '.join(error_msg))
+            logger.warning("\n ".join(error_msg))
         else:
-            raise AssertionError('\n '.join(error_msg))
+            raise AssertionError("\n ".join(error_msg))
 
 
 def get_plural_map(
@@ -84,7 +86,7 @@ def get_kubectl_custom_items(
     resource_api: EdgeResourceApi,
     namespace: Optional[str] = None,
     resource_match: Optional[str] = None,
-    include_plural: bool = False
+    include_plural: bool = False,
 ) -> Dict[str, Any]:
     """
     Gets all kubectl custom items for a resource api and sorts it by type.
@@ -105,10 +107,7 @@ def get_kubectl_custom_items(
         except CLIInternalError:
             # sub resource like lnm scales
             pass
-        resource_map[kind] = filter_resources(
-            kubectl_items=cluster_resources,
-            resource_match=resource_match
-        )
+        resource_map[kind] = filter_resources(kubectl_items=cluster_resources, resource_match=resource_match)
 
         if plural_map.get(kind):
             resource_map[kind][PLURAL_KEY] = plural_map[kind]
@@ -120,6 +119,7 @@ def get_kubectl_workload_items(
     service_type: str,
     namespace: Optional[str] = None,
     resource_match: Optional[str] = None,
+    label_match: Optional[Tuple[str, str]] = None,
 ) -> Dict[str, Any]:
     """Gets workload kubectl items for a specific type (ex: pods)."""
     if service_type == "pvc":
@@ -127,12 +127,9 @@ def get_kubectl_workload_items(
     if isinstance(prefixes, str):
         prefixes = [prefixes]
     namespace_param = f"-n {namespace}" if namespace else "-A"
-    kubectl_items = run(f"kubectl get {service_type} {namespace_param} -o json")
-    return filter_resources(
-        kubectl_items=kubectl_items,
-        prefixes=prefixes,
-        resource_match=resource_match
-    )
+    label_param = f"--selector {label_match[0]}={label_match[1]}" if label_match else ""
+    kubectl_items = run(f"kubectl get {service_type} {namespace_param} {label_param} -o json")
+    return filter_resources(kubectl_items=kubectl_items, prefixes=prefixes, resource_match=resource_match)
 
 
 def remove_file_or_folder(file_path):
@@ -156,9 +153,7 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
     """
     import subprocess
 
-    result = subprocess.run(
-        command, check=False, shell=shell_mode, text=True, capture_output=True
-    )
+    result = subprocess.run(command, check=False, shell=shell_mode, text=True, capture_output=True, encoding="utf-8")
     if expect_failure and result.returncode == 0:
         raise CLIInternalError(f"Command `{command}` did not fail as expected.")
     elif not expect_failure and result.returncode != 0:
@@ -174,8 +169,7 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
 
 
 def sort_kubectl_items_by_namespace(
-    kubectl_items: Dict[str, Any],
-    include_all: bool = False
+    kubectl_items: Dict[str, Any], include_all: bool = False
 ) -> Dict[str, Dict[str, Any]]:
     """
     Transforms a list of kubectl items into a dictionary for easier access.
