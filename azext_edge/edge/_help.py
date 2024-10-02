@@ -89,6 +89,14 @@ def load_iotops_help():
         - name: Include secretstore resources in the support bundle.
           text: >
             az iot ops support create-bundle --ops-service secretstore
+
+        - name: Include multiple services in the support bundle with single --ops-service flag.
+          text: >
+            az iot ops support create-bundle --ops-service broker opcua deviceregistry
+
+        - name: Include multiple services in the support bundle with multiple --ops-service flags.
+          text: >
+            az iot ops support create-bundle --ops-service broker --ops-service opcua --ops-service deviceregistry
     """
 
     helps[
@@ -819,6 +827,7 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Manage datasets in an asset.
+        long-summary: A dataset will be created once a point is created. See `az iot ops asset dataset point add` for more details.
     """
 
     helps[
@@ -842,7 +851,7 @@ def load_iotops_help():
         examples:
         - name: Show the details of a dataset in an asset.
           text: >
-            az iot ops asset dataset show -g myresourcegroup --asset myasset -n dataset1
+            az iot ops asset dataset show -g myresourcegroup --asset myasset -n default
     """
 
     helps[
@@ -857,16 +866,17 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Add a data point to an asset dataset.
+        long-summary: If no datasets exist yet, this will create a new dataset. Currently, only one dataset is supported with the name "default".
 
         examples:
         - name: Add a data point to an asset.
           text: >
-            az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset dataset1 --data-source mydatasource --name data1
+            az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset default --data-source mydatasource --name data1
 
         - name: Add a data point to an asset with data point name, observability mode, custom queue size,
                 and custom sampling interval.
           text: >
-            az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset dataset1 --data-source mydatasource --name data1
+            az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset default --data-source mydatasource --name data1
             --observability-mode log --queue-size 5 --sampling-interval 200
     """
 
@@ -879,13 +889,13 @@ def load_iotops_help():
         examples:
         - name: Export all data-points in an asset in JSON format.
           text: >
-            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset default
         - name: Export all data-points in an asset in CSV format in a specific output directory that can be uploaded via the Digital Operations Experience.
           text: >
-            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format csv --output-dir myAssetsFiles
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset default --format csv --output-dir myAssetsFiles
         - name: Export all data-points in an asset in YAML format. Replace the file if one is present already.
           text: >
-            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset dataset1 --format yaml --replace
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset default --format yaml --replace
     """
 
     helps[
@@ -895,12 +905,12 @@ def load_iotops_help():
         short-summary: Import data-points in an asset dataset.
         long-summary: For examples of file formats, please see aka.ms/aziotops-assets
         examples:
-        - name: Import all data-points from a file. These data-points will be appended to the asset dataset's current data-points. Data-points with duplicate dataSources will be ignored.
+        - name: Import all data-points from a file. These data-points will be appended to the asset dataset's current data-points. Data-points with duplicate names will be ignored.
           text: >
-            az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset dataset1 --input-file myasset_dataset1_dataPoints.csv
-        - name: Import all data-points from a file. These data-points will be appended to the asset dataset's current data-points. Data-points with duplicate dataSources will be replaced.
+            az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset default --input-file myasset_default_dataPoints.csv
+        - name: Import all data-points from a file. These data-points will be appended to the asset dataset's current data-points. Data-points with duplicate names will replace the current asset data-points.
           text: >
-            az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset dataset1 --input-file myasset_dataset1_dataPoints.json --replace
+            az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset default --input-file myasset_default_dataPoints.json --replace
     """
 
     helps[
@@ -911,7 +921,7 @@ def load_iotops_help():
         examples:
         - name: List all points in an asset dataset.
           text: >
-            az iot ops asset dataset point list --asset myasset -g myresourcegroup --dataset dataset1
+            az iot ops asset dataset point list --asset myasset -g myresourcegroup --dataset default
     """
 
     helps[
@@ -923,7 +933,7 @@ def load_iotops_help():
         examples:
         - name: Remove a data point from an asset via the data point name.
           text: >
-            az iot ops asset dataset point remove --asset myasset -g myresourcegroup --dataset dataset1 --name data1
+            az iot ops asset dataset point remove --asset myasset -g myresourcegroup --dataset default --name data1
     """
 
     helps[
@@ -976,10 +986,10 @@ def load_iotops_help():
         short-summary: Import events in an asset.
         long-summary: For examples of file formats, please see aka.ms/aziotops-assets
         examples:
-        - name: Import all events from a file. These events will be appended to the asset's current events.
+        - name: Import all events from a file. These events will be appended to the asset's current events. Events with duplicate names will be ignored.
           text: >
             az iot ops asset event import --asset myasset -g myresourcegroup --input-file myasset_events.yaml
-        - name: Import all events from a file. These events will replace the asset's current events.
+        - name: Import all events from a file. These events will appended the asset's current events. Events with duplicate names will replace the current asset events.
           text: >
             az iot ops asset event import --asset myasset -g myresourcegroup --input-file myasset_events.csv --replace
     """

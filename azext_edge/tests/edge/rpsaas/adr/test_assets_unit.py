@@ -9,6 +9,7 @@ import json
 import pytest
 import responses
 
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.commands_assets import (
     create_asset,
     delete_asset,
@@ -101,6 +102,7 @@ def test_asset_create(
         endpoint_profile=endpoint_profile,
         resource_group_name=resource_group_name,
         instance_name=instance_name,
+        wait_sec=0,
         **req
     )
     assert result == mock_asset_record
@@ -170,6 +172,7 @@ def test_asset_delete(mocked_cmd, mocked_check_cluster_connectivity, mocked_resp
         cmd=mocked_cmd,
         asset_name=asset_name,
         resource_group_name=resource_group_name,
+        wait_sec=0,
     )
     assert len(mocked_responses.calls) == (3 if discovered else 2)
 
@@ -304,6 +307,7 @@ def test_asset_update(
         cmd=mocked_cmd,
         asset_name=asset_name,
         resource_group_name=resource_group_name,
+        wait_sec=0,
         **req
     )
     assert result == mock_asset_record
@@ -383,6 +387,7 @@ def test_dataset_show(
 @pytest.mark.parametrize("observability_mode", [None, "log"])
 @pytest.mark.parametrize("queue_size", [True, 2])
 @pytest.mark.parametrize("sampling_interval", [True, 1000])
+@pytest.mark.parametrize("replace", [False, True])
 def test_data_point_add(
     mocked_cmd,
     mocked_responses: responses,
@@ -390,7 +395,8 @@ def test_data_point_add(
     dataset_present,
     observability_mode,
     queue_size,
-    sampling_interval
+    sampling_interval,
+    replace
 ):
     dataset_name = "default"
     asset_name = generate_random_string()
@@ -403,8 +409,14 @@ def test_data_point_add(
     if dataset_present:
         dataset = {
             "name": dataset_name,
-            "dataPoints": [{generate_random_string(): generate_random_string()}]
+            "dataPoints": [
+                {"name": generate_random_string(), generate_random_string(): generate_random_string()}
+            ]
         }
+        if replace:
+            dataset["dataPoints"].append({
+                "name": data_point_name, generate_random_string(): generate_random_string()
+            })
         mock_asset_record["properties"]["datasets"] = [dataset]
     mocked_responses.add(
         method=responses.GET,
@@ -433,7 +445,9 @@ def test_data_point_add(
         data_source=data_source,
         observability_mode=observability_mode,
         queue_size=queue_size,
-        sampling_interval=sampling_interval
+        sampling_interval=sampling_interval,
+        replace=replace,
+        wait_sec=0,
     )
     assert result == result_datapoints
     datasets = json.loads(mocked_responses.calls[-1].request.body)["properties"]["datasets"]
@@ -445,6 +459,45 @@ def test_data_point_add(
     custom_config = json.loads(point["dataPointConfiguration"])
     assert custom_config.get("queueSize") == queue_size
     assert custom_config.get("samplingInterval") == sampling_interval
+
+
+def test_data_point_add_error(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+):
+    dataset_name = "default"
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    data_point_name = generate_random_string()
+    mock_asset_record = get_asset_record(
+        asset_name=asset_name, asset_resource_group=resource_group_name
+    )
+    dataset = {
+        "name": dataset_name,
+        "dataPoints": [
+            {"name": data_point_name, generate_random_string(): generate_random_string()},
+            {"name": generate_random_string(), generate_random_string(): generate_random_string()}
+        ]
+    }
+    mock_asset_record["properties"]["datasets"] = [dataset]
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+    with pytest.raises(InvalidArgumentValueError):
+        add_asset_data_point(
+            cmd=mocked_cmd,
+            dataset_name=dataset_name,
+            asset_name=asset_name,
+            resource_group_name=resource_group_name,
+            data_point_name=data_point_name,
+            data_source=generate_random_string(),
+            wait_sec=0,
+        )
 
 
 @pytest.mark.parametrize("data_points_present", [True, False])
@@ -542,7 +595,7 @@ def test_data_point_import(
     dataset_name = "default"
     asset_name = generate_random_string()
     resource_group_name = generate_random_string()
-    dup_data_source = generate_random_string()
+    dup_name = generate_random_string()
     file_path = generate_random_string()
     mock_asset_record = get_asset_record(
         asset_name=asset_name, asset_resource_group=resource_group_name
@@ -552,8 +605,8 @@ def test_data_point_import(
         "dataPoints": [
             {
                 "dataPointConfiguration": "{\"samplingInterval\": 300, \"queueSize\": 30}",
-                "dataSource": dup_data_source,
-                "name": generate_random_string(),
+                "dataSource": generate_random_string(),
+                "name": dup_name,
                 "observabilityMode": generate_random_string()
             },
             {
@@ -569,8 +622,8 @@ def test_data_point_import(
         "dataPoints": [
             {
                 "dataPointConfiguration": "{\"samplingInterval\": 100, \"queueSize\": 50}",
-                "dataSource": dup_data_source,
-                "name": generate_random_string(),
+                "dataSource": generate_random_string(),
+                "name": dup_name,
                 "observabilityMode": generate_random_string()
             },
             {
@@ -606,26 +659,27 @@ def test_data_point_import(
         dataset_name=dataset_name,
         resource_group_name=resource_group_name,
         file_path=file_path,
-        replace=replace
+        replace=replace,
+        wait_sec=0,
     )
 
     assert result == result_datapoints
     mocked_deserialize_file_content.assert_called_once_with(file_path=file_path)
     datasets = json.loads(mocked_responses.calls[-1].request.body)["properties"]["datasets"]
     assert datasets
-    point_map = {point["dataSource"]: point for point in datasets[0]["dataPoints"]}
-    assert file_dataset["dataPoints"][1]["dataSource"] in point_map
-    assert dup_data_source in point_map
+    point_map = {point["name"]: point for point in datasets[0]["dataPoints"]}
+    assert file_dataset["dataPoints"][1]["name"] in point_map
+    assert dup_name in point_map
     # check the duplicate point
     if replace:
         point = file_dataset["dataPoints"][0]
-        assert file_dataset["dataPoints"][1]["dataSource"] in point_map
+        assert file_dataset["dataPoints"][1]["name"] in point_map
     else:
         point = cloud_dataset["dataPoints"][0]
-    assert cloud_dataset["dataPoints"][1]["dataSource"] in point_map
-    assert point_map[dup_data_source]["dataPointConfiguration"] == point["dataPointConfiguration"]
-    assert point_map[dup_data_source]["name"] == point["name"]
-    assert point_map[dup_data_source]["observabilityMode"] == point["observabilityMode"]
+    assert cloud_dataset["dataPoints"][1]["name"] in point_map
+    assert point_map[dup_name]["dataPointConfiguration"] == point["dataPointConfiguration"]
+    assert point_map[dup_name]["dataSource"] == point["dataSource"]
+    assert point_map[dup_name]["observabilityMode"] == point["observabilityMode"]
 
 
 @pytest.mark.parametrize("data_points_present", [True, False])
@@ -713,6 +767,7 @@ def test_data_point_remove(
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         data_point_name=data_point_name,
+        wait_sec=0,
     )
     assert result == result_datapoints
     datasets = json.loads(mocked_responses.calls[-1].request.body)["properties"]["datasets"]
@@ -726,13 +781,15 @@ def test_data_point_remove(
 @pytest.mark.parametrize("observability_mode", [None, "log"])
 @pytest.mark.parametrize("queue_size", [True, 2])
 @pytest.mark.parametrize("sampling_interval", [True, 1000])
+@pytest.mark.parametrize("replace", [False, True])
 def test_event_add(
     mocked_cmd,
     mocked_responses: responses,
     mocked_check_cluster_connectivity,
     observability_mode,
     queue_size,
-    sampling_interval
+    sampling_interval,
+    replace
 ):
     asset_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -742,6 +799,10 @@ def test_event_add(
         asset_name=asset_name, asset_resource_group=resource_group_name
     )
 
+    if replace:
+        mock_asset_record["events"] = [{
+            "name": event_name, generate_random_string(): generate_random_string()
+        }]
     mocked_responses.add(
         method=responses.GET,
         url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
@@ -765,7 +826,8 @@ def test_event_add(
         event_notifier=event_notifier,
         observability_mode=observability_mode,
         queue_size=queue_size,
-        sampling_interval=sampling_interval
+        sampling_interval=sampling_interval,
+        wait_sec=0,
     )
     assert result == result_events
     events = json.loads(mocked_responses.calls[-1].request.body)["properties"]["events"]
@@ -776,6 +838,39 @@ def test_event_add(
     custom_config = json.loads(events[-1]["eventConfiguration"])
     assert custom_config.get("queueSize") == queue_size
     assert custom_config.get("samplingInterval") == sampling_interval
+
+
+def test_event_add_error(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_check_cluster_connectivity,
+):
+    asset_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    event_name = generate_random_string()
+    mock_asset_record = get_asset_record(
+        asset_name=asset_name, asset_resource_group=resource_group_name
+    )
+    mock_asset_record["properties"]["events"] = [
+        {"name": event_name, generate_random_string(): generate_random_string()},
+        {"name": generate_random_string(), generate_random_string(): generate_random_string()}
+    ]
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_asset_mgmt_uri(asset_name=asset_name, asset_resource_group=resource_group_name),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+    with pytest.raises(InvalidArgumentValueError):
+        add_asset_event(
+            cmd=mocked_cmd,
+            asset_name=asset_name,
+            resource_group_name=resource_group_name,
+            event_name=event_name,
+            event_notifier=generate_random_string(),
+            wait_sec=0,
+        )
 
 
 @pytest.mark.parametrize("events_present", [True, False])
@@ -868,7 +963,7 @@ def test_event_import(
     mocker.patch("azext_edge.edge.providers.rpsaas.adr.assets.logger")
     asset_name = generate_random_string()
     resource_group_name = generate_random_string()
-    dup_event_notifier = generate_random_string()
+    dup_name = generate_random_string()
     file_path = generate_random_string()
     mock_asset_record = get_asset_record(
         asset_name=asset_name, asset_resource_group=resource_group_name
@@ -876,8 +971,8 @@ def test_event_import(
     file_events = [
         {
             "eventConfiguration": "{\"samplingInterval\": 300, \"queueSize\": 30}",
-            "eventNotifier": dup_event_notifier,
-            "name": generate_random_string(),
+            "eventNotifier": generate_random_string(),
+            "name": dup_name,
             "observabilityMode": generate_random_string()
         },
         {
@@ -890,8 +985,8 @@ def test_event_import(
     cloud_events = [
         {
             "eventConfiguration": "{\"samplingInterval\": 100, \"queueSize\": 50}",
-            "eventNotifier": dup_event_notifier,
-            "name": generate_random_string(),
+            "eventNotifier": generate_random_string(),
+            "name": dup_name,
             "observabilityMode": generate_random_string()
         },
         {
@@ -922,26 +1017,27 @@ def test_event_import(
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         file_path=file_path,
-        replace=replace
+        replace=replace,
+        wait_sec=0,
     )
 
     assert result == result_events
     mocked_deserialize_file_content.assert_called_once_with(file_path=file_path)
     events = json.loads(mocked_responses.calls[-1].request.body)["properties"]["events"]
     assert events
-    point_map = {point["eventNotifier"]: point for point in events}
-    assert file_events[1]["eventNotifier"] in point_map
-    assert dup_event_notifier in point_map
+    point_map = {point["name"]: point for point in events}
+    assert file_events[1]["name"] in point_map
+    assert dup_name in point_map
     # check the duplicate point
     if replace:
         point = file_events[0]
-        assert file_events[1]["eventNotifier"] in point_map
+        assert file_events[1]["name"] in point_map
     else:
         point = cloud_events[0]
-    assert cloud_events[1]["eventNotifier"] in point_map
-    assert point_map[dup_event_notifier]["eventConfiguration"] == point["eventConfiguration"]
-    assert point_map[dup_event_notifier]["name"] == point["name"]
-    assert point_map[dup_event_notifier]["observabilityMode"] == point["observabilityMode"]
+    assert cloud_events[1]["name"] in point_map
+    assert point_map[dup_name]["eventConfiguration"] == point["eventConfiguration"]
+    assert point_map[dup_name]["eventNotifier"] == point["eventNotifier"]
+    assert point_map[dup_name]["observabilityMode"] == point["observabilityMode"]
 
 
 @pytest.mark.parametrize("events_present", [True, False])
@@ -1016,6 +1112,7 @@ def test_event_remove(
         asset_name=asset_name,
         resource_group_name=resource_group_name,
         event_name=event_name,
+        wait_sec=0,
     )
     assert result == result_events
     events = json.loads(mocked_responses.calls[-1].request.body)["properties"]["events"]

@@ -130,11 +130,14 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops support") as context:
         context.argument(
-            "ops_service",
+            "ops_services",
+            nargs="+",
+            action="extend",
             options_list=["--ops-service", "--svc"],
             choices=CaseInsensitiveList(OpsServiceType.list()),
             help="The IoT Operations service the support bundle creation should apply to. "
-            "If auto is selected, the operation will detect which services are available.",
+            "If no service is provided, the operation will default to capture all services. "
+            "--ops-service can be used one or more times.",
         )
         context.argument(
             "log_age_seconds",
@@ -580,14 +583,12 @@ def load_iotops_arguments(self, _):
             help="Asset endpoint profile name.",
         )
         context.argument(
-            "instance_name",
-            options_list=["--instance"],
-            help="Instance name to associate the created asset with."
+            "instance_name", options_list=["--instance"], help="Instance name to associate the created asset with."
         )
         context.argument(
             "instance_resource_group",
             options_list=["--instance-resource-group", "--ig"],
-            help="Instance resource group. If not provided, asset resource group will be used."
+            help="Instance resource group. If not provided, asset resource group will be used.",
         )
         context.argument(
             "instance_subscription",
@@ -609,7 +610,7 @@ def load_iotops_arguments(self, _):
             options_list=["--data"],
             nargs="+",
             action="append",
-            help="Space-separated key=value pairs corresponding to properties of the data point to create. "
+            help="Space-separated key=value pairs corresponding to properties of the data-point to create. "
             "The following key values are supported: `data_source` (required), `name` (required), "
             "`observability_mode` (None, Gauge, Counter, Histogram, or Log), `sampling_interval` (int), "
             "`queue_size` (int). "
@@ -619,7 +620,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "data_points_file_path",
             options_list=["--data-file", "--df"],
-            help="File path for the file containing the data points. The following file types are supported: "
+            help="File path for the file containing the data-points. The following file types are supported: "
             f"{', '.join(FileType.list())}.",
             arg_group="Data-point",
         )
@@ -843,7 +844,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "capability_id",
             options_list=["--capability-id", "--ci"],
-            help="Capability Id. If not provided, data point name will be used.",
+            help="Capability Id. If not provided, data-point name will be used.",
         )
         context.argument(
             "dataset_name",
@@ -866,6 +867,14 @@ def load_iotops_arguments(self, _):
             help="Observability mode. Must be none, gauge, counter, histogram, or log.",
         )
 
+    with self.argument_context("iot ops asset dataset point add") as context:
+        context.argument(
+            "replace",
+            options_list=["--replace"],
+            help="Replace the data-point if another data-point with the same name is present already.",
+            arg_type=get_three_state_flag(),
+        )
+
     with self.argument_context("iot ops asset dataset point export") as context:
         context.argument(
             "replace",
@@ -878,14 +887,14 @@ def load_iotops_arguments(self, _):
         context.argument(
             "replace",
             options_list=["--replace"],
-            help="Replace all asset data points with those from the file. If false, the file data points "
-            "will be appended.",
+            help="Replace duplicate asset data-points with those from the file. If false, the file data-points "
+            "will be ignored. Duplicate asset data-points will be determined by name.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
             "file_path",
             options_list=["--input-file", "--if"],
-            help="File path for the file containing the data points. The following file types are supported: "
+            help="File path for the file containing the data-points. The following file types are supported: "
             f"{', '.join(FileType.list())}.",
         )
 
@@ -916,6 +925,14 @@ def load_iotops_arguments(self, _):
             help="Observability mode. Must be none or log.",
         )
 
+    with self.argument_context("iot ops asset event add") as context:
+        context.argument(
+            "replace",
+            options_list=["--replace"],
+            help="Replace the event if another event with the same name is already present.",
+            arg_type=get_three_state_flag(),
+        )
+
     with self.argument_context("iot ops asset event export") as context:
         context.argument(
             "replace",
@@ -928,7 +945,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "replace",
             options_list=["--replace"],
-            help="Replace all asset events with those from the file. If false, the file events will be appended.",
+            help="Replace duplicate asset events with those from the file. If false, the file events "
+            "will be ignored. Duplicate asset events will be determined by name.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -947,7 +965,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "instance_resource_group",
             options_list=["--instance-resource-group", "--ig"],
-            help="Instance resource group. If not provided, asset endpoint profile resource group will be used."
+            help="Instance resource group. If not provided, asset endpoint profile resource group will be used.",
         )
         context.argument(
             "instance_subscription",
@@ -977,7 +995,7 @@ def load_iotops_arguments(self, _):
             options_list=["--authentication-mode", "--am"],
             help="Authentication Mode.",
             arg_group="Authentication",
-            arg_type=get_enum_type(AEPAuthModes)
+            arg_type=get_enum_type(AEPAuthModes),
         )
         context.argument(
             "certificate_reference",

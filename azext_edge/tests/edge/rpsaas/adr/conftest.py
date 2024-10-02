@@ -222,6 +222,7 @@ FULL_ASSET = {
                         "observabilityMode": generate_random_string()
                     },
                     {
+                        "name": generate_random_string(),
                         "dataPointConfiguration": "{}",
                         "dataSource": generate_random_string(),
                     },
@@ -252,6 +253,7 @@ FULL_ASSET = {
                 "observabilityMode": generate_random_string()
             },
             {
+                "name": generate_random_string(),
                 "eventConfiguration": "{}",
                 "eventNotifier": generate_random_string(),
             },

@@ -186,7 +186,7 @@ def test_instance_update(mocked_cmd, mocked_responses: responses, description: O
         resource_group_name=resource_group_name,
         tags=tags,
         instance_description=description,
-        wait_sec=0.5,
+        wait_sec=0,
     )
     assert result == mock_instance_record
     assert len(mocked_responses.calls) == 2
