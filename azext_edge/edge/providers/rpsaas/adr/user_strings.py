@@ -5,6 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 # Asset Strings
+DUPLICATE_EVENT_ERROR = "An event with the name {0} is already present. Please use a different name for "\
+    "your event or --replace."
+DUPLICATE_POINT_ERROR = "A data-point with the name {0} is already present. Please use a different name for "\
+    "your data-point or --replace."
 ENDPOINT_NOT_FOUND_WARNING = "Endpoint {0} not found. The asset may fail provisioning."
 INVALID_OBSERVABILITY_MODE_ERROR = "{0} has an invalid observability mode [{1}]."
 MISSING_DATA_EVENT_ERROR = "At least one data point or event is required to create the asset."

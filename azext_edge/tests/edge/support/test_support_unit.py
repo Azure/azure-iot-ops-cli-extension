@@ -428,7 +428,7 @@ def test_create_bundle_crd_work(
     mocked_get_config_map: Mock,
     mocked_assemble_crd_work,
 ):
-    support_bundle(None, ops_service=OpsServiceType.mq.value, bundle_dir=a_bundle_dir)
+    support_bundle(None, ops_services=[OpsServiceType.mq.value], bundle_dir=a_bundle_dir)
 
     if mocked_cluster_resources["param"] == []:
         mocked_root_logger.warning.assert_called_with(
@@ -877,7 +877,9 @@ def test_create_bundle_mq_traces(
     mocked_mq_get_traces,
     mocked_get_config_map,
 ):
-    result = support_bundle(None, ops_service=OpsServiceType.mq.value, bundle_dir=a_bundle_dir, include_mq_traces=True)
+    result = support_bundle(
+        None, ops_services=[OpsServiceType.mq.value], bundle_dir=a_bundle_dir, include_mq_traces=True
+    )
 
     assert result["bundlePath"]
     mocked_mq_get_traces.assert_called_once()
@@ -918,7 +920,7 @@ def test_create_bundle_arc_agents(
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(
         None,
-        ops_service=OpsServiceType.deviceregistry.value,
+        ops_services=[OpsServiceType.deviceregistry.value],
         bundle_dir=a_bundle_dir,
         log_age_seconds=since_seconds,
     )
@@ -976,7 +978,7 @@ def test_create_bundle_schemas(
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(
         None,
-        ops_service=OpsServiceType.schemaregistry.value,
+        ops_services=[OpsServiceType.schemaregistry.value],
         bundle_dir=a_bundle_dir,
         log_age_seconds=since_seconds,
     )

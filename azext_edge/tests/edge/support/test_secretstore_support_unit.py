@@ -42,7 +42,7 @@ def test_create_bundle_ssc(
     since_seconds = random.randint(86400, 172800)
     result = support_bundle(
         None,
-        ops_service=OpsServiceType.secretstore.value,
+        ops_services=[OpsServiceType.secretstore.value],
         bundle_dir=a_bundle_dir,
         log_age_seconds=since_seconds,
     )

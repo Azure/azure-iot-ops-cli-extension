@@ -25,6 +25,9 @@ def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
     # case = ops_service, mq_traces, bundle_dir
     cases = [(service, False, "support_bundles") for service in OpsServiceType.list()]
     cases.append((OpsServiceType.mq.value, True, None))
+
+    # test "all services" bundle
+    cases.append((None, False, None))
     return cases
 
 
@@ -36,20 +39,23 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     if ops_service == OpsServiceType.arccontainerstorage.value:
         pytest.skip("arccontainerstorage is not generated in aio namespace")
 
-    command = f"az iot ops support create-bundle --broker-traces {mq_traces} " + "--ops-service {0}"
+    command = f"az iot ops support create-bundle --broker-traces {mq_traces} "
     if bundle_dir:
-        command += f" --bundle-dir {bundle_dir}"
+        command += f" --bundle-dir {bundle_dir} "
         try:
             mkdir(bundle_dir)
             tracked_files.append(bundle_dir)
         except FileExistsError:
             pass
-    walk_result, _ = run_bundle_command(command=command.format(ops_service), tracked_files=tracked_files)
+
     # generate second bundle as close as possible
-    if ops_service != OpsServiceType.auto.value:
-        auto_walk_result, _ = run_bundle_command(
-            command=command.format(OpsServiceType.auto.value), tracked_files=tracked_files
+    if ops_service:
+        walk_result, _ = run_bundle_command(
+            command=command + f"--ops-service {ops_service}", tracked_files=tracked_files
         )
+        auto_walk_result, _ = run_bundle_command(command=command, tracked_files=tracked_files)
+    else:
+        walk_result, _ = run_bundle_command(command=command, tracked_files=tracked_files)
 
     # Level 0 - top
     namespaces = process_top_levels(walk_result, ops_service)
@@ -64,7 +70,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     assert not level_1["files"]
 
     # Check and take out mq traces:
-    if mq_traces and ops_service in [OpsServiceType.auto.value, OpsServiceType.mq.value]:
+    if mq_traces and ops_service == OpsServiceType.mq.value:
         mq_level = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.mq.value, "traces"), {})
         if mq_level:
             assert not mq_level["folders"]
@@ -94,7 +100,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         assert_file_names(walk_result[directory]["files"])
 
     # check service is within auto
-    if ops_service != OpsServiceType.auto.value:
+    if ops_service:
         expected_folders = [[]]
         if mq_traces and ops_service == OpsServiceType.mq.value:
             expected_folders.append(["traces"])
@@ -115,12 +121,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
 def _get_expected_services(
     walk_result: Dict[str, Dict[str, List[str]]], ops_service: str, namespace: str
 ) -> List[str]:
-    expected_services = [ops_service]
-    if ops_service == OpsServiceType.auto.value:
-        # these should always be generated
-        expected_services = OpsServiceType.list()
-        expected_services.remove(OpsServiceType.auto.value)
-        expected_services.sort()
+    expected_services = [ops_service] if ops_service else OpsServiceType.list()
 
     # device registry folder will not be created if there are no device registry resources
     if (
