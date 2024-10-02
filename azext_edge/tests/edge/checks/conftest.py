@@ -7,7 +7,7 @@ import pytest
 from kubernetes.client import V1Pod, V1ObjectMeta, V1PodStatus, V1PodCondition, V1APIResourceList, V1APIResource
 from typing import List, Dict, Any
 from azext_edge.edge.providers.checks import run_checks
-from azext_edge.edge.providers.check.common import CoreServiceResourceKinds, PodStatusResult
+from azext_edge.edge.providers.check.common import CoreServiceResourceKinds, PodStatusResult, ValidationResourceType
 
 
 @pytest.fixture
@@ -94,6 +94,8 @@ def mock_resource_types(mocker, ops_service):
         "broker": {
             "Broker": [{}],
             "BrokerListener": [{}],
+            "BrokerAuthorization": [{}],
+            "BrokerAuthentication": [{}],
         },
         "akri": {"Configuration": [{}], "Instance": [{}]},
         "opcua": {
@@ -241,3 +243,25 @@ def mocked_list_deployments(mocked_client):
     mocked_client.AppsV1Api().list_deployment_for_all_namespaces.side_effect = _handle_list_deployments
 
     yield mocked_client
+
+
+@pytest.fixture
+def mocked_validate_ref(mocker):
+    def _handle_validate_ref(*args, **kwargs):
+        ref_text = ""
+        if kwargs["ref_type"] == ValidationResourceType.secret:
+            ref_text = (
+                f"[green]Valid[/green] {ValidationResourceType.secret.value} reference {{[green]mock_secret[/green]}}."
+            )
+        elif kwargs["ref_type"] == ValidationResourceType.configmap:
+            ref_text = f"[green]Valid[/green] {ValidationResourceType.configmap.value}\
+                reference {{[green]mock_configmap[/green]}}."
+
+        return ref_text, True
+
+    patched = mocker.patch(
+        "azext_edge.edge.providers.check.mq.validate_ref",
+        side_effect=_handle_validate_ref,
+    )
+
+    yield patched
