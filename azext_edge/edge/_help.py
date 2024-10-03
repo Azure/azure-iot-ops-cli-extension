@@ -1141,6 +1141,58 @@ def load_iotops_help():
         long-summary: |
           Schemas are documents that describe data to enable processing and contextualization.
           Message schemas describe the format of a message and its contents.
+          A schema registry is required to create and manage schemas.
+    """
+
+    helps[
+        "iot ops schema show"
+    ] = """
+        type: command
+        short-summary: Show details of a schema within a schema registry.
+        examples:
+        - name: Show details of target schema 'myschema' within a schema registry 'myregistry'.
+          text: >
+            az iot ops schema show --name myschema --registry myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema list"
+    ] = """
+        type: command
+        short-summary: List schemas within a schema registry.
+        examples:
+        - name: List schema registeries in the schema registry 'myregistry'.
+          text: >
+            az iot ops schema list -g myresourcegroup --registry myregistry
+    """
+
+    helps[
+        "iot ops schema delete"
+    ] = """
+        type: command
+        short-summary: Delete a target schema within a schema registry.
+        examples:
+        - name: Delete a target schema 'myschema' within a schema registry 'myregistry'.
+          text: >
+            az iot ops schema delete --name myschema --registry myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema create"
+    ] = """
+        type: command
+        short-summary: Create a schema within a schema registry.
+        long-summary: This operation requires a pre-created schema registry.
+        # examples:
+        # - name: Create a schema called 'myregistry' with minimum inputs.
+        #   text: >
+        #     az iot ops schema create -n myregistry -g myresourcegroup --registry-namespace myschemas
+        #     --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID
+        # - name: Create a schema called 'myregistry' in region westus2 with additional customization.
+        #   text: >
+        #     az iot ops schema create -n myregistry -g myresourcegroup --registry-namespace myschemas
+        #     --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID --sa-container myschemacontainer
+        #     -l westus2 --desc 'Contoso factory X1 schemas' --display-name 'Contoso X1' --tags env=prod
     """
 
     helps[
