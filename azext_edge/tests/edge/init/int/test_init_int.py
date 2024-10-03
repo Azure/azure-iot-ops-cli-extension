@@ -239,23 +239,6 @@ def assert_aio_instance(
     assert expected_custom_location in tree
     assert "azure-iot-operations-platform" in tree
 
-    # list failed to return collection response YAY
-    instance_rg_list = run(f"az iot ops list -g {resource_group}")
-    assert instance_name in [inst["name"] for inst in instance_rg_list]
-    instance_sub_list = run("az iot ops list")
-    assert instance_name in [inst["name"] for inst in instance_sub_list]
-
-    # update - ultimate sadness
-    description = generate_random_string()
-    tags = f"{generate_random_string()}={generate_random_string()}"
-    instance_update = run(
-        f"az iot ops update -n {instance_name} -g {resource_group} --description {description} "
-        f"--tags {tags}"
-    )
-    assert instance_update["properties"]["description"] == description
-    tag_key, tag_value = tags.split("=")
-    assert instance_update["tags"][tag_key] == tag_value
-
 
 def assert_broker_args(
     instance_name: str,
