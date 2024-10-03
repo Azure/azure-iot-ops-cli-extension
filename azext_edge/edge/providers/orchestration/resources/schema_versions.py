@@ -21,66 +21,73 @@ console = Console()
 
 if TYPE_CHECKING:
     from ....vendor.clients.deviceregistrymgmt.operations import (
-        SchemasOperations,
+        SchemaVersionsOperations,
     )
 
 
-class Schemas(Queryable):
+class SchemaVersions(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
-        self.ops: "SchemasOperations" = self.registry_mgmt_client.schemas
+        self.ops: "SchemaVersionsOperations" = self.registry_mgmt_client.schema_versions
 
     def create(
         self,
         name: str,
+        schema_name: str,
         schema_registry_name: str,
         resource_group_name: str,
-        schema_type: str,
-        schema_format: str,
+        schema_content: str,
         description: Optional[str] = None,
-        display_name: Optional[str] = None,
         **kwargs,
     ) -> dict:
         with console.status("Working..."):
-            schema_format = SchemaFormat[schema_format].full_value
+            # TODO: have the schema_content support files too
+
             resource = {
                 "properties": {
-                    "format": schema_format,
-                    "schemaType": schema_type,
+                    "schemaContent": schema_content,
                     "description": description,
-                    "displayName": display_name,
                 },
             }
-            # should this need system identity assigned identiyt?
-            # schema type - messageschema . is there planned support for more?
-            # format = there are two - is there planned support for more?
-            # how can I check things are working correctly?
 
             return self.ops.create_or_replace(
                 resource_group_name=resource_group_name,
                 schema_registry_name=schema_registry_name,
-                schema_name=name,
+                schema_name=schema_name,
+                schema_version_name=name,
                 resource=resource
             )
 
-    def show(self, name: str, schema_registry_name: str, resource_group_name: str) -> dict:
-        return self.ops.get(
+    def show(
+        self,
+        name: str,
+        schema_name: str,
+        schema_registry_name: str,
+        resource_group_name: str,
+    ) -> dict:
+        version = self.ops.get(
             resource_group_name=resource_group_name,
             schema_registry_name=schema_registry_name,
-            schema_name=name
+            schema_name=schema_name,
+            schema_version_name=name,
         )
+        # verify version via hash - not sure if necessary
+        return version
 
-    def list(self, schema_registry_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_schema_registry(
-            resource_group_name=resource_group_name, schema_registry_name=schema_registry_name
+    def list(self, schema_name: str, schema_registry_name: str, resource_group_name: str) -> Iterable[dict]:
+        return self.ops.list_by_schema(
+            resource_group_name=resource_group_name,
+            schema_registry_name=schema_registry_name,
+            schema_name=schema_name
         )
 
     def delete(
         self,
         name: str,
+        schema_name: str,
         schema_registry_name: str,
         resource_group_name: str,
         confirm_yes: Optional[bool] = None,
@@ -94,5 +101,6 @@ class Schemas(Queryable):
             return self.ops.delete(
                 resource_group_name=resource_group_name,
                 schema_registry_name=schema_registry_name,
-                schema_name=name
+                schema_name=schema_name,
+                schema_version_name=name,
             )

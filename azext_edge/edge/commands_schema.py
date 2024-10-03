@@ -8,7 +8,7 @@ from typing import Iterable, Optional
 
 from knack.log import get_logger
 
-from .providers.orchestration.resources import SchemaRegistries, Schemas
+from .providers.orchestration.resources import SchemaRegistries, Schemas, SchemaVersions
 
 logger = get_logger(__name__)
 
@@ -62,6 +62,9 @@ def delete_registry(
     )
 
 
+# Schemas
+# TODO: add in version create
+# clean up kwargs
 def create_schema(
     cmd,
     schema_name: str,
@@ -69,6 +72,8 @@ def create_schema(
     resource_group_name: str,
     schema_type: str,
     schema_format: str,
+    # schema_content: str,
+    # version_name: int = 1,
     description: Optional[str] = None,
     display_name: Optional[str] = None,
     **kwargs,
@@ -107,6 +112,68 @@ def delete_schema(
 ) -> dict:
     return Schemas(cmd).delete(
         name=schema_name,
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
+        **kwargs
+    )
+
+
+# Versions
+def create_version(
+    cmd,
+    version_name: int,
+    schema_name: str,
+    schema_registry_name: str,
+    resource_group_name: str,
+    schema_content: str,
+    description: Optional[str] = None,
+    **kwargs,
+) -> dict:
+    return SchemaVersions(cmd).create(
+        name=version_name,
+        schema_name=schema_name,
+        schema_registry_name=schema_registry_name,
+        schema_content=schema_content,
+        description=description,
+        resource_group_name=resource_group_name,
+        **kwargs
+    )
+
+
+def show_version(
+    cmd, version_name: int, schema_name: str, schema_registry_name: str, resource_group_name: str
+) -> dict:
+    return SchemaVersions(cmd).show(
+        name=version_name,
+        schema_name=schema_name,
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name
+    )
+
+
+def list_versions(
+    cmd, schema_name: str, schema_registry_name: str, resource_group_name: str
+) -> dict:
+    return SchemaVersions(cmd).list(
+        schema_name=schema_name,
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name
+    )
+
+
+def delete_version(
+    cmd,
+    version_name: int,
+    schema_name: str,
+    schema_registry_name: str,
+    resource_group_name: str,
+    confirm_yes: Optional[bool] = None,
+    **kwargs
+) -> dict:
+    return SchemaVersions(cmd).delete(
+        name=version_name,
+        schema_name=schema_name,
         schema_registry_name=schema_registry_name,
         resource_group_name=resource_group_name,
         confirm_yes=confirm_yes,

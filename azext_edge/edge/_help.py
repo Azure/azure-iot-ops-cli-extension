@@ -1184,15 +1184,14 @@ def load_iotops_help():
         short-summary: Create a schema within a schema registry.
         long-summary: This operation requires a pre-created schema registry.
         # examples:
-        # - name: Create a schema called 'myregistry' with minimum inputs.
+        # - name: Create a schema called 'myschema' with minimum inputs.
         #   text: >
-        #     az iot ops schema create -n myregistry -g myresourcegroup --registry-namespace myschemas
-        #     --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID
-        # - name: Create a schema called 'myregistry' in region westus2 with additional customization.
+        #     az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+        #     --format json --type MessageSchema
+        # - name: Create a schema called 'myschema' with additional customization.
         #   text: >
-        #     az iot ops schema create -n myregistry -g myresourcegroup --registry-namespace myschemas
-        #     --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID --sa-container myschemacontainer
-        #     -l westus2 --desc 'Contoso factory X1 schemas' --display-name 'Contoso X1' --tags env=prod
+        #     az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+        #     --format delta --type MessageSchema --desc "Schema for Assets" --display-name myassetschema
     """
 
     helps[

@@ -1148,7 +1148,7 @@ def load_iotops_arguments(self, _):
             help="Schema registry name.",
         )
         context.argument(
-            "format",
+            "schema_format",
             options_list=["--format"],
             help="Schema format.",
             arg_type=get_enum_type(SchemaFormat)
@@ -1219,4 +1219,27 @@ def load_iotops_arguments(self, _):
             options_list=["--custom-role-id"],
             help="Fully qualified role definition Id in the following format: "
             "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
+        )
+
+    with self.argument_context("iot ops schema version") as context:
+        context.argument(
+            "version_name",
+            options_list=["--name", "-n"],
+            help="Schema version name.",
+            type=int
+        )
+        context.argument(
+            "schema_name",
+            options_list=["--schema"],
+            help="Schema name.",
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description for the schema version.",
+        )
+        context.argument(
+            "schema_content",
+            options_list=["--content"],
+            help="File path containing or inline schema content.",
         )

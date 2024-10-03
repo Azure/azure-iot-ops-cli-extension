@@ -10,6 +10,8 @@ from .dataflows import DataFlowEndpoints, DataFlowProfiles
 from .instances import Instances
 from .schema_registries import SchemaRegistries
 from .schemas import Schemas
+from .schema_versions import SchemaVersions
+
 
 __all__ = [
     "Brokers",
@@ -18,5 +20,6 @@ __all__ = [
     "DataFlowProfiles",
     "Instances",
     "SchemaRegistries",
-    "Schemas"
+    "Schemas",
+    "SchemaVersions"
 ]
