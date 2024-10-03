@@ -6,8 +6,6 @@
 
 import json
 from typing import Optional
-from azure.cli.core.azclierror import ValidationError
-from unittest.mock import Mock
 
 import pytest
 import responses
@@ -18,19 +16,12 @@ from azext_edge.edge.commands_schema import (
     list_schemas,
     show_schema,
 )
-from azext_edge.edge.providers.orchestration.resources.schema_registries import (
-    ROLE_DEF_FORMAT_STR,
-    STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID,
-)
-
+from azext_edge.edge.providers.orchestration.common import SchemaFormat
 from ....generators import generate_random_string
-from .conftest import get_base_endpoint, get_mock_resource, get_resource_id, find_request_by_url, ZEROED_SUBSCRIPTION
+from .conftest import get_base_endpoint, get_mock_resource
 
 SCHEMA_RP = "Microsoft.DeviceRegistry"
 SCHEMA_REGISTRY_RP_API_VERSION = "2024-09-01-preview"
-STORAGE_RP = "Microsoft.Storage"
-STORAGE_API_VERSION = "2023-05-01"
-RESOURCES_API_VERSION = "2024-03-01"
 
 
 def get_schema_endpoint(
@@ -224,11 +215,10 @@ def test_schema_create(
 
     create_result = create_schema(**create_registry_kwargs)
     assert create_result == mock_registry_record
-    import pdb; pdb.set_trace()
     schema_registry_create_payload = json.loads(
-        mocked_responses.calls[-1].body
+        mocked_responses.calls[-1].request.body
     )
-    assert schema_registry_create_payload["properties"]["format"] == schema_format
+    assert schema_registry_create_payload["properties"]["format"] == SchemaFormat[schema_format].full_value
     assert schema_registry_create_payload["properties"]["schemaType"] == schema_type
     assert schema_registry_create_payload["properties"]["description"] == description
     assert schema_registry_create_payload["properties"]["displayName"] == display_name
