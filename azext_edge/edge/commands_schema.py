@@ -8,7 +8,7 @@ from typing import Iterable, Optional
 
 from knack.log import get_logger
 
-from .providers.orchestration.resources import SchemaRegistries
+from .providers.orchestration.resources import SchemaRegistries, Schemas
 
 logger = get_logger(__name__)
 
@@ -59,4 +59,56 @@ def delete_registry(
 ):
     return SchemaRegistries(cmd).delete(
         name=schema_registry_name, resource_group_name=resource_group_name, confirm_yes=confirm_yes, **kwargs
+    )
+
+
+def create_schema(
+    cmd,
+    schema_name: str,
+    schema_registry_name: str,
+    resource_group_name: str,
+    schema_type: str,
+    schema_format: str,
+    description: Optional[str] = None,
+    display_name: Optional[str] = None,
+    **kwargs,
+) -> dict:
+    return Schemas(cmd).create(
+        name=schema_name,
+        schema_registry_name=schema_registry_name,
+        schema_type=schema_type,
+        schema_format=schema_format,
+        description=description,
+        display_name=display_name,
+        resource_group_name=resource_group_name,
+        **kwargs
+    )
+
+
+def show_schema(cmd, schema_name: str, schema_registry_name: str, resource_group_name: str) -> dict:
+    return Schemas(cmd).show(
+        name=schema_name,
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name
+    )
+
+
+def list_schemas(cmd, schema_registry_name: str, resource_group_name: str) -> dict:
+    return Schemas(cmd).list(schema_registry_name=schema_registry_name, resource_group_name=resource_group_name)
+
+
+def delete_schema(
+    cmd,
+    schema_name: str,
+    schema_registry_name: str,
+    resource_group_name: str,
+    confirm_yes: Optional[bool] = None,
+    **kwargs
+) -> dict:
+    return Schemas(cmd).delete(
+        name=schema_name,
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
+        **kwargs
     )

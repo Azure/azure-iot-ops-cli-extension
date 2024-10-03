@@ -31,6 +31,8 @@ from .providers.orchestration.common import (
     MqMemoryProfile,
     MqServiceType,
     TRUST_SETTING_KEYS,
+    SchemaFormat,
+    SchemaType,
 )
 
 
@@ -1132,6 +1134,40 @@ def load_iotops_arguments(self, _):
             "Minimum: 0. Recommended: 60000.",
             type=int,
             arg_group="Connector",
+        )
+
+    with self.argument_context("iot ops schema") as context:
+        context.argument(
+            "schema_name",
+            options_list=["--name", "-n"],
+            help="Schema name.",
+        )
+        context.argument(
+            "schema_registry_name",
+            options_list=["--registry"],
+            help="Schema registry name.",
+        )
+        context.argument(
+            "format",
+            options_list=["--format"],
+            help="Schema format.",
+            arg_type=get_enum_type(SchemaFormat)
+        )
+        context.argument(
+            "schema_type",
+            options_list=["--type"],
+            help="Schema type.",
+            arg_type=get_enum_type(SchemaType)
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description for the schema.",
+        )
+        context.argument(
+            "display_name",
+            options_list=["--display-name"],
+            help="Display name for the schema.",
         )
 
     with self.argument_context("iot ops schema registry") as context:
