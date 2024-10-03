@@ -22,6 +22,7 @@ from ..providers.edge_api import (
     ARCCONTAINERSTORAGE_API_V1,
     SECRETSYNC_API_V1,
     SECRETSTORE_API_V1,
+    AZUREMONITOR_API_V1,
     EdgeApiManager,
 )
 
@@ -37,6 +38,7 @@ COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
 COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1B1])
 COMPAT_ARCCONTAINERSTORAGE_APIS = EdgeApiManager(resource_apis=[ARCCONTAINERSTORAGE_API_V1])
 COMPAT_SECRETSTORE_APIS = EdgeApiManager(resource_apis=[SECRETSYNC_API_V1, SECRETSTORE_API_V1])
+COMPAT_AZUREMONITOR_APIS = EdgeApiManager(resource_apis=[AZUREMONITOR_API_V1])
 
 
 def build_bundle(
@@ -61,6 +63,7 @@ def build_bundle(
     from .support.schemaregistry import prepare_bundle as prepare_schema_registry_bundle
     from .support.arccontainerstorage import prepare_bundle as prepare_arccontainerstorage_bundle
     from .support.secretstore import prepare_bundle as prepare_secretstore_bundle
+    from .support.azuremonitor import prepare_bundle as prepare_azuremonitor_bundle
 
     def collect_default_works(
         pending_work: dict,
@@ -108,6 +111,10 @@ def build_bundle(
         OpsServiceType.secretstore.value: {
             "apis": COMPAT_SECRETSTORE_APIS,
             "prepare_bundle": prepare_secretstore_bundle,
+        },
+        OpsServiceType.azuremonitor.value: {
+            "apis": COMPAT_AZUREMONITOR_APIS,
+            "prepare_bundle": prepare_azuremonitor_bundle,
         },
     }
 
