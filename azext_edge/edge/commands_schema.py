@@ -8,7 +8,7 @@ from typing import Iterable, Optional
 
 from knack.log import get_logger
 
-from .providers.orchestration.resources import SchemaRegistries, Schemas, SchemaVersions
+from .providers.orchestration.resources import SchemaRegistries, Schemas
 
 logger = get_logger(__name__)
 
@@ -72,11 +72,11 @@ def create_schema(
     resource_group_name: str,
     schema_type: str,
     schema_format: str,
-    # schema_content: str,
-    # version_name: int = 1,
+    schema_content: str,
+    schema_version: int = 1,
     description: Optional[str] = None,
     display_name: Optional[str] = None,
-    **kwargs,
+    schema_version_description: Optional[str] = None
 ) -> dict:
     return Schemas(cmd).create(
         name=schema_name,
@@ -86,7 +86,9 @@ def create_schema(
         description=description,
         display_name=display_name,
         resource_group_name=resource_group_name,
-        **kwargs
+        schema_content=schema_content,
+        schema_version=schema_version,
+        schema_version_description=schema_version_description
     )
 
 
@@ -108,19 +110,17 @@ def delete_schema(
     schema_registry_name: str,
     resource_group_name: str,
     confirm_yes: Optional[bool] = None,
-    **kwargs
 ) -> dict:
     return Schemas(cmd).delete(
         name=schema_name,
         schema_registry_name=schema_registry_name,
         resource_group_name=resource_group_name,
         confirm_yes=confirm_yes,
-        **kwargs
     )
 
 
 # Versions
-def create_version(
+def add_version(
     cmd,
     version_name: int,
     schema_name: str,
@@ -128,23 +128,21 @@ def create_version(
     resource_group_name: str,
     schema_content: str,
     description: Optional[str] = None,
-    **kwargs,
 ) -> dict:
-    return SchemaVersions(cmd).create(
+    return Schemas(cmd).add_version(
         name=version_name,
         schema_name=schema_name,
         schema_registry_name=schema_registry_name,
         schema_content=schema_content,
         description=description,
         resource_group_name=resource_group_name,
-        **kwargs
     )
 
 
 def show_version(
     cmd, version_name: int, schema_name: str, schema_registry_name: str, resource_group_name: str
 ) -> dict:
-    return SchemaVersions(cmd).show(
+    return Schemas(cmd).show_version(
         name=version_name,
         schema_name=schema_name,
         schema_registry_name=schema_registry_name,
@@ -155,27 +153,23 @@ def show_version(
 def list_versions(
     cmd, schema_name: str, schema_registry_name: str, resource_group_name: str
 ) -> dict:
-    return SchemaVersions(cmd).list(
+    return Schemas(cmd).list_versions(
         schema_name=schema_name,
         schema_registry_name=schema_registry_name,
         resource_group_name=resource_group_name
     )
 
 
-def delete_version(
+def remove_version(
     cmd,
     version_name: int,
     schema_name: str,
     schema_registry_name: str,
     resource_group_name: str,
-    confirm_yes: Optional[bool] = None,
-    **kwargs
 ) -> dict:
-    return SchemaVersions(cmd).delete(
+    return Schemas(cmd).remove_version(
         name=version_name,
         schema_name=schema_name,
         schema_registry_name=schema_registry_name,
-        resource_group_name=resource_group_name,
-        confirm_yes=confirm_yes,
-        **kwargs
+        resource_group_name=resource_group_name
     )

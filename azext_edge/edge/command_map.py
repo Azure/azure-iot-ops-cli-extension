@@ -186,7 +186,7 @@ def load_iotops_commands(self, _):
         "iot ops schema version",
         command_type=schema_resource_ops,
     ) as cmd_group:
-        cmd_group.command("add", "create_version")
+        cmd_group.command("add", "add_version")
         cmd_group.show_command("show", "show_version")
         cmd_group.command("list", "list_versions")
-        cmd_group.command("remove", "delete_version")
+        cmd_group.command("remove", "remove_version")

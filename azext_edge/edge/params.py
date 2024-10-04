@@ -1169,6 +1169,25 @@ def load_iotops_arguments(self, _):
             options_list=["--display-name"],
             help="Display name for the schema.",
         )
+        context.argument(
+            "schema_version",
+            options_list=["--version", "--ver"],
+            help="Schema version name.",
+            type=int,
+            arg_group="Version"
+        )
+        context.argument(
+            "schema_content",
+            options_list=["--version-content", "--vc"],
+            help="Content for the version.",
+            arg_group="Version"
+        )
+        context.argument(
+            "schema_version_description",
+            options_list=["--version-desc", "--vd"],
+            help="Description for the version.",
+            arg_group="Version"
+        )
 
     with self.argument_context("iot ops schema registry") as context:
         context.argument(
@@ -1242,4 +1261,5 @@ def load_iotops_arguments(self, _):
             "schema_content",
             options_list=["--content"],
             help="File path containing or inline schema content.",
+            arg_group=None
         )

@@ -1182,7 +1182,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create a schema within a schema registry.
-        long-summary: This operation requires a pre-created schema registry.
+        long-summary: This operation requires a pre-created schema registry and will create a schema version.
         # examples:
         # - name: Create a schema called 'myschema' with minimum inputs.
         #   text: >

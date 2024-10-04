@@ -8,9 +8,7 @@ from .brokers import Brokers
 from .clusters import ConnectedClusters
 from .dataflows import DataFlowEndpoints, DataFlowProfiles
 from .instances import Instances
-from .schema_registries import SchemaRegistries
-from .schemas import Schemas
-from .schema_versions import SchemaVersions
+from .schema_registries import SchemaRegistries, Schemas
 
 
 __all__ = [
@@ -21,5 +19,4 @@ __all__ = [
     "Instances",
     "SchemaRegistries",
     "Schemas",
-    "SchemaVersions"
 ]
