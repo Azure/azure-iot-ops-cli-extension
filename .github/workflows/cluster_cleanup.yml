@@ -95,7 +95,7 @@ jobs:
       - name: Delete your custom stuff
         if: ${{ env.CUSTOM_PREFIX }}
         run: |
-          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.STORAGE_PREFIX }}')].id" -o tsv); do
+          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.CUSTOM_PREFIX }}')].id" -o tsv); do
             az resource delete -v --id $resource --verbose
           done
   mq-cleanup:
