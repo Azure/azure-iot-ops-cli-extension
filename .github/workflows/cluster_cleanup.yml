@@ -11,10 +11,9 @@ on:
         type: string
         description: "Resource group to clean up"
         required: true
-      keyvault_prefix:
-          type: string
-          description: "Prefix of keyvault to delete"
-          required: true
+      custom_prefix:
+        type: string
+        description: "Your custom prefix for things to delete"
     secrets:
       AZURE_CLIENT_ID:
         required: true
@@ -42,9 +41,10 @@ on:
 env:
   RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
   CLUSTER_PREFIX: ${{ inputs.cluster_prefix || 'opt' }}
-  KEYVAULT_PREFIX: ${{ inputs.keyvault_prefix || 'opskv' }}
-  REGISTRY_PREFIX: 'test-registry'
-  STORAGE_PREFIX: 'teststore'
+  # Note these are just for the init tests since we dont delete them then
+  REGISTRY_PREFIX: 'init-registry'
+  STORAGE_PREFIX: 'initstore'
+  CUSTOM_PREFIX: ${{ inputs.custom_prefix }}
 
 permissions:
   # required for OpenID federation
@@ -67,25 +67,6 @@ jobs:
           for cluster in $(az resource list -g ${{ env.RESOURCE_GROUP }} --resource-type $cluster_type --query "[?starts_with(name, '${{ env.CLUSTER_PREFIX }}')].id" -o tsv); do
             az resource delete -v --id $cluster --verbose
           done
-  keyvault-cleanup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Az CLI login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Delete keyvaults
-        run: |
-          for vault in $(az keyvault list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
-            az keyvault delete -n $vault -g ${{ env.RESOURCE_GROUP }}
-          done
-      - name: Purge keyvaults
-        run: |
-          for vault in $(az keyvault list-deleted --query "[?contains(properties.vaultId, '${{ env.RESOURCE_GROUP }}')] | [?starts_with(name, '${{ env.KEYVAULT_PREFIX }}')].name" -o tsv); do
-            az keyvault purge -n $vault --no-wait
-          done
   resource-cleanup:
     needs: [arc-cleanup]
     runs-on: ubuntu-latest
@@ -107,6 +88,12 @@ jobs:
             az resource delete -v --id $resource --verbose
           done
       - name: Delete storage accounts
+        run: |
+          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.STORAGE_PREFIX }}')].id" -o tsv); do
+            az resource delete -v --id $resource --verbose
+          done
+      - name: Delete your custom stuff
+        if: ${{ env.CUSTOM_PREFIX }}
         run: |
           for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.STORAGE_PREFIX }}')].id" -o tsv); do
             az resource delete -v --id $resource --verbose
