@@ -99,6 +99,16 @@ jobs:
           for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.CLUSTER_PREFIX }}')].id" -o tsv); do
             az resource delete -v --id $resource --verbose
           done
+      - name: Delete schema registries
+        run: |
+          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.REGISTRY_PREFIX }}')].id" -o tsv); do
+            az resource delete -v --id $resource --verbose
+          done
+      - name: Delete storage accounts
+        run: |
+          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.STORAGE_PREFIX }}')].id" -o tsv); do
+            az resource delete -v --id $resource --verbose
+          done
   mq-cleanup:
     runs-on: ubuntu-latest
     steps:

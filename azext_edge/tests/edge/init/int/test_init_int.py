@@ -48,7 +48,6 @@ def init_test_setup(settings, tracked_resources):
     registry = run(
         f"az iot ops schema registry create -n {registry_name} -g {settings.env.azext_edge_rg} "
         f"--rn {registry_namespace} --sa-resource-id {storage_account['id']} "
-        "--location eastus2euap"  # TODO: remove once avaliable in all regions
     )
     tracked_resources.append(registry["id"])
 
