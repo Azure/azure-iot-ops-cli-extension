@@ -43,6 +43,8 @@ env:
   RESOURCE_GROUP: ${{ inputs.resource_group || 'ops-cli-int-test-rg' }}
   CLUSTER_PREFIX: ${{ inputs.cluster_prefix || 'opt' }}
   KEYVAULT_PREFIX: ${{ inputs.keyvault_prefix || 'opskv' }}
+  REGISTRY_PREFIX: 'test-registry'
+  STORAGE_PREFIX: 'teststore'
 
 permissions:
   # required for OpenID federation
