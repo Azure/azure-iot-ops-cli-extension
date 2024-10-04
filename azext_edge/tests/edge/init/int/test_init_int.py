@@ -36,9 +36,9 @@ def init_test_setup(settings, tracked_resources):
     if not instance_name:
         instance_name = f"testcli{generate_random_string(force_lower=True, size=6)}"
     # set up registry
-    storage_account_name = f"teststore{generate_random_string(force_lower=True, size=6)}"
-    registry_name = f"test-registry-{generate_random_string(force_lower=True, size=6)}"
-    registry_namespace = f"test-namespace-{generate_random_string(force_lower=True, size=6)}"
+    storage_account_name = f"initstore{generate_random_string(force_lower=True, size=6)}"
+    registry_name = f"init-registry-{generate_random_string(force_lower=True, size=6)}"
+    registry_namespace = f"init-namespace-{generate_random_string(force_lower=True, size=6)}"
     storage_account = run(
         f"az storage account create -n {storage_account_name} -g {settings.env.azext_edge_rg} "
         "--enable-hierarchical-namespace --public-network-access Disabled "
