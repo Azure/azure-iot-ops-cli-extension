@@ -55,7 +55,7 @@ def fetch_services():
     return process_services(
         directory_path=MONITOR_DIRECTORY_PATH,
         namespace=MONITOR_NAMESPACE,
-        prefix_names=[DIAGNOSTICS_OPERATOR_PREFIX],
+        prefix_names=[DIAGNOSTICS_OPERATOR_PREFIX, DIAGNOSTICS_V1_PREFIX],
     )
 
 
