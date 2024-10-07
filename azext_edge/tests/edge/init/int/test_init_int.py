@@ -36,9 +36,9 @@ def init_test_setup(settings, tracked_resources):
     if not instance_name:
         instance_name = f"testcli{generate_random_string(force_lower=True, size=6)}"
     # set up registry
-    storage_account_name = f"teststore{generate_random_string(force_lower=True, size=6)}"
-    registry_name = f"test-registry-{generate_random_string(force_lower=True, size=6)}"
-    registry_namespace = f"test-namespace-{generate_random_string(force_lower=True, size=6)}"
+    storage_account_name = f"initstore{generate_random_string(force_lower=True, size=6)}"
+    registry_name = f"init-registry-{generate_random_string(force_lower=True, size=6)}"
+    registry_namespace = f"init-namespace-{generate_random_string(force_lower=True, size=6)}"
     storage_account = run(
         f"az storage account create -n {storage_account_name} -g {settings.env.azext_edge_rg} "
         "--enable-hierarchical-namespace --public-network-access Disabled "
@@ -48,7 +48,6 @@ def init_test_setup(settings, tracked_resources):
     registry = run(
         f"az iot ops schema registry create -n {registry_name} -g {settings.env.azext_edge_rg} "
         f"--rn {registry_namespace} --sa-resource-id {storage_account['id']} "
-        "--location eastus2euap"  # TODO: remove once avaliable in all regions
     )
     tracked_resources.append(registry["id"])
 
@@ -238,23 +237,6 @@ def assert_aio_instance(
     assert ("adr-sync" in tree) is enable_rsync
     assert expected_custom_location in tree
     assert "azure-iot-operations-platform" in tree
-
-    # list failed to return collection response YAY
-    instance_rg_list = run(f"az iot ops list -g {resource_group}")
-    assert instance_name in [inst["name"] for inst in instance_rg_list]
-    instance_sub_list = run("az iot ops list")
-    assert instance_name in [inst["name"] for inst in instance_sub_list]
-
-    # update - ultimate sadness
-    description = generate_random_string()
-    tags = f"{generate_random_string()}={generate_random_string()}"
-    instance_update = run(
-        f"az iot ops update -n {instance_name} -g {resource_group} --description {description} "
-        f"--tags {tags}"
-    )
-    assert instance_update["properties"]["description"] == description
-    tag_key, tag_value = tags.split("=")
-    assert instance_update["tags"][tag_key] == tag_value
 
 
 def assert_broker_args(

@@ -134,7 +134,7 @@ jobs:
       - name: "Setup python"
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
       - name: "Create k3s cluster"
         run: |
           # vars
@@ -164,8 +164,8 @@ jobs:
           path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
       - name: "Build and install local IoT Ops extension from source"
         run: |
-          pip install wheel==0.30.0
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          pip install -r dev_requirements.txt
           python -m setup bdist_wheel -d dist
           wheel=$(find ./dist/*.whl)
           az extension add --source $wheel -y
@@ -256,8 +256,9 @@ jobs:
             $(docker build ${{ env.EXTENSION_SOURCE_DIRECTORY }} -q)
       - name: "Run smoke tests"
         run: |
-          az iot ops support create-bundle --svc auto
+          az iot ops support create-bundle
           az iot ops support create-bundle --svc broker --broker-traces
+          az iot ops support create-bundle --ops-service acs secretstore
           az iot ops check
           az iot ops check --pre
           az iot ops check --post
