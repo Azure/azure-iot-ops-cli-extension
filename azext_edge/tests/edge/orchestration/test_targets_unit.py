@@ -173,10 +173,9 @@ def test_init_targets(target_scenario: dict):
 
     assert instance_template["resources"]["aioInstance"]["properties"]["description"] == targets.instance_description
 
-    assert (
-        instance_template["resources"]["aioInstance"]["properties"]["schemaRegistryNamespace"]
-        == f"[reference(parameters('schemaRegistryId'), '{REGISTRY_API_VERSION}').namespace]"
-    )
+    assert instance_template["resources"]["aioInstance"]["properties"]["schemaRegistryRef"] == {
+        "resourceId": f"[reference(parameters('schemaRegistryId'), '{REGISTRY_API_VERSION}').id]"
+    }
 
     if targets.tags:
         assert instance_template["resources"]["aioInstance"]["tags"] == targets.tags

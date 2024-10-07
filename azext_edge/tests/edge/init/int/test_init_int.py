@@ -61,7 +61,6 @@ def init_test_setup(settings, tracked_resources):
         "clusterName": settings.env.azext_edge_cluster,
         "resourceGroup": settings.env.azext_edge_rg,
         "schemaRegistryId": registry["id"],
-        "schemaRegistryNamespace": registry_namespace,
         "instanceName": instance_name,
         "additionalCreateArgs": _strip_quotes(settings.env.azext_edge_create_args),
         "additionalInitArgs": _strip_quotes(settings.env.azext_edge_init_args),
@@ -132,7 +131,7 @@ def test_init_scenario(
                 instance_name=instance_name,
                 cluster_name=cluster_name,
                 resource_group=resource_group,
-                schema_registry_namespace=init_test_setup["schemaRegistryNamespace"],
+                schema_registry_id=registry_id,
                 **create_arg_dict
             )
     except Exception as e:  # pylint: disable=broad-except
@@ -190,7 +189,7 @@ def assert_aio_init(
 def assert_aio_instance(
     instance_name: str,
     resource_group: str,
-    schema_registry_namespace: str,
+    schema_registry_id: str,
     custom_location: Optional[str] = None,
     description: Optional[str] = None,
     location: Optional[str] = None,
@@ -209,7 +208,7 @@ def assert_aio_instance(
 
     instance_props = instance_show["properties"]
     assert instance_props.get("description") == description
-    assert instance_props["schemaRegistryNamespace"] == schema_registry_namespace
+    assert instance_props["schemaRegistryRef"] == {"resource_id": schema_registry_id}
 
     expected_components = {"adr", "akri", "connectors", "dataflows", "schemaRegistry"}
     disabled_components = []

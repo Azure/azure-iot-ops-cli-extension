@@ -203,9 +203,9 @@ class InitTargets:
         instance["properties"]["description"] = self.instance_description
 
         # TODO: this is temporary for this milestone. Next milestone it should change.
-        instance["properties"][
-            "schemaRegistryNamespace"
-        ] = f"[reference(parameters('schemaRegistryId'), '{REGISTRY_API_VERSION}').namespace]"
+        instance["properties"]["schemaRegistryRef"] = {
+            "resourceId": f"[reference(parameters('schemaRegistryId'), '{REGISTRY_API_VERSION}').id]"
+        }
 
         if self.tags:
             instance["tags"] = self.tags
