@@ -144,6 +144,21 @@ def init(
     )
 
 
+def upgrade(
+    cmd,
+    cluster_name: str,
+    resource_group_name: str,
+    no_progress: Optional[bool] = None,
+    **kwargs
+):
+    from .providers.orchestration import WorkManager
+    return WorkManager(cmd).execute_ops_upgrade(
+        show_progress=not no_progress,
+        cluster_name=cluster_name,
+        resource_group_name=resource_group_name,
+    )
+
+
 def create_instance(
     cmd,
     cluster_name: str,

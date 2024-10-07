@@ -53,3 +53,38 @@ class ClusterExtensions(Queryable):
             cluster_resource_name="connectedClusters",
             cluster_name=cluster_name,
         )
+
+    # will be removed
+    def update(
+        self,
+        resource_group_name: str,
+        cluster_name: str,
+        extension_name: str,
+        new_version: str,
+        new_train: str,
+    ) -> Iterable[dict]:
+        extension = self.ops.get(
+            resource_group_name=resource_group_name,
+            cluster_rp="Microsoft.Kubernetes",
+            cluster_resource_name="connectedClusters",
+            cluster_name=cluster_name,
+            extension_name=extension_name,
+        )
+        current_version = extension["properties"].get("version", "0").replace("-preview", "")
+        if current_version >= new_version.replace("-preview", ""):
+            logger.info(f"Extension {extension_name} is already up to date.")
+            return
+
+        extension_update = {
+            "autoUpgradeMinorVersion": False,
+            "releaseTrain": new_train,
+            "version": new_version
+        }
+        return self.ops.begin_update(
+            resource_group_name=resource_group_name,
+            cluster_rp="Microsoft.Kubernetes",
+            cluster_resource_name="connectedClusters",
+            cluster_name=cluster_name,
+            extension_name=extension_name,
+            patch_extension=extension_update
+        )

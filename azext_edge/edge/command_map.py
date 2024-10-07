@@ -29,6 +29,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("check", "check")
         cmd_group.command("init", "init")
+        cmd_group.command("upgrade", "upgrade")
         cmd_group.command("create", "create_instance")
         cmd_group.command("update", "update_instance")
         cmd_group.show_command("show", "show_instance")

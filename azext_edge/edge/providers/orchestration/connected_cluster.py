@@ -140,6 +140,39 @@ class ConnectedCluster:
         result = self.resource_graph.query_resources(query=query)
         return self._process_query_result(result)
 
+    def update_all_extensions(self):
+        from .template import M2_ENABLEMENT_TEMPLATE
+        version_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
+        train_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["TRAINS"].copy()
+        prefix_to_key_map = {
+            "azure-secret": "secretSyncController",  # store
+            "azure-arc": "edgeStorageAccelerator",  # containerstorage
+            "open-service-mesh": "openServiceMesh",  # hash
+            "azure-iot-operations-platform": "platform",  # hash
+            "azure-iot-operations": "aio",  # hash
+        }
+        num = 1
+        for extension in self.extensions:
+            extension_name: str = extension["name"]
+            extension_prefix = extension_name.rsplit("-", maxsplit=1)[0]
+            extension_key = prefix_to_key_map.get(extension_prefix)
+            if not extension_key:
+                continue
+            print(num)
+            num += 1
+            print(extension_name)
+            print(extension_key)
+            print(train_map[extension_key])
+            print(version_map[extension_key])
+
+            self.clusters.extensions.update(
+                resource_group_name=self.resource_group_name,
+                cluster_name=self.cluster_name,
+                extension_name=extension_name,
+                new_train=train_map[extension_key],
+                new_version=version_map[extension_key]
+            )
+
     def _process_query_result(self, result: dict, first: bool = False) -> Optional[Union[dict, List[dict]]]:
         if "data" in result and result["data"]:
             if first:
