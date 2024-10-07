@@ -152,7 +152,7 @@ def tracked_resources():
         try:
             run(f"az resource delete --id {res} -v")
         except CLIInternalError:
-            logger.warning(f"failed to delete {res}")
+            logger.error(f"Failed to delete {res}")
 
 
 @pytest.fixture(scope="session")
