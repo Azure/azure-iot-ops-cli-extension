@@ -158,12 +158,7 @@ class ConnectedCluster:
             extension_key = prefix_to_key_map.get(extension_prefix)
             if not extension_key:
                 continue
-            print(num)
             num += 1
-            print(extension_name)
-            print(extension_key)
-            print(train_map[extension_key])
-            print(version_map[extension_key])
 
             self.clusters.extensions.update(
                 resource_group_name=self.resource_group_name,

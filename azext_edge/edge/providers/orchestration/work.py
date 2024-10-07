@@ -40,6 +40,7 @@ class WorkCategoryKey(IntEnum):
     PRE_FLIGHT = 1
     ENABLE_IOT_OPS = 2
     DEPLOY_IOT_OPS = 3
+    UPGRADE_IOT_OPS = 4
 
 
 class WorkStepKey(IntEnum):
@@ -49,6 +50,7 @@ class WorkStepKey(IntEnum):
     DEPLOY_ENABLEMENT = 4
     WHAT_IF_INSTANCE = 5
     DEPLOY_INSTANCE = 6
+    UPGRADE_ENABLEMENT = 7
 
 
 class WorkRecord:
@@ -135,12 +137,13 @@ class WorkManager:
         return display_desc[:-1] + ""
 
     def _build_display(self):
-        pre_check_cat_desc = "Pre-Flight"
-        self._display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
-        self._display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers")
-        self._display.add_step(
-            WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
-        )
+        if self._pre_flight:
+            pre_check_cat_desc = "Pre-Flight"
+            self._display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
+            self._display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers")
+            self._display.add_step(
+                WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
+            )
 
         if self._apply_foundation:
             self._display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
@@ -151,6 +154,16 @@ class WorkManager:
                 WorkCategoryKey.ENABLE_IOT_OPS,
                 WorkStepKey.DEPLOY_ENABLEMENT,
                 "Install foundation layer",
+                self._format_enablement_desc(),
+            )
+
+        if self._update_extensions:
+            self._display.add_category(WorkCategoryKey.UPGRADE_IOT_OPS, "Upgrade")
+            # self._display.add_step(WorkCategoryKey.UPGRADE_IOT_OPS, WorkStepKey.WHAT_IF_INSTANCE, "What-If evaluation")
+            self._display.add_step(
+                WorkCategoryKey.UPGRADE_IOT_OPS,
+                WorkStepKey.UPGRADE_ENABLEMENT,
+                "Upgrade foundational layer",
                 self._format_enablement_desc(),
             )
 
@@ -246,6 +259,8 @@ class WorkManager:
         self._bootstrap_ux(show_progress=show_progress)
         self._work_id = uuid4().hex
         self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
+        self._apply_foundation = False
+        self._pre_flight = False
         self._update_extensions = True
 
         self._completed_steps: Dict[int, int] = {}
@@ -259,6 +274,16 @@ class WorkManager:
             defer_refresh=True,
         )
         self._build_display()
+        self.render_display(
+            category=WorkCategoryKey.UPGRADE_IOT_OPS, active_step=WorkStepKey.UPGRADE_ENABLEMENT
+        )
+        self._resource_map.connected_cluster.update_all_extensions()
+
+        self.complete_step(
+            category=WorkCategoryKey.UPGRADE_IOT_OPS, completed_step=WorkStepKey.UPGRADE_ENABLEMENT
+        )
+        self.stop_display()
+        return
         return self._do_work()
 
     def _do_work(self):  # noqa: C901
@@ -280,6 +305,7 @@ class WorkManager:
 
             # Pre-Flight workflow
             if self._pre_flight:
+
                 # WorkStepKey.REG_RP
                 self.render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
                 register_providers(self.subscription_id)
@@ -386,7 +412,15 @@ class WorkManager:
                 return work_kpis
 
             if self._update_extensions:
+                self.render_display(
+                    category=WorkCategoryKey.UPGRADE_IOT_OPS, active_step=WorkStepKey.UPGRADE_ENABLEMENT
+                )
                 self._resource_map.connected_cluster.update_all_extensions()
+
+                self.complete_step(
+                    category=WorkCategoryKey.UPGRADE_IOT_OPS, completed_step=WorkStepKey.UPGRADE_ENABLEMENT
+                )
+                return
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
                 if not self._extension_map:

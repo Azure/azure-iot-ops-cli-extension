@@ -74,7 +74,8 @@ class ClusterExtensions(Queryable):
         if current_version >= new_version.replace("-preview", ""):
             logger.info(f"Extension {extension_name} is already up to date.")
             return
-
+        print("")
+        print(f"Updating extension {extension_name}")
         extension_update = {
             "autoUpgradeMinorVersion": False,
             "releaseTrain": new_train,
