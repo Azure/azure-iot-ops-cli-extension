@@ -1205,6 +1205,9 @@ def load_iotops_help():
 
                       If the indicated storage account container does not exist it will be created with default
                       settings.
+
+                      If the required Resource Providers for IoT Operations are not registered, this will
+                      register them.
         examples:
         - name: Create a schema registry called 'myregistry' with minimum inputs.
           text: >

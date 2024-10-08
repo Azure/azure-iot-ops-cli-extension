@@ -218,8 +218,9 @@ def test_schema_registry_delete(mocked_cmd, mocked_responses: responses):
 )
 def test_schema_registry_create(
     mocked_cmd,
-    mocked_responses: responses,
     mocker,
+    mocked_register_providers,
+    mocked_responses: responses,
     location: Optional[str],
     display_name: Optional[str],
     description: Optional[str],
@@ -343,6 +344,7 @@ def test_schema_registry_create(
         == f"{mock_storage_record['properties']['primaryEndpoints']['blob']}{storage_container_name}"
     )
 
+    mocked_register_providers.assert_called_with(ZEROED_SUBSCRIPTION)
     mock_permission_manager.assert_called_with(ZEROED_SUBSCRIPTION)
     target_role_id = custom_role_id or ROLE_DEF_FORMAT_STR.format(
         subscription_id=ZEROED_SUBSCRIPTION, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
