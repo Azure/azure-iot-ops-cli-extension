@@ -324,7 +324,8 @@ def test_verify_custom_location_namespace(
         "NotRegistered",
     ],
 )
-def test_register_providers(mocker, registration_state):
+@pytest.mark.parametrize("input_rp", [None, "Microsoft.DeviceRegistry"])
+def test_register_providers(mocker, registration_state, input_rp):
     mocked_get_resource_client: Mock = mocker.patch(
         "azext_edge.edge.providers.orchestration.rp_namespace.get_resource_client"
     )
@@ -338,6 +339,8 @@ def test_register_providers(mocker, registration_state):
         "Microsoft.DeviceRegistry",
         "Microsoft.SecretSyncController",
     ]
+    if input_rp:
+        iot_ops_rps = [input_rp]
     mocked_get_resource_client().providers.list.return_value = [
         {"namespace": namespace, "registrationState": registration_state} for namespace in iot_ops_rps
     ]

@@ -67,10 +67,10 @@ class SchemaRegistries(Queryable):
         custom_role_id: Optional[str] = None,
         **kwargs,
     ) -> dict:
-        from ..rp_namespace import register_providers
+        from ..rp_namespace import register_providers, ADR_PROVIDER
         with console.status("Working...") as c:
             # Register providers - may as well do all for AIO
-            register_providers(self.default_subscription_id)
+            register_providers(self.default_subscription_id, ADR_PROVIDER)
 
             if not location:
                 location = self.get_resource_group(name=resource_group_name)["location"]
