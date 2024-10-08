@@ -20,7 +20,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     storage_account = run(
         f"az storage account create -n {storage_account_name} -g {registry_rg} "
         "--enable-hierarchical-namespace "
-        "--allow-shared-key-access false --allow-blob-public-access false --default-action Deny"
+        "--allow-shared-key-access false --allow-blob-public-access false"
     )
     tracked_resources.append(storage_account['id'])
 
@@ -61,7 +61,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         resource_group=registry_rg,
         registry_name=registry_name,
         schema_type="MessageSchema",
-        format="json"
+        format="delta"
     )
 
     # SHOW VERSION
@@ -74,6 +74,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         name=version_num,
         schema_name=schema_name1,
         registry_name=registry_name,
+        resource_group=registry_rg,
         schema_content=delta_content
     )
 
@@ -97,7 +98,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
 
     schema2 = run(
         f"az iot ops schema create -n {schema_name2} -g {registry_rg} --registry {registry_name} "
-        f"--format json --type MessageSchema --desc \"{description}\" --display-name {display_name}"
+        f"--format json --type MessageSchema --desc \"{description}\" --display-name {display_name} "
         f"--vc {file_name} --vd {version_desc} --ver {version_num}"
     )
     assert_schema(
@@ -125,6 +126,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         name=version_num + 2,
         schema_name=schema_name2,
         registry_name=registry_name,
+        resource_group=registry_rg,
         schema_content=inline_content,
     )
 
@@ -142,6 +144,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         schema_name=schema_name2,
         registry_name=registry_name,
         schema_content=json_content,
+        resource_group=registry_rg,
         description=version_desc
     )
 

@@ -6,8 +6,8 @@
 
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from azure.cli.core.azclierror import ValidationError
-from azure.core.exceptions import ResourceNotFoundError
+from azure.cli.core.azclierror import ValidationError, FileOperationError, ForbiddenError
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
 
@@ -254,6 +254,14 @@ class Schemas(Queryable):
         description: Optional[str] = None,
     ) -> dict:
         # TODO: have the schema_content support files too
+        from ....util import read_file_content
+
+        try:
+            logger.debug("Processing schema content.")
+            schema_content = read_file_content(schema_content)
+        except FileOperationError:
+            logger.debug("Given schema content is not a file.")
+            pass
 
         resource = {
             "properties": {
@@ -262,13 +270,20 @@ class Schemas(Queryable):
             },
         }
 
-        return self.version_ops.create_or_replace(
-            resource_group_name=resource_group_name,
-            schema_registry_name=schema_registry_name,
-            schema_name=schema_name,
-            schema_version_name=name,
-            resource=resource
-        )
+        try:
+            return self.version_ops.create_or_replace(
+                resource_group_name=resource_group_name,
+                schema_registry_name=schema_registry_name,
+                schema_name=schema_name,
+                schema_version_name=name,
+                resource=resource
+            )
+        except HttpResponseError as e:
+            if "AuthorizationFailure" in e.message:
+                raise ForbiddenError(
+                    "Schema versions require public network access to be enabled in the associated storage account."
+                )
+            raise e
 
     def show_version(
         self,
