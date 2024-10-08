@@ -347,7 +347,7 @@ def test_register_providers(mocker, registration_state, input_rp):
 
     for rp in iot_ops_rps:
         assert rp in RP_NAMESPACE_SET
-    assert len(iot_ops_rps) == len(RP_NAMESPACE_SET)
+    assert len(iot_ops_rps) == (1 if input_rp else len(RP_NAMESPACE_SET))
 
     register_providers(ZEROED_SUB)
     mocked_get_resource_client().providers.list.assert_called_once()

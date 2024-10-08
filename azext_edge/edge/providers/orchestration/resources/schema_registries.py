@@ -69,7 +69,7 @@ class SchemaRegistries(Queryable):
     ) -> dict:
         from ..rp_namespace import register_providers, ADR_PROVIDER
         with console.status("Working...") as c:
-            # Register providers
+            # Register the schema (ADR) provider
             register_providers(self.default_subscription_id, ADR_PROVIDER)
 
             if not location:
