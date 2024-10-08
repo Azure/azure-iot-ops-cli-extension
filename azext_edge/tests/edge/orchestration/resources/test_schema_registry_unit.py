@@ -22,6 +22,7 @@ from azext_edge.edge.providers.orchestration.resources.schema_registries import 
     ROLE_DEF_FORMAT_STR,
     STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID,
 )
+from azext_edge.edge.providers.orchestration.rp_namespace import ADR_PROVIDER
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource, get_resource_id, find_request_by_url, ZEROED_SUBSCRIPTION
@@ -344,7 +345,7 @@ def test_schema_registry_create(
         == f"{mock_storage_record['properties']['primaryEndpoints']['blob']}{storage_container_name}"
     )
 
-    mocked_register_providers.assert_called_with(ZEROED_SUBSCRIPTION)
+    mocked_register_providers.assert_called_with(ZEROED_SUBSCRIPTION, ADR_PROVIDER)
     mock_permission_manager.assert_called_with(ZEROED_SUBSCRIPTION)
     target_role_id = custom_role_id or ROLE_DEF_FORMAT_STR.format(
         subscription_id=ZEROED_SUBSCRIPTION, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
