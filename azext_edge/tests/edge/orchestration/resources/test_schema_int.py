@@ -38,7 +38,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     version_num = 1
     schema1 = run(
         f"az iot ops schema create -n {schema_name1} -g {registry_rg} --registry {registry_name} "
-        f"--format delta --type MessageSchema --content {delta_content}"
+        f"--format delta --type MessageSchema --version-content {delta_content}"
     )
     assert_schema(
         schema=schema1,

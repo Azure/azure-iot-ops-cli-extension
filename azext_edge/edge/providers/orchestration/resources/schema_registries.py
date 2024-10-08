@@ -210,7 +210,7 @@ class Schemas(Queryable):
                 schema_name=name,
                 schema_registry_name=schema_registry_name,
                 resource_group_name=resource_group_name,
-                description=schema_version_description
+                description=schema_version_description,
             )
             logger.info(f"Added version {schema_version} to schema {name}.")
             return schema
@@ -253,23 +253,22 @@ class Schemas(Queryable):
         schema_content: str,
         description: Optional[str] = None,
     ) -> dict:
-        with console.status("Working..."):
-            # TODO: have the schema_content support files too
+        # TODO: have the schema_content support files too
 
-            resource = {
-                "properties": {
-                    "schemaContent": schema_content,
-                    "description": description,
-                },
-            }
+        resource = {
+            "properties": {
+                "schemaContent": schema_content,
+                "description": description,
+            },
+        }
 
-            return self.version_ops.create_or_replace(
-                resource_group_name=resource_group_name,
-                schema_registry_name=schema_registry_name,
-                schema_name=schema_name,
-                schema_version_name=name,
-                resource=resource
-            )
+        return self.version_ops.create_or_replace(
+            resource_group_name=resource_group_name,
+            schema_registry_name=schema_registry_name,
+            schema_name=schema_name,
+            schema_version_name=name,
+            resource=resource
+        )
 
     def show_version(
         self,
@@ -302,10 +301,9 @@ class Schemas(Queryable):
         schema_registry_name: str,
         resource_group_name: str,
     ):
-        with console.status("Working..."):
-            return self.version_ops.delete(
-                resource_group_name=resource_group_name,
-                schema_registry_name=schema_registry_name,
-                schema_name=schema_name,
-                schema_version_name=name,
-            )
+        return self.version_ops.delete(
+            resource_group_name=resource_group_name,
+            schema_registry_name=schema_registry_name,
+            schema_name=schema_name,
+            schema_version_name=name,
+        )
