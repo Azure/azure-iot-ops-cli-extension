@@ -19,7 +19,7 @@ from ....util.az_client import (
 )
 from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
-from ..common import SchemaFormat
+from ..common import SchemaFormat, SchemaType
 from ..permissions import PermissionManager, ROLE_DEF_FORMAT_STR
 
 logger = get_logger(__name__)
@@ -186,7 +186,8 @@ class Schemas(Queryable):
         display_name: Optional[str] = None,
         schema_version_description: Optional[str] = None
     ) -> dict:
-        with console.status("Working..."):
+        with console.status("Working...") as c:
+            schema_type = SchemaType[schema_type].full_value
             schema_format = SchemaFormat[schema_format].full_value
             resource = {
                 "properties": {
@@ -211,6 +212,7 @@ class Schemas(Queryable):
                 schema_registry_name=schema_registry_name,
                 resource_group_name=resource_group_name,
                 description=schema_version_description,
+                current_console=c
             )
             logger.info(f"Added version {schema_version} to schema {name}.")
             return schema
@@ -252,6 +254,7 @@ class Schemas(Queryable):
         resource_group_name: str,
         schema_content: str,
         description: Optional[str] = None,
+        current_console: Optional[Console] = None,
     ) -> dict:
         # TODO: have the schema_content support files too
         from ....util import read_file_content
@@ -269,15 +272,15 @@ class Schemas(Queryable):
                 "description": description,
             },
         }
-
         try:
-            return self.version_ops.create_or_replace(
-                resource_group_name=resource_group_name,
-                schema_registry_name=schema_registry_name,
-                schema_name=schema_name,
-                schema_version_name=name,
-                resource=resource
-            )
+            with current_console or console.status("Working..."):
+                return self.version_ops.create_or_replace(
+                    resource_group_name=resource_group_name,
+                    schema_registry_name=schema_registry_name,
+                    schema_name=schema_name,
+                    schema_version_name=name,
+                    resource=resource
+                )
         except HttpResponseError as e:
             if "AuthorizationFailure" in e.message:
                 raise ForbiddenError(
@@ -316,9 +319,10 @@ class Schemas(Queryable):
         schema_registry_name: str,
         resource_group_name: str,
     ):
-        return self.version_ops.delete(
-            resource_group_name=resource_group_name,
-            schema_registry_name=schema_registry_name,
-            schema_name=schema_name,
-            schema_version_name=name,
-        )
+        with console.status("Working..."):
+            return self.version_ops.delete(
+                resource_group_name=resource_group_name,
+                schema_registry_name=schema_registry_name,
+                schema_name=schema_name,
+                schema_version_name=name,
+            )

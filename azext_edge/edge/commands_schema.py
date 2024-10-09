@@ -63,8 +63,6 @@ def delete_registry(
 
 
 # Schemas
-# TODO: add in version create
-# clean up kwargs
 def create_schema(
     cmd,
     schema_name: str,

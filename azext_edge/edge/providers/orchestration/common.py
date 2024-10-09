@@ -62,7 +62,15 @@ class IdentityUsageType(Enum):
 
 
 class SchemaType(Enum):
-    message_schema = "MessageSchema"
+    """value is user friendly, full_value is the service friendly"""
+    message = "message"
+
+    @property
+    def full_value(self) -> str:
+        type_map = {
+            SchemaType.message: "MessageSchema"
+        }
+        return type_map[self]
 
 
 class SchemaFormat(Enum):
@@ -71,9 +79,9 @@ class SchemaFormat(Enum):
     delta = "delta"
 
     @property
-    def full_value(self):
-        service_map = {
+    def full_value(self) -> str:
+        format_map = {
             SchemaFormat.json: "JsonSchema/draft-07",
             SchemaFormat.delta: "Delta/1.0"
         }
-        return service_map[self]
+        return format_map[self]

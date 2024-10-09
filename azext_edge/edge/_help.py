@@ -1192,11 +1192,11 @@ def load_iotops_help():
         - name: Create a schema called 'myschema' in the registry 'myregistry' with minimum inputs. Schema version 1 will be created for this schema.
           text: >
             az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
-            --format json --type MessageSchema --version-content '{\"hello\": 3}'
+            --format json --type message --version-content '{\"hello\": 3}'
         - name: Create a schema called 'myschema' with additional customization. Schema version 14 will be created for this schema.
           text: >
             az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
-            --format delta --type MessageSchema --desc "Schema for Assets" --display-name myassetschema
+            --format delta --type message --desc "Schema for Assets" --display-name myassetschema
             --version-content '{\"hello\": 3}' --ver 14 --vd "14th version"
     """
 

@@ -17,6 +17,8 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     registry_namespace = f"test-namespace-{generate_random_string(force_lower=True, size=6)}"
     # create the storage account and get the id
     # NOTE: storage account needs to have public network access enabled to work.
+    # if we want to check the blobs (aka see that the schema content goes in the right place)
+    # we would need to enable shared key access too...
     storage_account = run(
         f"az storage account create -n {storage_account_name} -g {registry_rg} "
         "--enable-hierarchical-namespace "
@@ -38,7 +40,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     version_num = 1
     schema1 = run(
         f"az iot ops schema create -n {schema_name1} -g {registry_rg} --registry {registry_name} "
-        f"--format delta --type MessageSchema --version-content {delta_content}"
+        f"--format delta --type message --version-content {delta_content}"
     )
     assert_schema(
         schema=schema1,
@@ -48,10 +50,6 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         schema_type="MessageSchema",
         format="delta"
     )
-
-    # there should be a blob in the storage account once the version is created but need to figure out how to
-    # get that with identity (rather than connection strings/etc
-    # )
 
     # SHOW
     schema_show = run(f"az iot ops schema show -n {schema_name1} -g {registry_rg} --registry {registry_name}")
@@ -98,7 +96,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
 
     schema2 = run(
         f"az iot ops schema create -n {schema_name2} -g {registry_rg} --registry {registry_name} "
-        f"--format json --type MessageSchema --desc \"{description}\" --display-name {display_name} "
+        f"--format json --type message --desc \"{description}\" --display-name {display_name} "
         f"--vc {file_name} --vd {version_desc} --ver {version_num}"
     )
     assert_schema(
@@ -114,12 +112,13 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
 
     # ADD VERSION
     inline_content = json.dumps({
-        generate_random_string(): generate_random_string(),
         generate_random_string(): generate_random_string()
     })
+    # fun stuff to make sure the inline is actually formatted correctly in the command
+    test_content = inline_content.replace('"', '\\"')
     version_add = run(
         f"az iot ops schema version add -n {version_num + 2} --schema {schema_name2} -g {registry_rg} "
-        f"--registry {registry_name} --content {inline_content}"
+        f"--registry {registry_name} --content \"{test_content}\""
     )
     assert_schema_version(
         version=version_add,
@@ -148,9 +147,9 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         description=version_desc
     )
 
-    # DELETE VERSION
+    # REMOVE VERSION
     run(
-        f"az iot ops schema version delete -n {version_num} --schema {schema_name1} -g {registry_rg} "
+        f"az iot ops schema version remove -n {version_num} --schema {schema_name2} -g {registry_rg} "
         f"--registry {registry_name}"
     )
 
@@ -159,7 +158,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         f"az iot ops schema version list --schema {schema_name2} -g {registry_rg} "
         f"--registry {registry_name}"
     )
-    version_map = [ver["name"] for ver in version_list]
+    version_map = [int(ver["name"]) for ver in version_list]
     assert version_num not in version_map
     assert version_num + 2 in version_map
 
