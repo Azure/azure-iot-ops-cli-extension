@@ -34,7 +34,7 @@ def get_schema_endpoint(
     registry_name: str,
     schema_name: Optional[str] = None
 ) -> str:
-    resource_path =f"/schemaRegistries/{registry_name}/schemas"
+    resource_path = f"/schemaRegistries/{registry_name}/schemas"
     if schema_name:
         resource_path += f"/{schema_name}"
     return get_base_endpoint(

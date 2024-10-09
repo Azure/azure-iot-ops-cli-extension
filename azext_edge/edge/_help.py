@@ -1302,7 +1302,7 @@ def load_iotops_help():
         examples:
         - name: List all schema versions for the schema 'myschema' in the schema registry 'myregistry'.
           text: >
-            az iot ops schema list -g myresourcegroup --registry myregistry --schema myschema
+            az iot ops schema version list -g myresourcegroup --registry myregistry --schema myschema
     """
 
     helps[
