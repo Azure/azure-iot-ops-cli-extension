@@ -351,7 +351,7 @@ def test_schema_registry_create(
         subscription_id=ZEROED_SUBSCRIPTION, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
     )
     mock_permission_manager().apply_role_assignment.assert_called_with(
-        scope=storage_resource_id,
+        scope=mock_storage_container_record["id"],
         principal_id=mock_registry_record["identity"]["principalId"],
         role_def_id=target_role_id,
     )
