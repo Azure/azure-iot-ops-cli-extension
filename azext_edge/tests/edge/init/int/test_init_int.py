@@ -93,7 +93,7 @@ def test_init_scenario(
     registry_id = init_test_setup["schemaRegistryId"]
     instance_name = init_test_setup["instanceName"]
     command = f"az iot ops init -g {resource_group} --cluster {cluster_name} "\
-        f"--sr-resource-id {registry_id} --no-progress {additional_init_args} "
+        f"--no-progress {additional_init_args} "
 
     # TODO: assert return once there is a return for init
     run(command)
@@ -102,7 +102,8 @@ def test_init_scenario(
 
     # create command
     create_command = f"az iot ops create -g {resource_group} --cluster {cluster_name} "\
-        f"-n {instance_name} --no-progress {additional_create_args} "
+        f"--sr-resource-id {registry_id}  -n {instance_name} "\
+        f"--no-progress {additional_create_args} "
     # TODO: assert create when return be returning
     run(create_command)
 

@@ -148,7 +148,6 @@ class InitTargets:
                 "kubernetesDistro": self.kubernetes_distro,
                 "containerRuntimeSocket": self.container_runtime_socket,
                 "trustConfig": self.trust_config,
-                "schemaRegistryId": self.schema_registry_resource_id,
                 "advancedConfig": self.advanced_config,
             },
             template_blueprint=M2_ENABLEMENT_TEMPLATE,

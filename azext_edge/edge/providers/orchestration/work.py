@@ -286,11 +286,6 @@ class WorkManager:
 
             # Enable IoT Ops workflow
             if self._apply_foundation:
-                # Ensure schema registry exists.
-                self.resource_client.resources.get_by_id(
-                    resource_id=self._targets.schema_registry_resource_id,
-                    api_version=REGISTRY_API_VERSION,
-                )
                 enablement_work_name = self._work_format_str.format(op="enablement")
                 self.render_display(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
@@ -329,23 +324,6 @@ class WorkManager:
                     IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
                 )
 
-                role_assignment_error = None
-                try:
-                    self.permission_manager.apply_role_assignment(
-                        scope=self._targets.schema_registry_resource_id,
-                        principal_id=self._extension_map[IOT_OPS_EXTENSION_TYPE]["identity"]["principalId"],
-                        role_def_id=ROLE_DEF_FORMAT_STR.format(
-                            subscription_id=self.subscription_id,
-                            role_id=CONTRIBUTOR_ROLE_ID,  # TODO - @digimaun use schema registry subscription.
-                        ),
-                    )
-                except Exception as e:
-                    role_assignment_error = get_user_msg_warn_ra(
-                        prefix=f"Role assignment failed with:\n{str(e)}.",
-                        principal_id=self._extension_map[IOT_OPS_EXTENSION_TYPE]["identity"]["principalId"],
-                        scope=self._targets.schema_registry_resource_id,
-                    )
-
                 self.complete_step(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, completed_step=WorkStepKey.DEPLOY_ENABLEMENT
                 )
@@ -355,14 +333,17 @@ class WorkManager:
                     resource_tree = self._resource_map.build_tree()
                     self.stop_display()
                     print(resource_tree)
-                    if role_assignment_error:
-                        logger.warning(role_assignment_error)
                     return
                 # TODO @digimaun - work_kpis
                 return work_kpis
 
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
+                # Ensure schema registry exists.
+                self.resource_client.resources.get_by_id(
+                    resource_id=self._targets.schema_registry_resource_id,
+                    api_version=REGISTRY_API_VERSION,
+                )
                 if not self._extension_map:
                     self._extension_map = self._resource_map.connected_cluster.get_extensions_by_type(
                         IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
@@ -382,12 +363,30 @@ class WorkManager:
                         "configurationSettings"
                     ],
                 )
+                role_assignment_error = None
+                try:
+                    self.permission_manager.apply_role_assignment(
+                        scope=self._targets.schema_registry_resource_id,
+                        principal_id=self._extension_map[IOT_OPS_EXTENSION_TYPE]["identity"]["principalId"],
+                        role_def_id=ROLE_DEF_FORMAT_STR.format(
+                            subscription_id=self.subscription_id,
+                            role_id=CONTRIBUTOR_ROLE_ID,  # TODO - @digimaun use schema registry subscription.
+                        ),
+                    )
+                except Exception as e:
+                    role_assignment_error = get_user_msg_warn_ra(
+                        prefix=f"Role assignment failed with:\n{str(e)}.",
+                        principal_id=self._extension_map[IOT_OPS_EXTENSION_TYPE]["identity"]["principalId"],
+                        scope=self._targets.schema_registry_resource_id,
+                    )
                 self._deploy_template(
                     content=instance_content,
                     parameters=instance_parameters,
                     deployment_name=instance_work_name,
                     what_if=True,
                 )
+                if role_assignment_error:
+                    logger.warning(role_assignment_error)
                 self.complete_step(
                     category=WorkCategoryKey.DEPLOY_IOT_OPS,
                     completed_step=WorkStepKey.WHAT_IF_INSTANCE,

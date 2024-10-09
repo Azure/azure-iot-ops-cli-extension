@@ -109,7 +109,6 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
-    schema_registry_resource_id: str,
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
     trust_settings: Optional[List[str]] = None,
@@ -140,7 +139,6 @@ def init(
         ops_config=ops_config,
         ops_version=ops_version,
         trust_settings=trust_settings,
-        schema_registry_resource_id=schema_registry_resource_id,
     )
 
 
@@ -149,6 +147,7 @@ def create_instance(
     cluster_name: str,
     resource_group_name: str,
     instance_name: str,
+    schema_registry_resource_id: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     location: Optional[str] = None,
     custom_location_name: Optional[str] = None,
@@ -196,6 +195,7 @@ def create_instance(
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         cluster_namespace=cluster_namespace,
+        schema_registry_resource_id=schema_registry_resource_id,
         location=location,
         custom_location_name=custom_location_name,
         enable_rsync_rules=enable_rsync_rules,
