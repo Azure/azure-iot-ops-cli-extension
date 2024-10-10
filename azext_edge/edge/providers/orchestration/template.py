@@ -56,7 +56,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "12202254502014934933"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "2952065196343262420"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -208,66 +208,25 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
         },
         "parameters": {
             "clusterName": {"type": "string"},
-            "kubernetesDistro": {"type": "string", "defaultValue": "K8s", "allowedValues": ["K3s", "K8s", "MicroK8s"]},
-            "containerRuntimeSocket": {"type": "string", "defaultValue": ""},
             "trustConfig": {"$ref": "#/definitions/_1.TrustConfig", "defaultValue": {"source": "SelfSigned"}},
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "VERSIONS": {
                 "platform": "0.7.6",
-                "iotOperations": "0.8.3",
                 "secretStore": "0.6.4",
                 "containerStorage": "2.1.1-preview",
                 "openServiceMesh": "1.2.9",
             },
             "TRAINS": {
                 "platform": "preview",
-                "iotOperations": "integration",
                 "secretStore": "preview",
                 "containerStorage": "stable",
                 "openServiceMesh": "stable",
             },
-            "MQTT_SETTINGS": {
-                "brokerListenerServiceName": "aio-broker",
-                "brokerListenerPort": 18883,
-                "serviceAccountAudience": "aio-internal",
-                "selfSignedIssuerName": "[format('{0}-aio-certificate-issuer', variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace)]",
-            },
             "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arccontainerstorage-storage-pool')]",
             "nonFaultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'default,local-path')]",
             "kubernetesStorageClass": "[if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), variables('faultTolerantStorageClass'), variables('nonFaultTolerantStorageClass'))]",
-            "defaultAioConfigurationSettings": {
-                "AgentOperationTimeoutInMinutes": 120,
-                "connectors.values.mqttBroker.address": "[format('mqtts://{0}.{1}:{2}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace, variables('MQTT_SETTINGS').brokerListenerPort)]",
-                "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
-                "connectors.values.opcPlcSimulation.deploy": "false",
-                "connectors.values.opcPlcSimulation.autoAcceptUntrustedCertificates": "false",
-                "connectors.values.discoveryHandler.enabled": "false",
-                "adr.values.Microsoft.CustomLocation.ServiceAccount": "default",
-                "akri.values.webhookConfiguration.enabled": "false",
-                "akri.values.certManagerWebhookCertificate.enabled": "false",
-                "akri.values.agent.extensionService.mqttBroker.hostName": "[format('{0}.{1}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace)]",
-                "akri.values.agent.extensionService.mqttBroker.port": "[variables('MQTT_SETTINGS').brokerListenerPort]",
-                "akri.values.agent.extensionService.mqttBroker.serviceAccountAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
-                "akri.values.agent.host.containerRuntimeSocket": "[parameters('containerRuntimeSocket')]",
-                "akri.values.kubernetesDistro": "[toLower(parameters('kubernetesDistro'))]",
-                "mqttBroker.values.global.quickstart": "false",
-                "mqttBroker.values.operator.firstPartyMetricsOn": "true",
-                "observability.metrics.enabled": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()))]",
-                "observability.metrics.openTelemetryCollectorAddress": "[if(coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()), format('{0}', tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress')), '')]",
-                "observability.metrics.exportIntervalSeconds": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelExportIntervalSeconds'), 60))]",
-                "trustSource": "[parameters('trustConfig').source]",
-                "trustBundleSettings.issuer.name": "[if(equals(parameters('trustConfig').source, 'CustomerManaged'), parameters('trustConfig').settings.issuerName, variables('MQTT_SETTINGS').selfSignedIssuerName)]",
-                "trustBundleSettings.issuer.kind": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'issuerKind'), '')]",
-                "trustBundleSettings.configMap.name": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'configMapName'), '')]",
-                "trustBundleSettings.configMap.key": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'configMapKey'), '')]",
-                "schemaRegistry.values.mqttBroker.host": "[format('mqtts://{0}.{1}:{2}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace, variables('MQTT_SETTINGS').brokerListenerPort)]",
-                "schemaRegistry.values.mqttBroker.tlsEnabled": True,
-                "schemaRegistry.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
-            },
         },
         "resources": {
             "cluster": {
@@ -280,7 +239,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "[format('azure-iot-operations-platform-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
+                "name": "azure-iot-operations-platform",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "extensionType": "microsoft.iotoperations.platform",
@@ -317,7 +276,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "[format('open-service-mesh-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
+                "name": "open-service-mesh",
                 "properties": {
                     "extensionType": "microsoft.openservicemesh",
                     "autoUpgradeMinorVersion": False,
@@ -346,50 +305,22 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 },
                 "dependsOn": ["aio_platform_extension", "cluster", "open_service_mesh_extension"],
             },
-            "aio_extension": {
-                "type": "Microsoft.KubernetesConfiguration/extensions",
-                "apiVersion": "2023-05-01",
-                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "[format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
-                "identity": {"type": "SystemAssigned"},
-                "properties": {
-                    "extensionType": "microsoft.iotoperations",
-                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'version'), variables('VERSIONS').iotOperations)]",
-                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'train'), variables('TRAINS').iotOperations)]",
-                    "autoUpgradeMinorVersion": False,
-                    "scope": "[variables('AIO_EXTENSION_SCOPE')]",
-                    "configurationSettings": "[union(variables('defaultAioConfigurationSettings'), coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'configurationSettingsOverride'), createObject()))]",
-                },
-                "dependsOn": ["aio_platform_extension", "cluster"],
-            },
         },
         "outputs": {
             "clExtensionIds": {
                 "type": "array",
                 "items": {"type": "string"},
                 "value": [
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-platform-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
-                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
+                    "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations-platform')]",
                     "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-secret-store')]",
                 ],
             },
             "extensions": {
                 "type": "object",
                 "value": {
-                    "aio": {
-                        "name": "[format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
-                        "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
-                        "version": "[reference('aio_extension').version]",
-                        "releaseTrain": "[reference('aio_extension').releaseTrain]",
-                        "config": {
-                            "brokerListenerName": "[variables('MQTT_SETTINGS').brokerListenerServiceName]",
-                            "brokerListenerPort": "[variables('MQTT_SETTINGS').brokerListenerPort]",
-                        },
-                        "identityPrincipalId": "[reference('aio_extension', '2023-05-01', 'full').identity.principalId]",
-                    },
                     "platform": {
-                        "name": "[format('azure-iot-operations-platform-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
-                        "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-platform-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
+                        "name": "azure-iot-operations-platform",
+                        "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations-platform')]",
                         "version": "[reference('aio_platform_extension').version]",
                         "releaseTrain": "[reference('aio_platform_extension').releaseTrain]",
                     },
@@ -400,8 +331,8 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                         "releaseTrain": "[reference('secret_store_extension').releaseTrain]",
                     },
                     "openServiceMesh": {
-                        "name": "[format('open-service-mesh-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
-                        "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('open-service-mesh-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
+                        "name": "open-service-mesh",
+                        "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'open-service-mesh')]",
                         "version": "[reference('open_service_mesh_extension').version]",
                         "releaseTrain": "[reference('open_service_mesh_extension').releaseTrain]",
                     },
@@ -424,7 +355,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "10409843909996696107"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "4431973576934377606"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -578,6 +509,8 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             "clusterName": {"type": "string"},
             "clusterNamespace": {"type": "string", "defaultValue": "azure-iot-operations"},
             "clusterLocation": {"type": "string", "defaultValue": "[resourceGroup().location]"},
+            "kubernetesDistro": {"type": "string", "defaultValue": "K8s", "allowedValues": ["K3s", "K8s", "MicroK8s"]},
+            "containerRuntimeSocket": {"type": "string", "defaultValue": ""},
             "customLocationName": {
                 "type": "string",
                 "defaultValue": "[format('location-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5)))]",
@@ -592,6 +525,10 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
+            "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
+            "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
+            "VERSIONS": {"iotOperations": "0.8.3"},
+            "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
@@ -608,6 +545,35 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
                 "memoryProfile": "[coalesce(tryGet(parameters('brokerConfig'), 'memoryProfile'), 'Medium')]",
                 "serviceType": "[coalesce(tryGet(parameters('brokerConfig'), 'serviceType'), 'ClusterIp')]",
             },
+            "defaultAioConfigurationSettings": {
+                "AgentOperationTimeoutInMinutes": 120,
+                "connectors.values.mqttBroker.address": "[format('mqtts://{0}.{1}:{2}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace, variables('MQTT_SETTINGS').brokerListenerPort)]",
+                "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
+                "connectors.values.opcPlcSimulation.deploy": "false",
+                "connectors.values.opcPlcSimulation.autoAcceptUntrustedCertificates": "false",
+                "connectors.values.discoveryHandler.enabled": "false",
+                "adr.values.Microsoft.CustomLocation.ServiceAccount": "default",
+                "akri.values.webhookConfiguration.enabled": "false",
+                "akri.values.certManagerWebhookCertificate.enabled": "false",
+                "akri.values.agent.extensionService.mqttBroker.hostName": "[format('{0}.{1}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace)]",
+                "akri.values.agent.extensionService.mqttBroker.port": "[variables('MQTT_SETTINGS').brokerListenerPort]",
+                "akri.values.agent.extensionService.mqttBroker.serviceAccountAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
+                "akri.values.agent.host.containerRuntimeSocket": "[parameters('containerRuntimeSocket')]",
+                "akri.values.kubernetesDistro": "[toLower(parameters('kubernetesDistro'))]",
+                "mqttBroker.values.global.quickstart": "false",
+                "mqttBroker.values.operator.firstPartyMetricsOn": "true",
+                "observability.metrics.enabled": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()))]",
+                "observability.metrics.openTelemetryCollectorAddress": "[if(coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()), format('{0}', tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress')), '')]",
+                "observability.metrics.exportIntervalSeconds": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelExportIntervalSeconds'), 60))]",
+                "trustSource": "[parameters('trustConfig').source]",
+                "trustBundleSettings.issuer.name": "[if(equals(parameters('trustConfig').source, 'CustomerManaged'), parameters('trustConfig').settings.issuerName, variables('MQTT_SETTINGS').selfSignedIssuerName)]",
+                "trustBundleSettings.issuer.kind": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'issuerKind'), '')]",
+                "trustBundleSettings.configMap.name": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'configMapName'), '')]",
+                "trustBundleSettings.configMap.key": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'configMapKey'), '')]",
+                "schemaRegistry.values.mqttBroker.host": "[format('mqtts://{0}.{1}:{2}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace, variables('MQTT_SETTINGS').brokerListenerPort)]",
+                "schemaRegistry.values.mqttBroker.tlsEnabled": True,
+                "schemaRegistry.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
+            },
         },
         "resources": {
             "cluster": {
@@ -615,6 +581,22 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
                 "type": "Microsoft.Kubernetes/connectedClusters",
                 "apiVersion": "2021-03-01",
                 "name": "[parameters('clusterName')]",
+            },
+            "aio_extension": {
+                "type": "Microsoft.KubernetesConfiguration/extensions",
+                "apiVersion": "2023-05-01",
+                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
+                "name": "[format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
+                "identity": {"type": "SystemAssigned"},
+                "properties": {
+                    "extensionType": "microsoft.iotoperations",
+                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'version'), variables('VERSIONS').iotOperations)]",
+                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'train'), variables('TRAINS').iotOperations)]",
+                    "autoUpgradeMinorVersion": False,
+                    "scope": "[variables('AIO_EXTENSION_SCOPE')]",
+                    "configurationSettings": "[union(variables('defaultAioConfigurationSettings'), coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'configurationSettingsOverride'), createObject()))]",
+                },
+                "dependsOn": ["cluster"],
             },
             "customLocation": {
                 "type": "Microsoft.ExtendedLocation/customLocations",
@@ -625,11 +607,11 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
                     "hostResourceId": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
                     "namespace": "[parameters('clusterNamespace')]",
                     "displayName": "[parameters('customLocationName')]",
-                    "clusterExtensionIds": "[parameters('clExtentionIds')]",
+                    "clusterExtensionIds": "[flatten(createArray(parameters('clExtentionIds'), createArray(extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))))))]",
                 },
-                "dependsOn": ["cluster"],
+                "dependsOn": ["aio_extension", "cluster"],
             },
-            "broker_syncRule": {
+            "aio_syncRule": {
                 "condition": "[parameters('deployResourceSyncRules')]",
                 "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                 "apiVersion": "2021-08-31-preview",
@@ -653,7 +635,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
                     "selector": {"matchLabels": {"management.azure.com/provider-name": "Microsoft.DeviceRegistry"}},
                     "targetResourceGroup": "[resourceGroup().id]",
                 },
-                "dependsOn": ["broker_syncRule", "customLocation"],
+                "dependsOn": ["aio_syncRule", "customLocation"],
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
@@ -785,6 +767,20 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
         },
         "outputs": {
+            "aioExtension": {
+                "type": "object",
+                "value": {
+                    "name": "[format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
+                    "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
+                    "version": "[reference('aio_extension').version]",
+                    "releaseTrain": "[reference('aio_extension').releaseTrain]",
+                    "config": {
+                        "brokerListenerName": "[variables('MQTT_SETTINGS').brokerListenerServiceName]",
+                        "brokerListenerPort": "[variables('MQTT_SETTINGS').brokerListenerPort]",
+                    },
+                    "identityPrincipalId": "[reference('aio_extension', '2023-05-01', 'full').identity.principalId]",
+                },
+            },
             "aio": {
                 "type": "object",
                 "value": {
