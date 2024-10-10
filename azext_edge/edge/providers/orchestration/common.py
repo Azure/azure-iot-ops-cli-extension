@@ -59,3 +59,29 @@ class KubernetesDistroType(Enum):
 
 class IdentityUsageType(Enum):
     dataflow = "dataflow"
+
+
+class SchemaType(Enum):
+    """value is user friendly, full_value is the service friendly"""
+    message = "message"
+
+    @property
+    def full_value(self) -> str:
+        type_map = {
+            SchemaType.message: "MessageSchema"
+        }
+        return type_map[self]
+
+
+class SchemaFormat(Enum):
+    """value is user friendly, full_value is the service friendly"""
+    json = "json"
+    delta = "delta"
+
+    @property
+    def full_value(self) -> str:
+        format_map = {
+            SchemaFormat.json: "JsonSchema/draft-07",
+            SchemaFormat.delta: "Delta/1.0"
+        }
+        return format_map[self]
