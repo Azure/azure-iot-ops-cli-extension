@@ -680,16 +680,26 @@ def assert_list_stateful_sets(
     directory_path: str,
     label_selector: Optional[str] = None,
     field_selector: Optional[str] = None,
+    mock_names: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ):
-    mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
-        label_selector=label_selector, field_selector=field_selector
-    )
+    if namespace:
+        mocked_client.AppsV1Api().list_namespaced_stateful_set.assert_any_call(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.assert_any_call(
+            label_selector=label_selector, field_selector=field_selector
+        )
 
-    assert_zipfile_write(
-        mocked_zipfile,
-        zinfo=f"mock_namespace/{directory_path}/statefulset.mock_statefulset.yaml",
-        data="kind: Statefulset\nmetadata:\n  name: mock_statefulset\n  namespace: mock_namespace\n",
-    )
+    mock_names = mock_names or ["mock_statefulset"]
+
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{directory_path}/statefulset.{name}.yaml",
+            data=f"kind: Statefulset\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+        )
 
 
 def assert_list_services(

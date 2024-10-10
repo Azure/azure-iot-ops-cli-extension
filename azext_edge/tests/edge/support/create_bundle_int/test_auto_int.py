@@ -35,9 +35,9 @@ def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
 def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
     """Test to focus on ops_service param."""
 
-    # skip arccontainerstorage for aio namespace check
-    if ops_service == OpsServiceType.arccontainerstorage.value:
-        pytest.skip("arccontainerstorage is not generated in aio namespace")
+    # skip arccontainerstorage and azuremonitor for aio namespace check
+    if ops_service in [OpsServiceType.arccontainerstorage.value, OpsServiceType.azuremonitor.value]:
+        pytest.skip(f"{ops_service} is not generated in aio namespace")
 
     command = f"az iot ops support create-bundle --broker-traces {mq_traces} "
     if bundle_dir:
@@ -62,6 +62,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     aio_namespace = namespaces.get("aio")
     acs_namespace = namespaces.get("acs")
     ssc_namespace = namespaces.get("ssc")
+    arc_namespace = namespaces.get("arc")
 
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -88,6 +89,10 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     # remove ssc resources in ssc namespace from walk_result from aio namespace assertion
     if ssc_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretstore.value), {})
+
+    # remove azuremonitor resources in arc namespace from walk_result from aio namespace assertion
+    if arc_namespace and path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value) in walk_result:
+        walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value), {})
 
     # Level 2 and 3 - bottom
     is_billing_included = OpsServiceType.billing.value in expected_services
@@ -143,6 +148,13 @@ def _get_expected_services(
         and OpsServiceType.secretstore.value in expected_services
     ):
         expected_services.remove(OpsServiceType.secretstore.value)
+
+    # azuremonitor folder will not be created if there are no azuremonitor resources
+    if (
+        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.azuremonitor.value))
+        and OpsServiceType.azuremonitor.value in expected_services
+    ):
+        expected_services.remove(OpsServiceType.azuremonitor.value)
 
     expected_services.append("meta")
     return expected_services

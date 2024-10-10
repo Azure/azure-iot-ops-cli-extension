@@ -14,9 +14,11 @@ from .dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
 from .meta import META_API_V1B1, MetaResourceKinds
 from .arccontainerstorage import ARCCONTAINERSTORAGE_API_V1
 from .secretstore import SECRETSYNC_API_V1, SECRETSTORE_API_V1
+from .azuremonitor import AZUREMONITOR_API_V1
 
 __all__ = [
     "ARCCONTAINERSTORAGE_API_V1",
+    "AZUREMONITOR_API_V1",
     "CLUSTER_CONFIG_API_V1",
     "EdgeResourceApi",
     "EdgeApiManager",

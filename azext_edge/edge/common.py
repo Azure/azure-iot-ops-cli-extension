@@ -154,6 +154,7 @@ class OpsServiceType(ListableEnum):
     schemaregistry = "schemaregistry"
     arccontainerstorage = "acs"
     secretstore = "secretstore"
+    azuremonitor = "azuremonitor"
 
     @classmethod
     def list_check_services(cls):
@@ -216,18 +217,21 @@ class AEPAuthModes(Enum):
 
 class AEPTypes(Enum):
     """Asset Endpoint Profile (connector) Types"""
+
     # TODO: ensure this is the final enum
     opcua = "OpcUa"
 
 
 class TopicRetain(Enum):
     """Set the retain flag for messages published to an MQTT broker."""
+
     keep = "Keep"
     never = "Never"
 
 
 class SecurityModes(Enum):
     """Security modes for OPCUA connector."""
+
     none = "none"
     sign = "sign"
     sign_and_encrypt = "signAndEncrypt"
@@ -235,6 +239,7 @@ class SecurityModes(Enum):
 
 class SecurityPolicies(Enum):
     """Security policies for the OPCUA connector."""
+
     # TODO: add in user friendly input mapping
     none = "none"
     basic128 = "Basic128Rsa15"

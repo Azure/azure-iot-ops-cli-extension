@@ -219,17 +219,26 @@ def process_statefulset(
     return_namespaces: bool = False,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ) -> Union[Tuple[List[dict], dict], List[dict]]:
     v1_apps = client.AppsV1Api()
-    statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
-    )
+
+    if namespace:
+        statefulsets: V1StatefulSetList = v1_apps.list_namespaced_stateful_set(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        statefulsets: V1StatefulSetList = v1_apps.list_stateful_set_for_all_namespaces(
+            label_selector=label_selector, field_selector=field_selector
+        )
     namespace_pods_work = {}
 
     processed = _process_kubernetes_resources(
         directory_path=directory_path,
         resources=statefulsets,
         kind=BundleResourceKind.statefulset.value,
+        prefix_names=prefix_names,
     )
 
     for statefulset in statefulsets.items:
