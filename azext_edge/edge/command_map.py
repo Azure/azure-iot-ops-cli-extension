@@ -16,6 +16,7 @@ edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edg
 secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_secretsync#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
+connector_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_connector#{}")
 
 
 def load_iotops_commands(self, _):
@@ -172,3 +173,9 @@ def load_iotops_commands(self, _):
         cmd_group.show_command("show", "show_registry")
         cmd_group.command("list", "list_registries")
         cmd_group.command("delete", "delete_registry")
+
+    with self.command_group(
+        "iot ops connector opcua trust",
+        command_type=connector_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_connector_opcua_trust")
