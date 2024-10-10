@@ -49,12 +49,6 @@ def mocked_verify_cli_client_connections(mocker):
 
 
 @pytest.fixture
-def mocked_register_providers(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.rp_namespace.register_providers", autospec=True)
-    yield patched
-
-
-@pytest.fixture
 def mocked_edge_api_keyvault_api_v1(mocker):
     patched = mocker.patch("azext_edge.edge.providers.edge_api.keyvault.KEYVAULT_API_V1", autospec=False)
     yield patched
