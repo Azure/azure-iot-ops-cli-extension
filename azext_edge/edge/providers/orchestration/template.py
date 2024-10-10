@@ -47,7 +47,7 @@ class TemplateBlueprint(NamedTuple):
         )
 
 
-IOT_OPERATIONS_VERSION_MONIKER = "v0.7.0-preview"
+IOT_OPERATIONS_VERSION_MONIKER = "v0.8.0-preview"
 
 M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
     commit_id="78864ae529f698cf1c9bf0be0a6957e6c9f3cf38",
@@ -56,7 +56,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "7995831049546950052"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "12202254502014934933"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -90,6 +90,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                     "observability": {
                         "type": "object",
                         "properties": {
+                            "enabled": {"type": "bool", "nullable": True},
                             "otelCollectorAddress": {"type": "string", "nullable": True},
                             "otelExportIntervalSeconds": {"type": "int", "nullable": True},
                         },
@@ -210,7 +211,6 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "kubernetesDistro": {"type": "string", "defaultValue": "K8s", "allowedValues": ["K3s", "K8s", "MicroK8s"]},
             "containerRuntimeSocket": {"type": "string", "defaultValue": ""},
             "trustConfig": {"$ref": "#/definitions/_1.TrustConfig", "defaultValue": {"source": "SelfSigned"}},
-            "schemaRegistryId": {"type": "string"},
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
@@ -218,19 +218,18 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "VERSIONS": {
                 "platform": "0.7.6",
-                "aio": "0.7.31",
-                "secretSyncController": "0.6.4",
-                "edgeStorageAccelerator": "2.1.1-preview",
+                "iotOperations": "0.8.3",
+                "secretStore": "0.6.4",
+                "containerStorage": "2.1.1-preview",
                 "openServiceMesh": "1.2.9",
             },
             "TRAINS": {
                 "platform": "preview",
-                "aio": "preview",
-                "secretSyncController": "preview",
+                "iotOperations": "integration",
+                "secretStore": "preview",
+                "containerStorage": "stable",
                 "openServiceMesh": "stable",
-                "edgeStorageAccelerator": "stable",
             },
-            "OBSERVABILITY_ENABLED": "[not(equals(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress'), null()))]",
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
@@ -257,15 +256,14 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 "akri.values.kubernetesDistro": "[toLower(parameters('kubernetesDistro'))]",
                 "mqttBroker.values.global.quickstart": "false",
                 "mqttBroker.values.operator.firstPartyMetricsOn": "true",
-                "observability.metrics.enabled": "[format('{0}', variables('OBSERVABILITY_ENABLED'))]",
-                "observability.metrics.openTelemetryCollectorAddress": "[if(variables('OBSERVABILITY_ENABLED'), format('{0}', tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress')), '')]",
+                "observability.metrics.enabled": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()))]",
+                "observability.metrics.openTelemetryCollectorAddress": "[if(coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()), format('{0}', tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress')), '')]",
                 "observability.metrics.exportIntervalSeconds": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelExportIntervalSeconds'), 60))]",
                 "trustSource": "[parameters('trustConfig').source]",
                 "trustBundleSettings.issuer.name": "[if(equals(parameters('trustConfig').source, 'CustomerManaged'), parameters('trustConfig').settings.issuerName, variables('MQTT_SETTINGS').selfSignedIssuerName)]",
                 "trustBundleSettings.issuer.kind": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'issuerKind'), '')]",
                 "trustBundleSettings.configMap.name": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'configMapName'), '')]",
                 "trustBundleSettings.configMap.key": "[coalesce(tryGet(tryGet(parameters('trustConfig'), 'settings'), 'configMapKey'), '')]",
-                "schemaRegistry.values.resourceId": "[parameters('schemaRegistryId')]",
                 "schemaRegistry.values.mqttBroker.host": "[format('mqtts://{0}.{1}:{2}', variables('MQTT_SETTINGS').brokerListenerServiceName, variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace, variables('MQTT_SETTINGS').brokerListenerPort)]",
                 "schemaRegistry.values.mqttBroker.tlsEnabled": True,
                 "schemaRegistry.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
@@ -297,7 +295,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 },
                 "dependsOn": ["cluster"],
             },
-            "secret_sync_controller_extension": {
+            "secret_store_extension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
@@ -305,8 +303,8 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "extensionType": "microsoft.azure.secretstore",
-                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'secretSyncController'), 'version'), variables('VERSIONS').secretSyncController)]",
-                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'secretSyncController'), 'train'), variables('TRAINS').secretSyncController)]",
+                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'secretSyncController'), 'version'), variables('VERSIONS').secretStore)]",
+                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'secretSyncController'), 'train'), variables('TRAINS').secretStore)]",
                     "autoUpgradeMinorVersion": False,
                     "configurationSettings": {
                         "rotationPollIntervalInSeconds": "120",
@@ -333,7 +331,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 },
                 "dependsOn": ["cluster"],
             },
-            "edge_storage_accelerator_extension": {
+            "container_storage_extension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
@@ -342,8 +340,8 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 "properties": {
                     "extensionType": "Microsoft.Arc.ContainerStorage",
                     "autoUpgradeMinorVersion": False,
-                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'version'), variables('VERSIONS').edgeStorageAccelerator)]",
-                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'train'), variables('TRAINS').edgeStorageAccelerator)]",
+                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'version'), variables('VERSIONS').containerStorage)]",
+                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'train'), variables('TRAINS').containerStorage)]",
                     "configurationSettings": "[union(createObject('edgeStorageConfiguration.create', 'true', 'feature.diskStorageClass', variables('kubernetesStorageClass')), if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), createObject('acstorConfiguration.create', 'true', 'acstorConfiguration.properties.diskMountPoint', '/mnt'), createObject()))]",
                 },
                 "dependsOn": ["aio_platform_extension", "cluster", "open_service_mesh_extension"],
@@ -356,8 +354,8 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "extensionType": "microsoft.iotoperations",
-                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'version'), variables('VERSIONS').aio)]",
-                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'train'), variables('TRAINS').aio)]",
+                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'version'), variables('VERSIONS').iotOperations)]",
+                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'train'), variables('TRAINS').iotOperations)]",
                     "autoUpgradeMinorVersion": False,
                     "scope": "[variables('AIO_EXTENSION_SCOPE')]",
                     "configurationSettings": "[union(variables('defaultAioConfigurationSettings'), coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'configurationSettingsOverride'), createObject()))]",
@@ -395,11 +393,11 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                         "version": "[reference('aio_platform_extension').version]",
                         "releaseTrain": "[reference('aio_platform_extension').releaseTrain]",
                     },
-                    "secretSyncController": {
+                    "secretStore": {
                         "name": "azure-secret-store",
                         "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-secret-store')]",
-                        "version": "[reference('secret_sync_controller_extension').version]",
-                        "releaseTrain": "[reference('secret_sync_controller_extension').releaseTrain]",
+                        "version": "[reference('secret_store_extension').version]",
+                        "releaseTrain": "[reference('secret_store_extension').releaseTrain]",
                     },
                     "openServiceMesh": {
                         "name": "[format('open-service-mesh-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
@@ -407,11 +405,11 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                         "version": "[reference('open_service_mesh_extension').version]",
                         "releaseTrain": "[reference('open_service_mesh_extension').releaseTrain]",
                     },
-                    "edgeStorageAccelerator": {
+                    "containerStorage": {
                         "name": "azure-arc-containerstorage",
                         "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-arc-containerstorage')]",
-                        "version": "[reference('edge_storage_accelerator_extension').version]",
-                        "releaseTrain": "[reference('edge_storage_accelerator_extension').releaseTrain]",
+                        "version": "[reference('container_storage_extension').version]",
+                        "releaseTrain": "[reference('container_storage_extension').releaseTrain]",
                     },
                 },
             },
@@ -426,7 +424,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "6194687573320740755"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "10409843909996696107"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -460,6 +458,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
                     "observability": {
                         "type": "object",
                         "properties": {
+                            "enabled": {"type": "bool", "nullable": True},
                             "otelCollectorAddress": {"type": "string", "nullable": True},
                             "otelExportIntervalSeconds": {"type": "int", "nullable": True},
                         },
@@ -658,7 +657,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
-                "apiVersion": "2024-08-15-preview",
+                "apiVersion": "2024-09-15-preview",
                 "name": "[format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5)))]",
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": {
@@ -668,13 +667,13 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
                 "identity": "[if(empty(parameters('userAssignedIdentity')), createObject('type', 'None'), createObject('type', 'UserAssigned', 'userAssignedIdentities', createObject(format('{0}', parameters('userAssignedIdentity')), createObject())))]",
                 "properties": {
                     "description": "An AIO instance.",
-                    "schemaRegistryNamespace": "[reference(parameters('schemaRegistryId'), '2024-07-01-preview').namespace]",
+                    "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},
                 },
                 "dependsOn": ["customLocation"],
             },
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
-                "apiVersion": "2024-08-15-preview",
+                "apiVersion": "2024-09-15-preview",
                 "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -699,7 +698,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "broker_authn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
-                "apiVersion": "2024-08-15-preview",
+                "apiVersion": "2024-09-15-preview",
                 "name": "[format('{0}/{1}/{2}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default', 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -719,7 +718,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "broker_listener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-                "apiVersion": "2024-08-15-preview",
+                "apiVersion": "2024-09-15-preview",
                 "name": "[format('{0}/{1}/{2}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default', 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -749,7 +748,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "dataflow_profile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
-                "apiVersion": "2024-08-15-preview",
+                "apiVersion": "2024-09-15-preview",
                 "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -760,7 +759,7 @@ M2_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "dataflow_endpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
-                "apiVersion": "2024-08-15-preview",
+                "apiVersion": "2024-09-15-preview",
                 "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",

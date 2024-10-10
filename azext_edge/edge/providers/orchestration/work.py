@@ -24,6 +24,7 @@ from rich.table import Table
 from ...util.az_client import (
     REGISTRY_API_VERSION,
     get_resource_client,
+    parse_resource_id,
     wait_for_terminal_state,
 )
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager
@@ -365,12 +366,13 @@ class WorkManager:
                 )
                 role_assignment_error = None
                 try:
+                    schema_registry_id_parts = parse_resource_id(self._targets.schema_registry_resource_id)
                     self.permission_manager.apply_role_assignment(
                         scope=self._targets.schema_registry_resource_id,
                         principal_id=self._extension_map[IOT_OPS_EXTENSION_TYPE]["identity"]["principalId"],
                         role_def_id=ROLE_DEF_FORMAT_STR.format(
-                            subscription_id=self.subscription_id,
-                            role_id=CONTRIBUTOR_ROLE_ID,  # TODO - @digimaun use schema registry subscription.
+                            subscription_id=schema_registry_id_parts.subscription_id,
+                            role_id=CONTRIBUTOR_ROLE_ID,
                         ),
                     )
                 except Exception as e:

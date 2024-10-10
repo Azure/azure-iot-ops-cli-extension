@@ -24,9 +24,9 @@ EXPECTED_EXTENSION_RESOURCE_KEYS = frozenset(
     [
         "cluster",
         "aio_platform_extension",
-        "secret_sync_controller_extension",
+        "secret_store_extension",
         "open_service_mesh_extension",
-        "edge_storage_accelerator_extension",
+        "container_storage_extension",
         "aio_extension",
     ]
 )

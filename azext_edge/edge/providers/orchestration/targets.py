@@ -16,7 +16,7 @@ from ...common import (
     DEFAULT_DATAFLOW_PROFILE,
 )
 from ...util import assemble_nargs_to_dict
-from ...util.az_client import parse_resource_id, REGISTRY_API_VERSION
+from ...util.az_client import parse_resource_id
 from ..orchestration.common import (
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
@@ -166,8 +166,6 @@ class InitTargets:
     def get_ops_instance_template(
         self, cl_extension_ids: List[str], ops_extension_config: Dict[str, str]
     ) -> Tuple[dict, dict]:
-        # Set the schema registry resource Id from the extension config
-        self.schema_registry_resource_id = ops_extension_config.get("schemaRegistry.values.resourceId")
         trust_source = ops_extension_config.get("trustSource")
 
         if trust_source == "CustomerManaged":
@@ -201,9 +199,8 @@ class InitTargets:
         instance = template.get_resource_by_key("aioInstance")
         instance["properties"]["description"] = self.instance_description
 
-        # TODO: this is temporary for this milestone. Next milestone it should change.
         instance["properties"]["schemaRegistryRef"] = {
-            "resourceId": f"[reference(parameters('schemaRegistryId'), '{REGISTRY_API_VERSION}').id]"
+            "resourceId": "[parameters('schemaRegistryId')]"
         }
 
         if self.tags:
