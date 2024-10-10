@@ -1189,15 +1189,23 @@ def load_iotops_help():
                       https://github.com/delta-io/delta/blob/master/PROTOCOL.md#column-mapping and
                       https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-and-delta-tables. (#TODO AKA.ms)
         examples:
-        - name: Create a schema called 'myschema' in the registry 'myregistry' with minimum inputs. Schema version 1 will be created for this schema.
+        - name: Create a schema called 'myschema' in the registry 'myregistry' with minimum inputs. Schema version 1 will be created for this schema with the file content.
           text: >
             az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
-            --format json --type message --version-content '{\"hello\": 3}'
-        - name: Create a schema called 'myschema' with additional customization. Schema version 14 will be created for this schema.
+            --format json --type message --version-content myschema.json
+        - name: Create a schema called 'myschema' with additional customization. Schema version 14 will be created for this schema. The inline content is a powershell syntax example.
           text: >
             az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
             --format delta --type message --desc "Schema for Assets" --display-name myassetschema
-            --version-content '{\"hello\": 3}' --ver 14 --vd "14th version"
+            --version-content '{\\\"hello\\\": \\\"world\\\"}' --ver 14 --vd "14th version"
+        - name: Create a schema called 'myschema'. Schema version 1 will be created for this schema. The inline content is a cmd syntax example.
+          text: >
+            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+            --format json --type message --version-content "{\\\"hello\\\": \\\"world\\\"}"
+        - name: Create a schema called 'myschema'. Schema version 1 will be created for this schema. The inline content is a bash syntax example.
+          text: >
+            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+            --format json --type message --version-content '{"hello": "world"}'
     """
 
     helps[
@@ -1328,9 +1336,17 @@ def load_iotops_help():
                       https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-and-delta-tables. (#TODO AKA.ms)
         examples:
         - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
-                minimum inputs. The content is inline json.
+                minimum inputs. The content is inline json (powershell syntax example).
           text: >
-            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{\"hello\": 3}'
+            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{\\\"hello\\\": \\\"world\\\"}'
+        - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
+                minimum inputs. The content is inline json (cmd syntax example).
+          text: >
+            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content "{\\\"hello\\\": \\\"world\\\"}"
+        - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
+                minimum inputs. The content is inline json (bash syntax example).
+          text: >
+            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{"hello": "world"}'
         - name: Add a schema version 2 to a schema called 'myschema' within the registry 'myregistry' with
                 a description. The file should contain the schema content.
           text: >

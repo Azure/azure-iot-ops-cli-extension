@@ -452,3 +452,16 @@ def test_version_add(mocked_cmd, mocked_responses: responses, description: Optio
 
     assert create_payload["properties"]["schemaContent"] == schema_content
     assert create_payload["properties"]["description"] == description
+
+
+def test_version_add_error(mocked_cmd):
+    from azure.cli.core.azclierror import InvalidArgumentValueError
+    with pytest.raises(InvalidArgumentValueError):
+        add_version(
+            cmd=mocked_cmd,
+            version_name=-1,
+            schema_name=generate_random_string(),
+            schema_registry_name=generate_random_string(),
+            schema_content=generate_random_string(),
+            resource_group_name=generate_random_string()
+        )

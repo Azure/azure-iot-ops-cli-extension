@@ -6,7 +6,7 @@
 
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from azure.cli.core.azclierror import ValidationError, FileOperationError, ForbiddenError
+from azure.cli.core.azclierror import ValidationError, FileOperationError, ForbiddenError, InvalidArgumentValueError
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
@@ -248,7 +248,7 @@ class Schemas(Queryable):
 
     def add_version(
         self,
-        name: str,
+        name: int,
         schema_name: str,
         schema_registry_name: str,
         resource_group_name: str,
@@ -256,8 +256,10 @@ class Schemas(Queryable):
         description: Optional[str] = None,
         current_console: Optional[Console] = None,
     ) -> dict:
-        # TODO: have the schema_content support files too
         from ....util import read_file_content
+
+        if name < 0:
+            raise InvalidArgumentValueError("Version must be a positive number")
 
         try:
             logger.debug("Processing schema content.")
