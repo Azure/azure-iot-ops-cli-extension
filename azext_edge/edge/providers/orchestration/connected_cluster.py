@@ -5,7 +5,8 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List, Optional, Union, Dict
-
+from azure.cli.core.azclierror import AzureResponseError
+from ...util.az_client import wait_for_terminal_state
 from ...util.resource_graph import ResourceGraph
 
 
@@ -151,21 +152,32 @@ class ConnectedCluster:
             "azure-iot-operations-platform": "platform",  # hash
             "azure-iot-operations": "aio",  # hash
         }
-        num = 1
+        failed_extensions = []
         for extension in self.extensions:
             extension_name: str = extension["name"]
             extension_prefix = extension_name.rsplit("-", maxsplit=1)[0]
             extension_key = prefix_to_key_map.get(extension_prefix)
             if not extension_key:
                 continue
-            num += 1
 
-            self.clusters.extensions.update(
+            extension_poller = self.clusters.extensions.update(
                 resource_group_name=self.resource_group_name,
                 cluster_name=self.cluster_name,
                 extension_name=extension_name,
                 new_train=train_map[extension_key],
                 new_version=version_map[extension_key]
+            )
+            extension = wait_for_terminal_state(extension_poller)
+            for status in extension["properties"].get("statuses", []):
+                if status["code"] == "InstallationFailed":
+                    failed_extensions.append(
+                        f"Updating extension {extension_name} failed with the error message: {status['message']}"
+                    )
+
+        if failed_extensions:
+            raise AzureResponseError(
+                "\n".join(failed_extensions) + "\n"
+                "Please delete your cluster, including depencies, and re-run init and create."
             )
 
     def _process_query_result(self, result: dict, first: bool = False) -> Optional[Union[dict, List[dict]]]:

@@ -144,18 +144,25 @@ def init(
     )
 
 
+# TODO: remove kwargs if not used
 def upgrade(
     cmd,
-    cluster_name: str,
     resource_group_name: str,
+    cluster_name: Optional[str] = None,
+    instance_name: Optional[str] = None,
     no_progress: Optional[bool] = None,
+    confirm_yes: Optional[bool] = None,
     **kwargs
 ):
-    from .providers.orchestration import WorkManager
-    return WorkManager(cmd).execute_ops_upgrade(
-        show_progress=not no_progress,
+    from .providers.orchestration.upgrade import upgrade_ops_resources
+    return upgrade_ops_resources(
+        cmd=cmd,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        no_progress=no_progress,
+        confirm_yes=confirm_yes,
+        **kwargs
     )
 
 

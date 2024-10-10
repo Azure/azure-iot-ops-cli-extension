@@ -157,16 +157,6 @@ class WorkManager:
                 self._format_enablement_desc(),
             )
 
-        if self._update_extensions:
-            self._display.add_category(WorkCategoryKey.UPGRADE_IOT_OPS, "Upgrade")
-            # self._display.add_step(WorkCategoryKey.UPGRADE_IOT_OPS, WorkStepKey.WHAT_IF_INSTANCE, "What-If evaluation")
-            self._display.add_step(
-                WorkCategoryKey.UPGRADE_IOT_OPS,
-                WorkStepKey.UPGRADE_ENABLEMENT,
-                "Upgrade foundational layer",
-                self._format_enablement_desc(),
-            )
-
         if self._targets.instance_name:
             self._display.add_category(WorkCategoryKey.DEPLOY_IOT_OPS, "Deploy IoT Operations")
             self._display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.WHAT_IF_INSTANCE, "What-If evaluation")
@@ -235,7 +225,6 @@ class WorkManager:
         self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
         self._apply_foundation = apply_foundation
         self._pre_flight = pre_flight
-        self._update_extensions = False
 
         self._completed_steps: Dict[int, int] = {}
         self._active_step: int = 0
@@ -251,40 +240,38 @@ class WorkManager:
 
         return self._do_work()
 
-    def execute_ops_upgrade(
-        self,
-        show_progress: bool = True,
-        **kwargs,
-    ):
-        self._bootstrap_ux(show_progress=show_progress)
-        self._work_id = uuid4().hex
-        self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
-        self._apply_foundation = False
-        self._pre_flight = False
-        self._update_extensions = True
+    # def execute_ops_upgrade(
+    #     self,
+    #     show_progress: bool = True,
+    #     **kwargs,
+    # ):
+    #     self._bootstrap_ux(show_progress=show_progress)
+    #     self._work_id = uuid4().hex
+    #     self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
+    #     self._apply_foundation = False
+    #     self._pre_flight = False
+    #     self._update_extensions = True
 
-        self._completed_steps: Dict[int, int] = {}
-        self._active_step: int = 0
-        self._targets = InitTargets(subscription_id=self.subscription_id, **kwargs)
-        self._extension_map = None
-        self._resource_map = IoTOperationsResourceMap(
-            cmd=self.cmd,
-            cluster_name=self._targets.cluster_name,
-            resource_group_name=self._targets.resource_group_name,
-            defer_refresh=True,
-        )
-        self._build_display()
-        self.render_display(
-            category=WorkCategoryKey.UPGRADE_IOT_OPS, active_step=WorkStepKey.UPGRADE_ENABLEMENT
-        )
-        self._resource_map.connected_cluster.update_all_extensions()
+    #     self._completed_steps: Dict[int, int] = {}
+    #     self._active_step: int = 0
+    #     self._targets = InitTargets(subscription_id=self.subscription_id, **kwargs)
+    #     self._extension_map = None
+    #     self._resource_map = IoTOperationsResourceMap(
+    #         cmd=self.cmd,
+    #         cluster_name=self._targets.cluster_name,
+    #         resource_group_name=self._targets.resource_group_name,
+    #         defer_refresh=True,
+    #     )
+    #     self._build_display()
+    #     self.render_display(
+    #         category=WorkCategoryKey.UPGRADE_IOT_OPS, active_step=WorkStepKey.UPGRADE_ENABLEMENT
+    #     )
+    #     self._resource_map.connected_cluster.update_all_extensions()
 
-        self.complete_step(
-            category=WorkCategoryKey.UPGRADE_IOT_OPS, completed_step=WorkStepKey.UPGRADE_ENABLEMENT
-        )
-        self.stop_display()
-        return
-        return self._do_work()
+    #     self.complete_step(
+    #         category=WorkCategoryKey.UPGRADE_IOT_OPS, completed_step=WorkStepKey.UPGRADE_ENABLEMENT
+    #     )
+    #     self.stop_display()
 
     def _do_work(self):  # noqa: C901
         from .base import (
@@ -411,16 +398,6 @@ class WorkManager:
                 # TODO @digimaun - work_kpis
                 return work_kpis
 
-            if self._update_extensions:
-                self.render_display(
-                    category=WorkCategoryKey.UPGRADE_IOT_OPS, active_step=WorkStepKey.UPGRADE_ENABLEMENT
-                )
-                self._resource_map.connected_cluster.update_all_extensions()
-
-                self.complete_step(
-                    category=WorkCategoryKey.UPGRADE_IOT_OPS, completed_step=WorkStepKey.UPGRADE_ENABLEMENT
-                )
-                return
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
                 if not self._extension_map:
