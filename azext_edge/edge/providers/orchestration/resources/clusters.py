@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Iterable, Optional
 
 from knack.log import get_logger
 
+from build.azext_edge.edge.util.az_client import wait_for_terminal_state
+
 from ....util.az_client import (
     get_clusterconfig_mgmt_client,
     get_connectedk8s_mgmt_client,
@@ -81,11 +83,32 @@ class ClusterExtensions(Queryable):
             "releaseTrain": new_train,
             "version": new_version
         }
-        return self.ops.begin_update(
+        import pdb; pdb.set_trace()
+        extension_update = wait_for_terminal_state(self.ops.begin_update(
             resource_group_name=resource_group_name,
             cluster_rp="Microsoft.Kubernetes",
             cluster_resource_name="connectedClusters",
             cluster_name=cluster_name,
             extension_name=extension_name,
             patch_extension=extension_update
-        )
+        ))
+        if extension_update["properties"]["currentVersion"] != new_version:
+            extension["properties"]["version"] = new_version
+            extension["properties"]["releaseTrain"] = new_train
+            extension["properties"].pop("currentVersion")
+            extension["properties"].pop("statuses")
+            wait_for_terminal_state(self.ops.begin_delete(
+                resource_group_name=resource_group_name,
+                cluster_rp="Microsoft.Kubernetes",
+                cluster_resource_name="connectedClusters",
+                cluster_name=cluster_name,
+                extension_name=extension_name,
+            ))
+            return wait_for_terminal_state(self.ops.begin_create(
+                resource_group_name=resource_group_name,
+                cluster_rp="Microsoft.Kubernetes",
+                cluster_resource_name="connectedClusters",
+                cluster_name=cluster_name,
+                extension_name=extension_name,
+                extension=extension
+            ))

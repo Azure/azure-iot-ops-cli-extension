@@ -40,7 +40,6 @@ class WorkCategoryKey(IntEnum):
     PRE_FLIGHT = 1
     ENABLE_IOT_OPS = 2
     DEPLOY_IOT_OPS = 3
-    UPGRADE_IOT_OPS = 4
 
 
 class WorkStepKey(IntEnum):
@@ -50,7 +49,6 @@ class WorkStepKey(IntEnum):
     DEPLOY_ENABLEMENT = 4
     WHAT_IF_INSTANCE = 5
     DEPLOY_INSTANCE = 6
-    UPGRADE_ENABLEMENT = 7
 
 
 class WorkRecord:
@@ -239,39 +237,6 @@ class WorkManager:
         self._build_display()
 
         return self._do_work()
-
-    # def execute_ops_upgrade(
-    #     self,
-    #     show_progress: bool = True,
-    #     **kwargs,
-    # ):
-    #     self._bootstrap_ux(show_progress=show_progress)
-    #     self._work_id = uuid4().hex
-    #     self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
-    #     self._apply_foundation = False
-    #     self._pre_flight = False
-    #     self._update_extensions = True
-
-    #     self._completed_steps: Dict[int, int] = {}
-    #     self._active_step: int = 0
-    #     self._targets = InitTargets(subscription_id=self.subscription_id, **kwargs)
-    #     self._extension_map = None
-    #     self._resource_map = IoTOperationsResourceMap(
-    #         cmd=self.cmd,
-    #         cluster_name=self._targets.cluster_name,
-    #         resource_group_name=self._targets.resource_group_name,
-    #         defer_refresh=True,
-    #     )
-    #     self._build_display()
-    #     self.render_display(
-    #         category=WorkCategoryKey.UPGRADE_IOT_OPS, active_step=WorkStepKey.UPGRADE_ENABLEMENT
-    #     )
-    #     self._resource_map.connected_cluster.update_all_extensions()
-
-    #     self.complete_step(
-    #         category=WorkCategoryKey.UPGRADE_IOT_OPS, completed_step=WorkStepKey.UPGRADE_ENABLEMENT
-    #     )
-    #     self.stop_display()
 
     def _do_work(self):  # noqa: C901
         from .base import (

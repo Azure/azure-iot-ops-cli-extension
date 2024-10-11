@@ -109,7 +109,6 @@ class UpgradeManager:
             self.instance_name = "WHEREDOESPAYMAUNGETTHENAME"
 
         self.require_instance_upgrade = True
-        import pdb; pdb.set_trace()
         # try with 2024-08-15-preview -> it is m2
         try:
             self.instance = self.resource_client.resources.get(
@@ -164,14 +163,11 @@ class UpgradeManager:
             self._live.stop()
 
     def _process(self, force: bool = False):
-        # try to get the instance first
-        # done in _get_resource_map
-        # figure out extensions and update them
-        self.resource_map.connected_cluster.update_all_extensions()
         if self.require_instance_upgrade:
             # keep the schema reg id
             extension_type = "microsoft.iotoperations"
             aio_extension = self.resource_map.connected_cluster.get_extensions_by_type(extension_type)
+            import pdb; pdb.set_trace()
             extension_props = aio_extension[extension_type]["properties"]
             sr_id = extension_props["configurationSettings"]["schemaRegistry.values.resourceId"]
 
@@ -182,94 +178,14 @@ class UpgradeManager:
             inst_props.pop("schemaRegistryNamespace", None)
             inst_props.pop("components", None)
 
+        # Do the upgrade, the schema reg id may get lost
+        self.resource_map.connected_cluster.update_all_extensions()
+
+        if self.require_instance_upgrade:
             # update the instance
             result = self.instances.iotops_mgmt_client.instance.begin_create_or_update(
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
                 resource=self.instance
             )
-            return result
-
-
-        # todo_extensions = []
-        # todo_custom_locations = self.resource_map.custom_locations
-        # todo_resource_sync_rules = []
-        # todo_resources = []
-
-        # for cl in todo_custom_locations:
-        #     todo_resource_sync_rules.extend(self.resource_map.get_resource_sync_rules(cl.resource_id))
-        #     todo_resources.extend(self.resource_map.get_resources(cl.resource_id))
-
-        # batched_work = self._batch_resources(
-        #     resources=todo_resources,
-        #     resource_sync_rules=todo_resource_sync_rules,
-        #     custom_locations=todo_custom_locations,
-        #     extensions=todo_extensions,
-        # )
-        # if not batched_work:
-        #     logger.warning("Nothing to update :)")
-        #     return
-
-        # if not force:
-        #     if not self.resource_map.connected_cluster.connected:
-        #         logger.warning(
-        #             "Deletion cancelled. The cluster is not connected to Azure. "
-        #             "Use --force to continue anyway, which may lead to errors."
-        #         )
-        #         return
-
-        # try:
-        #     for batches_key in batched_work:
-        #         self._render_display(f"[red]Updating {batches_key}...")
-        #         for batch in batched_work[batches_key]:
-        #             # TODO: @digimaun - Show summary as result
-        #             lros = self._delete_batch(batch)
-        #             [lro.result() for lro in lros]
-        # finally:
-            # self._stop_display()
-
-    def _batch_resources(
-        self,
-        resources: Optional[List[IoTOperationsResource]] = None,
-        resource_sync_rules: Optional[List[IoTOperationsResource]] = None,
-        custom_locations: Optional[List[IoTOperationsResource]] = None,
-        extensions: Optional[List[IoTOperationsResource]] = None,
-    ) -> Dict[str, List[List[IoTOperationsResource]]]:
-        batched_work: Dict[str, List[List[IoTOperationsResource]]] = {}
-
-        if resources:
-            # resource_map.get_resources will sort resources in descending order by segment then display name
-            resource_batches: List[List[IoTOperationsResource]] = []
-            last_segments = maxsize
-            current_batch = []
-            for resource in resources:
-                current_segments = resource.segments
-                if current_segments < last_segments and current_batch:
-                    resource_batches.append(current_batch)
-                    current_batch = []
-                current_batch.append(resource)
-                last_segments = current_segments
-            if current_batch:
-                resource_batches.append(current_batch)
-            batched_work["resources"] = resource_batches
-
-        if resource_sync_rules:
-            batched_work["resource sync rules"] = [resource_sync_rules]
-
-        if custom_locations:
-            batched_work["custom locations"] = [custom_locations]
-
-        if extensions:
-            batched_work["extensions"] = [extensions]
-
-        return batched_work
-
-    def _delete_batch(self, resource_batch: List[IoTOperationsResource]) -> Tuple["LROPoller"]:
-        return wait_for_terminal_states(
-            *[
-                self.resource_client.resources.begin_delete_by_id(
-                    resource_id=resource.resource_id, api_version=resource.api_version
-                )
-                for resource in resource_batch
-            ]
-        )
+            return wait_for_terminal_states(result)
