@@ -39,8 +39,6 @@ KEY_CONVERSION_MAP = {"enable_rsync_rules": "deploy_resource_sync_rules"}
 KVP_KEYS = frozenset(["ops_config", "trust_settings"])
 ENABLEMENT_PARAM_CONVERSION_MAP = {
     "clusterName": "cluster_name",
-    "kubernetesDistro": "kubernetes_distro",
-    "containerRuntimeSocket": "container_runtime_socket",
     "trustConfig": "trust_config",
     "schemaRegistryId": "schema_registry_resource_id",
     "advancedConfig": "advanced_config",
@@ -49,6 +47,8 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "clusterName": "cluster_name",
     "clusterNamespace": "cluster_namespace",
     "clusterLocation": "location",
+    "kubernetesDistro": "kubernetes_distro",
+    "containerRuntimeSocket": "container_runtime_socket",
     "customLocationName": "custom_location_name",
     "deployResourceSyncRules": "deploy_resource_sync_rules",
     "schemaRegistryId": "schema_registry_resource_id",
@@ -138,14 +138,6 @@ def test_init_targets(target_scenario: dict):
             targets, targets_key
         ), f"{parameter} value mismatch with targets {targets_key} value."
 
-    if targets.ops_config:
-        aio_config_settings = enablement_template["variables"]["defaultAioConfigurationSettings"]
-        for c in targets.ops_config:
-            assert c in aio_config_settings
-            assert aio_config_settings[c] == targets.ops_config[c]
-
-    if targets.ops_version:
-        assert enablement_template["variables"]["VERSIONS"]["aio"] == targets.ops_version
 
     extension_ids = [generate_random_string(), generate_random_string()]
     extension_config = {"schemaRegistry.values.resourceId": target_scenario.get("schema_registry_resource_id")}
@@ -159,6 +151,16 @@ def test_init_targets(target_scenario: dict):
         targets.trust_config = None
 
     instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids, extension_config)
+
+    if targets.ops_version:
+        assert instance_template["variables"]["VERSIONS"]["iotOperations"] == targets.ops_version
+
+    if targets.ops_config:
+        aio_config_settings = instance_template["variables"]["defaultAioConfigurationSettings"]
+        for c in targets.ops_config:
+            assert c in aio_config_settings
+            assert aio_config_settings[c] == targets.ops_config[c]
+
     for parameter in instance_parameters:
         if parameter == "clExtentionIds":
             assert instance_parameters[parameter]["value"] == extension_ids
@@ -173,7 +175,7 @@ def test_init_targets(target_scenario: dict):
     assert instance_template["resources"]["aioInstance"]["properties"]["description"] == targets.instance_description
 
     assert instance_template["resources"]["aioInstance"]["properties"]["schemaRegistryRef"] == {
-        "resourceId": f"[parameters('schemaRegistryId')]"
+        "resourceId": "[parameters('schemaRegistryId')]"
     }
 
     if targets.tags:

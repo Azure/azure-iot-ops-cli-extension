@@ -109,12 +109,8 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
-    container_runtime_socket: Optional[str] = None,
-    kubernetes_distro: str = KubernetesDistroType.k8s.value,
     trust_settings: Optional[List[str]] = None,
     enable_fault_tolerance: Optional[bool] = None,
-    ops_config: Optional[List[str]] = None,
-    ops_version: Optional[str] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     **kwargs,
@@ -133,11 +129,7 @@ def init(
         pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
-        container_runtime_socket=container_runtime_socket,
-        kubernetes_distro=kubernetes_distro,
         enable_fault_tolerance=enable_fault_tolerance,
-        ops_config=ops_config,
-        ops_version=ops_version,
         trust_settings=trust_settings,
     )
 
@@ -154,6 +146,11 @@ def create_instance(
     enable_rsync_rules: Optional[bool] = None,
     instance_description: Optional[str] = None,
     dataflow_profile_instances: int = 1,
+    # Ops extension
+    container_runtime_socket: Optional[str] = None,
+    kubernetes_distro: str = KubernetesDistroType.k8s.value,
+    ops_config: Optional[List[str]] = None,
+    ops_version: Optional[str] = None,
     # Broker
     custom_broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
@@ -203,6 +200,11 @@ def create_instance(
         instance_description=instance_description,
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
+        # Ops Extension
+        container_runtime_socket=container_runtime_socket,
+        kubernetes_distro=kubernetes_distro,
+        ops_config=ops_config,
+        ops_version=ops_version,
         # Broker
         custom_broker_config=custom_broker_config,
         broker_memory_profile=broker_memory_profile,

@@ -286,6 +286,7 @@ class WorkManager:
                 )
 
             # Enable IoT Ops workflow
+            # TODO - @c-ryan-k - move aio extension to instance
             if self._apply_foundation:
                 enablement_work_name = self._work_format_str.format(op="enablement")
                 self.render_display(

@@ -145,20 +145,11 @@ class InitTargets:
         template, parameters = self._handle_apply_targets(
             param_to_target={
                 "clusterName": self.cluster_name,
-                "kubernetesDistro": self.kubernetes_distro,
-                "containerRuntimeSocket": self.container_runtime_socket,
                 "trustConfig": self.trust_config,
                 "advancedConfig": self.advanced_config,
             },
             template_blueprint=M2_ENABLEMENT_TEMPLATE,
         )
-
-        if self.ops_config:
-            aio_default_config: Dict[str, str] = template.content["variables"]["defaultAioConfigurationSettings"]
-            aio_default_config.update(self.ops_config)
-
-        if self.ops_version:
-            template.content["variables"]["VERSIONS"]["aio"] = self.ops_version
 
         # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
         return template.content, parameters
@@ -186,6 +177,8 @@ class InitTargets:
                 "clusterName": self.cluster_name,
                 "clusterNamespace": self.cluster_namespace,
                 "clusterLocation": self.location,
+                "kubernetesDistro": self.kubernetes_distro,
+                "containerRuntimeSocket": self.container_runtime_socket,
                 "customLocationName": self.custom_location_name,
                 "clExtentionIds": cl_extension_ids,
                 "deployResourceSyncRules": self.deploy_resource_sync_rules,
@@ -196,6 +189,14 @@ class InitTargets:
             },
             template_blueprint=M2_INSTANCE_TEMPLATE,
         )
+
+        if self.ops_config:
+            aio_default_config: Dict[str, str] = template.content["variables"]["defaultAioConfigurationSettings"]
+            aio_default_config.update(self.ops_config)
+
+        if self.ops_version:
+            template.content["variables"]["VERSIONS"]["iotOperations"] = self.ops_version
+
         instance = template.get_resource_by_key("aioInstance")
         instance["properties"]["description"] = self.instance_description
 
