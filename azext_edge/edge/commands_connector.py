@@ -5,8 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import Iterable, Optional
-
-from .providers.orchestration.resources import OPCUACERTS
+from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OpcUACerts
 
 
 def add_connector_opcua_trust(
@@ -16,7 +15,7 @@ def add_connector_opcua_trust(
     file: str,
     secret_name: Optional[str] = None,
 ) -> dict:
-    return OPCUACERTS(cmd).add(
+    return OpcUACerts(cmd).trust_add(
         instance_name=instance_name,
         resource_group=instance_resource_group,
         file=file,
