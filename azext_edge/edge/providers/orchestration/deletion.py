@@ -16,6 +16,8 @@ from rich.live import Live
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.table import Table
 
+from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
+
 from ...util.az_client import get_resource_client, wait_for_terminal_states
 from ...util.common import should_continue_prompt
 from .resource_map import IoTOperationsResource, IoTOperationsResourceMap
@@ -138,7 +140,14 @@ class DeletionManager:
             self._live.stop()
 
     def _process(self, force: bool = False):
+        # instance delete should always delete the extension too
+        aio_ext = self.resource_map.connected_cluster.get_extensions_by_type(IOT_OPS_EXTENSION_TYPE).get(
+            IOT_OPS_EXTENSION_TYPE
+        )
+        # TODO - @c-ryan-k this should always be true, right?
         todo_extensions = []
+        if aio_ext:
+            todo_extensions.append(aio_ext)  # delete aio extension even if no dependencies
         if self.include_dependencies:
             todo_extensions.extend(self.resource_map.extensions)
         todo_custom_locations = self.resource_map.custom_locations

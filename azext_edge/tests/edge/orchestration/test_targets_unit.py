@@ -129,7 +129,8 @@ def test_init_targets(target_scenario: dict):
 
     verify_user_trust_settings(targets, target_scenario)
 
-    enablement_template, enablement_parameters = targets.get_ops_enablement_template()
+    _, enablement_parameters = targets.get_ops_enablement_template()
+    # test enablement_template
     for parameter in enablement_parameters:
         targets_key = parameter
         if parameter in ENABLEMENT_PARAM_CONVERSION_MAP:
@@ -139,17 +140,11 @@ def test_init_targets(target_scenario: dict):
         ), f"{parameter} value mismatch with targets {targets_key} value."
 
     extension_ids = [generate_random_string(), generate_random_string()]
-    extension_config = {"schemaRegistry.values.resourceId": target_scenario.get("schema_registry_resource_id")}
     target_scenario_has_user_trust = target_scenario.get("trust_settings")
     if target_scenario_has_user_trust:
-        extension_config["trustSource"] = "CustomerManaged"
-        extension_config["trustBundleSettings.issuer.name"] = target_scenario["trust_settings"]["issuerName"]
-        extension_config["trustBundleSettings.issuer.kind"] = target_scenario["trust_settings"]["issuerKind"]
-        extension_config["trustBundleSettings.configMap.name"] = target_scenario["trust_settings"]["configMapName"]
-        extension_config["trustBundleSettings.configMap.key"] = target_scenario["trust_settings"]["configMapKey"]
         targets.trust_config = None
 
-    instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids, extension_config)
+    instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids)
 
     if targets.ops_version:
         assert instance_template["variables"]["VERSIONS"]["iotOperations"] == targets.ops_version
