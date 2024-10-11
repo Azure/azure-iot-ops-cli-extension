@@ -73,9 +73,6 @@ class ClusterExtensions(Queryable):
             extension_name=extension_name,
         )
         current_version = extension["properties"].get("version", "0").replace("-preview", "")
-        if current_version >= new_version.replace("-preview", ""):
-            logger.info(f"Extension {extension_name} is already up to date.")
-            return
         if extension_name.rsplit("-", maxsplit=1)[0] == "azure-iot-operations":
             new_version = "0.0.0-m3-webhooks.11"
             new_train = "dev"
@@ -86,6 +83,9 @@ class ClusterExtensions(Queryable):
                 "schemaRegistry.enabled": False,
                 "mqttBroker.enabled": False,
             }
+        elif current_version >= new_version.replace("-preview", ""):
+            logger.info(f"Extension {extension_name} is already up to date.")
+            return
 
         print("")
         print(f"Updating extension {extension_name}")

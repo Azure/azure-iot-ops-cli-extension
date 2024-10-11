@@ -150,6 +150,7 @@ def upgrade(
     resource_group_name: str,
     cluster_name: Optional[str] = None,
     instance_name: Optional[str] = None,
+    sr_id: Optional[str] = None,  # TODO: change to schema_registry_resource_id
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
     **kwargs
@@ -160,6 +161,7 @@ def upgrade(
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         instance_name=instance_name,
+        sr_resource_id=sr_id,
         no_progress=no_progress,
         confirm_yes=confirm_yes,
         **kwargs

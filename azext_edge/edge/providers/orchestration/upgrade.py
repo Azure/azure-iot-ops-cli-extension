@@ -9,6 +9,7 @@ from time import sleep
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 from azure.cli.core.azclierror import ArgumentUsageError, RequiredArgumentMissingError
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from knack.log import get_logger
 from rich import print
 from rich.console import NewLine
@@ -90,7 +91,9 @@ class UpgradeManager:
         print("Azure IoT Operations Upgrade")
         print()
         print(Padding("Latest extension versions:", (0,0,0,2)))
+        # TODO: maybe pull out extensions to update here?
         print(Padding(self._format_enablement_desc(), (0,0,0,4)))
+
         if self.require_instance_upgrade:
             print(Padding(
                 "Old Azure IoT Operations instance version found. Will update the instance to the latest version.",
@@ -138,18 +141,15 @@ class UpgradeManager:
                 api_version=INSTANCE_7_API
             )
             return self.instances.get_resource_map(self.instance)
-        except Exception as e:
-
+        except HttpResponseError:
             self.require_instance_upgrade = False
-            # todo what type is e
-            pass
-
         # try with 2024-09-15-preview -> it is m3 already
         try:
             self.instance = self.instances.show(name=self.instance_name, resource_group_name=self.resource_group_name)
             return self.instances.get_resource_map(self.instance)
-        except Exception as e:
-            # todo make sure e is something
+        except ResourceNotFoundError as e:
+            raise e
+        except HttpResponseError:
             raise ArgumentUsageError(f"Cannot upgrade instance {self.instance_name}, please delete your instance, including dependencies, and reinstall.")
 
     def _render_display(self, description: str):
@@ -196,7 +196,7 @@ class UpgradeManager:
             # prep the instance
             self.instance.pop("systemData", None)
             inst_props = self.instance["properties"]
-            inst_props["schemaRegistryRef"] = self.sr_resource_id
+            inst_props["schemaRegistryRef"] = {"resourceId": self.sr_resource_id}
             inst_props["version"] = extension_props["currentVersion"]
             inst_props.pop("schemaRegistryNamespace", None)
             inst_props.pop("components", None)
