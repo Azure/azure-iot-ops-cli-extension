@@ -6,7 +6,6 @@
 
 from typing import List, Optional, Union, Dict
 from azure.cli.core.azclierror import AzureResponseError
-from ...util.az_client import wait_for_terminal_state
 from ...util.resource_graph import ResourceGraph
 
 
@@ -160,14 +159,16 @@ class ConnectedCluster:
             if not extension_key:
                 continue
 
-            extension_poller = self.clusters.extensions.update(
+            extension = self.clusters.extensions.update(
                 resource_group_name=self.resource_group_name,
                 cluster_name=self.cluster_name,
                 extension_name=extension_name,
                 new_train=train_map[extension_key],
                 new_version=version_map[extension_key]
             )
-            extension = wait_for_terminal_state(extension_poller)
+            if not extension:
+                continue
+
             for status in extension["properties"].get("statuses", []):
                 if status["code"] == "InstallationFailed":
                     failed_extensions.append(

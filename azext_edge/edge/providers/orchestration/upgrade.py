@@ -8,26 +8,22 @@ from sys import maxsize
 from time import sleep
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-from azure.cli.core.azclierror import ArgumentUsageError
+from azure.cli.core.azclierror import ArgumentUsageError, RequiredArgumentMissingError
 from knack.log import get_logger
 from rich import print
 from rich.console import NewLine
 from rich.live import Live
+from rich.padding import Padding
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.table import Table
 
-from ...util.az_client import get_resource_client, wait_for_terminal_states
+from ...util.az_client import get_resource_client, wait_for_terminal_state
 from ...util.common import should_continue_prompt
-from .resource_map import IoTOperationsResource, IoTOperationsResourceMap
+from .resource_map import IoTOperationsResourceMap
 from .resources import Instances
+from .work import WorkDisplay
 
 logger = get_logger(__name__)
-
-
-if TYPE_CHECKING:
-    from azure.core.polling import LROPoller
-
-
 INSTANCE_7_API = "2024-08-15-preview"
 
 
@@ -36,18 +32,19 @@ def upgrade_ops_resources(
     resource_group_name: str,
     instance_name: Optional[str] = None,
     cluster_name: Optional[str] = None,
+    sr_resource_id: Optional[str] = None,
     confirm_yes: Optional[bool] = None,
     no_progress: Optional[bool] = None,
-    force: Optional[bool] = None,
 ):
     manager = UpgradeManager(
         cmd=cmd,
         instance_name=instance_name,
         cluster_name=cluster_name,
+        sr_resource_id=sr_resource_id,
         resource_group_name=resource_group_name,
         no_progress=no_progress,
     )
-    manager.do_work(confirm_yes=confirm_yes, force=force)
+    manager.do_work(confirm_yes=confirm_yes)
 
 
 # TODO: see if dependencies need to be upgraded (broker, opcua etc)
@@ -59,6 +56,7 @@ class UpgradeManager:
         resource_group_name: str,
         instance_name: Optional[str] = None,
         cluster_name: Optional[str] = None,
+        sr_resource_id: Optional[str] = None,
         no_progress: Optional[bool] = None,
     ):
         from azure.cli.core.commands.client_factory import get_subscription_id
@@ -66,6 +64,7 @@ class UpgradeManager:
         self.cmd = cmd
         self.instance_name = instance_name
         self.cluster_name = cluster_name
+        self.sr_resource_id = sr_resource_id
         self.resource_group_name = resource_group_name
         self.instances = Instances(self.cmd)
         self.subscription_id = get_subscription_id(cli_ctx=cmd.cli_ctx)
@@ -82,18 +81,37 @@ class UpgradeManager:
         )
         self._progress_shown = False
 
-    def do_work(self, confirm_yes: Optional[bool] = None, force: Optional[bool] = None):
+    def do_work(self, confirm_yes: Optional[bool] = None):
         self.resource_map = self._get_resource_map()
         # Ensure cluster exists with existing resource_map pattern.
         self.resource_map.connected_cluster.resource
         self.resource_map.refresh_resource_state()
-        self._display_resource_tree()
+
+        print("Azure IoT Operations Upgrade")
+        print()
+        print(Padding("Latest extension versions:", (0,0,0,2)))
+        print(Padding(self._format_enablement_desc(), (0,0,0,4)))
+        if self.require_instance_upgrade:
+            print(Padding(
+                "Old Azure IoT Operations instance version found. Will update the instance to the latest version.",
+                (0,0,0,2)
+            ))
+        print()
+        print("Upgrading may fail and require you to delete and re-create your cluster.")
 
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
         if should_bail:
             return
 
-        self._process(force=force)
+        self._process()
+
+    def _format_enablement_desc(self) -> str:
+        from .template import M2_ENABLEMENT_TEMPLATE
+        version_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
+        display_desc = "[dim]"
+        for ver in version_map:
+            display_desc += f"• {ver}: {version_map[ver]}\n"
+        return display_desc[:-1] + ""
 
     def _get_resource_map(self) -> IoTOperationsResourceMap:
         if not any([self.cluster_name, self.instance_name]):
@@ -121,7 +139,7 @@ class UpgradeManager:
             )
             return self.instances.get_resource_map(self.instance)
         except Exception as e:
-            import pdb; pdb.set_trace()
+
             self.require_instance_upgrade = False
             # todo what type is e
             pass
@@ -133,10 +151,6 @@ class UpgradeManager:
         except Exception as e:
             # todo make sure e is something
             raise ArgumentUsageError(f"Cannot upgrade instance {self.instance_name}, please delete your instance, including dependencies, and reinstall.")
-
-    def _display_resource_tree(self):
-        if self._render_progress:
-            print(self.resource_map.build_tree(hide_extensions=True, category_color="red"))
 
     def _render_display(self, description: str):
         if self._render_progress:
@@ -162,30 +176,50 @@ class UpgradeManager:
                 sleep(0.5)
             self._live.stop()
 
-    def _process(self, force: bool = False):
+    def _process(self):
         if self.require_instance_upgrade:
             # keep the schema reg id
             extension_type = "microsoft.iotoperations"
             aio_extension = self.resource_map.connected_cluster.get_extensions_by_type(extension_type)
-            import pdb; pdb.set_trace()
-            extension_props = aio_extension[extension_type]["properties"]
-            sr_id = extension_props["configurationSettings"]["schemaRegistry.values.resourceId"]
 
+            extension_props = aio_extension[extension_type]["properties"]
+            if not self.sr_resource_id:
+                self.sr_resource_id = extension_props["configurationSettings"].get("schemaRegistry.values.resourceId")
+
+            # m3 extensions should not have the reg id
+            if not self.sr_resource_id:
+                raise RequiredArgumentMissingError(
+                    "Cannot determine the schema registry id from installed extensions, please provide the schema "
+                    "registry id via `--sr-id`."
+                )
+
+            # prep the instance
             self.instance.pop("systemData", None)
             inst_props = self.instance["properties"]
-            inst_props["schemaRegistryRef"] = sr_id
+            inst_props["schemaRegistryRef"] = self.sr_resource_id
             inst_props["version"] = extension_props["currentVersion"]
             inst_props.pop("schemaRegistryNamespace", None)
             inst_props.pop("components", None)
 
-        # Do the upgrade, the schema reg id may get lost
-        self.resource_map.connected_cluster.update_all_extensions()
+        result = None
+        try:
+            # Do the upgrade, the schema reg id may get lost
+            self._render_display("[yellow]Checking and Updating extensions...")
+            self.resource_map.connected_cluster.update_all_extensions()
 
-        if self.require_instance_upgrade:
-            # update the instance
-            result = self.instances.iotops_mgmt_client.instance.begin_create_or_update(
-                resource_group_name=self.resource_group_name,
-                instance_name=self.instance_name,
-                resource=self.instance
-            )
-            return wait_for_terminal_states(result)
+            if self.require_instance_upgrade:
+                # update the instance
+                self._render_display("[yellow]Updating instance...")
+                result = wait_for_terminal_state(
+                        self.instances.iotops_mgmt_client.instance.begin_create_or_update(
+                        resource_group_name=self.resource_group_name,
+                        instance_name=self.instance_name,
+                        resource=self.instance
+                    )
+                )
+        finally:
+            self._stop_display()
+
+        # TODO make sure nothing else is needed
+        if result:
+            return result
