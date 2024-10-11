@@ -138,7 +138,6 @@ def test_init_targets(target_scenario: dict):
             targets, targets_key
         ), f"{parameter} value mismatch with targets {targets_key} value."
 
-
     extension_ids = [generate_random_string(), generate_random_string()]
     extension_config = {"schemaRegistry.values.resourceId": target_scenario.get("schema_registry_resource_id")}
     target_scenario_has_user_trust = target_scenario.get("trust_settings")
