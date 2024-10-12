@@ -179,3 +179,9 @@ def load_iotops_commands(self, _):
         command_type=connector_resource_ops,
     ) as cmd_group:
         cmd_group.command("add", "add_connector_opcua_trust")
+
+    with self.command_group(
+        "iot ops connector opcua issuer",
+        command_type=connector_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_connector_opcua_issuer")

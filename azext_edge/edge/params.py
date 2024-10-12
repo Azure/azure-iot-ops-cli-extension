@@ -1206,3 +1206,25 @@ def load_iotops_arguments(self, _):
             options_list=["--secret-name", "--s"],
             help="Secret name in the Key Vault.",
         )
+
+    with self.argument_context("iot ops connector opcua issuer") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "instance_resource_group",
+            options_list=["--instance-resource-group", "--ig"],
+            help="Instance resource group. If not provided, asset resource group will be used.",
+        )
+        context.argument(
+            "file",
+            options_list=["--certificate-file", "--cf"],
+            help="Path to the certificate file in DER format.",
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "--s"],
+            help="Secret name in the Key Vault.",
+        )
