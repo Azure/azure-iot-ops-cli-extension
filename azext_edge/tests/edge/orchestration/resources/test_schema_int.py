@@ -175,7 +175,6 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         version=version_num2, schema_name=schema_name2
     )
 
-
     # all versions + schemas
     version_strings_all = run(
         f"az iot ops schema dataflow-ref-versions -g {registry_rg} --registry {registry_name}"
@@ -203,7 +202,6 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         version=version_num2, schema_name=schema_name2
     )
     assert str(version_num) not in version_strings_latest[schema_name2]
-
 
     # REMOVE VERSION
     run(
