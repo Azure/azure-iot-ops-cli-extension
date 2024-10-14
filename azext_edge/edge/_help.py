@@ -1357,7 +1357,7 @@ def load_iotops_help():
         examples:
         - name: Show schema reference for schema "myschema" and version 1.
           text: >
-            az iot ops schema dataflow-ref-versions --name 1 --schema myschema --registry myregistry -g myresourcegroup
+            az iot ops schema dataflow-ref-versions --version 1 --schema myschema --registry myregistry -g myresourcegroup
         - name: Show schema reference for all versions in schema "myschema".
           text: >
             az iot ops schema dataflow-ref-versions --schema myschema --registry myregistry -g myresourcegroup
