@@ -1218,6 +1218,36 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops connector"
+    ] = """
+        type: group
+        short-summary: Connector management.
+        long-summary: |
+          The connector for IoT Operations is a service that lets you connect securely to edge devices.
+    """
+
+    helps[
+        "iot ops connector opcua"
+    ] = """
+        type: group
+        short-summary: OPC UA connector management.
+        long-summary: |
+          The connector for OPC UA enables your industrial OPC UA environment to ingress data into
+          your local workloads running on a Kubernetes cluster, and into your cloud workloads.
+    """
+
+    helps[
+        "iot ops connector opcua trust"
+    ] = """
+        type: group
+        short-summary: Manage trusted certificates for the OPC UA Broker.
+        long-summary: |
+          The trusted certificate list contains the certificates of all the OPC UA servers that the connector
+          for OPC UA trusts. If the connector for OPC UA trusts a certificate authority, it automatically trusts
+          any server that has a valid application instance certificate signed by the certificate authority.
+    """
+
+    helps[
         "iot ops connector opcua trust add"
     ] = """
         type: command
@@ -1227,11 +1257,23 @@ def load_iotops_help():
         examples:
         - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
           text: >
-            az iot ops connector opcua trust add --instance instance --ig instance_resource_group --cf certificate_file
+            az iot ops connector opcua trust add --instance instance --ig instanceresourcegroup --cf certificate_file
         - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list with custom secret name.
           text: >
-            az iot ops connector opcua trust add --instance instance --ig instance_resource_group --cf certificate_file
+            az iot ops connector opcua trust add --instance instance --ig instanceresourcegroup --cf certificate_file
             -s custom_secret_name
+    """
+
+    helps[
+        "iot ops connector opcua issuer"
+    ] = """
+        type: group
+        short-summary: Manage issuer certificates for the OPC UA Broker.
+        long-summary: |
+          The issuer certificate list stores the certificate authority certificates that the connector for OPC UA trusts.
+          This list can be used to manage the trust relationship if OPC UA server's application instance certificate is
+          signed by an intermediate certificate authority, but don't want to automatically trust all the certificates
+          issued by the certificate authority.
     """
 
     helps[
@@ -1245,9 +1287,9 @@ def load_iotops_help():
         examples:
         - name: Add an issuer certificates in the OPC UA Broker's trusted certificate list.
           text: >
-            az iot ops connector opcua issuer add --instance instance --ig instance_resource_group --cf certificate_file
+            az iot ops connector opcua issuer add --instance instance --ig instanceresourcegroup --cf certificate_file
         - name: Add an issuer certificate to the OPC UA Broker's issuer certificate list with custom secret name.
           text: >
-            az iot ops connector opcua issuer add --instance instance --ig instance_resource_group --cf certificate_file
+            az iot ops connector opcua issuer add --instance instance --ig instanceresourcegroup --cf certificate_file
             -s custom_secret_name
     """
