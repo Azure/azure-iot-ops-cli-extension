@@ -1216,3 +1216,38 @@ def load_iotops_help():
             --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID --sa-container myschemacontainer
             -l westus2 --desc 'Contoso factory X1 schemas' --display-name 'Contoso X1' --tags env=prod
     """
+
+    helps[
+        "iot ops connector opcua trust add"
+    ] = """
+        type: command
+        short-summary: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
+        long-summary: |
+            The certificate file extension must be .der or .crt.
+        examples:
+        - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
+          text: >
+            az iot ops connector opcua trust add --instance instance --ig instance_resource_group --cf certificate_file
+        - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list with custom secret name.
+          text: >
+            az iot ops connector opcua trust add --instance instance --ig instance_resource_group --cf certificate_file
+            -s custom_secret_name
+    """
+
+    helps[
+        "iot ops connector opcua issuer add"
+    ] = """
+        type: command
+        short-summary: Add an issuer certificate to the OPC UA Broker's issuer certificate list.
+        long-summary: |
+            The certificate file extension must be .der, .crt or .crl. When adding a .crl file, a .der or .crt file with
+            same file name must be added first.
+        examples:
+        - name: Add an issuer certificates in the OPC UA Broker's trusted certificate list.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --ig instance_resource_group --cf certificate_file
+        - name: Add an issuer certificate to the OPC UA Broker's issuer certificate list with custom secret name.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --ig instance_resource_group --cf certificate_file
+            -s custom_secret_name
+    """
