@@ -338,47 +338,47 @@ class Schemas(Queryable):
         from collections import OrderedDict
         # note temporary until dataflow create is added.
         versions_map = {}
-        # with console.status("Fetching version info..."):
-        # get all the versions first
-        if schema_name and schema_version:
-            versions_map[schema_name] = [int(schema_version)]
-        elif schema_name:
-            versions_map.update(
-                self._get_schema_version_dict(
-                    schema_name=schema_name,
-                    schema_registry_name=schema_registry_name,
-                    resource_group_name=resource_group_name,
-                    latest=latest
-                )
-            )
-        elif schema_version:
-            # TODO: maybe do the weird
-            raise InvalidArgumentValueError(
-                "Please provide the schema name if schema versions is used."
-            )
-        else:
-            schema_list = self.list(
-                schema_registry_name=schema_registry_name, resource_group_name=resource_group_name
-            )
-            for schema in schema_list:
+        with console.status("Fetching version info..."):
+            # get all the versions first
+            if schema_name and schema_version:
+                versions_map[schema_name] = [int(schema_version)]
+            elif schema_name:
                 versions_map.update(
                     self._get_schema_version_dict(
-                        schema_name=schema["name"],
+                        schema_name=schema_name,
                         schema_registry_name=schema_registry_name,
                         resource_group_name=resource_group_name,
                         latest=latest
                     )
                 )
+            elif schema_version:
+                # TODO: maybe do the weird
+                raise InvalidArgumentValueError(
+                    "Please provide the schema name if schema versions is used."
+                )
+            else:
+                schema_list = self.list(
+                    schema_registry_name=schema_registry_name, resource_group_name=resource_group_name
+                )
+                for schema in schema_list:
+                    versions_map.update(
+                        self._get_schema_version_dict(
+                            schema_name=schema["name"],
+                            schema_registry_name=schema_registry_name,
+                            resource_group_name=resource_group_name,
+                            latest=latest
+                        )
+                    )
 
-        ref_format = "aio-sr://{schema}:{version}"
-        # change to ordered dict for order, azure cli does not like the int keys at that level
-        for schema_name, versions_list in versions_map.items():
-            ordered = OrderedDict(
-                (str(ver), ref_format.format(schema=schema_name, version=ver)) for ver in versions_list
-            )
-            versions_map[schema_name] = ordered
+            ref_format = "aio-sr://{schema}:{version}"
+            # change to ordered dict for order, azure cli does not like the int keys at that level
+            for schema_name, versions_list in versions_map.items():
+                ordered = OrderedDict(
+                    (str(ver), ref_format.format(schema=schema_name, version=ver)) for ver in versions_list
+                )
+                versions_map[schema_name] = ordered
 
-        return versions_map
+            return versions_map
 
     def _get_schema_version_dict(
         self, schema_name: str, schema_registry_name: str, resource_group_name: str, latest: bool = False
