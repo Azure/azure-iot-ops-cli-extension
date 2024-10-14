@@ -56,7 +56,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "2952065196343262420"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "17597461722386619555"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -215,13 +215,13 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "VERSIONS": {
                 "platform": "0.7.6",
                 "secretStore": "0.6.4",
-                "containerStorage": "2.1.1-preview",
-                "openServiceMesh": "1.2.9",
+                "containerStorage": "2.2.0",
+                "openServiceMesh": "1.2.10",
             },
             "TRAINS": {
                 "platform": "preview",
                 "secretStore": "preview",
-                "containerStorage": "stable",
+                "containerStorage": "preview",
                 "openServiceMesh": "stable",
             },
             "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arccontainerstorage-storage-pool')]",
