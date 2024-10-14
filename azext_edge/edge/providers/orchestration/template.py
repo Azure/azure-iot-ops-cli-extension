@@ -49,7 +49,7 @@ class TemplateBlueprint(NamedTuple):
 
 IOT_OPERATIONS_VERSION_MONIKER = "v0.8.0-preview"
 
-M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
+M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
     commit_id="78864ae529f698cf1c9bf0be0a6957e6c9f3cf38",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -348,7 +348,7 @@ M2_ENABLEMENT_TEMPLATE = TemplateBlueprint(
     },
 )
 
-M2_INSTANCE_TEMPLATE = TemplateBlueprint(
+M3_INSTANCE_TEMPLATE = TemplateBlueprint(
     commit_id="373335547851df70d512b7ec81aedfba0d660ae5",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",

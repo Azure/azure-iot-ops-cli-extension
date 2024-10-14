@@ -10,8 +10,8 @@ import pytest
 
 from azext_edge.edge.providers.orchestration.template import (
     IOT_OPERATIONS_VERSION_MONIKER,
-    M2_ENABLEMENT_TEMPLATE,
-    M2_INSTANCE_TEMPLATE,
+    M3_ENABLEMENT_TEMPLATE,
+    M3_INSTANCE_TEMPLATE,
     TemplateBlueprint,
     get_insecure_listener,
 )
@@ -59,37 +59,37 @@ EXPECTED_SHARED_DEFINITION_KEYS = frozenset(
 
 
 def test_enablement_template():
-    assert M2_ENABLEMENT_TEMPLATE.commit_id
-    assert M2_ENABLEMENT_TEMPLATE.content
+    assert M3_ENABLEMENT_TEMPLATE.commit_id
+    assert M3_ENABLEMENT_TEMPLATE.content
 
     for resource in EXPECTED_EXTENSION_RESOURCE_KEYS:
-        assert M2_ENABLEMENT_TEMPLATE.get_resource_by_key(resource)
+        assert M3_ENABLEMENT_TEMPLATE.get_resource_by_key(resource)
 
     for definition in EXPECTED_SHARED_DEFINITION_KEYS:
-        assert M2_ENABLEMENT_TEMPLATE.get_type_definition(definition)
+        assert M3_ENABLEMENT_TEMPLATE.get_type_definition(definition)
 
 
 def test_instance_template():
-    assert M2_INSTANCE_TEMPLATE.commit_id
-    assert M2_INSTANCE_TEMPLATE.content
+    assert M3_INSTANCE_TEMPLATE.commit_id
+    assert M3_INSTANCE_TEMPLATE.content
 
     for resource in EXPECTED_INSTANCE_RESOURCE_KEYS:
-        assert M2_INSTANCE_TEMPLATE.get_resource_by_key(resource)
+        assert M3_INSTANCE_TEMPLATE.get_resource_by_key(resource)
 
     for definition in EXPECTED_SHARED_DEFINITION_KEYS:
-        assert M2_INSTANCE_TEMPLATE.get_type_definition(definition)
+        assert M3_INSTANCE_TEMPLATE.get_type_definition(definition)
 
-    instance = M2_INSTANCE_TEMPLATE.get_resource_by_type("Microsoft.IoTOperations/instances")
+    instance = M3_INSTANCE_TEMPLATE.get_resource_by_type("Microsoft.IoTOperations/instances")
     assert instance and isinstance(instance, dict)
 
     # Copy test in other area
-    m2_template_copy = M2_INSTANCE_TEMPLATE.copy()
+    m3_template_copy = M3_INSTANCE_TEMPLATE.copy()
 
     instance_name = generate_random_string()
     broker_name = generate_random_string()
 
-    m2_template_copy.add_resource("insecure_listener", get_insecure_listener(instance_name, broker_name))
-    listeners = m2_template_copy.get_resource_by_type(
+    m3_template_copy.add_resource("insecure_listener", get_insecure_listener(instance_name, broker_name))
+    listeners = m3_template_copy.get_resource_by_type(
         "Microsoft.IoTOperations/instances/brokers/listeners", first=False
     )
     assert listeners and isinstance(listeners, list)
