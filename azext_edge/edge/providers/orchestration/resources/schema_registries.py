@@ -23,16 +23,14 @@ from ..common import SchemaFormat, SchemaType
 from ..permissions import PermissionManager, ROLE_DEF_FORMAT_STR
 
 logger = get_logger(__name__)
-
 console = Console()
-
-
 if TYPE_CHECKING:
     from ....vendor.clients.deviceregistrymgmt.operations import (
         SchemaRegistriesOperations,
         SchemasOperations,
         SchemaVersionsOperations,
     )
+
 
 STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID = "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
 
@@ -180,7 +178,7 @@ class Schemas(Queryable):
         resource_group_name: str,
         schema_type: str,
         schema_format: str,
-        schema_content: str,
+        schema_version_content: str,
         schema_version: int = 1,
         description: Optional[str] = None,
         display_name: Optional[str] = None,
@@ -207,7 +205,7 @@ class Schemas(Queryable):
             # TODO: maybe add in an exception catch for auth errors
             self.add_version(
                 name=schema_version,
-                schema_content=schema_content,
+                schema_version_content=schema_version_content,
                 schema_name=name,
                 schema_registry_name=schema_registry_name,
                 resource_group_name=resource_group_name,
@@ -252,7 +250,7 @@ class Schemas(Queryable):
         schema_name: str,
         schema_registry_name: str,
         resource_group_name: str,
-        schema_content: str,
+        schema_version_content: str,
         description: Optional[str] = None,
         current_console: Optional[Console] = None,
     ) -> dict:
@@ -263,14 +261,14 @@ class Schemas(Queryable):
 
         try:
             logger.debug("Processing schema content.")
-            schema_content = read_file_content(schema_content)
+            schema_version_content = read_file_content(schema_version_content)
         except FileOperationError:
             logger.debug("Given schema content is not a file.")
             pass
 
         resource = {
             "properties": {
-                "schemaContent": schema_content,
+                "schemaContent": schema_version_content,
                 "description": description,
             },
         }
@@ -328,3 +326,69 @@ class Schemas(Queryable):
                 schema_name=schema_name,
                 schema_version_name=name,
             )
+
+    def list_dataflow_friendly_versions(
+        self,
+        schema_registry_name: str,
+        resource_group_name: str,
+        schema_name: Optional[str] = None,
+        schema_version: Optional[str] = None,
+        latest: bool = False
+    ) -> dict:
+        from collections import OrderedDict
+        # note temporary until dataflow create is added.
+        versions_map = {}
+        # with console.status("Fetching version info..."):
+        # get all the versions first
+        if schema_name and schema_version:
+            versions_map[schema_name] = [int(schema_version)]
+        elif schema_name:
+            versions_map.update(
+                self._get_schema_version_dict(
+                    schema_name=schema_name,
+                    schema_registry_name=schema_registry_name,
+                    resource_group_name=resource_group_name,
+                    latest=latest
+                )
+            )
+        elif schema_version:
+            # TODO: maybe do the weird
+            raise InvalidArgumentValueError(
+                "Please provide the schema name if schema versions is used."
+            )
+        else:
+            schema_list = self.list(
+                schema_registry_name=schema_registry_name, resource_group_name=resource_group_name
+            )
+            for schema in schema_list:
+                versions_map.update(
+                    self._get_schema_version_dict(
+                        schema_name=schema["name"],
+                        schema_registry_name=schema_registry_name,
+                        resource_group_name=resource_group_name,
+                        latest=latest
+                    )
+                )
+
+        ref_format = "aio-sr://{schema}:{version}"
+        # change to ordered dict for order, azure cli does not like the int keys at that level
+        for schema_name, versions_list in versions_map.items():
+            ordered = OrderedDict(
+                (str(ver), ref_format.format(schema=schema_name, version=ver)) for ver in versions_list
+            )
+            versions_map[schema_name] = ordered
+
+        return versions_map
+
+    def _get_schema_version_dict(
+        self, schema_name: str, schema_registry_name: str, resource_group_name: str, latest: bool = False
+    ) -> dict:
+        version_list = self.list_versions(
+            schema_name=schema_name,
+            schema_registry_name=schema_registry_name,
+            resource_group_name=resource_group_name
+        )
+        version_list = [int(ver["name"]) for ver in version_list]
+        if latest:
+            version_list = [max(version_list)]
+        return {schema_name: sorted(version_list)}

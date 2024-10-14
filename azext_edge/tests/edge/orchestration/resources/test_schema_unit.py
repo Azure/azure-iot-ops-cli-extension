@@ -229,7 +229,7 @@ def test_schema_create(
     schema_name = generate_random_string()
     registry_name = generate_random_string()
     resource_group_name = generate_random_string()
-    schema_content = generate_random_string()
+    schema_version_content = generate_random_string()
 
     create_registry_kwargs = {
         "cmd": mocked_cmd,
@@ -240,7 +240,7 @@ def test_schema_create(
         "resource_group_name": resource_group_name,
         "display_name": display_name,
         "description": description,
-        "schema_content": schema_content,
+        "schema_version_content": schema_version_content,
         "schema_version_description": version_description
     }
     if version_num:
@@ -298,7 +298,7 @@ def test_schema_create(
     version_url = mocked_responses.calls[-1].request.url.split("?")[0]
     version_url = version_url.split("/")[-1]
     assert version_url == str(version_num or 1)
-    assert version_payload["properties"]["schemaContent"] == schema_content
+    assert version_payload["properties"]["schemaContent"] == schema_version_content
     assert version_payload["properties"]["description"] == version_description
 
 
@@ -413,7 +413,7 @@ def test_version_add(mocked_cmd, mocked_responses: responses, description: Optio
     schema_name = generate_random_string()
     registry_name = generate_random_string()
     resource_group_name = generate_random_string()
-    schema_content = generate_random_string()
+    schema_version_content = generate_random_string()
 
     create_registry_kwargs = {
         "cmd": mocked_cmd,
@@ -422,7 +422,7 @@ def test_version_add(mocked_cmd, mocked_responses: responses, description: Optio
         "schema_registry_name": registry_name,
         "resource_group_name": resource_group_name,
         "description": description,
-        "schema_content": schema_content
+        "schema_version_content": schema_version_content
     }
 
     mock_record = get_mock_schema_version_record(
@@ -450,7 +450,7 @@ def test_version_add(mocked_cmd, mocked_responses: responses, description: Optio
         mocked_responses.calls[-1].request.body
     )
 
-    assert create_payload["properties"]["schemaContent"] == schema_content
+    assert create_payload["properties"]["schemaContent"] == schema_version_content
     assert create_payload["properties"]["description"] == description
 
 
@@ -462,6 +462,6 @@ def test_version_add_error(mocked_cmd):
             version_name=-1,
             schema_name=generate_random_string(),
             schema_registry_name=generate_random_string(),
-            schema_content=generate_random_string(),
+            schema_version_content=generate_random_string(),
             resource_group_name=generate_random_string()
         )

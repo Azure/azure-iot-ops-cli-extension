@@ -1185,9 +1185,7 @@ def load_iotops_help():
         long-summary: |
                       This operation requires a pre-created schema registry and will add a schema version.
                       To create the schema and add a version, the associated storage account will need to have public network access enabled.
-                      For more information on the delta file format, please see
-                      https://github.com/delta-io/delta/blob/master/PROTOCOL.md#column-mapping and
-                      https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-and-delta-tables. (#TODO AKA.ms)
+                      For more information on the delta file format, please see aka.ms/lakehouse-delta-sample
         examples:
         - name: Create a schema called 'myschema' in the registry 'myregistry' with minimum inputs. Schema version 1 will be created for this schema with the file content.
           text: >
@@ -1331,9 +1329,7 @@ def load_iotops_help():
         short-summary: Add a schema version to a schema.
         long-summary: |
                       To add a version, the associated storage account will need to have public network access enabled.
-                      For more information on the delta file format, please see
-                      https://github.com/delta-io/delta/blob/master/PROTOCOL.md#column-mapping and
-                      https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-and-delta-tables. (#TODO AKA.ms)
+                      For more information on the delta file format, please see aka.ms/lakehouse-delta-sample
         examples:
         - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
                 minimum inputs. The content is inline json (powershell syntax example).
@@ -1351,4 +1347,24 @@ def load_iotops_help():
                 a description. The file should contain the schema content.
           text: >
             az iot ops schema version add -n 2 -g myresourcegroup --registry myregistry --schema myschema --content myschemav2.json --desc "New schema"
+    """
+
+    helps[
+        "iot ops schema dataflow-ref-versions"
+    ] = """
+        type: command
+        short-summary: Show the schema references used for dataflows.
+        examples:
+        - name: Show schema reference for schema "myschema" and version 1.
+          text: >
+            az iot ops schema dataflow-ref-versions --name 1 --schema myschema --registry myregistry -g myresourcegroup
+        - name: Show schema reference for all versions in schema "myschema".
+          text: >
+            az iot ops schema dataflow-ref-versions --schema myschema --registry myregistry -g myresourcegroup
+        - name: Show schema reference for all versions and schemas in schema registry "myregistry".
+          text: >
+            az iot ops schema dataflow-ref-versions --registry myregistry -g myresourcegroup
+        - name: Show schema reference for all schemas but only the latest versions in schema registry "myregistry".
+          text: >
+            az iot ops schema dataflow-ref-versions --registry myregistry -g myresourcegroup --latest
     """

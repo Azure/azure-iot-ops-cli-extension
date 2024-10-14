@@ -70,7 +70,7 @@ def create_schema(
     resource_group_name: str,
     schema_type: str,
     schema_format: str,
-    schema_content: str,
+    schema_version_content: str,
     schema_version: int = 1,
     description: Optional[str] = None,
     display_name: Optional[str] = None,
@@ -84,7 +84,7 @@ def create_schema(
         description=description,
         display_name=display_name,
         resource_group_name=resource_group_name,
-        schema_content=schema_content,
+        schema_version_content=schema_version_content,
         schema_version=schema_version,
         schema_version_description=schema_version_description
     )
@@ -100,6 +100,23 @@ def show_schema(cmd, schema_name: str, schema_registry_name: str, resource_group
 
 def list_schemas(cmd, schema_registry_name: str, resource_group_name: str) -> dict:
     return Schemas(cmd).list(schema_registry_name=schema_registry_name, resource_group_name=resource_group_name)
+
+
+def list_schema_versions_dataflow_format(
+    cmd,
+    schema_registry_name: str,
+    resource_group_name: str,
+    schema_name: Optional[str] = None,
+    schema_version: Optional[str] = None,
+    latest: Optional[bool] = None
+) -> dict:
+    return Schemas(cmd).list_dataflow_friendly_versions(
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name,
+        schema_name=schema_name,
+        schema_version=schema_version,
+        latest=latest
+    )
 
 
 def delete_schema(
@@ -124,14 +141,14 @@ def add_version(
     schema_name: str,
     schema_registry_name: str,
     resource_group_name: str,
-    schema_content: str,
+    schema_version_content: str,
     description: Optional[str] = None,
 ) -> dict:
     return Schemas(cmd).add_version(
         name=version_name,
         schema_name=schema_name,
         schema_registry_name=schema_registry_name,
-        schema_content=schema_content,
+        schema_version_content=schema_version_content,
         description=description,
         resource_group_name=resource_group_name,
     )

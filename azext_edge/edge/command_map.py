@@ -171,6 +171,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("create", "create_schema")
         cmd_group.show_command("show", "show_schema")
         cmd_group.command("list", "list_schemas")
+        cmd_group.command("dataflow-ref-versions", "list_schema_versions_dataflow_format")
         cmd_group.command("delete", "delete_schema")
 
     with self.command_group(

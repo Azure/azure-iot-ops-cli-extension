@@ -4,10 +4,12 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-
+from random import randint
 import json
 from ....generators import generate_random_string
 from ....helpers import run
+
+VERSION_STRINGIFY_FORMAT = "aio-sr://{schema_name}:{version}"
 
 
 def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
@@ -73,7 +75,18 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         schema_name=schema_name1,
         registry_name=registry_name,
         resource_group=registry_rg,
-        schema_content=delta_content
+        schema_version_content=delta_content
+    )
+
+    # VERSION PRINTS
+    version_strings1 = run(
+        f"az iot ops schema dataflow-ref-versions --schema {schema_name1} -g {registry_rg} "
+        f"--registry {registry_name} --ver {version_num}"
+    )
+    assert schema_name1 in version_strings1
+    assert str(version_num) in version_strings1[schema_name1]
+    assert version_strings1[schema_name1][str(version_num)] == VERSION_STRINGIFY_FORMAT.format(
+        version=version_num, schema_name=schema_name1
     )
 
     # CREATE 2 with max version args
@@ -81,7 +94,8 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     display_name = generate_random_string()
 
     version_desc = generate_random_string()
-    version_num = 14
+    version_num = randint(2, 100)
+    version_num2 = version_num + randint(1, 10)
     json_content = json.dumps({
         generate_random_string(): generate_random_string(),
         generate_random_string(): {
@@ -89,7 +103,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         },
         generate_random_string(): generate_random_string()
     })
-    file_name = f"test_schema_content_{generate_random_string(size=4)}.json"
+    file_name = f"test_schema_version_content_{generate_random_string(size=4)}.json"
     tracked_files.append(file_name)
     with open(file_name, "w", encoding="utf-8") as f:
         f.write(json_content)
@@ -117,16 +131,16 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     # fun stuff to make sure the inline is actually formatted correctly in the command
     test_content = inline_content.replace('"', '\\"')
     version_add = run(
-        f"az iot ops schema version add -n {version_num + 2} --schema {schema_name2} -g {registry_rg} "
+        f"az iot ops schema version add -n {version_num2} --schema {schema_name2} -g {registry_rg} "
         f"--registry {registry_name} --content \"{test_content}\""
     )
     assert_schema_version(
         version=version_add,
-        name=version_num + 2,
+        name=version_num2,
         schema_name=schema_name2,
         registry_name=registry_name,
         resource_group=registry_rg,
-        schema_content=inline_content,
+        schema_version_content=inline_content,
     )
 
     # LIST VERSION
@@ -136,16 +150,60 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     )
     version_map = {int(ver["name"]): ver for ver in version_list}
     assert version_num in version_map
-    assert version_num + 2 in version_map
+    assert version_num2 in version_map
     assert_schema_version(
         version=version_map[version_num],
         name=version_num,
         schema_name=schema_name2,
         registry_name=registry_name,
-        schema_content=json_content,
+        schema_version_content=json_content,
         resource_group=registry_rg,
         description=version_desc
     )
+
+    # VERSION PRINTS
+    version_strings2 = run(
+        f"az iot ops schema dataflow-ref-versions --schema {schema_name2} -g {registry_rg} --registry {registry_name}"
+    )
+    assert schema_name2 in version_strings2
+    assert str(version_num) in version_strings2[schema_name2]
+    assert str(version_num2) in version_strings2[schema_name2]
+    assert version_strings2[schema_name2][str(version_num)] == VERSION_STRINGIFY_FORMAT.format(
+        version=version_num, schema_name=schema_name2
+    )
+    assert version_strings2[schema_name2][str(version_num2)] == VERSION_STRINGIFY_FORMAT.format(
+        version=version_num2, schema_name=schema_name2
+    )
+
+
+    # all versions + schemas
+    version_strings_all = run(
+        f"az iot ops schema dataflow-ref-versions -g {registry_rg} --registry {registry_name}"
+    )
+    assert schema_name1 in version_strings_all
+    assert schema_name2 in version_strings_all
+    assert version_strings_all[schema_name1][str(1)] == VERSION_STRINGIFY_FORMAT.format(
+        version=1, schema_name=schema_name1
+    )
+    assert version_strings_all[schema_name2][str(version_num)] == VERSION_STRINGIFY_FORMAT.format(
+        version=version_num, schema_name=schema_name2
+    )
+    assert version_strings_all[schema_name2][str(version_num2)] == VERSION_STRINGIFY_FORMAT.format(
+        version=version_num2, schema_name=schema_name2
+    )
+
+    # latest should only contain schema1 + version and schema2 + latest version
+    version_strings_latest = run(
+        f"az iot ops schema dataflow-ref-versions -g {registry_rg} --registry {registry_name} --latest"
+    )
+    assert version_strings_latest[schema_name1][str(1)] == VERSION_STRINGIFY_FORMAT.format(
+        version=1, schema_name=schema_name1
+    )
+    assert version_strings_latest[schema_name2][str(version_num2)] == VERSION_STRINGIFY_FORMAT.format(
+        version=version_num2, schema_name=schema_name2
+    )
+    assert str(version_num) not in version_strings_latest[schema_name2]
+
 
     # REMOVE VERSION
     run(
@@ -160,7 +218,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     )
     version_map = [int(ver["name"]) for ver in version_list]
     assert version_num not in version_map
-    assert version_num + 2 in version_map
+    assert version_num2 in version_map
 
     # LIST
     schema_list = run(f"az iot ops schema list -g {registry_rg} --registry {registry_name}")
@@ -202,5 +260,5 @@ def assert_schema_version(version: dict, **expected):
     assert expected["schema_name"] in version["id"].split("/")
 
     assert version["properties"]["hash"]
-    assert version["properties"]["schemaContent"] == expected["schema_content"]
+    assert version["properties"]["schemaContent"] == expected["schema_version_content"]
     assert version["properties"].get("description") == expected.get("description")
