@@ -11,6 +11,7 @@ from azure.core.exceptions import ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
 
+
 from ....util.az_client import (
     get_registry_mgmt_client,
     get_storage_mgmt_client,
@@ -66,7 +67,11 @@ class SchemaRegistries(Queryable):
         custom_role_id: Optional[str] = None,
         **kwargs,
     ) -> dict:
+        from ..rp_namespace import register_providers, ADR_PROVIDER
         with console.status("Working...") as c:
+            # Register the schema (ADR) provider
+            register_providers(self.default_subscription_id, ADR_PROVIDER)
+
             if not location:
                 location = self.get_resource_group(name=resource_group_name)["location"]
 
@@ -127,7 +132,7 @@ class SchemaRegistries(Queryable):
             permission_manager = PermissionManager(storage_id_container.subscription_id)
             try:
                 permission_manager.apply_role_assignment(
-                    scope=storage_account["id"],
+                    scope=blob_container["id"],
                     principal_id=result["identity"]["principalId"],
                     role_def_id=target_role_def,
                 )
@@ -137,7 +142,7 @@ class SchemaRegistries(Queryable):
                     get_user_msg_warn_ra(
                         prefix=f"Role assignment failed with:\n{str(e)}.",
                         principal_id=result["identity"]["principalId"],
-                        scope=storage_account["id"],
+                        scope=blob_container["id"],
                     )
                 )
 
