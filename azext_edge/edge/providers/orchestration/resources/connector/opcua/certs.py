@@ -15,6 +15,7 @@ import yaml
 
 from azext_edge.edge.providers.orchestration.common import CUSTOM_LOCATIONS_API_VERSION
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
+from azext_edge.edge.util.file_operations import validate_file_extension
 from azext_edge.edge.util.queryable import Queryable
 from azext_edge.edge.util.az_client import (
     parse_resource_id,
@@ -68,7 +69,7 @@ class OpcUACerts(Queryable):
         file_name = os.path.basename(file)
         # get cert name by removing extension and path in front
         cert_name = file_name.split(".")[0].replace(".", "")
-        cert_extension = self._validate_file_extension(file_name, ["der", "crt"])
+        cert_extension = validate_file_extension(file_name, ["der", "crt"])
 
         secret_name = secret_name if secret_name else f"{cert_name}-{cert_extension}"
 
@@ -134,7 +135,7 @@ class OpcUACerts(Queryable):
         # get cert name by removing extension and path in front
         cert_name = file_name.split(".")[0].replace(".", "")
 
-        cert_extension = self._validate_file_extension(file_name, ["der", "crt", "crl"])
+        cert_extension = validate_file_extension(file_name, ["der", "crt", "crl"])
 
         try:
             opcua_secret_sync = self.ssc_mgmt_client.secret_syncs.get(
@@ -278,6 +279,7 @@ class OpcUACerts(Queryable):
         entry_text = yaml.safe_dump(secret_entry, indent=6)
         objects_obj["array"].append(entry_text)
         object_text = yaml.safe_dump(objects_obj, indent=6)
+        # TODO: formatting will be removed once fortos service fixes the formatting issue
         return object_text.replace("\n- |", "\n    - |")
 
     def _get_cl_resources(self, instance_name: str, resource_group: str) -> dict:
@@ -329,14 +331,6 @@ class OpcUACerts(Queryable):
                 return Prompt.ask("Please enter the new secret name")
 
         return new_secret_name
-
-    def _validate_file_extension(self, file_name: str, expected_exts: List[str]) -> str:
-        ext = file_name.split(".")[-1]
-        if ext not in expected_exts:
-            exts_text = ", ".join(expected_exts)
-            raise ValueError(f"Only {exts_text} file extensions are supported.")
-
-        return ext
 
     def _upload_to_key_vault(self, secret_name: str, file_path: str, cert_extension: str):
         with console.status(f"Uploading certificate to keyvault as secret {secret_name}..."), open(

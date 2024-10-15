@@ -115,7 +115,7 @@ def load_iotops_help():
             - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
 
-            For more information on cluster requirements, please check https://aka.ms/iot-ops-cluster-requirements
+            For more information on cluster requirements, please check aka.ms/iot-ops-cluster-requirements
 
         examples:
         - name: Basic usage. Checks overall IoT Operations health with summary output.
@@ -468,7 +468,7 @@ def load_iotops_help():
         short-summary: Bootstrap the Arc-enabled cluster for IoT Operations deployment.
         long-summary: |
                       An Arc-enabled cluster is required to deploy IoT Operations. See the following resource for
-                      more info https://aka.ms/aziotops-arcconnect.
+                      more info aka.ms/aziotops-arcconnect.
 
                       The init operation will do work in installing and configuring a foundation layer of edge
                       services necessary for IoT Operations deployment.
@@ -1233,9 +1233,9 @@ def load_iotops_help():
         type: group
         short-summary: OPC UA connector management.
         long-summary: |
-          The connector for OPC UA enables your industrial OPC UA environment to ingress data into
+          The connector for OPC UA enables your industrial OPC UA environment to input data into
           your local workloads running on a Kubernetes cluster, and into your cloud workloads.
-          See the following resource for more info https://aka.ms/overview-connector-opcua-broker
+          See the following resource for more info aka.ms/overview-connector-opcua-broker
     """
 
     helps[
@@ -1247,7 +1247,7 @@ def load_iotops_help():
           The trusted certificate list contains the certificates of all the OPC UA servers that the connector
           for OPC UA trusts. If the connector for OPC UA trusts a certificate authority, it automatically trusts
           any server that has a valid application instance certificate signed by the certificate authority.
-          See the following resource for more info https://aka.ms/overview-opcua-broker-certificates-management
+          See the following for more info aka.ms/overview-opcua-broker-certificates-management
     """
 
     helps[
@@ -1260,11 +1260,12 @@ def load_iotops_help():
         examples:
         - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
           text: >
-            az iot ops connector opcua trust add --instance instance --ig instanceresourcegroup --cf certificate_file
+            az iot ops connector opcua trust add --instance instance --instance-resource-group instanceresourcegroup
+            --certificate-file "certificate_file.der"
         - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list with custom secret name.
           text: >
-            az iot ops connector opcua trust add --instance instance --ig instanceresourcegroup --cf certificate_file
-            -s custom_secret_name
+            az iot ops connector opcua trust add --instance instance --instance-resource-group instanceresourcegroup
+            --certificate-file "certificate_file.crt" --secret-name custom_secret_name
     """
 
     helps[
@@ -1274,10 +1275,10 @@ def load_iotops_help():
         short-summary: Manage issuer certificates for the OPC UA Broker.
         long-summary: |
           The issuer certificate list stores the certificate authority certificates that the connector for OPC UA trusts.
-          This list can be used to manage the trust relationship if OPC UA server's application instance certificate is
-          signed by an intermediate certificate authority, but don't want to automatically trust all the certificates
-          issued by the certificate authority.
-          See the following resource for more info https://aka.ms/overview-opcua-broker-certificates-management
+          If user's OPC UA server's application instance certificate is signed by an intermediate certificate authority,
+          but user does not want to automatically trust all the certificates issued by the certificate authority, an issuer
+          certificate list can be used to manage the trust relationship.
+          See the following for more info aka.ms/overview-opcua-broker-certificates-management
     """
 
     helps[
@@ -1289,11 +1290,17 @@ def load_iotops_help():
             The certificate file extension must be .der, .crt or .crl. When adding a .crl file, a .der or .crt file with
             same file name must be added first.
         examples:
-        - name: Add an issuer certificates in the OPC UA Broker's trusted certificate list.
+        - name: Add an issuer certificate in the OPC UA Broker's issuer certificate list.
           text: >
-            az iot ops connector opcua issuer add --instance instance --ig instanceresourcegroup --cf certificate_file
+            az iot ops connector opcua issuer add --instance instance --instance-resource-group instanceresourcegroup
+            --certificate-file "certificate_file.der"
+        - name: Add an issuer certificate with .crl extension to the OPC UA Broker's issuer certificate list with same
+                file name as the .der file mentioned above.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --instance-resource-group instanceresourcegroup
+            --certificate-file "certificate_file.crl"
         - name: Add an issuer certificate to the OPC UA Broker's issuer certificate list with custom secret name.
           text: >
-            az iot ops connector opcua issuer add --instance instance --ig instanceresourcegroup --cf certificate_file
-            -s custom_secret_name
+            az iot ops connector opcua issuer add --instance instance --instance-resource-group instanceresourcegroup
+            --certificate-file certificate_file --secret-name custom_secret_name
     """
