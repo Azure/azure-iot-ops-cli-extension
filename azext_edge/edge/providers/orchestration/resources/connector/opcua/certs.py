@@ -193,6 +193,7 @@ class OpcUACerts(Queryable):
         entry_text = yaml.safe_dump(secret_entry, indent=6)
         objects_obj["array"].append(entry_text)
         object_text = yaml.safe_dump(objects_obj, indent=6)
+        # TODO: formatting will be removed once fortos service fixes the formatting issue
         return object_text.replace("\n- |", "\n    - |")
 
     def _get_cl_resources(self, instance_name: str, resource_group: str) -> dict:
