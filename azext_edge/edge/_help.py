@@ -1205,6 +1205,9 @@ def load_iotops_help():
 
                       If the indicated storage account container does not exist it will be created with default
                       settings.
+
+                      This operation will also register the Microsoft.DeviceRegistry resource provider if it is
+                      not registered.
         examples:
         - name: Create a schema registry called 'myregistry' with minimum inputs.
           text: >

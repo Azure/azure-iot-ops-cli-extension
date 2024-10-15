@@ -58,7 +58,7 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
     :type credential: ~azure.core.credentials.TokenCredential
     :keyword endpoint: Service URL. Default value is "https://management.azure.com".
     :paramtype endpoint: str
-    :keyword api_version: Api Version. Default value is "2024-08-15-preview". Note that overriding
+    :keyword api_version: Api Version. Default value is "2024-09-15-preview". Note that overriding
      this default value may result in unsupported behavior.
     :paramtype api_version: str
     :keyword int polling_interval: Default waiting time between two polls for LRO operations if no

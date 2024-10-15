@@ -23,6 +23,10 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
         "--enable-hierarchical-namespace --public-network-access Disabled "
         "--allow-shared-key-access false --allow-blob-public-access false --default-action Deny"
     )
+    blob_service = run(
+        f"az storage account blob-service-properties show -n {storage_account_name}"
+    )
+    container_resource_id = f"{blob_service['id']}/containers/schemas"
     tracked_resources.append(storage_account['id'])
 
     # CREATE 1
@@ -41,7 +45,7 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
     # check the roles
     roles = run(
         f"az role assignment list --assignee {registry['identity']['principalId']} "
-        f"--scope {storage_account['id']}"
+        f"--scope {container_resource_id}"
     )
     assert roles
     assert roles[0]["roleDefinitionName"] == "Storage Blob Data Contributor"
@@ -77,6 +81,7 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
         f"--sa-container {sa_container} --desc {description} --display-name {display_name} "
         f"--tags {tags_str} --custom-role-id {role_id} "
     )
+    alt_container_resource_id = f"{blob_service['id']}/containers/{sa_container}"
     tracked_resources.append(alt_registry["id"])
     assert_schema_registry(
         registry=alt_registry,
@@ -92,7 +97,7 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
     # check the roles
     roles = run(
         f"az role assignment list --assignee {alt_registry['identity']['principalId']} "
-        f"--scope {storage_account['id']}"
+        f"--scope {alt_container_resource_id}"
     )
     assert roles
     assert roles[0]["roleDefinitionName"] == role_name
