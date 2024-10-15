@@ -72,23 +72,7 @@ class ClusterExtensions(Queryable):
             cluster_name=cluster_name,
             extension_name=extension_name,
         )
-        current_version = extension["properties"].get("version", "0").replace("-preview", "")
-        if extension_name.rsplit("-", maxsplit=1)[0] == "azure-iot-operations":
-            new_version = "0.0.0-m3-webhooks.20"
-            new_train = "dev"
-            # extension["properties"]["configurationSettings"] = {
-            #     "akri.enabled": False,
-            #     "connectors.enabled": False,
-            #     "dataFlows.enabled": False,
-            #     "schemaRegistry.enabled": False,
-            #     "mqttBroker.enabled": False,
-            # }
-        elif current_version >= new_version.replace("-preview", ""):
-            logger.info(f"Extension {extension_name} is already up to date.")
-            return
-
-        print("")
-        logger.info(f"Updating extension {extension_name} to {new_version}")
+        # normally after version check.
         extension_update = {
             "properties" : {
                 "autoUpgradeMinorVersion": False,
@@ -96,6 +80,20 @@ class ClusterExtensions(Queryable):
                 "version": new_version
             }
         }
+
+        current_version = extension["properties"].get("version", "0").replace("-preview", "")
+        # temp
+        if extension_name.rsplit("-", maxsplit=1)[0] == "azure-iot-operations":
+            new_version = "0.0.0-105821624"
+            new_train = "dev"
+            extension_update["properties"]["configurationSettings"]["schemaRegistry.image.tag"] = "0.1.6"
+
+        elif current_version >= new_version.replace("-preview", ""):
+            logger.info(f"Extension {extension_name} is already up to date.")
+            return
+
+        print("")
+        logger.info(f"Updating extension {extension_name} to {new_version}")
         print(extension_update)
 
         return wait_for_terminal_state(self.ops.begin_update(

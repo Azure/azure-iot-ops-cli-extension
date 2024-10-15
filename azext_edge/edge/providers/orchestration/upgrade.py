@@ -8,7 +8,7 @@ from sys import maxsize
 from time import sleep
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-from azure.cli.core.azclierror import ArgumentUsageError, RequiredArgumentMissingError
+from azure.cli.core.azclierror import ArgumentUsageError, RequiredArgumentMissingError, InvalidArgumentValueError
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from knack.log import get_logger
 from rich import print
@@ -91,8 +91,8 @@ class UpgradeManager:
         print("Azure IoT Operations Upgrade")
         print()
         print(Padding("Latest extension versions:", (0,0,0,2)))
-        # TODO: maybe pull out extensions to update here?
-        print(Padding(self._format_enablement_desc(), (0,0,0,4)))
+        # TODO: maybe pull out extensions get and version compare to here?
+        print(Padding(self._format_extension_desc(), (0,0,0,4)))
 
         if self.require_instance_upgrade:
             print(Padding(
@@ -108,7 +108,7 @@ class UpgradeManager:
 
         self._process()
 
-    def _format_enablement_desc(self) -> str:
+    def _format_extension_desc(self) -> str:
         from .template import M2_ENABLEMENT_TEMPLATE
         version_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
         display_desc = "[dim]"
@@ -125,9 +125,19 @@ class UpgradeManager:
                 cmd=self.cmd,
                 cluster_name=self.cluster_name,
                 resource_group_name=self.resource_group_name,
-                defer_refresh=True,
             )
-            self.instance_name = "WHEREDOESPAYMAUNGETTHENAME"
+            custom_locations = resource_map.connected_cluster.get_aio_custom_locations()
+            # TODO: maybe support multiple instance updates and extension only updates later
+            if custom_locations:
+                for cl in custom_locations:
+                    aio_resources = resource_map.connected_cluster.get_aio_resources(cl["id"])
+                    for resource in aio_resources:
+                        if resource["type"].lower() == "microsoft.iotoperations/instances":
+                            if self.instance_name:
+                                raise InvalidArgumentValueError(f"Found more than one IoT Operations instance for cluster {self.cluster_name}. Please choose the instance to upgrade with --instance.")
+                            self.instance_name = resource["name"]
+            if not self.instance_name:
+                raise InvalidArgumentValueError(f"No instances associated with cluster {self.cluster_name} found. Please run init and create instead.")
 
         self.require_instance_upgrade = True
         # try with 2024-08-15-preview -> it is m2
