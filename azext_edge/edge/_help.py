@@ -1222,8 +1222,6 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Connector management.
-        long-summary: |
-          The connector for IoT Operations is a service that lets you connect securely to edge devices.
     """
 
     helps[
@@ -1234,6 +1232,7 @@ def load_iotops_help():
         long-summary: |
           The connector for OPC UA enables your industrial OPC UA environment to ingress data into
           your local workloads running on a Kubernetes cluster, and into your cloud workloads.
+          See the following resource for more info https://aka.ms/overview-connector-opcua-broker
     """
 
     helps[
@@ -1245,6 +1244,7 @@ def load_iotops_help():
           The trusted certificate list contains the certificates of all the OPC UA servers that the connector
           for OPC UA trusts. If the connector for OPC UA trusts a certificate authority, it automatically trusts
           any server that has a valid application instance certificate signed by the certificate authority.
+          See the following resource for more info https://aka.ms/overview-opcua-broker-certificates-management
     """
 
     helps[
@@ -1274,6 +1274,7 @@ def load_iotops_help():
           This list can be used to manage the trust relationship if OPC UA server's application instance certificate is
           signed by an intermediate certificate authority, but don't want to automatically trust all the certificates
           issued by the certificate authority.
+          See the following resource for more info https://aka.ms/overview-opcua-broker-certificates-management
     """
 
     helps[
