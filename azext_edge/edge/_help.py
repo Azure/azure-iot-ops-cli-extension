@@ -1261,11 +1261,11 @@ def load_iotops_help():
         - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
           text: >
             az iot ops connector opcua trust add --instance instance --instance-resource-group instanceresourcegroup
-            --certificate-file certificate_file
+            --certificate-file "certificate_file.der"
         - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list with custom secret name.
           text: >
             az iot ops connector opcua trust add --instance instance --instance-resource-group instanceresourcegroup
-            --certificate-file certificate_file --secret-name custom_secret_name
+            --certificate-file "certificate_file.crt" --secret-name custom_secret_name
     """
 
     helps[
