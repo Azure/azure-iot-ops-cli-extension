@@ -166,6 +166,7 @@ class ConnectedCluster:
                 new_train=train_map[extension_key],
                 new_version=version_map[extension_key]
             )
+            print(extension)
             if not extension:
                 continue
 

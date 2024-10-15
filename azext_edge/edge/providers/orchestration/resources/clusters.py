@@ -74,52 +74,35 @@ class ClusterExtensions(Queryable):
         )
         current_version = extension["properties"].get("version", "0").replace("-preview", "")
         if extension_name.rsplit("-", maxsplit=1)[0] == "azure-iot-operations":
-            new_version = "0.0.0-m3-webhooks.11"
+            new_version = "0.0.0-m3-webhooks.20"
             new_train = "dev"
-            extension["properties"]["configurationSettings"] = {
-                "akri.enabled": False,
-                "connectors.enabled": False,
-                "dataFlows.enabled": False,
-                "schemaRegistry.enabled": False,
-                "mqttBroker.enabled": False,
-            }
+            # extension["properties"]["configurationSettings"] = {
+            #     "akri.enabled": False,
+            #     "connectors.enabled": False,
+            #     "dataFlows.enabled": False,
+            #     "schemaRegistry.enabled": False,
+            #     "mqttBroker.enabled": False,
+            # }
         elif current_version >= new_version.replace("-preview", ""):
             logger.info(f"Extension {extension_name} is already up to date.")
             return
 
         print("")
-        print(f"Updating extension {extension_name}")
+        logger.info(f"Updating extension {extension_name} to {new_version}")
         extension_update = {
-            "autoUpgradeMinorVersion": False,
-            "releaseTrain": new_train,
-            "version": new_version
+            "properties" : {
+                "autoUpgradeMinorVersion": False,
+                "releaseTrain": new_train,
+                "version": new_version
+            }
         }
+        print(extension_update)
 
-        # extension_update = wait_for_terminal_state(self.ops.begin_update(
-        #     resource_group_name=resource_group_name,
-        #     cluster_rp="Microsoft.Kubernetes",
-        #     cluster_resource_name="connectedClusters",
-        #     cluster_name=cluster_name,
-        #     extension_name=extension_name,
-        #     patch_extension=extension_update
-        # ))
-        # if extension_update["properties"]["currentVersion"] != new_version:
-        extension["properties"]["version"] = new_version
-        extension["properties"]["releaseTrain"] = new_train
-        extension["properties"].pop("currentVersion")
-        extension["properties"].pop("statuses")
-        # wait_for_terminal_state(self.ops.begin_delete(
-        #     resource_group_name=resource_group_name,
-        #     cluster_rp="Microsoft.Kubernetes",
-        #     cluster_resource_name="connectedClusters",
-        #     cluster_name=cluster_name,
-        #     extension_name=extension_name,
-        # ))
-        return wait_for_terminal_state(self.ops.begin_create(
+        return wait_for_terminal_state(self.ops.begin_update(
             resource_group_name=resource_group_name,
             cluster_rp="Microsoft.Kubernetes",
             cluster_resource_name="connectedClusters",
             cluster_name=cluster_name,
             extension_name=extension_name,
-            extension=extension
+            patch_extension=extension_update
         ))
