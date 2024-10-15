@@ -53,3 +53,13 @@ class ClusterExtensions(Queryable):
             cluster_resource_name="connectedClusters",
             cluster_name=cluster_name,
         )
+
+    def update(self, resource_group_name: str, cluster_name: str, extension_name: str, patch_extension: dict) -> dict:
+        return self.ops.begin_update(
+            resource_group_name=resource_group_name,
+            cluster_rp="Microsoft.Kubernetes",
+            cluster_resource_name="connectedClusters",
+            cluster_name=cluster_name,
+            extension_name=extension_name,
+            patch_extension=patch_extension,
+        )
