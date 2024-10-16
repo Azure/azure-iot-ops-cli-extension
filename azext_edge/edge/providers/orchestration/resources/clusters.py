@@ -62,45 +62,13 @@ class ClusterExtensions(Queryable):
         resource_group_name: str,
         cluster_name: str,
         extension_name: str,
-        new_version: str,
-        new_train: str,
+        update_payload: dict,
     ) -> Iterable[dict]:
-        extension = self.ops.get(
-            resource_group_name=resource_group_name,
-            cluster_rp="Microsoft.Kubernetes",
-            cluster_resource_name="connectedClusters",
-            cluster_name=cluster_name,
-            extension_name=extension_name,
-        )
-        # normally after version check.
-        extension_update = {
-            "properties" : {
-                "autoUpgradeMinorVersion": "false",
-                "releaseTrain": new_train,
-                "version": new_version
-            }
-        }
-
-        current_version = extension["properties"].get("version", "0").replace("-preview", "")
-        # temp
-        if all([extension_name.rsplit("-", maxsplit=1)[0] == "azure-iot-operations", current_version != "0.0.0-105821624"]):
-            extension_update["properties"]["releaseTrain"] = "dev"
-            extension_update["properties"]["version"] = "0.0.0-105821624"
-            extension_update["properties"]["configurationSettings"] = {"schemaRegistry.image.tag": "0.1.6"}
-
-        elif current_version >= new_version.replace("-preview", ""):
-            logger.info(f"Extension {extension_name} is already up to date.")
-            return
-
-        print("")
-        logger.info(f"Updating extension {extension_name} to {new_version}")
-        print(extension_update)
-
         return wait_for_terminal_state(self.ops.begin_update(
             resource_group_name=resource_group_name,
             cluster_rp="Microsoft.Kubernetes",
             cluster_resource_name="connectedClusters",
             cluster_name=cluster_name,
             extension_name=extension_name,
-            patch_extension=extension_update
+            patch_extension=update_payload
         ))

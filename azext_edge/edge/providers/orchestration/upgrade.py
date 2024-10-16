@@ -4,11 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from sys import maxsize
 from time import sleep
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import Optional
 
-from azure.cli.core.azclierror import ArgumentUsageError, RequiredArgumentMissingError, InvalidArgumentValueError
+from azure.cli.core.azclierror import (
+    ArgumentUsageError,
+    AzureResponseError,
+    RequiredArgumentMissingError,
+    InvalidArgumentValueError
+)
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from knack.log import get_logger
 from rich import print
@@ -22,7 +26,6 @@ from ...util.az_client import get_resource_client, wait_for_terminal_state
 from ...util.common import should_continue_prompt
 from .resource_map import IoTOperationsResourceMap
 from .resources import Instances
-from .work import WorkDisplay
 
 logger = get_logger(__name__)
 INSTANCE_7_API = "2024-08-15-preview"
@@ -86,19 +89,26 @@ class UpgradeManager:
         self.resource_map = self._get_resource_map()
         # Ensure cluster exists with existing resource_map pattern.
         self.resource_map.connected_cluster.resource
-        self.resource_map.refresh_resource_state()
+        if not self.cluster_name:
+            self.cluster_name = self.resource_map.connected_cluster.cluster_name
+        extension_text = self._check_extensions()
 
-        print("Azure IoT Operations Upgrade")
-        print()
-        print(Padding("Latest extension versions:", (0,0,0,2)))
-        # TODO: maybe pull out extensions get and version compare to here?
-        print(Padding(self._format_extension_desc(), (0,0,0,4)))
+        if self.extensions_to_update:
+            print("Azure IoT Operations Upgrade")
+            print()
+            print(Padding("Extensions to update:", (0,0,0,2)))
+            print(Padding(extension_text, (0,0,0,4)))
 
         if self.require_instance_upgrade:
             print(Padding(
                 "Old Azure IoT Operations instance version found. Will update the instance to the latest version.",
                 (0,0,0,2)
             ))
+
+        if not self.extensions_to_update and not self.require_instance_upgrade:
+            print("Nothing to upgrade :)")
+            return
+
         print()
         print("Upgrading may fail and require you to delete and re-create your cluster.")
 
@@ -108,12 +118,53 @@ class UpgradeManager:
 
         self._process()
 
-    def _format_extension_desc(self) -> str:
+    def _check_extensions(self) -> str:
         from .template import M2_ENABLEMENT_TEMPLATE
         version_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
+        train_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["TRAINS"].copy()
+        self.new_aio_version = "0.0.0-105821624"  # version_map["aio"]
+        type_to_key_map = {
+            "microsoft.azure.secretstore": "secretSyncController",  # store
+            "microsoft.arc.containerstorage": "edgeStorageAccelerator",  # containerstorage
+            "microsoft.openservicemesh": "openServiceMesh",  # hash
+            "microsoft.iotoperations.platform": "platform",  # hash
+            "microsoft.iotoperations": "aio",  # hash
+        }
+        aio_extensions = self.resource_map.connected_cluster.extensions
+        self.extensions_to_update = {}
+        for extension in aio_extensions:
+            extension_type = extension["properties"]["extensionType"].lower()
+            if extension_type not in type_to_key_map:
+                continue
+            extension_key = type_to_key_map[extension_type]
+            current_version = extension["properties"].get("version", "0").replace("-preview", "")
+            if all([extension_type == "microsoft.iotoperations", current_version != "0.0.0-105821624"]):
+                extension_update = {
+                    "properties": {
+                        "autoUpgradeMinorVersion": "false",
+                        "releaseTrain": "dev",
+                        "version": "0.0.0-105821624",
+                        "configurationSettings": {"schemaRegistry.image.tag": "0.1.6"}
+                    }
+                }
+            # TODO: packaging
+            elif any([extension_type == "microsoft.iotoperations", current_version >= version_map[extension_key].replace("-preview", "")]):
+                logger.info(f"Extension {extension['name']} is already up to date.")
+                continue
+            else:
+                extension_update = {
+                    "properties" : {
+                        "autoUpgradeMinorVersion": "false",
+                        "releaseTrain": train_map[extension_key],
+                        "version": version_map[extension_key]
+                    }
+                }
+            self.extensions_to_update[extension["name"]] = extension_update
+
         display_desc = "[dim]"
-        for ver in version_map:
-            display_desc += f"• {ver}: {version_map[ver]}\n"
+        for extension, update in self.extensions_to_update.items():
+            version = update["properties"]["version"]
+            display_desc += f"• {extension}: {version}\n"
         return display_desc[:-1] + ""
 
     def _get_resource_map(self) -> IoTOperationsResourceMap:
@@ -207,15 +258,30 @@ class UpgradeManager:
             self.instance.pop("systemData", None)
             inst_props = self.instance["properties"]
             inst_props["schemaRegistryRef"] = {"resourceId": self.sr_resource_id}
-            inst_props["version"] = extension_props["currentVersion"]
+            inst_props["version"] = self.new_aio_version
             inst_props.pop("schemaRegistryNamespace", None)
             inst_props.pop("components", None)
 
         result = None
         try:
             # Do the upgrade, the schema reg id may get lost
-            self._render_display("[yellow]Checking and Updating extensions...")
-            self.resource_map.connected_cluster.update_all_extensions()
+            if self.extensions_to_update:
+                self._render_display("[yellow]Updating extensions...")
+            import pdb; pdb.set_trace()
+            for extension in self.extensions_to_update:
+                logger.info(f"Updating extension {extension}.")
+                updated = self.resource_map.connected_cluster.clusters.extensions.update(
+                    resource_group_name=self.resource_group_name,
+                    cluster_name=self.cluster_name,
+                    extension_name=extension,
+                    update_payload=self.extensions_to_update[extension]
+                )
+                # check for hidden errors
+                for status in updated["properties"].get("statuses", []):
+                    if status["code"] == "InstallationFailed":
+                        raise AzureResponseError(
+                            f"Updating extension {extension} failed with the error message: {status['message']}"
+                        )
             import pdb; pdb.set_trace()
             if self.require_instance_upgrade:
                 # update the instance
@@ -231,5 +297,4 @@ class UpgradeManager:
             self._stop_display()
 
         # TODO make sure nothing else is needed
-        if result:
-            return result
+        return result
