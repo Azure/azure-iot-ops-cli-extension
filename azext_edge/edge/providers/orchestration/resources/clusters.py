@@ -75,7 +75,7 @@ class ClusterExtensions(Queryable):
         # normally after version check.
         extension_update = {
             "properties" : {
-                "autoUpgradeMinorVersion": False,
+                "autoUpgradeMinorVersion": "false",
                 "releaseTrain": new_train,
                 "version": new_version
             }
@@ -83,10 +83,10 @@ class ClusterExtensions(Queryable):
 
         current_version = extension["properties"].get("version", "0").replace("-preview", "")
         # temp
-        if extension_name.rsplit("-", maxsplit=1)[0] == "azure-iot-operations":
-            new_version = "0.0.0-105821624"
-            new_train = "dev"
-            extension_update["properties"]["configurationSettings"]["schemaRegistry.image.tag"] = "0.1.6"
+        if all([extension_name.rsplit("-", maxsplit=1)[0] == "azure-iot-operations", current_version != "0.0.0-105821624"]):
+            extension_update["properties"]["releaseTrain"] = "dev"
+            extension_update["properties"]["version"] = "0.0.0-105821624"
+            extension_update["properties"]["configurationSettings"] = {"schemaRegistry.image.tag": "0.1.6"}
 
         elif current_version >= new_version.replace("-preview", ""):
             logger.info(f"Extension {extension_name} is already up to date.")

@@ -216,15 +216,15 @@ class UpgradeManager:
             # Do the upgrade, the schema reg id may get lost
             self._render_display("[yellow]Checking and Updating extensions...")
             self.resource_map.connected_cluster.update_all_extensions()
-
+            import pdb; pdb.set_trace()
             if self.require_instance_upgrade:
                 # update the instance
                 self._render_display("[yellow]Updating instance...")
                 result = wait_for_terminal_state(
                         self.instances.iotops_mgmt_client.instance.begin_create_or_update(
-                        resource_group_name=self.resource_group_name,
-                        instance_name=self.instance_name,
-                        resource=self.instance
+                            resource_group_name=self.resource_group_name,
+                            instance_name=self.instance_name,
+                            resource=self.instance
                     )
                 )
         finally:
