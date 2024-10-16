@@ -140,7 +140,8 @@ class ConnectedCluster:
         result = self.resource_graph.query_resources(query=query)
         return self._process_query_result(result)
 
-    def update_aio_extension(self, extension_name: str, patch_extension: dict) -> dict:
+    def update_aio_extension(self, extension_name: str, properties: dict) -> dict:
+        patch_extension = {"properties": properties}
         return self.clusters.extensions.update(
             resource_group_name=self.resource_group_name,
             cluster_name=self.cluster_name,

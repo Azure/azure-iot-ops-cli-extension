@@ -46,10 +46,6 @@ class OpcUACerts(Queryable):
 
     def trust_add(self, instance_name: str, resource_group: str, file: str, secret_name: Optional[str] = None) -> dict:
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
-        self._update_opcua_extension(
-            subject_name="",
-            application_uri="",
-        )
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
         if not secretsync_spc:
             return
@@ -57,6 +53,8 @@ class OpcUACerts(Queryable):
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
         spc_keyvault_name = spc_properties.get("keyvaultName", "")
+        spc_tenant_id = spc_properties.get("tenantId", "")
+        spc_client_id = spc_properties.get("clientId", "")
 
         self.keyvault_client = get_keyvault_client(
             subscription_id=self.default_subscription_id,
@@ -91,6 +89,8 @@ class OpcUACerts(Queryable):
             spc=opcua_spc,
             resource_group=resource_group,
             spc_keyvault_name=spc_keyvault_name,
+            spc_tenant_id=spc_tenant_id,
+            spc_client_id=spc_client_id,
         )
 
         # check if there is a secret sync called "aio-opc-ua-broker-trust-list ", if not create one
@@ -122,6 +122,8 @@ class OpcUACerts(Queryable):
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
         spc_keyvault_name = spc_properties.get("keyvaultName", "")
+        spc_tenant_id = spc_properties.get("tenantId", "")
+        spc_client_id = spc_properties.get("clientId", "")
 
         self.keyvault_client = get_keyvault_client(
             subscription_id=self.default_subscription_id,
@@ -177,6 +179,8 @@ class OpcUACerts(Queryable):
             spc=opcua_spc,
             resource_group=resource_group,
             spc_keyvault_name=spc_keyvault_name,
+            spc_tenant_id=spc_tenant_id,
+            spc_client_id=spc_client_id,
         )
 
         return self._add_secret_to_secret_sync(
@@ -207,6 +211,8 @@ class OpcUACerts(Queryable):
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
         spc_keyvault_name = spc_properties.get("keyvaultName", "")
+        spc_client_id = spc_properties.get("clientId", "")
+        spc_tenant_id = spc_properties.get("tenantId", "")
 
         self.keyvault_client = get_keyvault_client(
             subscription_id=self.default_subscription_id,
@@ -215,19 +221,8 @@ class OpcUACerts(Queryable):
 
         secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
 
-        for file, expected_extension in [(public_key_file, "der"), (private_key_file, "pem")]:
-            file_name = os.path.basename(file)
-            ext = file_name.split(".")[-1]
-            cert_extension = self._validate_file_extension(file_name, [expected_extension])
-
-            if cert_extension == "der":
-                secret_name = f"{subject_name}-public-key-{ext}"
-            else:
-                secret_name = f"{subject_name}-private-key-{ext}"
-
-            # iterate over secrets to check if secret with same name exists
-            secret_name = self._check_and_update_secret_name(secrets, secret_name, spc_keyvault_name)
-            self._upload_to_key_vault(secret_name, file, cert_extension)
+        # process all the file validations before secret creations
+        self._validate_key_files(public_key_file, private_key_file)
 
         # check if there is a spc called "opc-ua-connector", if not create one
         try:
@@ -238,13 +233,6 @@ class OpcUACerts(Queryable):
         except ResourceNotFoundError:
             opcua_spc = {}
 
-        self._add_secret_to_spc(
-            secret_name=secret_name,
-            spc=opcua_spc,
-            resource_group=resource_group,
-            spc_keyvault_name=spc_keyvault_name,
-        )
-
         # check if there is a secret sync called "aio-opc-ua-broker-client-certificate", if not create one
         try:
             opcua_secret_sync = self.ssc_mgmt_client.secret_syncs.get(
@@ -254,20 +242,53 @@ class OpcUACerts(Queryable):
         except ResourceNotFoundError:
             opcua_secret_sync = {}
 
-        self._add_secret_to_secret_sync(
-            secret_name=secret_name,
-            file_name=file_name,
-            secret_sync=opcua_secret_sync,
-            resource_group=resource_group,
-            spc_name=OPCUA_SPC_NAME,
-            secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-        )
+        for file in [public_key_file, private_key_file]:
+            file_name = os.path.basename(file)
+            file_name_info = os.path.splitext(file_name)
+            cert_extension = file_name_info[1].replace(".", "")
+            cert_name = file_name_info[0].replace(".", "-")
+            secret_name = f"{cert_name}-{cert_extension}"
+
+            # iterate over secrets to check if secret with same name exists
+            secret_name = self._check_and_update_secret_name(secrets, secret_name, spc_keyvault_name)
+            self._upload_to_key_vault(secret_name, file, cert_extension)
+
+            self._add_secret_to_spc(
+                secret_name=secret_name,
+                spc=opcua_spc,
+                resource_group=resource_group,
+                spc_keyvault_name=spc_keyvault_name,
+                spc_tenant_id=spc_tenant_id,
+                spc_client_id=spc_client_id,
+            )
+
+            self._add_secret_to_secret_sync(
+                secret_name=secret_name,
+                file_name=file_name,
+                secret_sync=opcua_secret_sync,
+                resource_group=resource_group,
+                spc_name=OPCUA_SPC_NAME,
+                secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            )
 
         # update opcua extension
-        self._update_opcua_extension(
+        return self._update_client_secret_to_extension(
             subject_name=subject_name,
             application_uri=application_uri,
         )
+
+    def _validate_key_files(self, public_key_file: str, private_key_file: str):
+        # validate public key file end with .der
+        validate_file_extension(public_key_file, ["der"])
+        # validate private key file end with .pem
+        validate_file_extension(private_key_file, ["pem"])
+
+        # validate public key and private key has matching file name without extension
+        public_key_name = os.path.basename(public_key_file).split(".")[0]
+        private_key_name = os.path.basename(private_key_file).split(".")[0]
+
+        if public_key_name != private_key_name:
+            raise ValueError(f"Public key file {public_key_name} and private key file {private_key_name} must match.")
 
     def _process_fortos_yaml(self, object_text: str, secret_entry: Optional[dict] = None) -> str:
         if object_text:
@@ -354,6 +375,8 @@ class OpcUACerts(Queryable):
         spc: dict,
         resource_group: str,
         spc_keyvault_name: str,
+        spc_tenant_id: str,
+        spc_client_id: str,
     ) -> dict:
         spc_properties = spc.get("properties", {})
         # stringified yaml array
@@ -370,8 +393,6 @@ class OpcUACerts(Queryable):
 
         if not spc:
             logger.warning(f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} not found, creating new one...")
-            spc_client_id = spc_properties.get("clientId", "")
-            spc_tenant_id = spc_properties.get("tenantId", "")
             spc = {
                 "location": self.instance["location"],
                 "extendedLocation": self.instance["extendedLocation"],
@@ -434,7 +455,7 @@ class OpcUACerts(Queryable):
             secret_sync["properties"]["objectSecretMapping"] = secret_mapping
 
         # create a new secret sync
-        with console.status("Updating Secret Sync..."):
+        with console.status(f"Updating Secret Sync {secret_sync_name}..."):
             poller = self.ssc_mgmt_client.secret_syncs.begin_create_or_update(
                 resource_group_name=resource_group,
                 secret_sync_name=secret_sync_name,
@@ -442,15 +463,35 @@ class OpcUACerts(Queryable):
             )
             return wait_for_terminal_state(poller)
 
-    def _update_opcua_extension(
+    def _update_client_secret_to_extension(
         self,
         subject_name: str,
         application_uri: str,
     ):
-        # get current aio extensions
-        import pdb
-
-        pdb.set_trace()
-        extensions = self.resource_map.extensions
         # get the opcua extension
-        opcua_extension = self.resource_map.connected_cluster.get_extensions_by_type("opcua")
+        extensions = self.resource_map.connected_cluster.get_extensions_by_type("microsoft.iotoperations")
+        aio_extension = extensions.get("microsoft.iotoperations")
+        if not aio_extension:
+            logger.error("IoT Operations extension not found.")
+            return
+
+        properties = aio_extension["properties"]
+
+        config_settings = properties.get("configurationSettings", {})
+        if not config_settings:
+            properties["configurationSettings"] = {}
+
+        config_settings["connectors.values.securityPki.applicationCert"] = OPCUA_CLIENT_CERT_SECRET_SYNC_NAME
+        config_settings["connectors.values.securityPki.subjectName"] = subject_name
+        config_settings["connectors.values.securityPki.applicationUri"] = application_uri
+
+        aio_extension["properties"]["configurationSettings"] = config_settings
+
+        with console.status(
+            f"Updating IoT Operations extension to use new secret source {OPCUA_CLIENT_CERT_SECRET_SYNC_NAME}..."
+        ):
+            poller = self.resource_map.connected_cluster.update_aio_extension(
+                extension_name=aio_extension["name"],
+                properties=properties,
+            )
+            return wait_for_terminal_state(poller)

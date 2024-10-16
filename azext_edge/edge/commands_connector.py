@@ -36,3 +36,22 @@ def add_connector_opcua_issuer(
         file=file,
         secret_name=secret_name,
     )
+
+
+def add_connector_opcua_client(
+    cmd,
+    instance_name: str,
+    instance_resource_group: str,
+    public_key_file: str,
+    private_key_file: str,
+    subject_name: str,
+    application_uri: str,
+) -> dict:
+    return OpcUACerts(cmd).client_add(
+        instance_name=instance_name,
+        resource_group=instance_resource_group,
+        public_key_file=public_key_file,
+        private_key_file=private_key_file,
+        subject_name=subject_name,
+        application_uri=application_uri,
+    )

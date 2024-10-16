@@ -120,7 +120,9 @@ def validate_file_extension(file_name: str, expected_exts: List[str]) -> str:
     ext = file_name.split(".")[-1]
     if ext not in expected_exts:
         exts_text = ", ".join(expected_exts)
-        raise ValueError(f"Only {exts_text} file extensions are supported.")
+        raise ValueError(
+            f"Invalid file extension found for {file_name}, only {exts_text} file extensions are supported."
+        )
 
     return ext
 

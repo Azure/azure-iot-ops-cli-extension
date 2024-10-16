@@ -1228,3 +1228,35 @@ def load_iotops_arguments(self, _):
             options_list=["--secret-name", "-s"],
             help="Secret name in the Key Vault.",
         )
+
+    with self.argument_context("iot ops connector opcua client") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "instance_resource_group",
+            options_list=["--instance-resource-group", "--ig"],
+            help="Instance resource group.",
+        )
+        context.argument(
+            "public_key_file",
+            options_list=["--public-key-file", "--pkf"],
+            help="File that contains the enterprise grade application instance certificate public key in .der format.",
+        )
+        context.argument(
+            "private_key_file",
+            options_list=["--private-key-file", "--prkf"],
+            help="File that contains the enterprise grade application instance certificate private key in .pem format.",
+        )
+        context.argument(
+            "subject_name",
+            options_list=["--subject-name", "--sn"],
+            help="The subject name string embedded in the application instance certificate.",
+        )
+        context.argument(
+            "application_uri",
+            options_list=["--application-uri", "--au"],
+            help="The application instance URI embedded in the application instance.",
+        )
