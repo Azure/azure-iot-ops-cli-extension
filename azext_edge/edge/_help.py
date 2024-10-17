@@ -1350,21 +1350,21 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops schema dataflow-ref-versions"
+        "iot ops schema show-dataflow-refs"
     ] = """
         type: command
         short-summary: Show the schema references used for dataflows.
         examples:
         - name: Show schema reference for schema "myschema" and version 1.
           text: >
-            az iot ops schema dataflow-ref-versions --version 1 --schema myschema --registry myregistry -g myresourcegroup
+            az iot ops schema show-dataflow-refs --version 1 --schema myschema --registry myregistry -g myresourcegroup
         - name: Show schema reference for all versions in schema "myschema".
           text: >
-            az iot ops schema dataflow-ref-versions --schema myschema --registry myregistry -g myresourcegroup
+            az iot ops schema show-dataflow-refs --schema myschema --registry myregistry -g myresourcegroup
         - name: Show schema reference for all versions and schemas in schema registry "myregistry".
           text: >
-            az iot ops schema dataflow-ref-versions --registry myregistry -g myresourcegroup
+            az iot ops schema show-dataflow-refs --registry myregistry -g myresourcegroup
         - name: Show schema reference for all schemas but only the latest versions in schema registry "myregistry".
           text: >
-            az iot ops schema dataflow-ref-versions --registry myregistry -g myresourcegroup --latest
+            az iot ops schema show-dataflow-refs --registry myregistry -g myresourcegroup --latest
     """

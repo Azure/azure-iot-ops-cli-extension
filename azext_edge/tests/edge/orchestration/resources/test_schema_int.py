@@ -80,7 +80,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
 
     # VERSION PRINTS
     version_strings1 = run(
-        f"az iot ops schema dataflow-ref-versions --schema {schema_name1} -g {registry_rg} "
+        f"az iot ops schema show-dataflow-refs --schema {schema_name1} -g {registry_rg} "
         f"--registry {registry_name} --ver {version_num}"
     )
     assert schema_name1 in version_strings1
@@ -163,7 +163,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
 
     # VERSION PRINTS
     version_strings2 = run(
-        f"az iot ops schema dataflow-ref-versions --schema {schema_name2} -g {registry_rg} --registry {registry_name}"
+        f"az iot ops schema show-dataflow-refs --schema {schema_name2} -g {registry_rg} --registry {registry_name}"
     )
     assert schema_name2 in version_strings2
     assert str(version_num) in version_strings2[schema_name2]
@@ -177,7 +177,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
 
     # all versions + schemas
     version_strings_all = run(
-        f"az iot ops schema dataflow-ref-versions -g {registry_rg} --registry {registry_name}"
+        f"az iot ops schema show-dataflow-refs -g {registry_rg} --registry {registry_name}"
     )
     assert schema_name1 in version_strings_all
     assert schema_name2 in version_strings_all
@@ -193,7 +193,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
 
     # latest should only contain schema1 + version and schema2 + latest version
     version_strings_latest = run(
-        f"az iot ops schema dataflow-ref-versions -g {registry_rg} --registry {registry_name} --latest"
+        f"az iot ops schema show-dataflow-refs -g {registry_rg} --registry {registry_name} --latest"
     )
     assert version_strings_latest[schema_name1][str(1)] == VERSION_STRINGIFY_FORMAT.format(
         version=1, schema_name=schema_name1

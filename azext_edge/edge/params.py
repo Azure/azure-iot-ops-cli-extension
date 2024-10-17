@@ -1189,7 +1189,7 @@ def load_iotops_arguments(self, _):
             arg_group="Version"
         )
 
-    with self.argument_context("iot ops schema dataflow-ref-versions") as context:
+    with self.argument_context("iot ops schema show-dataflow-refs") as context:
         context.argument(
             "schema_name",
             options_list=["--schema"],
