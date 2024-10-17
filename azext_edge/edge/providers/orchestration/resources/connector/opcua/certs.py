@@ -15,7 +15,7 @@ import yaml
 
 from azext_edge.edge.providers.orchestration.common import CUSTOM_LOCATIONS_API_VERSION
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
-from azext_edge.edge.util.file_operations import validate_file_extension
+from azext_edge.edge.util.file_operations import read_file_content, validate_file_extension
 from azext_edge.edge.util.queryable import Queryable
 from azext_edge.edge.util.az_client import (
     parse_resource_id,
@@ -31,7 +31,10 @@ console = Console()
 OPCUA_SPC_NAME = "opc-ua-connector"
 OPCUA_TRUST_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-trust-list"
 OPCUA_ISSUER_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-issuer-list"
+<<<<<<< HEAD
 OPCUA_CLIENT_CERT_SECRET_SYNC_NAME = "aio-opc-ua-broker-client-certificate"
+=======
+>>>>>>> feature/cert_management
 SERVICE_ACCOUNT_NAME = "aio-ssc-sa"
 
 
@@ -66,10 +69,9 @@ class OpcUACerts(Queryable):
         # get file extension
         file_name = os.path.basename(file)
         # get cert name by removing extension and path in front
-        cert_name = file_name.split(".")[0].replace(".", "")
         cert_extension = validate_file_extension(file_name, ["der", "crt"])
 
-        secret_name = secret_name if secret_name else f"{cert_name}-{cert_extension}"
+        secret_name = secret_name if secret_name else file_name.replace(".", "-")
 
         # iterate over secrets to check if secret with same name exists
         secret_name = self._check_and_update_secret_name(secrets, secret_name, spc_keyvault_name)
@@ -134,10 +136,9 @@ class OpcUACerts(Queryable):
 
         # get file extension
         file_name = os.path.basename(file)
-        # get cert name by removing extension and path in front
-        cert_name = file_name.split(".")[0].replace(".", "")
-
         cert_extension = validate_file_extension(file_name, ["der", "crt", "crl"])
+        # get cert name by removing extension
+        cert_name = file_name.replace(f".{cert_extension}", "")
 
         try:
             opcua_secret_sync = self.ssc_mgmt_client.secret_syncs.get(
@@ -159,7 +160,7 @@ class OpcUACerts(Queryable):
                 logger.error(f"Cannot add .crl {file_name} without corresponding .crt or .der file.")
                 return
 
-        secret_name = secret_name if secret_name else f"{cert_name}-{cert_extension}"
+        secret_name = secret_name if secret_name else file_name.replace(".", "-")
 
         # iterate over secrets to check if secret with same name exists
         secret_name = self._check_and_update_secret_name(secrets, secret_name, spc_keyvault_name)
@@ -292,8 +293,6 @@ class OpcUACerts(Queryable):
 
     def _process_fortos_yaml(self, object_text: str, secret_entry: Optional[dict] = None) -> str:
         if object_text:
-            # TODO: formatting will be removed once fortos service fixes the formatting issue
-            object_text.replace("\n    - |", "\n- |")
             objects_obj = yaml.safe_load(object_text)
         else:
             objects_obj = {"array": []}
@@ -354,9 +353,8 @@ class OpcUACerts(Queryable):
         return new_secret_name
 
     def _upload_to_key_vault(self, secret_name: str, file_path: str, cert_extension: str):
-        with console.status(f"Uploading certificate to keyvault as secret {secret_name}..."), open(
-            file_path, "rb"
-        ) as read_file:
+        with console.status(f"Uploading certificate to keyvault as secret {secret_name}..."):
+            content = read_file_content(file_path=file_path, read_as_binary=True).hex()
             if cert_extension == "crl":
                 content_type = "application/pkix-crl"
             elif cert_extension == "der":
@@ -364,7 +362,6 @@ class OpcUACerts(Queryable):
             else:
                 content_type = "application/x-pem-file"
 
-            content = read_file.read().hex()
             return self.keyvault_client.set_secret(
                 name=secret_name, value=content, content_type=content_type, tags={"file-encoding": "hex"}
             )

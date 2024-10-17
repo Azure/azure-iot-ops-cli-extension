@@ -1192,8 +1192,8 @@ def load_iotops_arguments(self, _):
             help="IoT Operations instance name.",
         )
         context.argument(
-            "instance_resource_group",
-            options_list=["--instance-resource-group", "--ig"],
+            "resource_group",
+            options_list=["--resource-group", "-g"],
             help="Instance resource group.",
         )
         context.argument(
@@ -1203,8 +1203,9 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "secret_name",
-            options_list=["--secret-name", "-s"],
-            help="Secret name in the Key Vault.",
+            options_list=["--secret", "-s"],
+            help="Secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
         )
 
     with self.argument_context("iot ops connector opcua issuer") as context:
@@ -1214,8 +1215,8 @@ def load_iotops_arguments(self, _):
             help="IoT Operations instance name.",
         )
         context.argument(
-            "instance_resource_group",
-            options_list=["--instance-resource-group", "--ig"],
+            "resource_group",
+            options_list=["--resource-group", "-g"],
             help="Instance resource group.",
         )
         context.argument(
@@ -1226,7 +1227,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "secret_name",
             options_list=["--secret-name", "-s"],
-            help="Secret name in the Key Vault.",
+            help="Secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
         )
 
     with self.argument_context("iot ops connector opcua client") as context:
@@ -1259,4 +1261,7 @@ def load_iotops_arguments(self, _):
             "application_uri",
             options_list=["--application-uri", "--au"],
             help="The application instance URI embedded in the application instance.",
+            options_list=["--secret", "-s"],
+            help="Secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
         )
