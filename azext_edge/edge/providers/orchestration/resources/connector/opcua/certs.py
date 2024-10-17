@@ -31,10 +31,7 @@ console = Console()
 OPCUA_SPC_NAME = "opc-ua-connector"
 OPCUA_TRUST_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-trust-list"
 OPCUA_ISSUER_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-issuer-list"
-<<<<<<< HEAD
 OPCUA_CLIENT_CERT_SECRET_SYNC_NAME = "aio-opc-ua-broker-client-certificate"
-=======
->>>>>>> feature/cert_management
 SERVICE_ACCOUNT_NAME = "aio-ssc-sa"
 
 
