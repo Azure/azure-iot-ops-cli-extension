@@ -141,15 +141,18 @@ class DeletionManager:
 
     def _process(self, force: bool = False):
         # instance delete should always delete the extension too
+        # TODO - @c-ryan-k - fix this and update unit tests
         aio_ext = self.resource_map.connected_cluster.get_extensions_by_type(IOT_OPS_EXTENSION_TYPE).get(
             IOT_OPS_EXTENSION_TYPE
         )
-        aio_ext_id = aio_ext["id"] if aio_ext else None
-        aio_ext_obj = next((_ for _ in self.resource_map.extensions if _.resource_id == aio_ext_id), None)
+        # aio_ext_obj = self.resource_map.connected_cluster.get_extensions_by_type(IOT_OPS_EXTENSION_TYPE).get(
+        #     IOT_OPS_EXTENSION_TYPE
+        # )
+        # aio_ext_id = aio_ext["id"] if aio_ext else None
+        # aio_ext = next((_ for _ in self.resource_map.extensions if _.resource_id == aio_ext_id), None)
         todo_extensions = []
-        # TODO - @c-ryan-k see if we can add extensions to delete tree output
-        if aio_ext_obj:
-            todo_extensions.append(aio_ext_obj)  # delete aio extension even if no dependencies
+        if aio_ext:
+            todo_extensions.append(aio_ext)  # delete aio extension even if no dependencies
         if self.include_dependencies:
             todo_extensions.extend(self.resource_map.extensions)
         todo_custom_locations = self.resource_map.custom_locations
