@@ -11,13 +11,13 @@ from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs imp
 def add_connector_opcua_trust(
     cmd,
     instance_name: str,
-    instance_resource_group: str,
+    resource_group: str,
     file: str,
     secret_name: Optional[str] = None,
 ) -> dict:
     return OpcUACerts(cmd).trust_add(
         instance_name=instance_name,
-        resource_group=instance_resource_group,
+        resource_group=resource_group,
         file=file,
         secret_name=secret_name,
     )
@@ -26,13 +26,13 @@ def add_connector_opcua_trust(
 def add_connector_opcua_issuer(
     cmd,
     instance_name: str,
-    instance_resource_group: str,
+    resource_group: str,
     file: str,
     secret_name: Optional[str] = None,
 ) -> dict:
     return OpcUACerts(cmd).issuer_add(
         instance_name=instance_name,
-        resource_group=instance_resource_group,
+        resource_group=resource_group,
         file=file,
         secret_name=secret_name,
     )
