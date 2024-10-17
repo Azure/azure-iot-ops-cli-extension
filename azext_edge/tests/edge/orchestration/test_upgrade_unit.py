@@ -8,8 +8,9 @@ from typing import Dict, List, Optional, Union
 from unittest.mock import Mock
 
 import pytest
+import responses
 
-from ...generators import generate_random_string
+from ...generators import generate_random_string, get_zeroed_subscription
 
 
 @pytest.fixture
@@ -86,68 +87,21 @@ def _assemble_resource_map_mock(
     resource_map_mock().get_resource_sync_rules.return_value = sync_rules
 
 
-# IoTOperationsResourceMap returns empty array over None
-# Order resources from segment size since resource map takes care of this.
-@pytest.mark.parametrize(
-    "expected_resources_map",
-    [
-        {
-            "resources": [],
-            "resource sync rules": [],
-            "custom locations": [],
-            "extensions": [],
-            "meta": {
-                "expected_total": 0,
-            },
-        },
-        {
-            "resources": [_generate_ops_resource(4), _generate_ops_resource(2)],
-            "resource sync rules": [_generate_ops_resource(), _generate_ops_resource()],
-            "custom locations": [_generate_ops_resource()],
-            "extensions": [_generate_ops_resource()],
-            "meta": {
-                "expected_total": 5,
-                "resource_batches": 2,
-                "expected_delete_calls": 5,
-            },
-        },
-        # Currently no associated custom location means no non-extensions get deleted
-        {
-            "resources": [_generate_ops_resource(4), _generate_ops_resource(2)],
-            "resource sync rules": [_generate_ops_resource()],
-            "custom locations": [],
-            "extensions": [_generate_ops_resource()],
-            "meta": {
-                "expected_total": 4,
-                "resource_batches": 2,
-                "expected_delete_calls": 1,
-            },
-        },
-        {
-            "resources": [],
-            "resource sync rules": [],
-            "custom locations": [],
-            "extensions": [_generate_ops_resource()],
-            "meta": {
-                "expected_total": 1,
-                "resource_batches": 0,
-                "expected_delete_calls": 1,
-                "no_progress": True,
-            },
-        },
-    ],
-)
-@pytest.mark.parametrize("instance_name", [None, generate_random_string()])
+@pytest.mark.parametrize("require_instance_update", [False, True])
+@pytest.mark.parametrize("extensions_to_update", [[], ["aio"]])
+@pytest.mark.parametrize("instance_name", [generate_random_string()])
 def test_upgrade_lifecycle(
     mocker,
     mocked_cmd: Mock,
+    mocked_responses: responses,
     mocked_resource_map: Mock,
     mocked_get_resource_client: Mock,
     mocked_wait_for_terminal_states: Mock,
     mocked_live_display: Mock,
     mocked_logger: Mock,
     spy_upgrade_manager: Dict[str, Mock],
-    expected_resources_map: Dict[str, Union[dict, Optional[List[IoTOperationsResource]]]],
+    require_instance_update: bool,
+    extensions_to_update: Optional[List[str]],
     instance_name: Optional[str],
 ):
     from azext_edge.edge.providers.orchestration.upgrade import upgrade_ops_resources
@@ -160,6 +114,68 @@ def test_upgrade_lifecycle(
     cluster_name = None if instance_name else generate_random_string()
     rg_name = generate_random_string()
     sr_resource_id = generate_random_string()
+
+    if require_instance_update:
+        mock_instance_record = {
+            "extendedLocation": {
+                "name": "/subscriptions/2bd4119a-4d8d-4090-9183-f9e516c21723/resourceGroups/viliteastus2euap/providers/Microsoft.ExtendedLocation/customLocations/location-fkbiv",
+                "type": "CustomLocation"
+            },
+            "id": f"/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}/providers/Microsoft.Kubernetes/connectedClusters/{instance_name}",
+            "identity": {
+                "type": "None"
+            },
+            "location": "eastus2euap",
+            "name": instance_name,
+            "properties": {
+                "components": {
+                "adr": {
+                    "state": "Enabled"
+                },
+                "akri": {
+                    "state": "Enabled"
+                },
+                "connectors": {
+                    "state": "Enabled"
+                },
+                "dataflows": {
+                    "state": "Enabled"
+                },
+                "schemaRegistry": {
+                    "state": "Enabled"
+                }
+                },
+                "provisioningState": "Succeeded",
+                "schemaRegistryNamespace": generate_random_string(),
+                "version": "0.7.31"
+            },
+            "resourceGroup": "viliteastus2euap",
+            "systemData": {
+                "createdAt": "2024-10-17T00:01:53.1974981Z",
+                "createdBy": "vilit@microsoft.com",
+                "createdByType": "User",
+                "lastModifiedAt": "2024-10-17T00:03:32.0887568Z",
+                "lastModifiedBy": "319f651f-7ddb-4fc6-9857-7aef9250bd05",
+                "lastModifiedByType": "Application"
+            },
+            "type": "microsoft.iotoperations/instances"
+        }
+        mocked_responses.add(
+            method=responses.GET,
+            url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}/providers/Microsoft.Kubernetes/connectedClusters/{instance_name}?api-version=2024-07-15-preview",
+            json=mock_instance_record,
+            status=200,
+            content_type="application/json",
+        )
+    else:
+        mocked_responses.add(
+            method=responses.GET,
+            url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}/providers/Microsoft.Kubernetes/connectedClusters/{instance_name}?api-version=2024-07-15-preview",
+            status=404,
+            content_type="application/json",
+        )
+
+
 
     _assemble_resource_map_mock(
         resource_map_mock=mocked_resource_map,

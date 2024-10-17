@@ -122,7 +122,7 @@ class UpgradeManager:
         from .template import M2_ENABLEMENT_TEMPLATE
         version_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
         train_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["TRAINS"].copy()
-        self.new_aio_version = "0.0.0-105821624"  # version_map["aio"]
+        self.new_aio_version = "0.8.14"  # version_map["aio"]
         type_to_key_map = {
             "microsoft.azure.secretstore": "secretSyncController",  # store
             "microsoft.arc.containerstorage": "edgeStorageAccelerator",  # containerstorage
@@ -138,12 +138,12 @@ class UpgradeManager:
                 continue
             extension_key = type_to_key_map[extension_type]
             current_version = extension["properties"].get("version", "0").replace("-preview", "")
-            if all([extension_type == "microsoft.iotoperations", current_version != "0.0.0-105821624"]):
+            if all([extension_type == "microsoft.iotoperations", current_version != "0.8.14"]):
                 extension_update = {
                     "properties": {
                         "autoUpgradeMinorVersion": "false",
                         "releaseTrain": "dev",
-                        "version": "0.0.0-105821624",
+                        "version": "0.8.14",
                         "configurationSettings": {"schemaRegistry.image.tag": "0.1.6"}
                     }
                 }
