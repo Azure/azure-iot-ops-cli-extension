@@ -165,6 +165,16 @@ def load_iotops_commands(self, _):
         cmd_group.command("opcua", "create_opcua_asset_endpoint_profile")
 
     with self.command_group(
+        "iot ops schema",
+        command_type=schema_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("create", "create_schema")
+        cmd_group.show_command("show", "show_schema")
+        cmd_group.command("list", "list_schemas")
+        cmd_group.command("show-dataflow-refs", "list_schema_versions_dataflow_format")
+        cmd_group.command("delete", "delete_schema")
+
+    with self.command_group(
         "iot ops schema registry",
         command_type=schema_resource_ops,
     ) as cmd_group:
@@ -172,3 +182,12 @@ def load_iotops_commands(self, _):
         cmd_group.show_command("show", "show_registry")
         cmd_group.command("list", "list_registries")
         cmd_group.command("delete", "delete_registry")
+
+    with self.command_group(
+        "iot ops schema version",
+        command_type=schema_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_version")
+        cmd_group.show_command("show", "show_version")
+        cmd_group.command("list", "list_versions")
+        cmd_group.command("remove", "remove_version")

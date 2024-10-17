@@ -8,7 +8,7 @@ from typing import Iterable, Optional
 
 from knack.log import get_logger
 
-from .providers.orchestration.resources import SchemaRegistries
+from .providers.orchestration.resources import SchemaRegistries, Schemas
 
 logger = get_logger(__name__)
 
@@ -59,4 +59,132 @@ def delete_registry(
 ):
     return SchemaRegistries(cmd).delete(
         name=schema_registry_name, resource_group_name=resource_group_name, confirm_yes=confirm_yes, **kwargs
+    )
+
+
+# Schemas
+def create_schema(
+    cmd,
+    schema_name: str,
+    schema_registry_name: str,
+    resource_group_name: str,
+    schema_type: str,
+    schema_format: str,
+    schema_version_content: str,
+    schema_version: int = 1,
+    description: Optional[str] = None,
+    display_name: Optional[str] = None,
+    schema_version_description: Optional[str] = None
+) -> dict:
+    return Schemas(cmd).create(
+        name=schema_name,
+        schema_registry_name=schema_registry_name,
+        schema_type=schema_type,
+        schema_format=schema_format,
+        description=description,
+        display_name=display_name,
+        resource_group_name=resource_group_name,
+        schema_version_content=schema_version_content,
+        schema_version=schema_version,
+        schema_version_description=schema_version_description
+    )
+
+
+def show_schema(cmd, schema_name: str, schema_registry_name: str, resource_group_name: str) -> dict:
+    return Schemas(cmd).show(
+        name=schema_name,
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name
+    )
+
+
+def list_schemas(cmd, schema_registry_name: str, resource_group_name: str) -> dict:
+    return Schemas(cmd).list(schema_registry_name=schema_registry_name, resource_group_name=resource_group_name)
+
+
+def list_schema_versions_dataflow_format(
+    cmd,
+    schema_registry_name: str,
+    resource_group_name: str,
+    schema_name: Optional[str] = None,
+    schema_version: Optional[str] = None,
+    latest: Optional[bool] = None
+) -> dict:
+    return Schemas(cmd).list_dataflow_friendly_versions(
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name,
+        schema_name=schema_name,
+        schema_version=schema_version,
+        latest=latest
+    )
+
+
+def delete_schema(
+    cmd,
+    schema_name: str,
+    schema_registry_name: str,
+    resource_group_name: str,
+    confirm_yes: Optional[bool] = None,
+) -> dict:
+    return Schemas(cmd).delete(
+        name=schema_name,
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
+    )
+
+
+# Versions
+def add_version(
+    cmd,
+    version_name: int,
+    schema_name: str,
+    schema_registry_name: str,
+    resource_group_name: str,
+    schema_version_content: str,
+    description: Optional[str] = None,
+) -> dict:
+    return Schemas(cmd).add_version(
+        name=version_name,
+        schema_name=schema_name,
+        schema_registry_name=schema_registry_name,
+        schema_version_content=schema_version_content,
+        description=description,
+        resource_group_name=resource_group_name,
+    )
+
+
+def show_version(
+    cmd, version_name: int, schema_name: str, schema_registry_name: str, resource_group_name: str
+) -> dict:
+    return Schemas(cmd).show_version(
+        name=version_name,
+        schema_name=schema_name,
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name
+    )
+
+
+def list_versions(
+    cmd, schema_name: str, schema_registry_name: str, resource_group_name: str
+) -> dict:
+    return Schemas(cmd).list_versions(
+        schema_name=schema_name,
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name
+    )
+
+
+def remove_version(
+    cmd,
+    version_name: int,
+    schema_name: str,
+    schema_registry_name: str,
+    resource_group_name: str,
+) -> dict:
+    return Schemas(cmd).remove_version(
+        name=version_name,
+        schema_name=schema_name,
+        schema_registry_name=schema_registry_name,
+        resource_group_name=resource_group_name
     )
