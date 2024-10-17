@@ -290,7 +290,7 @@ class Schemas(Queryable):
 
     def show_version(
         self,
-        name: str,
+        name: int,
         schema_name: str,
         schema_registry_name: str,
         resource_group_name: str,
@@ -314,7 +314,7 @@ class Schemas(Queryable):
 
     def remove_version(
         self,
-        name: str,
+        name: int,
         schema_name: str,
         schema_registry_name: str,
         resource_group_name: str,
@@ -332,7 +332,7 @@ class Schemas(Queryable):
         schema_registry_name: str,
         resource_group_name: str,
         schema_name: Optional[str] = None,
-        schema_version: Optional[str] = None,
+        schema_version: Optional[int] = None,
         latest: bool = False
     ) -> dict:
         from collections import OrderedDict
