@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import os
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from azure.core.paging import PageIterator
 from azure.core.exceptions import ResourceNotFoundError
@@ -66,7 +66,7 @@ class OpcUACerts(Queryable):
         # get file extension
         file_name = os.path.basename(file)
         # get cert name by removing extension and path in front
-        cert_extension = validate_file_extension(file_name, ["der", "crt"])
+        cert_extension = validate_file_extension(file_name, [".der", ".crt"])
 
         secret_name = secret_name if secret_name else file_name.replace(".", "-")
 
@@ -83,8 +83,8 @@ class OpcUACerts(Queryable):
         except ResourceNotFoundError:
             opcua_spc = {}
 
-        self._add_secret_to_spc(
-            secret_name=secret_name,
+        self._add_secrets_to_spc(
+            secrets=[secret_name],
             spc=opcua_spc,
             resource_group=resource_group,
             spc_keyvault_name=spc_keyvault_name,
@@ -101,9 +101,8 @@ class OpcUACerts(Queryable):
         except ResourceNotFoundError:
             opcua_secret_sync = {}
 
-        return self._add_secret_to_secret_sync(
-            secret_name=secret_name,
-            file_name=file_name,
+        return self._add_secrets_to_secret_sync(
+            secrets=[(secret_name, file_name)],
             secret_sync=opcua_secret_sync,
             resource_group=resource_group,
             spc_name=OPCUA_SPC_NAME,
@@ -133,7 +132,7 @@ class OpcUACerts(Queryable):
 
         # get file extension
         file_name = os.path.basename(file)
-        cert_extension = validate_file_extension(file_name, ["der", "crt", "crl"])
+        cert_extension = validate_file_extension(file_name, [".der", ".crt", ".crl"])
         # get cert name by removing extension
         cert_name = file_name.replace(f".{cert_extension}", "")
 
@@ -172,8 +171,8 @@ class OpcUACerts(Queryable):
         except ResourceNotFoundError:
             opcua_spc = {}
 
-        self._add_secret_to_spc(
-            secret_name=secret_name,
+        self._add_secrets_to_spc(
+            secrets=[secret_name],
             spc=opcua_spc,
             resource_group=resource_group,
             spc_keyvault_name=spc_keyvault_name,
@@ -181,9 +180,8 @@ class OpcUACerts(Queryable):
             spc_client_id=spc_client_id,
         )
 
-        return self._add_secret_to_secret_sync(
-            secret_name=secret_name,
-            file_name=file_name,
+        return self._add_secrets_to_secret_sync(
+            secrets=[(secret_name, file_name)],
             secret_sync=opcua_secret_sync,
             resource_group=resource_group,
             spc_name=OPCUA_SPC_NAME,
@@ -240,6 +238,7 @@ class OpcUACerts(Queryable):
         except ResourceNotFoundError:
             opcua_secret_sync = {}
 
+        secrets_to_add = []
         for file in [public_key_file, private_key_file]:
             file_name = os.path.basename(file)
             file_name_info = os.path.splitext(file_name)
@@ -250,24 +249,24 @@ class OpcUACerts(Queryable):
             # iterate over secrets to check if secret with same name exists
             secret_name = self._check_and_update_secret_name(secrets, secret_name, spc_keyvault_name)
             self._upload_to_key_vault(secret_name, file, cert_extension)
+            secrets_to_add.append((secret_name, file_name))
 
-            self._add_secret_to_spc(
-                secret_name=secret_name,
-                spc=opcua_spc,
-                resource_group=resource_group,
-                spc_keyvault_name=spc_keyvault_name,
-                spc_tenant_id=spc_tenant_id,
-                spc_client_id=spc_client_id,
-            )
+        self._add_secrets_to_spc(
+            secrets=[secret[0] for secret in secrets_to_add],
+            spc=opcua_spc,
+            resource_group=resource_group,
+            spc_keyvault_name=spc_keyvault_name,
+            spc_tenant_id=spc_tenant_id,
+            spc_client_id=spc_client_id,
+        )
 
-            self._add_secret_to_secret_sync(
-                secret_name=secret_name,
-                file_name=file_name,
-                secret_sync=opcua_secret_sync,
-                resource_group=resource_group,
-                spc_name=OPCUA_SPC_NAME,
-                secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-            )
+        self._add_secrets_to_secret_sync(
+            secrets=secrets_to_add,
+            secret_sync=opcua_secret_sync,
+            resource_group=resource_group,
+            spc_name=OPCUA_SPC_NAME,
+            secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+        )
 
         # update opcua extension
         return self._update_client_secret_to_extension(
@@ -277,13 +276,15 @@ class OpcUACerts(Queryable):
 
     def _validate_key_files(self, public_key_file: str, private_key_file: str):
         # validate public key file end with .der
-        validate_file_extension(public_key_file, ["der"])
+        validate_file_extension(public_key_file, [".der"])
         # validate private key file end with .pem
-        validate_file_extension(private_key_file, ["pem"])
+        validate_file_extension(private_key_file, [".pem"])
 
         # validate public key and private key has matching file name without extension
-        public_key_name = os.path.basename(public_key_file).split(".")[0]
-        private_key_name = os.path.basename(private_key_file).split(".")[0]
+        public_key_name = os.path.basename(public_key_file)
+        public_key_name = os.path.splitext(public_key_name)[0]
+        private_key_name = os.path.basename(private_key_file)
+        private_key_name = os.path.splitext(private_key_name)[0]
 
         if public_key_name != private_key_name:
             raise ValueError(f"Public key file {public_key_name} and private key file {private_key_name} must match.")
@@ -324,7 +325,7 @@ class OpcUACerts(Queryable):
         if not secretsync_spc:
             logger.error(
                 f"Secret sync is not enabled for the instance {instance_name}. "
-                "Please enable secret sync before adding a trusted certificate."
+                "Please enable secret sync before adding certificate."
             )
             return
 
@@ -363,9 +364,9 @@ class OpcUACerts(Queryable):
                 name=secret_name, value=content, content_type=content_type, tags={"file-encoding": "hex"}
             )
 
-    def _add_secret_to_spc(
+    def _add_secrets_to_spc(
         self,
-        secret_name: str,
+        secrets: List[str],
         spc: dict,
         resource_group: str,
         spc_keyvault_name: str,
@@ -377,13 +378,14 @@ class OpcUACerts(Queryable):
         spc_object = spc_properties.get("objects", "")
 
         # add new secret to the list
-        secret_entry = {
-            "objectName": secret_name,
-            "objectType": "secret",
-            "objectEncoding": "hex",
-        }
+        for secret_name in secrets:
+            secret_entry = {
+                "objectName": secret_name,
+                "objectType": "secret",
+                "objectEncoding": "hex",
+            }
 
-        spc_object = self._process_fortos_yaml(object_text=spc_object, secret_entry=secret_entry)
+            spc_object = self._process_fortos_yaml(object_text=spc_object, secret_entry=secret_entry)
 
         if not spc:
             logger.warning(f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} not found, creating new one...")
@@ -408,10 +410,9 @@ class OpcUACerts(Queryable):
             )
             wait_for_terminal_state(poller)
 
-    def _add_secret_to_secret_sync(
+    def _add_secrets_to_secret_sync(
         self,
-        secret_name: str,
-        file_name: str,
+        secrets: List[Tuple[str, str]],
         secret_sync: dict,
         resource_group: str,
         spc_name: str,
@@ -420,12 +421,13 @@ class OpcUACerts(Queryable):
         # check if there is a secret sync called secret_sync_name, if not create one
         secret_mapping = secret_sync.get("properties", {}).get("objectSecretMapping", [])
         # add new secret to the list
-        secret_mapping.append(
-            {
-                "sourcePath": secret_name,
-                "targetKey": file_name,
-            }
-        )
+        for secret_name, file_name in secrets:
+            secret_mapping.append(
+                {
+                    "sourcePath": secret_name,
+                    "targetKey": file_name,
+                }
+            )
 
         # find duplicate targetKey
         target_keys = [mapping["targetKey"] for mapping in secret_mapping]

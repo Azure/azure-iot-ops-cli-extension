@@ -117,7 +117,7 @@ def deserialize_file_content(file_path: str) -> Any:
 
 
 def validate_file_extension(file_name: str, expected_exts: List[str]) -> str:
-    ext = file_name.split(".")[-1]
+    ext = os.path.splitext(file_name)[1]
     if ext not in expected_exts:
         exts_text = ", ".join(expected_exts)
         raise ValueError(
