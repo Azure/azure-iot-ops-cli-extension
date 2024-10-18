@@ -113,7 +113,7 @@ class DeletionManager:
 
     def _display_resource_tree(self):
         if self._render_progress:
-            print(self.resource_map.build_tree(hide_extensions=not self.include_dependencies, category_color="red"))
+            print(self.resource_map.build_tree(include_dependencies=self.include_dependencies, category_color="red"))
 
     def _render_display(self, description: str):
         if self._render_progress:
@@ -140,17 +140,21 @@ class DeletionManager:
             self._live.stop()
 
     def _process(self, force: bool = False):
-        # instance delete should delete AIO extension too
-        aio_ext_obj = self.resource_map.connected_cluster.get_extensions_by_type(IOT_OPS_EXTENSION_TYPE).get(
-            IOT_OPS_EXTENSION_TYPE
-        )
         todo_extensions = []
-        if aio_ext_obj and not self.include_dependencies:
-            aio_ext_id = aio_ext_obj.get("id") if aio_ext_obj else None
-            aio_ext = next((_ for _ in self.resource_map.extensions if _.resource_id == aio_ext_id), None)
-            todo_extensions.append(aio_ext)  # delete aio extension with instance
         if self.include_dependencies:
             todo_extensions.extend(self.resource_map.extensions)
+        else:
+            # instance delete should delete AIO extension too
+            # TODO: @c-ryan-k hacky
+            aio_ext_obj = self.resource_map.connected_cluster.get_extensions_by_type(IOT_OPS_EXTENSION_TYPE).get(
+                IOT_OPS_EXTENSION_TYPE, {}
+            )
+            aio_ext_id: str = aio_ext_obj.get("id", "")
+            aio_ext = next(
+                (_ for _ in self.resource_map.extensions if _.resource_id.lower() == aio_ext_id.lower()), None
+            )
+            if aio_ext:
+                todo_extensions.append(aio_ext)
         todo_custom_locations = self.resource_map.custom_locations
         todo_resource_sync_rules = []
         todo_resources = []

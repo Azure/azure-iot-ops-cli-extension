@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+
 from typing import List, Optional
 from unittest.mock import Mock
 from random import randint
@@ -12,6 +13,7 @@ import pytest
 from rich.tree import Tree
 
 from azext_edge.edge.providers.orchestration.resource_map import IoTOperationsResource
+from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
 
 from ...generators import generate_random_string, get_zeroed_subscription
 
@@ -50,6 +52,15 @@ def _assemble_connected_cluster_mock(
     resources: Optional[List[dict]],
     sync_rules: Optional[List[dict]],
 ):
+    # aio extension
+    aio_extension = {
+        "id": "aio_extension_id",
+        "name": "aio-extension-name",
+        "apiVersion": "aio-api-version",
+    }
+    if extensions:
+        extensions.append(aio_extension)
+
     cluster_mock().subscription_id = sub
     cluster_mock().cluster_name = cluster_name
     cluster_mock().resource_group_name = rg_name
@@ -57,6 +68,7 @@ def _assemble_connected_cluster_mock(
     cluster_mock().get_aio_custom_locations.return_value = custom_locations
     cluster_mock().get_aio_resources.return_value = resources
     cluster_mock().get_resource_sync_rules.return_value = sync_rules
+    cluster_mock().get_extensions_by_type.return_value = {IOT_OPS_EXTENSION_TYPE: aio_extension}
 
 
 @pytest.mark.parametrize(
@@ -70,6 +82,7 @@ def _assemble_connected_cluster_mock(
 @pytest.mark.parametrize("expected_resources", [None, _generate_records(5)])
 @pytest.mark.parametrize("expected_resource_sync_rules", [None, _generate_records()])
 @pytest.mark.parametrize("category_color", [None, "red"])
+@pytest.mark.parametrize("include_dependencies", [True, False])
 def test_resource_map(
     mocker,
     mocked_cmd: Mock,
@@ -79,6 +92,7 @@ def test_resource_map(
     expected_resources: Optional[List[dict]],
     expected_resource_sync_rules: Optional[List[dict]],
     category_color: Optional[str],
+    include_dependencies: bool,
 ):
     from azext_edge.edge.providers.orchestration.resource_map import (
         IoTOperationsResourceMap,
@@ -114,12 +128,10 @@ def test_resource_map(
 
     if expected_custom_locations:
         for cl in expected_custom_locations:
-            _assert_ops_resource_eq(
-                resource_map.get_resources(cl["id"]), expected_resources, verify_segment_order=True
-            )
+            _assert_ops_resource_eq(resource_map.get_resources(cl["id"]), expected_resources, verify_segment_order=True)
             _assert_ops_resource_eq(resource_map.get_resource_sync_rules(cl["id"]), expected_resource_sync_rules)
 
-    kwargs = {}
+    kwargs = {"include_dependencies": include_dependencies}
     if category_color:
         kwargs["category_color"] = category_color
 
@@ -163,12 +175,14 @@ def _assert_tree(
     expected_aio_resources: Optional[List[dict]],
     expected_resource_sync_rules: Optional[List[dict]],
     category_color: str = "cyan",
+    include_dependencies: bool = False,
 ):
     assert tree.label == f"[green]{cluster_name}"
 
     assert tree.children[0].label == f"[{category_color}]extensions"
     if expected_aio_extensions:
-        for i in range(len(expected_aio_extensions)):
+        range_len = len(expected_aio_extensions) if include_dependencies else 1  # Only aio extension
+        for i in range(range_len):
             tree.children[0].children[i].label == expected_aio_extensions[i]["name"]
 
     if expected_aio_custom_locations:
