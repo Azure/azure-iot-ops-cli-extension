@@ -13,7 +13,6 @@ from azext_edge.edge.providers.orchestration.targets import (
     InitTargets,
     assemble_nargs_to_dict,
     get_insecure_listener,
-    REGISTRY_API_VERSION,
 )
 
 from ...generators import generate_random_string
@@ -40,8 +39,6 @@ KEY_CONVERSION_MAP = {"enable_rsync_rules": "deploy_resource_sync_rules"}
 KVP_KEYS = frozenset(["ops_config", "trust_settings"])
 ENABLEMENT_PARAM_CONVERSION_MAP = {
     "clusterName": "cluster_name",
-    "kubernetesDistro": "kubernetes_distro",
-    "containerRuntimeSocket": "container_runtime_socket",
     "trustConfig": "trust_config",
     "schemaRegistryId": "schema_registry_resource_id",
     "advancedConfig": "advanced_config",
@@ -50,6 +47,8 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "clusterName": "cluster_name",
     "clusterNamespace": "cluster_namespace",
     "clusterLocation": "location",
+    "kubernetesDistro": "kubernetes_distro",
+    "containerRuntimeSocket": "container_runtime_socket",
     "customLocationName": "custom_location_name",
     "deployResourceSyncRules": "deploy_resource_sync_rules",
     "schemaRegistryId": "schema_registry_resource_id",
@@ -130,7 +129,8 @@ def test_init_targets(target_scenario: dict):
 
     verify_user_trust_settings(targets, target_scenario)
 
-    enablement_template, enablement_parameters = targets.get_ops_enablement_template()
+    _, enablement_parameters = targets.get_ops_enablement_template()
+    # test enablement_template
     for parameter in enablement_parameters:
         targets_key = parameter
         if parameter in ENABLEMENT_PARAM_CONVERSION_MAP:
@@ -139,27 +139,22 @@ def test_init_targets(target_scenario: dict):
             targets, targets_key
         ), f"{parameter} value mismatch with targets {targets_key} value."
 
+    extension_ids = [generate_random_string(), generate_random_string()]
+    target_scenario_has_user_trust = target_scenario.get("trust_settings")
+    if target_scenario_has_user_trust:
+        targets.trust_config = None
+
+    instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids)
+
+    if targets.ops_version:
+        assert instance_template["variables"]["VERSIONS"]["iotOperations"] == targets.ops_version
+
     if targets.ops_config:
-        aio_config_settings = enablement_template["variables"]["defaultAioConfigurationSettings"]
+        aio_config_settings = instance_template["variables"]["defaultAioConfigurationSettings"]
         for c in targets.ops_config:
             assert c in aio_config_settings
             assert aio_config_settings[c] == targets.ops_config[c]
 
-    if targets.ops_version:
-        assert enablement_template["variables"]["VERSIONS"]["aio"] == targets.ops_version
-
-    extension_ids = [generate_random_string(), generate_random_string()]
-    extension_config = {"schemaRegistry.values.resourceId": target_scenario.get("schema_registry_resource_id")}
-    target_scenario_has_user_trust = target_scenario.get("trust_settings")
-    if target_scenario_has_user_trust:
-        extension_config["trustSource"] = "CustomerManaged"
-        extension_config["trustBundleSettings.issuer.name"] = target_scenario["trust_settings"]["issuerName"]
-        extension_config["trustBundleSettings.issuer.kind"] = target_scenario["trust_settings"]["issuerKind"]
-        extension_config["trustBundleSettings.configMap.name"] = target_scenario["trust_settings"]["configMapName"]
-        extension_config["trustBundleSettings.configMap.key"] = target_scenario["trust_settings"]["configMapKey"]
-        targets.trust_config = None
-
-    instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids, extension_config)
     for parameter in instance_parameters:
         if parameter == "clExtentionIds":
             assert instance_parameters[parameter]["value"] == extension_ids
@@ -173,10 +168,9 @@ def test_init_targets(target_scenario: dict):
 
     assert instance_template["resources"]["aioInstance"]["properties"]["description"] == targets.instance_description
 
-    assert (
-        instance_template["resources"]["aioInstance"]["properties"]["schemaRegistryNamespace"]
-        == f"[reference(parameters('schemaRegistryId'), '{REGISTRY_API_VERSION}').namespace]"
-    )
+    assert instance_template["resources"]["aioInstance"]["properties"]["schemaRegistryRef"] == {
+        "resourceId": "[parameters('schemaRegistryId')]"
+    }
 
     if targets.tags:
         assert instance_template["resources"]["aioInstance"]["tags"] == targets.tags
