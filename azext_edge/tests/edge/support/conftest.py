@@ -278,6 +278,7 @@ def mocked_list_deployments(mocked_client):
             "aio-opc-supervisor",
             "aio-opc-opc",
             "opcplc-0000000",
+            "diagnostics-operator-deployment",
         ]
         deployment_list = []
         for name in names:
@@ -297,7 +298,10 @@ def mocked_list_replicasets(mocked_client):
     from kubernetes.client.models import V1ReplicaSetList, V1ReplicaSet, V1ObjectMeta
 
     def _handle_list_replicasets(*args, **kwargs):
-        names = ["mock_replicaset"]
+        names = [
+            "mock_replicaset",
+            "diagnostics-operator-deployment",
+        ]
         replicaset_list = []
         for name in names:
             replicaset_list.append(V1ReplicaSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
@@ -316,12 +320,20 @@ def mocked_list_statefulsets(mocked_client):
     from kubernetes.client.models import V1StatefulSetList, V1StatefulSet, V1ObjectMeta
 
     def _handle_list_statefulsets(*args, **kwargs):
-        statefulset = V1StatefulSet(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_statefulset"))
-        statefulset_list = V1StatefulSetList(items=[statefulset])
+        names = [
+            "mock_statefulset",
+            "diagnostics-v1-statefulset",
+        ]
+
+        statefulset_list = []
+        for name in names:
+            statefulset_list.append(V1StatefulSet(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        statefulset_list = V1StatefulSetList(items=statefulset_list)
 
         return statefulset_list
 
     mocked_client.AppsV1Api().list_stateful_set_for_all_namespaces.side_effect = _handle_list_statefulsets
+    mocked_client.AppsV1Api().list_namespaced_stateful_set.side_effect = _handle_list_statefulsets
 
     yield mocked_client
 
@@ -331,7 +343,7 @@ def mocked_list_services(mocked_client):
     from kubernetes.client.models import V1ServiceList, V1Service, V1ObjectMeta
 
     def _handle_list_services(*args, **kwargs):
-        service_names = ["mock_service", "opcplc-0000000", "aio-operator"]
+        service_names = ["mock_service", "opcplc-0000000", "aio-operator", "diagnostics-operator-service"]
         service_list = []
         for name in service_names:
             service_list.append(V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
@@ -441,8 +453,12 @@ def mocked_list_config_maps(mocked_client):
     from kubernetes.client.models import V1ConfigMapList, V1ConfigMap, V1ObjectMeta
 
     def _handle_list_config_maps(*args, **kwargs):
-        config_map = V1ConfigMap(metadata=V1ObjectMeta(namespace="mock_namespace", name="mock_config_map"))
-        config_map_list = V1ConfigMapList(items=[config_map])
+        names = ["mock_config_map", "diagnostics-v1-collector-config"]
+
+        config_map_list = []
+        for name in names:
+            config_map_list.append(V1ConfigMap(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))
+        config_map_list = V1ConfigMapList(items=config_map_list)
 
         return config_map_list
 

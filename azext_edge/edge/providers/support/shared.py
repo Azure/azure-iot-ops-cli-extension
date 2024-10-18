@@ -8,7 +8,7 @@ from knack.log import get_logger
 
 from ..k8s.config_map import get_config_map
 from ..orchestration.base import ARC_CONFIG_MAP, ARC_NAMESPACE
-from .base import process_events, process_nodes, process_storage_classes
+from .base import process_events, process_nodes, process_storage_classes, get_custom_objects
 
 logger = get_logger(__name__)
 
@@ -27,9 +27,29 @@ def process_arc_kpis():
     return result
 
 
+def process_extension_configs():
+    result = []
+    extension_config = get_custom_objects(
+        group="clusterconfig.azure.com",
+        version="v1beta1",
+        plural="extensionconfigs",
+    )
+
+    if extension_config:
+        result.append(
+            {
+                "data": extension_config,
+                "zinfo": "extensionconfigs.yaml",
+            }
+        )
+
+    return result
+
+
 support_shared_elements = {
     "nodes": process_nodes,
     "events": process_events,
+    "extensionconfigs": process_extension_configs,
     "storageclasses": process_storage_classes,
     "arc": process_arc_kpis,
 }
