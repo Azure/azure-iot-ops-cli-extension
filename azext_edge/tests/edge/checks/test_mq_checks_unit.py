@@ -81,7 +81,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     "ports": [
                         {"name": "bincode-listener-service", "port": 9700, "protocol": "TCP", "targetPort": 9700},
                         {"name": "protobuf-listener-service", "port": 9800, "protocol": "TCP", "targetPort": 9800},
-                        {"name": "aio-mq-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
+                        {"name": "aio-broker-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
                     ],
                 },
             ),
@@ -153,7 +153,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     "ports": [
                         {"name": "bincode-listener-service", "port": 9700, "protocol": "TCP", "targetPort": 9700},
                         {"name": "protobuf-listener-service", "port": 9800, "protocol": "TCP", "targetPort": 9800},
-                        {"name": "aio-mq-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
+                        {"name": "aio-broker-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
                     ],
                 },
             ),
@@ -225,7 +225,7 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     "ports": [
                         {"name": "bincode-listener-service", "port": 9700, "protocol": "TCP", "targetPort": 9700},
                         {"name": "protobuf-listener-service", "port": 9800, "protocol": "TCP", "targetPort": 9800},
-                        {"name": "aio-mq-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
+                        {"name": "aio-broker-metrics-service", "port": 9600, "protocol": "TCP", "targetPort": 9600},
                     ],
                 },
             ),

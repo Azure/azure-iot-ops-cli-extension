@@ -83,8 +83,8 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             if "trace" not in file_name_objs:
                 file_name_objs["trace"] = []
             # trace file
-            # aio-mq-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.otlp.pb
-            # aio-mq-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.tempo.json
+            # aio-broker-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.otlp.pb
+            # aio-broker-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.tempo.json
             name_obj["name"] = file_type
             name_obj["action"] = name.pop(0).lower()
             name_obj["identifier"] = name.pop(0)

@@ -46,7 +46,7 @@ def get_mock_broker_listener_record(
                 }
             ],
             "provisioningState": "Succeeded",
-            "serviceName": "aio-mq-dmqtt-frontend",
+            "serviceName": "aio-broker-dmqtt-frontend",
             "serviceType": "ClusterIp",
         },
         resource_group_name=resource_group_name,
