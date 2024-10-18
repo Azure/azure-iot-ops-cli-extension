@@ -16,7 +16,7 @@ from ...common import (
     DEFAULT_DATAFLOW_PROFILE,
 )
 from ...util import assemble_nargs_to_dict
-from ...util.az_client import parse_resource_id, REGISTRY_API_VERSION
+from ...util.az_client import parse_resource_id
 from ..orchestration.common import (
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
@@ -24,8 +24,8 @@ from ..orchestration.common import (
 from .common import KubernetesDistroType
 from .template import (
     IOT_OPERATIONS_VERSION_MONIKER,
-    M2_ENABLEMENT_TEMPLATE,
-    M2_INSTANCE_TEMPLATE,
+    M3_ENABLEMENT_TEMPLATE,
+    M3_INSTANCE_TEMPLATE,
     TemplateBlueprint,
     get_insecure_listener,
 )
@@ -137,7 +137,7 @@ class InitTargets:
 
     def get_extension_versions(self) -> dict:
         # Don't need a deep copy here.
-        return M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
+        return M3_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
 
     def get_ops_enablement_template(
         self,
@@ -145,43 +145,18 @@ class InitTargets:
         template, parameters = self._handle_apply_targets(
             param_to_target={
                 "clusterName": self.cluster_name,
-                "kubernetesDistro": self.kubernetes_distro,
-                "containerRuntimeSocket": self.container_runtime_socket,
                 "trustConfig": self.trust_config,
-                "schemaRegistryId": self.schema_registry_resource_id,
                 "advancedConfig": self.advanced_config,
             },
-            template_blueprint=M2_ENABLEMENT_TEMPLATE,
+            template_blueprint=M3_ENABLEMENT_TEMPLATE,
         )
-
-        if self.ops_config:
-            aio_default_config: Dict[str, str] = template.content["variables"]["defaultAioConfigurationSettings"]
-            aio_default_config.update(self.ops_config)
-
-        if self.ops_version:
-            template.content["variables"]["VERSIONS"]["aio"] = self.ops_version
 
         # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
         return template.content, parameters
 
     def get_ops_instance_template(
-        self, cl_extension_ids: List[str], ops_extension_config: Dict[str, str]
+        self, cl_extension_ids: List[str],
     ) -> Tuple[dict, dict]:
-        # Set the schema registry resource Id from the extension config
-        self.schema_registry_resource_id = ops_extension_config.get("schemaRegistry.values.resourceId")
-        trust_source = ops_extension_config.get("trustSource")
-
-        if trust_source == "CustomerManaged":
-            trust_issuer_name = ops_extension_config.get("trustBundleSettings.issuer.name")
-            trust_issuer_kind = ops_extension_config.get("trustBundleSettings.issuer.kind")
-            trust_configmap_name = ops_extension_config.get("trustBundleSettings.configMap.name")
-            trust_configmap_key = ops_extension_config.get("trustBundleSettings.configMap.key")
-            self.trust_settings = {
-                "issuerName": trust_issuer_name,
-                "issuerKind": trust_issuer_kind,
-                "configMapName": trust_configmap_name,
-                "configMapKey": trust_configmap_key,
-            }
         self.trust_config = self.get_trust_settings_target_map()
 
         template, parameters = self._handle_apply_targets(
@@ -189,6 +164,8 @@ class InitTargets:
                 "clusterName": self.cluster_name,
                 "clusterNamespace": self.cluster_namespace,
                 "clusterLocation": self.location,
+                "kubernetesDistro": self.kubernetes_distro,
+                "containerRuntimeSocket": self.container_runtime_socket,
                 "customLocationName": self.custom_location_name,
                 "clExtentionIds": cl_extension_ids,
                 "deployResourceSyncRules": self.deploy_resource_sync_rules,
@@ -197,15 +174,22 @@ class InitTargets:
                 "brokerConfig": self.broker_config,
                 "trustConfig": self.trust_config,
             },
-            template_blueprint=M2_INSTANCE_TEMPLATE,
+            template_blueprint=M3_INSTANCE_TEMPLATE,
         )
+
+        if self.ops_config:
+            aio_default_config: Dict[str, str] = template.content["variables"]["defaultAioConfigurationSettings"]
+            aio_default_config.update(self.ops_config)
+
+        if self.ops_version:
+            template.content["variables"]["VERSIONS"]["iotOperations"] = self.ops_version
+
         instance = template.get_resource_by_key("aioInstance")
         instance["properties"]["description"] = self.instance_description
 
-        # TODO: this is temporary for this milestone. Next milestone it should change.
-        instance["properties"][
-            "schemaRegistryNamespace"
-        ] = f"[reference(parameters('schemaRegistryId'), '{REGISTRY_API_VERSION}').namespace]"
+        instance["properties"]["schemaRegistryRef"] = {
+            "resourceId": "[parameters('schemaRegistryId')]"
+        }
 
         if self.tags:
             instance["tags"] = self.tags
@@ -250,7 +234,7 @@ class InitTargets:
         processed_config_map = {}
 
         validation_errors = []
-        broker_config_def = M2_INSTANCE_TEMPLATE.get_type_definition("_1.BrokerConfig")["properties"]
+        broker_config_def = M3_INSTANCE_TEMPLATE.get_type_definition("_1.BrokerConfig")["properties"]
         for config in to_process_config_map:
             if to_process_config_map[config] is None:
                 continue
@@ -294,7 +278,7 @@ class InitTargets:
         if self.trust_settings:
             target_settings: Dict[str, str] = {}
             result["source"] = "CustomerManaged"
-            trust_bundle_def = M2_ENABLEMENT_TEMPLATE.get_type_definition("_1.TrustBundleSettings")["properties"]
+            trust_bundle_def = M3_ENABLEMENT_TEMPLATE.get_type_definition("_1.TrustBundleSettings")["properties"]
             allowed_issuer_kinds: Optional[List[str]] = trust_bundle_def.get(TRUST_ISSUER_KIND_KEY, {}).get(
                 "allowedValues"
             )

@@ -48,9 +48,10 @@ class IoTOperationsResourceMap:
         cluster_name: str,
         resource_group_name: str,
         subscription_id: Optional[str] = None,
-        defer_refresh: bool = False
+        defer_refresh: bool = False,
     ):
         from azure.cli.core.commands.client_factory import get_subscription_id
+
         self.subscription_id = subscription_id or get_subscription_id(cli_ctx=cmd.cli_ctx)
         self.connected_cluster = ConnectedCluster(
             cmd=cmd,
@@ -133,11 +134,23 @@ class IoTOperationsResourceMap:
 
         self._cluster_container = refreshed_cluster_container
 
-    def build_tree(self, hide_extensions: bool = False, category_color: str = "cyan") -> Tree:
+    def build_tree(self, include_dependencies: bool = False, category_color: str = "cyan") -> Tree:
+        from .work import IOT_OPS_EXTENSION_TYPE
+
         tree = Tree(f"[green]{self.connected_cluster.cluster_name}")
 
-        if not hide_extensions:
-            extensions_node = tree.add(label=f"[{category_color}]extensions")
+        extensions_node = tree.add(label=f"[{category_color}]extensions")
+        if not include_dependencies:
+            # only show aio extension
+            # TODO: @c-ryan-k hacky
+            aio_ext_obj = self.connected_cluster.get_extensions_by_type(IOT_OPS_EXTENSION_TYPE).get(
+                IOT_OPS_EXTENSION_TYPE, {}
+            )
+            aio_ext_id: str = aio_ext_obj.get("id", "")
+            aio_ext = next((_ for _ in self.extensions if _.resource_id.lower() == aio_ext_id.lower()), None)
+            if aio_ext:
+                extensions_node.add(aio_ext.display_name)
+        else:
             [extensions_node.add(ext.display_name) for ext in self.extensions]
 
         custom_locations = self.custom_locations
