@@ -122,13 +122,13 @@ class UpgradeManager:
         from .template import M2_ENABLEMENT_TEMPLATE
         version_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
         train_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["TRAINS"].copy()
-        self.new_aio_version = "0.8.14"  # version_map["aio"]
+        self.new_aio_version = "0.8.16"  # version_map["aio"]
         type_to_key_map = {
-            "microsoft.azure.secretstore": "secretSyncController",  # store
-            "microsoft.arc.containerstorage": "edgeStorageAccelerator",  # containerstorage
-            "microsoft.openservicemesh": "openServiceMesh",  # hash
-            "microsoft.iotoperations.platform": "platform",  # hash
-            "microsoft.iotoperations": "aio",  # hash
+            "microsoft.azure.secretstore": "secretSyncController",
+            "microsoft.arc.containerstorage": "edgeStorageAccelerator",
+            "microsoft.openservicemesh": "openServiceMesh",
+            "microsoft.iotoperations.platform": "platform",
+            "microsoft.iotoperations": "aio",
         }
         aio_extensions = self.resource_map.connected_cluster.extensions
         self.extensions_to_update = {}
@@ -138,13 +138,13 @@ class UpgradeManager:
                 continue
             extension_key = type_to_key_map[extension_type]
             current_version = extension["properties"].get("version", "0").replace("-preview", "")
-            if all([extension_type == "microsoft.iotoperations", current_version != "0.8.14"]):
+            if all([extension_type == "microsoft.iotoperations", current_version != "0.8.16"]):
                 extension_update = {
                     "properties": {
                         "autoUpgradeMinorVersion": "false",
-                        "releaseTrain": "dev",
-                        "version": "0.8.14",
-                        "configurationSettings": {"schemaRegistry.image.tag": "0.1.6"}
+                        "releaseTrain": "integration",
+                        "version": "0.8.16",
+                        "configurationSettings": {"schemaRegistry.values.resourceId": None}
                     }
                 }
             # TODO: packaging
@@ -270,6 +270,7 @@ class UpgradeManager:
             import pdb; pdb.set_trace()
             for extension in self.extensions_to_update:
                 logger.info(f"Updating extension {extension}.")
+                logger.info(f"Extension PATCH body: {self.extensions_to_update[extension]}")
                 updated = self.resource_map.connected_cluster.clusters.extensions.update(
                     resource_group_name=self.resource_group_name,
                     cluster_name=self.cluster_name,
@@ -286,6 +287,7 @@ class UpgradeManager:
             if self.require_instance_upgrade:
                 # update the instance
                 self._render_display("[yellow]Updating instance...")
+                logger.info(f"New instance body: {self.instance}")
                 result = wait_for_terminal_state(
                         self.instances.iotops_mgmt_client.instance.begin_create_or_update(
                             resource_group_name=self.resource_group_name,
@@ -293,6 +295,12 @@ class UpgradeManager:
                             resource=self.instance
                     )
                 )
+        except (HttpResponseError, KeyboardInterrupt) as e:
+            logger.error(
+                f"Update failed. The collected schema registry resource id is `{self.sr_resource_id}`. "
+                "Please save this value in case it is required for a future upgrade. "
+            )
+            raise e
         finally:
             self._stop_display()
 

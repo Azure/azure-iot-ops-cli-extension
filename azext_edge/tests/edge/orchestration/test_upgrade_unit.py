@@ -6,11 +6,19 @@
 
 from typing import Dict, List, Optional, Union
 from unittest.mock import Mock
-
 import pytest
 import responses
 
 from ...generators import generate_random_string, get_zeroed_subscription
+
+
+KEY_TO_TYPE_MAP = {
+    "secretSyncController": "microsoft.azure.secretstore",
+    "edgeStorageAccelerator": "microsoft.arc.containerstorage",
+    "openServiceMesh": "microsoft.openservicemesh",
+    "platform": "microsoft.iotoperations.platform",
+    "aio": "microsoft.iotoperations",
+}
 
 
 @pytest.fixture
@@ -77,18 +85,58 @@ def _generate_extensions(aio_version: str = "0.0.0"):
 def _assemble_resource_map_mock(
     resource_map_mock: Mock,
     extensions: Optional[List[dict]],
-    custom_locations: Optional[List[dict]],
-    resources: Optional[List[dict]],
-    sync_rules: Optional[List[dict]],
+    # custom_locations: Optional[List[dict]],
+    # resources: Optional[List[dict]],
+    # sync_rules: Optional[List[dict]],
 ):
-    resource_map_mock().extensions = extensions
-    resource_map_mock().custom_locations = custom_locations
-    resource_map_mock().get_resources.return_value = resources
-    resource_map_mock().get_resource_sync_rules.return_value = sync_rules
+    resource_map_mock().connected_cluster.extensions = extensions
+    # resource_map_mock().custom_locations = custom_locations
+    # resource_map_mock().get_resources.return_value = resources
+    # resource_map_mock().get_resource_sync_rules.return_value = sync_rules
 
 
+def _generate_extension(
+    extension_type: str,
+    current_version: str
+):
+    return {
+        "properties": {
+            "extensionType": extension_type,
+            "version": current_version
+        },
+        "name": generate_random_string()
+    }
+
+
+def _generate_extensions(
+    **extension_version_map
+):
+    extensions = []
+    for key in KEY_TO_TYPE_MAP:
+        version = extension_version_map.get(key, "0.0.0")
+        extensions.append({
+            "properties": {
+                "extensionType": KEY_TO_TYPE_MAP[key],
+                "version": version
+            },
+            "name": generate_random_string(),
+            "key": key
+        })
+    return extensions
+
+
+def _generate_versions(**versions):
+    return [versions.get(key, "255.255.255") for key in KEY_TO_TYPE_MAP]
+
+
+@pytest.mark.parametrize("no_progress", [False, True])
 @pytest.mark.parametrize("require_instance_update", [False, True])
-@pytest.mark.parametrize("extensions_to_update", [[], ["aio"]])
+@pytest.mark.parametrize("extensions_to_update", [
+    {
+        "currentExtensions": _generate_extension(),
+        "newVersions": _generate_versions
+    }
+])
 @pytest.mark.parametrize("instance_name", [generate_random_string()])
 def test_upgrade_lifecycle(
     mocker,
@@ -103,15 +151,15 @@ def test_upgrade_lifecycle(
     require_instance_update: bool,
     extensions_to_update: Optional[List[str]],
     instance_name: Optional[str],
+    no_progress: Optional[bool]
 ):
     from azext_edge.edge.providers.orchestration.upgrade import upgrade_ops_resources
     # scenarios to test:
-    # instance name vs cluster name used
+    # instance name vs cluster name used - later
     # sr resource id provided
     # extensions - all need updates, 3 need updates, none need updates
     # instance is m2 vs m3
 
-    cluster_name = None if instance_name else generate_random_string()
     rg_name = generate_random_string()
     sr_resource_id = generate_random_string()
 
@@ -175,8 +223,6 @@ def test_upgrade_lifecycle(
             content_type="application/json",
         )
 
-
-
     _assemble_resource_map_mock(
         resource_map_mock=mocked_resource_map,
         extensions=expected_resources_map["extensions"],
@@ -187,11 +233,10 @@ def test_upgrade_lifecycle(
     kwargs = {
         "cmd": mocked_cmd,
         "instance_name": instance_name,
-        "cluster_name": cluster_name,
         "resource_group_name": rg_name,
         "sr_resource_id": sr_resource_id,
         "confirm_yes": True,
-        "no_progress": expected_resources_map["meta"].get("no_progress"),
+        "no_progress": no_progress,
     }
 
     upgrade_ops_resources(**kwargs)

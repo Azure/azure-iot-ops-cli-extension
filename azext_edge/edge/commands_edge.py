@@ -148,9 +148,9 @@ def init(
 def upgrade(
     cmd,
     resource_group_name: str,
-    cluster_name: Optional[str] = None,
-    instance_name: Optional[str] = None,
-    sr_id: Optional[str] = None,  # TODO: change to schema_registry_resource_id
+    instance_name: str,
+    # cluster_name: Optional[str] = None,  # Keep it simple right now - only instance
+    schema_registry_resource_id: Optional[str] = None,
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
     **kwargs
@@ -158,10 +158,10 @@ def upgrade(
     from .providers.orchestration.upgrade import upgrade_ops_resources
     return upgrade_ops_resources(
         cmd=cmd,
-        cluster_name=cluster_name,
+        # cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         instance_name=instance_name,
-        sr_resource_id=sr_id,
+        sr_resource_id=schema_registry_resource_id,
         no_progress=no_progress,
         confirm_yes=confirm_yes,
         **kwargs
