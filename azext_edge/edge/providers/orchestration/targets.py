@@ -156,22 +156,7 @@ class InitTargets:
 
     def get_ops_instance_template(
         self, cl_extension_ids: List[str],
-        # ops_extension_config: Dict[str, str]
     ) -> Tuple[dict, dict]:
-        # TODO - @c-ryan-k figure out wtf to do with this
-        # trust_source = ops_extension_config.get("trustSource")
-
-        # if trust_source == "CustomerManaged":
-        #     trust_issuer_name = ops_extension_config.get("trustBundleSettings.issuer.name")
-        #     trust_issuer_kind = ops_extension_config.get("trustBundleSettings.issuer.kind")
-        #     trust_configmap_name = ops_extension_config.get("trustBundleSettings.configMap.name")
-        #     trust_configmap_key = ops_extension_config.get("trustBundleSettings.configMap.key")
-        #     self.trust_settings = {
-        #         "issuerName": trust_issuer_name,
-        #         "issuerKind": trust_issuer_kind,
-        #         "configMapName": trust_configmap_name,
-        #         "configMapKey": trust_configmap_key,
-        #     }
         self.trust_config = self.get_trust_settings_target_map()
 
         template, parameters = self._handle_apply_targets(
