@@ -4,17 +4,20 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Optional
+from typing import List, Optional
 from unittest.mock import Mock
 import pytest
 
 import responses
-from azext_edge.edge.commands_connector import add_connector_opcua_issuer, add_connector_opcua_trust
+from azext_edge.edge.commands_connector import add_connector_opcua_client, add_connector_opcua_issuer, add_connector_opcua_trust
 from azext_edge.edge.providers.orchestration.resource_map import IoTOperationsResource
 from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import (
+    OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+    OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
     OPCUA_SPC_NAME,
     OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
 )
+from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
 from azext_edge.tests.edge.orchestration.resources.conftest import get_base_endpoint, get_mock_resource
 from azext_edge.tests.generators import generate_random_string
 
@@ -90,6 +93,26 @@ def mocked_show(mocker):
 
 def mocked_file_open(mocker, file_content: bytes):
     mocker.patch("builtins.open", mocker.mock_open(read_data=file_content))
+
+
+@pytest.fixture
+def mocked_get_resource_client(mocker):
+    patched = mocker.patch("azext_edge.edge.util.queryable")
+    yield patched().get_resource_client
+
+
+@pytest.fixture
+def mocked_resource_map(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.Instances",
+    )
+    yield patched().get_resource_map
+
+
+@pytest.fixture
+def mocked_sleep(mocker):
+    patched = mocker.patch("azext_edge.edge.util.az_client.sleep", return_value=None)
+    yield patched
 
 
 def _generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
@@ -220,6 +243,7 @@ def get_mock_secretsync_record(secretsync_name: str, resource_group_name: str, o
 def test_trust_add(
     mocker,
     mocked_cmd,
+    mocked_sleep: Mock,
     expected_resources_map,
     trust_list_spc,
     trust_list_secretsync,
@@ -338,6 +362,16 @@ def test_trust_add(
     if result:
         assert result == expected_secret_sync
 
+def _assemble_resource_map_mock(
+    resource_map_mock: Mock,
+    extension: Optional[dict],
+    custom_locations: Optional[List[dict]],
+    resources: Optional[List[dict]],
+):
+    resource_map_mock().custom_locations = custom_locations
+    resource_map_mock().get_resources.return_value = resources
+    resource_map_mock().connected_cluster.get_extensions_by_type.return_value = extension
+    resource_map_mock().connected_cluster.get_aio_resources.return_value = resources
 
 @pytest.mark.parametrize("file_content", [b"\x00\x01\x02\x03"])
 @pytest.mark.parametrize(
@@ -370,14 +404,14 @@ def test_trust_add(
                     "resource_batches": 1,
                 },
             },
-            get_mock_spc_record(spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_spc_record(spc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
             get_mock_secretsync_record(
-                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
             ),
             "/fake/path/certificate.der",
             "new-secret",
             get_mock_secretsync_record(
-                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
                 objects="new-secret",
             ),
@@ -387,6 +421,7 @@ def test_trust_add(
 def test_issuer_add(
     mocker,
     mocked_cmd,
+    mocked_sleep: Mock,
     expected_resources_map,
     issuer_list_spc,
     issuer_list_secretsync,
@@ -465,7 +500,7 @@ def test_issuer_add(
         mocked_responses.add(
             method=responses.GET,
             url=get_secretsync_endpoint(
-                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
+                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
             ),
             json=issuer_list_secretsync,
             status=200,
@@ -476,7 +511,7 @@ def test_issuer_add(
         mocked_responses.add(
             method=responses.PUT,
             url=get_secretsync_endpoint(
-                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
+                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
             ),
             json=expected_secret_sync,
             status=200,
@@ -504,3 +539,199 @@ def test_issuer_add(
 
     if result:
         assert result == expected_secret_sync
+
+
+@pytest.mark.parametrize("file_content", [b"\x00\x01\x02\x03"])
+@pytest.mark.parametrize(
+    "expected_resources_map, client_app_spc, client_app_secretsync, public_file_name, private_file_name, expected_secret_sync",
+    [
+        (
+            {
+                "resources": None,
+                "resource sync rules": None,
+                "custom locations": None,
+                "extension": None,
+                "meta": {
+                    "expected_total": 0,
+                },
+            },
+            {},
+            {},
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            {},
+        ),
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resource sync rules": [_generate_ops_resource()],
+                "custom locations": [_generate_ops_resource()],
+                "extension": {
+                    IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name","properties": {}}
+                },
+                "meta": {
+                    "expected_total": 4,
+                    "resource_batches": 1,
+                },
+            },
+            get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+            ),
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+        ),
+    ],
+)
+def test_client_add(
+    mocker,
+    mocked_cmd,
+    mocked_sleep: Mock,
+    mocked_logger: Mock,
+    expected_resources_map,
+    client_app_spc,
+    client_app_secretsync,
+    public_file_name,
+    private_file_name,
+    file_content,
+    expected_secret_sync,
+    mocked_resource_map,
+    mocked_responses: responses,
+):
+    _assemble_resource_map_mock(
+        resource_map_mock=mocked_resource_map,
+        extension=expected_resources_map["extension"],
+        custom_locations=expected_resources_map["custom locations"],
+        resources=expected_resources_map["resources"],
+    )
+    mocked_get_resource_client: Mock = mocker.patch(
+        "azext_edge.edge.util.queryable.get_resource_client",
+    )
+    mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.read_file_content",
+        return_value=file_content,
+    )
+    instance_name = generate_random_string()
+    rg_name = "mock-rg"
+    if expected_resources_map["resources"]:
+        # get default spc
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
+            json=expected_resources_map["resources"][0],
+            status=200,
+            content_type="application/json",
+        )
+
+    if client_app_spc:
+        # get secrets
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_secret_endpoint(keyvault_name="mock-keyvault"),
+            json={
+                "value": [
+                    {
+                        "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
+                    }
+                ]
+            },
+            status=200,
+            content_type="application/json",
+        )
+
+        # set secret
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name="certificate-der"),
+            json={},
+            status=200,
+            content_type="application/json",
+        )
+
+        # set secret
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name="certificate-pem"),
+            json={},
+            status=200,
+            content_type="application/json",
+        )
+
+        # get opcua spc
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+            json=client_app_spc,
+            status=200,
+            content_type="application/json",
+        )
+
+        # set opcua spc
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+            json={},
+            status=200,
+            content_type="application/json",
+        )
+
+        # get opcua secretsync
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_secretsync_endpoint(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name
+            ),
+            json=client_app_secretsync,
+            status=200,
+            content_type="application/json",
+        )
+
+        # set opcua secretsync
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_secretsync_endpoint(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name
+            ),
+            json=expected_secret_sync,
+            status=200,
+            content_type="application/json",
+        )
+
+    result = None
+
+    try:
+        result = add_connector_opcua_client(
+            cmd=mocked_cmd,
+            instance_name=instance_name,
+            resource_group=rg_name,
+            public_key_file=public_file_name,
+            private_key_file=private_file_name,
+            application_uri="uri",
+            subject_name="subjectname",
+        )
+    except Exception:
+        if not expected_resources_map["custom locations"]:
+            assert (
+                mocked_logger.error.call_args[0][0] == f"Secret sync is not enabled for the instance {instance_name}."
+                "Please enable secret sync before adding certificate."
+            )
+            return
+
+    if result:
+        mocked_resource_map().connected_cluster.get_extensions_by_type.assert_called_once_with("microsoft.iotoperations")
+        mocked_resource_map().connected_cluster.update_aio_extension.assert_called_once_with(
+            extension_name=expected_resources_map["extension"][IOT_OPS_EXTENSION_TYPE]["name"],
+            properties={
+                "configurationSettings": {
+                    "connectors.values.securityPki.applicationCert": OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                    "connectors.values.securityPki.subjectName": "subjectname",
+                    "connectors.values.securityPki.applicationUri": "uri"
+                }
+            }
+        )

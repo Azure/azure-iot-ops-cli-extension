@@ -43,6 +43,7 @@ class OpcUACerts(Queryable):
         self.ssc_mgmt_client = get_ssc_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
+        self
 
     def trust_add(self, instance_name: str, resource_group: str, file: str, secret_name: Optional[str] = None) -> dict:
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)

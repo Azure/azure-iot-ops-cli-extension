@@ -1261,7 +1261,4 @@ def load_iotops_arguments(self, _):
             "application_uri",
             options_list=["--application-uri", "--au"],
             help="The application instance URI embedded in the application instance.",
-            options_list=["--secret", "-s"],
-            help="Secret name in the Key Vault. If not provided, the "
-            "certificate file name will be used to generate the secret name.",
         )

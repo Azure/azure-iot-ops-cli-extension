@@ -427,6 +427,7 @@ class Instances(Queryable):
         subject: str,
         federated_credential_name: str,
     ):
+        import pdb; pdb.set_trace()
         if self._find_federated_cred(
             mi_resource_id_container=mi_resource_id_container, issuer_url=oidc_issuer, subject=subject
         ):
