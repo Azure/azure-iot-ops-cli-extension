@@ -21,7 +21,7 @@ TEST_TRACE_PARTIAL = TestTraceData(
         "resourceSpans": [
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -61,7 +61,7 @@ TEST_TRACE = TestTraceData(
         "resourceSpans": [
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -91,7 +91,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -121,7 +121,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -152,7 +152,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-frontend-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-frontend-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -182,7 +182,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-frontend-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-frontend-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -212,7 +212,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-frontend-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-frontend-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -242,7 +242,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-frontend-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-frontend-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -264,7 +264,7 @@ TEST_TRACE = TestTraceData(
                                             "stringValue": '{"id":1590916709755722418,"version":0,"trace_id":176088501121717014071716630412632417632,"parent_id":4535909789485131942,"flags":1}'
                                         },
                                     },
-                                    {"key": "pod_id", "value": {"stringValue": "aio-mq-dmqtt-frontend-0"}},
+                                    {"key": "pod_id", "value": {"stringValue": "aio-broker-dmqtt-frontend-0"}},
                                 ],
                                 "status": {},
                             }
@@ -274,7 +274,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-frontend-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-frontend-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -304,7 +304,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-frontend-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-frontend-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -334,7 +334,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-frontend-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-frontend-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -364,7 +364,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -394,7 +394,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -424,7 +424,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -455,7 +455,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -480,10 +480,10 @@ TEST_TRACE = TestTraceData(
                                     {
                                         "key": "cell_map",
                                         "value": {
-                                            "stringValue": "ReplicaCellMap { id: aio-mq-dmqtt-backend-2-0:1, position: Some(Backend((3, 0, Replica))), cell_map: CellMap { backends: [Chain { id: 0, replicas: [ReplicaInfo { state: Ready, role:Replica, address: aio-mq-dmqtt-backend-1-0.aio-mq-dmqtt-backend.azure-iot"
+                                            "stringValue": "ReplicaCellMap { id: aio-broker-dmqtt-backend-2-0:1, position: Some(Backend((3, 0, Replica))), cell_map: CellMap { backends: [Chain { id: 0, replicas: [ReplicaInfo { state: Ready, role:Replica, address: aio-broker-dmqtt-backend-1-0.aio-broker-dmqtt-backend.azure-iot"
                                         },
                                     },
-                                    {"key": "pod_id", "value": {"stringValue": "aio-mq-dmqtt-backend-2-0:1"}},
+                                    {"key": "pod_id", "value": {"stringValue": "aio-broker-dmqtt-backend-2-0:1"}},
                                 ],
                                 "status": {},
                             }
@@ -493,7 +493,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -523,7 +523,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -553,7 +553,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -583,7 +583,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -599,11 +599,11 @@ TEST_TRACE = TestTraceData(
                                 "endTimeUnixNano": "1701380840984477448",
                                 "attributes": [
                                     {"key": "cell_map_version", "value": {"stringValue": "3"}},
-                                    {"key": "pod_id", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1:1"}},
+                                    {"key": "pod_id", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1:1"}},
                                     {
                                         "key": "cell_map",
                                         "value": {
-                                            "stringValue": "ReplicaCellMap { id: aio-mq-dmqtt-backend-2-1:1, position: Some(Backend((3, 1, Tail))), cell_map: CellMap { backends: [Chain { id: 0, replicas: [ReplicaInfo{ state: Ready, role: Replica, address: aio-mq-dmqtt-backend-1-0.aio-mq-dmqtt-backend.azure-iot-op"
+                                            "stringValue": "ReplicaCellMap { id: aio-broker-dmqtt-backend-2-1:1, position: Some(Backend((3, 1, Tail))), cell_map: CellMap { backends: [Chain { id: 0, replicas: [ReplicaInfo{ state: Ready, role: Replica, address: aio-broker-dmqtt-backend-1-0.aio-broker-dmqtt-backend.azure-iot-op"
                                         },
                                     },
                                     {
@@ -621,7 +621,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -651,7 +651,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -681,7 +681,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -711,7 +711,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -741,7 +741,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -771,7 +771,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -801,7 +801,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -831,7 +831,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-dmqtt-backend-2-1"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-dmqtt-backend-2-1"}}]
                 },
                 "scopeSpans": [
                     {
@@ -861,7 +861,7 @@ TEST_TRACE = TestTraceData(
             },
             {
                 "resource": {
-                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-mq-diagnostics-probe-0"}}]
+                    "attributes": [{"key": "service.name", "value": {"stringValue": "aio-broker-diagnostics-probe-0"}}]
                 },
                 "scopeSpans": [
                     {
@@ -907,6 +907,6 @@ TEST_TRACE = TestTraceData(
         ],
         "status": {},
     },
-    resource_name="aio-mq-diagnostics-probe-0",
+    resource_name="aio-broker-diagnostics-probe-0",
     timestamp=datetime(2023, 11, 30, 21, 47, 20, 937646),
 )

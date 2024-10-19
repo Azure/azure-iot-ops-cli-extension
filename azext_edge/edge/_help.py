@@ -478,15 +478,14 @@ def load_iotops_help():
         examples:
         - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
           text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             az iot ops init --cluster mycluster -g myresourcegroup
         - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
           text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --enable-fault-tolerance
+             az iot ops init --cluster mycluster -g myresourcegroup --enable-fault-tolerance
         - name: This example highlights trust settings for a user provided cert manager config.
           text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=ClusterIssuer
+             az iot ops init --cluster mycluster -g myresourcegroup --trust-settings
+             configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=ClusterIssuer
              issuerName=trust-manager-selfsigned-issuer
 
     """
@@ -505,23 +504,23 @@ def load_iotops_help():
         examples:
         - name: Create the target instance with minimum input.
           text: >
-            az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+            az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
         - name: The following example adds customization to the default broker instance resource
             as well as an instance description and tags.
           text: >
-             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --broker-mem-profile High --broker-backend-workers 4 --description 'Contoso Factory'
              --tags tier=testX1
         - name: This example shows deploying an additional insecure (no authn or authz) broker listener
             configured for port 1883 of service type load balancer. Useful for testing and/or demos.
             Do not use the insecure option in production.
           text: >
-             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --add-insecure-listener
         - name: This form shows how to enable resource sync for the instance deployment.
             To enable resource sync role assignment write is necessary on the target resource group.
           text: >
-             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --enable-rsync
     """
 

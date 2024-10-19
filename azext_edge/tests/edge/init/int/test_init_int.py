@@ -61,7 +61,6 @@ def init_test_setup(settings, tracked_resources):
         "clusterName": settings.env.azext_edge_cluster,
         "resourceGroup": settings.env.azext_edge_rg,
         "schemaRegistryId": registry["id"],
-        "schemaRegistryNamespace": registry_namespace,
         "instanceName": instance_name,
         "additionalCreateArgs": _strip_quotes(settings.env.azext_edge_create_args),
         "additionalInitArgs": _strip_quotes(settings.env.azext_edge_init_args),
@@ -94,7 +93,7 @@ def test_init_scenario(
     registry_id = init_test_setup["schemaRegistryId"]
     instance_name = init_test_setup["instanceName"]
     command = f"az iot ops init -g {resource_group} --cluster {cluster_name} "\
-        f"--sr-resource-id {registry_id} --no-progress {additional_init_args} "
+        f"--no-progress {additional_init_args} "
 
     # TODO: assert return once there is a return for init
     run(command)
@@ -103,7 +102,8 @@ def test_init_scenario(
 
     # create command
     create_command = f"az iot ops create -g {resource_group} --cluster {cluster_name} "\
-        f"-n {instance_name} --no-progress {additional_create_args} "
+        f"--sr-resource-id {registry_id}  -n {instance_name} "\
+        f"--no-progress {additional_create_args} "
     # TODO: assert create when return be returning
     run(create_command)
 
@@ -132,7 +132,7 @@ def test_init_scenario(
                 instance_name=instance_name,
                 cluster_name=cluster_name,
                 resource_group=resource_group,
-                schema_registry_namespace=init_test_setup["schemaRegistryNamespace"],
+                schema_registry_id=registry_id,
                 **create_arg_dict
             )
     except Exception as e:  # pylint: disable=broad-except
@@ -190,7 +190,7 @@ def assert_aio_init(
 def assert_aio_instance(
     instance_name: str,
     resource_group: str,
-    schema_registry_namespace: str,
+    schema_registry_id: str,
     custom_location: Optional[str] = None,
     description: Optional[str] = None,
     location: Optional[str] = None,
@@ -209,7 +209,7 @@ def assert_aio_instance(
 
     instance_props = instance_show["properties"]
     assert instance_props.get("description") == description
-    assert instance_props["schemaRegistryNamespace"] == schema_registry_namespace
+    assert instance_props["schemaRegistryRef"] == {"resource_id": schema_registry_id}
 
     expected_components = {"adr", "akri", "connectors", "dataflows", "schemaRegistry"}
     disabled_components = []
