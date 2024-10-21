@@ -135,6 +135,66 @@ def get_mock_secretsync_record(secretsync_name: str, resource_group_name: str, o
     )
 
 
+def _setup_mock_common_responses(
+    mocked_responses: responses,
+    spc: dict,
+    secretsync: dict,
+    opcua_secretsync_name: str,
+    rg_name: str,
+    secret_name: str,
+):
+    # get secrets
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_secret_endpoint(keyvault_name="mock-keyvault"),
+        json={
+            "value": [
+                {
+                    "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
+                }
+            ]
+        },
+        status=200,
+        content_type="application/json",
+    )
+
+    # set secret
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name=secret_name),
+        json={},
+        status=200,
+        content_type="application/json",
+    )
+
+    # get opcua spc
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+        json=spc,
+        status=200,
+        content_type="application/json",
+    )
+
+    # set opcua spc
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+        json={},
+        status=200,
+        content_type="application/json",
+    )
+
+    # get opcua secretsync
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_secretsync_endpoint(secretsync_name=opcua_secretsync_name, resource_group_name=rg_name),
+        json=secretsync,
+        status=200,
+        content_type="application/json",
+    )
+
+
 def _assemble_resource_map_mock(
     resource_map_mock: Mock,
     extension: Optional[dict],
@@ -211,7 +271,7 @@ def _assemble_resource_map_mock(
                         "sourcePath": "secret1",
                         "targetKey": "certificate.der",
                     }
-                ]
+                ],
             ),
             "/fake/path/certificate.der",
             "new-secret",
@@ -260,58 +320,66 @@ def test_trust_add(
         )
 
     if trust_list_spc:
-        # get secrets
-        mocked_responses.add(
-            method=responses.GET,
-            url=get_secret_endpoint(keyvault_name="mock-keyvault"),
-            json={
-                "value": [
-                    {
-                        "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
-                    }
-                ]
-            },
-            status=200,
-            content_type="application/json",
+        _setup_mock_common_responses(
+            mocked_responses=mocked_responses,
+            spc=trust_list_spc,
+            secretsync=trust_list_secretsync,
+            opcua_secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+            rg_name=rg_name,
+            secret_name=secret_name,
         )
+        # # get secrets
+        # mocked_responses.add(
+        #     method=responses.GET,
+        #     url=get_secret_endpoint(keyvault_name="mock-keyvault"),
+        #     json={
+        #         "value": [
+        #             {
+        #                 "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
+        #             }
+        #         ]
+        #     },
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
-        # set secret
-        mocked_responses.add(
-            method=responses.PUT,
-            url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name=secret_name),
-            json={},
-            status=200,
-            content_type="application/json",
-        )
+        # # set secret
+        # mocked_responses.add(
+        #     method=responses.PUT,
+        #     url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name=secret_name),
+        #     json={},
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
-        # get opcua spc
-        mocked_responses.add(
-            method=responses.GET,
-            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-            json=trust_list_spc,
-            status=200,
-            content_type="application/json",
-        )
+        # # get opcua spc
+        # mocked_responses.add(
+        #     method=responses.GET,
+        #     url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+        #     json=trust_list_spc,
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
-        # set opcua spc
-        mocked_responses.add(
-            method=responses.PUT,
-            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-            json={},
-            status=200,
-            content_type="application/json",
-        )
+        # # set opcua spc
+        # mocked_responses.add(
+        #     method=responses.PUT,
+        #     url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+        #     json={},
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
-        # get opcua secretsync
-        mocked_responses.add(
-            method=responses.GET,
-            url=get_secretsync_endpoint(
-                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
-            ),
-            json=trust_list_secretsync,
-            status=200,
-            content_type="application/json",
-        )
+        # # get opcua secretsync
+        # mocked_responses.add(
+        #     method=responses.GET,
+        #     url=get_secretsync_endpoint(
+        #         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
+        #     ),
+        #     json=trust_list_secretsync,
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
         matched_target_key = False
         mapping = trust_list_secretsync["properties"]["objectSecretMapping"]
@@ -362,9 +430,7 @@ def test_trust_add(
         return
 
     if matched_target_key:
-        assert (
-            mocked_logger.error.call_args[0][0] == "Cannot have duplicate targetKey in objectSecretMapping."
-        )
+        assert mocked_logger.error.call_args[0][0] == "Cannot have duplicate targetKey in objectSecretMapping."
         return
 
     if result:
@@ -435,7 +501,7 @@ def test_trust_add(
                         "sourcePath": "secret1",
                         "targetKey": "target.der",
                     }
-                ]
+                ],
             ),
             "/fake/path/certificate.crl",
             "new-secret",
@@ -466,7 +532,7 @@ def test_trust_add(
                         "sourcePath": "secret1",
                         "targetKey": "certificate.der",
                     }
-                ]
+                ],
             ),
             "/fake/path/certificate.crl",
             "new-secret",
@@ -551,7 +617,8 @@ def test_issuer_add(
             file_name = os.path.basename(file_name)
             possible_file_names = [file_name.replace(".crl", ".der"), file_name.replace(".crl", ".crt")]
             matched_names = [
-                mapping["targetKey"] for mapping in issuer_list_secretsync["properties"]["objectSecretMapping"]
+                mapping["targetKey"]
+                for mapping in issuer_list_secretsync["properties"]["objectSecretMapping"]
                 if mapping["targetKey"] in possible_file_names
             ]
 
@@ -681,13 +748,7 @@ def test_issuer_add(
                 "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
                 "resource sync rules": [_generate_ops_resource()],
                 "custom locations": [_generate_ops_resource()],
-                "extension": {
-                    IOT_OPS_EXTENSION_TYPE: {
-                        "id": "aio-ext-id",
-                        "name": "aio-ext-name",
-                        "properties": {}
-                    }
-                },
+                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
                 "meta": {
                     "expected_total": 4,
                     "resource_batches": 1,
@@ -735,13 +796,7 @@ def test_issuer_add(
                 "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
                 "resource sync rules": [_generate_ops_resource()],
                 "custom locations": [_generate_ops_resource()],
-                "extension": {
-                    IOT_OPS_EXTENSION_TYPE: {
-                        "id": "aio-ext-id",
-                        "name": "aio-ext-name",
-                        "properties": {}
-                    }
-                },
+                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
                 "meta": {
                     "expected_total": 4,
                     "resource_batches": 1,
@@ -763,13 +818,7 @@ def test_issuer_add(
                 "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
                 "resource sync rules": [_generate_ops_resource()],
                 "custom locations": [_generate_ops_resource()],
-                "extension": {
-                    IOT_OPS_EXTENSION_TYPE: {
-                        "id": "aio-ext-id",
-                        "name": "aio-ext-name",
-                        "properties": {}
-                    }
-                },
+                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
                 "meta": {
                     "expected_total": 4,
                     "resource_batches": 1,
@@ -829,29 +878,37 @@ def test_client_add(
         )
 
     if client_app_spc:
-        # get secrets
-        mocked_responses.add(
-            method=responses.GET,
-            url=get_secret_endpoint(keyvault_name="mock-keyvault"),
-            json={
-                "value": [
-                    {
-                        "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
-                    }
-                ]
-            },
-            status=200,
-            content_type="application/json",
+        _setup_mock_common_responses(
+            mocked_responses=mocked_responses,
+            spc=client_app_spc,
+            secretsync=client_app_secretsync,
+            opcua_secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            rg_name=rg_name,
+            secret_name="certificate-der",
         )
+        # # get secrets
+        # mocked_responses.add(
+        #     method=responses.GET,
+        #     url=get_secret_endpoint(keyvault_name="mock-keyvault"),
+        #     json={
+        #         "value": [
+        #             {
+        #                 "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
+        #             }
+        #         ]
+        #     },
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
-        # set secret
-        mocked_responses.add(
-            method=responses.PUT,
-            url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name="certificate-der"),
-            json={},
-            status=200,
-            content_type="application/json",
-        )
+        # # set secret
+        # mocked_responses.add(
+        #     method=responses.PUT,
+        #     url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name="certificate-der"),
+        #     json={},
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
         # set secret
         mocked_responses.add(
@@ -862,34 +919,34 @@ def test_client_add(
             content_type="application/json",
         )
 
-        # get opcua spc
-        mocked_responses.add(
-            method=responses.GET,
-            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-            json=client_app_spc,
-            status=200,
-            content_type="application/json",
-        )
+        # # get opcua spc
+        # mocked_responses.add(
+        #     method=responses.GET,
+        #     url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+        #     json=client_app_spc,
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
-        # set opcua spc
-        mocked_responses.add(
-            method=responses.PUT,
-            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-            json={},
-            status=200,
-            content_type="application/json",
-        )
+        # # set opcua spc
+        # mocked_responses.add(
+        #     method=responses.PUT,
+        #     url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+        #     json={},
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
-        # get opcua secretsync
-        mocked_responses.add(
-            method=responses.GET,
-            url=get_secretsync_endpoint(
-                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name
-            ),
-            json=client_app_secretsync,
-            status=200,
-            content_type="application/json",
-        )
+        # # get opcua secretsync
+        # mocked_responses.add(
+        #     method=responses.GET,
+        #     url=get_secretsync_endpoint(
+        #         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name
+        #     ),
+        #     json=client_app_secretsync,
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
         # set opcua secretsync
         mocked_responses.add(
@@ -953,7 +1010,7 @@ def test_client_add(
                 "configurationSettings": {
                     "connectors.values.securityPki.applicationCert": OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                     "connectors.values.securityPki.subjectName": "subjectname",
-                    "connectors.values.securityPki.applicationUri": "uri"
+                    "connectors.values.securityPki.applicationUri": "uri",
                 }
-            }
+            },
         )
