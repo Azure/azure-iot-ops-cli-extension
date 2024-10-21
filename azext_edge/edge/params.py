@@ -31,6 +31,8 @@ from .providers.orchestration.common import (
     MqMemoryProfile,
     MqServiceType,
     TRUST_SETTING_KEYS,
+    SchemaFormat,
+    SchemaType,
 )
 
 
@@ -1134,6 +1136,79 @@ def load_iotops_arguments(self, _):
             arg_group="Connector",
         )
 
+    with self.argument_context("iot ops schema") as context:
+        context.argument(
+            "schema_name",
+            options_list=["--name", "-n"],
+            help="Schema name.",
+        )
+        context.argument(
+            "schema_registry_name",
+            options_list=["--registry"],
+            help="Schema registry name.",
+        )
+        context.argument(
+            "schema_format",
+            options_list=["--format"],
+            help="Schema format.",
+            arg_type=get_enum_type(SchemaFormat)
+        )
+        context.argument(
+            "schema_type",
+            options_list=["--type"],
+            help="Schema type.",
+            arg_type=get_enum_type(SchemaType)
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description for the schema.",
+        )
+        context.argument(
+            "display_name",
+            options_list=["--display-name"],
+            help="Display name for the schema.",
+        )
+        context.argument(
+            "schema_version",
+            options_list=["--version", "--ver"],
+            help="Schema version name.",
+            type=int,
+            arg_group="Version"
+        )
+        context.argument(
+            "schema_version_content",
+            options_list=["--version-content", "--vc"],
+            help="File path containing or inline content for the version.",
+            arg_group="Version"
+        )
+        context.argument(
+            "schema_version_description",
+            options_list=["--version-desc", "--vd"],
+            help="Description for the version.",
+            arg_group="Version"
+        )
+
+    with self.argument_context("iot ops schema show-dataflow-refs") as context:
+        context.argument(
+            "schema_name",
+            options_list=["--schema"],
+            help="Schema name. Required if using --version.",
+        )
+        context.argument(
+            "schema_version",
+            options_list=["--version", "--ver"],
+            help="Schema version name. If used, --latest will be ignored.",
+            type=int,
+            arg_group=None
+        )
+        context.argument(
+            "latest",
+            options_list=["--latest"],
+            help="Flag to show only the latest version(s).",
+            arg_type=get_three_state_flag(),
+        )
+
     with self.argument_context("iot ops schema registry") as context:
         context.argument(
             "schema_registry_name",
@@ -1229,4 +1304,28 @@ def load_iotops_arguments(self, _):
             options_list=["--secret", "-s"],
             help="Secret name in the Key Vault. If not provided, the "
             "certificate file name will be used to generate the secret name.",
+        )
+
+    with self.argument_context("iot ops schema version") as context:
+        context.argument(
+            "version_name",
+            options_list=["--name", "-n"],
+            help="Schema version name.",
+            type=int
+        )
+        context.argument(
+            "schema_name",
+            options_list=["--schema"],
+            help="Schema name.",
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description for the schema version.",
+        )
+        context.argument(
+            "schema_version_content",
+            options_list=["--content"],
+            help="File path containing or inline content for the version.",
+            arg_group=None
         )
