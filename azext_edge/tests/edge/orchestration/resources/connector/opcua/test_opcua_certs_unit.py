@@ -328,58 +328,6 @@ def test_trust_add(
             rg_name=rg_name,
             secret_name=secret_name,
         )
-        # # get secrets
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_secret_endpoint(keyvault_name="mock-keyvault"),
-        #     json={
-        #         "value": [
-        #             {
-        #                 "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
-        #             }
-        #         ]
-        #     },
-        #     status=200,
-        #     content_type="application/json",
-        # )
-
-        # # set secret
-        # mocked_responses.add(
-        #     method=responses.PUT,
-        #     url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name=secret_name),
-        #     json={},
-        #     status=200,
-        #     content_type="application/json",
-        # )
-
-        # # get opcua spc
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-        #     json=trust_list_spc,
-        #     status=200,
-        #     content_type="application/json",
-        # )
-
-        # # set opcua spc
-        # mocked_responses.add(
-        #     method=responses.PUT,
-        #     url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-        #     json={},
-        #     status=200,
-        #     content_type="application/json",
-        # )
-
-        # # get opcua secretsync
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_secretsync_endpoint(
-        #         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
-        #     ),
-        #     json=trust_list_secretsync,
-        #     status=200,
-        #     content_type="application/json",
-        # )
 
         matched_target_key = False
         mapping = trust_list_secretsync["properties"]["objectSecretMapping"]
@@ -542,6 +490,7 @@ def test_trust_add(
                 objects="new-secret",
             ),
         ),
+        # no opcua spc and secretsync
         (
             {
                 "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
@@ -790,7 +739,7 @@ def test_issuer_add(
                 objects="new-secret",
             ),
         ),
-        # no opcua spc and client app secretsync
+        # no opcua spc
         (
             {
                 "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
@@ -886,29 +835,6 @@ def test_client_add(
             rg_name=rg_name,
             secret_name="certificate-der",
         )
-        # # get secrets
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_secret_endpoint(keyvault_name="mock-keyvault"),
-        #     json={
-        #         "value": [
-        #             {
-        #                 "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
-        #             }
-        #         ]
-        #     },
-        #     status=200,
-        #     content_type="application/json",
-        # )
-
-        # # set secret
-        # mocked_responses.add(
-        #     method=responses.PUT,
-        #     url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name="certificate-der"),
-        #     json={},
-        #     status=200,
-        #     content_type="application/json",
-        # )
 
         # set secret
         mocked_responses.add(
