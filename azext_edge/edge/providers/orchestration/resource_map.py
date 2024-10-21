@@ -148,7 +148,7 @@ class IoTOperationsResourceMap:
             )
             if aio_ext_obj:
                 aio_ext_id: str = aio_ext_obj.get("id", "")
-                aio_ext = next((_ for _ in self.extensions if _.resource_id.lower() == aio_ext_id.lower()), None)
+                aio_ext = next((ext for ext in self.extensions if ext.resource_id.lower() == aio_ext_id.lower()), None)
                 if aio_ext:
                     extensions_node.add(aio_ext.display_name)
         else:
