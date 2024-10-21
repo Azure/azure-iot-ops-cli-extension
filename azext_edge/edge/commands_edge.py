@@ -134,12 +134,10 @@ def init(
     )
 
 
-# TODO: remove kwargs if not used
 def upgrade(
     cmd,
     resource_group_name: str,
     instance_name: str,
-    # cluster_name: Optional[str] = None,  # Keep it simple right now - only instance
     schema_registry_resource_id: Optional[str] = None,
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,

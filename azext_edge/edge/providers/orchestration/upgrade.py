@@ -93,9 +93,13 @@ class UpgradeManager:
         # get the extensions to update, populate the expected patches
         extension_text = self._check_extensions()
 
+        if not self.extensions_to_update and not self.require_instance_upgrade:
+            logger.warning("Nothing to upgrade :)")
+            return
+
+        print("Azure IoT Operations Upgrade")
+        print()
         if self.extensions_to_update:
-            print("Azure IoT Operations Upgrade")
-            print()
             print(Padding("Extensions to update:", (0,0,0,2)))
             print(Padding(extension_text, (0,0,0,4)))
 
@@ -104,10 +108,6 @@ class UpgradeManager:
                 "Old Azure IoT Operations instance version found. Will update the instance to the latest version.",
                 (0,0,0,2)
             ))
-
-        if not self.extensions_to_update and not self.require_instance_upgrade:
-            logger.warning("Nothing to upgrade :)")
-            return
 
         print()
         print("Upgrading may fail and require you to delete and re-create your cluster.")
