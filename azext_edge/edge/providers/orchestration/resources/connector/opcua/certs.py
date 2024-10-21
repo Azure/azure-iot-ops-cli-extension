@@ -135,7 +135,7 @@ class OpcUACerts(Queryable):
         file_name = os.path.basename(file)
         cert_extension = validate_file_extension(file_name, [".der", ".crt", ".crl"])
         # get cert name by removing extension
-        cert_name = file_name.replace(f".{cert_extension}", "")
+        cert_name = file_name.replace(f"{cert_extension}", "")
 
         try:
             opcua_secret_sync = self.ssc_mgmt_client.secret_syncs.get(
@@ -145,15 +145,14 @@ class OpcUACerts(Queryable):
         except ResourceNotFoundError:
             opcua_secret_sync = {}
 
-        if cert_extension == "crl":
-            # TODO: add check that same name should exist for crt and der
+        if opcua_secret_sync and cert_extension == ".crl":
             secret_mapping = opcua_secret_sync.get("properties", {}).get("objectSecretMapping", [])
-            possible_file_name = [f"{cert_name}.crt", f"{cert_name}.der"]
-            found_file_name = [
-                mapping["targetKey"] for mapping in secret_mapping if mapping["targetKey"] in possible_file_name
+            possible_file_names = [f"{cert_name}.crt", f"{cert_name}.der"]
+            matched_names = [
+                mapping["targetKey"] for mapping in secret_mapping if mapping["targetKey"] in possible_file_names
             ]
 
-            if not found_file_name:
+            if not matched_names:
                 logger.error(f"Cannot add .crl {file_name} without corresponding .crt or .der file.")
                 return
 
@@ -354,9 +353,9 @@ class OpcUACerts(Queryable):
     def _upload_to_key_vault(self, secret_name: str, file_path: str, cert_extension: str):
         with console.status(f"Uploading certificate to keyvault as secret {secret_name}..."):
             content = read_file_content(file_path=file_path, read_as_binary=True).hex()
-            if cert_extension == "crl":
+            if cert_extension == ".crl":
                 content_type = "application/pkix-crl"
-            elif cert_extension == "der":
+            elif cert_extension == ".der":
                 content_type = "application/pkix-cert"
             else:
                 content_type = "application/x-pem-file"

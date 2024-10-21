@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import os
 from typing import List, Optional
 from unittest.mock import Mock
 import pytest
@@ -179,7 +180,7 @@ def get_mock_spc_record(spc_name: str, resource_group_name: str, objects: Option
 
 
 def get_mock_secretsync_record(secretsync_name: str, resource_group_name: str, objects: Optional[str] = None) -> dict:
-    objects = objects or ""
+    objects = objects or []
     return get_mock_resource(
         name=secretsync_name,
         resource_path=f"/secretSyncs/{secretsync_name}",
@@ -188,7 +189,7 @@ def get_mock_secretsync_record(secretsync_name: str, resource_group_name: str, o
             "kubernetesSecretType": "Opaque",
             "secretProviderClassName": "opc-ua-connector",
             "serviceAccountName": "aio-ssc-sa",
-            "objectSecretMapping": [],
+            "objectSecretMapping": objects,
         },
         resource_group_name=resource_group_name,
         qualified_type="Microsoft.SecretSyncController/secretSyncs",
@@ -238,11 +239,43 @@ def get_mock_secretsync_record(secretsync_name: str, resource_group_name: str, o
                 objects="new-secret",
             ),
         ),
+        # duplicate target key
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resource sync rules": [_generate_ops_resource()],
+                "custom locations": [_generate_ops_resource()],
+                "extensions": [_generate_ops_resource()],
+                "meta": {
+                    "expected_total": 4,
+                    "resource_batches": 1,
+                },
+            },
+            get_mock_spc_record(spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "secret1",
+                        "targetKey": "certificate.der",
+                    }
+                ]
+            ),
+            "/fake/path/certificate.der",
+            "new-secret",
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+        ),
     ],
 )
 def test_trust_add(
     mocker,
     mocked_cmd,
+    mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map,
     trust_list_spc,
@@ -329,16 +362,23 @@ def test_trust_add(
             content_type="application/json",
         )
 
-        # set opcua secretsync
-        mocked_responses.add(
-            method=responses.PUT,
-            url=get_secretsync_endpoint(
-                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
-            ),
-            json=expected_secret_sync,
-            status=200,
-            content_type="application/json",
-        )
+        matched_target_key = False
+        mapping = trust_list_secretsync["properties"]["objectSecretMapping"]
+
+        if mapping:
+            matched_target_key = trust_list_secretsync["properties"]["objectSecretMapping"][0]["targetKey"] == os.path.basename(file_name)
+        
+        if not matched_target_key:
+            # set opcua secretsync
+            mocked_responses.add(
+                method=responses.PUT,
+                url=get_secretsync_endpoint(
+                    secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
+                ),
+                json=expected_secret_sync,
+                status=200,
+                content_type="application/json",
+            )
 
     result = None
 
@@ -351,13 +391,28 @@ def test_trust_add(
             secret_name=secret_name,
         )
     except Exception:
-        # TODO: Add more assertions
-        if not expected_resources_map["custom locations"]:
+        if not trust_list_spc:
             assert (
-                mocked_logger.error.call_args[0][0] == f"Secret sync is not enabled for the instance {instance_name}."
-                "Please enable secret sync before adding certificate."
+                mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} not found, creating new one..."
             )
-            return
+    
+        if not trust_list_secretsync:
+            assert (
+                mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_TRUST_LIST_SECRET_SYNC_NAME} not found, creating new one..."
+            )
+
+    if not expected_resources_map["custom locations"]:
+        assert (
+            mocked_logger.error.call_args[0][0] == f"Secret sync is not enabled for the instance {instance_name}. "
+            "Please enable secret sync before adding certificate."
+        )
+        return
+    
+    if matched_target_key:
+        assert (
+            mocked_logger.error.call_args[0][0] == "Cannot have duplicate targetKey in objectSecretMapping."
+        )
+        return
 
     if result:
         assert result == expected_secret_sync
@@ -416,11 +471,95 @@ def _assemble_resource_map_mock(
                 objects="new-secret",
             ),
         ),
+        # adding .crl without corresponding .der or crt
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resource sync rules": [_generate_ops_resource()],
+                "custom locations": [_generate_ops_resource()],
+                "extensions": [_generate_ops_resource()],
+                "meta": {
+                    "expected_total": 4,
+                    "resource_batches": 1,
+                },
+            },
+            get_mock_spc_record(spc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "secret1",
+                        "targetKey": "target.der",
+                    }
+                ]
+            ),
+            "/fake/path/certificate.crl",
+            "new-secret",
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+        ),
+        # adding .crl with corresponding .der or crt
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resource sync rules": [_generate_ops_resource()],
+                "custom locations": [_generate_ops_resource()],
+                "extensions": [_generate_ops_resource()],
+                "meta": {
+                    "expected_total": 4,
+                    "resource_batches": 1,
+                },
+            },
+            get_mock_spc_record(spc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "secret1",
+                        "targetKey": "certificate.der",
+                    }
+                ]
+            ),
+            "/fake/path/certificate.crl",
+            "new-secret",
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+        ),
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resource sync rules": [_generate_ops_resource()],
+                "custom locations": [_generate_ops_resource()],
+                "extensions": [_generate_ops_resource()],
+                "meta": {
+                    "expected_total": 4,
+                    "resource_batches": 1,
+                },
+            },
+            {},
+            {},
+            "/fake/path/certificate.der",
+            "new-secret",
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+        ),
     ],
 )
 def test_issuer_add(
     mocker,
     mocked_cmd,
+    mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map,
     issuer_list_spc,
@@ -453,49 +592,6 @@ def test_issuer_add(
             content_type="application/json",
         )
 
-    if issuer_list_spc:
-        # get secrets
-        mocked_responses.add(
-            method=responses.GET,
-            url=get_secret_endpoint(keyvault_name="mock-keyvault"),
-            json={
-                "value": [
-                    {
-                        "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
-                    }
-                ]
-            },
-            status=200,
-            content_type="application/json",
-        )
-
-        # set secret
-        mocked_responses.add(
-            method=responses.PUT,
-            url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name=secret_name),
-            json={},
-            status=200,
-            content_type="application/json",
-        )
-
-        # get opcua spc
-        mocked_responses.add(
-            method=responses.GET,
-            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-            json=issuer_list_spc,
-            status=200,
-            content_type="application/json",
-        )
-
-        # set opcua spc
-        mocked_responses.add(
-            method=responses.PUT,
-            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-            json={},
-            status=200,
-            content_type="application/json",
-        )
-
         # get opcua secretsync
         mocked_responses.add(
             method=responses.GET,
@@ -507,16 +603,69 @@ def test_issuer_add(
             content_type="application/json",
         )
 
-        # set opcua secretsync
-        mocked_responses.add(
-            method=responses.PUT,
-            url=get_secretsync_endpoint(
-                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
-            ),
-            json=expected_secret_sync,
-            status=200,
-            content_type="application/json",
-        )
+        matched_names = []
+        if file_name.endswith("crl") and issuer_list_secretsync:
+            file_name = os.path.basename(file_name)
+            possible_file_names = [file_name.replace(".crl", ".der"), file_name.replace(".crl", ".crt")]
+            matched_names = [
+                mapping["targetKey"] for mapping in issuer_list_secretsync["properties"]["objectSecretMapping"] if mapping["targetKey"] in possible_file_names
+            ]
+
+        if not (file_name.endswith("crl") and not matched_names):
+            # get secrets
+            mocked_responses.add(
+                method=responses.GET,
+                url=get_secret_endpoint(keyvault_name="mock-keyvault"),
+                json={
+                    "value": [
+                        {
+                            "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
+                        }
+                    ]
+                },
+                status=200,
+                content_type="application/json",
+            )
+
+            # set secret
+            mocked_responses.add(
+                method=responses.PUT,
+                url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name=secret_name),
+                json={},
+                status=200,
+                content_type="application/json",
+            )
+
+            # get opcua spc
+            mocked_responses.add(
+                method=responses.GET,
+                url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+                json=issuer_list_spc,
+                status=200,
+                content_type="application/json",
+            )
+
+            if issuer_list_spc:
+                # set opcua spc
+                mocked_responses.add(
+                    method=responses.PUT,
+                    url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+                    json={},
+                    status=200,
+                    content_type="application/json",
+                )
+
+            if issuer_list_secretsync:
+                # set opcua secretsync
+                mocked_responses.add(
+                    method=responses.PUT,
+                    url=get_secretsync_endpoint(
+                        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
+                    ),
+                    json=expected_secret_sync,
+                    status=200,
+                    content_type="application/json",
+                )
 
     result = None
 
@@ -529,13 +678,31 @@ def test_issuer_add(
             secret_name=secret_name,
         )
     except Exception:
-        # TODO: Add more assertions
-        if not expected_resources_map["custom locations"]:
+        if not issuer_list_spc:
             assert (
-                mocked_logger.error.call_args[0][0] == f"Secret sync is not enabled for the instance {instance_name}."
-                "Please enable secret sync before adding certificate."
+                mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} not found, creating new one..."
             )
             return
+        
+        if not issuer_list_secretsync:
+            assert (
+                mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_ISSUER_LIST_SECRET_SYNC_NAME} not found, creating new one..."
+            )
+            return
+
+    if not expected_resources_map["custom locations"]:
+        assert (
+            mocked_logger.error.call_args[0][0] == f"Secret sync is not enabled for the instance {instance_name}. "
+            "Please enable secret sync before adding certificate."
+        )
+        return
+        
+    if not matched_names and file_name.endswith(".crl"):
+        file_name = os.path.basename(file_name)
+        assert (
+            mocked_logger.error.call_args[0][0] == f"Cannot add .crl {file_name} without corresponding .crt or .der file."
+        )
+        return
 
     if result:
         assert result == expected_secret_sync
@@ -580,6 +747,78 @@ def test_issuer_add(
             ),
             "/fake/path/certificate.der",
             "/fake/path/certificate.pem",
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+        ),
+        # no aio extension
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resource sync rules": [_generate_ops_resource()],
+                "custom locations": [_generate_ops_resource()],
+                "extension": {},
+                "meta": {
+                    "expected_total": 4,
+                    "resource_batches": 1,
+                },
+            },
+            get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+            ),
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+        ),
+        # no opcua spc and client app secretsync
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resource sync rules": [_generate_ops_resource()],
+                "custom locations": [_generate_ops_resource()],
+                "extension": {
+                    IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name","properties": {}}
+                },
+                "meta": {
+                    "expected_total": 4,
+                    "resource_batches": 1,
+                },
+            },
+            {},
+            {},
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+        ),
+        # file names not matching
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resource sync rules": [_generate_ops_resource()],
+                "custom locations": [_generate_ops_resource()],
+                "extension": {
+                    IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name","properties": {}}
+                },
+                "meta": {
+                    "expected_total": 4,
+                    "resource_batches": 1,
+                },
+            },
+            {},
+            {},
+            "/fake/path/pubkey.der",
+            "/fake/path/prikey.pem",
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
@@ -715,15 +954,35 @@ def test_client_add(
             application_uri="uri",
             subject_name="subjectname",
         )
-    except Exception:
-        if not expected_resources_map["custom locations"]:
-            assert (
-                mocked_logger.error.call_args[0][0] == f"Secret sync is not enabled for the instance {instance_name}."
-                "Please enable secret sync before adding certificate."
-            )
+    except Exception as e:
+        private_file_name = os.path.basename(private_file_name).replace(".pem", "")
+        public_file_name = os.path.basename(public_file_name).replace(".der", "")
+        if private_file_name != public_file_name:
+            assert "Public key file pubkey and private key file prikey must match" in str(e)
             return
 
+
+    if not expected_resources_map["custom locations"]:
+        assert (
+            mocked_logger.error.call_args[0][0] == f"Secret sync is not enabled for the instance {instance_name}. "
+            "Please enable secret sync before adding certificate."
+        )
+        return
+    
+    if not expected_resources_map["extension"]:
+        assert mocked_logger.error.call_args[0][0] == "IoT Operations extension not found."
+        return
+
     if result:
+        if not client_app_spc:
+            assert (
+                mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} not found, creating new one..."
+            )
+    
+        if not client_app_secretsync:
+            assert (
+                mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_CLIENT_CERT_SECRET_SYNC_NAME} not found, creating new one..."
+            )
         mocked_resource_map().connected_cluster.get_extensions_by_type.assert_called_once_with("microsoft.iotoperations")
         mocked_resource_map().connected_cluster.update_aio_extension.assert_called_once_with(
             extension_name=expected_resources_map["extension"][IOT_OPS_EXTENSION_TYPE]["name"],
