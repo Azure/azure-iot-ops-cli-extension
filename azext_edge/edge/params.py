@@ -1245,14 +1245,16 @@ def load_iotops_arguments(self, _):
         context.argument(
             "public_key_file",
             options_list=["--public-key-file", "--pkf"],
-            help="File that contains the enterprise grade application instance certificate public key in .der format. "
-            "File name will be used to generate the public key secret name.",
+            help="File that contains the enterprise grade application "
+            "instance certificate public key in .der format. File "
+            "name will be used to generate the public key secret name.",
         )
         context.argument(
             "private_key_file",
             options_list=["--private-key-file", "--prkf"],
-            help="File that contains the enterprise grade application instance certificate private key in .pem format."
-            "File name will be used to generate the private key secret name.",
+            help="File that contains the enterprise grade application "
+            "instance certificate private key in .pem format. File name "
+            "will be used to generate the private key secret name.",
         )
         context.argument(
             "subject_name",
