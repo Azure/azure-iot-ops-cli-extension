@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from time import sleep
-from typing import Optional
+from typing import List, Optional, OrderedDict
 
 from azure.cli.core.azclierror import (
     ArgumentUsageError,
@@ -86,11 +86,14 @@ class UpgradeManager:
         self._progress_shown = False
 
     def do_work(self, confirm_yes: Optional[bool] = None):
+        # get the resource map from the instance (checks if update is needed for instance)
         self.resource_map = self._get_resource_map()
         # Ensure cluster exists with existing resource_map pattern.
         self.resource_map.connected_cluster.resource
-        if not self.cluster_name:
-            self.cluster_name = self.resource_map.connected_cluster.cluster_name
+        # if not self.cluster_name:
+        self.cluster_name = self.resource_map.connected_cluster.cluster_name
+
+        # get the extensions to update, populate the expected patches
         extension_text = self._check_extensions()
 
         if self.extensions_to_update:
@@ -116,51 +119,68 @@ class UpgradeManager:
         if should_bail:
             return
 
+        # do the work - get the schema reg id if needed, do the updates
         self._process()
 
     def _check_extensions(self) -> str:
-        from .template import M2_ENABLEMENT_TEMPLATE
-        version_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
-        train_map = M2_ENABLEMENT_TEMPLATE.content["variables"]["TRAINS"].copy()
-        self.new_aio_version = "0.8.16"  # version_map["aio"]
-        type_to_key_map = {
-            "microsoft.azure.secretstore": "secretSyncController",
-            "microsoft.arc.containerstorage": "edgeStorageAccelerator",
-            "microsoft.openservicemesh": "openServiceMesh",
-            "microsoft.iotoperations.platform": "platform",
-            "microsoft.iotoperations": "aio",
-        }
-        aio_extensions = self.resource_map.connected_cluster.extensions
-        self.extensions_to_update = {}
-        for extension in aio_extensions:
-            extension_type = extension["properties"]["extensionType"].lower()
-            if extension_type not in type_to_key_map:
-                continue
+        from packaging import version
+        from .template import M3_ENABLEMENT_TEMPLATE, M3_INSTANCE_TEMPLATE
+        version_map = M3_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
+        version_map.update(M3_INSTANCE_TEMPLATE.content["variables"]["VERSIONS"].copy())
+        train_map = M3_ENABLEMENT_TEMPLATE.content["variables"]["TRAINS"].copy()
+        train_map.update(M3_INSTANCE_TEMPLATE.content["variables"]["TRAINS"].copy())
+        # manual changes here # TODO: REMOVE
+        version_map["iotOperations"] = "0.8.18"
+
+        self.new_aio_version = version_map["iotOperations"]
+
+        # the order is determined by depends on in the template
+        type_to_key_map = OrderedDict([
+            ("microsoft.iotoperations.platform", "platform"),
+            ("microsoft.openservicemesh", "openServiceMesh"),
+            ("microsoft.azure.secretstore", "secretStore"),
+            ("microsoft.arc.containerstorage", "containerStorage"),
+            ("microsoft.iotoperations", "iotOperations"),
+        ])
+        # order the extension list with the same order as above map
+        aio_extensions: List[dict] = self.resource_map.connected_cluster.extensions
+        # import pdb; pdb.set_trace()
+        type_to_aio_extensions = {ext["properties"]["extensionType"].lower(): ext for ext in aio_extensions}
+        ordered_aio_extensions = OrderedDict({
+            ext_type: type_to_aio_extensions[ext_type] for ext_type in type_to_key_map
+        })
+        # make sure order is kept
+        self.extensions_to_update = OrderedDict()
+        for extension_type, extension in ordered_aio_extensions.items():
             extension_key = type_to_key_map[extension_type]
             current_version = extension["properties"].get("version", "0").replace("-preview", "")
-            if all([extension_type == "microsoft.iotoperations", current_version != "0.8.16"]):
-                extension_update = {
-                    "properties": {
-                        "autoUpgradeMinorVersion": "false",
-                        "releaseTrain": "integration",
-                        "version": "0.8.16",
-                        "configurationSettings": {"schemaRegistry.values.resourceId": None}
-                    }
+            current_train = extension["properties"].get("releaseTrain", "").lower()
+
+            extension_update = {
+                "properties" : {
+                    "autoUpgradeMinorVersion": "false",
+                    "releaseTrain": train_map[extension_key],
+                    "version": version_map[extension_key]
                 }
-            # TODO: packaging
-            elif any([extension_type == "microsoft.iotoperations", current_version >= version_map[extension_key].replace("-preview", "")]):
+            }
+            # if all([extension_type == "microsoft.iotoperations", current_version != version_map[extension_key]]):
+            #     extension_update["properties"]["configurationSettings"] = {"schemaRegistry.values.resourceId": None}
+            if any([
+                # extension_type == "microsoft.iotoperations",
+                all([
+                    version.parse(current_version) >= version.parse(version_map[extension_key]),
+                    train_map[extension_key].lower() == current_train
+                ])
+            ]):
                 logger.info(f"Extension {extension['name']} is already up to date.")
                 continue
-            else:
-                extension_update = {
-                    "properties" : {
-                        "autoUpgradeMinorVersion": "false",
-                        "releaseTrain": train_map[extension_key],
-                        "version": version_map[extension_key]
-                    }
-                }
             self.extensions_to_update[extension["name"]] = extension_update
 
+        # try to get the sr resource id if not present already
+        extension_props = type_to_aio_extensions["microsoft.iotoperations"]["properties"]
+        if not self.sr_resource_id:
+            self.sr_resource_id = extension_props["configurationSettings"].get("schemaRegistry.values.resourceId")
+        # text to print (ordered)
         display_desc = "[dim]"
         for extension, update in self.extensions_to_update.items():
             version = update["properties"]["version"]
@@ -168,28 +188,6 @@ class UpgradeManager:
         return display_desc[:-1] + ""
 
     def _get_resource_map(self) -> IoTOperationsResourceMap:
-        if not any([self.cluster_name, self.instance_name]):
-            raise ArgumentUsageError("Please provide either an instance name or cluster name.")
-
-        if not self.instance_name:
-            resource_map = IoTOperationsResourceMap(
-                cmd=self.cmd,
-                cluster_name=self.cluster_name,
-                resource_group_name=self.resource_group_name,
-            )
-            custom_locations = resource_map.connected_cluster.get_aio_custom_locations()
-            # TODO: maybe support multiple instance updates and extension only updates later
-            if custom_locations:
-                for cl in custom_locations:
-                    aio_resources = resource_map.connected_cluster.get_aio_resources(cl["id"])
-                    for resource in aio_resources:
-                        if resource["type"].lower() == "microsoft.iotoperations/instances":
-                            if self.instance_name:
-                                raise InvalidArgumentValueError(f"Found more than one IoT Operations instance for cluster {self.cluster_name}. Please choose the instance to upgrade with --instance.")
-                            self.instance_name = resource["name"]
-            if not self.instance_name:
-                raise InvalidArgumentValueError(f"No instances associated with cluster {self.cluster_name} found. Please run init and create instead.")
-
         self.require_instance_upgrade = True
         # try with 2024-08-15-preview -> it is m2
         try:
@@ -239,14 +237,6 @@ class UpgradeManager:
 
     def _process(self):
         if self.require_instance_upgrade:
-            # keep the schema reg id
-            extension_type = "microsoft.iotoperations"
-            aio_extension = self.resource_map.connected_cluster.get_extensions_by_type(extension_type)
-
-            extension_props = aio_extension[extension_type]["properties"]
-            if not self.sr_resource_id:
-                self.sr_resource_id = extension_props["configurationSettings"].get("schemaRegistry.values.resourceId")
-
             # m3 extensions should not have the reg id
             if not self.sr_resource_id:
                 raise RequiredArgumentMissingError(
@@ -267,7 +257,7 @@ class UpgradeManager:
             # Do the upgrade, the schema reg id may get lost
             if self.extensions_to_update:
                 self._render_display("[yellow]Updating extensions...")
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             for extension in self.extensions_to_update:
                 logger.info(f"Updating extension {extension}.")
                 logger.info(f"Extension PATCH body: {self.extensions_to_update[extension]}")
@@ -283,7 +273,7 @@ class UpgradeManager:
                         raise AzureResponseError(
                             f"Updating extension {extension} failed with the error message: {status['message']}"
                         )
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
             if self.require_instance_upgrade:
                 # update the instance
                 self._render_display("[yellow]Updating instance...")
