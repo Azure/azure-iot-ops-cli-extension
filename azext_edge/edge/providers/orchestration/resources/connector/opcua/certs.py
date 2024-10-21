@@ -145,14 +145,15 @@ class OpcUACerts(Queryable):
         except ResourceNotFoundError:
             opcua_secret_sync = {}
 
-        if opcua_secret_sync and cert_extension == ".crl":
-            secret_mapping = opcua_secret_sync.get("properties", {}).get("objectSecretMapping", [])
-            possible_file_names = [f"{cert_name}.crt", f"{cert_name}.der"]
-            matched_names = [
-                mapping["targetKey"] for mapping in secret_mapping if mapping["targetKey"] in possible_file_names
-            ]
+        if cert_extension == ".crl":
+            if opcua_secret_sync:
+                secret_mapping = opcua_secret_sync.get("properties", {}).get("objectSecretMapping", [])
+                possible_file_names = [f"{cert_name}.crt", f"{cert_name}.der"]
+                matched_names = [
+                    mapping["targetKey"] for mapping in secret_mapping if mapping["targetKey"] in possible_file_names
+                ]
 
-            if not matched_names:
+            if not opcua_secret_sync or not matched_names:
                 logger.error(f"Cannot add .crl {file_name} without corresponding .crt or .der file.")
                 return
 
