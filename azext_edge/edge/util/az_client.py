@@ -184,7 +184,6 @@ def get_authz_client(subscription_id: str, **kwargs) -> "AuthorizationManagement
     )
 
 
-# TODO: add keyvault to param
 def get_keyvault_client(subscription_id: str, keyvault_name: str, **kwargs) -> "SecretClient":
     from azure.keyvault.secrets import SecretClient
 
