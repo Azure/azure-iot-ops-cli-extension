@@ -28,7 +28,7 @@ if not PACKAGE_NAME:
 
 
 DEPENDENCIES = [
-    "packaging"
+    "packaging",
     "rich>=13.6,<14.0",
     "kubernetes>=27.2,<29.0",
     "azure-identity>=1.14.1,<1.18.0",
