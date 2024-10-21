@@ -11,7 +11,6 @@ from azure.cli.core.azclierror import (
     ArgumentUsageError,
     AzureResponseError,
     RequiredArgumentMissingError,
-    InvalidArgumentValueError
 )
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from knack.log import get_logger
@@ -51,7 +50,6 @@ def upgrade_ops_resources(
     manager.do_work(confirm_yes=confirm_yes)
 
 
-# TODO: see if dependencies need to be upgraded (broker, opcua etc)
 # keeping this separate for easier removal once no longer needed
 class UpgradeManager:
     def __init__(
@@ -90,7 +88,6 @@ class UpgradeManager:
         self.resource_map = self._get_resource_map()
         # Ensure cluster exists with existing resource_map pattern.
         self.resource_map.connected_cluster.resource
-        # if not self.cluster_name:
         self.cluster_name = self.resource_map.connected_cluster.cluster_name
 
         # get the extensions to update, populate the expected patches
@@ -109,7 +106,7 @@ class UpgradeManager:
             ))
 
         if not self.extensions_to_update and not self.require_instance_upgrade:
-            print("Nothing to upgrade :)")
+            logger.warning("Nothing to upgrade :)")
             return
 
         print()
@@ -144,7 +141,6 @@ class UpgradeManager:
         ])
         # order the extension list with the same order as above map
         aio_extensions: List[dict] = self.resource_map.connected_cluster.extensions
-        # import pdb; pdb.set_trace()
         type_to_aio_extensions = {ext["properties"]["extensionType"].lower(): ext for ext in aio_extensions}
         ordered_aio_extensions = OrderedDict({
             ext_type: type_to_aio_extensions[ext_type] for ext_type in type_to_key_map
@@ -153,7 +149,7 @@ class UpgradeManager:
         self.extensions_to_update = OrderedDict()
         for extension_type, extension in ordered_aio_extensions.items():
             extension_key = type_to_key_map[extension_type]
-            current_version = extension["properties"].get("version", "0").replace("-preview", "")
+            current_version = extension["properties"].get("version", "0")
             current_train = extension["properties"].get("releaseTrain", "").lower()
 
             extension_update = {
@@ -163,14 +159,9 @@ class UpgradeManager:
                     "version": version_map[extension_key]
                 }
             }
-            # if all([extension_type == "microsoft.iotoperations", current_version != version_map[extension_key]]):
-            #     extension_update["properties"]["configurationSettings"] = {"schemaRegistry.values.resourceId": None}
-            if any([
-                # extension_type == "microsoft.iotoperations",
-                all([
-                    version.parse(current_version) >= version.parse(version_map[extension_key]),
-                    train_map[extension_key].lower() == current_train
-                ])
+            if all([
+                version.parse(current_version) >= version.parse(version_map[extension_key]),
+                train_map[extension_key].lower() == current_train
             ]):
                 logger.info(f"Extension {extension['name']} is already up to date.")
                 continue
@@ -179,7 +170,7 @@ class UpgradeManager:
         # try to get the sr resource id if not present already
         extension_props = type_to_aio_extensions["microsoft.iotoperations"]["properties"]
         if not self.sr_resource_id:
-            self.sr_resource_id = extension_props["configurationSettings"].get("schemaRegistry.values.resourceId")
+            self.sr_resource_id = extension_props.get("configurationSettings", {}).get("schemaRegistry.values.resourceId")
         # text to print (ordered)
         display_desc = "[dim]"
         for extension, update in self.extensions_to_update.items():
@@ -254,10 +245,9 @@ class UpgradeManager:
 
         result = None
         try:
-            # Do the upgrade, the schema reg id may get lost
+            # Do the extension upgrade, try to keep the sr resource id
             if self.extensions_to_update:
                 self._render_display("[yellow]Updating extensions...")
-            # import pdb; pdb.set_trace()
             for extension in self.extensions_to_update:
                 logger.info(f"Updating extension {extension}.")
                 logger.info(f"Extension PATCH body: {self.extensions_to_update[extension]}")
@@ -273,9 +263,9 @@ class UpgradeManager:
                         raise AzureResponseError(
                             f"Updating extension {extension} failed with the error message: {status['message']}"
                         )
-            # import pdb; pdb.set_trace()
+
             if self.require_instance_upgrade:
-                # update the instance
+                # update the instance + minimize the code to be taken out once this is no longer needed
                 self._render_display("[yellow]Updating instance...")
                 logger.info(f"New instance body: {self.instance}")
                 result = wait_for_terminal_state(
@@ -286,13 +276,12 @@ class UpgradeManager:
                     )
                 )
         except (HttpResponseError, KeyboardInterrupt) as e:
-            logger.error(
-                f"Update failed. The collected schema registry resource id is `{self.sr_resource_id}`. "
-                "Please save this value in case it is required for a future upgrade. "
-            )
+            if self.require_instance_upgrade:
+                logger.error(
+                    f"Update failed. The collected schema registry resource id is `{self.sr_resource_id}`. "
+                    "Please save this value in case it is required for a future upgrade. "
+                )
             raise e
         finally:
             self._stop_display()
-
-        # TODO make sure nothing else is needed
         return result
