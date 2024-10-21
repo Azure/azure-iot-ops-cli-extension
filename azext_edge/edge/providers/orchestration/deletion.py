@@ -151,7 +151,7 @@ class DeletionManager:
             )
             aio_ext_id: str = aio_ext_obj.get("id", "")
             aio_ext = next(
-                (_ for _ in self.resource_map.extensions if _.resource_id.lower() == aio_ext_id.lower()), None
+                (ext for ext in self.resource_map.extensions if ext.resource_id.lower() == aio_ext_id.lower()), None
             )
             if aio_ext:
                 todo_extensions.append(aio_ext)
