@@ -402,7 +402,7 @@ class OpcUACerts(Queryable):
         else:
             spc["properties"]["objects"] = spc_object
 
-        with console.status(f"Updating secret reference in Secret Provider Class {OPCUA_SPC_NAME}..."):
+        with console.status(f"Adding secret reference in Secret Provider Class {OPCUA_SPC_NAME}..."):
             poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_create_or_update(
                 resource_group_name=resource_group,
                 azure_key_vault_secret_provider_class_name=OPCUA_SPC_NAME,
@@ -451,7 +451,7 @@ class OpcUACerts(Queryable):
             secret_sync["properties"]["objectSecretMapping"] = secret_mapping
 
         # create a new secret sync
-        with console.status(f"Updating Secret Sync {secret_sync_name}..."):
+        with console.status(f"Adding secret reference to secret sync {secret_sync_name}..."):
             poller = self.ssc_mgmt_client.secret_syncs.begin_create_or_update(
                 resource_group_name=resource_group,
                 secret_sync_name=secret_sync_name,

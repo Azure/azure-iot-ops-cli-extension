@@ -10,7 +10,11 @@ from unittest.mock import Mock
 import pytest
 
 import responses
-from azext_edge.edge.commands_connector import add_connector_opcua_client, add_connector_opcua_issuer, add_connector_opcua_trust
+from azext_edge.edge.commands_connector import (
+    add_connector_opcua_client,
+    add_connector_opcua_issuer,
+    add_connector_opcua_trust,
+)
 from azext_edge.edge.providers.orchestration.resource_map import IoTOperationsResource
 from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import (
     OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
@@ -22,22 +26,6 @@ from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
 from azext_edge.tests.edge.orchestration.resources.conftest import get_base_endpoint, get_mock_resource
 from azext_edge.tests.generators import generate_random_string
 
-# TODO: Add more tests
-
-
-@pytest.fixture
-def spy_opcua_cert(mocker):
-    from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OpcUACerts
-
-    yield {
-        "_process_fortos_yaml": mocker.spy(OpcUACerts, "_process_fortos_yaml"),
-        "_check_and_update_secret_name": mocker.spy(OpcUACerts, "_check_and_update_secret_name"),
-        "_upload_to_key_vault": mocker.spy(OpcUACerts, "_upload_to_key_vault"),
-        "_add_secret_to_spc": mocker.spy(OpcUACerts, "_add_secret_to_spc"),
-        "_add_secret_to_secret_sync": mocker.spy(OpcUACerts, "_add_secret_to_secret_sync"),
-        "_get_cl_resources": mocker.spy(OpcUACerts, "_get_cl_resources"),
-    }
-
 
 @pytest.fixture
 def mocked_logger(mocker):
@@ -45,55 +33,6 @@ def mocked_logger(mocker):
         "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.logger",
     )
     yield patched
-
-
-@pytest.fixture
-def mocked_get_keyvault_client(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.get_keyvault_client"
-    )
-    yield patched
-
-
-@pytest.fixture
-def mocked_get_ssc_mgmt_client(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.get_ssc_mgmt_client", autospec=True
-    )
-    yield patched
-
-
-@pytest.fixture
-def mocked_show(mocker):
-    mocked_instance = get_mock_resource(
-        name="mock-instance",
-        properties={
-            "description": "AIO Instance description.",
-            "provisioningState": "Succeeded",
-            "extendedLocation": {"name": "mock-location"},
-            "customLocations": [
-                {
-                    "hostResourceId": "/subscriptions/mock-sub/resourceGroups/mock-rg/"
-                    "providers/Microsoft.Kubernetes/connectedClusters/mock-cluster",
-                    "namespace": "azure-iot-operations",
-                    "displayName": "mock-custom-location",
-                    "provisioningState": "Succeeded",
-                    "clusterExtensionIds": ["mock-extension-id"],
-                    "authentication": {},
-                }
-            ],
-        },
-        resource_group_name="mock-rg",
-    )
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.Instances.show",
-        return_value=mocked_instance,
-    )
-    yield patched
-
-
-def mocked_file_open(mocker, file_content: bytes):
-    mocker.patch("builtins.open", mocker.mock_open(read_data=file_content))
 
 
 @pytest.fixture
@@ -194,6 +133,18 @@ def get_mock_secretsync_record(secretsync_name: str, resource_group_name: str, o
         resource_group_name=resource_group_name,
         qualified_type="Microsoft.SecretSyncController/secretSyncs",
     )
+
+
+def _assemble_resource_map_mock(
+    resource_map_mock: Mock,
+    extension: Optional[dict],
+    custom_locations: Optional[List[dict]],
+    resources: Optional[List[dict]],
+):
+    resource_map_mock().custom_locations = custom_locations
+    resource_map_mock().get_resources.return_value = resources
+    resource_map_mock().connected_cluster.get_extensions_by_type.return_value = extension
+    resource_map_mock().connected_cluster.get_aio_resources.return_value = resources
 
 
 @pytest.mark.parametrize("file_content", [b"\x00\x01\x02\x03"])
@@ -366,8 +317,8 @@ def test_trust_add(
         mapping = trust_list_secretsync["properties"]["objectSecretMapping"]
 
         if mapping:
-            matched_target_key = trust_list_secretsync["properties"]["objectSecretMapping"][0]["targetKey"] == os.path.basename(file_name)
-        
+            matched_target_key = mapping[0]["targetKey"] == os.path.basename(file_name)
+
         if not matched_target_key:
             # set opcua secretsync
             mocked_responses.add(
@@ -393,12 +344,14 @@ def test_trust_add(
     except Exception:
         if not trust_list_spc:
             assert (
-                mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} not found, creating new one..."
+                mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} "
+                "not found, creating new one..."
             )
-    
+
         if not trust_list_secretsync:
             assert (
-                mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_TRUST_LIST_SECRET_SYNC_NAME} not found, creating new one..."
+                mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_TRUST_LIST_SECRET_SYNC_NAME} "
+                "not found, creating new one..."
             )
 
     if not expected_resources_map["custom locations"]:
@@ -407,7 +360,7 @@ def test_trust_add(
             "Please enable secret sync before adding certificate."
         )
         return
-    
+
     if matched_target_key:
         assert (
             mocked_logger.error.call_args[0][0] == "Cannot have duplicate targetKey in objectSecretMapping."
@@ -417,16 +370,6 @@ def test_trust_add(
     if result:
         assert result == expected_secret_sync
 
-def _assemble_resource_map_mock(
-    resource_map_mock: Mock,
-    extension: Optional[dict],
-    custom_locations: Optional[List[dict]],
-    resources: Optional[List[dict]],
-):
-    resource_map_mock().custom_locations = custom_locations
-    resource_map_mock().get_resources.return_value = resources
-    resource_map_mock().connected_cluster.get_extensions_by_type.return_value = extension
-    resource_map_mock().connected_cluster.get_aio_resources.return_value = resources
 
 @pytest.mark.parametrize("file_content", [b"\x00\x01\x02\x03"])
 @pytest.mark.parametrize(
@@ -608,7 +551,8 @@ def test_issuer_add(
             file_name = os.path.basename(file_name)
             possible_file_names = [file_name.replace(".crl", ".der"), file_name.replace(".crl", ".crt")]
             matched_names = [
-                mapping["targetKey"] for mapping in issuer_list_secretsync["properties"]["objectSecretMapping"] if mapping["targetKey"] in possible_file_names
+                mapping["targetKey"] for mapping in issuer_list_secretsync["properties"]["objectSecretMapping"]
+                if mapping["targetKey"] in possible_file_names
             ]
 
         if not (file_name.endswith("crl") and not matched_names):
@@ -680,13 +624,15 @@ def test_issuer_add(
     except Exception:
         if not issuer_list_spc:
             assert (
-                mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} not found, creating new one..."
+                mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} "
+                "not found, creating new one..."
             )
             return
-        
+
         if not issuer_list_secretsync:
             assert (
-                mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_ISSUER_LIST_SECRET_SYNC_NAME} not found, creating new one..."
+                mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_ISSUER_LIST_SECRET_SYNC_NAME} "
+                "not found, creating new one..."
             )
             return
 
@@ -696,11 +642,12 @@ def test_issuer_add(
             "Please enable secret sync before adding certificate."
         )
         return
-        
+
     if not matched_names and file_name.endswith(".crl"):
         file_name = os.path.basename(file_name)
         assert (
-            mocked_logger.error.call_args[0][0] == f"Cannot add .crl {file_name} without corresponding .crt or .der file."
+            mocked_logger.error.call_args[0][0] == f"Cannot add .crl {file_name} without "
+            "corresponding .crt or .der file."
         )
         return
 
@@ -710,7 +657,8 @@ def test_issuer_add(
 
 @pytest.mark.parametrize("file_content", [b"\x00\x01\x02\x03"])
 @pytest.mark.parametrize(
-    "expected_resources_map, client_app_spc, client_app_secretsync, public_file_name, private_file_name, expected_secret_sync",
+    "expected_resources_map, client_app_spc, client_app_secretsync,"
+    "public_file_name, private_file_name, expected_secret_sync",
     [
         (
             {
@@ -734,7 +682,11 @@ def test_issuer_add(
                 "resource sync rules": [_generate_ops_resource()],
                 "custom locations": [_generate_ops_resource()],
                 "extension": {
-                    IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name","properties": {}}
+                    IOT_OPS_EXTENSION_TYPE: {
+                        "id": "aio-ext-id",
+                        "name": "aio-ext-name",
+                        "properties": {}
+                    }
                 },
                 "meta": {
                     "expected_total": 4,
@@ -784,7 +736,11 @@ def test_issuer_add(
                 "resource sync rules": [_generate_ops_resource()],
                 "custom locations": [_generate_ops_resource()],
                 "extension": {
-                    IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name","properties": {}}
+                    IOT_OPS_EXTENSION_TYPE: {
+                        "id": "aio-ext-id",
+                        "name": "aio-ext-name",
+                        "properties": {}
+                    }
                 },
                 "meta": {
                     "expected_total": 4,
@@ -808,7 +764,11 @@ def test_issuer_add(
                 "resource sync rules": [_generate_ops_resource()],
                 "custom locations": [_generate_ops_resource()],
                 "extension": {
-                    IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name","properties": {}}
+                    IOT_OPS_EXTENSION_TYPE: {
+                        "id": "aio-ext-id",
+                        "name": "aio-ext-name",
+                        "properties": {}
+                    }
                 },
                 "meta": {
                     "expected_total": 4,
@@ -961,14 +921,13 @@ def test_client_add(
             assert "Public key file pubkey and private key file prikey must match" in str(e)
             return
 
-
     if not expected_resources_map["custom locations"]:
         assert (
             mocked_logger.error.call_args[0][0] == f"Secret sync is not enabled for the instance {instance_name}. "
             "Please enable secret sync before adding certificate."
         )
         return
-    
+
     if not expected_resources_map["extension"]:
         assert mocked_logger.error.call_args[0][0] == "IoT Operations extension not found."
         return
@@ -976,14 +935,18 @@ def test_client_add(
     if result:
         if not client_app_spc:
             assert (
-                mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} not found, creating new one..."
+                mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} "
+                "not found, creating new one..."
             )
-    
+
         if not client_app_secretsync:
             assert (
-                mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_CLIENT_CERT_SECRET_SYNC_NAME} not found, creating new one..."
+                mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_CLIENT_CERT_SECRET_SYNC_NAME} "
+                "not found, creating new one..."
             )
-        mocked_resource_map().connected_cluster.get_extensions_by_type.assert_called_once_with("microsoft.iotoperations")
+        mocked_resource_map().connected_cluster.get_extensions_by_type.assert_called_once_with(
+            "microsoft.iotoperations"
+        )
         mocked_resource_map().connected_cluster.update_aio_extension.assert_called_once_with(
             extension_name=expected_resources_map["extension"][IOT_OPS_EXTENSION_TYPE]["name"],
             properties={
