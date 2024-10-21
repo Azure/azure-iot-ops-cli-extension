@@ -1303,3 +1303,30 @@ def load_iotops_help():
             az iot ops connector opcua issuer add --instance instance --instance-resource-group instanceresourcegroup
             --certificate-file "certificate.der" --secret custom-secret-name
     """
+
+    helps[
+        "iot ops connector opcua client"
+    ] = """
+        type: group
+        short-summary: Manage enterprise grade client application instance certificate for the OPC UA Broker.
+        long-summary: |
+          The connector for OPC UA makes use of a single OPC UA application instance certificate
+          for all the sessions it establishes to collect telemetry data from OPC UA servers.
+          See the following for more info aka.ms/overview-opcua-broker-certificates-management
+    """
+
+    helps[
+        "iot ops connector opcua client add"
+    ] = """
+        type: command
+        short-summary: Add an enterprise grade client application instance certificate.
+        long-summary: |
+            The public key file extension must be .der and private key file extension must be .pem. Please
+            make sure to use same filename for public key and private key file.
+        examples:
+        - name: Add an client certificate.
+          text: >
+            az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
+            --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
+            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
+    """

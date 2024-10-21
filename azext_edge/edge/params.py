@@ -1238,19 +1238,21 @@ def load_iotops_arguments(self, _):
             help="IoT Operations instance name.",
         )
         context.argument(
-            "instance_resource_group",
-            options_list=["--instance-resource-group", "--ig"],
+            "resource_group",
+            options_list=["--resource-group", "-g"],
             help="Instance resource group.",
         )
         context.argument(
             "public_key_file",
             options_list=["--public-key-file", "--pkf"],
-            help="File that contains the enterprise grade application instance certificate public key in .der format.",
+            help="File that contains the enterprise grade application instance certificate public key in .der format. "
+            "File name will be used to generate the public key secret name.",
         )
         context.argument(
             "private_key_file",
             options_list=["--private-key-file", "--prkf"],
-            help="File that contains the enterprise grade application instance certificate private key in .pem format.",
+            help="File that contains the enterprise grade application instance certificate private key in .pem format."
+            "File name will be used to generate the private key secret name.",
         )
         context.argument(
             "subject_name",
