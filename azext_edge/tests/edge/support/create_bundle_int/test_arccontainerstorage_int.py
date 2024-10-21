@@ -33,7 +33,7 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
     assert set(file_map.keys()).issubset(set(expected_types))
 
     workload_resource_prefixes = [
-        "esa-otel-collector",
+        "acsa-otel",
         "csi-wyvern-controller",
         "csi-wyvern-node",
         "config-operator",

@@ -131,13 +131,13 @@ class MqDiagnosticPropertyIndex(Enum):
     MQ Diagnostic Property Index Strings
     """
 
-    publishes_received_per_second = "aio_mq_publishes_received_per_second"
-    publishes_sent_per_second = "aio_mq_publishes_sent_per_second"
-    publish_route_replication_correctness = "aio_mq_publish_route_replication_correctness"
-    publish_latency_mu_ms = "aio_mq_publish_latency_mu_ms"
-    publish_latency_sigma_ms = "aio_mq_publish_latency_sigma_ms"
-    connected_sessions = "aio_mq_connected_sessions"
-    total_subscriptions = "aio_mq_total_subscriptions"
+    publishes_received_per_second = "aio_broker_publishes_received_per_second"
+    publishes_sent_per_second = "aio_broker_publishes_sent_per_second"
+    publish_route_replication_correctness = "aio_broker_publish_route_replication_correctness"
+    publish_latency_mu_ms = "aio_broker_publish_latency_mu_ms"
+    publish_latency_sigma_ms = "aio_broker_publish_latency_sigma_ms"
+    connected_sessions = "aio_broker_connected_sessions"
+    total_subscriptions = "aio_broker_store_total_subscriptions"
 
 
 class OpsServiceType(ListableEnum):
@@ -154,6 +154,7 @@ class OpsServiceType(ListableEnum):
     schemaregistry = "schemaregistry"
     arccontainerstorage = "acs"
     secretstore = "secretstore"
+    azuremonitor = "azuremonitor"
 
     @classmethod
     def list_check_services(cls):
@@ -216,18 +217,21 @@ class AEPAuthModes(Enum):
 
 class AEPTypes(Enum):
     """Asset Endpoint Profile (connector) Types"""
+
     # TODO: ensure this is the final enum
     opcua = "OpcUa"
 
 
 class TopicRetain(Enum):
     """Set the retain flag for messages published to an MQTT broker."""
+
     keep = "Keep"
     never = "Never"
 
 
 class SecurityModes(Enum):
     """Security modes for OPCUA connector."""
+
     none = "none"
     sign = "sign"
     sign_and_encrypt = "signAndEncrypt"
@@ -235,6 +239,7 @@ class SecurityModes(Enum):
 
 class SecurityPolicies(Enum):
     """Security policies for the OPCUA connector."""
+
     # TODO: add in user friendly input mapping
     none = "none"
     basic128 = "Basic128Rsa15"

@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import IntEnum
+from functools import reduce
 from json import dumps
 from time import sleep
 from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
@@ -24,6 +25,7 @@ from rich.table import Table
 from ...util.az_client import (
     REGISTRY_API_VERSION,
     get_resource_client,
+    parse_resource_id,
     wait_for_terminal_state,
 )
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager
@@ -286,11 +288,6 @@ class WorkManager:
 
             # Enable IoT Ops workflow
             if self._apply_foundation:
-                # Ensure schema registry exists.
-                self.resource_client.resources.get_by_id(
-                    resource_id=self._targets.schema_registry_resource_id,
-                    api_version=REGISTRY_API_VERSION,
-                )
                 enablement_work_name = self._work_format_str.format(op="enablement")
                 self.render_display(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
@@ -326,25 +323,8 @@ class WorkManager:
                 _ = wait_for_terminal_state(enablement_poller)
 
                 self._extension_map = self._resource_map.connected_cluster.get_extensions_by_type(
-                    IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
+                    IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
                 )
-
-                role_assignment_error = None
-                try:
-                    self.permission_manager.apply_role_assignment(
-                        scope=self._targets.schema_registry_resource_id,
-                        principal_id=self._extension_map[IOT_OPS_EXTENSION_TYPE]["identity"]["principalId"],
-                        role_def_id=ROLE_DEF_FORMAT_STR.format(
-                            subscription_id=self.subscription_id,
-                            role_id=CONTRIBUTOR_ROLE_ID,  # TODO - @digimaun use schema registry subscription.
-                        ),
-                    )
-                except Exception as e:
-                    role_assignment_error = get_user_msg_warn_ra(
-                        prefix=f"Role assignment failed with:\n{str(e)}.",
-                        principal_id=self._extension_map[IOT_OPS_EXTENSION_TYPE]["identity"]["principalId"],
-                        scope=self._targets.schema_registry_resource_id,
-                    )
 
                 self.complete_step(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, completed_step=WorkStepKey.DEPLOY_ENABLEMENT
@@ -355,17 +335,20 @@ class WorkManager:
                     resource_tree = self._resource_map.build_tree()
                     self.stop_display()
                     print(resource_tree)
-                    if role_assignment_error:
-                        logger.warning(role_assignment_error)
                     return
                 # TODO @digimaun - work_kpis
                 return work_kpis
 
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
+                # Ensure schema registry exists.
+                self.resource_client.resources.get_by_id(
+                    resource_id=self._targets.schema_registry_resource_id,
+                    api_version=REGISTRY_API_VERSION,
+                )
                 if not self._extension_map:
                     self._extension_map = self._resource_map.connected_cluster.get_extensions_by_type(
-                        IOT_OPS_EXTENSION_TYPE, IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
+                        IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
                     )
                     # TODO - @digmaun revisit
                     if any(not v for v in self._extension_map.values()):
@@ -378,9 +361,6 @@ class WorkManager:
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)
                 instance_content, instance_parameters = self._targets.get_ops_instance_template(
                     cl_extension_ids=[self._extension_map[ext]["id"] for ext in self._extension_map],
-                    ops_extension_config=self._extension_map[IOT_OPS_EXTENSION_TYPE]["properties"][
-                        "configurationSettings"
-                    ],
                 )
                 self._deploy_template(
                     content=instance_content,
@@ -409,13 +389,39 @@ class WorkManager:
                     f"{self._display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title}[/link]"
                 )
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS)
-                _ = wait_for_terminal_state(instance_poller)
+                instance_output = wait_for_terminal_state(instance_poller)
+
+                # safely get nested property
+                keys = ['properties', 'outputs', 'aioExtension', 'value', 'identityPrincipalId']
+                extension_principal_id = reduce(lambda val, key: val.get(key) if val else None, keys, instance_output)
+                # TODO - @c-ryan-k consider setting role_assignment_error if extension_principal_id is None
+                role_assignment_error = None
+                try:
+                    schema_registry_id_parts = parse_resource_id(self._targets.schema_registry_resource_id)
+                    self.permission_manager.apply_role_assignment(
+                        scope=self._targets.schema_registry_resource_id,
+                        principal_id=extension_principal_id,
+                        role_def_id=ROLE_DEF_FORMAT_STR.format(
+                            subscription_id=schema_registry_id_parts.subscription_id,
+                            role_id=CONTRIBUTOR_ROLE_ID,
+                        ),
+                    )
+                except Exception as e:
+                    role_assignment_error = get_user_msg_warn_ra(
+                        prefix=f"Role assignment failed with:\n{str(e)}.",
+                        principal_id=extension_principal_id,
+                        scope=self._targets.schema_registry_resource_id,
+                    )
+
                 self.complete_step(
                     category=WorkCategoryKey.DEPLOY_IOT_OPS,
                     completed_step=WorkStepKey.DEPLOY_INSTANCE,
                 )
+                if role_assignment_error:
+                    logger.warning(role_assignment_error)
 
                 if self._show_progress:
+                    # hopefully this adds the aio extension correctly
                     self._resource_map.refresh_resource_state()
                     resource_tree = self._resource_map.build_tree()
                     self.stop_display()

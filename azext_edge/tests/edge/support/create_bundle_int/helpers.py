@@ -83,8 +83,8 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             if "trace" not in file_name_objs:
                 file_name_objs["trace"] = []
             # trace file
-            # aio-mq-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.otlp.pb
-            # aio-mq-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.tempo.json
+            # aio-broker-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.otlp.pb
+            # aio-broker-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.tempo.json
             name_obj["name"] = file_type
             name_obj["action"] = name.pop(0).lower()
             name_obj["identifier"] = name.pop(0)
@@ -287,6 +287,14 @@ def get_file_map(
             assert len(walk_result) == 2 + expected_default_walk_result
         file_map[OpsServiceType.secretstore.value] = convert_file_names(walk_result[ssc_path]["files"])
         file_map["__namespaces__"][OpsServiceType.secretstore.value] = ssc_namespace
+    elif ops_service == OpsServiceType.azuremonitor.value:
+        monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
+        assert len(walk_result) == 1 + expected_default_walk_result
+        file_map[OpsServiceType.azuremonitor.value] = convert_file_names(walk_result[monitor_path]["files"])
+        file_map["__namespaces__"][OpsServiceType.azuremonitor.value] = arc_namespace
+
+        # no files for aio, skip the rest assertions
+        return file_map
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
             assert len(walk_result) == expected_default_walk_result
@@ -342,16 +350,20 @@ def process_top_levels(
         else:
             namespace = name
 
-    for namespace_folder, service in [
-        (clusterconfig_namespace, "clusterconfig"),
-        (arc_namespace, "arcagents"),
-        (acs_namespace, "arccontainerstorage"),
-        (ssc_namespace, OpsServiceType.secretstore.value),
+    monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
+    for namespace_folder, services in [
+        (clusterconfig_namespace, ["clusterconfig"]),
+        (arc_namespace, ["arcagents"]),
+        (acs_namespace, ["arccontainerstorage"]),
+        (ssc_namespace, [OpsServiceType.secretstore.value]),
     ]:
         if namespace_folder:
             # remove empty folders in level 1
             level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace_folder))
-            assert level_1["folders"] == [service]
+
+            if namespace_folder == arc_namespace and monitor_path in walk_result:
+                services.append(OpsServiceType.azuremonitor.value)
+            assert set(level_1["folders"]) == set(services)
             assert not level_1["files"]
 
     # remove empty folders in level 2

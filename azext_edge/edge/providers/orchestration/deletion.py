@@ -16,6 +16,8 @@ from rich.live import Live
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.table import Table
 
+from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
+
 from ...util.az_client import get_resource_client, wait_for_terminal_states
 from ...util.common import should_continue_prompt
 from .resource_map import IoTOperationsResource, IoTOperationsResourceMap
@@ -111,7 +113,7 @@ class DeletionManager:
 
     def _display_resource_tree(self):
         if self._render_progress:
-            print(self.resource_map.build_tree(hide_extensions=not self.include_dependencies, category_color="red"))
+            print(self.resource_map.build_tree(include_dependencies=self.include_dependencies, category_color="red"))
 
     def _render_display(self, description: str):
         if self._render_progress:
@@ -141,6 +143,18 @@ class DeletionManager:
         todo_extensions = []
         if self.include_dependencies:
             todo_extensions.extend(self.resource_map.extensions)
+        else:
+            # instance delete should delete AIO extension too
+            # TODO: @c-ryan-k hacky
+            aio_ext_obj = self.resource_map.connected_cluster.get_extensions_by_type(IOT_OPS_EXTENSION_TYPE).get(
+                IOT_OPS_EXTENSION_TYPE, {}
+            )
+            aio_ext_id: str = aio_ext_obj.get("id", "")
+            aio_ext = next(
+                (_ for _ in self.resource_map.extensions if _.resource_id.lower() == aio_ext_id.lower()), None
+            )
+            if aio_ext:
+                todo_extensions.append(aio_ext)
         todo_custom_locations = self.resource_map.custom_locations
         todo_resource_sync_rules = []
         todo_resources = []
