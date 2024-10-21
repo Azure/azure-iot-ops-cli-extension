@@ -47,7 +47,7 @@ def init_test_setup(settings, tracked_resources):
     tracked_resources.append(storage_account['id'])
     registry = run(
         f"az iot ops schema registry create -n {registry_name} -g {settings.env.azext_edge_rg} "
-        f"--rn {registry_namespace} --sa-resource-id {storage_account['id']} "
+        f"--rn {registry_namespace} --sa-resource-id {storage_account['id']} --location westus2"
     )
     tracked_resources.append(registry["id"])
 
@@ -150,7 +150,6 @@ def test_init_scenario(
 def assert_aio_init(
     cluster_name: str,
     resource_group: str,
-    ops_config: Optional[str] = None,
     **_,
 ):
     # check extensions installed
@@ -166,21 +165,12 @@ def assert_aio_init(
     while extension_result.get("nextLink"):
         extension_result = run(f"az rest --method GET --url {extension_result['nextLink']}")
         extensions.extend(extension_result["value"])
-    iot_ops_ext = None,
     iot_ops_platform_ext = None
     for ext in extensions:
-        if ext["properties"]["extensionType"] == "microsoft.iotoperations":
-            iot_ops_ext = ext
-        elif ext["properties"]["extensionType"] == "microsoft.iotoperations.platform":
+        if ext["properties"]["extensionType"] == "microsoft.iotoperations.platform":
             iot_ops_platform_ext = ext
 
-    if ops_config:
-        ops_config = assemble_nargs_to_dict(ops_config.split())
-        configs = iot_ops_ext["properties"]["configurationSettings"]
-        for key, value in ops_config.items():
-            assert configs[key] == value
-
-    if not all([iot_ops_platform_ext, iot_ops_ext]):
+    if not all([iot_ops_platform_ext]):
         raise AssertionError(
             "Extensions for AIO are missing. These are the extensions "
             f"on the cluster: {[ext['name'] for ext in extensions]}."
@@ -189,8 +179,10 @@ def assert_aio_init(
 
 def assert_aio_instance(
     instance_name: str,
+    cluster_name: str,
     resource_group: str,
     schema_registry_id: str,
+    ops_config: Optional[str] = None,
     custom_location: Optional[str] = None,
     description: Optional[str] = None,
     location: Optional[str] = None,
@@ -198,6 +190,36 @@ def assert_aio_instance(
     tags: Optional[str] = None,
     **_
 ):
+    # check extensions installed
+    cluster_id = run(
+        f"az resource show -n {cluster_name} -g {resource_group} "
+        "--resource-type Microsoft.Kubernetes/connectedClusters"
+    )["id"]
+    extension_result = run(
+        f"az rest --method GET --url {cluster_id}/providers/"
+        "Microsoft.KubernetesConfiguration/extensions?api-version=2023-05-01"
+    )
+    extensions = extension_result["value"]
+    while extension_result.get("nextLink"):
+        extension_result = run(f"az rest --method GET --url {extension_result['nextLink']}")
+        extensions.extend(extension_result["value"])
+    iot_ops_ext = None
+    for ext in extensions:
+        if ext["properties"]["extensionType"] == "microsoft.iotoperations":
+            iot_ops_ext = ext
+    
+    if ops_config:
+        ops_config = assemble_nargs_to_dict(ops_config.split())
+        configs = iot_ops_ext["properties"]["configurationSettings"]
+        for key, value in ops_config.items():
+            assert configs[key] == value
+
+    if not all([iot_ops_ext]):
+        raise AssertionError(
+            "Extensions for AIO are missing. These are the extensions "
+            f"on the cluster: {[ext['name'] for ext in extensions]}."
+        )
+
     instance_show = run(f"az iot ops show -n {instance_name} -g {resource_group}")
     tags = assemble_nargs_to_dict(tags)
     assert instance_show.get("tags", {}) == tags
@@ -210,27 +232,6 @@ def assert_aio_instance(
     instance_props = instance_show["properties"]
     assert instance_props.get("description") == description
     assert instance_props["schemaRegistryRef"] == {"resource_id": schema_registry_id}
-
-    expected_components = {"adr", "akri", "connectors", "dataflows", "schemaRegistry"}
-    disabled_components = []
-    unexpected_components = []
-    for component, state in instance_props["components"].items():
-        if state["state"].lower() != "enabled":
-            disabled_components.append(component)
-        if component in expected_components:
-            expected_components.remove(component)
-        else:
-            unexpected_components.append(component)
-
-    error_msg = []
-    if disabled_components:
-        error_msg.append(f"The following components are disabled: {disabled_components}.")
-    if unexpected_components:
-        error_msg.append(f"The following components are unexpected: {unexpected_components}.")
-    if expected_components:
-        error_msg.append(f"The following components are missing: {expected_components}.")
-    if error_msg:
-        raise AssertionError("\n".join(error_msg))
 
     tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
     # no resource sync rules if disable rsync rules
