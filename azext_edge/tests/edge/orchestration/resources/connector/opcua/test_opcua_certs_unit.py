@@ -845,35 +845,6 @@ def test_client_add(
             content_type="application/json",
         )
 
-        # # get opcua spc
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-        #     json=client_app_spc,
-        #     status=200,
-        #     content_type="application/json",
-        # )
-
-        # # set opcua spc
-        # mocked_responses.add(
-        #     method=responses.PUT,
-        #     url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-        #     json={},
-        #     status=200,
-        #     content_type="application/json",
-        # )
-
-        # # get opcua secretsync
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_secretsync_endpoint(
-        #         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name
-        #     ),
-        #     json=client_app_secretsync,
-        #     status=200,
-        #     content_type="application/json",
-        # )
-
         # set opcua secretsync
         mocked_responses.add(
             method=responses.PUT,
