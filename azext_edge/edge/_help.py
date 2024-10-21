@@ -1363,7 +1363,7 @@ def load_iotops_help():
             --certificate-file "certificate.crl"
         - name: Add an issuer certificate to the OPC UA Broker's issuer certificate list with custom secret name.
           text: >
-            az iot ops connector opcua issuer add --instance instance --instance-resource-group instanceresourcegroup
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
             --certificate-file "certificate.der" --secret custom-secret-name
     """
 
@@ -1393,7 +1393,7 @@ def load_iotops_help():
             --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
             --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
       """
-    
+
     helps[
         "iot ops schema version"
     ] = """
