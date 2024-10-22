@@ -94,7 +94,7 @@ class UpgradeManager:
         extension_text = self._check_extensions()
 
         if not self.extensions_to_update and not self.require_instance_upgrade:
-            logger.warning("Nothing to upgrade :)")
+            print("[green]Nothing to upgrade :)[/green]")
             return
 
         print("Azure IoT Operations Upgrade")
@@ -110,7 +110,7 @@ class UpgradeManager:
             ))
 
         print()
-        print("Upgrading may fail and require you to delete and re-create your cluster.")
+        print("[yellow]Upgrading may fail and require you to delete and re-create your cluster.[/yellow]")
 
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
         if should_bail:
@@ -259,7 +259,7 @@ class UpgradeManager:
             for extension in self.extensions_to_update:
                 logger.info(f"Updating extension {extension}.")
                 logger.info(f"Extension PATCH body: {self.extensions_to_update[extension]}")
-                updated = self.resource_map.connected_cluster.clusters.extensions.update(
+                updated = self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
                     resource_group_name=self.resource_group_name,
                     cluster_name=self.cluster_name,
                     extension_name=extension,

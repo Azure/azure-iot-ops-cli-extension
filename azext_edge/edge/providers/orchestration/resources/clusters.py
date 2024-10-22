@@ -56,7 +56,7 @@ class ClusterExtensions(Queryable):
         )
 
     # will be removed
-    def update(
+    def update_cluster_extension(
         self,
         resource_group_name: str,
         cluster_name: str,
