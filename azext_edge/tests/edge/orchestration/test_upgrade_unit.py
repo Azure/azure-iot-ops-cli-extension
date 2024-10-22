@@ -38,28 +38,24 @@ def mocked_instances(mocker):
 
 @pytest.fixture
 def mocked_logger(mocker):
-    patched = mocker.patch(
+    yield mocker.patch(
         "azext_edge.edge.providers.orchestration.upgrade.logger",
     )
-    yield patched
 
 
 @pytest.fixture
 def mocked_wait_for_terminal_state(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.upgrade.wait_for_terminal_state", autospec=True)
-    yield patched
+    yield mocker.patch("azext_edge.edge.providers.orchestration.upgrade.wait_for_terminal_state", autospec=True)
 
 
 @pytest.fixture
 def mocked_rich_print(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.upgrade.print")
-    yield patched
+    yield mocker.patch("azext_edge.edge.providers.orchestration.upgrade.print")
 
 
 @pytest.fixture
 def mocked_live_display(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.upgrade.Live")
-    yield patched
+    yield mocker.patch("azext_edge.edge.providers.orchestration.upgrade.Live")
 
 
 @pytest.fixture
@@ -202,7 +198,7 @@ def _generate_trains(**trains) -> dict:
             iot_operations="preview",
         )
     ),
-    # update aio (new train + realistic versions)
+    # update aio (version) + platform (train)
     (
         _generate_extensions(
             secret_store="1.10.0",
@@ -216,7 +212,7 @@ def _generate_trains(**trains) -> dict:
             container_storage="0.10.3-preview",
             open_service_mesh="0.9.1",
             platform="0.10.0",
-            iot_operations="0.8.16",
+            iot_operations="0.8.20",
         ),
         _generate_trains(
             secret_store="preview",
@@ -278,7 +274,7 @@ def test_upgrade_lifecycle(
     # mock extensions in resource map and template info
     mocked_resource_map = mocked_instances.get_resource_map()
     mocked_resource_map.connected_cluster.extensions = list(current_extensions.values())
-    extension_update_mock = mocked_resource_map.connected_cluster.clusters.extensions.update
+    extension_update_mock = mocked_resource_map.connected_cluster.clusters.extensions.update_cluster_extension
     _assemble_template_mock(mocker, new_versions=new_versions, new_trains=new_trains)
     m2_instance = None
     # the get m2 instance call
@@ -313,8 +309,6 @@ def test_upgrade_lifecycle(
     }
 
     upgrade_ops_resources(**kwargs)
-    # TODO: VERSION HARDCODE REMOVE
-    new_versions["iot_operations"] = "0.8.18"
 
     # no matter what, we always try the m2 get
     assert len(mocked_responses.calls) == 1
@@ -338,6 +332,9 @@ def test_upgrade_lifecycle(
             assert payload["properties"]["autoUpgradeMinorVersion"] == "false"
             assert payload["properties"]["releaseTrain"] == new_trains[key]
             assert payload["properties"]["version"] == new_versions[key]
+
+            if key == "microsoft.openservicemesh":
+                assert payload["properties"]["configurationSettings"]
             # calls should be ordered together
             call += 1
 
@@ -429,7 +426,8 @@ def test_upgrade_error(
     )
     error_msg = generate_random_string()
     extensions["platform"]["properties"]["statuses"] = [{"code": "InstallationFailed", "message": error_msg}]
-    mocked_resource_map.connected_cluster.clusters.extensions.update.return_value = extensions["platform"]
+    extension_update_mock = mocked_resource_map.connected_cluster.clusters.extensions.update_cluster_extension
+    extension_update_mock.return_value = extensions["platform"]
     with pytest.raises(AzureResponseError) as e:
         upgrade_ops_resources(**kwargs)
     assert error_msg in e.value.error_msg
@@ -444,7 +442,7 @@ def test_upgrade_error(
         status=200,
         content_type="application/json",
     )
-    mocked_resource_map.connected_cluster.clusters.extensions.update.side_effect = HttpResponseError(
+    extension_update_mock.side_effect = HttpResponseError(
         "extension update failed"
     )
     with pytest.raises(HttpResponseError):

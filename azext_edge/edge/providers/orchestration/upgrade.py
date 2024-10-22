@@ -126,11 +126,10 @@ class UpgradeManager:
         version_map.update(M3_INSTANCE_TEMPLATE.content["variables"]["VERSIONS"].copy())
         train_map = M3_ENABLEMENT_TEMPLATE.content["variables"]["TRAINS"].copy()
         train_map.update(M3_INSTANCE_TEMPLATE.content["variables"]["TRAINS"].copy())
-        # manual changes here # TODO: REMOVE
-        version_map["iotOperations"] = "0.8.18"
 
         self.new_aio_version = version_map["iotOperations"]
 
+        # note that the secret store type changes but somehow it all works out :)
         # the order is determined by depends on in the template
         type_to_key_map = OrderedDict([
             ("microsoft.iotoperations.platform", "platform"),
@@ -159,6 +158,17 @@ class UpgradeManager:
                     "version": version_map[extension_key]
                 }
             }
+
+            if extension_type == "microsoft.openservicemesh":
+                # hard code to avoid actual template resources parsing
+                extension_update["properties"]["configurationSettings"] = {
+                    "osm.osm.osmController.resource.requests.cpu": "100m",
+                    "osm.osm.osmBootstrap.resource.requests.cpu": "100m",
+                    "osm.osm.injector.resource.requests.cpu": "100m",
+                }
+
+            # should still be fine for mesh - if it is at the current version, already, it should have these props
+            # worst case it the extra config settings do nothing
             if all([
                 version.parse(current_version) >= version.parse(version_map[extension_key]),
                 train_map[extension_key].lower() == current_train
