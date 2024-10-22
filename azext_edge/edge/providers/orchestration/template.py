@@ -56,7 +56,7 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "17597461722386619555"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "16041392394653918543"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -214,7 +214,7 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
         "variables": {
             "VERSIONS": {
                 "platform": "0.7.6",
-                "secretStore": "0.6.4",
+                "secretStore": "0.6.7",
                 "containerStorage": "2.2.0",
                 "openServiceMesh": "1.2.10",
             },
@@ -286,6 +286,9 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                         "osm.osm.enablePermissiveTrafficPolicy": "false",
                         "osm.osm.featureFlags.enableWASMStats": "false",
                         "osm.osm.configResyncInterval": "10s",
+                        "osm.osm.osmController.resource.requests.cpu": "100m",
+                        "osm.osm.osmBootstrap.resource.requests.cpu": "100m",
+                        "osm.osm.injector.resource.requests.cpu": "100m",
                     },
                 },
                 "dependsOn": ["cluster"],
@@ -297,7 +300,7 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 "name": "azure-arc-containerstorage",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
-                    "extensionType": "Microsoft.Arc.ContainerStorage",
+                    "extensionType": "microsoft.arc.containerstorage",
                     "autoUpgradeMinorVersion": False,
                     "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'version'), variables('VERSIONS').containerStorage)]",
                     "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'train'), variables('TRAINS').containerStorage)]",
@@ -355,7 +358,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "8789011211011918491"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "15107151171792030409"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -527,7 +530,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "0.8.16"},
+            "VERSIONS": {"iotOperations": "0.8.20"},
             "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
