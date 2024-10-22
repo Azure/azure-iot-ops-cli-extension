@@ -9,6 +9,7 @@ from typing import List, Optional, Tuple
 
 from azure.core.paging import PageIterator
 from azure.core.exceptions import ResourceNotFoundError
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 from rich.console import Console
 import yaml
@@ -43,13 +44,15 @@ class OpcUACerts(Queryable):
         self.ssc_mgmt_client = get_ssc_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
-        self
 
     def trust_add(self, instance_name: str, resource_group: str, file: str, secret_name: Optional[str] = None) -> dict:
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
-        if not secretsync_spc:
-            return
+        
+        # get file extension
+        file_name = os.path.basename(file)
+        # get cert name by removing extension and path in front
+        cert_extension = validate_file_extension(file_name, [".der", ".crt"])
 
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
@@ -63,11 +66,6 @@ class OpcUACerts(Queryable):
         )
 
         secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
-
-        # get file extension
-        file_name = os.path.basename(file)
-        # get cert name by removing extension and path in front
-        cert_extension = validate_file_extension(file_name, [".der", ".crt"])
 
         secret_name = secret_name if secret_name else file_name.replace(".", "-")
 
@@ -115,8 +113,10 @@ class OpcUACerts(Queryable):
     ) -> dict:
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
-        if not secretsync_spc:
-            return
+        
+        # get file extension
+        file_name = os.path.basename(file)
+        cert_extension = validate_file_extension(file_name, [".der", ".crt", ".crl"])
 
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
@@ -131,9 +131,6 @@ class OpcUACerts(Queryable):
 
         secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
 
-        # get file extension
-        file_name = os.path.basename(file)
-        cert_extension = validate_file_extension(file_name, [".der", ".crt", ".crl"])
         # get cert name by removing extension
         cert_name = file_name.replace(f"{cert_extension}", "")
 
@@ -154,8 +151,7 @@ class OpcUACerts(Queryable):
                 ]
 
             if not opcua_secret_sync or not matched_names:
-                logger.error(f"Cannot add .crl {file_name} without corresponding .crt or .der file.")
-                return
+                raise InvalidArgumentValueError(f"Cannot add .crl {file_name} without corresponding .crt or .der file.")
 
         secret_name = secret_name if secret_name else file_name.replace(".", "-")
 
@@ -202,8 +198,9 @@ class OpcUACerts(Queryable):
         logger.warning("Please ensure the certificate must be added to the issuers list if it was issued by a CA. ")
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
-        if not secretsync_spc:
-            return
+        
+        # process all the file validations before secret creations
+        self._validate_key_files(public_key_file, private_key_file)
 
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
@@ -217,9 +214,6 @@ class OpcUACerts(Queryable):
         )
 
         secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
-
-        # process all the file validations before secret creations
-        self._validate_key_files(public_key_file, private_key_file)
 
         # check if there is a spc called "opc-ua-connector", if not create one
         try:
@@ -311,6 +305,7 @@ class OpcUACerts(Queryable):
         return cl_resources
 
     def _find_existing_spc(self, instance_name: str, cl_resources: List[dict]) -> dict:
+        # check if secret sync enabled by getting the default secretproviderclass
         secretsync_spc = None
 
         if cl_resources:
@@ -324,11 +319,10 @@ class OpcUACerts(Queryable):
                     break
 
         if not secretsync_spc:
-            logger.error(
+            raise ResourceNotFoundError(
                 f"Secret sync is not enabled for the instance {instance_name}. "
                 "Please enable secret sync before adding certificate."
             )
-            return
 
         return secretsync_spc
 
@@ -339,12 +333,12 @@ class OpcUACerts(Queryable):
         for secret in secrets:
             if secret.id.endswith(secret_name):
                 # Prompt user to decide on overwriting the secret
-                should_bail = not Confirm.ask(
+                overwrite_secret = Confirm.ask(
                     f"Secret with name {secret_name} already exists in keyvault {spc_keyvault_name}. "
                     "Do you want to overwrite the secret name?",
                 )
 
-                if should_bail:
+                if not overwrite_secret:
                     return new_secret_name
 
                 return Prompt.ask("Please enter the new secret name")
@@ -433,8 +427,7 @@ class OpcUACerts(Queryable):
         # find duplicate targetKey
         target_keys = [mapping["targetKey"] for mapping in secret_mapping]
         if len(target_keys) != len(set(target_keys)):
-            logger.error("Cannot have duplicate targetKey in objectSecretMapping.")
-            return
+            raise InvalidArgumentValueError("Cannot have duplicate targetKey in objectSecretMapping.")
 
         if not secret_sync:
             logger.warning(f"Secret Sync {secret_sync_name} not found, creating new one...")
@@ -469,8 +462,7 @@ class OpcUACerts(Queryable):
         extensions = self.resource_map.connected_cluster.get_extensions_by_type("microsoft.iotoperations")
         aio_extension = extensions.get("microsoft.iotoperations")
         if not aio_extension:
-            logger.error("IoT Operations extension not found.")
-            return
+            raise ResourceNotFoundError("IoT Operations extension not found.")
 
         properties = aio_extension["properties"]
 

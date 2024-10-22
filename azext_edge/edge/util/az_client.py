@@ -187,6 +187,7 @@ def get_authz_client(subscription_id: str, **kwargs) -> "AuthorizationManagement
 def get_keyvault_client(subscription_id: str, keyvault_name: str, **kwargs) -> "SecretClient":
     from azure.keyvault.secrets import SecretClient
 
+    # TODO: this only supports azure public cloud only
     client = SecretClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
