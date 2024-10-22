@@ -545,8 +545,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "schema_registry_resource_id",
             options_list=["--sr-resource-id"],
-            help="The schema registry resource Id to use with IoT Operations. Required if the schema registry resource Id "
-            "is no longer found within IoT Operations.",
+            help="The schema registry resource Id to use with IoT Operations. Required if the schema registry "
+            "resource Id is no longer found within IoT Operations.",
         )
 
     with self.argument_context("iot ops delete") as context:

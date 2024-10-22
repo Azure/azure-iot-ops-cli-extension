@@ -100,13 +100,13 @@ class UpgradeManager:
         print("Azure IoT Operations Upgrade")
         print()
         if self.extensions_to_update:
-            print(Padding("Extensions to update:", (0,0,0,2)))
-            print(Padding(extension_text, (0,0,0,4)))
+            print(Padding("Extensions to update:", (0, 0, 0, 2)))
+            print(Padding(extension_text, (0, 0, 0, 4)))
 
         if self.require_instance_upgrade:
             print(Padding(
                 "Old Azure IoT Operations instance version found. Will update the instance to the latest version.",
-                (0,0,0,2)
+                (0, 0, 0, 2)
             ))
 
         print()
@@ -170,7 +170,9 @@ class UpgradeManager:
         # try to get the sr resource id if not present already
         extension_props = type_to_aio_extensions["microsoft.iotoperations"]["properties"]
         if not self.sr_resource_id:
-            self.sr_resource_id = extension_props.get("configurationSettings", {}).get("schemaRegistry.values.resourceId")
+            self.sr_resource_id = extension_props.get("configurationSettings", {}).get(
+                "schemaRegistry.values.resourceId"
+            )
         # text to print (ordered)
         display_desc = "[dim]"
         for extension, update in self.extensions_to_update.items():
@@ -195,12 +197,18 @@ class UpgradeManager:
             self.require_instance_upgrade = False
         # try with 2024-09-15-preview -> it is m3 already
         try:
-            self.instance = self.instances.show(name=self.instance_name, resource_group_name=self.resource_group_name)
+            self.instance = self.instances.show(
+                name=self.instance_name,
+                resource_group_name=self.resource_group_name
+            )
             return self.instances.get_resource_map(self.instance)
         except ResourceNotFoundError as e:
             raise e
         except HttpResponseError:
-            raise ArgumentUsageError(f"Cannot upgrade instance {self.instance_name}, please delete your instance, including dependencies, and reinstall.")
+            raise ArgumentUsageError(
+                f"Cannot upgrade instance {self.instance_name}, please delete your instance, including "
+                "dependencies, and reinstall."
+            )
 
     def _render_display(self, description: str):
         if self._render_progress:
@@ -269,10 +277,10 @@ class UpgradeManager:
                 self._render_display("[yellow]Updating instance...")
                 logger.info(f"New instance body: {self.instance}")
                 result = wait_for_terminal_state(
-                        self.instances.iotops_mgmt_client.instance.begin_create_or_update(
-                            resource_group_name=self.resource_group_name,
-                            instance_name=self.instance_name,
-                            resource=self.instance
+                    self.instances.iotops_mgmt_client.instance.begin_create_or_update(
+                        resource_group_name=self.resource_group_name,
+                        instance_name=self.instance_name,
+                        resource=self.instance
                     )
                 )
         except (HttpResponseError, KeyboardInterrupt) as e:

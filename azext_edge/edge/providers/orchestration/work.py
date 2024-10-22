@@ -140,7 +140,9 @@ class WorkManager:
         if self._pre_flight:
             pre_check_cat_desc = "Pre-Flight"
             self._display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
-            self._display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers")
+            self._display.add_step(
+                WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers"
+            )
             self._display.add_step(
                 WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
             )

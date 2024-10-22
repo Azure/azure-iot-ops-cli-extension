@@ -131,7 +131,7 @@ def _generate_instance(instance_name: str, resource_group: str, m3: bool = False
             "type": "CustomLocation"
         },
         "id": f"/subscriptions/{get_zeroed_subscription()}/resourcegroups/{resource_group}"
-            f"/providers/Microsoft.Kubernetes/connectedClusters/{instance_name}",
+        f"/providers/Microsoft.Kubernetes/connectedClusters/{instance_name}",
         "identity": {"type": "None"},
         "location": "eastus2",
         "name": instance_name,
@@ -169,6 +169,7 @@ def _generate_instance(instance_name: str, resource_group: str, m3: bool = False
             }
         }
     return mock_instance_record
+
 
 def _generate_versions(**versions) -> dict:
     # if version not provided, "max" is used
