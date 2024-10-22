@@ -8,11 +8,10 @@ from typing import TYPE_CHECKING, Iterable, Optional
 
 from knack.log import get_logger
 
-from build.azext_edge.edge.util.az_client import wait_for_terminal_state
-
 from ....util.az_client import (
     get_clusterconfig_mgmt_client,
     get_connectedk8s_mgmt_client,
+    wait_for_terminal_state
 )
 from ....util.queryable import Queryable
 
