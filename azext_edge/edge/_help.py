@@ -1166,6 +1166,69 @@ def load_iotops_help():
         long-summary: |
           Schemas are documents that describe data to enable processing and contextualization.
           Message schemas describe the format of a message and its contents.
+          A schema registry is required to create and manage schemas.
+    """
+
+    helps[
+        "iot ops schema show"
+    ] = """
+        type: command
+        short-summary: Show details of a schema within a schema registry.
+        examples:
+        - name: Show details of target schema 'myschema' within a schema registry 'myregistry'.
+          text: >
+            az iot ops schema show --name myschema --registry myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema list"
+    ] = """
+        type: command
+        short-summary: List schemas within a schema registry.
+        examples:
+        - name: List schema registeries in the schema registry 'myregistry'.
+          text: >
+            az iot ops schema list -g myresourcegroup --registry myregistry
+    """
+
+    helps[
+        "iot ops schema delete"
+    ] = """
+        type: command
+        short-summary: Delete a target schema within a schema registry.
+        examples:
+        - name: Delete a target schema 'myschema' within a schema registry 'myregistry'.
+          text: >
+            az iot ops schema delete --name myschema --registry myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema create"
+    ] = """
+        type: command
+        short-summary: Create a schema within a schema registry.
+        long-summary: |
+                      This operation requires a pre-created schema registry and will add a schema version.
+                      To create the schema and add a version, the associated storage account will need to have public network access enabled.
+                      For more information on the delta file format, please see aka.ms/lakehouse-delta-sample
+        examples:
+        - name: Create a schema called 'myschema' in the registry 'myregistry' with minimum inputs. Schema version 1 will be created for this schema with the file content.
+          text: >
+            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+            --format json --type message --version-content myschema.json
+        - name: Create a schema called 'myschema' with additional customization. Schema version 14 will be created for this schema. The inline content is a powershell syntax example.
+          text: >
+            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+            --format delta --type message --desc "Schema for Assets" --display-name myassetschema
+            --version-content '{\\\"hello\\\": \\\"world\\\"}' --ver 14 --vd "14th version"
+        - name: Create a schema called 'myschema'. Schema version 1 will be created for this schema. The inline content is a cmd syntax example.
+          text: >
+            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+            --format json --type message --version-content "{\\\"hello\\\": \\\"world\\\"}"
+        - name: Create a schema called 'myschema'. Schema version 1 will be created for this schema. The inline content is a bash syntax example.
+          text: >
+            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+            --format json --type message --version-content '{"hello": "world"}'
     """
 
     helps[
@@ -1243,4 +1306,93 @@ def load_iotops_help():
             az iot ops schema registry create -n myregistry -g myresourcegroup --registry-namespace myschemas
             --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID --sa-container myschemacontainer
             -l westus2 --desc 'Contoso factory X1 schemas' --display-name 'Contoso X1' --tags env=prod
+    """
+
+    helps[
+        "iot ops schema version"
+    ] = """
+        type: group
+        short-summary: Schema version management.
+        long-summary: |
+          A schema version contains the schema content associated with that version.
+    """
+
+    helps[
+        "iot ops schema version show"
+    ] = """
+        type: command
+        short-summary: Show details of a schema version.
+        examples:
+        - name: Show details of target schema version 1.
+          text: >
+            az iot ops schema version show --name 1 --schema myschema --registry myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema version list"
+    ] = """
+        type: command
+        short-summary: List schema versions for a specific schema.
+        examples:
+        - name: List all schema versions for the schema 'myschema' in the schema registry 'myregistry'.
+          text: >
+            az iot ops schema version list -g myresourcegroup --registry myregistry --schema myschema
+    """
+
+    helps[
+        "iot ops schema version remove"
+    ] = """
+        type: command
+        short-summary: Remove a target schema version.
+        examples:
+        - name: Remove schema version 1.
+          text: >
+            az iot ops schema version remove -n 1 -g myresourcegroup --registry myregistry --schema myschema
+    """
+
+    helps[
+        "iot ops schema version add"
+    ] = """
+        type: command
+        short-summary: Add a schema version to a schema.
+        long-summary: |
+                      To add a version, the associated storage account will need to have public network access enabled.
+                      For more information on the delta file format, please see aka.ms/lakehouse-delta-sample
+        examples:
+        - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
+                minimum inputs. The content is inline json (powershell syntax example).
+          text: >
+            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{\\\"hello\\\": \\\"world\\\"}'
+        - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
+                minimum inputs. The content is inline json (cmd syntax example).
+          text: >
+            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content "{\\\"hello\\\": \\\"world\\\"}"
+        - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
+                minimum inputs. The content is inline json (bash syntax example).
+          text: >
+            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{"hello": "world"}'
+        - name: Add a schema version 2 to a schema called 'myschema' within the registry 'myregistry' with
+                a description. The file should contain the schema content.
+          text: >
+            az iot ops schema version add -n 2 -g myresourcegroup --registry myregistry --schema myschema --content myschemav2.json --desc "New schema"
+    """
+
+    helps[
+        "iot ops schema show-dataflow-refs"
+    ] = """
+        type: command
+        short-summary: Show the schema references used for dataflows.
+        examples:
+        - name: Show schema reference for schema "myschema" and version 1.
+          text: >
+            az iot ops schema show-dataflow-refs --version 1 --schema myschema --registry myregistry -g myresourcegroup
+        - name: Show schema reference for all versions in schema "myschema".
+          text: >
+            az iot ops schema show-dataflow-refs --schema myschema --registry myregistry -g myresourcegroup
+        - name: Show schema reference for all versions and schemas in schema registry "myregistry".
+          text: >
+            az iot ops schema show-dataflow-refs --registry myregistry -g myresourcegroup
+        - name: Show schema reference for all schemas but only the latest versions in schema registry "myregistry".
+          text: >
+            az iot ops schema show-dataflow-refs --registry myregistry -g myresourcegroup --latest
     """
