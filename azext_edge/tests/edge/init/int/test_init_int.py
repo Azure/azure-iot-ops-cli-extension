@@ -53,7 +53,7 @@ def init_test_setup(settings, tracked_resources):
 
     if not all([settings.env.azext_edge_cluster, settings.env.azext_edge_rg]):
         raise AssertionError(
-            "Cannot run init tests without a connected cluster and resource group. " f"Current settings:\n {settings}"
+            f"Cannot run init tests without a connected cluster and resource group. Current settings:\n {settings}"
         )
 
     yield {
@@ -89,7 +89,7 @@ def test_init_scenario(init_test_setup, tracked_files):
     resource_group = init_test_setup["resourceGroup"]
     registry_id = init_test_setup["schemaRegistryId"]
     instance_name = init_test_setup["instanceName"]
-    command = f"az iot ops init -g {resource_group} --cluster {cluster_name} " f"--no-progress {additional_init_args} "
+    command = f"az iot ops init -g {resource_group} --cluster {cluster_name} --no-progress {additional_init_args} "
 
     # TODO: assert return once there is a return for init
     run(command)
@@ -106,7 +106,7 @@ def test_init_scenario(init_test_setup, tracked_files):
     run(create_command)
 
     if init_test_setup["redeployment"]:
-        run(f"az iot ops delete --name {instance_name} -g {resource_group} " "-y --no-progress --force")
+        run(f"az iot ops delete --name {instance_name} -g {resource_group} -y --no-progress --force")
         run(create_command)
 
     # Missing:
