@@ -146,7 +146,6 @@ def upgrade(
     from .providers.orchestration.upgrade import upgrade_ops_resources
     return upgrade_ops_resources(
         cmd=cmd,
-        # cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         instance_name=instance_name,
         sr_resource_id=schema_registry_resource_id,
