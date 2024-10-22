@@ -47,7 +47,7 @@ def upgrade_ops_resources(
         resource_group_name=resource_group_name,
         no_progress=no_progress,
     )
-    manager.do_work(confirm_yes=confirm_yes)
+    return manager.do_work(confirm_yes=confirm_yes)
 
 
 # keeping this separate for easier removal once no longer needed
@@ -117,7 +117,7 @@ class UpgradeManager:
             return
 
         # do the work - get the schema reg id if needed, do the updates
-        self._process()
+        return self._process()
 
     def _check_extensions(self) -> str:
         from packaging import version
