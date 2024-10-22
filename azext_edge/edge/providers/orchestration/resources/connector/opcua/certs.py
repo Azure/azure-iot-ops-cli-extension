@@ -48,7 +48,7 @@ class OpcUACerts(Queryable):
     def trust_add(self, instance_name: str, resource_group: str, file: str, secret_name: Optional[str] = None) -> dict:
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
-        
+
         # get file extension
         file_name = os.path.basename(file)
         # get cert name by removing extension and path in front
@@ -113,7 +113,7 @@ class OpcUACerts(Queryable):
     ) -> dict:
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
-        
+
         # get file extension
         file_name = os.path.basename(file)
         cert_extension = validate_file_extension(file_name, [".der", ".crt", ".crl"])
@@ -151,7 +151,9 @@ class OpcUACerts(Queryable):
                 ]
 
             if not opcua_secret_sync or not matched_names:
-                raise InvalidArgumentValueError(f"Cannot add .crl {file_name} without corresponding .crt or .der file.")
+                raise InvalidArgumentValueError(
+                    f"Cannot add .crl {file_name} without corresponding .crt or .der file."
+                )
 
         secret_name = secret_name if secret_name else file_name.replace(".", "-")
 
@@ -198,7 +200,7 @@ class OpcUACerts(Queryable):
         logger.warning("Please ensure the certificate must be added to the issuers list if it was issued by a CA. ")
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
-        
+
         # process all the file validations before secret creations
         self._validate_key_files(public_key_file, private_key_file)
 

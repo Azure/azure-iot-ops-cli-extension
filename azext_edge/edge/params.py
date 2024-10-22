@@ -1259,7 +1259,7 @@ def load_iotops_arguments(self, _):
             help="Fully qualified role definition Id in the following format: "
             "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
         )
-    
+
     with self.argument_context("iot ops connector opcua") as context:
         context.argument(
             "instance_name",
