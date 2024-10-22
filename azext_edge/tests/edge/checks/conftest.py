@@ -254,8 +254,8 @@ def mocked_validate_ref(mocker):
                 f"[green]Valid[/green] {ValidationResourceType.secret.value} reference {{[green]mock_secret[/green]}}."
             )
         elif kwargs["ref_type"] == ValidationResourceType.configmap:
-            ref_text = f"[green]Valid[/green] {ValidationResourceType.configmap.value}\
-                reference {{[green]mock_configmap[/green]}}."
+            ref_text = f"[green]Valid[/green] {ValidationResourceType.configmap.value}"
+            "reference {{[green]mock_configmap[/green]}}."
 
         return ref_text, True
 

@@ -4,10 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union
-
-from azext_edge.edge.providers.check.base.resource import validate_ref
+from typing import Any, Dict, List, Optional
 
 from azext_edge.edge.providers.check.base.display import add_display_and_eval, colorize_string
 
@@ -21,6 +18,8 @@ from .base import (
     process_resource_properties,
     validate_one_of_conditions,
     process_custom_resource_status,
+    get_valid_references,
+    validate_ref,
 )
 
 from rich.console import NewLine
@@ -40,6 +39,7 @@ from .common import (
     AIO_BROKER_HEALTH_MANAGER,
     AIO_BROKER_OPERATOR,
     BROKER_DIAGNOSTICS_PROPERTIES,
+    DEFAULT_PADDING,
     CheckResult,
     ResourceOutputDetailLevel,
     ValidationResourceType,
@@ -109,7 +109,7 @@ def evaluate_broker_listeners(
         )
         check_manager.add_display(
             target_name=target_listeners,
-            display=Padding(fetch_listeners_error_text, (0, 0, 0, 8)),
+            display=Padding(fetch_listeners_error_text, (0, 0, 0, DEFAULT_PADDING)),
         )
         return check_manager.as_dict(as_list)
 
@@ -122,7 +122,9 @@ def evaluate_broker_listeners(
         check_manager.add_display(
             target_name=target_listeners,
             namespace=namespace,
-            display=Padding(f"Broker Listeners in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
+            display=Padding(
+                f"Broker Listeners in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, DEFAULT_PADDING)
+            ),
         )
 
         listeners = list(listeners)
@@ -131,21 +133,18 @@ def evaluate_broker_listeners(
         listeners_eval_status = CheckTaskStatus.success.value
 
         if listeners_count >= 1:
-            listener_count_desc = (
-                listener_count_desc + f"{colorize_string(color='green', value=f'Detected {listeners_count}')}."
-            )
+            listeners_count_color = "green"
         else:
-            listener_count_desc = (
-                listener_count_desc + f"{colorize_string(color='yellow', value=f'Detected {listeners_count}')}."
-            )
+            listeners_count_color = "yellow"
             check_manager.set_target_status(
                 target_name=target_listeners, namespace=namespace, status=CheckTaskStatus.warning.value
             )
-            # TODO listeners_eval_status = CheckTaskStatus.warning.value
+
+        listener_count_desc += f"{colorize_string(color=listeners_count_color, value=f'Detected {listeners_count}')}."
         check_manager.add_display(
             target_name=target_listeners,
             namespace=namespace,
-            display=Padding(listener_count_desc, (0, 0, 0, 8)),
+            display=Padding(listener_count_desc, (0, 0, 0, DEFAULT_PADDING)),
         )
 
         processed_services = {}
@@ -178,18 +177,20 @@ def evaluate_broker_listeners(
             check_manager.add_display(
                 target_name=target_listeners,
                 namespace=namespace,
-                display=Padding(listener_desc, (0, 0, 0, 8)),
+                display=Padding(listener_desc, (0, 0, 0, DEFAULT_PADDING)),
             )
+            listener_properties_padding = DEFAULT_PADDING + 4
 
-            process_custom_resource_status(
-                check_manager=check_manager,
-                status=listener_status_state,
-                target_name=target_listeners,
-                namespace=namespace,
-                resource_name=listener_name,
-                padding=12,
-                detail_level=detail_level,
-            )
+            if listener_status_state:
+                process_custom_resource_status(
+                    check_manager=check_manager,
+                    status=listener_status_state,
+                    target_name=target_listeners,
+                    namespace=namespace,
+                    resource_name=listener_name,
+                    padding=listener_properties_padding,
+                    detail_level=detail_level,
+                )
 
             ports = listener_spec.get("ports", [])
 
@@ -216,7 +217,8 @@ def evaluate_broker_listeners(
 
                 if authn:
                     authn_condition = "spec.ports[*].authenticationRef"
-                    valid_authns = _get_valid_references(
+                    valid_authns = get_valid_references(
+                        api=MQ_ACTIVE_API,
                         kind=MqResourceKinds.BROKER_AUTHENTICATION.value,
                         namespace=namespace,
                     )
@@ -228,13 +230,13 @@ def evaluate_broker_listeners(
                     )
 
                     authn_eval_value = {"spec.ports[*].authenticationRef": authn}
-                    authn_eval_status = CheckTaskStatus.success.value
 
-                    if authn not in valid_authns:
-                        authn_display = f"Authentication reference: {colorize_string(color='red', value='Invalid')} reference {{{colorize_string(color='red', value=authn)}}}."
-                        authn_eval_status = CheckTaskStatus.error.value
-                    else:
-                        authn_display = f"Authentication reference: {colorize_string(color='green', value='Valid')} reference {{{colorize_string(color='green', value=authn)}}}."
+                    authn_validity = "valid" if authn in valid_authns else "invalid"
+                    authn_color = "green" if authn in valid_authns else "red"
+                    authn_display = f"Authentication reference: {{{colorize_string(authn)}}} is {colorize_string(color=authn_color, value=authn_validity)}."
+                    authn_eval_status = (
+                        CheckTaskStatus.error.value if authn_validity == "invalid" else CheckTaskStatus.success.value
+                    )
 
                     if (
                         detail_level > ResourceOutputDetailLevel.summary.value
@@ -256,7 +258,8 @@ def evaluate_broker_listeners(
 
                 if authz:
                     authz_condition = "spec.ports[*].authorizationRef"
-                    valid_authzs = _get_valid_references(
+                    valid_authzs = get_valid_references(
+                        api=MQ_ACTIVE_API,
                         kind=MqResourceKinds.BROKER_AUTHORIZATION.value,
                         namespace=namespace,
                     )
@@ -268,13 +271,15 @@ def evaluate_broker_listeners(
                     )
 
                     authz_eval_value = {"spec.ports[*].authorizationRef": authz}
-                    authz_eval_status = CheckTaskStatus.success.value
-
-                    if authz not in valid_authzs:
-                        authz_display = f"Authorization reference: {colorize_string(color='red', value='Invalid')} reference {{{colorize_string(color='red', value=authz)}}}."
-                        authz_eval_status = CheckTaskStatus.error.value
-                    else:
-                        authz_display = f"Authorization reference: {colorize_string(color='green', value='Valid')} reference {{{colorize_string(color='green', value=authz)}}}."
+                    authz_validity = "valid" if authz in valid_authzs else "invalid"
+                    authz_color = "green" if authz in valid_authzs else "red"
+                    authz_display = (
+                        f"Authorization reference: {{{colorize_string(authz)}}} is "
+                        f"{colorize_string(color=authz_color, value=authz_validity)}."
+                    )
+                    authz_eval_status = (
+                        CheckTaskStatus.success.value if authz_validity == "valid" else CheckTaskStatus.error.value
+                    )
 
                     if (
                         detail_level > ResourceOutputDetailLevel.summary.value
@@ -314,14 +319,14 @@ def evaluate_broker_listeners(
                         namespace=namespace,
                         target_name=target_listeners,
                         resource_name=listener_name,
-                        padding=12,
+                        padding=listener_properties_padding,
                     )
 
                     if detail_level == ResourceOutputDetailLevel.verbose.value:
                         check_manager.add_display(
                             target_name=target_listeners,
                             namespace=namespace,
-                            display=Padding("TLS:", (0, 0, 0, 12)),
+                            display=Padding("TLS:", (0, 0, 0, listener_properties_padding)),
                         )
                         # TODO - add check for refs
                         for prop_name, prop_value in {
@@ -334,7 +339,7 @@ def evaluate_broker_listeners(
                                     target_name=target_listeners,
                                     resource=prop_value,
                                     namespace=namespace,
-                                    padding=14,
+                                    padding=listener_properties_padding + 2,
                                     prop_name=prop_name,
                                 )
 
@@ -392,7 +397,7 @@ def evaluate_brokers(
         )
         check_manager.add_display(
             target_name=target_brokers,
-            display=Padding(fetch_brokers_error_text, (0, 0, 0, 8)),
+            display=Padding(fetch_brokers_error_text, (0, 0, 0, DEFAULT_PADDING)),
         )
         return check_manager.as_dict(as_list)
 
@@ -401,26 +406,24 @@ def evaluate_brokers(
         check_manager.add_display(
             target_name=target_brokers,
             namespace=namespace,
-            display=Padding(f"MQTT Brokers in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
+            display=Padding(f"MQTT Brokers in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, DEFAULT_PADDING)),
         )
         brokers = list(brokers)
         brokers_count = len(brokers)
         brokers_count_text = f"- Expecting {colorize_string('1')} broker resource per namespace. "
         broker_eval_status = CheckTaskStatus.success.value
 
-        if brokers_count == 1:
-            brokers_count_text = (
-                brokers_count_text + f"{colorize_string(color='green', value=f'Detected {brokers_count}')}."
-            )
-        else:
-            brokers_count_text = (
-                brokers_count_text + f"{colorize_string(color='red', value=f'Detected {brokers_count}')}."
-            )
+        broker_color = "green" if brokers_count == 1 else "red"
+        brokers_count_text += f"{colorize_string(color=broker_color, value=f'Detected {brokers_count}')}."
+
+        if brokers_count != 1:
             check_manager.set_target_status(
                 target_name=target_brokers, namespace=namespace, status=CheckTaskStatus.error.value
             )
         check_manager.add_display(
-            target_name=target_brokers, namespace=namespace, display=Padding(brokers_count_text, (0, 0, 0, 8))
+            target_name=target_brokers,
+            namespace=namespace,
+            display=Padding(brokers_count_text, (0, 0, 0, DEFAULT_PADDING)),
         )
 
         added_distributed_conditions = False
@@ -435,18 +438,20 @@ def evaluate_brokers(
             check_manager.add_display(
                 target_name=target_brokers,
                 namespace=namespace,
-                display=Padding(target_broker_text, (0, 0, 0, 8)),
+                display=Padding(target_broker_text, (0, 0, 0, DEFAULT_PADDING)),
             )
+            broker_properties_padding = DEFAULT_PADDING + 4
 
-            process_custom_resource_status(
-                check_manager=check_manager,
-                status=broker_status_state,
-                target_name=target_brokers,
-                namespace=namespace,
-                resource_name=broker_name,
-                padding=12,
-                detail_level=detail_level,
-            )
+            if broker_status_state:
+                process_custom_resource_status(
+                    check_manager=check_manager,
+                    status=broker_status_state,
+                    target_name=target_brokers,
+                    namespace=namespace,
+                    resource_name=broker_name,
+                    padding=broker_properties_padding,
+                    detail_level=detail_level,
+                )
 
             broker_eval_value = {}
             if not added_distributed_conditions:
@@ -480,71 +485,25 @@ def evaluate_brokers(
                     ),
                 )
             else:
-                check_condition_colored_text = colorize_string(">=1")
-                backend_cardinality_desc = f"- Expecting backend partitions {check_condition_colored_text}. "
-                backend_redundancy_desc = f"- Expecting backend redundancy factor {check_condition_colored_text}. "
-                backend_workers_desc = f"- Expecting backend workers {check_condition_colored_text}. "
-                frontend_cardinality_desc = f"- Expecting frontend replicas {check_condition_colored_text}. "
+                broker_cardinality_eval_status = _evaluate_broker_cardinality(
+                    check_manager=check_manager,
+                    broker_cardinality=broker_cardinality,
+                    target_brokers=target_brokers,
+                    namespace=namespace,
+                    padding=broker_properties_padding,
+                    detail_level=detail_level,
+                )
 
-                backend_chain = broker_cardinality.get("backendChain", {})
-                backend_partition_count: Optional[int] = backend_chain.get("partitions")
-                backend_redundancy: Optional[int] = backend_chain.get("redundancyFactor")
-                backend_workers: Optional[int] = backend_chain.get("workers")
-                frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
-
-                if backend_partition_count and backend_partition_count >= 1:
-                    backend_chain_count_colored = (
-                        f"{colorize_string(color='green', value=f'Actual {backend_partition_count}')}."
-                    )
-                else:
-                    backend_chain_count_colored = (
-                        f"{colorize_string(color='red', value=f'Actual {backend_partition_count}')}."
-                    )
+                if broker_cardinality_eval_status == CheckTaskStatus.error.value:
                     broker_eval_status = CheckTaskStatus.error.value
-
-                if backend_redundancy and backend_redundancy >= 1:
-                    backend_replicas_colored = (
-                        f"{colorize_string(color='green', value=f'Actual {backend_redundancy}')}."
-                    )
-                else:
-                    backend_replicas_colored = f"{colorize_string(color='red', value=f'Actual {backend_redundancy}')}."
-                    broker_eval_status = CheckTaskStatus.error.value
-
-                if backend_workers and backend_workers >= 1:
-                    backend_workers_colored = f"{colorize_string(color='green', value=f'Actual {backend_workers}')}."
-                else:
-                    backend_workers_colored = f"{colorize_string(color='red', value=f'Actual {backend_workers}')}."
-                    broker_eval_status = CheckTaskStatus.error.value
-
-                if frontend_replicas and frontend_replicas >= 1:
-                    frontend_replicas_colored = (
-                        f"{colorize_string(color='green', value=f'Actual {frontend_replicas}')}."
-                    )
-                else:
-                    frontend_replicas_colored = f"{colorize_string(color='red', value=f'Actual {frontend_replicas}')}."
-                    broker_eval_status = CheckTaskStatus.error.value
-
-                # show cardinality display on non-summary detail_levels
-                if detail_level != ResourceOutputDetailLevel.summary.value:
-                    check_manager.add_display(
-                        target_name=target_brokers,
-                        namespace=namespace,
-                        display=Padding("\nCardinality", (0, 0, 0, 12)),
+                elif broker_cardinality_eval_status == CheckTaskStatus.warning.value:
+                    broker_eval_status = (
+                        CheckTaskStatus.warning.value
+                        if broker_eval_status != CheckTaskStatus.error.value
+                        else broker_eval_status
                     )
 
-                    for display in [
-                        backend_cardinality_desc + backend_chain_count_colored,
-                        backend_redundancy_desc + backend_replicas_colored,
-                        backend_workers_desc + backend_workers_colored,
-                        frontend_cardinality_desc + frontend_replicas_colored,
-                    ]:
-                        check_manager.add_display(
-                            target_name=target_brokers,
-                            namespace=namespace,
-                            display=Padding(display, (0, 0, 0, 16)),
-                        )
-
-            diagnostic_detail_padding = (0, 0, 0, 16)
+            diagnostic_detail_padding = (0, 0, 0, broker_properties_padding + 4)
 
             if not added_diagnostics_conditions:
                 check_manager.add_target_conditions(
@@ -620,7 +579,7 @@ def evaluate_brokers(
                 namespace=namespace,
                 display=Padding(
                     "\nRuntime Health",
-                    (0, 0, 0, 8),
+                    (0, 0, 0, DEFAULT_PADDING),
                 ),
             )
 
@@ -651,7 +610,7 @@ def evaluate_brokers(
                         eval_value=None,
                         resource_name=prefix,
                         namespace=namespace,
-                        padding=(0, 0, 0, 12),
+                        padding=(0, 0, 0, broker_properties_padding),
                     )
                 else:
                     pods.extend(
@@ -666,7 +625,7 @@ def evaluate_brokers(
                 check_manager=check_manager,
                 target=target_brokers,
                 namespace=namespace,
-                padding=12,
+                padding=broker_properties_padding,
                 pods=pods,
                 detail_level=detail_level,
             )
@@ -706,7 +665,7 @@ def evaluate_broker_authentications(
         )
         check_manager.add_display(
             target_name=target_authentications,
-            display=Padding(fetch_authentications_error_text, (0, 0, 0, 8)),
+            display=Padding(fetch_authentications_error_text, (0, 0, 0, DEFAULT_PADDING)),
         )
         return check_manager.as_dict(as_list)
 
@@ -721,7 +680,7 @@ def evaluate_broker_authentications(
             namespace=namespace,
             display=Padding(
                 f"Broker Authentications in namespace {{{colorize_string(color='purple', value=namespace)}}}",
-                (0, 0, 0, 8),
+                (0, 0, 0, DEFAULT_PADDING),
             ),
         )
 
@@ -729,8 +688,8 @@ def evaluate_broker_authentications(
         added_broker_ref_condition = False
 
         for auth in authentications:
-            auth_name = auth["metadata"]["name"]
             auth_metadata = auth["metadata"]
+            auth_name = auth_metadata["name"]
             # store results for check that will used to display later
             sub_check_results: List[CheckResult] = []
 
@@ -749,20 +708,23 @@ def evaluate_broker_authentications(
             check_manager.add_display(
                 target_name=target_authentications,
                 namespace=namespace,
-                display=Padding(auth_desc, (0, 0, 0, 8)),
+                display=Padding(auth_desc, (0, 0, 0, DEFAULT_PADDING)),
             )
+            authn_properties_padding = DEFAULT_PADDING + 4
 
             # status
             status = auth.get("status", {})
-            process_custom_resource_status(
-                check_manager=check_manager,
-                status=status,
-                target_name=target_authentications,
-                namespace=namespace,
-                resource_name=auth_name,
-                padding=12,
-                detail_level=detail_level,
-            )
+
+            if status:
+                process_custom_resource_status(
+                    check_manager=check_manager,
+                    status=status,
+                    target_name=target_authentications,
+                    namespace=namespace,
+                    resource_name=auth_name,
+                    padding=authn_properties_padding,
+                    detail_level=detail_level,
+                )
 
             auth_spec = auth.get("spec", {})
 
@@ -810,7 +772,7 @@ def evaluate_broker_authentications(
                 target_name=target_authentications,
                 namespace=namespace,
                 sub_check_results=sub_check_results,
-                parent_padding=8,
+                parent_padding=DEFAULT_PADDING,
                 detail_level=detail_level,
             )
 
@@ -849,7 +811,7 @@ def evaluate_broker_authorizations(
         )
         check_manager.add_display(
             target_name=target_authorizations,
-            display=Padding(fetch_authorizations_error_text, (0, 0, 0, 8)),
+            display=Padding(fetch_authorizations_error_text, (0, 0, 0, DEFAULT_PADDING)),
         )
         return check_manager.as_dict(as_list)
 
@@ -861,15 +823,17 @@ def evaluate_broker_authorizations(
         check_manager.add_display(
             target_name=target_authorizations,
             namespace=namespace,
-            display=Padding(f"Broker Authorizations in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, 8)),
+            display=Padding(
+                f"Broker Authorizations in namespace {{[purple]{namespace}[/purple]}}", (0, 0, 0, DEFAULT_PADDING)
+            ),
         )
 
         authorizations = list(authorizations)
         added_broker_ref_condition = False
 
         for authz in authorizations:
-            authz_name = authz["metadata"]["name"]
             authz_metadata = authz["metadata"]
+            authz_name = authz_metadata["name"]
 
             # check broker reference
             broker_ref = authz_metadata.get("ownerReferences", [])
@@ -886,20 +850,23 @@ def evaluate_broker_authorizations(
             check_manager.add_display(
                 target_name=target_authorizations,
                 namespace=namespace,
-                display=Padding(authz_desc, (0, 0, 0, 8)),
+                display=Padding(authz_desc, (0, 0, 0, DEFAULT_PADDING)),
             )
+            authz_properties_padding = DEFAULT_PADDING + 4
 
             # status
             status = authz.get("status", {})
-            process_custom_resource_status(
-                check_manager=check_manager,
-                status=status,
-                target_name=target_authorizations,
-                namespace=namespace,
-                resource_name=authz_name,
-                padding=12,
-                detail_level=detail_level,
-            )
+
+            if status:
+                process_custom_resource_status(
+                    check_manager=check_manager,
+                    status=status,
+                    target_name=target_authorizations,
+                    namespace=namespace,
+                    resource_name=authz_name,
+                    padding=authz_properties_padding,
+                    detail_level=detail_level,
+                )
 
             authz_spec = authz.get("spec", {})
 
@@ -937,7 +904,7 @@ def evaluate_broker_authorizations(
                     target_name=target_authorizations,
                     resource=authz_policies,
                     namespace=namespace,
-                    padding=14,
+                    padding=authz_properties_padding + 2,
                 )
 
             check_manager.add_target_conditions(
@@ -973,17 +940,22 @@ def _evaluate_broker_reference(
         )
         added_condition = True
 
-    valid_broker_refs = _get_valid_references(kind=MqResourceKinds.BROKER, namespace=namespace)
+    valid_broker_refs = get_valid_references(api=MQ_ACTIVE_API, kind=MqResourceKinds.BROKER, namespace=namespace)
     ref_eval_status = CheckTaskStatus.success.value
     ref_eval_value = {}
 
     if broker_reference_name not in valid_broker_refs:
-        ref_display = f"{colorize_string(color='red', value='Invalid')} broker reference {{{colorize_string(color='red', value=broker_reference_name)}}}."
+        ref_color = "red"
         ref_eval_status = CheckTaskStatus.error.value
         ref_eval_value["valid(spec.brokerRef)"] = False
     else:
-        ref_display = f"{colorize_string(color='green', value='Valid')} broker reference {{{colorize_string(color='green', value=broker_reference_name)}}}."
+        ref_color = "green"
         ref_eval_value["valid(spec.brokerRef)"] = True
+
+    ref_display = (
+        f"broker reference {{{colorize_string(broker_reference_name)}}} is "
+        f"{colorize_string(color=ref_color, value='Invalid' if ref_color == 'red' else 'Valid')}."
+    )
 
     check_manager.add_target_eval(
         target_name=target_name,
@@ -1049,7 +1021,7 @@ def _evaluate_listener_service(
             namespace=namespace,
             display=Padding(
                 f"Service {{{colorize_string(listener_spec_service_name)}}} of type {colorize_string(listener_spec_service_type)}",
-                (0, 0, 0, 8),
+                (0, 0, 0, DEFAULT_PADDING),
             ),
         )
 
@@ -1070,9 +1042,11 @@ def _evaluate_listener_service(
 
             if not ingress_rules:
                 listener_service_eval_status = CheckTaskStatus.warning.value
-                ingress_count_colored = f"{colorize_string(color='red', value='Detected 0')}."
+                ingress_color = "red"
             else:
-                ingress_count_colored = f"{colorize_string(color='green', value=len(ingress_rules))}."
+                ingress_color = "green"
+
+            ingress_count_colored = f"{colorize_string(color=ingress_color, value='Detected 0' if ingress_color == 'red' else str(len(ingress_rules)))}."
 
             if detail_level != ResourceOutputDetailLevel.summary.value:
                 check_manager.add_display(
@@ -1208,21 +1182,6 @@ def _evaluate_broker_diagnostics_service(
             check_manager.add_display(target_name=target_brokers, namespace=namespace, display=NewLine())
 
 
-def _get_valid_references(kind: Union[Enum, str], namespace: Optional[str] = None) -> Dict[str, Any]:
-    result = {}
-    custom_objects = MQ_ACTIVE_API.get_resources(kind=kind, namespace=namespace)
-    if custom_objects:
-        objects: List[dict] = custom_objects.get("items", [])
-        for object in objects:
-            o: dict = object
-            metadata: dict = o.get("metadata", {})
-            name = metadata.get("name")
-            if name:
-                result[name] = True
-
-    return result
-
-
 def _display_sub_check_results(
     check_manager: CheckManager,
     target_name: str,
@@ -1240,7 +1199,7 @@ def _display_sub_check_results(
             detail_level == ResourceOutputDetailLevel.summary.value
             and result.eval_status == CheckTaskStatus.error.value
         ):
-            text = result.display.renderable.replace("- ", "")
+            text = result.display.renderable.strip("- ")
             errors_displays.append(text)
         elif (detail_level == ResourceOutputDetailLevel.detail.value and result.eval_status is not None) or (
             detail_level == ResourceOutputDetailLevel.verbose.value
@@ -1274,126 +1233,17 @@ def _check_authentication_method(
     method_eval_status = CheckTaskStatus.success.value
     method_eval_value = {"method": method}
 
-    # TODO: repetitive conditions
     if method_type.lower() == "custom":
-        conditions.append("spec.authenticationMethods[*].customSettings")
-        setting = method.get("customSettings", {})
-
-        if not setting:
-            method_display = f"- Custom Method: {{{colorize_string(method_type)}}} {colorize_string(color='red', value='not found')}."
-            method_eval_status = CheckTaskStatus.error.value
-        else:
-            method_display = f"- Custom method: {{{colorize_string(method_type)}}} {colorize_string(color='green', value='detected')}."
-        sub_check_results.append(
-            CheckResult(
-                display=Padding(method_display, (0, 0, 0, 16)),
-                eval_status=method_eval_status,
-            )
+        _evaluate_custom_authentication_method(
+            conditions=conditions,
+            method=method,
+            method_type=method_type,
+            check_manager=check_manager,
+            target_authentications=target_authentications,
+            namespace=namespace,
+            sub_check_results=sub_check_results,
+            method_eval_status=method_eval_status,
         )
-
-        # endpoint
-        endpoint = setting.get("endpoint", "")
-
-        conditions.append("spec.authenticationMethods[*].customSettings.endpoint")
-
-        if not endpoint:
-            endpoint_display = f"Endpoint {colorize_string(color='red', value='not found')}."
-            method_eval_status = CheckTaskStatus.error.value
-        elif not endpoint.lower().startswith("https://"):
-            endpoint_display = f"Endpoint: {colorize_string(color='red', value='Invalid')} endpoint format {{{colorize_string(endpoint)}}}."
-            method_eval_status = CheckTaskStatus.error.value
-        else:
-            endpoint_display = (
-                f"Endpoint: {{{colorize_string(endpoint)}}} {colorize_string(color='green', value='detected')}."
-            )
-
-        sub_check_results.append(
-            CheckResult(
-                display=Padding(endpoint_display, (0, 0, 0, 20)),
-                eval_status=method_eval_status,
-            )
-        )
-
-        # auth
-        auth = setting.get("auth")
-
-        if auth:
-            # check x509
-            secret_ref = auth.get("x509", {}).get("secretRef")
-            secret_ref_value = {"spec.authenticationMethods[*].customSettings.auth.x509.secretRef": secret_ref}
-            validate_result = validate_ref(
-                namespace=namespace,
-                name=secret_ref,
-                ref_type=ValidationResourceType.secret,
-            )
-            secret_ref_display = "X.509 Client Certificate Secret reference: {}"
-            secret_ref_status = CheckTaskStatus.success.value if validate_result[1] else CheckTaskStatus.error.value
-
-            sub_check_results.append(
-                CheckResult(
-                    display=Padding(secret_ref_display.format(validate_result[0]), (0, 0, 0, 20)),
-                    eval_status=secret_ref_status,
-                )
-            )
-
-            conditions.append("valid(spec.authenticationMethods[*].customSettings.auth.x509.secretRef)")
-
-            # add eval separately for secret ref
-            check_manager.add_target_eval(
-                target_name=target_authentications,
-                namespace=namespace,
-                status=secret_ref_status,
-                value=secret_ref_value,
-                resource_name=f"secret/{secret_ref}",
-            )
-
-        # caCertConfigMap
-        ca_cert_config_map = setting.get("caCertConfigMap")
-
-        if ca_cert_config_map:
-            ca_cert_config_map_value = {
-                "spec.authenticationMethods[*].customSettings.caCertConfigMap": ca_cert_config_map
-            }
-            validate_result = validate_ref(
-                namespace=namespace,
-                name=ca_cert_config_map,
-                ref_type=ValidationResourceType.configmap,
-            )
-
-            ca_cert_config_map_display = "CA Certificate Config Map: {}"
-            ca_cert_config_map_status = (
-                CheckTaskStatus.success.value if validate_result[1] else CheckTaskStatus.error.value
-            )
-
-            sub_check_results.append(
-                CheckResult(
-                    display=Padding(ca_cert_config_map_display.format(validate_result[0]), (0, 0, 0, 20)),
-                    eval_status=ca_cert_config_map_status,
-                )
-            )
-
-            conditions.append("valid(spec.authenticationMethods[*].customSettings.caCertConfigMap)")
-
-            check_manager.add_target_eval(
-                target_name=target_authentications,
-                namespace=namespace,
-                status=ca_cert_config_map_status,
-                value=ca_cert_config_map_value,
-                resource_name=f"configmap/{ca_cert_config_map}",
-            )
-
-        # headers
-        headers = setting.get("headers", {}).get("additionalProperties")
-
-        if headers:
-            sub_check_results.append(
-                CheckResult(
-                    display=Padding(f"HTTP Headers: {colorize_string(headers)}", (0, 0, 0, 20)),
-                    eval_status=None,
-                ),
-            )
-
-        # display rest of the properties
     elif method_type.lower() == "x509":
         conditions.append("spec.authenticationMethods[*].x509Settings")
         setting = method.get("x509Settings", {})
@@ -1428,7 +1278,7 @@ def _check_authentication_method(
                 attributes_display = f"Authorization Attributes {colorize_string(color='red', value='not found')}."
                 method_eval_status = CheckTaskStatus.error.value
             else:
-                attributes_display = f"Authorization Attributes: {colorize_string(color='green', value=attributes)}."
+                attributes_display = f"Authorization Attributes: {colorize_string(attributes)} {colorize_string(color='green', value='detected')}."
             sub_check_results.append(
                 CheckResult(
                     display=Padding(attributes_display, (0, 0, 0, 20)),
@@ -1443,7 +1293,9 @@ def _check_authentication_method(
                 subject_display = f"Subject {colorize_string(color='red', value='not found')}."
                 method_eval_status = CheckTaskStatus.error.value
             else:
-                subject_display = f"Subject: {colorize_string(color='green', value=subject)}."
+                subject_display = (
+                    f"Subject: {colorize_string(subject)} {colorize_string(color='green', value='detected')}."
+                )
             sub_check_results.append(
                 CheckResult(
                     display=Padding(subject_display, (0, 0, 0, 20)),
@@ -1458,20 +1310,23 @@ def _check_authentication_method(
             trusted_client_ca_cert_value = {
                 "spec.authenticationMethods[*].x509Settings.trustedClientCaCert": trusted_client_ca_cert
             }
-            validate_result = validate_ref(
+            is_valid = validate_ref(
                 namespace=namespace,
                 name=trusted_client_ca_cert,
                 ref_type=ValidationResourceType.configmap,
             )
 
+            if is_valid:
+                configmap_validate_text = f"[green]Valid[/green] {ValidationResourceType.configmap.value} reference {{[green]{trusted_client_ca_cert}[/green]}}."
+            else:
+                configmap_validate_text = f"[red]Invalid[/red] {ValidationResourceType.configmap.value} reference {{[red]{trusted_client_ca_cert}[/red]}}."
+
             trusted_client_ca_cert_display = "Trusted Client CA Cert: {}"
-            trusted_client_ca_cert_status = (
-                CheckTaskStatus.success.value if validate_result[1] else CheckTaskStatus.error.value
-            )
+            trusted_client_ca_cert_status = CheckTaskStatus.success.value if is_valid else CheckTaskStatus.error.value
 
             sub_check_results.append(
                 CheckResult(
-                    display=Padding(trusted_client_ca_cert_display.format(validate_result[0]), (0, 0, 0, 20)),
+                    display=Padding(trusted_client_ca_cert_display.format(configmap_validate_text), (0, 0, 0, 20)),
                     eval_status=trusted_client_ca_cert_status,
                 )
             )
@@ -1550,3 +1405,225 @@ def _check_authentication_method(
         value=method_eval_value,
         resource_name=resource_name,
     )
+
+
+def _evaluate_custom_authentication_method(
+    conditions: List[str],
+    method: dict,
+    method_type: str,
+    check_manager: CheckManager,
+    target_authentications: str,
+    namespace: str,
+    sub_check_results: List[CheckResult],
+    method_eval_status: str,
+):
+    conditions.append("spec.authenticationMethods[*].customSettings")
+    setting = method.get("customSettings", {})
+
+    if not setting:
+        method_color = "red"
+        method_eval_status = CheckTaskStatus.error.value
+        method_status = "not found"
+    else:
+        method_color = "green"
+        method_status = "detected"
+
+    method_display = (
+        f"- Custom Method: {{{colorize_string(method_type)}}} "
+        f"{colorize_string(color=method_color, value=method_status)}."
+    )
+    sub_check_results.append(
+        CheckResult(
+            display=Padding(method_display, (0, 0, 0, 16)),
+            eval_status=method_eval_status,
+        )
+    )
+
+    # endpoint
+    endpoint = setting.get("endpoint", "")
+
+    conditions.append("spec.authenticationMethods[*].customSettings.endpoint")
+
+    if not endpoint:
+        endpoint_display = f"Endpoint {colorize_string(color='red', value='not found')}."
+        method_eval_status = CheckTaskStatus.error.value
+    elif not endpoint.lower().startswith("https://"):
+        endpoint_display = f"Endpoint: {colorize_string(color='red', value='Invalid')} endpoint format {{{colorize_string(endpoint)}}}."
+        method_eval_status = CheckTaskStatus.error.value
+    else:
+        endpoint_display = (
+            f"Endpoint: {{{colorize_string(endpoint)}}} {colorize_string(color='green', value='detected')}."
+        )
+
+    sub_check_results.append(
+        CheckResult(
+            display=Padding(endpoint_display, (0, 0, 0, 20)),
+            eval_status=method_eval_status,
+        )
+    )
+
+    # auth
+    auth = setting.get("auth")
+
+    if auth:
+        # check x509
+        secret_ref = auth.get("x509", {}).get("secretRef")
+        secret_ref_value = {"spec.authenticationMethods[*].customSettings.auth.x509.secretRef": secret_ref}
+        is_valid = validate_ref(
+            namespace=namespace,
+            name=secret_ref,
+            ref_type=ValidationResourceType.secret,
+        )
+
+        if is_valid:
+            secret_validate_text = f"[green]Valid[/green] {ValidationResourceType.secret.value} reference {{[green]{secret_ref}[/green]}}."
+        else:
+            secret_validate_text = (
+                f"[red]Invalid[/red] {ValidationResourceType.secret.value} reference {{[red]{secret_ref}[/red]}}."
+            )
+
+        secret_ref_display = "X.509 Client Certificate Secret reference: {}"
+        secret_ref_status = CheckTaskStatus.success.value if is_valid else CheckTaskStatus.error.value
+
+        sub_check_results.append(
+            CheckResult(
+                display=Padding(secret_ref_display.format(secret_validate_text), (0, 0, 0, 20)),
+                eval_status=secret_ref_status,
+            )
+        )
+
+        conditions.append("valid(spec.authenticationMethods[*].customSettings.auth.x509.secretRef)")
+
+        # add eval separately for secret ref
+        check_manager.add_target_eval(
+            target_name=target_authentications,
+            namespace=namespace,
+            status=secret_ref_status,
+            value=secret_ref_value,
+            resource_name=f"secret/{secret_ref}",
+        )
+
+    # caCertConfigMap
+    ca_cert_config_map = setting.get("caCertConfigMap")
+
+    if ca_cert_config_map:
+        ca_cert_config_map_value = {"spec.authenticationMethods[*].customSettings.caCertConfigMap": ca_cert_config_map}
+        is_valid = validate_ref(
+            namespace=namespace,
+            name=ca_cert_config_map,
+            ref_type=ValidationResourceType.configmap,
+        )
+
+        if is_valid:
+            configmap_validate_text = f"[green]Valid[/green] {ValidationResourceType.configmap.value} reference {{[green]{ca_cert_config_map}[/green]}}."
+        else:
+            configmap_validate_text = f"[red]Invalid[/red] {ValidationResourceType.configmap.value} reference {{[red]{ca_cert_config_map}[/red]}}."
+
+        ca_cert_config_map_display = "CA Certificate Config Map: {}"
+        ca_cert_config_map_status = CheckTaskStatus.success.value if is_valid else CheckTaskStatus.error.value
+
+        sub_check_results.append(
+            CheckResult(
+                display=Padding(ca_cert_config_map_display.format(configmap_validate_text), (0, 0, 0, 20)),
+                eval_status=ca_cert_config_map_status,
+            )
+        )
+
+        conditions.append("valid(spec.authenticationMethods[*].customSettings.caCertConfigMap)")
+
+        check_manager.add_target_eval(
+            target_name=target_authentications,
+            namespace=namespace,
+            status=ca_cert_config_map_status,
+            value=ca_cert_config_map_value,
+            resource_name=f"configmap/{ca_cert_config_map}",
+        )
+
+    # headers
+    headers = setting.get("headers", {}).get("additionalProperties")
+
+    if headers:
+        sub_check_results.append(
+            CheckResult(
+                display=Padding(f"HTTP Headers: {colorize_string(headers)}", (0, 0, 0, 20)),
+                eval_status=None,
+            ),
+        )
+
+
+def _evaluate_broker_cardinality(
+    broker_cardinality: dict,
+    check_manager: CheckManager,
+    target_brokers: str,
+    namespace: str,
+    padding: int,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+) -> str:
+    check_condition_colored_text = colorize_string(">=1")
+    backend_cardinality_desc = f"- Expecting backend partitions {check_condition_colored_text}. "
+    backend_redundancy_desc = f"- Expecting backend redundancy factor {check_condition_colored_text}. "
+    backend_workers_desc = f"- Expecting backend workers {check_condition_colored_text}. "
+    frontend_cardinality_desc = f"- Expecting frontend replicas {check_condition_colored_text}. "
+
+    backend_chain = broker_cardinality.get("backendChain", {})
+    backend_partition_count: Optional[int] = backend_chain.get("partitions")
+    backend_redundancy: Optional[int] = backend_chain.get("redundancyFactor")
+    backend_workers: Optional[int] = backend_chain.get("workers")
+    frontend_replicas: Optional[int] = broker_cardinality.get("frontend", {}).get("replicas")
+    broker_eval_status = CheckTaskStatus.success.value
+
+    if backend_partition_count and backend_partition_count >= 1:
+        backend_color = "green"
+    else:
+        backend_color = "red"
+        broker_eval_status = CheckTaskStatus.error.value
+    backend_chain_count_colored = f"{colorize_string(color=backend_color, value=f'Actual {backend_partition_count}')}."
+
+    if backend_redundancy and backend_redundancy >= 1:
+        backend_redundancy_color = "green"
+    else:
+        backend_redundancy_color = "red"
+        broker_eval_status = CheckTaskStatus.error.value
+
+    backend_replicas_colored = (
+        f"{colorize_string(color=backend_redundancy_color, value=f'Actual {backend_redundancy}')}."
+    )
+
+    if backend_workers and backend_workers >= 1:
+        backend_workers_color = "green"
+    else:
+        backend_workers_color = "red"
+        broker_eval_status = CheckTaskStatus.error.value
+
+    backend_workers_colored = f"{colorize_string(color=backend_workers_color, value=f'Actual {backend_workers}')}."
+
+    if frontend_replicas and frontend_replicas >= 1:
+        frontend_replicas_color = "green"
+    else:
+        frontend_replicas_color = "red"
+        broker_eval_status = CheckTaskStatus.error.value
+
+    frontend_replicas_colored = (
+        f"{colorize_string(color=frontend_replicas_color, value=f'Actual {frontend_replicas}')}."
+    )
+
+    # show cardinality display on non-summary detail_levels
+    if detail_level != ResourceOutputDetailLevel.summary.value:
+        check_manager.add_display(
+            target_name=target_brokers,
+            namespace=namespace,
+            display=Padding("\nCardinality", (0, 0, 0, 12)),
+        )
+
+        for display in [
+            backend_cardinality_desc + backend_chain_count_colored,
+            backend_redundancy_desc + backend_replicas_colored,
+            backend_workers_desc + backend_workers_colored,
+            frontend_cardinality_desc + frontend_replicas_colored,
+        ]:
+            check_manager.add_display(
+                target_name=target_brokers,
+                namespace=namespace,
+                display=Padding(display, (0, 0, 0, padding + 4)),
+            )
+    return broker_eval_status

@@ -474,15 +474,26 @@ def process_custom_resource_status(
 
 def validate_ref(name: str, namespace: str, ref_type: ValidationResourceType) -> Tuple[str, bool]:
     ref_obj = None
-    text = ""
     if ref_type == ValidationResourceType.secret:
         ref_obj = get_namespaced_secret(secret_name=name, namespace=namespace)
     elif ref_type == ValidationResourceType.configmap:
         ref_obj = get_config_map(name=name, namespace=namespace)
-    is_valid = bool(ref_obj)
 
-    if is_valid:
-        text = f"[green]Valid[/green] {ref_type.value} reference {{[green]{name}[/green]}}."
-    else:
-        text = f"[red]Invalid[/red] {ref_type.value} reference {{[red]{name}[/red]}}."
-    return text, is_valid
+    return bool(ref_obj)
+
+
+def get_valid_references(
+    api: EdgeResourceApi, kind: Union[Enum, str], namespace: Optional[str] = None
+) -> Dict[str, Any]:
+    result = {}
+    custom_objects = api.get_resources(kind=kind, namespace=namespace)
+    if custom_objects:
+        objects: List[dict] = custom_objects.get("items", [])
+        for object in objects:
+            o: dict = object
+            metadata: dict = o.get("metadata", {})
+            name = metadata.get("name")
+            if name:
+                result[name] = True
+
+    return result

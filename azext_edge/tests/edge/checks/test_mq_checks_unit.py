@@ -533,7 +533,7 @@ def test_broker_listener_checks(
         return_value=service,
     )
     mocker.patch(
-        "azext_edge.edge.providers.check.mq._get_valid_references",
+        "azext_edge.edge.providers.check.mq.get_valid_references",
         return_value={"authn": True, "authz": True},
     )
 
@@ -846,7 +846,7 @@ def test_broker_authentication_checks(
         return_value={"items": [authentication]},
     )
     mocker.patch(
-        "azext_edge.edge.providers.check.mq._get_valid_references",
+        "azext_edge.edge.providers.check.mq.get_valid_references",
         return_value={"broker": True},
     )
 
@@ -964,7 +964,7 @@ def test_broker_authorization_checks(
         return_value={"items": [authorization]},
     )
     mocker.patch(
-        "azext_edge.edge.providers.check.mq._get_valid_references",
+        "azext_edge.edge.providers.check.mq.get_valid_references",
         return_value={"broker": True},
     )
 
