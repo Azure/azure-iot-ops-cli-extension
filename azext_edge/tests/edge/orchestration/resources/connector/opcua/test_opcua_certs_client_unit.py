@@ -234,15 +234,14 @@ def test_client_add(
             private_file_name = os.path.basename(private_file_name).replace(".pem", "")
             public_file_name = os.path.basename(public_file_name).replace(".der", "")
             if private_file_name != public_file_name:
-                assert "Public key file pubkey and private key file prikey must match" in str(e)
+                assert e.args[0] == "Public key file pubkey and private key file prikey must match."
                 return
         elif isinstance(e, ResourceNotFoundError):
             if not expected_resources_map["custom locations"]:
-                assert f"Secret sync is not enabled for the instance {instance_name}. "
-                "Please enable secret sync before adding certificate." in str(e)
+                assert "Please enable secret sync before adding certificate." in e.args[0]
                 return
             if not expected_resources_map["extension"]:
-                assert "IoT Operations extension not found." in str(e)
+                assert e.args[0] == "IoT Operations extension not found."
                 return
 
     if result:

@@ -279,6 +279,18 @@ def test_issuer_add(
             secret_name=secret_name,
         )
     except Exception:
+        if isinstance(result, ResourceNotFoundError):
+            assert result.args[0] == f"Secret sync is not enabled for the instance {instance_name}. "
+            "Please enable secret sync before adding certificate."
+            return
+        elif isinstance(result, InvalidArgumentValueError):
+            if not matched_names and file_name.endswith(".crl"):
+                assert result.args[0] == f"Cannot add .crl {file_name} without corresponding .crt or .der file."
+            else:
+                assert result.args[0] == "Cannot have duplicate targetKey in objectSecretMapping."
+            return
+
+    if result:
         if not issuer_list_spc:
             assert (
                 mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} "
@@ -292,18 +304,4 @@ def test_issuer_add(
                 "not found, creating new one..."
             )
             return
-
-        if isinstance(result, ResourceNotFoundError):
-            assert (
-                mocked_logger.error.call_args[0][0] == f"Secret sync is not enabled for the instance {instance_name}. "
-                "Please enable secret sync before adding certificate."
-            )
-            return
-        elif isinstance(result, InvalidArgumentValueError):
-            if not matched_names and file_name.endswith(".crl"):
-                assert result.args[0] == f"Cannot add .crl {file_name} without corresponding .crt or .der file."
-            else:
-                assert result.args[0] == "Cannot have duplicate targetKey in objectSecretMapping."
-
-    if result:
         assert result == expected_secret_sync

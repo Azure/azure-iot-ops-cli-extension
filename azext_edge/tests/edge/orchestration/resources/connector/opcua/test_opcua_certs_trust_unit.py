@@ -177,22 +177,26 @@ def test_trust_add(
             secret_name=secret_name,
         )
     except Exception as e:
+        if isinstance(e, InvalidArgumentValueError):
+            assert e.args[0] == "Cannot have duplicate targetKey in objectSecretMapping."
+        elif isinstance(e, ResourceNotFoundError):
+            if not expected_resources_map["resources"]:
+                assert "Please enable secret sync before adding certificate." in e.args[0]
+            else:
+                assert e.args[0] == f"Cannot add .crl {file_name} without corresponding .crt or .der file."
+
+    if result:
         if not trust_list_spc:
             assert (
                 mocked_logger.warning.call_args[0][0] == f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} "
                 "not found, creating new one..."
             )
+            return
 
         if not trust_list_secretsync:
             assert (
                 mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_TRUST_LIST_SECRET_SYNC_NAME} "
                 "not found, creating new one..."
             )
-
-        if isinstance(e, InvalidArgumentValueError):
-            assert e.args[0] == "Cannot have duplicate targetKey in objectSecretMapping."
-        elif isinstance(e, ResourceNotFoundError):
-            assert e.args[0] == f"Cannot add .crl {file_name} without corresponding .crt or .der file."
-
-    if result:
+            return
         assert result == expected_secret_sync
