@@ -14,6 +14,8 @@ from azure.cli.core.azclierror import CLIInternalError
 import pytest
 
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
+from azext_edge.edge.providers.orchestration.resource_map import IoTOperationsResource
+from azext_edge.tests.generators import generate_random_string
 
 logger = get_logger(__name__)
 
@@ -188,3 +190,17 @@ def sort_kubectl_items_by_namespace(
         if include_all:
             sorted_items["_all_"][name] = item
     return sorted_items
+
+
+def generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
+    resource_id = ""
+    for _ in range(segments):
+        resource_id = f"{resource_id}/{generate_random_string()}"
+
+    resource = IoTOperationsResource(
+        resource_id=resource_id,
+        display_name=resource_id.split("/")[-1],
+        api_version=generate_random_string(),
+    )
+
+    return resource

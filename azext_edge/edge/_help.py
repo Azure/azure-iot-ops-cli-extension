@@ -1309,6 +1309,125 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops connector"
+    ] = """
+        type: group
+        short-summary: Connector management.
+    """
+
+    helps[
+        "iot ops connector opcua"
+    ] = """
+        type: group
+        short-summary: OPC UA connector management.
+        long-summary: |
+          The connector for OPC UA enables your industrial OPC UA environment to input data into
+          your local workloads running on a Kubernetes cluster, and into your cloud workloads.
+          See the following resource for more info https://aka.ms/overview-connector-opcua-broker
+    """
+
+    helps[
+        "iot ops connector opcua trust"
+    ] = """
+        type: group
+        short-summary: Manage trusted certificates for the OPC UA Broker.
+        long-summary: |
+          The trusted certificate list contains the certificates of all the OPC UA servers that the
+          connector for OPC UA trusts. If the connector for OPC UA trusts a certificate authority,
+          it automatically trusts any server that has a valid application instance certificate signed
+          by the certificate authority.
+          For more info, see https://aka.ms/opcua-certificates
+    """
+
+    helps[
+        "iot ops connector opcua trust add"
+    ] = """
+        type: command
+        short-summary: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
+        long-summary: |
+            The certificate file extension must be .der or .crt. Azure resource secretproviderclass
+            'opc-ua-connector' and secretsync 'aio-opc-ua-broker-trust-list' will be created if not found.
+        examples:
+        - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
+          text: >
+            az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der"
+        - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list with custom secret name.
+          text: >
+            az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.crt" --secret custom-secret-name
+    """
+
+    helps[
+        "iot ops connector opcua issuer"
+    ] = """
+        type: group
+        short-summary: Manage issuer certificates for the OPC UA Broker.
+        long-summary: |
+          The issuer certificate list stores the certificate authority certificates that the connector
+          for OPC UA trusts. If user's OPC UA server's application instance certificate is signed by
+          an intermediate certificate authority, but user does not want to automatically trust all the
+          certificates issued by the certificate authority, an issuer certificate list can be used to
+          manage the trust relationship.
+          For more info, see https://aka.ms/opcua-certificates
+    """
+
+    helps[
+        "iot ops connector opcua issuer add"
+    ] = """
+        type: command
+        short-summary: Add an issuer certificate to the OPC UA Broker's issuer certificate list.
+        long-summary: |
+            The certificate file extension must be .der, .crt or .crl. When adding a .crl file, a .der
+            or .crt file with same file name must be added first. Azure resource secretproviderclass
+            'opc-ua-connector'and secretsync 'aio-opc-ua-broker-issuer-list' will be created if not found.
+        examples:
+        - name: Add an issuer certificate in the OPC UA Broker's issuer certificate list.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der"
+        - name: Add an issuer certificate with .crl extension to the OPC UA Broker's issuer certificate list with same
+                file name as the .der file mentioned above.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.crl"
+        - name: Add an issuer certificate to the OPC UA Broker's issuer certificate list with custom secret name.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der" --secret custom-secret-name
+    """
+
+    helps[
+        "iot ops connector opcua client"
+    ] = """
+        type: group
+        short-summary: Manage enterprise grade client application instance certificate for the OPC UA Broker.
+        long-summary: |
+          The connector for OPC UA makes use of a single OPC UA application instance certificate
+          for all the sessions it establishes to collect telemetry data from OPC UA servers.
+          For more info, see https://aka.ms/opcua-certificates
+    """
+
+    helps[
+        "iot ops connector opcua client add"
+    ] = """
+        type: command
+        short-summary: Add an enterprise grade client application instance certificate.
+        long-summary: |
+            The public key file extension must be .der and private key file extension
+            must be .pem. Please make sure to use same filename for public key and
+            private key file. Azure resource secretproviderclass 'opc-ua-connector'
+            and secretsync 'aio-opc-ua-broker-client-certificate' will be created
+            if not found.
+        examples:
+        - name: Add an client certificate.
+          text: >
+            az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
+            --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
+            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
+      """
+
+    helps[
         "iot ops schema version"
     ] = """
         type: group
