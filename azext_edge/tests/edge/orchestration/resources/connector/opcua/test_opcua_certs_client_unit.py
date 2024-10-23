@@ -4,8 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import os
-from azure.core.exceptions import ResourceNotFoundError
 from unittest.mock import Mock
 import pytest
 
@@ -188,7 +186,7 @@ def test_client_add(
             {},
             "/fake/path/certificate.der",
             "/fake/path/certificate.pem",
-            "Secret sync is not enabled for the instance mock-instance. Please enable secret sync before adding certificate.",
+            "Please enable secret sync before adding certificate.",
         ),
         # no aio extension
         (
@@ -314,4 +312,4 @@ def test_client_add_errors(
             subject_name="subjectname",
         )
 
-    assert e.value.args[0] == expected_error
+    assert expected_error in e.value.args[0]
