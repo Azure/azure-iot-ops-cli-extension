@@ -199,6 +199,8 @@ def load_iotops_arguments(self, _):
                         DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value,
                         MqResourceKinds.BROKER.value,
                         MqResourceKinds.BROKER_LISTENER.value,
+                        MqResourceKinds.BROKER_AUTHENTICATION.value,
+                        MqResourceKinds.BROKER_AUTHORIZATION.value,
                         OpcuaResourceKinds.ASSET_TYPE.value,
                         DataflowResourceKinds.DATAFLOW.value,
                         DataflowResourceKinds.DATAFLOWENDPOINT.value,

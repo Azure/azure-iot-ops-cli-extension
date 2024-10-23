@@ -8,21 +8,15 @@ from typing import Any, Dict
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
-from azext_edge.edge.providers.edge_api import (
-    MqResourceKinds, MQTT_BROKER_API_V1B1
-)
-from .helpers import (
-    assert_enumerate_resources,
-    assert_general_eval_custom_resources,
-    run_check_command
-)
+from azext_edge.edge.providers.edge_api import MqResourceKinds, MQTT_BROKER_API_V1B1
+from .helpers import assert_enumerate_resources, assert_general_eval_custom_resources, run_check_command
 from ....helpers import get_kubectl_custom_items
 
 logger = get_logger(__name__)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("resource_kind", [None, MqResourceKinds.BROKER.value, MqResourceKinds.BROKER_LISTENER.value])
+@pytest.mark.parametrize("resource_kind", MqResourceKinds.list() + [None])
 # TODO: figure out if name match should be a general test vs each service (minimize test runs)
 @pytest.mark.parametrize("resource_match", [None])
 def test_mq_check(init_setup, detail_level, resource_match, resource_kind):
@@ -31,7 +25,7 @@ def test_mq_check(init_setup, detail_level, resource_match, resource_kind):
         ops_service="broker",
         resource_api=MQTT_BROKER_API_V1B1,
         resource_kind=resource_kind,
-        resource_match=resource_match
+        resource_match=resource_match,
     )
 
     # overall api
@@ -45,19 +39,11 @@ def test_mq_check(init_setup, detail_level, resource_match, resource_kind):
     )
 
     custom_resources = get_kubectl_custom_items(
-        resource_api=MQTT_BROKER_API_V1B1,
-        resource_match=resource_match,
-        include_plural=True
+        resource_api=MQTT_BROKER_API_V1B1, resource_match=resource_match, include_plural=True
     )
-    assert_eval_broker(
-        post_deployment=post_deployment,
-        custom_resources=custom_resources,
-        resource_kind=resource_kind
-    )
+    assert_eval_broker(post_deployment=post_deployment, custom_resources=custom_resources, resource_kind=resource_kind)
     assert_eval_broker_listener(
-        post_deployment=post_deployment,
-        custom_resources=custom_resources,
-        resource_kind=resource_kind
+        post_deployment=post_deployment, custom_resources=custom_resources, resource_kind=resource_kind
     )
 
 
@@ -73,7 +59,7 @@ def assert_eval_broker(
         items=broker,
         description_name="MQTT Broker",
         resource_api=MQTT_BROKER_API_V1B1,
-        resource_kind_present=resource_kind_present
+        resource_kind_present=resource_kind_present,
     )
     # TODO: add more as --as-object gets fixed, such as success conditions
 

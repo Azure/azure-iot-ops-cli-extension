@@ -22,6 +22,8 @@ from .resource import (
     process_resource_properties,
     validate_one_of_conditions,
     process_custom_resource_status,
+    validate_ref,
+    get_valid_references,
 )
 
 __all__ = [
@@ -44,4 +46,6 @@ __all__ = [
     "process_resource_properties",
     "validate_one_of_conditions",
     "process_custom_resource_status",
+    "validate_ref",
+    "get_valid_references",
 ]
