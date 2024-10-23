@@ -115,7 +115,7 @@ def load_iotops_help():
             - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
 
-            For more information on cluster requirements, please check aka.ms/iot-ops-cluster-requirements
+            For more information on cluster requirements, please check https://aka.ms/iot-ops-cluster-requirements
 
         examples:
         - name: Basic usage. Checks overall IoT Operations health with summary output.
@@ -468,7 +468,7 @@ def load_iotops_help():
         short-summary: Bootstrap the Arc-enabled cluster for IoT Operations deployment.
         long-summary: |
                       An Arc-enabled cluster is required to deploy IoT Operations. See the following resource for
-                      more info aka.ms/aziotops-arcconnect.
+                      more info https://aka.ms/aziotops-arcconnect.
 
                       The init operation will do work in installing and configuring a foundation layer of edge
                       services necessary for IoT Operations deployment.
@@ -1332,10 +1332,11 @@ def load_iotops_help():
         type: group
         short-summary: Manage trusted certificates for the OPC UA Broker.
         long-summary: |
-          The trusted certificate list contains the certificates of all the OPC UA servers that the connector
-          for OPC UA trusts. If the connector for OPC UA trusts a certificate authority, it automatically trusts
-          any server that has a valid application instance certificate signed by the certificate authority.
-          See the following for more info aka.ms/overview-opcua-broker-certificates-management
+          The trusted certificate list contains the certificates of all the OPC UA servers that the
+          connector for OPC UA trusts. If the connector for OPC UA trusts a certificate authority,
+          it automatically trusts any server that has a valid application instance certificate signed
+          by the certificate authority.
+          For more info, see https://aka.ms/opcua-certificates
     """
 
     helps[
@@ -1362,11 +1363,12 @@ def load_iotops_help():
         type: group
         short-summary: Manage issuer certificates for the OPC UA Broker.
         long-summary: |
-          The issuer certificate list stores the certificate authority certificates that the connector for OPC UA trusts.
-          If user's OPC UA server's application instance certificate is signed by an intermediate certificate authority,
-          but user does not want to automatically trust all the certificates issued by the certificate authority, an issuer
-          certificate list can be used to manage the trust relationship.
-          See the following for more info aka.ms/overview-opcua-broker-certificates-management
+          The issuer certificate list stores the certificate authority certificates that the connector
+          for OPC UA trusts. If user's OPC UA server's application instance certificate is signed by
+          an intermediate certificate authority, but user does not want to automatically trust all the
+          certificates issued by the certificate authority, an issuer certificate list can be used to
+          manage the trust relationship.
+          For more info, see https://aka.ms/opcua-certificates
     """
 
     helps[
@@ -1401,7 +1403,7 @@ def load_iotops_help():
         long-summary: |
           The connector for OPC UA makes use of a single OPC UA application instance certificate
           for all the sessions it establishes to collect telemetry data from OPC UA servers.
-          See the following for more info aka.ms/overview-opcua-broker-certificates-management
+          For more info, see https://aka.ms/opcua-certificates
     """
 
     helps[
