@@ -481,8 +481,7 @@ class OpcUACerts(Queryable):
         with console.status(
             f"Updating IoT Operations extension to use new secret source {OPCUA_CLIENT_CERT_SECRET_SYNC_NAME}..."
         ):
-            poller = self.resource_map.connected_cluster.update_aio_extension(
+            return self.resource_map.connected_cluster.update_aio_extension(
                 extension_name=aio_extension["name"],
                 properties=properties,
             )
-            return wait_for_terminal_state(poller)
