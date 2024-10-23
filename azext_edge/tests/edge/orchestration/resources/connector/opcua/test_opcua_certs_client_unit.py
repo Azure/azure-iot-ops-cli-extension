@@ -35,30 +35,6 @@ from azext_edge.tests.helpers import generate_ops_resource
     "expected_resources_map, client_app_spc, client_app_secretsync,"
     "public_file_name, private_file_name, expected_secret_sync",
     [
-        # (
-        #     {
-        #         "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
-        #         "resource sync rules": [generate_ops_resource()],
-        #         "custom locations": [generate_ops_resource()],
-        #         "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
-        #         "meta": {
-        #             "expected_total": 4,
-        #             "resource_batches": 1,
-        #         },
-        #     },
-        #     get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
-        #     get_mock_secretsync_record(
-        #         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
-        #     ),
-        #     "/fake/path/certificate.der",
-        #     "/fake/path/certificate.pem",
-        #     get_mock_secretsync_record(
-        #         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-        #         resource_group_name="mock-rg",
-        #         objects="new-secret",
-        #     ),
-        # ),
-        # no opcua spc
         (
             {
                 "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
@@ -70,8 +46,10 @@ from azext_edge.tests.helpers import generate_ops_resource
                     "resource_batches": 1,
                 },
             },
-            {},
-            {},
+            get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+            ),
             "/fake/path/certificate.der",
             "/fake/path/certificate.pem",
             get_mock_secretsync_record(

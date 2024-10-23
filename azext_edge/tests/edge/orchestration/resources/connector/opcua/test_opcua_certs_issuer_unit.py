@@ -143,7 +143,7 @@ from azext_edge.tests.helpers import generate_ops_resource
                     "resource_batches": 1,
                 },
             },
-            {},
+            get_mock_spc_record(spc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
             {},
             "/fake/path/certificate.der",
             "new-secret",
