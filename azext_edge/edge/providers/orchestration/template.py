@@ -56,7 +56,7 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "16041392394653918543"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "12017477435115453809"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -215,13 +215,13 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "VERSIONS": {
                 "platform": "0.7.6",
                 "secretStore": "0.6.7",
-                "containerStorage": "2.2.0",
+                "containerStorage": "2.2.1",
                 "openServiceMesh": "1.2.10",
             },
             "TRAINS": {
                 "platform": "preview",
                 "secretStore": "preview",
-                "containerStorage": "preview",
+                "containerStorage": "stable",
                 "openServiceMesh": "stable",
             },
             "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arccontainerstorage-storage-pool')]",
@@ -358,7 +358,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "12252580446687418151"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "12344544595454159338"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -530,7 +530,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "0.8.23"},
+            "VERSIONS": {"iotOperations": "0.8.25"},
             "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
