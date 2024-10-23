@@ -16,6 +16,7 @@ import yaml
 
 from azext_edge.edge.providers.orchestration.common import CUSTOM_LOCATIONS_API_VERSION
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
+from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
 from azext_edge.edge.util.file_operations import read_file_content, validate_file_extension
 from azext_edge.edge.util.queryable import Queryable
 from azext_edge.edge.util.az_client import (
@@ -462,8 +463,8 @@ class OpcUACerts(Queryable):
         application_uri: str,
     ):
         # get the opcua extension
-        extensions = self.resource_map.connected_cluster.get_extensions_by_type("microsoft.iotoperations")
-        aio_extension = extensions.get("microsoft.iotoperations")
+        extensions = self.resource_map.connected_cluster.get_extensions_by_type(IOT_OPS_EXTENSION_TYPE)
+        aio_extension = extensions.get(IOT_OPS_EXTENSION_TYPE)
         if not aio_extension:
             raise ResourceNotFoundError("IoT Operations extension not found.")
 

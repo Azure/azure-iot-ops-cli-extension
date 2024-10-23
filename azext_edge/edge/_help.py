@@ -1323,7 +1323,7 @@ def load_iotops_help():
         long-summary: |
           The connector for OPC UA enables your industrial OPC UA environment to input data into
           your local workloads running on a Kubernetes cluster, and into your cloud workloads.
-          See the following resource for more info aka.ms/overview-connector-opcua-broker
+          See the following resource for more info https://aka.ms/overview-connector-opcua-broker
     """
 
     helps[
