@@ -340,10 +340,10 @@ class OpcUACerts(Queryable):
                     "Do you want to overwrite the secret name?",
                 )
 
-                if not overwrite_secret:
-                    return new_secret_name
+                if overwrite_secret:
+                    new_secret_name = Prompt.ask("Please enter the new secret name")
 
-                return Prompt.ask("Please enter the new secret name")
+                return new_secret_name
 
         return new_secret_name
 
