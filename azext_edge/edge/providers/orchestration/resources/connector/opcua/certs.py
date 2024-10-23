@@ -14,12 +14,12 @@ from knack.log import get_logger
 from rich.console import Console
 import yaml
 
-from azext_edge.edge.providers.orchestration.common import CUSTOM_LOCATIONS_API_VERSION
-from azext_edge.edge.providers.orchestration.resources.instances import Instances
-from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
-from azext_edge.edge.util.file_operations import read_file_content, validate_file_extension
-from azext_edge.edge.util.queryable import Queryable
-from azext_edge.edge.util.az_client import (
+from ....common import CUSTOM_LOCATIONS_API_VERSION
+from ...instances import Instances
+from ....work import IOT_OPS_EXTENSION_TYPE
+from ......util.file_operations import read_file_content, validate_file_extension
+from ......util.queryable import Queryable
+from ......util.az_client import (
     parse_resource_id,
     get_keyvault_client,
     get_ssc_mgmt_client,

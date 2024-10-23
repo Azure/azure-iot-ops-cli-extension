@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import Optional
-from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OpcUACerts
+from .providers.orchestration.resources.connector.opcua.certs import OpcUACerts
 
 
 def add_connector_opcua_trust(
