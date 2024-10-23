@@ -149,12 +149,13 @@ class DeletionManager:
             aio_ext_obj = self.resource_map.connected_cluster.get_extensions_by_type(IOT_OPS_EXTENSION_TYPE).get(
                 IOT_OPS_EXTENSION_TYPE, {}
             )
-            aio_ext_id: str = aio_ext_obj.get("id", "")
-            aio_ext = next(
-                (ext for ext in self.resource_map.extensions if ext.resource_id.lower() == aio_ext_id.lower()), None
-            )
-            if aio_ext:
-                todo_extensions.append(aio_ext)
+            if aio_ext_obj:
+                aio_ext_id: str = aio_ext_obj.get("id", "")
+                aio_ext = next(
+                    (ext for ext in self.resource_map.extensions if ext.resource_id.lower() == aio_ext_id.lower()), None
+                )
+                if aio_ext:
+                    todo_extensions.append(aio_ext)
         todo_custom_locations = self.resource_map.custom_locations
         todo_resource_sync_rules = []
         todo_resources = []
