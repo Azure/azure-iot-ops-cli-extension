@@ -1345,7 +1345,8 @@ def load_iotops_help():
         type: command
         short-summary: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
         long-summary: |
-            The certificate file extension must be .der or .crt.
+            The certificate file extension must be .der or .crt. Azure resource secretproviderclass
+            'opc-ua-connector' and secretsync 'aio-opc-ua-broker-trust-list' will be created if not found.
         examples:
         - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
           text: >
@@ -1378,7 +1379,8 @@ def load_iotops_help():
         short-summary: Add an issuer certificate to the OPC UA Broker's issuer certificate list.
         long-summary: |
             The certificate file extension must be .der, .crt or .crl. When adding a .crl file, a .der or .crt file with
-            same file name must be added first.
+            same file name must be added first. Azure resource secretproviderclass 'opc-ua-connector'and secretsync
+            'aio-opc-ua-broker-issuer-list' will be created if not found.
         examples:
         - name: Add an issuer certificate in the OPC UA Broker's issuer certificate list.
           text: >
@@ -1413,7 +1415,8 @@ def load_iotops_help():
         short-summary: Add an enterprise grade client application instance certificate.
         long-summary: |
             The public key file extension must be .der and private key file extension must be .pem. Please
-            make sure to use same filename for public key and private key file.
+            make sure to use same filename for public key and private key file. Azure resource secretproviderclass
+            'opc-ua-connector' and secretsync 'aio-opc-ua-broker-client-certificate' will be created if not found.
         examples:
         - name: Add an client certificate.
           text: >
