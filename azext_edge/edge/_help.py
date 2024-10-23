@@ -562,6 +562,8 @@ def load_iotops_help():
         long-summary: Optionally the command can output a tree structure of associated resources representing
           the IoT Operations deployment against the backing cluster.
 
+          If this command fails, please use `az iot ops upgrade` to upgrade your instance to the latest version before continuing.
+
         examples:
         - name: Basic usage to show an instance.
           text: >
@@ -595,7 +597,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update an IoT Operations instance.
-        long-summary: Currently instance tags and description can be updated.
+        long-summary: Currently instance tags and description can be updated. If you want to upgrade your instance to a newer version, please use `az iot ops upgrade` instead.
 
         examples:
         - name: Update instance tags. This is equivalent to a replace.
@@ -607,6 +609,30 @@ def load_iotops_help():
         - name: Update the instance description.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
+    """
+
+    helps[
+        "iot ops upgrade"
+    ] = """
+        type: command
+        short-summary: Upgrade an IoT Operations instance to the latest version.
+        long-summary: |
+                      WARNING: This command may fail and require you to delete and re-create your cluster and instance.
+
+                      Upgrade an IoT Operations instance, including updating the extensions to the latest versions.
+                      Use this command if `az iot ops show` or similiar commands are failing.
+
+                      Schema registry resource Id is an optional parameter and may be required in specific scenarios.
+        examples:
+        - name: Upgrade the instance with minimal inputs.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup
+        - name: Skip the conformation prompt during instance upgrade.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup -y
+        - name: Upgrade the instance and specify the schema registry resource Id.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
     """
 
     helps[
