@@ -195,12 +195,12 @@ def test_trust_add_error(
     mocked_cmd,
     mocked_logger: Mock,
     mocked_sleep: Mock,
-    expected_resources_map,
-    trust_list_spc,
-    trust_list_secretsync,
-    file_name,
-    secret_name,
-    expected_error,
+    expected_resources_map: dict,
+    trust_list_spc: dict,
+    trust_list_secretsync: dict,
+    file_name: str,
+    secret_name: str,
+    expected_error: str,
     mocked_responses: responses,
 ):
     file_content = b"\x00\x01\x02\x03"

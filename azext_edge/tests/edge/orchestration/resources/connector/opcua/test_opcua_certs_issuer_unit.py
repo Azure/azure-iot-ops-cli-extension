@@ -294,12 +294,12 @@ def test_issuer_add_errors(
     mocked_cmd,
     mocked_logger: Mock,
     mocked_sleep: Mock,
-    expected_resources_map,
-    issuer_list_spc,
-    issuer_list_secretsync,
-    file_name,
-    secret_name,
-    expected_error,
+    expected_resources_map: dict,
+    issuer_list_spc: dict,
+    issuer_list_secretsync: dict,
+    file_name: str,
+    secret_name: str,
+    expected_error: str,
     mocked_responses: responses,
 ):
     file_content = b"\x00\x01\x02\x03"
