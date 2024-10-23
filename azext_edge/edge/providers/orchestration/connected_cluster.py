@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List, Optional, Union, Dict
-
 from ...util.resource_graph import ResourceGraph
 
 
