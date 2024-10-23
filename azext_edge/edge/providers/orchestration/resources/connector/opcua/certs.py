@@ -132,7 +132,7 @@ class OpcUACerts(Queryable):
         secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
 
         # get cert name by removing extension
-        cert_name = file_name.replace(f"{cert_extension}", "")
+        cert_name = os.path.splitext(file_name)[0]
 
         try:
             opcua_secret_sync = self.ssc_mgmt_client.secret_syncs.get(
@@ -143,6 +143,7 @@ class OpcUACerts(Queryable):
             opcua_secret_sync = {}
 
         if cert_extension == ".crl":
+            matched_names = []
             if opcua_secret_sync:
                 secret_mapping = opcua_secret_sync.get("properties", {}).get("objectSecretMapping", [])
                 possible_file_names = [f"{cert_name}.crt", f"{cert_name}.der"]
