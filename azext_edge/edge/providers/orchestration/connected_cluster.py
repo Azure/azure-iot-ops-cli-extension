@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List, Optional, Union, Dict
-
 from ...util.resource_graph import ResourceGraph
 
 
@@ -141,12 +140,12 @@ class ConnectedCluster:
         return self._process_query_result(result)
 
     def update_aio_extension(self, extension_name: str, properties: dict) -> dict:
-        patch_extension = {"properties": properties}
-        return self.clusters.extensions.update(
+        update_payload = {"properties": properties}
+        return self.clusters.extensions.update_cluster_extension(
             resource_group_name=self.resource_group_name,
             cluster_name=self.cluster_name,
             extension_name=extension_name,
-            patch_extension=patch_extension,
+            update_payload=update_payload,
         )
 
     def _process_query_result(self, result: dict, first: bool = False) -> Optional[Union[dict, List[dict]]]:

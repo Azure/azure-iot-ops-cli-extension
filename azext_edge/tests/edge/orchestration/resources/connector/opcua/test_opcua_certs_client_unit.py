@@ -63,7 +63,7 @@ def test_client_add(
     mocked_cmd,
     mocked_sleep: Mock,
     mocked_logger: Mock,
-    expected_resources_map: dict[str, list[dict]],
+    expected_resources_map: dict,
     client_app_spc: dict,
     client_app_secretsync: dict,
     public_file_name: str,

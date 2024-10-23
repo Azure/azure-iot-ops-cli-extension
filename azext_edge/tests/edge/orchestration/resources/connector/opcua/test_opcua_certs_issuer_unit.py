@@ -89,7 +89,7 @@ def test_issuer_add(
     mocked_cmd,
     mocked_logger: Mock,
     mocked_sleep: Mock,
-    expected_resources_map: dict[str, list[dict]],
+    expected_resources_map: dict,
     issuer_list_spc: dict,
     issuer_list_secretsync: dict,
     file_name: str,

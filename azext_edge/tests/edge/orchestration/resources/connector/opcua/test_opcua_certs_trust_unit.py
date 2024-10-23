@@ -58,7 +58,7 @@ def test_trust_add(
     mocked_cmd,
     mocked_logger: Mock,
     mocked_sleep: Mock,
-    expected_resources_map: dict[str, list[dict]],
+    expected_resources_map: dict,
     trust_list_spc: dict,
     trust_list_secretsync: dict,
     file_name: str,
