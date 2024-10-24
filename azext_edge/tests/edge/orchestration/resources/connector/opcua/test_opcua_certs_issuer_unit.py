@@ -287,6 +287,28 @@ def test_issuer_add(
             "new-secret",
             "Cannot have duplicate targetKey in objectSecretMapping.",
         ),
+        # secret existed
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resource sync rules": [generate_ops_resource()],
+                "custom locations": [generate_ops_resource()],
+                "extensions": [generate_ops_resource()],
+                "meta": {
+                    "expected_total": 4,
+                    "resource_batches": 1,
+                },
+            },
+            get_mock_spc_record(spc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+            ),
+            "/fake/path/certificate.der",
+            "mock-secret",
+            "Secret with name mock-secret already exists in keyvault mock-keyvault. "
+            "Please provide a different name via --secret.",
+        ),
     ],
 )
 def test_issuer_add_errors(
@@ -352,44 +374,45 @@ def test_issuer_add_errors(
                 content_type="application/json",
             )
 
-            # set secret
-            mocked_responses.add(
-                method=responses.PUT,
-                url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name=secret_name),
-                json={},
-                status=200,
-                content_type="application/json",
-            )
-
-            # get opcua spc
-            mocked_responses.add(
-                method=responses.GET,
-                url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-                json=issuer_list_spc,
-                status=200,
-                content_type="application/json",
-            )
-
-            # set opcua spc
-            mocked_responses.add(
-                method=responses.PUT,
-                url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-                json={},
-                status=200,
-                content_type="application/json",
-            )
-
-            if not file_name.endswith("der"):
-                # set opcua secretsync
+            if secret_name != "mock-secret":
+                # set secret
                 mocked_responses.add(
                     method=responses.PUT,
-                    url=get_secretsync_endpoint(
-                        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
-                    ),
+                    url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name=secret_name),
                     json={},
                     status=200,
                     content_type="application/json",
                 )
+
+                # get opcua spc
+                mocked_responses.add(
+                    method=responses.GET,
+                    url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+                    json=issuer_list_spc,
+                    status=200,
+                    content_type="application/json",
+                )
+
+                # set opcua spc
+                mocked_responses.add(
+                    method=responses.PUT,
+                    url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+                    json={},
+                    status=200,
+                    content_type="application/json",
+                )
+
+                if not file_name.endswith("der"):
+                    # set opcua secretsync
+                    mocked_responses.add(
+                        method=responses.PUT,
+                        url=get_secretsync_endpoint(
+                            secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
+                        ),
+                        json={},
+                        status=200,
+                        content_type="application/json",
+                    )
 
     with pytest.raises(Exception) as e:
         add_connector_opcua_issuer(

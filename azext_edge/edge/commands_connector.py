@@ -46,6 +46,8 @@ def add_connector_opcua_client(
     private_key_file: str,
     subject_name: str,
     application_uri: str,
+    public_key_secret_name: Optional[str] = None,
+    private_key_secret_name: Optional[str] = None,
 ) -> dict:
     return OpcUACerts(cmd).client_add(
         instance_name=instance_name,
@@ -54,4 +56,6 @@ def add_connector_opcua_client(
         private_key_file=private_key_file,
         subject_name=subject_name,
         application_uri=application_uri,
+        public_key_secret_name=public_key_secret_name,
+        private_key_secret_name=private_key_secret_name,
     )

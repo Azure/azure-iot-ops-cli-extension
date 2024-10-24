@@ -1425,6 +1425,17 @@ def load_iotops_help():
             az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
             --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
             --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
+        - name: Add an client certificate with custom public and private key secret name.
+          text: >
+            az iot ops connector opcua client add
+            --instance instance
+            --resource-group instanceresourcegroup
+            --public-key-file "newopc.der"
+            --private-key-file "newopc.pem"
+            --public-key-secret public-secret-name
+            --private-key-secret private-secret-name
+            --subject-name "aio-opc-opcuabroker"
+            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
       """
 
     helps[

@@ -131,41 +131,42 @@ def setup_mock_common_responses(
         content_type="application/json",
     )
 
-    # set secret
-    mocked_responses.add(
-        method=responses.PUT,
-        url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name=secret_name),
-        json={},
-        status=200,
-        content_type="application/json",
-    )
+    if secret_name != "mock-secret":
+        # set secret
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name=secret_name),
+            json={},
+            status=200,
+            content_type="application/json",
+        )
 
-    # get opcua spc
-    mocked_responses.add(
-        method=responses.GET,
-        url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-        json=spc,
-        status=200,
-        content_type="application/json",
-    )
+        # get opcua spc
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+            json=spc,
+            status=200,
+            content_type="application/json",
+        )
 
-    # set opcua spc
-    mocked_responses.add(
-        method=responses.PUT,
-        url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-        json={},
-        status=200,
-        content_type="application/json",
-    )
+        # set opcua spc
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+            json={},
+            status=200,
+            content_type="application/json",
+        )
 
-    # get opcua secretsync
-    mocked_responses.add(
-        method=responses.GET,
-        url=get_secretsync_endpoint(secretsync_name=opcua_secretsync_name, resource_group_name=rg_name),
-        json=secretsync,
-        status=200,
-        content_type="application/json",
-    )
+        # get opcua secretsync
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_secretsync_endpoint(secretsync_name=opcua_secretsync_name, resource_group_name=rg_name),
+            json=secretsync,
+            status=200,
+            content_type="application/json",
+        )
 
 
 def assemble_resource_map_mock(

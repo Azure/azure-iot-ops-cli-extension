@@ -161,6 +161,28 @@ def test_trust_add(
             None,
             "Please enable secret sync before adding certificate.",
         ),
+        # secret existed
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resource sync rules": [generate_ops_resource()],
+                "custom locations": [generate_ops_resource()],
+                "extensions": [generate_ops_resource()],
+                "meta": {
+                    "expected_total": 4,
+                    "resource_batches": 1,
+                },
+            },
+            get_mock_spc_record(spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+            ),
+            "/fake/path/certificate.der",
+            "mock-secret",
+            "Secret with name mock-secret already exists in keyvault mock-keyvault. "
+            "Please provide a different name via --secret.",
+        ),
         # duplicate target key
         (
             {
