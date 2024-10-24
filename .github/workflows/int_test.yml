@@ -228,8 +228,12 @@ jobs:
       - name: "Containerized tests"
         if: ${{ matrix.feature == 'default' && inputs.use-container }}
         env:
-          azext_edge_rg: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_cluster: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_skip_init: true  # skip init tests in container
+          azext_edge_init_redeployment: false  # ensure no redeployment in container
+          AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
         run: |
           # volume mounts
           azure_dir=$(realpath ~/.azure)
@@ -239,9 +243,12 @@ jobs:
 
           # env vars
           envVars=()
-          envVars+=("-e" "azext_edge_cluster=$azext_edge_rg")
-          envVars+=("-e" "azext_edge_rg=$azext_edge_cluster")
           envVars+=("-e" "azext_edge_skip_init=$azext_edge_skip_init")
+          envVars+-("-e" "azext_edge_init_redeployment=$azext_edge_init_redeployment")
+          envVars+-("-e" "AIO_CLI_INIT_PREFLIGHT_DISABLED=$AIO_CLI_INIT_PREFLIGHT_DISABLED")
+          envVars+-("-e" "azext_edge_rg=$azext_edge_rg")
+          envVars+-("-e" "azext_edge_cluster=$azext_edge_cluster")
+          envVars+-("-e" "azext_edge_instance=$azext_edge_instance")
           envVars+=("-e" "KUBECONFIG=$kubeconfig_mount")
 
           # Run tests
