@@ -1332,6 +1332,18 @@ def load_iotops_arguments(self, _):
             options_list=["--application-uri", "--au"],
             help="The application instance URI embedded in the application instance.",
         )
+        context.argument(
+            "public_key_secret_name",
+            options_list=["--public-key-secret", "--pks"],
+            help="Public key secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
+        )
+        context.argument(
+            "private_key_secret_name",
+            options_list=["--private-key-secret", "--prks"],
+            help="Private key secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
+        )
 
     with self.argument_context("iot ops schema version") as context:
         context.argument(

@@ -71,7 +71,7 @@ class OpcUACerts(Queryable):
         secret_name = secret_name if secret_name else file_name.replace(".", "-")
 
         # iterate over secrets to check if secret with same name exists
-        secret_name = self._check_and_update_secret_name(secrets, secret_name, spc_keyvault_name)
+        secret_name = self._check_secret_name(secrets, secret_name, spc_keyvault_name, "secret")
         self._upload_to_key_vault(secret_name, file, cert_extension)
 
         # check if there is a spc called "opc-ua-connector", if not create one
@@ -160,7 +160,7 @@ class OpcUACerts(Queryable):
         secret_name = secret_name if secret_name else file_name.replace(".", "-")
 
         # iterate over secrets to check if secret with same name exists
-        secret_name = self._check_and_update_secret_name(secrets, secret_name, spc_keyvault_name)
+        secret_name = self._check_secret_name(secrets, secret_name, spc_keyvault_name, "secret")
         self._upload_to_key_vault(secret_name, file, cert_extension)
 
         # check if there is a spc called "opc-ua-connector", if not create one
@@ -197,6 +197,8 @@ class OpcUACerts(Queryable):
         private_key_file: str,
         subject_name: str,
         application_uri: str,
+        public_key_secret_name: Optional[str] = None,
+        private_key_secret_name: Optional[str] = None,
     ) -> dict:
         # inform user if the provided cert was issued by a CA, the CA cert must be added to the issuers list.
         logger.warning("Please ensure the certificate must be added to the issuers list if it was issued by a CA. ")
@@ -242,11 +244,17 @@ class OpcUACerts(Queryable):
             file_name = os.path.basename(file)
             file_name_info = os.path.splitext(file_name)
             cert_extension = file_name_info[1].replace(".", "")
-            cert_name = file_name_info[0].replace(".", "-")
-            secret_name = f"{cert_name}-{cert_extension}"
+            secret_name = f"{file_name_info[0]}-{cert_extension}"
 
             # iterate over secrets to check if secret with same name exists
-            secret_name = self._check_and_update_secret_name(secrets, secret_name, spc_keyvault_name)
+            if file == public_key_file:
+                flag = "public-key-secret"
+                secret_name = public_key_secret_name if public_key_secret_name else secret_name
+            else:
+                flag = "private-key-secret"
+                secret_name = private_key_secret_name if private_key_secret_name else secret_name
+            secret_name = secret_name.replace(".", "-")
+            secret_name = self._check_secret_name(secrets, secret_name, spc_keyvault_name, flag)
             self._upload_to_key_vault(secret_name, file, cert_extension)
             secrets_to_add.append((secret_name, file_name))
 
@@ -330,22 +338,15 @@ class OpcUACerts(Queryable):
 
         return secretsync_spc
 
-    def _check_and_update_secret_name(self, secrets: PageIterator, secret_name: str, spc_keyvault_name: str) -> str:
-        from rich.prompt import Confirm, Prompt
+    def _check_secret_name(self, secrets: PageIterator, secret_name: str, spc_keyvault_name: str, flag: str) -> str:
 
         new_secret_name = secret_name
         for secret in secrets:
             if secret.id.endswith(secret_name):
-                # Prompt user to decide on overwriting the secret
-                overwrite_secret = Confirm.ask(
+                raise InvalidArgumentValueError(
                     f"Secret with name {secret_name} already exists in keyvault {spc_keyvault_name}. "
-                    "Do you want to overwrite the secret name?",
+                    f"Please provide a different name via --{flag}."
                 )
-
-                if overwrite_secret:
-                    new_secret_name = Prompt.ask("Please enter the new secret name")
-
-                return new_secret_name
 
         return new_secret_name
 
