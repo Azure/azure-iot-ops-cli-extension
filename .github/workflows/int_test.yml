@@ -249,11 +249,11 @@ jobs:
           # env vars
           envVars=()
           envVars+=("-e" "azext_edge_skip_init=$azext_edge_skip_init")
-          envVars+-("-e" "azext_edge_init_redeployment=$azext_edge_init_redeployment")
-          envVars+-("-e" "AIO_CLI_INIT_PREFLIGHT_DISABLED=$AIO_CLI_INIT_PREFLIGHT_DISABLED")
-          envVars+-("-e" "azext_edge_rg=$azext_edge_rg")
-          envVars+-("-e" "azext_edge_cluster=$azext_edge_cluster")
-          envVars+-("-e" "azext_edge_instance=$azext_edge_instance")
+          envVars+=("-e" "azext_edge_init_redeployment=$azext_edge_init_redeployment")
+          envVars+=("-e" "AIO_CLI_INIT_PREFLIGHT_DISABLED=$AIO_CLI_INIT_PREFLIGHT_DISABLED")
+          envVars+=("-e" "azext_edge_rg=$azext_edge_rg")
+          envVars+=("-e" "azext_edge_cluster=$azext_edge_cluster")
+          envVars+=("-e" "azext_edge_instance=$azext_edge_instance")
           envVars+=("-e" "KUBECONFIG=$kubeconfig_mount")
 
           # Run tests
