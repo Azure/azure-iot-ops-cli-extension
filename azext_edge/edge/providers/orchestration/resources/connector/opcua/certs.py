@@ -246,13 +246,18 @@ class OpcUACerts(Queryable):
             cert_extension = file_name_info[1].replace(".", "")
             secret_name = f"{file_name_info[0]}-{cert_extension}"
 
-            # iterate over secrets to check if secret with same name exists
-            if file == public_key_file:
-                flag = "public-key-secret"
-                secret_name = public_key_secret_name if public_key_secret_name else secret_name
-            else:
-                flag = "private-key-secret"
-                secret_name = private_key_secret_name if private_key_secret_name else secret_name
+            file_type_map = {
+                public_key_file: (
+                    "public-key-secret", public_key_secret_name if public_key_secret_name else secret_name
+                ),
+                private_key_file: (
+                    "private-key-secret", private_key_secret_name if private_key_secret_name else secret_name
+                )
+            }
+
+            # Iterate over secrets to check if a secret with the same name exists
+            if file in file_type_map:
+                flag, secret_name = file_type_map[file]
             secret_name = secret_name.replace(".", "-")
             secret_name = self._check_secret_name(secrets, secret_name, spc_keyvault_name, flag)
             self._upload_to_key_vault(secret_name, file, cert_extension)
