@@ -30,6 +30,8 @@ logger = get_logger(__name__)
 
 console = Console()
 
+SPC_RESOURCE_TYPE = "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses"
+SECRET_SYNC_RESOURCE_TYPE = "microsoft.secretsynccontroller/secretsyncs"
 OPCUA_SPC_NAME = "opc-ua-connector"
 OPCUA_TRUST_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-trust-list"
 OPCUA_ISSUER_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-issuer-list"
@@ -84,7 +86,7 @@ class OpcUACerts(Queryable):
         #     opcua_spc = {}
         opcua_spc = self._find_resource_from_cl_resources(
             cl_resources=cl_resources,
-            resource_type="microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses",
+            resource_type=SPC_RESOURCE_TYPE,
             resource_name=OPCUA_SPC_NAME,
         )
 
@@ -107,7 +109,7 @@ class OpcUACerts(Queryable):
         #     opcua_secret_sync = {}
         opcua_secret_sync = self._find_resource_from_cl_resources(
             cl_resources=cl_resources,
-            resource_type="microsoft.secretsynccontroller/secretsyncs",
+            resource_type=SECRET_SYNC_RESOURCE_TYPE,
             resource_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
         )
 
@@ -154,7 +156,7 @@ class OpcUACerts(Queryable):
         #     opcua_secret_sync = {}
         opcua_secret_sync = self._find_resource_from_cl_resources(
             cl_resources=cl_resources,
-            resource_type="microsoft.secretsynccontroller/secretsyncs",
+            resource_type=SECRET_SYNC_RESOURCE_TYPE,
             resource_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         )
 
@@ -188,7 +190,7 @@ class OpcUACerts(Queryable):
         #     opcua_spc = {}
         opcua_spc = self._find_resource_from_cl_resources(
             cl_resources=cl_resources,
-            resource_type="microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses",
+            resource_type=SPC_RESOURCE_TYPE,
             resource_name=OPCUA_SPC_NAME,
         )
 
@@ -251,7 +253,7 @@ class OpcUACerts(Queryable):
         #     opcua_spc = {}
         opcua_spc = self._find_resource_from_cl_resources(
             cl_resources=cl_resources,
-            resource_type="microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses",
+            resource_type=SPC_RESOURCE_TYPE,
             resource_name=OPCUA_SPC_NAME,
         )
 
@@ -265,7 +267,7 @@ class OpcUACerts(Queryable):
         #     opcua_secret_sync = {}
         opcua_secret_sync = self._find_resource_from_cl_resources(
             cl_resources=cl_resources,
-            resource_type="microsoft.secretsynccontroller/secretsyncs",
+            resource_type=SECRET_SYNC_RESOURCE_TYPE,
             resource_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
         )
 
@@ -355,19 +357,10 @@ class OpcUACerts(Queryable):
         # check if secret sync enabled by getting the default secretproviderclass
         secretsync_spc = None
 
-        # if cl_resources:
-        #     for resource in cl_resources:
-        #         if resource["type"].lower() == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses":
-        #             resource_id_container = parse_resource_id(resource["id"])
-        #             secretsync_spc = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
-        #                 resource_group_name=resource_id_container.resource_group_name,
-        #                 azure_key_vault_secret_provider_class_name=resource_id_container.resource_name,
-        #             )
-        #             break
         if cl_resources:
             secretsync_spc = self._find_resource_from_cl_resources(
                 cl_resources=cl_resources,
-                resource_type="microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses",
+                resource_type=SPC_RESOURCE_TYPE,
             )
 
         if not secretsync_spc:
@@ -377,7 +370,6 @@ class OpcUACerts(Queryable):
             )
 
         return secretsync_spc
-    
 
     def _find_resource_from_cl_resources(
         self,
@@ -388,26 +380,26 @@ class OpcUACerts(Queryable):
         for resource in cl_resources:
             resource_id_container = parse_resource_id(resource["id"])
             cl_resource_name = resource_id_container.resource_name
-            name_matched = True
-            if resource_name:
-                name_matched = cl_resource_name == resource_name
-            if resource["type"].lower() == resource_type and name_matched:
-                if resource_type == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses":
+
+            # Ensure both type and name (if specified) match the resource
+            is_name_matched = resource_name is None or cl_resource_name == resource_name
+            is_type_matched = resource["type"].lower() == resource_type
+
+            if is_type_matched and is_name_matched:
+                if resource_type == SPC_RESOURCE_TYPE:
                     return self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
                         resource_group_name=resource_id_container.resource_group_name,
                         azure_key_vault_secret_provider_class_name=cl_resource_name,
                     )
-                elif resource_type == "microsoft.secretsynccontroller/secretsyncs":
+                elif resource_type == SECRET_SYNC_RESOURCE_TYPE:
                     return self.ssc_mgmt_client.secret_syncs.get(
                         resource_group_name=resource_id_container.resource_group_name,
                         secret_sync_name=cl_resource_name,
                     )
+
         return {}
 
-        
-
     def _check_secret_name(self, secrets: PageIterator, secret_name: str, spc_keyvault_name: str, flag: str) -> str:
-
         new_secret_name = secret_name
         for secret in secrets:
             if secret.id.endswith(secret_name):
