@@ -357,7 +357,7 @@ class WorkManager:
                     if any(not v for v in self._extension_map.values()):
                         raise ValidationError(
                             "Foundational service installation not detected. "
-                            "Instance deployment will not continue. Please run init."
+                            "Instance deployment will not continue. Please run `az iot ops init`."
                         )
 
                 instance_work_name = self._work_format_str.format(op="instance")
