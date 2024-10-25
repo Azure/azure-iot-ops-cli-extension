@@ -329,6 +329,7 @@ class OpcUACerts(Queryable):
 
         return secretsync_spc
 
+    # TODO: consider moving under instance as common method
     def _find_resource_from_cl_resources(
         self,
         cl_resources: List[dict],
