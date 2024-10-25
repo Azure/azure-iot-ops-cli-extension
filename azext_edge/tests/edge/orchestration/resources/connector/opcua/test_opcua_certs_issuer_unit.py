@@ -30,7 +30,13 @@ from azext_edge.tests.helpers import generate_ops_resource
     [
         (
             {
-                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
                 "resource sync rules": [generate_ops_resource()],
                 "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
@@ -54,7 +60,13 @@ from azext_edge.tests.helpers import generate_ops_resource
         # adding .crl with corresponding .der or crt
         (
             {
-                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
                 "resource sync rules": [generate_ops_resource()],
                 "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
@@ -244,7 +256,13 @@ def test_issuer_add(
         # adding .crl without corresponding .der or crt
         (
             {
-                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
                 "resource sync rules": [generate_ops_resource()],
                 "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
@@ -264,7 +282,13 @@ def test_issuer_add(
         # duplicate targetKey in objectSecretMapping
         (
             {
-                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
                 "resource sync rules": [generate_ops_resource()],
                 "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
@@ -290,7 +314,13 @@ def test_issuer_add(
         # secret existed
         (
             {
-                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
                 "resource sync rules": [generate_ops_resource()],
                 "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
