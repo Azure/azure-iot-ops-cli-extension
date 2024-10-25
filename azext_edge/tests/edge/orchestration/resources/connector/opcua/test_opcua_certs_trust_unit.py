@@ -30,7 +30,13 @@ from azext_edge.tests.helpers import generate_ops_resource
     [
         (
             {
-                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
                 "resource sync rules": [generate_ops_resource()],
                 "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
@@ -164,7 +170,13 @@ def test_trust_add(
         # secret existed
         (
             {
-                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
                 "resource sync rules": [generate_ops_resource()],
                 "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
@@ -186,7 +198,13 @@ def test_trust_add(
         # duplicate target key
         (
             {
-                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
                 "resource sync rules": [generate_ops_resource()],
                 "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
