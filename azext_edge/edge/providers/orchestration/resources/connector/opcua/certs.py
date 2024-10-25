@@ -76,6 +76,7 @@ class OpcUACerts(Queryable):
         secret_name = self._check_secret_name(secrets, secret_name, spc_keyvault_name, "secret")
         self._upload_to_key_vault(secret_name, file, cert_extension)
 
+        # check if there is a spc called "opc-ua-connector", if not create one
         opcua_spc = self._find_resource_from_cl_resources(
             cl_resources=cl_resources,
             resource_type=SPC_RESOURCE_TYPE,
@@ -91,6 +92,7 @@ class OpcUACerts(Queryable):
             spc_client_id=spc_client_id,
         )
 
+        # check if there is a secret sync called "aio-opc-ua-broker-trust-list ", if not create one
         opcua_secret_sync = self._find_resource_from_cl_resources(
             cl_resources=cl_resources,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
@@ -157,6 +159,7 @@ class OpcUACerts(Queryable):
         secret_name = self._check_secret_name(secrets, secret_name, spc_keyvault_name, "secret")
         self._upload_to_key_vault(secret_name, file, cert_extension)
 
+        # check if there is a spc called "opc-ua-connector", if not create one
         opcua_spc = self._find_resource_from_cl_resources(
             cl_resources=cl_resources,
             resource_type=SPC_RESOURCE_TYPE,
@@ -212,6 +215,7 @@ class OpcUACerts(Queryable):
 
         secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
 
+        # check if there is a spc called "opc-ua-connector", if not create one
         opcua_spc = self._find_resource_from_cl_resources(
             cl_resources=cl_resources,
             resource_type=SPC_RESOURCE_TYPE,
