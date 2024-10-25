@@ -30,6 +30,8 @@ logger = get_logger(__name__)
 
 console = Console()
 
+SPC_RESOURCE_TYPE = "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses"
+SECRET_SYNC_RESOURCE_TYPE = "microsoft.secretsynccontroller/secretsyncs"
 OPCUA_SPC_NAME = "opc-ua-connector"
 OPCUA_TRUST_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-trust-list"
 OPCUA_ISSUER_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-issuer-list"
@@ -75,13 +77,11 @@ class OpcUACerts(Queryable):
         self._upload_to_key_vault(secret_name, file, cert_extension)
 
         # check if there is a spc called "opc-ua-connector", if not create one
-        try:
-            opcua_spc = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
-                resource_group_name=resource_group,
-                azure_key_vault_secret_provider_class_name=OPCUA_SPC_NAME,
-            )
-        except ResourceNotFoundError:
-            opcua_spc = {}
+        opcua_spc = self._find_resource_from_cl_resources(
+            cl_resources=cl_resources,
+            resource_type=SPC_RESOURCE_TYPE,
+            resource_name=OPCUA_SPC_NAME,
+        )
 
         self._add_secrets_to_spc(
             secrets=[secret_name],
@@ -93,13 +93,11 @@ class OpcUACerts(Queryable):
         )
 
         # check if there is a secret sync called "aio-opc-ua-broker-trust-list ", if not create one
-        try:
-            opcua_secret_sync = self.ssc_mgmt_client.secret_syncs.get(
-                resource_group_name=resource_group,
-                secret_sync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
-            )
-        except ResourceNotFoundError:
-            opcua_secret_sync = {}
+        opcua_secret_sync = self._find_resource_from_cl_resources(
+            cl_resources=cl_resources,
+            resource_type=SECRET_SYNC_RESOURCE_TYPE,
+            resource_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+        )
 
         return self._add_secrets_to_secret_sync(
             secrets=[(secret_name, file_name)],
@@ -135,13 +133,11 @@ class OpcUACerts(Queryable):
         # get cert name by removing extension
         cert_name = os.path.splitext(file_name)[0]
 
-        try:
-            opcua_secret_sync = self.ssc_mgmt_client.secret_syncs.get(
-                resource_group_name=resource_group,
-                secret_sync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
-            )
-        except ResourceNotFoundError:
-            opcua_secret_sync = {}
+        opcua_secret_sync = self._find_resource_from_cl_resources(
+            cl_resources=cl_resources,
+            resource_type=SECRET_SYNC_RESOURCE_TYPE,
+            resource_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+        )
 
         if cert_extension == ".crl":
             matched_names = []
@@ -164,13 +160,11 @@ class OpcUACerts(Queryable):
         self._upload_to_key_vault(secret_name, file, cert_extension)
 
         # check if there is a spc called "opc-ua-connector", if not create one
-        try:
-            opcua_spc = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
-                resource_group_name=resource_group,
-                azure_key_vault_secret_provider_class_name=OPCUA_SPC_NAME,
-            )
-        except ResourceNotFoundError:
-            opcua_spc = {}
+        opcua_spc = self._find_resource_from_cl_resources(
+            cl_resources=cl_resources,
+            resource_type=SPC_RESOURCE_TYPE,
+            resource_name=OPCUA_SPC_NAME,
+        )
 
         self._add_secrets_to_spc(
             secrets=[secret_name],
@@ -222,22 +216,18 @@ class OpcUACerts(Queryable):
         secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
 
         # check if there is a spc called "opc-ua-connector", if not create one
-        try:
-            opcua_spc = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
-                resource_group_name=resource_group,
-                azure_key_vault_secret_provider_class_name=OPCUA_SPC_NAME,
-            )
-        except ResourceNotFoundError:
-            opcua_spc = {}
+        opcua_spc = self._find_resource_from_cl_resources(
+            cl_resources=cl_resources,
+            resource_type=SPC_RESOURCE_TYPE,
+            resource_name=OPCUA_SPC_NAME,
+        )
 
         # check if there is a secret sync called "aio-opc-ua-broker-client-certificate", if not create one
-        try:
-            opcua_secret_sync = self.ssc_mgmt_client.secret_syncs.get(
-                resource_group_name=resource_group,
-                secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-            )
-        except ResourceNotFoundError:
-            opcua_secret_sync = {}
+        opcua_secret_sync = self._find_resource_from_cl_resources(
+            cl_resources=cl_resources,
+            resource_type=SECRET_SYNC_RESOURCE_TYPE,
+            resource_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+        )
 
         secrets_to_add = []
         for file in [public_key_file, private_key_file]:
@@ -326,14 +316,10 @@ class OpcUACerts(Queryable):
         secretsync_spc = None
 
         if cl_resources:
-            for resource in cl_resources:
-                if resource["type"].lower() == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses":
-                    resource_id_container = parse_resource_id(resource["id"])
-                    secretsync_spc = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
-                        resource_group_name=resource_id_container.resource_group_name,
-                        azure_key_vault_secret_provider_class_name=resource_id_container.resource_name,
-                    )
-                    break
+            secretsync_spc = self._find_resource_from_cl_resources(
+                cl_resources=cl_resources,
+                resource_type=SPC_RESOURCE_TYPE,
+            )
 
         if not secretsync_spc:
             raise ResourceNotFoundError(
@@ -343,8 +329,36 @@ class OpcUACerts(Queryable):
 
         return secretsync_spc
 
-    def _check_secret_name(self, secrets: PageIterator, secret_name: str, spc_keyvault_name: str, flag: str) -> str:
+    # TODO: consider moving under instance as common method
+    def _find_resource_from_cl_resources(
+        self,
+        cl_resources: List[dict],
+        resource_type: str,
+        resource_name: Optional[str] = None,
+    ) -> dict:
+        for resource in cl_resources:
+            resource_id_container = parse_resource_id(resource["id"])
+            cl_resource_name = resource_id_container.resource_name
 
+            # Ensure both type and name (if specified) match the resource
+            is_name_matched = resource_name is None or cl_resource_name == resource_name
+            is_type_matched = resource["type"].lower() == resource_type
+
+            if is_type_matched and is_name_matched:
+                if resource_type == SPC_RESOURCE_TYPE:
+                    return self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
+                        resource_group_name=resource_id_container.resource_group_name,
+                        azure_key_vault_secret_provider_class_name=cl_resource_name,
+                    )
+                elif resource_type == SECRET_SYNC_RESOURCE_TYPE:
+                    return self.ssc_mgmt_client.secret_syncs.get(
+                        resource_group_name=resource_id_container.resource_group_name,
+                        secret_sync_name=cl_resource_name,
+                    )
+
+        return {}
+
+    def _check_secret_name(self, secrets: PageIterator, secret_name: str, spc_keyvault_name: str, flag: str) -> str:
         new_secret_name = secret_name
         for secret in secrets:
             if secret.id.endswith(secret_name):
