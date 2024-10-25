@@ -35,7 +35,13 @@ from azext_edge.tests.helpers import generate_ops_resource
     [
         (
             {
-                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
                 "resource sync rules": [generate_ops_resource()],
                 "custom locations": [generate_ops_resource()],
                 "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
@@ -140,6 +146,11 @@ def test_client_add(
         subject_name="subjectname",
     )
 
+    assert (
+        mocked_logger.warning.call_args[0][0] == "Please ensure the certificate must be added "
+        "to the issuers list if it was issued by a CA. "
+    )
+
     if result:
         if not client_app_spc:
             assert (
@@ -191,7 +202,13 @@ def test_client_add(
         # no aio extension
         (
             {
-                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
                 "resource sync rules": [generate_ops_resource()],
                 "custom locations": [generate_ops_resource()],
                 "extension": {},
