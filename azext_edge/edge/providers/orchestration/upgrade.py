@@ -112,7 +112,7 @@ class UpgradeManager:
         print()
         print("[yellow]Upgrading may fail and require you to delete and re-create your cluster.[/yellow]")
 
-        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Upgrade")
         if should_bail:
             return
 
@@ -155,8 +155,9 @@ class UpgradeManager:
                 "properties" : {
                     "autoUpgradeMinorVersion": "false",
                     "releaseTrain": train_map[extension_key],
-                    "version": version_map[extension_key]
-                }
+                    "version": version_map[extension_key],
+                },
+                "currentVersion": current_version
             }
 
             if extension_type == "microsoft.openservicemesh":
@@ -186,8 +187,9 @@ class UpgradeManager:
         # text to print (ordered)
         display_desc = "[dim]"
         for extension, update in self.extensions_to_update.items():
-            version = update["properties"]["version"]
-            display_desc += f"• {extension}: {version}\n"
+            new_version = update["properties"]["version"]
+            old_version = update.pop("currentVersion")
+            display_desc += f"• {extension}: {old_version} -> {new_version}\n"
         return display_desc[:-1] + ""
 
     def _get_resource_map(self) -> IoTOperationsResourceMap:
