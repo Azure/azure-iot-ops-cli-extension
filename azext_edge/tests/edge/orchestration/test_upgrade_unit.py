@@ -119,7 +119,6 @@ def _generate_extensions(**extension_version_map) -> OrderedDict:
     return extensions
 
 
-# TODO: if not used for m3 - simplify
 def _generate_instance(instance_name: str, resource_group: str, m3: bool = False):
     mock_instance_record = {
         "extendedLocation": {
@@ -178,7 +177,7 @@ def _generate_trains(**trains) -> dict:
 
 
 @pytest.mark.parametrize("no_progress", [False, True])
-@pytest.mark.parametrize("require_instance_update", [False, True])
+# @pytest.mark.parametrize("require_instance_update", [False, True])
 @pytest.mark.parametrize("current_extensions, new_versions, new_trains", [
     # update none
     (
@@ -259,7 +258,7 @@ def test_upgrade_lifecycle(
     mocked_logger: Mock,
     mocked_rich_print: Mock,
     spy_upgrade_manager: Dict[str, Mock],
-    require_instance_update: bool,
+    # require_instance_update: bool,
     current_extensions: List[dict],
     new_versions: List[dict],
     new_trains: List[dict],
@@ -276,20 +275,22 @@ def test_upgrade_lifecycle(
     mocked_resource_map.connected_cluster.extensions = list(current_extensions.values())
     extension_update_mock = mocked_resource_map.connected_cluster.clusters.extensions.update_cluster_extension
     _assemble_template_mock(mocker, new_versions=new_versions, new_trains=new_trains)
-    m2_instance = None
+    instance_body = None
     # the get m2 instance call
-    if require_instance_update:
-        m2_instance = _generate_instance(instance_name=instance_name, resource_group=rg_name)
+    current_version = current_extensions["iot_operations"]["properties"]["version"]
+    if current_version == "0.7.31":
+        instance_body = _generate_instance(instance_name=instance_name, resource_group=rg_name)
         # note the resource client adds an extra / before instances for the parent path. The api doesnt care
         mocked_responses.add(
             method=responses.GET,
             url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
             f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-            json=m2_instance,
+            json=instance_body,
             status=200,
             content_type="application/json",
         )
     else:
+        instance_body = _generate_instance(instance_name=instance_name, resource_group=rg_name, m3=True)
         mocked_responses.add(
             method=responses.GET,
             url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
@@ -297,7 +298,8 @@ def test_upgrade_lifecycle(
             status=404,
             content_type="application/json",
         )
-        # no need to provide valid value for instance show since it will not be used
+        instance_body["properties"]["version"] = current_version
+        mocked_instances.show.return_value = instance_body
 
     kwargs = {
         "cmd": mocked_cmd,
@@ -341,7 +343,11 @@ def test_upgrade_lifecycle(
     assert len(extensions_to_update) == len(extension_update_calls)
 
     # overall upgrade call
-    assert spy_upgrade_manager["_process"].called is bool(extensions_to_update or require_instance_update)
+    require_instance_update = any([
+        current_version == "0.7.31",
+        version.parse(current_version) < version.parse(new_versions["iot_operations"])
+    ])
+    assert spy_upgrade_manager["_process"].called is any([extensions_to_update, require_instance_update])
 
     if require_instance_update:
         update_args = mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.call_args.kwargs
@@ -349,9 +355,9 @@ def test_upgrade_lifecycle(
 
         # props that were kept the same
         for prop in ["extendedLocation", "id", "name", "location", "resourceGroup", "type"]:
-            assert update_body[prop] == m2_instance[prop]
+            assert update_body[prop] == instance_body[prop]
         for prop in ["description", "provisioningState"]:
-            assert update_body["properties"][prop] == m2_instance["properties"][prop]
+            assert update_body["properties"][prop] == instance_body["properties"][prop]
 
         # props that were removed
         assert "systemData" not in update_body
@@ -460,6 +466,19 @@ def test_upgrade_error(
     [ext["properties"].pop("configurationSettings") for ext in mocked_resource_map.connected_cluster.extensions]
 
     with pytest.raises(RequiredArgumentMissingError):
+        upgrade_ops_resources(**kwargs)
+
+    # instance is an unreleased bug bash version
+    m2_instance["properties"]["version"] = "0.7.25"
+    mocked_responses.add(
+        method=responses.GET,
+        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
+        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
+        json=m2_instance,
+        status=200,
+        content_type="application/json",
+    )
+    with pytest.raises(ArgumentUsageError):
         upgrade_ops_resources(**kwargs)
 
     # cannot get m2 or m3

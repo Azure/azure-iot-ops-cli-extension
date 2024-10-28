@@ -84,11 +84,14 @@ class UpgradeManager:
         self._progress_shown = False
 
     def do_work(self, confirm_yes: Optional[bool] = None):
+        from .template import M3_INSTANCE_TEMPLATE
+        self.new_aio_version = M3_INSTANCE_TEMPLATE.content["variables"]["VERSIONS"]["iotOperations"]
         # get the resource map from the instance (checks if update is needed for instance)
         self.resource_map = self._get_resource_map()
         # Ensure cluster exists with existing resource_map pattern.
         self.resource_map.connected_cluster.resource
         self.cluster_name = self.resource_map.connected_cluster.cluster_name
+        current_version = self.instance["properties"]["version"]
 
         # get the extensions to update, populate the expected patches
         extension_text = self._check_extensions()
@@ -105,7 +108,8 @@ class UpgradeManager:
 
         if self.require_instance_upgrade:
             print(Padding(
-                "Old Azure IoT Operations instance version found. Will update the instance to the latest version.",
+                f"Azure IoT Operations instance version {current_version} found. Will update the instance to "
+                f"version {self.new_aio_version}.",
                 (0, 0, 0, 2)
             ))
 
@@ -126,8 +130,6 @@ class UpgradeManager:
         version_map.update(M3_INSTANCE_TEMPLATE.content["variables"]["VERSIONS"].copy())
         train_map = M3_ENABLEMENT_TEMPLATE.content["variables"]["TRAINS"].copy()
         train_map.update(M3_INSTANCE_TEMPLATE.content["variables"]["TRAINS"].copy())
-
-        self.new_aio_version = version_map["iotOperations"]
 
         # note that the secret store type changes but somehow it all works out :)
         # the order is determined by depends on in the template
@@ -194,6 +196,10 @@ class UpgradeManager:
 
     def _get_resource_map(self) -> IoTOperationsResourceMap:
         self.require_instance_upgrade = True
+        error_msg = (
+            f"Cannot upgrade instance {self.instance_name}, please delete your instance, including "
+            "dependencies, and reinstall."
+        )
         # try with 2024-08-15-preview -> it is m2
         try:
             self.instance = self.resource_client.resources.get(
@@ -204,23 +210,26 @@ class UpgradeManager:
                 resource_name=self.instance_name,
                 api_version=INSTANCE_7_API
             )
+            # don't deal with bug bash m2's - only released version
+            if self.instance["properties"]["version"] != "0.7.31":
+                raise ArgumentUsageError(error_msg)
             return self.instances.get_resource_map(self.instance)
         except HttpResponseError:
-            self.require_instance_upgrade = False
+            pass
         # try with 2024-09-15-preview -> it is m3 already
         try:
+            from packaging import version
             self.instance = self.instances.show(
                 name=self.instance_name,
                 resource_group_name=self.resource_group_name
             )
+            if version.parse(self.instance["properties"]["version"]) >= version.parse(self.new_aio_version):
+                self.require_instance_upgrade = False
             return self.instances.get_resource_map(self.instance)
         except ResourceNotFoundError as e:
             raise e
         except HttpResponseError:
-            raise ArgumentUsageError(
-                f"Cannot upgrade instance {self.instance_name}, please delete your instance, including "
-                "dependencies, and reinstall."
-            )
+            raise ArgumentUsageError(error_msg)
 
     def _render_display(self, description: str):
         if self._render_progress:
