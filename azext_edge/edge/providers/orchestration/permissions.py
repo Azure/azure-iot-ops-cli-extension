@@ -47,7 +47,7 @@ def verify_write_permission_against_rg(subscription_id: str, resource_group_name
         "This IoT Operations deployment config includes resource sync rules which require the logged-in principal\n"
         "to have permission to write role assignments (Microsoft.Authorization/roleAssignments/write) "
         "against the resource group.\n\n"
-        "Use --disable-rsync-rules to not include resource sync rules in the deployment.\n"
+        "Run the command with --enable-rsync False to not include resource sync rules in the deployment.\n"
     )
 
 
