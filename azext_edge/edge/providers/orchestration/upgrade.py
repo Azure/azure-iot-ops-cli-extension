@@ -12,7 +12,7 @@ from azure.cli.core.azclierror import (
     AzureResponseError,
     RequiredArgumentMissingError,
 )
-from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
+from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
 from rich import print
 from rich.console import NewLine
