@@ -275,6 +275,53 @@ class OpcUACerts(Queryable):
             subject_name=subject_name,
             application_uri=application_uri,
         )
+    
+
+    def remove(
+        self,
+        instance_name: str,
+        resource_group: str,
+        sercretsync_name: str,
+        certificate_names: List[str],
+        include_secret: Optional[bool] = False,
+    ) -> dict:
+        
+        if sercretsync_name == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME and len(certificate_names) != 1:
+            raise InvalidArgumentValueError("Only one certificate can be removed from the client certificate secret sync.")
+        
+        # check if secret sync exists
+        cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
+        target_secretsync = self._find_resource_from_cl_resources(
+            cl_resources=cl_resources,
+            resource_type=SECRET_SYNC_RESOURCE_TYPE,
+            resource_name=sercretsync_name,
+        )
+
+        if not target_secretsync:
+            raise ResourceNotFoundError(f"Secret Sync {sercretsync_name} not found. Please make sure secret sync enabled and certificates added in target secret sync.")
+
+        # check if OPCUA_SPC_NAME spc exists
+        target_spc = self._find_resource_from_cl_resources(
+            cl_resources=cl_resources,
+            resource_type=SPC_RESOURCE_TYPE,
+            resource_name=OPCUA_SPC_NAME,
+        )
+
+        if not target_spc:
+            raise ResourceNotFoundError(f"Secret Provider Class {OPCUA_SPC_NAME} not found. Please make sure secret sync enabled and certificates added in target secret sync.")
+        
+        # get properties from default spc
+        spc_properties = target_spc.get("properties", {})
+        spc_keyvault_name = spc_properties.get("keyvaultName", "")
+
+        # get keyvault client
+        self.keyvault_client = get_keyvault_client(
+            subscription_id=self.default_subscription_id,
+            keyvault_name=spc_keyvault_name,
+        )
+
+        secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
+
 
     def _validate_key_files(self, public_key_file: str, private_key_file: str):
         # validate public key file end with .der
