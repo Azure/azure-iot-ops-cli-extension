@@ -177,7 +177,6 @@ def _generate_trains(**trains) -> dict:
 
 
 @pytest.mark.parametrize("no_progress", [False, True])
-# @pytest.mark.parametrize("require_instance_update", [False, True])
 @pytest.mark.parametrize("current_extensions, new_versions, new_trains", [
     # update none
     (
@@ -295,7 +294,8 @@ def test_upgrade_lifecycle(
             method=responses.GET,
             url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
             f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-            status=404,
+            json={"message": "HttpResponsePayloadAPISpecValidationFailed"},
+            status=412,
             content_type="application/json",
         )
         instance_body["properties"]["version"] = current_version
@@ -415,11 +415,13 @@ def test_upgrade_error(
         status=200,
         content_type="application/json",
     )
+    error_msg = "instance update failed"
     mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.side_effect = HttpResponseError(
-        "instance update failed"
+        error_msg
     )
     with pytest.raises(HttpResponseError) as e:
         upgrade_ops_resources(**kwargs)
+    assert error_msg in e.value.message
 
     # some random extension has a hidden status error
     mocked_responses.add(
@@ -448,11 +450,11 @@ def test_upgrade_error(
         status=200,
         content_type="application/json",
     )
-    extension_update_mock.side_effect = HttpResponseError(
-        "extension update failed"
-    )
-    with pytest.raises(HttpResponseError):
+    error_msg = "extension update failed"
+    extension_update_mock.side_effect = HttpResponseError(error_msg)
+    with pytest.raises(HttpResponseError) as e:
         upgrade_ops_resources(**kwargs)
+    assert error_msg in e.value.message
 
     # need to update the instance but cannot get the sr resource id
     mocked_responses.add(
@@ -481,7 +483,7 @@ def test_upgrade_error(
     with pytest.raises(ArgumentUsageError):
         upgrade_ops_resources(**kwargs)
 
-    # cannot get m2 or m3
+    # other m2 get errors raise normally
     mocked_responses.add(
         method=responses.GET,
         url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
@@ -489,6 +491,28 @@ def test_upgrade_error(
         status=404,
         content_type="application/json",
     )
-    mocked_instances.show.side_effect = HttpResponseError("instance get failed")
+    with pytest.raises(HttpResponseError) as e:
+        upgrade_ops_resources(**kwargs)
+    assert e.value.response.status_code == 404
+
+    # other m3 get errors raise normally
+    mocked_responses.add(
+        method=responses.GET,
+        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
+        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
+        json={"message": "HttpResponsePayloadAPISpecValidationFailed"},
+        status=412,
+        content_type="application/json",
+    )
+    error_msg = "instance get failed"
+    mocked_instances.show.side_effect = HttpResponseError(error_msg)
+    with pytest.raises(HttpResponseError) as e:
+        upgrade_ops_resources(**kwargs)
+    assert error_msg in e.value.message
+
+    # cannot get m2 or m3 because api spec validation
+    mocked_instances.show.side_effect = HttpResponseError(
+        "(HttpResponsePayloadAPISpecValidationFailed) instance get failed"
+    )
     with pytest.raises(ArgumentUsageError):
         upgrade_ops_resources(**kwargs)

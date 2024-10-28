@@ -28,6 +28,7 @@ from .resources import Instances
 
 logger = get_logger(__name__)
 INSTANCE_7_API = "2024-08-15-preview"
+INSTANCE_7_VERSION = "0.7.31"
 
 
 def upgrade_ops_resources(
@@ -196,6 +197,7 @@ class UpgradeManager:
 
     def _get_resource_map(self) -> IoTOperationsResourceMap:
         self.require_instance_upgrade = True
+        api_spec_error = "HttpResponsePayloadAPISpecValidationFailed"
         error_msg = (
             f"Cannot upgrade instance {self.instance_name}, please delete your instance, including "
             "dependencies, and reinstall."
@@ -211,11 +213,12 @@ class UpgradeManager:
                 api_version=INSTANCE_7_API
             )
             # don't deal with bug bash m2's - only released version
-            if self.instance["properties"]["version"] != "0.7.31":
+            if self.instance["properties"]["version"] != INSTANCE_7_VERSION:
                 raise ArgumentUsageError(error_msg)
             return self.instances.get_resource_map(self.instance)
-        except HttpResponseError:
-            pass
+        except HttpResponseError as e:
+            if api_spec_error not in e.message:
+                raise e
         # try with 2024-09-15-preview -> it is m3 already
         try:
             from packaging import version
@@ -226,10 +229,10 @@ class UpgradeManager:
             if version.parse(self.instance["properties"]["version"]) >= version.parse(self.new_aio_version):
                 self.require_instance_upgrade = False
             return self.instances.get_resource_map(self.instance)
-        except ResourceNotFoundError as e:
+        except HttpResponseError as e:
+            if api_spec_error in e.message:
+                raise ArgumentUsageError(error_msg)
             raise e
-        except HttpResponseError:
-            raise ArgumentUsageError(error_msg)
 
     def _render_display(self, description: str):
         if self._render_progress:
