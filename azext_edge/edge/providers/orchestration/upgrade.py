@@ -262,6 +262,14 @@ class UpgradeManager:
 
     def _process(self):
         if self.require_instance_upgrade:
+
+            # prep the instance
+            self.instance.pop("systemData", None)
+            inst_props = self.instance["properties"]
+            if inst_props.get("schemaRegistryRef", {}).get("resourceId"):
+                self.sr_resource_id = inst_props["schemaRegistryRef"]["resourceId"]
+            inst_props["schemaRegistryRef"] = {"resourceId": self.sr_resource_id}
+
             # m3 extensions should not have the reg id
             if not self.sr_resource_id:
                 raise RequiredArgumentMissingError(
@@ -269,10 +277,6 @@ class UpgradeManager:
                     "registry id via `--sr-id`."
                 )
 
-            # prep the instance
-            self.instance.pop("systemData", None)
-            inst_props = self.instance["properties"]
-            inst_props["schemaRegistryRef"] = {"resourceId": self.sr_resource_id}
             inst_props["version"] = self.new_aio_version
             inst_props.pop("schemaRegistryNamespace", None)
             inst_props.pop("components", None)

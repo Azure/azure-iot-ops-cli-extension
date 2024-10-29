@@ -143,7 +143,7 @@ def _generate_instance(instance_name: str, resource_group: str, m3: bool = False
         "type": "microsoft.iotoperations/instances"
     }
     if m3:
-        mock_instance_record["properties"]["schemaRegistryRef"] = {"resource_id": generate_random_string()}
+        mock_instance_record["properties"]["schemaRegistryRef"] = {"resourceId": generate_random_string()}
     else:
         mock_instance_record["properties"]["schemaRegistryNamespace"] = generate_random_string()
         mock_instance_record["properties"]["components"] = {
@@ -367,9 +367,13 @@ def test_upgrade_lifecycle(
         # props that were added/changed - also ensure right sr id is used
         assert update_body["properties"]["version"] == new_versions["iot_operations"]
         aio_ext_props = current_extensions["iot_operations"]["properties"]
-        assert update_body["properties"]["schemaRegistryRef"]["resourceId"] == (
+        expected_sr_resource_id = (
             sr_resource_id or aio_ext_props["configurationSettings"]["schemaRegistry.values.resourceId"]
         )
+        if current_version != "0.7.31":
+            expected_sr_resource_id = instance_body["properties"]["schemaRegistryRef"]["resourceId"]
+
+        assert update_body["properties"]["schemaRegistryRef"]["resourceId"] == expected_sr_resource_id
     else:
         # make sure we tried to get the m3
         mocked_instances.show.assert_called()
