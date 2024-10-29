@@ -244,6 +244,7 @@ class Instances(Queryable):
         use_self_hosted_issuer: Optional[bool] = None,
         **kwargs,
     ):
+        # TODO: add unit test
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
         keyvault_resource_id_container = parse_resource_id(keyvault_resource_id)
         with console.status("Working...") as status:
@@ -272,7 +273,7 @@ class Instances(Queryable):
             oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
 
             cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
-            secretsync_spc = self._find_existing_spc(cl_resources)
+            secretsync_spc = self._find_existing_spcs(cl_resources)
             if secretsync_spc:
                 status.stop()
                 logger.warning(
@@ -318,15 +319,16 @@ class Instances(Queryable):
             return result_spc
 
     def show_secretsync(self, name: str, resource_group_name: str) -> Optional[dict]:
+        # TODO: add unit test
         with console.status("Working..."):
             instance = self.show(name=name, resource_group_name=resource_group_name)
             resource_map = self.get_resource_map(instance)
             cl_resources = resource_map.connected_cluster.get_aio_resources(
                 custom_location_id=instance["extendedLocation"]["name"]
             )
-            secretsync_spc = self._find_existing_spc(cl_resources)
-            if secretsync_spc:
-                return secretsync_spc
+            secretsync_spcs = self._find_existing_spcs(cl_resources)
+            if secretsync_spcs:
+                return secretsync_spcs
         logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
 
     def disable_secretsync(
@@ -336,6 +338,7 @@ class Instances(Queryable):
         confirm_yes: Optional[bool] = None,
         **kwargs,
     ):
+        # TODO: add unit test
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
         if should_bail:
             return
@@ -346,24 +349,29 @@ class Instances(Queryable):
             cl_resources = resource_map.connected_cluster.get_aio_resources(
                 custom_location_id=instance["extendedLocation"]["name"]
             )
-            secretsync_spc = self._find_existing_spc(cl_resources)
-            if secretsync_spc:
-                spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_delete(
-                    resource_group_name=resource_group_name,
-                    azure_key_vault_secret_provider_class_name=secretsync_spc["name"],
-                )
-                wait_for_terminal_state(spc_poller, **kwargs)
+            secretsync_spcs = self._find_existing_spcs(cl_resources)
+            if secretsync_spcs:
+                for secretsync_spc in secretsync_spcs:
+                    spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_delete(
+                        resource_group_name=resource_group_name,
+                        azure_key_vault_secret_provider_class_name=secretsync_spc["name"],
+                    )
+                    wait_for_terminal_state(spc_poller, **kwargs)
                 return
         logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
 
-    def _find_existing_spc(self, cl_resources: List[dict]) -> Optional[dict]:
+    def _find_existing_spcs(self, cl_resources: List[dict]) -> Optional[List[dict]]:
+        spcs = []
         for resource in cl_resources:
             if resource["type"].lower() == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses":
                 resource_id_container = parse_resource_id(resource["id"])
-                return self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
-                    resource_group_name=resource_id_container.resource_group_name,
-                    azure_key_vault_secret_provider_class_name=resource_id_container.resource_name,
+                spcs.append(
+                    self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
+                        resource_group_name=resource_id_container.resource_group_name,
+                        azure_key_vault_secret_provider_class_name=resource_id_container.resource_name,
+                    )
                 )
+        return spcs
 
     def _attempt_keyvault_role_assignments(
         self, keyvault_resource_id_container: ResourceIdContainer, mi_user_assigned: dict
