@@ -228,6 +228,8 @@ class UpgradeManager:
             )
             if version.parse(self.instance["properties"]["version"]) >= version.parse(self.new_aio_version):
                 self.require_instance_upgrade = False
+            if not self.sr_resource_id:
+                self.sr_resource_id = self.instance["properties"]["schemaRegistryRef"]["resourceId"]
             return self.instances.get_resource_map(self.instance)
         except HttpResponseError as e:
             if api_spec_error in e.message:
