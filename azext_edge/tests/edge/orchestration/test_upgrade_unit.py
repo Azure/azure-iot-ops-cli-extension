@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from packaging import version
 from typing import Dict, List, Optional, OrderedDict
 from unittest.mock import Mock
 import pytest
@@ -257,7 +256,6 @@ def test_upgrade_lifecycle(
     mocked_logger: Mock,
     mocked_rich_print: Mock,
     spy_upgrade_manager: Dict[str, Mock],
-    # require_instance_update: bool,
     current_extensions: List[dict],
     new_versions: List[dict],
     new_trains: List[dict],
@@ -318,6 +316,10 @@ def test_upgrade_lifecycle(
     extensions_to_update = {}
     extension_update_calls = extension_update_mock.call_args_list
     call = 0
+    try:
+        from packaging import version
+    except:
+        pytest.fail("Import packaging failed.")
     for key, extension in current_extensions.items():
         if any([
             version.parse(extension["properties"]["version"]) < version.parse(new_versions[key]),
@@ -343,13 +345,9 @@ def test_upgrade_lifecycle(
     assert len(extensions_to_update) == len(extension_update_calls)
 
     # overall upgrade call
-    require_instance_update = any([
-        current_version == "0.7.31",
-        version.parse(current_version) < version.parse(new_versions["iot_operations"])
-    ])
-    assert spy_upgrade_manager["_process"].called is any([extensions_to_update, require_instance_update])
+    assert spy_upgrade_manager["_process"].called is any([extensions_to_update, current_version == "0.7.31"])
 
-    if require_instance_update:
+    if current_version == "0.7.31":
         update_args = mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.call_args.kwargs
         update_body = update_args["resource"]
 
@@ -376,12 +374,13 @@ def test_upgrade_lifecycle(
         assert update_body["properties"]["schemaRegistryRef"]["resourceId"] == expected_sr_resource_id
     else:
         # make sure we tried to get the m3
-        mocked_instances.show.assert_called()
+        assert mocked_instances.show.call_count == (2 if extension_update_calls else 1)
         mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.assert_not_called()
 
     # no progress check
-    if kwargs["no_progress"]:
+    if no_progress:
         mocked_live_display.assert_called_once_with(None, transient=False, refresh_per_second=8, auto_refresh=False)
+    assert mocked_rich_print.called == (not spy_upgrade_manager["_process"].called or not no_progress)
 
 
 def test_upgrade_error(

@@ -10,6 +10,7 @@ from typing import List, Optional, OrderedDict
 from azure.cli.core.azclierror import (
     ArgumentUsageError,
     AzureResponseError,
+    CLIInternalError,
     RequiredArgumentMissingError,
 )
 from azure.core.exceptions import HttpResponseError
@@ -126,7 +127,6 @@ class UpgradeManager:
         return self._process()
 
     def _check_extensions(self) -> str:
-        from packaging import version
         from .template import M3_ENABLEMENT_TEMPLATE, M3_INSTANCE_TEMPLATE
         version_map = M3_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
         version_map.update(M3_INSTANCE_TEMPLATE.content["variables"]["VERSIONS"].copy())
@@ -150,6 +150,13 @@ class UpgradeManager:
         })
         # make sure order is kept
         self.extensions_to_update = OrderedDict()
+
+        # package import can be wack
+        try:
+            from packaging import version
+        except ImportError:
+            raise CLIInternalError("Cannot parse extension versions.")
+
         for extension_type, extension in ordered_aio_extensions.items():
             extension_key = type_to_key_map[extension_type]
             current_version = extension["properties"].get("version", "0")
@@ -174,13 +181,17 @@ class UpgradeManager:
 
             # should still be fine for mesh - if it is at the current version, already, it should have these props
             # worst case it the extra config settings do nothing
-            if all([
-                version.parse(current_version) >= version.parse(version_map[extension_key]),
-                train_map[extension_key].lower() == current_train
-            ]):
-                logger.info(f"Extension {extension['name']} is already up to date.")
-                continue
-            self.extensions_to_update[extension["name"]] = extension_update
+            try:
+                if all([
+                    version.parse(current_version) >= version.parse(version_map[extension_key]),
+                    train_map[extension_key].lower() == current_train
+                ]):
+                    logger.info(f"Extension {extension['name']} is already up to date.")
+                    continue
+                self.extensions_to_update[extension["name"]] = extension_update
+            except version.InvalidVersion:
+                raise CLIInternalError(f"Cannot parse extension versions for {extension['name']}.")
+
 
         # try to get the sr resource id if not present already
         extension_props = type_to_aio_extensions["microsoft.iotoperations"]["properties"]
@@ -220,17 +231,14 @@ class UpgradeManager:
         except HttpResponseError as e:
             if api_spec_error not in e.message:
                 raise e
+
         # try with 2024-09-15-preview -> it is m3 already
+        self.require_instance_upgrade = False
         try:
-            from packaging import version
             self.instance = self.instances.show(
                 name=self.instance_name,
                 resource_group_name=self.resource_group_name
             )
-            if version.parse(self.instance["properties"]["version"]) >= version.parse(self.new_aio_version):
-                self.require_instance_upgrade = False
-            if not self.sr_resource_id:
-                self.sr_resource_id = self.instance["properties"]["schemaRegistryRef"]["resourceId"]
             return self.instances.get_resource_map(self.instance)
         except HttpResponseError as e:
             if api_spec_error in e.message:
@@ -267,7 +275,6 @@ class UpgradeManager:
             # prep the instance
             self.instance.pop("systemData", None)
             inst_props = self.instance["properties"]
-            self.sr_resource_id = inst_props.get("schemaRegistryRef", {}).get("resourceId", self.sr_resource_id)
             # m3 extensions should not have the reg id
             if not self.sr_resource_id:
                 raise RequiredArgumentMissingError(
@@ -300,7 +307,6 @@ class UpgradeManager:
                         raise AzureResponseError(
                             f"Updating extension {extension} failed with the error message: {status['message']}"
                         )
-
             if self.require_instance_upgrade:
                 # update the instance + minimize the code to be taken out once this is no longer needed
                 self._render_display("[yellow]Updating instance...")
@@ -311,6 +317,11 @@ class UpgradeManager:
                         instance_name=self.instance_name,
                         resource=self.instance
                     )
+                )
+            else:
+                result = self.instances.show(
+                    resource_group_name=self.resource_group_name,
+                    name=self.instance_name,
                 )
         except (HttpResponseError, KeyboardInterrupt) as e:
             if self.require_instance_upgrade:
