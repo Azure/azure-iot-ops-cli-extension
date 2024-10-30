@@ -108,13 +108,13 @@ class UpgradeManager:
             if self.extensions_to_update:
                 print(Padding("Extensions to update:", (0, 0, 0, 2)))
                 print(Padding(extension_text, (0, 0, 0, 4)))
-
-            if self.require_instance_upgrade:
-                print(Padding(
-                    f"Azure IoT Operations instance version {current_version} found. Will update the instance to "
-                    f"version {self.new_aio_version}.",
-                    (0, 0, 0, 2)
-                ))
+                # if the aio extension is updated, the instance will be too
+                if "azure-iot-operations" in extension_text:
+                    print(Padding(
+                        f"Azure IoT Operations instance version {current_version} found. Will update the instance to "
+                        f"version {self.new_aio_version}.",
+                        (0, 0, 0, 2)
+                    ))
 
             print()
             print("[yellow]Upgrading may fail and require you to delete and re-create your cluster.[/yellow]")
