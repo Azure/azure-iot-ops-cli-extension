@@ -525,7 +525,7 @@ def load_iotops_help():
             Note: Cluster must have been initialized with `--user-trust` and a user CertManager deployment must be present.
           text: >
               az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-              --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem 
+              --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem
               issuerKind=ClusterIssuer issuerName=trust-manager-selfsigned-issuer
 
     """

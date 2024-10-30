@@ -139,18 +139,14 @@ class WorkManager:
     def _build_display(self):
         pre_check_cat_desc = "Pre-Flight"
         self._display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
-        self._display.add_step(
-            WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers"
-        )
+        self._display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers")
         self._display.add_step(
             WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
         )
 
         if self._apply_foundation:
             self._display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
-            self._display.add_step(
-                WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation"
-            )
+            self._display.add_step(WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation")
             self._display.add_step(
                 WorkCategoryKey.ENABLE_IOT_OPS,
                 WorkStepKey.DEPLOY_ENABLEMENT,
@@ -292,9 +288,7 @@ class WorkManager:
             # Enable IoT Ops workflow
             if self._apply_foundation:
                 enablement_work_name = self._work_format_str.format(op="enablement")
-                self.render_display(
-                    category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
-                )
+                self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT)
                 enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
                 self._deploy_template(
                     content=enablement_content,
@@ -359,14 +353,22 @@ class WorkManager:
                             "Foundational service installation not detected. "
                             "Instance deployment will not continue. Please run `az iot ops init`."
                         )
-                
+
                 # validate trust config in platform extension matches trust settings in create
-                platform_extension_config=self._extension_map[IOT_OPS_PLAT_EXTENSION_TYPE]["properties"]["configurationSettings"]
+                platform_extension_config = self._extension_map[IOT_OPS_PLAT_EXTENSION_TYPE]["properties"][
+                    "configurationSettings"
+                ]
                 is_user_trust = platform_extension_config.get("installCertManager", "").lower() != "true"
                 if is_user_trust and not self._targets.trust_settings:
-                    raise ValidationError("Cluster was enabled with user-managed trust configuration, --trust-settings arguments are required to create an instance on this cluster.")
+                    raise ValidationError(
+                        "Cluster was enabled with user-managed trust configuration, "
+                        "--trust-settings arguments are required to create an instance on this cluster."
+                    )
                 elif not is_user_trust and self._targets.trust_settings:
-                    raise ValidationError("Cluster was enabled with system CertManager, trust settings (--trust-settings) are not applicable to this cluster.")
+                    raise ValidationError(
+                        "Cluster was enabled with system CertManager, "
+                        "trust settings (--trust-settings) are not applicable to this cluster."
+                    )
 
                 instance_work_name = self._work_format_str.format(op="instance")
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)
@@ -403,7 +405,7 @@ class WorkManager:
                 instance_output = wait_for_terminal_state(instance_poller)
 
                 # safely get nested property
-                keys = ['properties', 'outputs', 'aioExtension', 'value', 'identityPrincipalId']
+                keys = ["properties", "outputs", "aioExtension", "value", "identityPrincipalId"]
                 extension_principal_id = reduce(lambda val, key: val.get(key) if val else None, keys, instance_output)
                 # TODO - @c-ryan-k consider setting role_assignment_error if extension_principal_id is None
                 role_assignment_error = None
