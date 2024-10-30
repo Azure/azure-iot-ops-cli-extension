@@ -157,7 +157,7 @@ class InitTargets:
             # disable cert and trust manager
             parameters["trustConfig"]["value"]["source"] = "CustomerManaged"
             # patch enablement template expecting full trust settings for source: CustomerManaged
-            del template.content["definitions"]["_1.CustomerManaged"]["properties"]["settings"]
+            template.get_type_definition("_1.CustomerManaged")["properties"]["settings"]["nullable"] = True
         return template.content, parameters
 
     def get_ops_instance_template(

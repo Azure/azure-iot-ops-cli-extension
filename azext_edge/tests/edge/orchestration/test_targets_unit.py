@@ -104,6 +104,16 @@ INSTANCE_PARAM_CONVERSION_MAP = {
             container_runtime_socket=generate_random_string(),
             custom_broker_config={generate_random_string(): generate_random_string()},
         ),
+        build_target_scenario(
+            cluster_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+            schema_registry_resource_id=get_resource_id(
+                resource_path="/schemaRegistries/myregistry",
+                resource_group_name=generate_random_string(),
+                resource_provider="Microsoft.DeviceRegistry",
+            ),
+            user_trust=True,
+        )
     ],
 )
 def test_init_targets(target_scenario: dict):
@@ -129,8 +139,15 @@ def test_init_targets(target_scenario: dict):
 
     verify_user_trust_settings(targets, target_scenario)
 
-    _, enablement_parameters = targets.get_ops_enablement_template()
-    # test enablement_template
+    enablement_template, enablement_parameters = targets.get_ops_enablement_template()
+
+    if target_scenario.get("user_trust"):
+        assert targets.trust_config["source"] == "CustomerManaged"
+        # TODO @c-ryan-k - Enablement template should not require "settings" for customer managed trust config
+        assert enablement_template["definitions"]["_1.CustomerManaged"]["properties"]["settings"]["nullable"]
+    elif not target_scenario.get("trust_settings"):
+        assert targets.trust_config["source"] == "SelfSigned"
+
     for parameter in enablement_parameters:
         targets_key = parameter
         if parameter in ENABLEMENT_PARAM_CONVERSION_MAP:
@@ -145,6 +162,7 @@ def test_init_targets(target_scenario: dict):
         targets.trust_config = None
 
     instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids)
+
 
     if targets.ops_version:
         assert instance_template["variables"]["VERSIONS"]["iotOperations"] == targets.ops_version
