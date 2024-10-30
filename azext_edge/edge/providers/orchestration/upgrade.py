@@ -192,7 +192,6 @@ class UpgradeManager:
             except version.InvalidVersion:
                 raise CLIInternalError(f"Cannot parse extension versions for {extension['name']}.")
 
-
         # try to get the sr resource id if not present already
         extension_props = type_to_aio_extensions["microsoft.iotoperations"]["properties"]
         if not self.sr_resource_id:

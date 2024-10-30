@@ -318,7 +318,7 @@ def test_upgrade_lifecycle(
     call = 0
     try:
         from packaging import version
-    except:
+    except ImportError:
         pytest.fail("Import packaging failed.")
     for key, extension in current_extensions.items():
         if any([
