@@ -539,6 +539,13 @@ def load_iotops_arguments(self, _):
                 "used, a system provided self-signed trust bundle is configured.",
                 arg_group="Trust",
             )
+            context.argument(
+                "user_trust",
+                options_list=["--user-trust", "--ut"],
+                arg_type=get_three_state_flag(),
+                help="Skip the deployment of the system CertManager and TrustManager in favor of a user-provided configuration",
+                arg_group="Trust",
+            )
 
     with self.argument_context("iot ops upgrade") as context:
         # Schema Registry

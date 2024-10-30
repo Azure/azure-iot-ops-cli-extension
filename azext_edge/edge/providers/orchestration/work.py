@@ -359,6 +359,14 @@ class WorkManager:
                             "Foundational service installation not detected. "
                             "Instance deployment will not continue. Please run `az iot ops init`."
                         )
+                
+                # validate trust config in platform extension matches trust settings in create
+                platform_extension_config=self._extension_map[IOT_OPS_PLAT_EXTENSION_TYPE]["properties"]["configurationSettings"]
+                is_user_trust = platform_extension_config.get("installCertManager", "").lower() != "true"
+                if is_user_trust and not self._targets.trust_settings:
+                    raise ValidationError("Cluster was enabled with user-managed trust configuration, --trust-settings arguments are required to create an instance on this cluster.")
+                elif not is_user_trust and self._targets.trust_settings:
+                    raise ValidationError("Cluster was enabled with system CertManager, trust settings (--trust-settings) are not applicable to this cluster.")
 
                 instance_work_name = self._work_format_str.format(op="instance")
                 self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)

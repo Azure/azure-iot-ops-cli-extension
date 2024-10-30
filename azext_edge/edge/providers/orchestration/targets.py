@@ -63,6 +63,8 @@ class InitTargets:
         # Akri
         kubernetes_distro: str = KubernetesDistroType.k8s.value,
         container_runtime_socket: Optional[str] = None,
+        # User Trust Config
+        user_trust: Optional[bool] = None,
         **_,
     ):
         self.cluster_name = cluster_name
@@ -84,6 +86,7 @@ class InitTargets:
         self.trust_settings = assemble_nargs_to_dict(trust_settings)
         self.trust_config = self.get_trust_settings_target_map()
         self.advanced_config = self.get_advanced_config_target_map()
+        self.user_trust = user_trust
 
         # Dataflow
         self.dataflow_profile_instances = self._sanitize_int(dataflow_profile_instances)
@@ -150,7 +153,11 @@ class InitTargets:
             },
             template_blueprint=M3_ENABLEMENT_TEMPLATE,
         )
-
+        if self.user_trust:
+            # disable cert and trust manager
+            parameters["trustConfig"]["value"]["source"] = "CustomerManaged"
+            # patch enablement template expecting full trust settings for source: CustomerManaged
+            del template.content["definitions"]["_1.CustomerManaged"]["properties"]["settings"]
         # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
         return template.content, parameters
 
