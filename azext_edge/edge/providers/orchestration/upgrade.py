@@ -101,21 +101,22 @@ class UpgradeManager:
             print("[green]Nothing to upgrade :)[/green]")
             return
 
-        print("Azure IoT Operations Upgrade")
-        print()
-        if self.extensions_to_update:
-            print(Padding("Extensions to update:", (0, 0, 0, 2)))
-            print(Padding(extension_text, (0, 0, 0, 4)))
+        if self._render_progress:
+            print("Azure IoT Operations Upgrade")
+            print()
+            if self.extensions_to_update:
+                print(Padding("Extensions to update:", (0, 0, 0, 2)))
+                print(Padding(extension_text, (0, 0, 0, 4)))
 
-        if self.require_instance_upgrade:
-            print(Padding(
-                f"Azure IoT Operations instance version {current_version} found. Will update the instance to "
-                f"version {self.new_aio_version}.",
-                (0, 0, 0, 2)
-            ))
+            if self.require_instance_upgrade:
+                print(Padding(
+                    f"Azure IoT Operations instance version {current_version} found. Will update the instance to "
+                    f"version {self.new_aio_version}.",
+                    (0, 0, 0, 2)
+                ))
 
-        print()
-        print("[yellow]Upgrading may fail and require you to delete and re-create your cluster.[/yellow]")
+            print()
+            print("[yellow]Upgrading may fail and require you to delete and re-create your cluster.[/yellow]")
 
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Upgrade")
         if should_bail:
@@ -266,16 +267,14 @@ class UpgradeManager:
             # prep the instance
             self.instance.pop("systemData", None)
             inst_props = self.instance["properties"]
-            if inst_props.get("schemaRegistryRef", {}).get("resourceId"):
-                self.sr_resource_id = inst_props["schemaRegistryRef"]["resourceId"]
-            inst_props["schemaRegistryRef"] = {"resourceId": self.sr_resource_id}
-
+            self.sr_resource_id = inst_props.get("schemaRegistryRef", {}).get("resourceId", self.sr_resource_id)
             # m3 extensions should not have the reg id
             if not self.sr_resource_id:
                 raise RequiredArgumentMissingError(
                     "Cannot determine the schema registry id from installed extensions, please provide the schema "
                     "registry id via `--sr-id`."
                 )
+            inst_props["schemaRegistryRef"] = {"resourceId": self.sr_resource_id}
 
             inst_props["version"] = self.new_aio_version
             inst_props.pop("schemaRegistryNamespace", None)
