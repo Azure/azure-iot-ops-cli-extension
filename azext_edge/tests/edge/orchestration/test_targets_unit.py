@@ -113,7 +113,7 @@ INSTANCE_PARAM_CONVERSION_MAP = {
                 resource_provider="Microsoft.DeviceRegistry",
             ),
             user_trust=True,
-        )
+        ),
     ],
 )
 def test_init_targets(target_scenario: dict):
@@ -141,12 +141,7 @@ def test_init_targets(target_scenario: dict):
 
     enablement_template, enablement_parameters = targets.get_ops_enablement_template()
 
-    if target_scenario.get("user_trust"):
-        assert targets.trust_config["source"] == "CustomerManaged"
-        # TODO @c-ryan-k - Enablement template should not require "settings" for customer managed trust config
-        assert enablement_template["definitions"]["_1.CustomerManaged"]["properties"]["settings"]["nullable"]
-    elif not target_scenario.get("trust_settings"):
-        assert targets.trust_config["source"] == "SelfSigned"
+    verify_user_trust_enablement(targets, enablement_template, target_scenario)
 
     for parameter in enablement_parameters:
         targets_key = parameter
@@ -162,7 +157,6 @@ def test_init_targets(target_scenario: dict):
         targets.trust_config = None
 
     instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids)
-
 
     if targets.ops_version:
         assert instance_template["variables"]["VERSIONS"]["iotOperations"] == targets.ops_version
@@ -227,3 +221,12 @@ def verify_user_trust_settings(targets: InitTargets, target_scenario: dict):
             "configMapName": target_scenario["trust_settings"]["configMapName"],
         },
     }
+
+
+def verify_user_trust_enablement(targets: InitTargets, enablement_template: dict, target_scenario: dict):
+    if target_scenario.get("user_trust"):
+        assert targets.trust_config["source"] == "CustomerManaged"
+        # TODO @c-ryan-k - Enablement template should not require "settings" for customer managed trust config
+        assert enablement_template["definitions"]["_1.CustomerManaged"]["properties"]["settings"]["nullable"]
+    elif not target_scenario.get("trust_settings"):
+        assert targets.trust_config["source"] == "SelfSigned"
