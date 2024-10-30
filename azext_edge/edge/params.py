@@ -543,8 +543,8 @@ def load_iotops_arguments(self, _):
                 "user_trust",
                 options_list=["--user-trust", "--ut"],
                 arg_type=get_three_state_flag(),
-                help="Skip the deployment of the system CertManager and TrustManager "
-                "in favor of a user-provided configuration",
+                help="Skip the deployment of the system cert-manager and trust-manager "
+                "in favor of a user-provided configuration.",
                 arg_group="Trust",
             )
 

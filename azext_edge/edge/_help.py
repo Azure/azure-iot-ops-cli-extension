@@ -482,8 +482,8 @@ def load_iotops_help():
         - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --enable-fault-tolerance
-        - name: This example highlights enabling user trust settings for a custom cert manager config.
-            This will skip deployment of the system CertManager and TrustManager.
+        - name: This example highlights enabling user trust settings for a custom cert-manager config.
+            This will skip deployment of the system cert-manager and trust-manager.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --user-trust
 
@@ -521,8 +521,8 @@ def load_iotops_help():
           text: >
              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --enable-rsync
-        - name: This example highlights trust settings for a user provided cert manager config.
-            Note: Cluster must have been initialized with `--user-trust` and a user CertManager deployment must be present.
+        - name: This example highlights trust settings for a user provided cert-manager config.
+            Note that the cluster must have been initialized with `--user-trust` and a user cert-manager deployment must be present.
           text: >
               az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
               --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem

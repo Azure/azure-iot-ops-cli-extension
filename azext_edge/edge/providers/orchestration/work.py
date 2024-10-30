@@ -366,7 +366,7 @@ class WorkManager:
                     )
                 elif not is_user_trust and self._targets.trust_settings:
                     raise ValidationError(
-                        "Cluster was enabled with system CertManager, "
+                        "Cluster was enabled with system cert-manager, "
                         "trust settings (--trust-settings) are not applicable to this cluster."
                     )
 

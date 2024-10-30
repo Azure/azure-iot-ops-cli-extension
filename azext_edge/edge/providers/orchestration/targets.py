@@ -158,7 +158,6 @@ class InitTargets:
             parameters["trustConfig"]["value"]["source"] = "CustomerManaged"
             # patch enablement template expecting full trust settings for source: CustomerManaged
             del template.content["definitions"]["_1.CustomerManaged"]["properties"]["settings"]
-        # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
         return template.content, parameters
 
     def get_ops_instance_template(
