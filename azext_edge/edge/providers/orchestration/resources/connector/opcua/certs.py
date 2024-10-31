@@ -15,7 +15,7 @@ from rich.console import Console
 import yaml
 
 from ....common import CUSTOM_LOCATIONS_API_VERSION
-from ...instances import Instances
+from ...instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from ....work import IOT_OPS_EXTENSION_TYPE
 from ......util.file_operations import read_file_content, validate_file_extension
 from ......util.queryable import Queryable
@@ -30,8 +30,6 @@ logger = get_logger(__name__)
 
 console = Console()
 
-SPC_RESOURCE_TYPE = "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses"
-SECRET_SYNC_RESOURCE_TYPE = "microsoft.secretsynccontroller/secretsyncs"
 OPCUA_SPC_NAME = "opc-ua-connector"
 OPCUA_TRUST_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-trust-list"
 OPCUA_ISSUER_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-issuer-list"
