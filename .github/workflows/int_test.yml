@@ -164,6 +164,8 @@ jobs:
       - name: "Apply custom cluster issuer"
         if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         run: |
+          cat /etc/rancher/k3s/k3s.yaml
+          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
           helm repo add jetstack https://charts.jetstack.io --force-update
 
           kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.6/cert-manager.yaml
