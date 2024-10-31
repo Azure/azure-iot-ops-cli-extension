@@ -720,6 +720,9 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: List the secret sync configs associated with an instance.
+        long-summary: |
+          All the secret provider classes associated with the instance, and all the secret
+          syncs associated with the secret provider classes will be deleted.
 
         examples:
         - name: List the secret sync configs associated with an instance.
