@@ -454,8 +454,10 @@ def test_version_add(mocked_cmd, mocked_responses: responses, description: Optio
     assert create_payload["properties"]["description"] == description
 
 
-def test_version_add_error(mocked_cmd):
-    from azure.cli.core.azclierror import InvalidArgumentValueError
+def test_version_add_error(mocked_cmd, mocked_responses: responses):
+    from azure.cli.core.azclierror import InvalidArgumentValueError, ForbiddenError
+    from azure.core.exceptions import HttpResponseError
+    # bad version
     with pytest.raises(InvalidArgumentValueError):
         add_version(
             cmd=mocked_cmd,
@@ -464,4 +466,52 @@ def test_version_add_error(mocked_cmd):
             schema_registry_name=generate_random_string(),
             schema_version_content=generate_random_string(),
             resource_group_name=generate_random_string()
+        )
+
+    schema_name = generate_random_string()
+    version_num = 1
+    registry_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    # error checking 412
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_schema_version_endpoint(
+            resource_group_name=resource_group_name,
+            registry_name=registry_name,
+            schema_name=schema_name,
+            schema_version=version_num
+        ),
+        status=412,
+        content_type="application/json",
+    )
+    with pytest.raises(ForbiddenError):
+        add_version(
+            cmd=mocked_cmd,
+            version_name=version_num,
+            resource_group_name=resource_group_name,
+            schema_registry_name=registry_name,
+            schema_name=schema_name,
+            schema_version_content=generate_random_string(),
+        )
+
+    # error checking other
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_schema_version_endpoint(
+            resource_group_name=resource_group_name,
+            registry_name=registry_name,
+            schema_name=schema_name,
+            schema_version=version_num
+        ),
+        status=404,
+        content_type="application/json",
+    )
+    with pytest.raises(HttpResponseError):
+        add_version(
+            cmd=mocked_cmd,
+            version_name=version_num,
+            resource_group_name=resource_group_name,
+            schema_registry_name=registry_name,
+            schema_name=schema_name,
+            schema_version_content=generate_random_string(),
         )

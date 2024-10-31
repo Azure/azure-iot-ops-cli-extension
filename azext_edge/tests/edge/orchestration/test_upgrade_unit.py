@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from packaging import version
 from typing import Dict, List, Optional, OrderedDict
 from unittest.mock import Mock
 import pytest
@@ -119,7 +118,6 @@ def _generate_extensions(**extension_version_map) -> OrderedDict:
     return extensions
 
 
-# TODO: if not used for m3 - simplify
 def _generate_instance(instance_name: str, resource_group: str, m3: bool = False):
     mock_instance_record = {
         "extendedLocation": {
@@ -144,7 +142,7 @@ def _generate_instance(instance_name: str, resource_group: str, m3: bool = False
         "type": "microsoft.iotoperations/instances"
     }
     if m3:
-        mock_instance_record["properties"]["schemaRegistryRef"] = {"resource_id": generate_random_string()}
+        mock_instance_record["properties"]["schemaRegistryRef"] = {"resourceId": generate_random_string()}
     else:
         mock_instance_record["properties"]["schemaRegistryNamespace"] = generate_random_string()
         mock_instance_record["properties"]["components"] = {
@@ -178,7 +176,6 @@ def _generate_trains(**trains) -> dict:
 
 
 @pytest.mark.parametrize("no_progress", [False, True])
-@pytest.mark.parametrize("require_instance_update", [False, True])
 @pytest.mark.parametrize("current_extensions, new_versions, new_trains", [
     # update none
     (
@@ -259,7 +256,6 @@ def test_upgrade_lifecycle(
     mocked_logger: Mock,
     mocked_rich_print: Mock,
     spy_upgrade_manager: Dict[str, Mock],
-    require_instance_update: bool,
     current_extensions: List[dict],
     new_versions: List[dict],
     new_trains: List[dict],
@@ -276,28 +272,32 @@ def test_upgrade_lifecycle(
     mocked_resource_map.connected_cluster.extensions = list(current_extensions.values())
     extension_update_mock = mocked_resource_map.connected_cluster.clusters.extensions.update_cluster_extension
     _assemble_template_mock(mocker, new_versions=new_versions, new_trains=new_trains)
-    m2_instance = None
+    instance_body = None
     # the get m2 instance call
-    if require_instance_update:
-        m2_instance = _generate_instance(instance_name=instance_name, resource_group=rg_name)
+    current_version = current_extensions["iot_operations"]["properties"]["version"]
+    if current_version == "0.7.31":
+        instance_body = _generate_instance(instance_name=instance_name, resource_group=rg_name)
         # note the resource client adds an extra / before instances for the parent path. The api doesnt care
         mocked_responses.add(
             method=responses.GET,
             url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
             f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-            json=m2_instance,
+            json=instance_body,
             status=200,
             content_type="application/json",
         )
     else:
+        instance_body = _generate_instance(instance_name=instance_name, resource_group=rg_name, m3=True)
         mocked_responses.add(
             method=responses.GET,
             url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
             f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-            status=404,
+            json={"message": "HttpResponsePayloadAPISpecValidationFailed"},
+            status=412,
             content_type="application/json",
         )
-        # no need to provide valid value for instance show since it will not be used
+        instance_body["properties"]["version"] = current_version
+        mocked_instances.show.return_value = instance_body
 
     kwargs = {
         "cmd": mocked_cmd,
@@ -316,6 +316,10 @@ def test_upgrade_lifecycle(
     extensions_to_update = {}
     extension_update_calls = extension_update_mock.call_args_list
     call = 0
+    try:
+        from packaging import version
+    except ImportError:
+        pytest.fail("Import packaging failed.")
     for key, extension in current_extensions.items():
         if any([
             version.parse(extension["properties"]["version"]) < version.parse(new_versions[key]),
@@ -341,17 +345,17 @@ def test_upgrade_lifecycle(
     assert len(extensions_to_update) == len(extension_update_calls)
 
     # overall upgrade call
-    assert spy_upgrade_manager["_process"].called is bool(extensions_to_update or require_instance_update)
+    assert spy_upgrade_manager["_process"].called is any([extensions_to_update, current_version == "0.7.31"])
 
-    if require_instance_update:
+    if current_version == "0.7.31":
         update_args = mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.call_args.kwargs
         update_body = update_args["resource"]
 
         # props that were kept the same
         for prop in ["extendedLocation", "id", "name", "location", "resourceGroup", "type"]:
-            assert update_body[prop] == m2_instance[prop]
+            assert update_body[prop] == instance_body[prop]
         for prop in ["description", "provisioningState"]:
-            assert update_body["properties"][prop] == m2_instance["properties"][prop]
+            assert update_body["properties"][prop] == instance_body["properties"][prop]
 
         # props that were removed
         assert "systemData" not in update_body
@@ -361,17 +365,22 @@ def test_upgrade_lifecycle(
         # props that were added/changed - also ensure right sr id is used
         assert update_body["properties"]["version"] == new_versions["iot_operations"]
         aio_ext_props = current_extensions["iot_operations"]["properties"]
-        assert update_body["properties"]["schemaRegistryRef"]["resourceId"] == (
+        expected_sr_resource_id = (
             sr_resource_id or aio_ext_props["configurationSettings"]["schemaRegistry.values.resourceId"]
         )
+        if current_version != "0.7.31":
+            expected_sr_resource_id = instance_body["properties"]["schemaRegistryRef"]["resourceId"]
+
+        assert update_body["properties"]["schemaRegistryRef"]["resourceId"] == expected_sr_resource_id
     else:
         # make sure we tried to get the m3
-        mocked_instances.show.assert_called()
+        assert mocked_instances.show.call_count == (2 if extension_update_calls else 1)
         mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.assert_not_called()
 
     # no progress check
-    if kwargs["no_progress"]:
+    if no_progress:
         mocked_live_display.assert_called_once_with(None, transient=False, refresh_per_second=8, auto_refresh=False)
+    assert mocked_rich_print.called == (not spy_upgrade_manager["_process"].called or not no_progress)
 
 
 def test_upgrade_error(
@@ -409,11 +418,13 @@ def test_upgrade_error(
         status=200,
         content_type="application/json",
     )
+    error_msg = "instance update failed"
     mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.side_effect = HttpResponseError(
-        "instance update failed"
+        error_msg
     )
     with pytest.raises(HttpResponseError) as e:
         upgrade_ops_resources(**kwargs)
+    assert error_msg in e.value.message
 
     # some random extension has a hidden status error
     mocked_responses.add(
@@ -442,11 +453,11 @@ def test_upgrade_error(
         status=200,
         content_type="application/json",
     )
-    extension_update_mock.side_effect = HttpResponseError(
-        "extension update failed"
-    )
-    with pytest.raises(HttpResponseError):
+    error_msg = "extension update failed"
+    extension_update_mock.side_effect = HttpResponseError(error_msg)
+    with pytest.raises(HttpResponseError) as e:
         upgrade_ops_resources(**kwargs)
+    assert error_msg in e.value.message
 
     # need to update the instance but cannot get the sr resource id
     mocked_responses.add(
@@ -462,7 +473,20 @@ def test_upgrade_error(
     with pytest.raises(RequiredArgumentMissingError):
         upgrade_ops_resources(**kwargs)
 
-    # cannot get m2 or m3
+    # instance is an unreleased bug bash version
+    m2_instance["properties"]["version"] = "0.7.25"
+    mocked_responses.add(
+        method=responses.GET,
+        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
+        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
+        json=m2_instance,
+        status=200,
+        content_type="application/json",
+    )
+    with pytest.raises(ArgumentUsageError):
+        upgrade_ops_resources(**kwargs)
+
+    # other m2 get errors raise normally
     mocked_responses.add(
         method=responses.GET,
         url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
@@ -470,6 +494,28 @@ def test_upgrade_error(
         status=404,
         content_type="application/json",
     )
-    mocked_instances.show.side_effect = HttpResponseError("instance get failed")
+    with pytest.raises(HttpResponseError) as e:
+        upgrade_ops_resources(**kwargs)
+    assert e.value.response.status_code == 404
+
+    # other m3 get errors raise normally
+    mocked_responses.add(
+        method=responses.GET,
+        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
+        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
+        json={"message": "HttpResponsePayloadAPISpecValidationFailed"},
+        status=412,
+        content_type="application/json",
+    )
+    error_msg = "instance get failed"
+    mocked_instances.show.side_effect = HttpResponseError(error_msg)
+    with pytest.raises(HttpResponseError) as e:
+        upgrade_ops_resources(**kwargs)
+    assert error_msg in e.value.message
+
+    # cannot get m2 or m3 because api spec validation
+    mocked_instances.show.side_effect = HttpResponseError(
+        "(HttpResponsePayloadAPISpecValidationFailed) instance get failed"
+    )
     with pytest.raises(ArgumentUsageError):
         upgrade_ops_resources(**kwargs)

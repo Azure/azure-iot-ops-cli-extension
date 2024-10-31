@@ -482,11 +482,10 @@ def load_iotops_help():
         - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --enable-fault-tolerance
-        - name: This example highlights trust settings for a user provided cert manager config.
+        - name: This example highlights enabling user trust settings for a custom cert-manager config.
+            This will skip deployment of the system cert-manager and trust-manager.
           text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --trust-settings
-             configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=ClusterIssuer
-             issuerName=trust-manager-selfsigned-issuer
+             az iot ops init --cluster mycluster -g myresourcegroup --user-trust
 
     """
 
@@ -522,6 +521,13 @@ def load_iotops_help():
           text: >
              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --enable-rsync
+        - name: This example highlights trust settings for a user provided cert-manager config.
+            Note that the cluster must have been initialized with `--user-trust` and a user cert-manager deployment must be present.
+          text: >
+              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+              --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem
+              issuerKind=ClusterIssuer issuerName=trust-manager-selfsigned-issuer
+
     """
 
     helps[
@@ -710,15 +716,15 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops secretsync show"
+        "iot ops secretsync list"
     ] = """
         type: command
-        short-summary: Show the secret sync config associated with an instance.
+        short-summary: List the secret sync configs associated with an instance.
 
         examples:
-        - name: Show the secret sync config associated with an instance.
+        - name: List the secret sync configs associated with an instance.
           text: >
-            az iot ops secretsync show --name myinstance -g myresourcegroup
+            az iot ops secretsync list --name myinstance -g myresourcegroup
     """
 
     helps[
@@ -726,6 +732,9 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Disable secret sync for an instance.
+        long-summary: |
+          All the secret provider classes associated with the instance, and all the secret
+          syncs associated with the secret provider classes will be deleted.
 
         examples:
         - name: Disable secret sync for an instance.
@@ -1288,8 +1297,8 @@ def load_iotops_help():
                       This operation will create a schema registry with system managed identity enabled.
 
                       It will then assign the system identity the built-in "Storage Blob Data Contributor"
-                      role against the storage account scope by default. If necessary you can provide a custom
-                      role via --custom-role-id to use instead.
+                      role against the storage account container scope by default. If necessary you can provide a
+                      custom role via --custom-role-id to use instead.
 
                       If the indicated storage account container does not exist it will be created with default
                       settings.
