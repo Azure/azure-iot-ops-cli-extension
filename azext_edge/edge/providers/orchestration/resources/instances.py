@@ -396,14 +396,14 @@ class Instances(Queryable):
         for resource in cl_resources:
             if resource["type"].lower() == resource_type:
                 resource_id_container = parse_resource_id(resource["id"])
-                if resource_type == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses":
+                if resource_type == SPC_RESOURCE_TYPE:
                     resources.append(
                         self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
                             resource_group_name=resource_id_container.resource_group_name,
                             azure_key_vault_secret_provider_class_name=resource_id_container.resource_name,
                         )
                     )
-                elif resource_type == "microsoft.secretsynccontroller/secretsyncs":
+                elif resource_type == SECRET_SYNC_RESOURCE_TYPE:
                     resources.append(
                         self.ssc_mgmt_client.secret_syncs.get(
                             resource_group_name=resource_id_container.resource_group_name,
