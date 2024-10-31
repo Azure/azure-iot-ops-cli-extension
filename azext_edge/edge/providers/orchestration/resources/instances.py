@@ -318,7 +318,7 @@ class Instances(Queryable):
                 logger.warning(role_assignment_error)
             return result_spc
 
-    def show_secretsync(self, name: str, resource_group_name: str) -> Optional[dict]:
+    def list_secretsync(self, name: str, resource_group_name: str) -> Optional[dict]:
         # TODO: add unit test
         with console.status("Working..."):
             instance = self.show(name=name, resource_group_name=resource_group_name)

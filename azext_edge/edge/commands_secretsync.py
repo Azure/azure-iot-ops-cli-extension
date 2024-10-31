@@ -36,8 +36,8 @@ def secretsync_enable(
     )
 
 
-def secretsync_show(cmd, instance_name: str, resource_group_name: str) -> dict:
-    return Instances(cmd).show_secretsync(
+def secretsync_list(cmd, instance_name: str, resource_group_name: str) -> dict:
+    return Instances(cmd).list_secretsync(
         name=instance_name,
         resource_group_name=resource_group_name,
     )

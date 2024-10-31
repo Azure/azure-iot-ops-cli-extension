@@ -710,15 +710,15 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops secretsync show"
+        "iot ops secretsync list"
     ] = """
         type: command
-        short-summary: Show the secret sync config associated with an instance.
+        short-summary: List the secret sync configs associated with an instance.
 
         examples:
-        - name: Show the secret sync config associated with an instance.
+        - name: List the secret sync configs associated with an instance.
           text: >
-            az iot ops secretsync show --name myinstance -g myresourcegroup
+            az iot ops secretsync list --name myinstance -g myresourcegroup
     """
 
     helps[

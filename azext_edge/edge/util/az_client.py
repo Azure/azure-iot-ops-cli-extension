@@ -196,9 +196,6 @@ def get_keyvault_client(subscription_id: str, keyvault_name: str, **kwargs) -> "
         **kwargs,
     )
 
-    # wait to set the access token
-    sleep(5)
-
     return client
 
 
