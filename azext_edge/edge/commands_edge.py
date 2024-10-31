@@ -109,10 +109,10 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
-    trust_settings: Optional[List[str]] = None,
     enable_fault_tolerance: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
+    user_trust: Optional[bool] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
@@ -130,7 +130,7 @@ def init(
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         enable_fault_tolerance=enable_fault_tolerance,
-        trust_settings=trust_settings,
+        user_trust=user_trust,
     )
 
 
@@ -167,6 +167,7 @@ def create_instance(
     enable_rsync_rules: Optional[bool] = None,
     instance_description: Optional[str] = None,
     dataflow_profile_instances: int = 1,
+    trust_settings: Optional[List[str]] = None,
     # Ops extension
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
@@ -221,6 +222,7 @@ def create_instance(
         instance_description=instance_description,
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
+        trust_settings=trust_settings,
         # Ops Extension
         container_runtime_socket=container_runtime_socket,
         kubernetes_distro=kubernetes_distro,
