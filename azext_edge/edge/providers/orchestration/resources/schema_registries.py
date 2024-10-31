@@ -287,7 +287,7 @@ class Schemas(Queryable):
                     resource=resource
                 )
         except HttpResponseError as e:
-            if "AuthorizationFailure" in e.message:
+            if e.status_code == 412:
                 raise ForbiddenError(
                     "Schema versions require public network access to be enabled in the associated storage account."
                 )
