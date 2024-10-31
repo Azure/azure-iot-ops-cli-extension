@@ -109,15 +109,10 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
-    schema_registry_resource_id: str,
-    container_runtime_socket: Optional[str] = None,
-    kubernetes_distro: str = KubernetesDistroType.k8s.value,
-    trust_settings: Optional[List[str]] = None,
     enable_fault_tolerance: Optional[bool] = None,
-    ops_config: Optional[List[str]] = None,
-    ops_version: Optional[str] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
+    user_trust: Optional[bool] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
@@ -134,13 +129,29 @@ def init(
         pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
-        container_runtime_socket=container_runtime_socket,
-        kubernetes_distro=kubernetes_distro,
         enable_fault_tolerance=enable_fault_tolerance,
-        ops_config=ops_config,
-        ops_version=ops_version,
-        trust_settings=trust_settings,
-        schema_registry_resource_id=schema_registry_resource_id,
+        user_trust=user_trust,
+    )
+
+
+def upgrade(
+    cmd,
+    resource_group_name: str,
+    instance_name: str,
+    schema_registry_resource_id: Optional[str] = None,
+    no_progress: Optional[bool] = None,
+    confirm_yes: Optional[bool] = None,
+    **kwargs
+):
+    from .providers.orchestration.upgrade import upgrade_ops_resources
+    return upgrade_ops_resources(
+        cmd=cmd,
+        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        sr_resource_id=schema_registry_resource_id,
+        no_progress=no_progress,
+        confirm_yes=confirm_yes,
+        **kwargs
     )
 
 
@@ -149,12 +160,19 @@ def create_instance(
     cluster_name: str,
     resource_group_name: str,
     instance_name: str,
+    schema_registry_resource_id: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     location: Optional[str] = None,
     custom_location_name: Optional[str] = None,
     enable_rsync_rules: Optional[bool] = None,
     instance_description: Optional[str] = None,
     dataflow_profile_instances: int = 1,
+    trust_settings: Optional[List[str]] = None,
+    # Ops extension
+    container_runtime_socket: Optional[str] = None,
+    kubernetes_distro: str = KubernetesDistroType.k8s.value,
+    ops_config: Optional[List[str]] = None,
+    ops_version: Optional[str] = None,
     # Broker
     custom_broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
@@ -196,6 +214,7 @@ def create_instance(
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         cluster_namespace=cluster_namespace,
+        schema_registry_resource_id=schema_registry_resource_id,
         location=location,
         custom_location_name=custom_location_name,
         enable_rsync_rules=enable_rsync_rules,
@@ -203,6 +222,12 @@ def create_instance(
         instance_description=instance_description,
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
+        trust_settings=trust_settings,
+        # Ops Extension
+        container_runtime_socket=container_runtime_socket,
+        kubernetes_distro=kubernetes_distro,
+        ops_config=ops_config,
+        ops_version=ops_version,
         # Broker
         custom_broker_config=custom_broker_config,
         broker_memory_profile=broker_memory_profile,

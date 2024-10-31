@@ -8,10 +8,7 @@ from typing import TYPE_CHECKING, Iterable, Optional
 
 from knack.log import get_logger
 
-from ....util.az_client import (
-    get_clusterconfig_mgmt_client,
-    get_connectedk8s_mgmt_client,
-)
+from ....util.az_client import get_clusterconfig_mgmt_client, get_connectedk8s_mgmt_client, wait_for_terminal_state
 from ....util.queryable import Queryable
 
 logger = get_logger(__name__)
@@ -52,4 +49,23 @@ class ClusterExtensions(Queryable):
             cluster_rp="Microsoft.Kubernetes",
             cluster_resource_name="connectedClusters",
             cluster_name=cluster_name,
+        )
+
+    # will be removed
+    def update_cluster_extension(
+        self,
+        resource_group_name: str,
+        cluster_name: str,
+        extension_name: str,
+        update_payload: dict,
+    ) -> Iterable[dict]:
+        return wait_for_terminal_state(
+            self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                cluster_rp="Microsoft.Kubernetes",
+                cluster_resource_name="connectedClusters",
+                cluster_name=cluster_name,
+                extension_name=extension_name,
+                patch_extension=update_payload,
+            )
         )
