@@ -52,7 +52,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("enable", "secretsync_enable")
         cmd_group.command("disable", "secretsync_disable")
-        cmd_group.show_command("show", "secretsync_show")
+        cmd_group.show_command("list", "secretsync_list")
 
     with self.command_group(
         "iot ops support",
