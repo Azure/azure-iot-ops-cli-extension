@@ -11,7 +11,6 @@ from knack.help_files import helps
 
 from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
 
-from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
     COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
