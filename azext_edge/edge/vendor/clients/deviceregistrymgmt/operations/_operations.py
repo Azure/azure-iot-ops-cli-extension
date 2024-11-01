@@ -1652,6 +1652,8 @@ class AssetEndpointProfilesOperations:
         self._config = input_args.pop(0) if input_args else kwargs.pop("config")
         self._serialize = input_args.pop(0) if input_args else kwargs.pop("serializer")
         self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
+        # try to override api_version
+        self._config.api_version = "2024-11-01"
 
     @distributed_trace
     def list_by_subscription(self, **kwargs: Any) -> Iterable[JSON]:
@@ -3385,6 +3387,8 @@ class AssetsOperations:
         self._config = input_args.pop(0) if input_args else kwargs.pop("config")
         self._serialize = input_args.pop(0) if input_args else kwargs.pop("serializer")
         self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
+        # try to override api_version
+        self._config.api_version = "2024-11-01"
 
     @distributed_trace
     def list_by_subscription(self, **kwargs: Any) -> Iterable[JSON]:
