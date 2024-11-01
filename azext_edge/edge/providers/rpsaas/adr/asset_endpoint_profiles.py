@@ -6,7 +6,7 @@
 
 import json
 from rich.console import Console
-from typing import TYPE_CHECKING, Dict, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from knack.log import get_logger
 
