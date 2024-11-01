@@ -88,7 +88,6 @@ def test_create_bundle(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
-    mocked_get_stats,
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_namespaced_custom_objects,
@@ -204,7 +203,6 @@ def test_create_bundle(
                 label_selector=MQ_NAME_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
             )
-            assert_mq_stats(mocked_zipfile)
 
         if api in [OPCUA_API_V1]:
             # Assert runtime resources
@@ -421,7 +419,6 @@ def test_create_bundle_crd_work(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
-    mocked_get_stats,
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_namespaced_custom_objects,
@@ -777,10 +774,6 @@ def assert_list_daemon_sets(
         )
 
 
-def assert_mq_stats(mocked_zipfile):
-    assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/broker/diagnostic_metrics.txt", data="metrics")
-
-
 def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
     for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_jobs]:
         kwargs = {
@@ -880,7 +873,6 @@ def test_create_bundle_mq_traces(
     mocked_list_services,
     mocked_list_nodes,
     mocked_list_cluster_events,
-    mocked_get_stats,
     mocked_list_storage_classes,
     mocked_root_logger,
     mocked_mq_active_api,

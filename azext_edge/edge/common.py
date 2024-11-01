@@ -126,20 +126,6 @@ class ProvisioningState(Enum):
     accepted = "Accepted"
 
 
-class MqDiagnosticPropertyIndex(Enum):
-    """
-    MQ Diagnostic Property Index Strings
-    """
-
-    publishes_received_per_second = "aio_broker_publishes_received_per_second"
-    publishes_sent_per_second = "aio_broker_publishes_sent_per_second"
-    publish_route_replication_correctness = "aio_broker_publish_route_replication_correctness"
-    publish_latency_mu_ms = "aio_broker_publish_latency_mu_ms"
-    publish_latency_sigma_ms = "aio_broker_publish_latency_sigma_ms"
-    connected_sessions = "aio_broker_connected_sessions"
-    total_subscriptions = "aio_broker_store_total_subscriptions"
-
-
 class OpsServiceType(ListableEnum):
     """
     IoT Operations service type.
