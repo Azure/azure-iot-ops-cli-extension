@@ -308,59 +308,6 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker name.",
         )
 
-    with self.argument_context("iot ops broker stats") as context:
-        context.argument(
-            "refresh_in_seconds",
-            options_list=["--refresh"],
-            help="Number of seconds between a stats refresh. Applicable with --watch.",
-            type=int,
-        )
-        context.argument(
-            "watch",
-            options_list=["--watch"],
-            help="The operation blocks and dynamically updates a stats table.",
-            arg_type=get_three_state_flag(),
-        )
-        context.argument(
-            "diag_service_pod_prefix",
-            options_list=["--diag-svc-pod"],
-            help="The diagnostic service pod prefix. The first pod fulfilling the condition will be connected to.",
-            arg_group="Diagnostics Pod",
-        )
-        context.argument(
-            "pod_metrics_port",
-            type=int,
-            options_list=["--metrics-port"],
-            help="Diagnostic service metrics API port.",
-            arg_group="Diagnostics Pod",
-        )
-        context.argument(
-            "pod_protobuf_port",
-            type=int,
-            options_list=["--protobuf-port"],
-            help="Diagnostic service protobuf API port.",
-            arg_group="Diagnostics Pod",
-        )
-        context.argument(
-            "raw_response_print",
-            options_list=["--raw"],
-            arg_type=get_three_state_flag(),
-            help="Return raw output from the metrics API.",
-        )
-        context.argument(
-            "trace_ids",
-            nargs="*",
-            options_list=["--trace-ids"],
-            help="Space-separated trace ids in hex format.",
-            arg_group="Trace",
-        )
-        context.argument(
-            "trace_dir",
-            options_list=["--trace-dir"],
-            help="Local directory where traces will be bundled and stored at.",
-            arg_group="Trace",
-        )
-
     for cmd_space in ["iot ops init", "iot ops create"]:
         with self.argument_context(cmd_space) as context:
             context.argument(
