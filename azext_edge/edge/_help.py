@@ -482,11 +482,10 @@ def load_iotops_help():
         - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --enable-fault-tolerance
-        - name: This example highlights trust settings for a user provided cert manager config.
+        - name: This example highlights enabling user trust settings for a custom cert-manager config.
+            This will skip deployment of the system cert-manager and trust-manager.
           text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --trust-settings
-             configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=ClusterIssuer
-             issuerName=trust-manager-selfsigned-issuer
+             az iot ops init --cluster mycluster -g myresourcegroup --user-trust
 
     """
 
@@ -522,6 +521,13 @@ def load_iotops_help():
           text: >
              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --enable-rsync
+        - name: This example highlights trust settings for a user provided cert-manager config.
+            Note that the cluster must have been initialized with `--user-trust` and a user cert-manager deployment must be present.
+          text: >
+              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+              --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem
+              issuerKind=ClusterIssuer issuerName=trust-manager-selfsigned-issuer
+
     """
 
     helps[
@@ -710,15 +716,15 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops secretsync show"
+        "iot ops secretsync list"
     ] = """
         type: command
-        short-summary: Show the secret sync config associated with an instance.
+        short-summary: List the secret sync configs associated with an instance.
 
         examples:
-        - name: Show the secret sync config associated with an instance.
+        - name: List the secret sync configs associated with an instance.
           text: >
-            az iot ops secretsync show --name myinstance -g myresourcegroup
+            az iot ops secretsync list --name myinstance -g myresourcegroup
     """
 
     helps[
@@ -726,6 +732,9 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Disable secret sync for an instance.
+        long-summary: |
+          All the secret provider classes associated with the instance, and all the secret
+          syncs associated with the secret provider classes will be deleted.
 
         examples:
         - name: Disable secret sync for an instance.
@@ -1288,8 +1297,8 @@ def load_iotops_help():
                       This operation will create a schema registry with system managed identity enabled.
 
                       It will then assign the system identity the built-in "Storage Blob Data Contributor"
-                      role against the storage account scope by default. If necessary you can provide a custom
-                      role via --custom-role-id to use instead.
+                      role against the storage account container scope by default. If necessary you can provide a
+                      custom role via --custom-role-id to use instead.
 
                       If the indicated storage account container does not exist it will be created with default
                       settings.
@@ -1307,6 +1316,136 @@ def load_iotops_help():
             --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID --sa-container myschemacontainer
             -l westus2 --desc 'Contoso factory X1 schemas' --display-name 'Contoso X1' --tags env=prod
     """
+
+    helps[
+        "iot ops connector"
+    ] = """
+        type: group
+        short-summary: Connector management.
+    """
+
+    helps[
+        "iot ops connector opcua"
+    ] = """
+        type: group
+        short-summary: OPC UA connector management.
+        long-summary: |
+          The connector for OPC UA enables your industrial OPC UA environment to input data into
+          your local workloads running on a Kubernetes cluster, and into your cloud workloads.
+          See the following resource for more info https://aka.ms/overview-connector-opcua-broker
+    """
+
+    helps[
+        "iot ops connector opcua trust"
+    ] = """
+        type: group
+        short-summary: Manage trusted certificates for the OPC UA Broker.
+        long-summary: |
+          The trusted certificate list contains the certificates of all the OPC UA servers that the
+          connector for OPC UA trusts. If the connector for OPC UA trusts a certificate authority,
+          it automatically trusts any server that has a valid application instance certificate signed
+          by the certificate authority.
+          For more info, see https://aka.ms/opcua-certificates
+    """
+
+    helps[
+        "iot ops connector opcua trust add"
+    ] = """
+        type: command
+        short-summary: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
+        long-summary: |
+            The certificate file extension must be .der or .crt. Azure resource secretproviderclass
+            'opc-ua-connector' and secretsync 'aio-opc-ua-broker-trust-list' will be created if not found.
+        examples:
+        - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
+          text: >
+            az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der"
+        - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list with custom secret name.
+          text: >
+            az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.crt" --secret custom-secret-name
+    """
+
+    helps[
+        "iot ops connector opcua issuer"
+    ] = """
+        type: group
+        short-summary: Manage issuer certificates for the OPC UA Broker.
+        long-summary: |
+          The issuer certificate list stores the certificate authority certificates that the connector
+          for OPC UA trusts. If user's OPC UA server's application instance certificate is signed by
+          an intermediate certificate authority, but user does not want to automatically trust all the
+          certificates issued by the certificate authority, an issuer certificate list can be used to
+          manage the trust relationship.
+          For more info, see https://aka.ms/opcua-certificates
+    """
+
+    helps[
+        "iot ops connector opcua issuer add"
+    ] = """
+        type: command
+        short-summary: Add an issuer certificate to the OPC UA Broker's issuer certificate list.
+        long-summary: |
+            The certificate file extension must be .der, .crt or .crl. When adding a .crl file, a .der
+            or .crt file with same file name must be added first. Azure resource secretproviderclass
+            'opc-ua-connector'and secretsync 'aio-opc-ua-broker-issuer-list' will be created if not found.
+        examples:
+        - name: Add an issuer certificate in the OPC UA Broker's issuer certificate list.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der"
+        - name: Add an issuer certificate with .crl extension to the OPC UA Broker's issuer certificate list with same
+                file name as the .der file mentioned above.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.crl"
+        - name: Add an issuer certificate to the OPC UA Broker's issuer certificate list with custom secret name.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der" --secret custom-secret-name
+    """
+
+    helps[
+        "iot ops connector opcua client"
+    ] = """
+        type: group
+        short-summary: Manage enterprise grade client application instance certificate for the OPC UA Broker.
+        long-summary: |
+          The connector for OPC UA makes use of a single OPC UA application instance certificate
+          for all the sessions it establishes to collect telemetry data from OPC UA servers.
+          For more info, see https://aka.ms/opcua-certificates
+    """
+
+    helps[
+        "iot ops connector opcua client add"
+    ] = """
+        type: command
+        short-summary: Add an enterprise grade client application instance certificate.
+        long-summary: |
+            The public key file extension must be .der and private key file extension
+            must be .pem. Please make sure to use same filename for public key and
+            private key file. Azure resource secretproviderclass 'opc-ua-connector'
+            and secretsync 'aio-opc-ua-broker-client-certificate' will be created
+            if not found.
+        examples:
+        - name: Add an client certificate.
+          text: >
+            az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
+            --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
+            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
+        - name: Add an client certificate with custom public and private key secret name.
+          text: >
+            az iot ops connector opcua client add
+            --instance instance
+            --resource-group instanceresourcegroup
+            --public-key-file "newopc.der"
+            --private-key-file "newopc.pem"
+            --public-key-secret public-secret-name
+            --private-key-secret private-secret-name
+            --subject-name "aio-opc-opcuabroker"
+            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
+      """
 
     helps[
         "iot ops schema version"

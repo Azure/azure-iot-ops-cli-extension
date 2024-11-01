@@ -226,7 +226,7 @@ def assert_aio_instance(
 
     instance_props = instance_show["properties"]
     assert instance_props.get("description") == description
-    assert instance_props["schemaRegistryRef"] == {"resource_id": schema_registry_id}
+    assert instance_props["schemaRegistryRef"] == {"resourceId": schema_registry_id}
 
     tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
     # no resource sync rules if disable rsync rules

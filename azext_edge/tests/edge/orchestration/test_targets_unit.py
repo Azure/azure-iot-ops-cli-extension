@@ -104,6 +104,16 @@ INSTANCE_PARAM_CONVERSION_MAP = {
             container_runtime_socket=generate_random_string(),
             custom_broker_config={generate_random_string(): generate_random_string()},
         ),
+        build_target_scenario(
+            cluster_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+            schema_registry_resource_id=get_resource_id(
+                resource_path="/schemaRegistries/myregistry",
+                resource_group_name=generate_random_string(),
+                resource_provider="Microsoft.DeviceRegistry",
+            ),
+            user_trust=True,
+        ),
     ],
 )
 def test_init_targets(target_scenario: dict):
@@ -129,8 +139,10 @@ def test_init_targets(target_scenario: dict):
 
     verify_user_trust_settings(targets, target_scenario)
 
-    _, enablement_parameters = targets.get_ops_enablement_template()
-    # test enablement_template
+    enablement_template, enablement_parameters = targets.get_ops_enablement_template()
+
+    verify_user_trust_enablement(targets, enablement_template, target_scenario)
+
     for parameter in enablement_parameters:
         targets_key = parameter
         if parameter in ENABLEMENT_PARAM_CONVERSION_MAP:
@@ -209,3 +221,12 @@ def verify_user_trust_settings(targets: InitTargets, target_scenario: dict):
             "configMapName": target_scenario["trust_settings"]["configMapName"],
         },
     }
+
+
+def verify_user_trust_enablement(targets: InitTargets, enablement_template: dict, target_scenario: dict):
+    if target_scenario.get("user_trust"):
+        assert targets.trust_config["source"] == "CustomerManaged"
+        # TODO @c-ryan-k - Enablement template should not require "settings" for customer managed trust config
+        assert enablement_template["definitions"]["_1.CustomerManaged"]["properties"]["settings"]["nullable"]
+    elif not target_scenario.get("trust_settings"):
+        assert targets.trust_config["source"] == "SelfSigned"

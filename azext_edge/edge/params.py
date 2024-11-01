@@ -539,6 +539,14 @@ def load_iotops_arguments(self, _):
                 "used, a system provided self-signed trust bundle is configured.",
                 arg_group="Trust",
             )
+            context.argument(
+                "user_trust",
+                options_list=["--user-trust", "--ut"],
+                arg_type=get_three_state_flag(),
+                help="Skip the deployment of the system cert-manager and trust-manager "
+                "in favor of a user-provided configuration.",
+                arg_group="Trust",
+            )
 
     with self.argument_context("iot ops upgrade") as context:
         # Schema Registry
@@ -1267,6 +1275,82 @@ def load_iotops_arguments(self, _):
             options_list=["--custom-role-id"],
             help="Fully qualified role definition Id in the following format: "
             "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
+        )
+
+    with self.argument_context("iot ops connector opcua") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "resource_group",
+            options_list=["--resource-group", "-g"],
+            help="Instance resource group.",
+        )
+
+    with self.argument_context("iot ops connector opcua trust") as context:
+        context.argument(
+            "file",
+            options_list=["--certificate-file", "--cf"],
+            help="Path to the certificate file in .der or .crt format.",
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret", "-s"],
+            help="Secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
+        )
+
+    with self.argument_context("iot ops connector opcua issuer") as context:
+        context.argument(
+            "file",
+            options_list=["--certificate-file", "--cf"],
+            help="Path to the certificate file in .der, .crt or .crl format.",
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "-s"],
+            help="Secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
+        )
+
+    with self.argument_context("iot ops connector opcua client") as context:
+        context.argument(
+            "public_key_file",
+            options_list=["--public-key-file", "--pkf"],
+            help="File that contains the enterprise grade application "
+            "instance certificate public key in .der format. File "
+            "name will be used to generate the public key secret name.",
+        )
+        context.argument(
+            "private_key_file",
+            options_list=["--private-key-file", "--prkf"],
+            help="File that contains the enterprise grade application "
+            "instance certificate private key in .pem format. File name "
+            "will be used to generate the private key secret name.",
+        )
+        context.argument(
+            "subject_name",
+            options_list=["--subject-name", "--sn"],
+            help="The subject name string embedded in the application instance certificate.",
+        )
+        context.argument(
+            "application_uri",
+            options_list=["--application-uri", "--au"],
+            help="The application instance URI embedded in the application instance.",
+        )
+        context.argument(
+            "public_key_secret_name",
+            options_list=["--public-key-secret", "--pks"],
+            help="Public key secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
+        )
+        context.argument(
+            "private_key_secret_name",
+            options_list=["--private-key-secret", "--prks"],
+            help="Private key secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
         )
 
     with self.argument_context("iot ops schema version") as context:
