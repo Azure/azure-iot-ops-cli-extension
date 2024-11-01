@@ -163,6 +163,11 @@ jobs:
 
           # start cluster in background
           sudo k3s server --cluster-init &
+      - name: "Copy config"
+        run: |
+          mkdir ~/.kube 2> /dev/null
+          sudo k3s kubectl config view --raw > ~/.kube/config
+          chmod 600 ~/.kube/config
       - name: "Apply custom cluster issuer"
         if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         run: |
@@ -221,11 +226,7 @@ jobs:
               configMap:
                 key: "trust-bundle.pem"
           EOF
-      - name: "Copy config"
-        run: |
-          mkdir ~/.kube 2> /dev/null
-          sudo k3s kubectl config view --raw > ~/.kube/config
-          chmod 600 ~/.kube/config
+
       - name: "Checkout extension source for build"
         uses: actions/checkout@v4
         with:
