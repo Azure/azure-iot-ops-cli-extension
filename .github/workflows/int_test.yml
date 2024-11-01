@@ -179,8 +179,8 @@ jobs:
             --namespace cert-manager \
             --create-namespace \
             --version v1.13.6 \
-            --set crds.enabled=true \
-            --startupapicheck.timeout=5m
+            --set installCRDs=true \
+            --set startupapicheck.timeout=5m
 
           helm upgrade trust-manager jetstack/trust-manager \
             --install \
