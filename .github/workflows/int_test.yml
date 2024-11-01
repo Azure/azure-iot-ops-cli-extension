@@ -171,13 +171,16 @@ jobs:
       - name: "Apply custom cluster issuer"
         if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         run: |
+          set -x
           helm repo add jetstack https://charts.jetstack.io --force-update
+
           helm install \
             cert-manager jetstack/cert-manager \
             --namespace cert-manager \
             --create-namespace \
             --version v1.13.6 \
             --set crds.enabled=true
+
           helm upgrade trust-manager jetstack/trust-manager \
             --install \
             --namespace cert-manager \
