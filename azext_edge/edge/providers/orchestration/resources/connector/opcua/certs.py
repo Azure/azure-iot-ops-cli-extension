@@ -281,15 +281,11 @@ class OpcUACerts(Queryable):
         resource_group: str,
         sercretsync_name: str,
         certificate_names: List[str],
-        include_secret: Optional[bool] = False,
-    ) -> dict:
-        
-        if sercretsync_name == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME and len(certificate_names) != 1:
-            raise InvalidArgumentValueError("Only one certificate can be removed from the client certificate secret sync.")
-        
+        include_secrets: Optional[bool] = False,
+    ) -> dict:       
         # check if secret sync exists
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
-        target_secretsync = self._find_resource_from_cl_resources(
+        target_secretsync = self.instances.find_existing_resources(
             cl_resources=cl_resources,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
             resource_name=sercretsync_name,
@@ -297,9 +293,24 @@ class OpcUACerts(Queryable):
 
         if not target_secretsync:
             raise ResourceNotFoundError(f"Secret Sync {sercretsync_name} not found. Please make sure secret sync enabled and certificates added in target secret sync.")
+        
+        # find if input certificate names are valid
+        target_secretsync = target_secretsync[0]
+        secret_mapping = target_secretsync.get("properties", {}).get("objectSecretMapping", [])
+        secret_to_remove = []
+        for name in certificate_names:
+            if name not in [mapping["targetKey"] for mapping in secret_mapping]:
+                logger.warning(f"Certificate {name} not found in secret sync {sercretsync_name}. Skipping removal of this certificate...")
+            else:
+                # append corresponding "sourcePath" of matching "targetKey"
+                secret_to_remove.append([mapping["sourcePath"] for mapping in secret_mapping if mapping["targetKey"] == name][0])
+
+        if not secret_to_remove:
+            logger.warning("No valid certificates found to remove.")
+            return
 
         # check if OPCUA_SPC_NAME spc exists
-        target_spc = self._find_resource_from_cl_resources(
+        target_spc = self.instances.find_existing_resources(
             cl_resources=cl_resources,
             resource_type=SPC_RESOURCE_TYPE,
             resource_name=OPCUA_SPC_NAME,
@@ -309,16 +320,36 @@ class OpcUACerts(Queryable):
             raise ResourceNotFoundError(f"Secret Provider Class {OPCUA_SPC_NAME} not found. Please make sure secret sync enabled and certificates added in target secret sync.")
         
         # get properties from default spc
+        target_spc = target_spc[0]
         spc_properties = target_spc.get("properties", {})
         spc_keyvault_name = spc_properties.get("keyvaultName", "")
 
-        # get keyvault client
-        self.keyvault_client = get_keyvault_client(
-            subscription_id=self.default_subscription_id,
-            keyvault_name=spc_keyvault_name,
+        # remove secret reference from secret sync
+        modified_secret_sync = self._remove_secrets_from_secret_sync(
+            name=sercretsync_name,
+            secrets=secret_to_remove,
+            secret_sync=target_secretsync,
+            resource_group=resource_group
         )
 
-        secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
+        self._remove_secrets_from_spc(
+            secrets=secret_to_remove,
+            spc=target_spc,
+            resource_group=resource_group
+        )
+        
+        if include_secrets:
+            # get keyvault client
+            self.keyvault_client = get_keyvault_client(
+                subscription_id=self.default_subscription_id,
+                keyvault_name=spc_keyvault_name,
+            )
+            # remove secret from keyvault
+            for name in secret_to_remove:
+                self.keyvault_client.begin_delete_secret(name)
+        
+        # TODO: do we need to update aio extension for client certificate?
+        return modified_secret_sync
 
 
     def _validate_key_files(self, public_key_file: str, private_key_file: str):
@@ -336,13 +367,30 @@ class OpcUACerts(Queryable):
         if public_key_name != private_key_name:
             raise ValueError(f"Public key file {public_key_name} and private key file {private_key_name} must match.")
 
-    def _process_fortos_yaml(self, object_text: str, secret_entry: Optional[dict] = None) -> str:
+    def _add_entry_to_fortos_yaml(self, object_text: str, secret_entry: Optional[dict] = None) -> str:
         if object_text:
             objects_obj = yaml.safe_load(object_text)
         else:
             objects_obj = {"array": []}
         entry_text = yaml.safe_dump(secret_entry, indent=6)
         objects_obj["array"].append(entry_text)
+        object_text = yaml.safe_dump(objects_obj, indent=6)
+        # TODO: formatting will be removed once fortos service fixes the formatting issue
+        return object_text.replace("\n- |", "\n    - |")
+    
+    def _remove_entry_from_fortos_yaml(self, object_text: str, secret_name: str) -> str:
+        if object_text:
+            objects_obj = yaml.safe_load(object_text)
+        else:
+            objects_obj = {"array": []}
+        
+        for entry in objects_obj["array"]:
+            if secret_name in entry:
+                objects_obj["array"].remove(entry)
+                break
+
+        if not objects_obj["array"]:
+            return ""
         object_text = yaml.safe_dump(objects_obj, indent=6)
         # TODO: formatting will be removed once fortos service fixes the formatting issue
         return object_text.replace("\n- |", "\n    - |")
@@ -449,7 +497,7 @@ class OpcUACerts(Queryable):
                 "objectEncoding": "hex",
             }
 
-            spc_object = self._process_fortos_yaml(object_text=spc_object, secret_entry=secret_entry)
+            spc_object = self._add_entry_to_fortos_yaml(object_text=spc_object, secret_entry=secret_entry)
 
         if not spc:
             logger.warning(f"Azure Key Vault Secret Provider Class {OPCUA_SPC_NAME} not found, creating new one...")
@@ -552,3 +600,45 @@ class OpcUACerts(Queryable):
                 extension_name=aio_extension["name"],
                 properties=properties,
             )
+    
+    def _remove_secrets_from_spc(self, secrets: List[str], spc: dict, resource_group: str) -> dict:
+        spc_properties = spc.get("properties", {})
+        # stringified yaml array
+        spc_object = spc_properties.get("objects", "")
+
+        # remove secret from the list
+        for secret_name in secrets:
+            spc_object = self._remove_entry_from_fortos_yaml(spc_object, secret_name)
+
+        if not spc_object:
+            spc["properties"].pop("objects")
+        else:
+            spc["properties"]["objects"] = spc_object
+
+        with console.status(f"Removing secret reference in Secret Provider Class {OPCUA_SPC_NAME}..."):
+            poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_create_or_update(
+                resource_group_name=resource_group,
+                azure_key_vault_secret_provider_class_name=OPCUA_SPC_NAME,
+                resource=spc,
+            )
+            return wait_for_terminal_state(poller)
+    
+    def _remove_secrets_from_secret_sync(self, name: str, secrets: List[str], secret_sync: dict, resource_group: str) -> dict:
+        # check if there is a secret sync called secret_sync_name, if not create one
+        secret_mapping = secret_sync.get("properties", {}).get("objectSecretMapping", [])
+        # remove secret from the list
+        for secret_name in secrets:
+            secret_mapping = [mapping for mapping in secret_mapping if mapping["sourcePath"] != secret_name]
+
+        if len(secret_mapping) == 0:
+            raise InvalidArgumentValueError("Unable to remove all secrets from secret sync since it requires at least one secret. Please add a new secret before removing the last one.")
+        else:
+            secret_sync["properties"]["objectSecretMapping"] = secret_mapping
+
+        with console.status(f"Removing secret reference in Secret Sync {name}..."):
+            poller = self.ssc_mgmt_client.secret_syncs.begin_create_or_update(
+                resource_group_name=resource_group,
+                secret_sync_name=name,
+                resource=secret_sync,
+            )
+            return wait_for_terminal_state(poller)

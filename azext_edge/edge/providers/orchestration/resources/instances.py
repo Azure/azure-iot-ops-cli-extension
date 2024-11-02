@@ -275,7 +275,7 @@ class Instances(Queryable):
             oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
 
             cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
-            secretsync_spc = self._find_existing_resources(
+            secretsync_spc = self.find_existing_resources(
                 cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE
             )
             if secretsync_spc:
@@ -330,7 +330,7 @@ class Instances(Queryable):
             cl_resources = resource_map.connected_cluster.get_aio_resources(
                 custom_location_id=instance["extendedLocation"]["name"]
             )
-            secretsync_spcs = self._find_existing_resources(
+            secretsync_spcs = self.find_existing_resources(
                 cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE
             )
             if secretsync_spcs:
@@ -355,10 +355,10 @@ class Instances(Queryable):
             cl_resources = resource_map.connected_cluster.get_aio_resources(
                 custom_location_id=instance["extendedLocation"]["name"]
             )
-            secretsync_spcs = self._find_existing_resources(
+            secretsync_spcs = self.find_existing_resources(
                 cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE
             )
-            secretsyncs = self._find_existing_resources(
+            secretsyncs = self.find_existing_resources(
                 cl_resources=cl_resources, resource_type=SECRET_SYNC_RESOURCE_TYPE
             )
 
@@ -391,11 +391,22 @@ class Instances(Queryable):
                 return
         logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
 
-    def _find_existing_resources(self, cl_resources: List[dict], resource_type: str) -> Optional[List[dict]]:
+    def find_existing_resources(
+        self,
+        cl_resources: List[dict],
+        resource_type: str,
+        resource_name: Optional[str] = None,
+    ) -> Optional[List[dict]]:
         resources = []
         for resource in cl_resources:
-            if resource["type"].lower() == resource_type:
-                resource_id_container = parse_resource_id(resource["id"])
+            resource_id_container = parse_resource_id(resource["id"])
+            cl_resource_name = resource_id_container.resource_name
+
+            # Ensure both type and name (if specified) match the resource
+            is_name_matched = resource_name is None or cl_resource_name == resource_name
+            is_type_matched = resource["type"].lower() == resource_type
+
+            if is_type_matched and is_name_matched:
                 if resource_type == SPC_RESOURCE_TYPE:
                     resources.append(
                         self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(

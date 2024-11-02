@@ -4,8 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Optional
-from .providers.orchestration.resources.connector.opcua.certs import OpcUACerts
+from typing import List, Optional
+from .providers.orchestration.resources.connector.opcua.certs import OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, OPCUA_TRUST_LIST_SECRET_SYNC_NAME, OpcUACerts
 
 
 def add_connector_opcua_trust(
@@ -58,4 +58,52 @@ def add_connector_opcua_client(
         application_uri=application_uri,
         public_key_secret_name=public_key_secret_name,
         private_key_secret_name=private_key_secret_name,
+    )
+
+
+def remove_connector_opcua_trust(
+    cmd,
+    instance_name: str,
+    resource_group: str,
+    certificate_names: List[str],
+    include_secrets: Optional[bool] = False,
+) -> dict:
+    return OpcUACerts(cmd).remove(
+        instance_name=instance_name,
+        resource_group=resource_group,
+        sercretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+        certificate_names=certificate_names,
+        include_secrets=include_secrets,
+    )
+
+
+def remove_connector_opcua_issuer(
+    cmd,
+    instance_name: str,
+    resource_group: str,
+    certificate_names: List[str],
+    include_secrets: Optional[bool] = False,
+) -> dict:
+    return OpcUACerts(cmd).remove(
+        instance_name=instance_name,
+        resource_group=resource_group,
+        sercretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+        certificate_names=certificate_names,
+        include_secrets=include_secrets,
+    )
+
+
+def remove_connector_opcua_client(
+    cmd,
+    instance_name: str,
+    resource_group: str,
+    certificate_names: List[str],
+    include_secrets: Optional[bool] = False,
+) -> dict:
+    return OpcUACerts(cmd).remove(
+        instance_name=instance_name,
+        resource_group=resource_group,
+        sercretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+        certificate_names=certificate_names,
+        include_secrets=include_secrets,
     )

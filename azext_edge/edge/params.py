@@ -1288,6 +1288,18 @@ def load_iotops_arguments(self, _):
             options_list=["--resource-group", "-g"],
             help="Instance resource group.",
         )
+        context.argument(
+            "include_secrets",
+            options_list=["--include-secrets"],
+            help="Indicates the command should remove the key vault secrets associated with the certificate(s).",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "certificate_names",
+            options_list=["--certificate-names", "--cn"],
+            nargs="+",
+            help="Space-separated certificate names to remove. If not provided, all certificates will be removed.",
+        )
 
     with self.argument_context("iot ops connector opcua trust") as context:
         context.argument(
