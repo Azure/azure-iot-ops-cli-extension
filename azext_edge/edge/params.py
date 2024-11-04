@@ -1302,6 +1302,12 @@ def load_iotops_arguments(self, _):
             "Note: the names can be found under corresponding secretsync "
             "resource property 'targetKey'.",
         )
+        context.argument(
+            "force",
+            options_list=["--force"],
+            help="Force the operation to execute.",
+            arg_type=get_three_state_flag(),
+        )
 
     with self.argument_context("iot ops connector opcua trust") as context:
         context.argument(

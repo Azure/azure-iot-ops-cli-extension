@@ -280,10 +280,20 @@ class OpcUACerts(Queryable):
         resource_group: str,
         sercretsync_name: str,
         certificate_names: List[str],
+        force: Optional[bool] = False,
         include_secrets: Optional[bool] = False,
     ) -> dict:
         # check if secret sync exists
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
+
+        if not force:
+            if not self.resource_map.connected_cluster.connected:
+                logger.warning(
+                    "Removal cancelled. The cluster is not connected to Azure. "
+                    "Use --force to continue anyway, which may lead to errors."
+                )
+                return
+
         target_secretsync = self.instances.find_existing_resources(
             cl_resources=cl_resources,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
