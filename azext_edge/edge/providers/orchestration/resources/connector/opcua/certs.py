@@ -273,7 +273,6 @@ class OpcUACerts(Queryable):
             subject_name=subject_name,
             application_uri=application_uri,
         )
-    
 
     def remove(
         self,
@@ -282,7 +281,7 @@ class OpcUACerts(Queryable):
         sercretsync_name: str,
         certificate_names: List[str],
         include_secrets: Optional[bool] = False,
-    ) -> dict:       
+    ) -> dict:
         # check if secret sync exists
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         target_secretsync = self.instances.find_existing_resources(
@@ -292,18 +291,31 @@ class OpcUACerts(Queryable):
         )
 
         if not target_secretsync:
-            raise ResourceNotFoundError(f"Secret Sync {sercretsync_name} not found. Please make sure secret sync enabled and certificates added in target secret sync.")
-        
+            raise ResourceNotFoundError(f"Secret Sync {sercretsync_name} not found. Please make sure secret "
+                                        "sync enabled and certificates added in target secret sync.")
+
+        # TODO: generate warning for certificate pair
+        # 1. for issuer list if only .der/.crt is removed, remind user to remove corresponding
+        #    .crl otherwise the secret will be orphaned.
+        # 2. for client certificate, remind user to remove corresponding public/private key pair
+        #    otherwise the secret will be orphaned
+        self._generate_warning_for_certificate_pair(sercretsync_name)
+
         # find if input certificate names are valid
         target_secretsync = target_secretsync[0]
         secret_mapping = target_secretsync.get("properties", {}).get("objectSecretMapping", [])
         secret_to_remove = []
         for name in certificate_names:
             if name not in [mapping["targetKey"] for mapping in secret_mapping]:
-                logger.warning(f"Certificate {name} not found in secret sync {sercretsync_name}. Skipping removal of this certificate...")
+                logger.warning(
+                    f"Certificate {name} not found in secret sync {sercretsync_name}. "
+                    "Skipping removal of this certificate..."
+                )
             else:
                 # append corresponding "sourcePath" of matching "targetKey"
-                secret_to_remove.append([mapping["sourcePath"] for mapping in secret_mapping if mapping["targetKey"] == name][0])
+                secret_to_remove.append(
+                    [mapping["sourcePath"] for mapping in secret_mapping if mapping["targetKey"] == name][0]
+                )
 
         if not secret_to_remove:
             logger.warning("No valid certificates found to remove.")
@@ -317,8 +329,8 @@ class OpcUACerts(Queryable):
         )
 
         if not target_spc:
-            raise ResourceNotFoundError(f"Secret Provider Class {OPCUA_SPC_NAME} not found. Please make sure secret sync enabled and certificates added in target secret sync.")
-        
+            raise ResourceNotFoundError(f"Secret Provider Class {OPCUA_SPC_NAME} not found.")
+
         # get properties from default spc
         target_spc = target_spc[0]
         spc_properties = target_spc.get("properties", {})
@@ -337,7 +349,7 @@ class OpcUACerts(Queryable):
             spc=target_spc,
             resource_group=resource_group
         )
-        
+
         if include_secrets:
             # get keyvault client
             self.keyvault_client = get_keyvault_client(
@@ -347,10 +359,26 @@ class OpcUACerts(Queryable):
             # remove secret from keyvault
             for name in secret_to_remove:
                 self.keyvault_client.begin_delete_secret(name)
-        
+
         # TODO: do we need to update aio extension for client certificate?
         return modified_secret_sync
 
+    def show(self, instance_name: str, resource_group: str, sercretsync_name: str) -> dict:
+        # check if secret sync exists
+        cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
+        target_secretsync = self.instances.find_existing_resources(
+            cl_resources=cl_resources,
+            resource_type=SECRET_SYNC_RESOURCE_TYPE,
+            resource_name=sercretsync_name,
+        )
+
+        if not target_secretsync:
+            raise ResourceNotFoundError(
+                f"Secret Sync {sercretsync_name} not found. Please make sure secret sync enabled "
+                "and certificates added in target secret sync."
+            )
+
+        return target_secretsync
 
     def _validate_key_files(self, public_key_file: str, private_key_file: str):
         # validate public key file end with .der
@@ -377,13 +405,13 @@ class OpcUACerts(Queryable):
         object_text = yaml.safe_dump(objects_obj, indent=6)
         # TODO: formatting will be removed once fortos service fixes the formatting issue
         return object_text.replace("\n- |", "\n    - |")
-    
+
     def _remove_entry_from_fortos_yaml(self, object_text: str, secret_name: str) -> str:
         if object_text:
             objects_obj = yaml.safe_load(object_text)
         else:
             objects_obj = {"array": []}
-        
+
         for entry in objects_obj["array"]:
             if secret_name in entry:
                 objects_obj["array"].remove(entry)
@@ -600,7 +628,7 @@ class OpcUACerts(Queryable):
                 extension_name=aio_extension["name"],
                 properties=properties,
             )
-    
+
     def _remove_secrets_from_spc(self, secrets: List[str], spc: dict, resource_group: str) -> dict:
         spc_properties = spc.get("properties", {})
         # stringified yaml array
@@ -622,8 +650,14 @@ class OpcUACerts(Queryable):
                 resource=spc,
             )
             return wait_for_terminal_state(poller)
-    
-    def _remove_secrets_from_secret_sync(self, name: str, secrets: List[str], secret_sync: dict, resource_group: str) -> dict:
+
+    def _remove_secrets_from_secret_sync(
+        self,
+        name: str,
+        secrets: List[str],
+        secret_sync: dict,
+        resource_group: str
+    ) -> dict:
         # check if there is a secret sync called secret_sync_name, if not create one
         secret_mapping = secret_sync.get("properties", {}).get("objectSecretMapping", [])
         # remove secret from the list
@@ -631,7 +665,10 @@ class OpcUACerts(Queryable):
             secret_mapping = [mapping for mapping in secret_mapping if mapping["sourcePath"] != secret_name]
 
         if len(secret_mapping) == 0:
-            raise InvalidArgumentValueError("Unable to remove all secrets from secret sync since it requires at least one secret. Please add a new secret before removing the last one.")
+            raise InvalidArgumentValueError(
+                "Unable to remove all secrets from secret sync since it requires at least one secret. "
+                "Please add a new secret before removing the last one."
+            )
         else:
             secret_sync["properties"]["objectSecretMapping"] = secret_mapping
 
@@ -642,3 +679,18 @@ class OpcUACerts(Queryable):
                 resource=secret_sync,
             )
             return wait_for_terminal_state(poller)
+
+    def _generate_warning_for_certificate_pair(self, sercretsync_name: str):
+        # TODO: generate more specific warning with combining info with certificate name input
+        if sercretsync_name == OPCUA_ISSUER_LIST_SECRET_SYNC_NAME:
+            logger.warning(
+                "Please make sure to remove corresponding .crl when removing .der/.crt "
+                "certificate to avoid orphaned secret."
+            )
+        elif sercretsync_name == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME:
+            logger.warning(
+                "Please make sure to both public and private key certificate pair to avoid "
+                "orphaned secret, and the removing certificates not being used by aio extension."
+            )
+        else:
+            return

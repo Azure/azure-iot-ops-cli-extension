@@ -1298,7 +1298,9 @@ def load_iotops_arguments(self, _):
             "certificate_names",
             options_list=["--certificate-names", "--cn"],
             nargs="+",
-            help="Space-separated certificate names to remove. If not provided, all certificates will be removed.",
+            help="Space-separated certificate names to remove. "
+            "Note: the names can be found under corresponding secretsync "
+            "resource property 'targetKey'.",
         )
 
     with self.argument_context("iot ops connector opcua trust") as context:
