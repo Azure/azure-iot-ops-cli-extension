@@ -11,7 +11,7 @@ from .opcua import OPCUA_API_V1, OpcuaResourceKinds
 from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
 from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
 from .dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
-from .meta import META_API_V1B1, MetaResourceKinds
+from .meta import META_API_V1, MetaResourceKinds
 from .arccontainerstorage import ARCCONTAINERSTORAGE_API_V1
 from .secretstore import SECRETSYNC_API_V1, SECRETSTORE_API_V1
 from .azuremonitor import AZUREMONITOR_API_V1
@@ -33,7 +33,7 @@ __all__ = [
     "DEVICEREGISTRY_API_V1",
     "DATAFLOW_API_V1B1",
     "DataflowResourceKinds",
-    "META_API_V1B1",
+    "META_API_V1",
     "MetaResourceKinds",
     "SECRETSYNC_API_V1",
     "SECRETSTORE_API_V1",
