@@ -6,18 +6,16 @@
 
 import binascii
 import json
-
 from datetime import datetime
-from time import sleep
-from typing import List, Optional, Tuple, Union, Dict, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 from azure.cli.core.azclierror import ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
 
-from ..common import AIO_BROKER_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT, PROTOBUF_SERVICE_API_PORT, PodState
+from ..common import AIO_BROKER_DIAGNOSTICS_SERVICE, PROTOBUF_SERVICE_API_PORT, PodState
 from ..util import get_timestamp_now_utc
-from .base import get_namespaced_pods_by_prefix, portforward_http, portforward_socket, V1Pod
+from .base import V1Pod, get_namespaced_pods_by_prefix, portforward_socket
 
 logger = get_logger(__name__)
 
@@ -25,9 +23,10 @@ console = Console(highlight=True)
 
 if TYPE_CHECKING:
     # pylint: disable=no-name-in-module
-    from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
     from socket import socket
     from zipfile import ZipInfo
+
+    from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
 
 def _preprocess_stats(
@@ -53,167 +52,6 @@ def _preprocess_stats(
     )
 
 
-def get_stats(
-    namespace: Optional[str] = None,
-    diag_service_pod_prefix: str = AIO_BROKER_DIAGNOSTICS_SERVICE,
-    pod_metrics_port: int = METRICS_SERVICE_API_PORT,
-    raw_response=False,
-    raw_response_print=False,
-    refresh_in_seconds: int = 10,
-    watch: bool = False,
-) -> Union[Dict[str, dict], str, None]:
-    namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
-
-    from rich import box
-    from rich.live import Live
-    from rich.table import Table
-
-    table = Table(box=box.MINIMAL_DOUBLE_HEAD)
-    table.add_column("Stat")
-    table.add_column("Value")
-    table.add_column("Description")
-
-    with portforward_http(
-        namespace=namespace,
-        pod_name=diagnostic_pod.metadata.name,
-        pod_port=pod_metrics_port,
-    ) as pf:
-        try:
-            raw_metrics = pf.get("/metrics")
-            if raw_response:
-                return raw_metrics
-            elif raw_response_print:
-                console.print(raw_metrics)
-                return
-            stats = dict(sorted(_clean_stats(raw_metrics).items()))
-            if not watch:
-                return stats
-            logger.warning(f"Refreshing every {refresh_in_seconds} seconds. Use ctrl-c to terminate stats watch.\n")
-            with Live(table, refresh_per_second=4, auto_refresh=False) as live:
-                while True:
-                    stats = dict(sorted(_clean_stats(raw_metrics).items()))
-                    table = Table(
-                        box=box.ROUNDED,
-                        caption=f"Last refresh {datetime.now().isoformat()}",
-                        highlight=True,
-                        expand=False,
-                        min_width=100,
-                    )
-                    table.add_column("Stat")
-                    table.add_column("Value", min_width=10)
-                    table.add_column("Description")
-                    for s in stats:
-                        table.add_row(
-                            stats[s]["displayName"],
-                            (
-                                "[green]Pass[/green]"
-                                if str(stats[s]["value"]) == "Pass"
-                                else "[red]Fail[/red]" if str(stats[s]["value"]) == "Fail" else str(stats[s]["value"])
-                            ),
-                            stats[s]["description"],
-                        )
-                    live.update(table)
-                    live.refresh()
-                    sleep(refresh_in_seconds)
-                    raw_metrics = pf.get("/metrics")
-        except KeyboardInterrupt:
-            return
-        except Exception as e:
-            if str(e).startswith("HTTPConnectionPool"):
-                return
-            logger.warning(f"Failure in stats processing\n\n{str(e)}")
-
-
-def _clean_stats(raw_stats: str) -> dict:
-    from ..common import MqDiagnosticPropertyIndex as keys
-
-    def _get_pass_fail(value: float) -> str:
-        if value >= 1.0:
-            return "Pass"
-        else:
-            return "Fail"
-
-    result = {}
-    test = raw_stats.split("\n")
-    for line in test:
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith("#"):
-            continue
-        key = None
-        value = None
-        if "{" in line:
-            t = line.split("{")
-            key = t[0]
-            if len(t) > 1:
-                value = line.split("}")[-1]
-                value = float(value.strip())
-        else:
-            t = line.split(" ")
-            key = t[0]
-            value = float(t[1].strip())
-
-        if key not in result:
-            result[key] = value
-        else:
-            if key == keys.publishes_received_per_second.value or key == keys.publishes_sent_per_second.value:
-                result[key] = result[key] + value
-            elif key == keys.publish_route_replication_correctness.value:
-                result[key] = result[key] * value
-            elif key == keys.total_subscriptions.value or key == keys.connected_sessions.value:
-                result[key] = result[key] + value
-            else:
-                result[key] = value
-    if result:
-        normalized = {}
-        if keys.publish_route_replication_correctness.value in result:
-            normalized["publish_route_replication_correctness"] = {
-                "displayName": "Replication Correctness",
-                "description": "Replication correctness.",
-                "value": _get_pass_fail(result[keys.publish_route_replication_correctness.value]),
-            }
-        if keys.publish_latency_mu_ms.value in result:
-            normalized["publish_latency_mu_ms"] = {
-                "displayName": "P99 Average",
-                "description": "Average 99th percentile of publish message latency (ms).",
-                "value": round(result[keys.publish_latency_mu_ms.value], 5),
-            }
-        if keys.publish_latency_sigma_ms.value in result:
-            normalized["publish_latency_sigma_ms"] = {
-                "displayName": "P99 Standard Deviation",
-                "description": "Standard deviation of the 99th percentile publish message latency (ms).",
-                "value": round(result[keys.publish_latency_sigma_ms.value], 5),
-            }
-        if keys.publishes_received_per_second.value in result:
-            normalized["publishes_received_per_second"] = {
-                "displayName": "Inbound Message Rate",
-                "description": "Rate of inbound messages per second.",
-                "value": round(result[keys.publishes_received_per_second.value], 5),
-            }
-        if keys.publishes_sent_per_second.value in result:
-            normalized["publishes_sent_per_second"] = {
-                "displayName": "Outbound Message Rate",
-                "description": "Rate of outgoing messages per second.",
-                "value": round(result[keys.publishes_sent_per_second.value], 5),
-            }
-        if keys.connected_sessions.value in result:
-            normalized["connected_sessions"] = {
-                "displayName": "Connected Sessions",
-                "description": "Total number of connected sessions.",
-                "value": result[keys.connected_sessions.value],
-            }
-        if keys.total_subscriptions.value in result:
-            normalized["total_subscriptions"] = {
-                "displayName": "Total Subscriptions",
-                "description": "Total number of topic subscriptions.",
-                "value": result[keys.total_subscriptions.value],
-            }
-        return normalized
-
-    return result
-
-
 def get_traces(
     namespace: Optional[str] = None,
     diag_service_pod_prefix: str = AIO_BROKER_DIAGNOSTICS_SERVICE,
@@ -232,9 +70,10 @@ def get_traces(
     from google.protobuf.json_format import MessageToDict
     from rich.progress import MofNCompleteColumn, Progress
 
+    from ..util import normalize_dir
+
     # pylint: disable=no-name-in-module
     from .proto.diagnostics_service_pb2 import Request, Response, TraceRetrievalInfo
-    from ..util import normalize_dir
 
     namespace, diagnostic_pod = _preprocess_stats(namespace=namespace, diag_service_pod_prefix=diag_service_pod_prefix)
 

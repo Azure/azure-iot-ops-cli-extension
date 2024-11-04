@@ -15,7 +15,7 @@ ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 BASE_URL = "https://management.azure.com"
 RESOURCE_PROVIDER = "Microsoft.IoTOperations"
 QUALIFIED_INSTANCE_TYPE = f"{RESOURCE_PROVIDER}/instances"
-INSTANCES_API_VERSION = "2024-09-15-preview"
+INSTANCES_API_VERSION = "2024-11-01"
 CUSTOM_LOCATION_NAME = generate_random_string()
 
 

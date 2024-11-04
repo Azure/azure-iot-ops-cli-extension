@@ -48,7 +48,7 @@ def build_operations_list_request(**kwargs: Any) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -67,7 +67,7 @@ def build_instance_list_by_subscription_request(subscription_id: str, **kwargs: 
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -93,7 +93,7 @@ def build_instance_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -124,7 +124,7 @@ def build_instance_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -157,7 +157,7 @@ def build_instance_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -192,7 +192,7 @@ def build_instance_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -226,7 +226,7 @@ def build_instance_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -258,7 +258,7 @@ def build_broker_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -290,7 +290,7 @@ def build_broker_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -326,7 +326,7 @@ def build_broker_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -363,7 +363,7 @@ def build_broker_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -398,7 +398,7 @@ def build_broker_authentication_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -438,7 +438,7 @@ def build_broker_authentication_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -487,7 +487,7 @@ def build_broker_authentication_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -537,7 +537,7 @@ def build_broker_authentication_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -580,7 +580,7 @@ def build_broker_authorization_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -620,7 +620,7 @@ def build_broker_authorization_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -669,7 +669,7 @@ def build_broker_authorization_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -719,7 +719,7 @@ def build_broker_authorization_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -762,7 +762,7 @@ def build_broker_listener_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -802,7 +802,7 @@ def build_broker_listener_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -846,7 +846,7 @@ def build_broker_listener_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -891,7 +891,7 @@ def build_broker_listener_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -929,7 +929,7 @@ def build_dataflow_endpoint_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -961,7 +961,7 @@ def build_dataflow_endpoint_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1002,7 +1002,7 @@ def build_dataflow_endpoint_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1044,7 +1044,7 @@ def build_dataflow_endpoint_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1084,7 +1084,7 @@ def build_dataflow_profile_list_by_resource_group_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1116,7 +1116,7 @@ def build_dataflow_profile_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1157,7 +1157,7 @@ def build_dataflow_profile_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1199,7 +1199,7 @@ def build_dataflow_profile_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1239,7 +1239,7 @@ def build_dataflow_list_by_profile_resource_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1284,7 +1284,7 @@ def build_dataflow_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1333,7 +1333,7 @@ def build_dataflow_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1383,7 +1383,7 @@ def build_dataflow_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-09-15-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2024-11-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -9598,8 +9598,8 @@ class DataflowEndpointOperations:
                               connection.
                             "retain": "str",  # Optional. Whether or not to keep the
                               retain setting. Known values are: "Keep" and "Never".
-                            "sessionExpirySeconds": 3600,  # Optional. Default value is
-                              3600. Session expiry in seconds.
+                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
+                              seconds.
                             "tls": {
                                 "mode": "str",  # Optional. Mode for TLS. Known
                                   values are: "Enabled" and "Disabled".
@@ -9944,8 +9944,8 @@ class DataflowEndpointOperations:
                               connection.
                             "retain": "str",  # Optional. Whether or not to keep the
                               retain setting. Known values are: "Keep" and "Never".
-                            "sessionExpirySeconds": 3600,  # Optional. Default value is
-                              3600. Session expiry in seconds.
+                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
+                              seconds.
                             "tls": {
                                 "mode": "str",  # Optional. Mode for TLS. Known
                                   values are: "Enabled" and "Disabled".
@@ -10367,8 +10367,8 @@ class DataflowEndpointOperations:
                               connection.
                             "retain": "str",  # Optional. Whether or not to keep the
                               retain setting. Known values are: "Keep" and "Never".
-                            "sessionExpirySeconds": 3600,  # Optional. Default value is
-                              3600. Session expiry in seconds.
+                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
+                              seconds.
                             "tls": {
                                 "mode": "str",  # Optional. Mode for TLS. Known
                                   values are: "Enabled" and "Disabled".
@@ -10628,8 +10628,8 @@ class DataflowEndpointOperations:
                               connection.
                             "retain": "str",  # Optional. Whether or not to keep the
                               retain setting. Known values are: "Keep" and "Never".
-                            "sessionExpirySeconds": 3600,  # Optional. Default value is
-                              3600. Session expiry in seconds.
+                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
+                              seconds.
                             "tls": {
                                 "mode": "str",  # Optional. Mode for TLS. Known
                                   values are: "Enabled" and "Disabled".
@@ -10929,8 +10929,8 @@ class DataflowEndpointOperations:
                               connection.
                             "retain": "str",  # Optional. Whether or not to keep the
                               retain setting. Known values are: "Keep" and "Never".
-                            "sessionExpirySeconds": 3600,  # Optional. Default value is
-                              3600. Session expiry in seconds.
+                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
+                              seconds.
                             "tls": {
                                 "mode": "str",  # Optional. Mode for TLS. Known
                                   values are: "Enabled" and "Disabled".
@@ -11228,8 +11228,8 @@ class DataflowEndpointOperations:
                               connection.
                             "retain": "str",  # Optional. Whether or not to keep the
                               retain setting. Known values are: "Keep" and "Never".
-                            "sessionExpirySeconds": 3600,  # Optional. Default value is
-                              3600. Session expiry in seconds.
+                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
+                              seconds.
                             "tls": {
                                 "mode": "str",  # Optional. Mode for TLS. Known
                                   values are: "Enabled" and "Disabled".
@@ -11489,8 +11489,8 @@ class DataflowEndpointOperations:
                               connection.
                             "retain": "str",  # Optional. Whether or not to keep the
                               retain setting. Known values are: "Keep" and "Never".
-                            "sessionExpirySeconds": 3600,  # Optional. Default value is
-                              3600. Session expiry in seconds.
+                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
+                              seconds.
                             "tls": {
                                 "mode": "str",  # Optional. Mode for TLS. Known
                                   values are: "Enabled" and "Disabled".
