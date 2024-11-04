@@ -56,7 +56,7 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "12017477435115453809"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "3270298329645311323"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -215,7 +215,7 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
             "VERSIONS": {
                 "platform": "0.7.6",
                 "secretStore": "0.6.7",
-                "containerStorage": "2.2.1",
+                "containerStorage": "2.2.2",
                 "openServiceMesh": "1.2.10",
             },
             "TRAINS": {
@@ -240,7 +240,6 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
                 "apiVersion": "2023-05-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
                 "name": "azure-iot-operations-platform",
-                "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "extensionType": "microsoft.iotoperations.platform",
                     "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'platform'), 'version'), variables('VERSIONS').platform)]",
@@ -358,7 +357,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "6209031414191159933"}
+            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "17393495510372529582"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -530,8 +529,8 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "0.8.32"},
-            "TRAINS": {"iotOperations": "preview"},
+            "VERSIONS": {"iotOperations": "1.0.0-preview.2"},
+            "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
@@ -642,7 +641,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
-                "apiVersion": "2024-09-15-preview",
+                "apiVersion": "2024-11-01",
                 "name": "[format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5)))]",
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": {
@@ -658,7 +657,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
-                "apiVersion": "2024-09-15-preview",
+                "apiVersion": "2024-11-01",
                 "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -683,7 +682,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "broker_authn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
-                "apiVersion": "2024-09-15-preview",
+                "apiVersion": "2024-11-01",
                 "name": "[format('{0}/{1}/{2}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default', 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -703,7 +702,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "broker_listener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-                "apiVersion": "2024-09-15-preview",
+                "apiVersion": "2024-11-01",
                 "name": "[format('{0}/{1}/{2}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default', 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -733,7 +732,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "dataflow_profile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
-                "apiVersion": "2024-09-15-preview",
+                "apiVersion": "2024-11-01",
                 "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -744,7 +743,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
             },
             "dataflow_endpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
-                "apiVersion": "2024-09-15-preview",
+                "apiVersion": "2024-11-01",
                 "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
