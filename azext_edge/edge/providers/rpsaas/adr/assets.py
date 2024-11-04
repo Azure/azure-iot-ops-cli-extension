@@ -12,12 +12,11 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     RequiredArgumentMissingError,
 )
-# from azure.core.exceptions import ResourceNotFoundError
 
 from .user_strings import DUPLICATE_EVENT_ERROR, DUPLICATE_POINT_ERROR, INVALID_OBSERVABILITY_MODE_ERROR
 from ....util import assemble_nargs_to_dict
 from ....common import FileType
-from ....util.az_client import get_asset_mgmt_client, wait_for_terminal_state
+from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state
 from ....util.queryable import Queryable
 
 if TYPE_CHECKING:
@@ -34,7 +33,7 @@ VALID_EVENT_OBSERVABILITY_MODES = frozenset(["None", "Log"])
 class Assets(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
-        self.deviceregistry_mgmt_client = get_asset_mgmt_client(
+        self.deviceregistry_mgmt_client = get_registry_mgmt_client(
             subscription_id=self.default_subscription_id
         )
         self.ops: "AssetsOperations" = self.deviceregistry_mgmt_client.assets

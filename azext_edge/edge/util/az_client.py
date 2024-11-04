@@ -123,24 +123,24 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
     )
 
 
-REGISTRY_API_VERSION = "2024-09-01-preview"
+REGISTRY_PREVIEW_API_VERSION = "2024-09-01-preview"
 
 
-def get_asset_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftDeviceRegistryManagementService":
-    # TODO: force service to go back onto one api
-    from ..vendor.clients.assetmgmt import (
-        MicrosoftDeviceRegistryManagementService,
-    )
+# def get_asset_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftDeviceRegistryManagementService":
+#     # TODO: force service to go back onto one api
+#     from ..vendor.clients.assetmgmt import (
+#         MicrosoftDeviceRegistryManagementService,
+#     )
 
-    if "http_logging_policy" not in kwargs:
-        kwargs["http_logging_policy"] = get_default_logging_policy()
+#     if "http_logging_policy" not in kwargs:
+#         kwargs["http_logging_policy"] = get_default_logging_policy()
 
-    return MicrosoftDeviceRegistryManagementService(
-        credential=AZURE_CLI_CREDENTIAL,
-        subscription_id=subscription_id,
-        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
-        **kwargs,
-    )
+#     return MicrosoftDeviceRegistryManagementService(
+#         credential=AZURE_CLI_CREDENTIAL,
+#         subscription_id=subscription_id,
+#         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+#         **kwargs,
+#     )
 
 
 def get_registry_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftDeviceRegistryManagementService":
