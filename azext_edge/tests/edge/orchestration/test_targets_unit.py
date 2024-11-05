@@ -90,6 +90,7 @@ INSTANCE_PARAM_CONVERSION_MAP = {
             enable_fault_tolerance=True,
             ops_config=[f"{generate_random_string()}={generate_random_string()}"],
             ops_version=generate_random_string(),
+            ops_train=generate_random_string(),
             trust_settings=get_trust_settings(),
             dataflow_profile_instances=randint(1, 10),
             broker_memory_profile=generate_random_string(),
@@ -160,6 +161,9 @@ def test_init_targets(target_scenario: dict):
 
     if targets.ops_version:
         assert instance_template["variables"]["VERSIONS"]["iotOperations"] == targets.ops_version
+
+    if targets.ops_train:
+        assert instance_template["variables"]["TRAINS"]["iotOperations"] == targets.ops_train
 
     if targets.ops_config:
         aio_config_settings = instance_template["variables"]["defaultAioConfigurationSettings"]

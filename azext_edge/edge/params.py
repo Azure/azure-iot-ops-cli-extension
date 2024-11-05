@@ -463,6 +463,12 @@ def load_iotops_arguments(self, _):
                 deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
+                "ops_train",
+                options_list=["--ops-train"],
+                help="Use to override the built-in IoT Operations arc extension release train. ",
+                deprecate_info=context.deprecate(hide=True),
+            )
+            context.argument(
                 "enable_fault_tolerance",
                 arg_type=get_three_state_flag(),
                 options_list=["--enable-fault-tolerance"],
