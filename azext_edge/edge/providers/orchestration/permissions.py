@@ -64,8 +64,8 @@ class PermissionState(Enum):
 
 class PrincipalTypes(Enum):
     # There are more types but keeping this short with respect to what we use for now
-    user = "User"
-    service_principal = "ServicePrincipal"
+    USER = "User"
+    SERVICE_PRINCIPAL = "ServicePrincipal"
 
 
 class PermissionManager:

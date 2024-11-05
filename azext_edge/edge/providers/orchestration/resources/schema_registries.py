@@ -136,7 +136,7 @@ class SchemaRegistries(Queryable):
                     scope=blob_container["id"],
                     principal_id=result["identity"]["principalId"],
                     role_def_id=target_role_def,
-                    principal_type=PrincipalTypes.service_principal.value
+                    principal_type=PrincipalTypes.SERVICE_PRINCIPAL.value
                 )
             except Exception as e:
                 c.stop()
