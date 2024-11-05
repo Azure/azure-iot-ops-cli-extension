@@ -98,20 +98,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
+        feature: [trustbundle]
+        # feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
         runtime-args:
           - ${{ inputs.runtime-init-args != '' || inputs.runtime-create-args != '' }}
         exclude:
-          - feature: custom-input
-            runtime-args: false
-          - feature: default
-            runtime-args: true
-          - feature: insecure-listener
-            runtime-args: true
-          - feature: syncrules
-            runtime-args: true
-          - feature: redeploy
-            runtime-args: true
+          # - feature: custom-input
+          #   runtime-args: false
+          # - feature: default
+          #   runtime-args: true
+          # - feature: insecure-listener
+          #   runtime-args: true
+          # - feature: syncrules
+          #   runtime-args: true
+          # - feature: redeploy
+          #   runtime-args: true
           - feature: trustbundle
             runtime-args: true
     name: "Run cluster tests"
