@@ -79,7 +79,7 @@ def mocked_cluster_resources(request, mocker):
     from azext_edge.edge.providers.edge_api import (
         EdgeResourceApi,
         MQ_ACTIVE_API,
-        MQTT_BROKER_API_V1B1,
+        MQTT_BROKER_API_V1,
         OPCUA_API_V1,
         DEVICEREGISTRY_API_V1,
         CLUSTER_CONFIG_API_V1,
@@ -96,7 +96,7 @@ def mocked_cluster_resources(request, mocker):
         r_key = r.as_str()
         v1_resources: List[V1APIResource] = []
 
-        if r == MQTT_BROKER_API_V1B1:
+        if r == MQTT_BROKER_API_V1:
             v1_resources.append(_get_api_resource("Broker"))
             v1_resources.append(_get_api_resource("BrokerListener"))
             v1_resources.append(_get_api_resource("BrokerDiagnostic"))

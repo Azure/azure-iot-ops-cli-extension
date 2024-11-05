@@ -15,11 +15,11 @@ class MqResourceKinds(ListableEnum):
     BROKER_AUTHORIZATION = "brokerauthorization"
 
 
-MQTT_BROKER_API_V1B1 = EdgeResourceApi(
+MQTT_BROKER_API_V1 = EdgeResourceApi(
     group="mqttbroker.iotoperations.azure.com",
     version="v1",
     moniker="broker",
     label="microsoft-iotoperations-mqttbroker",
 )
 
-MQ_ACTIVE_API = MQTT_BROKER_API_V1B1
+MQ_ACTIVE_API = MQTT_BROKER_API_V1
