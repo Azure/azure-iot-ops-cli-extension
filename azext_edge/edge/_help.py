@@ -522,8 +522,6 @@ def load_iotops_help():
         long-summary: Optionally the command can output a tree structure of associated resources representing
           the IoT Operations deployment against the backing cluster.
 
-          If this command fails, please use `az iot ops upgrade` to upgrade your instance to the latest version before continuing.
-
         examples:
         - name: Basic usage to show an instance.
           text: >
@@ -571,29 +569,30 @@ def load_iotops_help():
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
     """
 
-    helps[
-        "iot ops upgrade"
-    ] = """
-        type: command
-        short-summary: Upgrade an IoT Operations instance to the latest version.
-        long-summary: |
-                      WARNING: This command may fail and require you to delete and re-create your cluster and instance.
+    # TODO: Next iteration of upgrade
+    # helps[
+    #     "iot ops upgrade"
+    # ] = """
+    #     type: command
+    #     short-summary: Upgrade an IoT Operations instance to the latest version.
+    #     long-summary: |
+    #                   WARNING: This command may fail and require you to delete and re-create your cluster and instance.
 
-                      Upgrade an IoT Operations instance, including updating the extensions to the latest versions.
-                      Use this command if `az iot ops show` or similiar commands are failing.
+    #                   Upgrade an IoT Operations instance, including updating the extensions to the latest versions.
+    #                   Use this command if `az iot ops show` or similiar commands are failing.
 
-                      Schema registry resource Id is an optional parameter and may be required in specific scenarios.
-        examples:
-        - name: Upgrade the instance with minimal inputs.
-          text: >
-            az iot ops upgrade --name myinstance -g myresourcegroup
-        - name: Skip the conformation prompt during instance upgrade.
-          text: >
-            az iot ops upgrade --name myinstance -g myresourcegroup -y
-        - name: Upgrade the instance and specify the schema registry resource Id.
-          text: >
-            az iot ops upgrade --name myinstance -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-    """
+    #                   Schema registry resource Id is an optional parameter and may be required in specific scenarios.
+    #     examples:
+    #     - name: Upgrade the instance with minimal inputs.
+    #       text: >
+    #         az iot ops upgrade --name myinstance -g myresourcegroup
+    #     - name: Skip the conformation prompt during instance upgrade.
+    #       text: >
+    #         az iot ops upgrade --name myinstance -g myresourcegroup -y
+    #     - name: Upgrade the instance and specify the schema registry resource Id.
+    #       text: >
+    #         az iot ops upgrade --name myinstance -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+    # """
 
     helps[
         "iot ops identity"
@@ -653,19 +652,17 @@ def load_iotops_help():
         type: command
         short-summary: Enable secret sync for an instance.
         long-summary: |
-            The operation handles federation, creation of a secret provider class
-            and role assignments of the managed identity to the target Key Vault.
-
-            Only one Secret Provider Class must be associated to the instance at a time.
+            The operation handles identity federation, creation of a default secret provider class
+            and role assignments of the managed identity against the target Key Vault.
 
         examples:
         - name: Enable the target instance for Key Vault secret sync.
           text: >
-            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
         - name: Same as prior example except flag to skip Key Vault role assignments.
           text: >
-            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --skip-ra
     """
 
@@ -678,7 +675,7 @@ def load_iotops_help():
         examples:
         - name: List the secret sync configs associated with an instance.
           text: >
-            az iot ops secretsync list --name myinstance -g myresourcegroup
+            az iot ops secretsync list --instance myinstance -g myresourcegroup
     """
 
     helps[
@@ -693,7 +690,7 @@ def load_iotops_help():
         examples:
         - name: Disable secret sync for an instance.
           text: >
-            az iot ops secretsync disable --name myinstance -g myresourcegroup
+            az iot ops secretsync disable --instance myinstance -g myresourcegroup
     """
 
     helps[
