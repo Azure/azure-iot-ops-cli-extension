@@ -23,7 +23,7 @@ from rich.style import Style
 from rich.table import Table
 
 from ...util.az_client import (
-    REGISTRY_API_VERSION,
+    REGISTRY_PREVIEW_API_VERSION,
     get_resource_client,
     parse_resource_id,
     wait_for_terminal_state,
@@ -341,7 +341,7 @@ class WorkManager:
                 # Ensure schema registry exists.
                 self.resource_client.resources.get_by_id(
                     resource_id=self._targets.schema_registry_resource_id,
-                    api_version=REGISTRY_API_VERSION,
+                    api_version=REGISTRY_PREVIEW_API_VERSION,
                 )
                 if not self._extension_map:
                     self._extension_map = self._resource_map.connected_cluster.get_extensions_by_type(
