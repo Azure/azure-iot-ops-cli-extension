@@ -11,16 +11,16 @@ from zipfile import ZipInfo
 from knack.log import get_logger
 
 from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
-from ..stats import get_stats, get_traces
+from ..stats import get_traces
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
     get_mq_namespaces,
+    process_daemonsets,
     process_replicasets,
     process_services,
     process_statefulset,
     process_v1_pods,
-    process_daemonsets,
 )
 from .common import NAME_LABEL_FORMAT
 
@@ -28,18 +28,6 @@ logger = get_logger(__name__)
 
 MQ_NAME_LABEL = NAME_LABEL_FORMAT.format(label=MQ_ACTIVE_API.label)
 MQ_DIRECTORY_PATH = MQ_ACTIVE_API.moniker
-
-
-def fetch_diagnostic_metrics(namespace: str):
-    # @digimaun - TODO dynamically determine pod:port
-    try:
-        stats_raw = get_stats(namespace=namespace, raw_response=True)
-        return {
-            "data": stats_raw,
-            "zinfo": f"{namespace}/{MQ_DIRECTORY_PATH}/diagnostic_metrics.txt",
-        }
-    except Exception:
-        logger.debug(f"Unable to process diagnostics pod metrics against namespace {namespace}.")
 
 
 def fetch_diagnostic_traces():
@@ -71,18 +59,10 @@ def fetch_diagnostic_traces():
 
 
 def fetch_statefulsets():
-    processed, namespaces = process_statefulset(
+    return process_statefulset(
         directory_path=MQ_DIRECTORY_PATH,
         label_selector=MQ_NAME_LABEL,
-        return_namespaces=True,
     )
-
-    for namespace in namespaces:
-        metrics = fetch_diagnostic_metrics(namespace)
-        if metrics:
-            processed.append(metrics)
-
-    return processed
 
 
 def fetch_daemonsets():

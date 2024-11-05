@@ -71,13 +71,6 @@ def mocked_zipfile(mocker):
     yield patched
 
 
-@pytest.fixture
-def mocked_get_stats(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.support.mq.get_stats", autospec=True)
-    patched.return_value = "metrics"
-    yield patched
-
-
 @pytest.fixture(scope="function")
 def mocked_cluster_resources(request, mocker):
     from azure.cli.core.azclierror import ResourceNotFoundError
@@ -86,7 +79,7 @@ def mocked_cluster_resources(request, mocker):
     from azext_edge.edge.providers.edge_api import (
         EdgeResourceApi,
         MQ_ACTIVE_API,
-        MQTT_BROKER_API_V1B1,
+        MQTT_BROKER_API_V1,
         OPCUA_API_V1,
         DEVICEREGISTRY_API_V1,
         CLUSTER_CONFIG_API_V1,
@@ -103,7 +96,7 @@ def mocked_cluster_resources(request, mocker):
         r_key = r.as_str()
         v1_resources: List[V1APIResource] = []
 
-        if r == MQTT_BROKER_API_V1B1:
+        if r == MQTT_BROKER_API_V1:
             v1_resources.append(_get_api_resource("Broker"))
             v1_resources.append(_get_api_resource("BrokerListener"))
             v1_resources.append(_get_api_resource("BrokerDiagnostic"))
@@ -218,7 +211,7 @@ def mocked_namespaced_custom_objects(mocked_client):
     def _handle_namespaced_custom_object(*args, **kwargs):
         custom_object = {
             "kind": "PodMetrics",
-            "apiVersion": "metrics.k8s.io/v1beta1",
+            "apiVersion": "metrics.k8s.io/v1",
             "metadata": {
                 "name": "mock_custom_object",
                 "namespace": "namespace",

@@ -11,7 +11,6 @@ from knack.help_files import helps
 
 from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
 
-from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
     COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
@@ -78,7 +77,7 @@ def load_iotops_help():
           text: >
             az iot ops support create-bundle --ops-service broker --log-age 172800
 
-        - name: Include mqtt broker traces in the support bundle. This is an alias for stats trace fetch capability.
+        - name: Include mqtt broker traces in the support bundle.
           text: >
             az iot ops support create-bundle --ops-service broker --broker-traces
 
@@ -144,39 +143,6 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Mqtt broker management.
-    """
-
-    helps[
-        "iot ops broker stats"
-    ] = f"""
-        type: command
-        short-summary: Show dmqtt running statistics.
-        long-summary: |
-            {{Supported service APIs}}
-            - {MQ_ACTIVE_API.as_str()}
-
-        examples:
-        - name: Fetch key performance indicators from the diagnostics Prometheus metrics endpoint.
-          text: >
-            az iot ops broker stats
-
-        - name: Same as prior example except with a dynamic display that refreshes periodically.
-          text: >
-            az iot ops broker stats --watch
-
-        - name: Return the raw output of the metrics endpoint with minimum processing.
-          text: >
-            az iot ops broker stats --raw
-
-        - name: Fetch all available mqtt broker traces from the diagnostics Protobuf endpoint.
-                This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
-                A trace files last modified attribute will match the trace timestamp.
-          text: >
-            az iot ops broker stats --trace-dir .
-
-        - name: Fetch traces by trace Ids provided in space-separated hex format. Only `Otel` format is shown.
-          text: >
-            az iot ops broker stats --trace-ids 4e84000155a98627cdac7de46f53055d
     """
 
     helps[

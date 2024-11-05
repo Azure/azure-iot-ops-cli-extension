@@ -20,12 +20,12 @@ from azext_edge.edge.providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
     DEVICEREGISTRY_API_V1,
     MQ_ACTIVE_API,
-    MQTT_BROKER_API_V1B1,
+    MQTT_BROKER_API_V1,
     OPCUA_API_V1,
-    DATAFLOW_API_V1B1,
+    DATAFLOW_API_V1,
     EdgeResourceApi,
 )
-from azext_edge.edge.providers.edge_api.meta import META_API_V1B1
+from azext_edge.edge.providers.edge_api.meta import META_API_V1
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.arccontainerstorage import STORAGE_NAMESPACE
 from azext_edge.edge.providers.support.base import get_bundle_path
@@ -60,12 +60,12 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
 @pytest.mark.parametrize(
     "mocked_cluster_resources",
     [
-        [MQTT_BROKER_API_V1B1],
-        [MQTT_BROKER_API_V1B1, MQ_ACTIVE_API],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, CLUSTER_CONFIG_API_V1],
-        [MQTT_BROKER_API_V1B1, OPCUA_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1],
+        [MQTT_BROKER_API_V1],
+        [MQTT_BROKER_API_V1, MQ_ACTIVE_API],
+        [MQTT_BROKER_API_V1, OPCUA_API_V1],
+        [MQTT_BROKER_API_V1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
+        [MQTT_BROKER_API_V1, OPCUA_API_V1, CLUSTER_CONFIG_API_V1],
+        [MQTT_BROKER_API_V1, OPCUA_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1],
     ],
     indirect=True,
 )
@@ -88,7 +88,6 @@ def test_create_bundle(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
-    mocked_get_stats,
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_namespaced_custom_objects,
@@ -204,7 +203,6 @@ def test_create_bundle(
                 label_selector=MQ_NAME_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
             )
-            assert_mq_stats(mocked_zipfile)
 
         if api in [OPCUA_API_V1]:
             # Assert runtime resources
@@ -316,32 +314,32 @@ def test_create_bundle(
                 directory_path=OPC_DIRECTORY_PATH,
             )
 
-        if api in [DATAFLOW_API_V1B1]:
+        if api in [DATAFLOW_API_V1]:
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_API_V1B1.label,
-                directory_path=DATAFLOW_API_V1B1.moniker,
+                label_selector=DATAFLOW_API_V1.label,
+                directory_path=DATAFLOW_API_V1.moniker,
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_API_V1B1.label,
-                directory_path=DATAFLOW_API_V1B1.moniker,
+                label_selector=DATAFLOW_API_V1.label,
+                directory_path=DATAFLOW_API_V1.moniker,
                 mock_names=["aio-dataflow-operator"],
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_API_V1B1.label,
-                directory_path=DATAFLOW_API_V1B1.moniker,
+                label_selector=DATAFLOW_API_V1.label,
+                directory_path=DATAFLOW_API_V1.moniker,
             )
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=DATAFLOW_API_V1B1.label,
-                directory_path=DATAFLOW_API_V1B1.moniker,
+                label_selector=DATAFLOW_API_V1.label,
+                directory_path=DATAFLOW_API_V1.moniker,
                 since_seconds=since_seconds,
             )
 
@@ -421,7 +419,6 @@ def test_create_bundle_crd_work(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
-    mocked_get_stats,
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_namespaced_custom_objects,
@@ -432,7 +429,7 @@ def test_create_bundle_crd_work(
 
     if mocked_cluster_resources["param"] == []:
         mocked_root_logger.warning.assert_called_with(
-            "The following API(s) were not detected mqttbroker.iotoperations.azure.com/[v1beta1]. "
+            "The following API(s) were not detected mqttbroker.iotoperations.azure.com/[v1]. "
             "CR capture for broker will be skipped. Still attempting capture of runtime resources..."
         )
         mocked_assemble_crd_work.assert_not_called()
@@ -566,7 +563,7 @@ def assert_list_pods(
             if "include_metrics" in kwargs and kwargs["include_metrics"]:
                 mocked_client.CustomObjectsApi().get_namespaced_custom_object.assert_any_call(
                     group="metrics.k8s.io",
-                    version="v1beta1",
+                    version="v1",
                     namespace=namespace,
                     plural="pods",
                     name=pod_name,
@@ -574,7 +571,7 @@ def assert_list_pods(
                 assert_zipfile_write(
                     mocked_zipfile,
                     zinfo=f"{namespace}/{directory_path}/pod.{pod_name}.metric.yaml",
-                    data="apiVersion: metrics.k8s.io/v1beta1\nkind: PodMetrics\nmetadata:\n  "
+                    data="apiVersion: metrics.k8s.io/v1\nkind: PodMetrics\nmetadata:\n  "
                     "creationTimestamp: '0000-00-00T00:00:00Z'\n  name: mock_custom_object\n  "
                     "namespace: namespace\ntimestamp: '0000-00-00T00:00:00Z'\n",
                 )
@@ -777,17 +774,13 @@ def assert_list_daemon_sets(
         )
 
 
-def assert_mq_stats(mocked_zipfile):
-    assert_zipfile_write(mocked_zipfile, zinfo="mock_namespace/broker/diagnostic_metrics.txt", data="metrics")
-
-
 def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
     for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_jobs]:
         kwargs = {
             "mocked_client": mocked_client,
             "mocked_zipfile": mocked_zipfile,
             "label_selector": META_NAME_LABEL,
-            "directory_path": META_API_V1B1.moniker,
+            "directory_path": META_API_V1.moniker,
         }
         if assert_func == assert_list_pods:
             kwargs["mocked_list_pods"] = mocked_list_pods
@@ -862,7 +855,7 @@ def test_get_bundle_path(mocked_os_makedirs):
 @pytest.mark.parametrize(
     "mocked_cluster_resources",
     [
-        [MQTT_BROKER_API_V1B1],
+        [MQTT_BROKER_API_V1],
     ],
     indirect=True,
 )
@@ -880,7 +873,6 @@ def test_create_bundle_mq_traces(
     mocked_list_services,
     mocked_list_nodes,
     mocked_list_cluster_events,
-    mocked_get_stats,
     mocked_list_storage_classes,
     mocked_root_logger,
     mocked_mq_active_api,

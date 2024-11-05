@@ -6,7 +6,6 @@
 
 import binascii
 from copy import deepcopy
-from unittest.mock import MagicMock
 from zipfile import ZIP_DEFLATED, ZipInfo
 
 import pytest
@@ -15,8 +14,7 @@ from google.protobuf.json_format import ParseDict
 from kubernetes.client.models import V1ObjectMeta, V1Pod, V1PodList, V1PodStatus
 from opentelemetry.proto.trace.v1.trace_pb2 import TracesData
 
-from azext_edge.edge.commands_mq import stats
-from azext_edge.edge.common import AIO_BROKER_DIAGNOSTICS_SERVICE, METRICS_SERVICE_API_PORT
+from azext_edge.edge.common import AIO_BROKER_DIAGNOSTICS_SERVICE
 
 # pylint: disable=no-name-in-module
 from azext_edge.edge.providers.proto.diagnostics_service_pb2 import (
@@ -28,34 +26,6 @@ from azext_edge.edge.providers.proto.diagnostics_service_pb2 import (
 
 from ...generators import generate_random_string
 from .traces_data import TEST_TRACE, TEST_TRACE_PARTIAL
-
-
-def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlopen, stub_raw_stats):
-    pods = [
-        V1Pod(
-            metadata=V1ObjectMeta(name=AIO_BROKER_DIAGNOSTICS_SERVICE, namespace="namespace"),
-            status=V1PodStatus(phase=POD_STATE_RUNNING),
-        )
-    ]
-    pod_list = V1PodList(items=pods)
-    mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
-
-    attrs = {"read.return_value": stub_raw_stats.read()}
-    response = MagicMock(**attrs)
-    # pylint: disable-next=unnecessary-dunder-call
-    mocked_urlopen.return_value.__enter__.return_value = response
-
-    namespace = generate_random_string()
-    context_name = generate_random_string()
-    result = stats(cmd=mocked_cmd, namespace=namespace, context_name=context_name)
-    min_stats_assert(result)
-    mocked_urlopen.assert_called_with(
-        f"http://{AIO_BROKER_DIAGNOSTICS_SERVICE}.{namespace}.kubernetes:{METRICS_SERVICE_API_PORT}/metrics"
-    )
-
-    console_mock = mocker.patch("azext_edge.edge.providers.stats.console", autospec=True)
-    stats(cmd=mocked_cmd, namespace=namespace, context_name=context_name, raw_response_print=True)
-    console_mock.print.assert_called_once()
 
 
 @pytest.mark.parametrize(
@@ -160,6 +130,7 @@ def test_get_stats(mocker, mocked_cmd, mocked_client, mocked_config, mocked_urlo
 def test_get_traces(
     mocker, mocked_cmd, mocked_client, mocked_config, mocked_zipfile, trace_ids, trace_dir, recv_side_effect
 ):
+    from azext_edge.edge.providers.stats import get_traces
     # pylint: disable=unnecessary-dunder-call
     pods = [
         V1Pod(
@@ -171,7 +142,6 @@ def test_get_traces(
     mocked_client.CoreV1Api().list_namespaced_pod.return_value = pod_list
 
     namespace = generate_random_string()
-    context_name = generate_random_string()
 
     for_support_bundle = False
     if trace_ids:
@@ -184,8 +154,8 @@ def test_get_traces(
 
     portforward_socket_mock = mocker.patch("azext_edge.edge.providers.stats.portforward_socket")
     portforward_socket_mock().__enter__().recv.side_effect = recv_side_effect
-    result = stats(
-        cmd=mocked_cmd, namespace=namespace, context_name=context_name, trace_ids=trace_ids, trace_dir=trace_dir
+    result = get_traces(
+        namespace=namespace, trace_ids=trace_ids, trace_dir=trace_dir
     )
 
     request_bytes_length = portforward_socket_mock().__enter__().sendall.call_args_list[0].args[0]
@@ -215,25 +185,6 @@ def test_get_traces(
         # TODO assert formats.
         assert len(mocked_zipfile.mock_calls) == len(recv_side_effect)
     # pylint: enable=unnecessary-dunder-call
-
-
-def min_stats_assert(stats_map: dict):
-    _assert_stats_kpi(stats_map, "connected_sessions")
-    _assert_stats_kpi(stats_map, "publish_latency_mu_ms")
-    _assert_stats_kpi(stats_map, "publish_latency_sigma_ms")
-    _assert_stats_kpi(stats_map, "publish_route_replication_correctness", value_pass_fail=True)
-    _assert_stats_kpi(stats_map, "publishes_received_per_second")
-    _assert_stats_kpi(stats_map, "publishes_sent_per_second")
-    _assert_stats_kpi(stats_map, "total_subscriptions")
-
-
-def _assert_stats_kpi(stats_map: dict, kpi: str, value_pass_fail: bool = False):
-    assert kpi in stats_map
-    assert "displayName" in stats_map[kpi]
-    assert "description" in stats_map[kpi]
-    assert "value" in stats_map[kpi]
-    if value_pass_fail:
-        stats_map[kpi]["value"] in ["Pass", "Fail"]
 
 
 @pytest.mark.parametrize(

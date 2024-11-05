@@ -64,7 +64,6 @@ def load_iotops_commands(self, _):
         "iot ops broker",
         command_type=mq_resource_ops,
     ) as cmd_group:
-        cmd_group.command("stats", "stats")
         cmd_group.show_command("show", "show_broker")
         cmd_group.command("list", "list_brokers")
         cmd_group.command("delete", "delete_broker")
