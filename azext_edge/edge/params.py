@@ -311,12 +311,6 @@ def load_iotops_arguments(self, _):
     for cmd_space in ["iot ops init", "iot ops create"]:
         with self.argument_context(cmd_space) as context:
             context.argument(
-                "instance_name",
-                options_list=["--name", "-n"],
-                help="IoT Operations instance name. An instance name must be provided to "
-                "deploy an instance during init orchestration.",
-            )
-            context.argument(
                 "cluster_name",
                 options_list=["--cluster"],
                 help="Target cluster name for IoT Operations deployment.",
@@ -533,14 +527,19 @@ def load_iotops_arguments(self, _):
         context.argument(
             "spc_name",
             options_list=["--spc"],
-            help="The secret provider class name for secret sync enablement. "
-            "The default pattern is '{instance_name}-spc'.",
+            help="The default secret provider class name for secret sync enablement. "
+            "The default pattern is 'spc-ops-{hash}'.",
         )
         context.argument(
             "skip_role_assignments",
             options_list=["--skip-ra"],
             arg_type=get_three_state_flag(),
             help="When used the role assignment step of the operation will be skipped.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i", "-n"],
+            help="IoT Operations instance name.",
         )
 
     with self.argument_context("iot ops asset") as context:
@@ -1233,7 +1232,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops connector opcua") as context:
         context.argument(
             "instance_name",
-            options_list=["--instance", "-i"],
+            options_list=["--instance", "-i", "-n"],
             help="IoT Operations instance name.",
         )
         context.argument(

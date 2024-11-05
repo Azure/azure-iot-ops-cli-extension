@@ -95,16 +95,6 @@ def check(
     )
 
 
-def verify_host(
-    cmd,
-    no_progress: Optional[bool] = None,
-):
-    from .providers.orchestration import run_host_verify
-
-    run_host_verify(render_progress=not no_progress)
-    return
-
-
 def init(
     cmd,
     cluster_name: str,

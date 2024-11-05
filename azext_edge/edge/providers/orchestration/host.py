@@ -5,14 +5,14 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, List, NamedTuple
 
 import requests
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
 from rich.console import Console
 
-from .common import ARM_ENDPOINT, MCR_ENDPOINT
+from .common import ARM_ENDPOINT
 
 logger = get_logger(__name__)
 console = Console(width=88)
@@ -33,22 +33,6 @@ class EndpointConnections(NamedTuple):
         failed_conns = self.failed_connections
         if failed_conns:
             raise ValidationError(get_connectivity_error(failed_conns, include_cluster=include_cluster))
-
-
-def run_host_verify(render_progress: Optional[bool] = True):
-    if not render_progress:
-        console.quiet = True
-    connect_endpoints = [ARM_ENDPOINT, MCR_ENDPOINT]
-    console.print()
-
-    with console.status(status="Analyzing host..."):
-        console.print("[bold]Connectivity[/bold] to:")
-        endpoint_connections = preflight_http_connections(connect_endpoints)
-        for endpoint in endpoint_connections.connect_map:
-            console.print(f"- {endpoint} ", "...", endpoint_connections.connect_map[endpoint])
-        endpoint_connections.throw_if_failure()
-
-    console.print()
 
 
 def check_connectivity(url: str, timeout: int = 20):

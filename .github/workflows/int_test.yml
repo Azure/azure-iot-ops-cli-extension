@@ -277,7 +277,6 @@ jobs:
           az iot ops check --as-object
           az iot ops check --svc broker --resources broker brokerlistener
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
-          az iot ops verify-host
       - name: "Delete Cluster for redeployment"
         if: ${{ matrix.feature == 'redeploy' }}
         run: |
