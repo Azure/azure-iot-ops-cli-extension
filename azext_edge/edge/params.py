@@ -613,12 +613,6 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
         context.argument(
-            "discovered",
-            options_list=["--discovered"],
-            help="Flag to determine if an asset was discovered on the cluster.",
-            arg_type=get_three_state_flag(),
-        )
-        context.argument(
             "documentation_uri",
             options_list=["--documentation-uri", "--du"],
             help="Documentation URI.",
@@ -944,13 +938,6 @@ def load_iotops_arguments(self, _):
             options_list=["--instance-subscription", "--is"],
             help="Instance subscription id. If not provided, asset endpoint profile subscription id will be used.",
             deprecate_info=context.deprecate(hide=True),
-        )
-        context.argument(
-            "discovered",
-            options_list=["--discovered"],
-            help="Flag to determine if an asset endpoint profile was discovered on the cluster.",
-            arg_group="Additional Info",
-            arg_type=get_three_state_flag(),
         )
         context.argument(
             "target_address",
