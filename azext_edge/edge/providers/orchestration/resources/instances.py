@@ -7,6 +7,7 @@
 from typing import Iterable, List, Optional
 
 from azure.cli.core.azclierror import ValidationError
+from azure.core.exceptions import ResourceNotFoundError
 from knack.log import get_logger
 from rich import print
 from rich.console import Console
@@ -398,6 +399,9 @@ class Instances(Queryable):
         resource_name: Optional[str] = None,
     ) -> Optional[List[dict]]:
         resources = []
+        if not cl_resources:
+            raise ResourceNotFoundError("No resources found in the connected cluster.")
+
         for resource in cl_resources:
             resource_id_container = parse_resource_id(resource["id"])
             cl_resource_name = resource_id_container.resource_name

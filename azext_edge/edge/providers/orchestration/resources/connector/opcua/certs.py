@@ -71,6 +71,7 @@ class OpcUACerts(Queryable):
         secret_name = secret_name if secret_name else file_name.replace(".", "-")
 
         # iterate over secrets to check if secret with same name exists
+        # TODO: Adding force flag to overwrite the secret
         secret_name = self._check_secret_name(secrets, secret_name, spc_keyvault_name, "secret")
         self._upload_to_key_vault(secret_name, file, cert_extension)
 
@@ -258,6 +259,7 @@ class OpcUACerts(Queryable):
             spc_keyvault_name=spc_keyvault_name,
             spc_tenant_id=spc_tenant_id,
             spc_client_id=spc_client_id,
+            should_replace=True,
         )
 
         self._add_secrets_to_secret_sync(
@@ -266,10 +268,12 @@ class OpcUACerts(Queryable):
             resource_group=resource_group,
             spc_name=OPCUA_SPC_NAME,
             secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            should_replace=True,
         )
 
         # update opcua extension
         return self._update_client_secret_to_extension(
+            applicationCert=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
             subject_name=subject_name,
             application_uri=application_uri,
         )
@@ -278,13 +282,16 @@ class OpcUACerts(Queryable):
         self,
         instance_name: str,
         resource_group: str,
-        sercretsync_name: str,
+        secretsync_name: str,
         certificate_names: List[str],
+        # confirm_yes
         force: Optional[bool] = False,
         include_secrets: Optional[bool] = False,
     ) -> dict:
         # check if secret sync exists
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
+
+        #prompt for deletion
 
         if not force:
             if not self.resource_map.connected_cluster.connected:
@@ -297,19 +304,19 @@ class OpcUACerts(Queryable):
         target_secretsync = self.instances.find_existing_resources(
             cl_resources=cl_resources,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
-            resource_name=sercretsync_name,
+            resource_name=secretsync_name,
         )
 
         if not target_secretsync:
-            raise ResourceNotFoundError(f"Secret Sync {sercretsync_name} not found. Please make sure secret "
-                                        "sync enabled and certificates added in target secret sync.")
+            raise ResourceNotFoundError(f"Secret Sync resource {secretsync_name} not found. Please make sure secret "
+                                        "sync is enabled and certificates are added in the target secret sync resource.")
 
         # TODO: generate warning for certificate pair
         # 1. for issuer list if only .der/.crt is removed, remind user to remove corresponding
         #    .crl otherwise the secret will be orphaned.
         # 2. for client certificate, remind user to remove corresponding public/private key pair
         #    otherwise the secret will be orphaned
-        self._generate_warning_for_certificate_pair(sercretsync_name)
+        self._generate_warning_for_certificate_pair(secretsync_name)
 
         # find if input certificate names are valid
         target_secretsync = target_secretsync[0]
@@ -318,7 +325,7 @@ class OpcUACerts(Queryable):
         for name in certificate_names:
             if name not in [mapping["targetKey"] for mapping in secret_mapping]:
                 logger.warning(
-                    f"Certificate {name} not found in secret sync {sercretsync_name}. "
+                    f"Certificate {name} not found in secret sync {secretsync_name}. "
                     "Skipping removal of this certificate..."
                 )
             else:
@@ -348,7 +355,7 @@ class OpcUACerts(Queryable):
 
         # remove secret reference from secret sync
         modified_secret_sync = self._remove_secrets_from_secret_sync(
-            name=sercretsync_name,
+            name=secretsync_name,
             secrets=secret_to_remove,
             secret_sync=target_secretsync,
             resource_group=resource_group
@@ -366,25 +373,35 @@ class OpcUACerts(Queryable):
                 subscription_id=self.default_subscription_id,
                 keyvault_name=spc_keyvault_name,
             )
+            # verify the behaviour of non existed secret
+            secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
+            secret_names = [secret.id for secret in secrets]
+
             # remove secret from keyvault
             for name in secret_to_remove:
-                self.keyvault_client.begin_delete_secret(name)
+                # perform delete operation if name exists in secret_names(endwith)
+                if any(secret_name.endswith(name) for secret_name in secret_names):
+                    self.keyvault_client.begin_delete_secret(name)
+                    # TODO: indicate in the help
+                    self.keyvault_client.purge_deleted_secret(name)
+                else:
+                    logger.warning(f"Secret {name} not found in keyvault {spc_keyvault_name}. Skipping removal...")
 
         # TODO: do we need to update aio extension for client certificate?
         return modified_secret_sync
 
-    def show(self, instance_name: str, resource_group: str, sercretsync_name: str) -> dict:
+    def show(self, instance_name: str, resource_group: str, secretsync_name: str) -> dict:
         # check if secret sync exists
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         target_secretsync = self.instances.find_existing_resources(
             cl_resources=cl_resources,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
-            resource_name=sercretsync_name,
+            resource_name=secretsync_name,
         )
 
         if not target_secretsync:
             raise ResourceNotFoundError(
-                f"Secret Sync {sercretsync_name} not found. Please make sure secret sync enabled "
+                f"Secret Sync {secretsync_name} not found. Please make sure secret sync enabled "
                 "and certificates added in target secret sync."
             )
 
@@ -433,7 +450,7 @@ class OpcUACerts(Queryable):
         # TODO: formatting will be removed once fortos service fixes the formatting issue
         return object_text.replace("\n- |", "\n    - |")
 
-    def _get_cl_resources(self, instance_name: str, resource_group: str) -> dict:
+    def _get_cl_resources(self, instance_name: str, resource_group: str) -> List[dict]:
         self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
         self.resource_map = self.instances.get_resource_map(self.instance)
         custom_location = self.resource_client.resources.get_by_id(
@@ -522,10 +539,11 @@ class OpcUACerts(Queryable):
         spc_keyvault_name: str,
         spc_tenant_id: str,
         spc_client_id: str,
+        should_replace: Optional[bool] = False,
     ) -> dict:
         spc_properties = spc.get("properties", {})
         # stringified yaml array
-        spc_object = spc_properties.get("objects", "")
+        spc_object = "" if should_replace else spc_properties.get("objects", "")
 
         # add new secret to the list
         for secret_name in secrets:
@@ -567,9 +585,10 @@ class OpcUACerts(Queryable):
         resource_group: str,
         spc_name: str,
         secret_sync_name: str,
+        should_replace: Optional[bool] = False,
     ) -> dict:
         # check if there is a secret sync called secret_sync_name, if not create one
-        secret_mapping = secret_sync.get("properties", {}).get("objectSecretMapping", [])
+        secret_mapping = [] if should_replace else secret_sync.get("properties", {}).get("objectSecretMapping", [])
         # add new secret to the list
         for secret_name, file_name in secrets:
             secret_mapping.append(
@@ -610,6 +629,7 @@ class OpcUACerts(Queryable):
 
     def _update_client_secret_to_extension(
         self,
+        applicationCert: str,
         subject_name: str,
         application_uri: str,
     ):
@@ -625,14 +645,14 @@ class OpcUACerts(Queryable):
         if not config_settings:
             properties["configurationSettings"] = {}
 
-        config_settings["connectors.values.securityPki.applicationCert"] = OPCUA_CLIENT_CERT_SECRET_SYNC_NAME
+        config_settings["connectors.values.securityPki.applicationCert"] = applicationCert
         config_settings["connectors.values.securityPki.subjectName"] = subject_name
         config_settings["connectors.values.securityPki.applicationUri"] = application_uri
 
         aio_extension["properties"]["configurationSettings"] = config_settings
 
         with console.status(
-            f"Updating IoT Operations extension to use new secret source {OPCUA_CLIENT_CERT_SECRET_SYNC_NAME}..."
+            f"Updating IoT Operations extension to use new secret source {applicationCert}..."
         ):
             return self.resource_map.connected_cluster.update_aio_extension(
                 extension_name=aio_extension["name"],
@@ -649,6 +669,8 @@ class OpcUACerts(Queryable):
             spc_object = self._remove_entry_from_fortos_yaml(spc_object, secret_name)
 
         if not spc_object:
+            # remove the objects property instead of delete there resource if no secrets are left
+            # as this spc is used for all opcua certs config
             spc["properties"].pop("objects")
         else:
             spc["properties"]["objects"] = spc_object
@@ -675,10 +697,20 @@ class OpcUACerts(Queryable):
             secret_mapping = [mapping for mapping in secret_mapping if mapping["sourcePath"] != secret_name]
 
         if len(secret_mapping) == 0:
-            raise InvalidArgumentValueError(
-                "Unable to remove all secrets from secret sync since it requires at least one secret. "
-                "Please add a new secret before removing the last one."
-            )
+            # raise InvalidArgumentValueError(
+            #     "Unable to remove all secrets from secret sync since it requires at least one secret. "
+            #     "Please add a new secret before removing the last one."
+            # )
+            # remove the secret sync since only updating "objectSecretMapping" with empty list is not allowed
+            with console.status(f"Removing Secret Sync resource {name}, as no secrets left..."):
+                poller = self.ssc_mgmt_client.secret_syncs.begin_delete(
+                    resource_group_name=resource_group,
+                    secret_sync_name=name,
+                )
+            wait_for_terminal_state(poller)
+
+            # TODO: rollback aio extension settings
+
         else:
             secret_sync["properties"]["objectSecretMapping"] = secret_mapping
 
@@ -690,14 +722,14 @@ class OpcUACerts(Queryable):
             )
             return wait_for_terminal_state(poller)
 
-    def _generate_warning_for_certificate_pair(self, sercretsync_name: str):
+    def _generate_warning_for_certificate_pair(self, secretsync_name: str):
         # TODO: generate more specific warning with combining info with certificate name input
-        if sercretsync_name == OPCUA_ISSUER_LIST_SECRET_SYNC_NAME:
+        if secretsync_name == OPCUA_ISSUER_LIST_SECRET_SYNC_NAME:
             logger.warning(
                 "Please make sure to remove corresponding .crl when removing .der/.crt "
                 "certificate to avoid orphaned secret."
             )
-        elif sercretsync_name == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME:
+        elif secretsync_name == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME:
             logger.warning(
                 "Please make sure to both public and private key certificate pair to avoid "
                 "orphaned secret, and the removing certificates not being used by aio extension."

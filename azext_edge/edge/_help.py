@@ -1368,17 +1368,40 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops connector opcua trust remove"
+    ] = """
+        type: command
+        short-summary: Remove trusted certificate(s) from the OPC UA Broker's trusted certificate list.
+        long-summary: |
+            Note: Removing all trusted certificates from the OPC UA Broker's trusted certificate list at one time 
+            is not allowed. Please keep at least one trusted certificate in the list.
+        examples:
+          - name: Remove trusted certificates called 'testcert1.der' and 'testcert2.crt' from trusted certificate list.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt
+          - name: Remove trusted certificates from trusted certificate list, including remove related keyvault secret.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt --include-secrets
+          - name: Force remove certificates operation regardless of warnings. May lead to errors.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt --force
+    """
+
+    helps[
         "iot ops connector opcua issuer"
     ] = """
-        type: group
-        short-summary: Manage issuer certificates for the OPC UA Broker.
-        long-summary: |
-          The issuer certificate list stores the certificate authority certificates that the connector
-          for OPC UA trusts. If user's OPC UA server's application instance certificate is signed by
-          an intermediate certificate authority, but user does not want to automatically trust all the
-          certificates issued by the certificate authority, an issuer certificate list can be used to
-          manage the trust relationship.
-          For more info, see https://aka.ms/opcua-certificates
+      type: group
+      short-summary: Manage issuer certificates for the OPC UA Broker.
+      long-summary: |
+        The issuer certificate list stores the certificate authority certificates that the connector
+        for OPC UA trusts. If user's OPC UA server's application instance certificate is signed by
+        an intermediate certificate authority, but user does not want to automatically trust all the
+        certificates issued by the certificate authority, an issuer certificate list can be used to
+        manage the trust relationship.
+        For more info, see https://aka.ms/opcua-certificates
     """
 
     helps[

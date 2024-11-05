@@ -77,7 +77,7 @@ def remove_connector_opcua_trust(
     return OpcUACerts(cmd).remove(
         instance_name=instance_name,
         resource_group=resource_group,
-        sercretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
         force=force,
         include_secrets=include_secrets,
@@ -95,7 +95,7 @@ def remove_connector_opcua_issuer(
     return OpcUACerts(cmd).remove(
         instance_name=instance_name,
         resource_group=resource_group,
-        sercretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
         force=force,
         include_secrets=include_secrets,
@@ -113,7 +113,7 @@ def remove_connector_opcua_client(
     return OpcUACerts(cmd).remove(
         instance_name=instance_name,
         resource_group=resource_group,
-        sercretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
         force=force,
         include_secrets=include_secrets,
@@ -128,7 +128,7 @@ def show_connector_opcua_trust(
     return OpcUACerts(cmd).show(
         instance_name=instance_name,
         resource_group=resource_group,
-        sercretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
     )
 
 
@@ -140,7 +140,7 @@ def show_connector_opcua_issuer(
     return OpcUACerts(cmd).show(
         instance_name=instance_name,
         resource_group=resource_group,
-        sercretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
+        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
     )
 
 
@@ -152,5 +152,5 @@ def show_connector_opcua_client(
     return OpcUACerts(cmd).show(
         instance_name=instance_name,
         resource_group=resource_group,
-        sercretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
     )
