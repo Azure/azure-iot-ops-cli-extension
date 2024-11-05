@@ -354,4 +354,5 @@ def test_schema_registry_create(
         scope=mock_storage_container_record["id"],
         principal_id=mock_registry_record["identity"]["principalId"],
         role_def_id=target_role_id,
+        principal_type="ServicePrincipal"
     )
