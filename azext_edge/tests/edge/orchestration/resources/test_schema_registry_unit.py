@@ -174,6 +174,7 @@ def test_schema_registry_list(mocked_cmd, mocked_responses: responses, resource_
     assert result == mock_schema_registry_records["value"]
     assert len(mocked_responses.calls) == 1
 
+
 @pytest.mark.parametrize("status", [200, 204])
 def test_schema_registry_delete(mocked_cmd, mocked_responses: responses, status: int):
     registery_name = generate_random_string()
