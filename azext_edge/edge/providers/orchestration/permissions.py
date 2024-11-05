@@ -62,7 +62,7 @@ class PermissionState(Enum):
     ActionUndefined = 3
 
 
-class PrincipalTypes(Enum):
+class PrincipalType(Enum):
     # There are more types but keeping this short with respect to what we use for now
     USER = "User"
     SERVICE_PRINCIPAL = "ServicePrincipal"

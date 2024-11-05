@@ -21,7 +21,7 @@ from ....util.az_client import (
 from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
 from ..common import SchemaFormat, SchemaType
-from ..permissions import PermissionManager, ROLE_DEF_FORMAT_STR, PrincipalTypes
+from ..permissions import PermissionManager, ROLE_DEF_FORMAT_STR, PrincipalType
 
 logger = get_logger(__name__)
 console = Console()
@@ -136,7 +136,7 @@ class SchemaRegistries(Queryable):
                     scope=blob_container["id"],
                     principal_id=result["identity"]["principalId"],
                     role_def_id=target_role_def,
-                    principal_type=PrincipalTypes.SERVICE_PRINCIPAL.value
+                    principal_type=PrincipalType.SERVICE_PRINCIPAL.value
                 )
             except Exception as e:
                 c.stop()
