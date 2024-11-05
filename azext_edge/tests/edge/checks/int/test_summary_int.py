@@ -6,7 +6,7 @@
 
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
 from azext_edge.edge.providers.edge_api import (
-    DATAFLOW_API_V1B1,
+    DATAFLOW_API_V1,
     DEVICEREGISTRY_API_V1,
     MQ_ACTIVE_API,
     OPCUA_API_V1,
@@ -30,13 +30,13 @@ def test_summary_checks():
     assert checks["status"] in ["success", "skipped", "warning"]
 
     # assert each service check is either success or skipped
-    for api in ["Akri", MQ_ACTIVE_API, OPCUA_API_V1, DATAFLOW_API_V1B1, DEVICEREGISTRY_API_V1]:
+    for api in ["Akri", MQ_ACTIVE_API, OPCUA_API_V1, DATAFLOW_API_V1, DEVICEREGISTRY_API_V1]:
         api_target = api.as_str() if api != "Akri" else "Akri"
         assert api_target in checks["targets"]
         service_checks = checks["targets"][api_target]
 
         valid_statuses = ["success", "skipped"]
         # TODO - remove once dataflow profile no longer displays warning status by default for missing dataflows
-        if api == DATAFLOW_API_V1B1:
+        if api == DATAFLOW_API_V1:
             valid_statuses.append("warning")
         assert service_checks.get(ALL_NAMESPACES_TARGET, {}).get("status") in valid_statuses

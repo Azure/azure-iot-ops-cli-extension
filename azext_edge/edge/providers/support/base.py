@@ -171,7 +171,7 @@ def process_v1_pods(
             try:
                 logger.debug(f"Fetching runtime metrics for {pod_name}")
                 metric: dict = custom_api.get_namespaced_custom_object(
-                    "metrics.k8s.io", "v1beta1", pod_namespace, "pods", pod_name
+                    "metrics.k8s.io", "v1", pod_namespace, "pods", pod_name
                 )
                 if metric:
                     processed.append(
