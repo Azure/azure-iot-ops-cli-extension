@@ -22,12 +22,12 @@ from .user_strings import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG,
 )
-from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state
+from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state, REGISTRY_API_VERSION
 from ....util.queryable import Queryable
 from ....common import AEPAuthModes, AEPTypes
 
 if TYPE_CHECKING:
-    from ....vendor.clients.assetmgmt.operations import (
+    from ....vendor.clients.deviceregistrymgmt.operations import (
         AssetEndpointProfilesOperations as AEPOperations
     )
 
@@ -41,7 +41,8 @@ class AssetEndpointProfiles(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id
+            subscription_id=self.default_subscription_id,
+            api_version=REGISTRY_API_VERSION
         )
         self.ops: "AEPOperations" = self.deviceregistry_mgmt_client.asset_endpoint_profiles
 
