@@ -123,7 +123,8 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
     )
 
 
-REGISTRY_API_VERSION = "2024-09-01-preview"
+REGISTRY_PREVIEW_API_VERSION = "2024-09-01-preview"
+REGISTRY_API_VERSION = "2024-11-01"
 
 
 def get_registry_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftDeviceRegistryManagementService":

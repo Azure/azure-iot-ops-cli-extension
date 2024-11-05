@@ -14,5 +14,5 @@ class DeviceRegistryResourceKinds(ListableEnum):
 
 
 DEVICEREGISTRY_API_V1 = EdgeResourceApi(
-    group="deviceregistry.microsoft.com", version="v1beta2", moniker="deviceregistry"
+    group="deviceregistry.microsoft.com", version="v1", moniker="deviceregistry"
 )
