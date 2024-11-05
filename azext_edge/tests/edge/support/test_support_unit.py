@@ -25,7 +25,7 @@ from azext_edge.edge.providers.edge_api import (
     DATAFLOW_API_V1B1,
     EdgeResourceApi,
 )
-from azext_edge.edge.providers.edge_api.meta import META_API_V1B1
+from azext_edge.edge.providers.edge_api.meta import META_API_V1
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.arccontainerstorage import STORAGE_NAMESPACE
 from azext_edge.edge.providers.support.base import get_bundle_path
@@ -780,7 +780,7 @@ def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
             "mocked_client": mocked_client,
             "mocked_zipfile": mocked_zipfile,
             "label_selector": META_NAME_LABEL,
-            "directory_path": META_API_V1B1.moniker,
+            "directory_path": META_API_V1.moniker,
         }
         if assert_func == assert_list_pods:
             kwargs["mocked_list_pods"] = mocked_list_pods

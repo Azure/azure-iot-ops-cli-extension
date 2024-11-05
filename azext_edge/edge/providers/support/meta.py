@@ -11,7 +11,7 @@ from knack.log import get_logger
 
 from azext_edge.edge.providers.support.billing import BILLING_RESOURCE_KIND, AIO_USAGE_PREFIX
 
-from ..edge_api import META_API_V1B1, EdgeResourceApi
+from ..edge_api import META_API_V1, EdgeResourceApi
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
@@ -25,8 +25,8 @@ from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
-META_NAME_LABEL = NAME_LABEL_FORMAT.format(label=META_API_V1B1.label)
-META_DIRECTORY_PATH = META_API_V1B1.moniker
+META_NAME_LABEL = NAME_LABEL_FORMAT.format(label=META_API_V1.label)
+META_DIRECTORY_PATH = META_API_V1.moniker
 META_PREFIX_NAMES = "aio-operator"
 
 
