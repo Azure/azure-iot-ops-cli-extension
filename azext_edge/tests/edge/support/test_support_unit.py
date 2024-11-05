@@ -429,7 +429,7 @@ def test_create_bundle_crd_work(
 
     if mocked_cluster_resources["param"] == []:
         mocked_root_logger.warning.assert_called_with(
-            "The following API(s) were not detected mqttbroker.iotoperations.azure.com/[v1beta1]. "
+            "The following API(s) were not detected mqttbroker.iotoperations.azure.com/[v1]. "
             "CR capture for broker will be skipped. Still attempting capture of runtime resources..."
         )
         mocked_assemble_crd_work.assert_not_called()
@@ -563,7 +563,7 @@ def assert_list_pods(
             if "include_metrics" in kwargs and kwargs["include_metrics"]:
                 mocked_client.CustomObjectsApi().get_namespaced_custom_object.assert_any_call(
                     group="metrics.k8s.io",
-                    version="v1beta1",
+                    version="v1",
                     namespace=namespace,
                     plural="pods",
                     name=pod_name,
@@ -571,7 +571,7 @@ def assert_list_pods(
                 assert_zipfile_write(
                     mocked_zipfile,
                     zinfo=f"{namespace}/{directory_path}/pod.{pod_name}.metric.yaml",
-                    data="apiVersion: metrics.k8s.io/v1beta1\nkind: PodMetrics\nmetadata:\n  "
+                    data="apiVersion: metrics.k8s.io/v1\nkind: PodMetrics\nmetadata:\n  "
                     "creationTimestamp: '0000-00-00T00:00:00Z'\n  name: mock_custom_object\n  "
                     "namespace: namespace\ntimestamp: '0000-00-00T00:00:00Z'\n",
                 )

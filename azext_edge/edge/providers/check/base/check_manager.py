@@ -20,7 +20,7 @@ class CheckManager:
         "description": "Evaluate MQ broker listeners",
         "status": "warning",
         "targets": {
-            "mq.iotoperations.azure.com/v1beta1": {
+            "mq.iotoperations.azure.com/v1": {
                 "_all_": {
                     "conditions": null,
                     "evaluations": [

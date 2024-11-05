@@ -31,7 +31,7 @@ def process_extension_configs():
     result = []
     extension_config = get_custom_objects(
         group="clusterconfig.azure.com",
-        version="v1beta1",
+        version="v1",
         plural="extensionconfigs",
     )
 

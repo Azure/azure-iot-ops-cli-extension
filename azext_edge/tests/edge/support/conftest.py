@@ -211,7 +211,7 @@ def mocked_namespaced_custom_objects(mocked_client):
     def _handle_namespaced_custom_object(*args, **kwargs):
         custom_object = {
             "kind": "PodMetrics",
-            "apiVersion": "metrics.k8s.io/v1beta1",
+            "apiVersion": "metrics.k8s.io/v1",
             "metadata": {
                 "name": "mock_custom_object",
                 "namespace": "namespace",

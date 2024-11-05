@@ -17,7 +17,7 @@ class MqResourceKinds(ListableEnum):
 
 MQTT_BROKER_API_V1B1 = EdgeResourceApi(
     group="mqttbroker.iotoperations.azure.com",
-    version="v1beta1",
+    version="v1",
     moniker="broker",
     label="microsoft-iotoperations-mqttbroker",
 )
