@@ -14,10 +14,10 @@ from rich.console import Console, NewLine
 from ..common import OpsServiceType
 from ..providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
-    MQTT_BROKER_API_V1B1,
+    MQTT_BROKER_API_V1,
     OPCUA_API_V1,
     DEVICEREGISTRY_API_V1,
-    DATAFLOW_API_V1B1,
+    DATAFLOW_API_V1,
     META_API_V1,
     ARCCONTAINERSTORAGE_API_V1,
     SECRETSYNC_API_V1,
@@ -31,10 +31,10 @@ logger = get_logger(__name__)
 console = Console()
 
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
-COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1B1])
+COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
-COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
+COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1])
 COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1])
 COMPAT_ARCCONTAINERSTORAGE_APIS = EdgeApiManager(resource_apis=[ARCCONTAINERSTORAGE_API_V1])
 COMPAT_SECRETSTORE_APIS = EdgeApiManager(resource_apis=[SECRETSYNC_API_V1, SECRETSTORE_API_V1])

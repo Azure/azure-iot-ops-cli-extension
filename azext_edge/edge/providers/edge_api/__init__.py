@@ -6,11 +6,11 @@
 
 from .base import EdgeResourceApi, EdgeApiManager
 from .clusterconfig import CLUSTER_CONFIG_API_V1
-from .mq import MQ_ACTIVE_API, MQTT_BROKER_API_V1B1, MqResourceKinds
+from .mq import MQ_ACTIVE_API, MQTT_BROKER_API_V1, MqResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
 from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
 from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
-from .dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
+from .dataflow import DATAFLOW_API_V1, DataflowResourceKinds
 from .meta import META_API_V1, MetaResourceKinds
 from .arccontainerstorage import ARCCONTAINERSTORAGE_API_V1
 from .secretstore import SECRETSYNC_API_V1, SECRETSTORE_API_V1
@@ -24,14 +24,14 @@ __all__ = [
     "EdgeApiManager",
     "MqResourceKinds",
     "MQ_ACTIVE_API",
-    "MQTT_BROKER_API_V1B1",
+    "MQTT_BROKER_API_V1",
     "OPCUA_API_V1",
     "OpcuaResourceKinds",
     "KeyVaultResourceKinds",
     "KEYVAULT_API_V1",
     "DeviceRegistryResourceKinds",
     "DEVICEREGISTRY_API_V1",
-    "DATAFLOW_API_V1B1",
+    "DATAFLOW_API_V1",
     "DataflowResourceKinds",
     "META_API_V1",
     "MetaResourceKinds",

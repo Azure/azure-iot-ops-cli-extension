@@ -14,9 +14,9 @@ class DataflowResourceKinds(ListableEnum):
     DATAFLOW = "dataflow"
 
 
-DATAFLOW_API_V1B1 = EdgeResourceApi(
+DATAFLOW_API_V1 = EdgeResourceApi(
     group="connectivity.iotoperations.azure.com",
-    version="v1beta1",
+    version="v1",
     moniker="dataflow",
     label="microsoft-iotoperations-dataflows",
 )
