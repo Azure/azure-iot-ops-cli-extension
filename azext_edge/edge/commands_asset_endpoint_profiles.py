@@ -115,7 +115,6 @@ def query_asset_endpoint_profiles(
         asset_endpoint_profile_name=asset_endpoint_profile_name,
         auth_mode=auth_mode,
         custom_query=custom_query,
-        discovered=False,
         endpoint_profile_type=endpoint_profile_type,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,

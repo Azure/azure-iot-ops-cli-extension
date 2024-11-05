@@ -100,10 +100,9 @@ def delete_asset(
 # TODO: add in once GA
 def list_assets(
     cmd,
-    # discovered: bool = False,  # TODO: discovered
     resource_group_name: str = None,
 ) -> List[dict]:
-    return Assets(cmd).list(discovered=False, resource_group_name=resource_group_name)
+    return Assets(cmd).list(resource_group_name=resource_group_name)
 
 
 def query_assets(
@@ -114,7 +113,6 @@ def query_assets(
     default_topic_retain: Optional[str] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
-    # discovered: Optional[bool] = None,  # TODO: discovered
     display_name: Optional[str] = None,
     documentation_uri: Optional[str] = None,
     endpoint_profile: Optional[str] = None,
@@ -138,7 +136,6 @@ def query_assets(
         default_topic_retain=default_topic_retain,
         description=description,
         display_name=display_name,
-        discovered=False,
         disabled=disabled,
         documentation_uri=documentation_uri,
         endpoint_profile=endpoint_profile,
