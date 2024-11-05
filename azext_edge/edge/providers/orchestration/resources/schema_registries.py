@@ -163,8 +163,12 @@ class SchemaRegistries(Queryable):
             return
 
         with console.status("Working..."):
-            poller = self.ops.begin_delete(resource_group_name=resource_group_name, schema_registry_name=name)
-            return wait_for_terminal_state(poller, **kwargs)
+            try:
+                poller = self.ops.begin_delete(resource_group_name=resource_group_name, schema_registry_name=name)
+                wait_for_terminal_state(poller, **kwargs)
+            except HttpResponseError as e:
+                if e.status_code != 200:
+                    raise e
 
 
 class Schemas(Queryable):
