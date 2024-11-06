@@ -351,7 +351,7 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
 )
 
 M3_INSTANCE_TEMPLATE = TemplateBlueprint(
-    commit_id="6a59dd88fb990b0ce5a7bfa0f0b5f648954a6b5b",
+    commit_id="230d9cadd5d881896865992ab95739fdcfc6d9c1",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
@@ -529,7 +529,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "1.0.6"},
+            "VERSIONS": {"iotOperations": "1.0.9"},
             "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
