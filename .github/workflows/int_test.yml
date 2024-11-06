@@ -131,10 +131,10 @@ jobs:
             echo "REDEPLOY=True" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "redeploy" ]]; then
             echo "CREATE_ARG=${{ inputs.runtime-create-args }}" >> $GITHUB_OUTPUT
-            echo "INIT_ARGS=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
+            echo "INIT_ARG=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "trustbundle" ]]; then
             echo "CREATE_ARG= --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer" >> $GITHUB_OUTPUT
-            echo "INIT_ARGS=--user-trust true" >> $GITHUB_OUTPUT
+            echo "INIT_ARG=--user-trust true" >> $GITHUB_OUTPUT
           fi
       - name: "Output variables for future steps"
         id: "env_out"
