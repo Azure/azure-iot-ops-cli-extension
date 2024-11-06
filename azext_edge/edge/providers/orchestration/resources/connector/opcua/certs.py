@@ -164,7 +164,7 @@ class OpcUACerts(Queryable):
         if cert_extension == ".crl":
             matched_names = []
             if opcua_secret_sync:
-                secret_mapping = opcua_secret_sync.get("properties", {}).get("objectSecretMapping", [])
+                secret_mapping = opcua_secret_sync[0].get("properties", {}).get("objectSecretMapping", [])
                 possible_file_names = [f"{cert_name}.crt", f"{cert_name}.der"]
                 matched_names = [
                     mapping["targetKey"] for mapping in secret_mapping if mapping["targetKey"] in possible_file_names
@@ -546,7 +546,7 @@ class OpcUACerts(Queryable):
         regexp = r"^[0-9a-zA-Z-]+$"
         if not new_secret_name or not re.match(regexp, new_secret_name):
             raise InvalidArgumentValueError(
-                f"Secret name {new_secret_name} is invalid. Secret name must be alphanumeric and can contain hyphens."
+                f"Secret name {new_secret_name} is invalid. Secret name must be alphanumeric and can contain hyphens. "
                 f"Please provide a valid secret name via --{flag}."
             )
 

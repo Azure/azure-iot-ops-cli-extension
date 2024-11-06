@@ -23,7 +23,6 @@ from .conftest import (
     get_secret_endpoint,
     get_secretsync_endpoint,
     get_spc_endpoint,
-    setup_mock_common_responses,
 )
 from azext_edge.tests.generators import generate_random_string
 from azext_edge.tests.helpers import generate_ops_resource
@@ -75,7 +74,7 @@ def test_client_add(
     public_file_name: str,
     private_file_name: str,
     expected_secret_sync: dict,
-    mocked_resource_map: Mock,
+    mocked_instance: Mock,
     mocked_responses: responses,
 ):
     file_content = b"\x00\x01\x02\x03"
@@ -83,11 +82,12 @@ def test_client_add(
     rg_name = "mock-rg"
 
     assemble_resource_map_mock(
-        resource_map_mock=mocked_resource_map,
+        resource_map_mock=mocked_instance.get_resource_map,
         extension=expected_resources_map["extension"],
         custom_locations=expected_resources_map["custom locations"],
         resources=expected_resources_map["resources"],
     )
+    mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_get_resource_client: Mock = mocker.patch(
         "azext_edge.edge.util.queryable.get_resource_client",
     )
@@ -98,22 +98,37 @@ def test_client_add(
     )
 
     if expected_resources_map["resources"]:
-        # get default spc
+        # get secrets
         mocked_responses.add(
             method=responses.GET,
-            url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-            json=expected_resources_map["resources"][0],
+            url=get_secret_endpoint(keyvault_name="mock-keyvault"),
+            json={
+                "value": [
+                    {
+                        "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
+                    }
+                ]
+            },
             status=200,
             content_type="application/json",
         )
 
-        setup_mock_common_responses(
-            mocked_responses=mocked_responses,
-            spc=client_app_spc,
-            secretsync=client_app_secretsync,
-            opcua_secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-            rg_name=rg_name,
-            secret_name="certificate-der",
+        # set secret
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name="certificate-der"),
+            json={},
+            status=200,
+            content_type="application/json",
+        )
+
+        # set opcua spc
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+            json={},
+            status=200,
+            content_type="application/json",
         )
 
         # set secret
@@ -144,6 +159,7 @@ def test_client_add(
         private_key_file=private_file_name,
         application_uri="uri",
         subject_name="subjectname",
+        overwrite_secret=True,
     )
 
     assert (
@@ -163,10 +179,10 @@ def test_client_add(
                 mocked_logger.warning.call_args[0][0] == f"Secret Sync {OPCUA_CLIENT_CERT_SECRET_SYNC_NAME} "
                 "not found, creating new one..."
             )
-        mocked_resource_map().connected_cluster.get_extensions_by_type.assert_called_once_with(
+        mocked_instance.get_resource_map().connected_cluster.get_extensions_by_type.assert_called_once_with(
             "microsoft.iotoperations"
         )
-        mocked_resource_map().connected_cluster.update_aio_extension.assert_called_once_with(
+        mocked_instance.get_resource_map().connected_cluster.update_aio_extension.assert_called_once_with(
             extension_name=expected_resources_map["extension"][IOT_OPS_EXTENSION_TYPE]["name"],
             properties={
                 "configurationSettings": {
@@ -241,7 +257,7 @@ def test_client_add(
             {},
             "/fake/path/pubkey.der",
             "/fake/path/prikey.pem",
-            "Public key file pubkey and private key file prikey must match.",
+            "Public key file name pubkey and private key file name prikey must match.",
         ),
     ],
 )
@@ -256,7 +272,7 @@ def test_client_add_errors(
     public_file_name: str,
     private_file_name: str,
     expected_error: str,
-    mocked_resource_map: Mock,
+    mocked_instance: Mock,
     mocked_responses: responses,
 ):
     file_content = b"\x00\x01\x02\x03"
@@ -264,11 +280,12 @@ def test_client_add_errors(
     rg_name = "mock-rg"
 
     assemble_resource_map_mock(
-        resource_map_mock=mocked_resource_map,
+        resource_map_mock=mocked_instance.get_resource_map,
         extension=expected_resources_map["extension"],
         custom_locations=expected_resources_map["custom locations"],
         resources=expected_resources_map["resources"],
     )
+    mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_get_resource_client: Mock = mocker.patch(
         "azext_edge.edge.util.queryable.get_resource_client",
     )
@@ -278,24 +295,38 @@ def test_client_add_errors(
         return_value=file_content,
     )
 
-    if expected_resources_map["resources"]:
-        # get default spc
+    if client_app_spc:
+        # get secrets
         mocked_responses.add(
             method=responses.GET,
-            url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-            json=expected_resources_map["resources"][0],
+            url=get_secret_endpoint(keyvault_name="mock-keyvault"),
+            json={
+                "value": [
+                    {
+                        "id": "https://mock-keyvault.vault.azure.net/secrets/mock-secret",
+                    }
+                ]
+            },
             status=200,
             content_type="application/json",
         )
 
-    if client_app_spc:
-        setup_mock_common_responses(
-            mocked_responses=mocked_responses,
-            spc=client_app_spc,
-            secretsync=client_app_secretsync,
-            opcua_secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-            rg_name=rg_name,
-            secret_name="certificate-der",
+        # set secret
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name="certificate-der"),
+            json={},
+            status=200,
+            content_type="application/json",
+        )
+
+        # set opcua spc
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+            json={},
+            status=200,
+            content_type="application/json",
         )
 
         # set secret
@@ -327,6 +358,7 @@ def test_client_add_errors(
             private_key_file=private_file_name,
             application_uri="uri",
             subject_name="subjectname",
+            overwrite_secret=True,
         )
 
     assert expected_error in e.value.args[0]
