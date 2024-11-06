@@ -7,6 +7,7 @@
 """
 Load CLI commands
 """
+from .util.common import is_env_flag_enabled
 from azure.cli.core.commands import CliCommandType
 
 schema_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_schema#{}")
@@ -29,7 +30,8 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("check", "check", is_preview=True)
         cmd_group.command("init", "init")
-        cmd_group.command("upgrade", "upgrade", deprecate_info=cmd_group.deprecate(hide=True))
+        if is_env_flag_enabled("AIO_ENABLE_UPGRADE"):
+            cmd_group.command("upgrade", "upgrade")
         cmd_group.command("create", "create_instance")
         cmd_group.command("update", "update_instance")
         cmd_group.show_command("show", "show_instance")

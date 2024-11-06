@@ -128,7 +128,6 @@ def upgrade(
     cmd,
     resource_group_name: str,
     instance_name: str,
-    schema_registry_resource_id: Optional[str] = None,
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
     **kwargs
@@ -138,7 +137,6 @@ def upgrade(
         cmd=cmd,
         resource_group_name=resource_group_name,
         instance_name=instance_name,
-        sr_resource_id=schema_registry_resource_id,
         no_progress=no_progress,
         confirm_yes=confirm_yes,
         **kwargs

@@ -39,7 +39,6 @@ def upgrade_ops_resources(
     resource_group_name: str,
     instance_name: Optional[str] = None,
     cluster_name: Optional[str] = None,
-    sr_resource_id: Optional[str] = None,
     confirm_yes: Optional[bool] = None,
     no_progress: Optional[bool] = None,
 ):
@@ -47,7 +46,6 @@ def upgrade_ops_resources(
         cmd=cmd,
         instance_name=instance_name,
         cluster_name=cluster_name,
-        sr_resource_id=sr_resource_id,
         resource_group_name=resource_group_name,
         no_progress=no_progress,
     )
@@ -62,7 +60,6 @@ class UpgradeManager:
         resource_group_name: str,
         instance_name: Optional[str] = None,
         cluster_name: Optional[str] = None,
-        sr_resource_id: Optional[str] = None,
         no_progress: Optional[bool] = None,
     ):
         from azure.cli.core.commands.client_factory import get_subscription_id
@@ -70,7 +67,6 @@ class UpgradeManager:
         self.cmd = cmd
         self.instance_name = instance_name
         self.cluster_name = cluster_name
-        self.sr_resource_id = sr_resource_id
         self.resource_group_name = resource_group_name
         self.instances = Instances(self.cmd)
         self.subscription_id = get_subscription_id(cli_ctx=cmd.cli_ctx)
@@ -247,13 +243,11 @@ class UpgradeManager:
             for extension in self.extensions_to_update:
                 logger.info(f"Updating extension {extension}.")
                 logger.info(f"Extension PATCH body: {self.extensions_to_update[extension]}")
-                updated = wait_for_terminal_state(
-                        self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
-                        resource_group_name=self.resource_group_name,
-                        cluster_name=self.cluster_name,
-                        extension_name=extension,
-                        update_payload=self.extensions_to_update[extension]
-                    )
+                updated = self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
+                    resource_group_name=self.resource_group_name,
+                    cluster_name=self.cluster_name,
+                    extension_name=extension,
+                    update_payload=self.extensions_to_update[extension]
                 )
                 # check for hidden errors
                 for status in updated["properties"].get("statuses", []):

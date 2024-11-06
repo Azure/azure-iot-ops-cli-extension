@@ -19,6 +19,7 @@ from .providers.support_bundle import (
     COMPAT_OPCUA_APIS,
     COMPAT_DATAFLOW_APIS,
 )
+from .util.common import is_env_flag_enabled
 
 
 def load_iotops_help():
@@ -569,29 +570,25 @@ def load_iotops_help():
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
     """
 
-    helps[
-        "iot ops upgrade"
-    ] = """
-        type: command
-        short-summary: Upgrade an IoT Operations instance to the latest version.
-        long-summary: |
-                      WARNING: This command may fail and require you to delete and re-create your cluster and instance.
+    if is_env_flag_enabled("AIO_ENABLE_UPGRADE"):
+        helps[
+            "iot ops upgrade"
+        ] = """
+            type: command
+            short-summary: Upgrade an IoT Operations instance to the latest version.
+            long-summary: |
+                          WARNING: This command may fail and require you to delete and re-create your cluster and instance.
 
-                      Upgrade an IoT Operations instance, including updating the extensions to the latest versions.
-                      Use this command if `az iot ops show` or similiar commands are failing.
-
-                      Schema registry resource Id is an optional parameter and may be required in specific scenarios.
-        examples:
-        - name: Upgrade the instance with minimal inputs.
-          text: >
-            az iot ops upgrade --name myinstance -g myresourcegroup
-        - name: Skip the conformation prompt during instance upgrade.
-          text: >
-            az iot ops upgrade --name myinstance -g myresourcegroup -y
-        - name: Upgrade the instance and specify the schema registry resource Id.
-          text: >
-            az iot ops upgrade --name myinstance -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-    """
+                          Upgrade an IoT Operations instance, including updating the extensions to the latest versions.
+                          Use this command if `az iot ops show` or similiar commands are failing.
+            examples:
+            - name: Upgrade the instance with minimal inputs.
+              text: >
+                az iot ops upgrade --name myinstance -g myresourcegroup
+            - name: Skip the conformation prompt during instance upgrade.
+              text: >
+                az iot ops upgrade --name myinstance -g myresourcegroup -y
+        """
 
     helps[
         "iot ops identity"

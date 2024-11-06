@@ -231,7 +231,6 @@ def _generate_trains(**trains) -> dict:
         _generate_trains()
     )
 ])
-@pytest.mark.parametrize("sr_resource_id", [None, generate_random_string()])
 def test_upgrade_lifecycle(
     mocker,
     mocked_cmd: Mock,
@@ -244,7 +243,6 @@ def test_upgrade_lifecycle(
     current_extensions: List[dict],
     new_versions: List[dict],
     new_trains: List[dict],
-    sr_resource_id: Optional[str],
     no_progress: Optional[bool]
 ):
     from azext_edge.edge.providers.orchestration.upgrade import upgrade_ops_resources
@@ -268,7 +266,6 @@ def test_upgrade_lifecycle(
         "cmd": mocked_cmd,
         "instance_name": instance_name,
         "resource_group_name": rg_name,
-        "sr_resource_id": sr_resource_id,
         "confirm_yes": True,
         "no_progress": no_progress,
     }
@@ -320,7 +317,6 @@ def test_upgrade_lifecycle(
 def test_upgrade_error(
     mocked_cmd: Mock,
     mocked_instances: Mock,
-    mocked_wait_for_terminal_state: Mock,
     mocked_live_display: Mock,
     mocked_logger: Mock,
     mocked_rich_print: Mock,
@@ -345,7 +341,8 @@ def test_upgrade_error(
     # some random extension has a hidden status error
     error_msg = generate_random_string()
     extensions["platform"]["properties"]["statuses"] = [{"code": "InstallationFailed", "message": error_msg}]
-    mocked_wait_for_terminal_state.return_value = extensions["platform"]
+    extension_update_mock = mocked_resource_map.connected_cluster.clusters.extensions.update_cluster_extension
+    extension_update_mock.return_value = extensions["platform"]
     with pytest.raises(AzureResponseError) as e:
         upgrade_ops_resources(**kwargs)
     assert error_msg in e.value.error_msg
@@ -353,7 +350,7 @@ def test_upgrade_error(
 
     # extension update fails
     error_msg = "extension update failed"
-    mocked_wait_for_terminal_state.side_effect = HttpResponseError(error_msg)
+    extension_update_mock.side_effect = HttpResponseError(error_msg)
     with pytest.raises(HttpResponseError) as e:
         upgrade_ops_resources(**kwargs)
     assert error_msg in e.value.message
