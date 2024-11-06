@@ -28,7 +28,7 @@ from ...util.az_client import (
     parse_resource_id,
     wait_for_terminal_state,
 )
-from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager
+from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from .resource_map import IoTOperationsResourceMap
 from .targets import InitTargets
 
@@ -418,6 +418,7 @@ class WorkManager:
                             subscription_id=schema_registry_id_parts.subscription_id,
                             role_id=CONTRIBUTOR_ROLE_ID,
                         ),
+                        principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
                     )
                 except Exception as e:
                     role_assignment_error = get_user_msg_warn_ra(
