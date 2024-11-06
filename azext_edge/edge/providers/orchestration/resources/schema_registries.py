@@ -21,7 +21,7 @@ from ....util.az_client import (
 from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
 from ..common import SchemaFormat, SchemaType
-from ..permissions import PermissionManager, ROLE_DEF_FORMAT_STR
+from ..permissions import PermissionManager, ROLE_DEF_FORMAT_STR, PrincipalType
 
 logger = get_logger(__name__)
 console = Console()
@@ -136,6 +136,7 @@ class SchemaRegistries(Queryable):
                     scope=blob_container["id"],
                     principal_id=result["identity"]["principalId"],
                     role_def_id=target_role_def,
+                    principal_type=PrincipalType.SERVICE_PRINCIPAL.value
                 )
             except Exception as e:
                 c.stop()
@@ -163,8 +164,12 @@ class SchemaRegistries(Queryable):
             return
 
         with console.status("Working..."):
-            poller = self.ops.begin_delete(resource_group_name=resource_group_name, schema_registry_name=name)
-            return wait_for_terminal_state(poller, **kwargs)
+            try:
+                poller = self.ops.begin_delete(resource_group_name=resource_group_name, schema_registry_name=name)
+                wait_for_terminal_state(poller, **kwargs)
+            except HttpResponseError as e:
+                if e.status_code != 200:
+                    raise e
 
 
 class Schemas(Queryable):

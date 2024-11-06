@@ -175,21 +175,22 @@ def test_schema_registry_list(mocked_cmd, mocked_responses: responses, resource_
     assert len(mocked_responses.calls) == 1
 
 
-def test_schema_registry_delete(mocked_cmd, mocked_responses: responses):
+@pytest.mark.parametrize("status", [200, 204])
+def test_schema_registry_delete(mocked_cmd, mocked_responses: responses, status: int):
     registery_name = generate_random_string()
     resource_group_name = generate_random_string()
 
     mocked_responses.add(
         method=responses.DELETE,
         url=get_schema_registry_endpoint(resource_group_name=resource_group_name, registry_name=registery_name),
-        status=204,
+        status=status,
     )
     delete_registry(
         cmd=mocked_cmd,
         schema_registry_name=registery_name,
         resource_group_name=resource_group_name,
         confirm_yes=True,
-        wait_sec=0.25,
+        wait_sec=0,
     )
     assert len(mocked_responses.calls) == 1
 
@@ -283,7 +284,7 @@ def test_schema_registry_create(
         "description": description,
         "tags": tags,
         "custom_role_id": custom_role_id,
-        "wait_sec": 0.25,
+        "wait_sec": 0,
     }
     if not is_hns_enabled:
         with pytest.raises(ValidationError):
@@ -354,4 +355,5 @@ def test_schema_registry_create(
         scope=mock_storage_container_record["id"],
         principal_id=mock_registry_record["identity"]["principalId"],
         role_def_id=target_role_id,
+        principal_type="ServicePrincipal"
     )
