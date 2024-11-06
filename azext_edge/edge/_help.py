@@ -555,7 +555,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update an IoT Operations instance.
-        long-summary: Currently instance tags and description can be updated. If you want to upgrade your instance to a newer version, please use `az iot ops upgrade` instead.
+        long-summary: Currently instance tags and description can be updated.
 
         examples:
         - name: Update instance tags. This is equivalent to a replace.
