@@ -570,6 +570,30 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops upgrade"
+    ] = """
+        type: command
+        short-summary: Upgrade an IoT Operations instance to the latest version.
+        long-summary: |
+                      WARNING: This command may fail and require you to delete and re-create your cluster and instance.
+
+                      Upgrade an IoT Operations instance, including updating the extensions to the latest versions.
+                      Use this command if `az iot ops show` or similiar commands are failing.
+
+                      Schema registry resource Id is an optional parameter and may be required in specific scenarios.
+        examples:
+        - name: Upgrade the instance with minimal inputs.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup
+        - name: Skip the conformation prompt during instance upgrade.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup -y
+        - name: Upgrade the instance and specify the schema registry resource Id.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+    """
+
+    helps[
         "iot ops identity"
     ] = """
         type: group
