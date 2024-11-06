@@ -7,11 +7,9 @@
 from typing import Dict, List, Optional, OrderedDict
 from unittest.mock import Mock
 import pytest
-import responses
 from azure.cli.core.azclierror import (
     ArgumentUsageError,
     AzureResponseError,
-    RequiredArgumentMissingError,
 )
 from azure.core.exceptions import HttpResponseError
 
@@ -235,7 +233,6 @@ def test_upgrade_lifecycle(
     mocker,
     mocked_cmd: Mock,
     mocked_instances: Mock,
-    mocked_wait_for_terminal_state: Mock,
     mocked_live_display: Mock,
     mocked_logger: Mock,
     mocked_rich_print: Mock,

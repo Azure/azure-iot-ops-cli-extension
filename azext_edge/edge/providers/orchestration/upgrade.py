@@ -21,7 +21,7 @@ from rich.padding import Padding
 from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.table import Table
 
-from ...util.az_client import get_resource_client, wait_for_terminal_state
+from ...util.az_client import get_resource_client
 from ...util.common import should_continue_prompt
 from .resource_map import IoTOperationsResourceMap
 from .resources import Instances

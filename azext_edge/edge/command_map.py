@@ -30,7 +30,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("check", "check", is_preview=True)
         cmd_group.command("init", "init")
-        if is_env_flag_enabled("AIO_ENABLE_UPGRADE"):
+        if is_env_flag_enabled("AIO_CLI_UPGRADE_ENABLED"):
             cmd_group.command("upgrade", "upgrade")
         cmd_group.command("create", "create_instance")
         cmd_group.command("update", "update_instance")

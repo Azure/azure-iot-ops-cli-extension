@@ -570,7 +570,7 @@ def load_iotops_help():
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
     """
 
-    if is_env_flag_enabled("AIO_ENABLE_UPGRADE"):
+    if is_env_flag_enabled("AIO_CLI_UPGRADE_ENABLED"):
         helps[
             "iot ops upgrade"
         ] = """
