@@ -529,7 +529,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "1.0.8"},
+            "VERSIONS": {"iotOperations": "1.0.9"},
             "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
