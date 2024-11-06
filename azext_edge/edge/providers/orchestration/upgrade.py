@@ -11,7 +11,6 @@ from azure.cli.core.azclierror import (
     ArgumentUsageError,
     AzureResponseError,
     CLIInternalError,
-    RequiredArgumentMissingError,
 )
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
@@ -28,8 +27,11 @@ from .resource_map import IoTOperationsResourceMap
 from .resources import Instances
 
 logger = get_logger(__name__)
-INSTANCE_7_API = "2024-08-15-preview"
-INSTANCE_7_VERSION = "0.7.31"
+INSTANCE_MIN_VERSION = "1.0.6"
+
+INSTANCE_UPGRADE_ERROR = (
+    "Cannot upgrade instance {0}, please delete your instance, including dependencies, and reinstall."
+)
 
 
 def upgrade_ops_resources(
@@ -88,7 +90,7 @@ class UpgradeManager:
     def do_work(self, confirm_yes: Optional[bool] = None):
         from .template import M3_INSTANCE_TEMPLATE
         self.new_aio_version = M3_INSTANCE_TEMPLATE.content["variables"]["VERSIONS"]["iotOperations"]
-        # get the resource map from the instance (checks if update is needed for instance)
+        # get the resource map from the instance (checks if update is needed for instance/too old)
         self.resource_map = self._get_resource_map()
         # Ensure cluster exists with existing resource_map pattern.
         self.resource_map.connected_cluster.resource
@@ -98,7 +100,7 @@ class UpgradeManager:
         # get the extensions to update, populate the expected patches
         extension_text = self._check_extensions()
 
-        if not self.extensions_to_update and not self.require_instance_upgrade:
+        if not self.extensions_to_update:
             print("[green]Nothing to upgrade :)[/green]")
             return
 
@@ -156,7 +158,6 @@ class UpgradeManager:
             from packaging import version
         except ImportError:
             raise CLIInternalError("Cannot parse extension versions.")
-
         for extension_type, extension in ordered_aio_extensions.items():
             extension_key = type_to_key_map[extension_type]
             current_version = extension["properties"].get("version", "0")
@@ -171,16 +172,6 @@ class UpgradeManager:
                 "currentVersion": current_version
             }
 
-            if extension_type == "microsoft.openservicemesh":
-                # hard code to avoid actual template resources parsing
-                extension_update["properties"]["configurationSettings"] = {
-                    "osm.osm.osmController.resource.requests.cpu": "100m",
-                    "osm.osm.osmBootstrap.resource.requests.cpu": "100m",
-                    "osm.osm.injector.resource.requests.cpu": "100m",
-                }
-
-            # should still be fine for mesh - if it is at the current version, already, it should have these props
-            # worst case it the extra config settings do nothing
             try:
                 if all([
                     version.parse(current_version) >= version.parse(version_map[extension_key]),
@@ -192,12 +183,6 @@ class UpgradeManager:
             except version.InvalidVersion:
                 raise CLIInternalError(f"Cannot parse extension versions for {extension['name']}.")
 
-        # try to get the sr resource id if not present already
-        extension_props = type_to_aio_extensions["microsoft.iotoperations"]["properties"]
-        if not self.sr_resource_id:
-            self.sr_resource_id = extension_props.get("configurationSettings", {}).get(
-                "schemaRegistry.values.resourceId"
-            )
         # text to print (ordered)
         display_desc = "[dim]"
         for extension, update in self.extensions_to_update.items():
@@ -207,41 +192,26 @@ class UpgradeManager:
         return display_desc[:-1] + ""
 
     def _get_resource_map(self) -> IoTOperationsResourceMap:
-        self.require_instance_upgrade = True
         api_spec_error = "HttpResponsePayloadAPISpecValidationFailed"
-        error_msg = (
-            f"Cannot upgrade instance {self.instance_name}, please delete your instance, including "
-            "dependencies, and reinstall."
-        )
-        # try with 2024-08-15-preview -> it is m2
         try:
-            self.instance = self.resource_client.resources.get(
-                resource_group_name=self.resource_group_name,
-                parent_resource_path="",
-                resource_provider_namespace="Microsoft.IoTOperations",
-                resource_type="instances",
-                resource_name=self.instance_name,
-                api_version=INSTANCE_7_API
-            )
-            # don't deal with bug bash m2's - only released version
-            if self.instance["properties"]["version"] != INSTANCE_7_VERSION:
-                raise ArgumentUsageError(error_msg)
-            return self.instances.get_resource_map(self.instance)
-        except HttpResponseError as e:
-            if api_spec_error not in e.message:
-                raise e
+            from packaging import version
+        except ImportError:
+            raise CLIInternalError("Cannot parse extension versions.")
 
-        # try with 2024-09-15-preview -> it is m3 already
-        self.require_instance_upgrade = False
+        # try with current
         try:
             self.instance = self.instances.show(
                 name=self.instance_name,
                 resource_group_name=self.resource_group_name
             )
+            if version.parse(INSTANCE_MIN_VERSION) > version.parse(self.instance["properties"]["version"]):
+                raise ArgumentUsageError(INSTANCE_UPGRADE_ERROR.format(self.instance_name))
             return self.instances.get_resource_map(self.instance)
+        except version.InvalidVersion:
+            raise CLIInternalError(f"Cannot parse version for {self.instance}.")
         except HttpResponseError as e:
             if api_spec_error in e.message:
-                raise ArgumentUsageError(error_msg)
+                raise ArgumentUsageError(INSTANCE_UPGRADE_ERROR.format(self.instance_name))
             raise e
 
     def _render_display(self, description: str):
@@ -269,23 +239,6 @@ class UpgradeManager:
             self._live.stop()
 
     def _process(self):
-        if self.require_instance_upgrade:
-
-            # prep the instance
-            self.instance.pop("systemData", None)
-            inst_props = self.instance["properties"]
-            # m3 extensions should not have the reg id
-            if not self.sr_resource_id:
-                raise RequiredArgumentMissingError(
-                    "Cannot determine the schema registry id from installed extensions, please provide the schema "
-                    "registry id via `--sr-id`."
-                )
-            inst_props["schemaRegistryRef"] = {"resourceId": self.sr_resource_id}
-
-            inst_props["version"] = self.new_aio_version
-            inst_props.pop("schemaRegistryNamespace", None)
-            inst_props.pop("components", None)
-
         result = None
         try:
             # Do the extension upgrade, try to keep the sr resource id
@@ -294,11 +247,13 @@ class UpgradeManager:
             for extension in self.extensions_to_update:
                 logger.info(f"Updating extension {extension}.")
                 logger.info(f"Extension PATCH body: {self.extensions_to_update[extension]}")
-                updated = self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
-                    resource_group_name=self.resource_group_name,
-                    cluster_name=self.cluster_name,
-                    extension_name=extension,
-                    update_payload=self.extensions_to_update[extension]
+                updated = wait_for_terminal_state(
+                        self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
+                        resource_group_name=self.resource_group_name,
+                        cluster_name=self.cluster_name,
+                        extension_name=extension,
+                        update_payload=self.extensions_to_update[extension]
+                    )
                 )
                 # check for hidden errors
                 for status in updated["properties"].get("statuses", []):
@@ -306,29 +261,11 @@ class UpgradeManager:
                         raise AzureResponseError(
                             f"Updating extension {extension} failed with the error message: {status['message']}"
                         )
-            if self.require_instance_upgrade:
-                # update the instance + minimize the code to be taken out once this is no longer needed
-                self._render_display("[yellow]Updating instance...")
-                logger.info(f"New instance body: {self.instance}")
-                result = wait_for_terminal_state(
-                    self.instances.iotops_mgmt_client.instance.begin_create_or_update(
-                        resource_group_name=self.resource_group_name,
-                        instance_name=self.instance_name,
-                        resource=self.instance
-                    )
-                )
             else:
                 result = self.instances.show(
                     resource_group_name=self.resource_group_name,
                     name=self.instance_name,
                 )
-        except (HttpResponseError, KeyboardInterrupt) as e:
-            if self.require_instance_upgrade:
-                logger.error(
-                    f"Update failed. The collected schema registry resource id is `{self.sr_resource_id}`. "
-                    "Please save this value in case it is required for a future upgrade. "
-                )
-            raise e
         finally:
             self._stop_display()
         return result

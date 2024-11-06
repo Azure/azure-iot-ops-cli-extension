@@ -118,7 +118,7 @@ def _generate_extensions(**extension_version_map) -> OrderedDict:
     return extensions
 
 
-def _generate_instance(instance_name: str, resource_group: str, m3: bool = False):
+def _generate_instance(instance_name: str, resource_group: str):
     mock_instance_record = {
         "extendedLocation": {
             "name": generate_random_string(),
@@ -132,7 +132,8 @@ def _generate_instance(instance_name: str, resource_group: str, m3: bool = False
         "properties": {
             "description": generate_random_string(),
             "provisioningState": "Succeeded",
-            "version": "0.7.31"
+            "version": "1.0.6",
+            "schemaRegistryRef": {"resourceId": generate_random_string()}
         },
         "resourceGroup": resource_group,
         "systemData": {
@@ -141,27 +142,6 @@ def _generate_instance(instance_name: str, resource_group: str, m3: bool = False
         },
         "type": "microsoft.iotoperations/instances"
     }
-    if m3:
-        mock_instance_record["properties"]["schemaRegistryRef"] = {"resourceId": generate_random_string()}
-    else:
-        mock_instance_record["properties"]["schemaRegistryNamespace"] = generate_random_string()
-        mock_instance_record["properties"]["components"] = {
-            "adr": {
-                "state": "Enabled"
-            },
-            "akri": {
-                "state": "Enabled"
-            },
-            "connectors": {
-                "state": "Enabled"
-            },
-            "dataflows": {
-                "state": "Enabled"
-            },
-            "schemaRegistry": {
-                "state": "Enabled"
-            }
-        }
     return mock_instance_record
 
 
@@ -202,14 +182,14 @@ def _generate_trains(**trains) -> dict:
             container_storage="0.10.3-preview",
             open_service_mesh="0.9.1",
             platform="0.10.0",
-            iot_operations="0.8.16",
+            iot_operations="1.0.6",
         ),
         _generate_versions(
             secret_store="1.10.0",
             container_storage="0.10.3-preview",
             open_service_mesh="0.9.1",
             platform="0.10.0",
-            iot_operations="0.8.20",
+            iot_operations="1.2.0",
         ),
         _generate_trains(
             secret_store="preview",
@@ -225,14 +205,14 @@ def _generate_trains(**trains) -> dict:
             container_storage="0.10.3-preview",
             open_service_mesh="0.9.1",
             platform="0.10.0",
-            iot_operations="0.7.31",
+            iot_operations="1.0.6",
         ),
         _generate_versions(
             secret_store="1.10.0",
             container_storage="0.10.3",
             open_service_mesh="0.10.2",
             platform="0.10.0",
-            iot_operations="0.8.16",
+            iot_operations="1.0.9",
         ),
         _generate_trains(
             secret_store="preview",
@@ -243,13 +223,18 @@ def _generate_trains(**trains) -> dict:
         )
     ),
     # update all
-    (_generate_extensions(), _generate_versions(), _generate_trains())
+    (
+        _generate_extensions(
+            iot_operations="1.0.6",
+        ),
+        _generate_versions(),
+        _generate_trains()
+    )
 ])
 @pytest.mark.parametrize("sr_resource_id", [None, generate_random_string()])
 def test_upgrade_lifecycle(
     mocker,
     mocked_cmd: Mock,
-    mocked_responses: responses,
     mocked_instances: Mock,
     mocked_wait_for_terminal_state: Mock,
     mocked_live_display: Mock,
@@ -275,29 +260,9 @@ def test_upgrade_lifecycle(
     instance_body = None
     # the get m2 instance call
     current_version = current_extensions["iot_operations"]["properties"]["version"]
-    if current_version == "0.7.31":
-        instance_body = _generate_instance(instance_name=instance_name, resource_group=rg_name)
-        # note the resource client adds an extra / before instances for the parent path. The api doesnt care
-        mocked_responses.add(
-            method=responses.GET,
-            url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
-            f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-            json=instance_body,
-            status=200,
-            content_type="application/json",
-        )
-    else:
-        instance_body = _generate_instance(instance_name=instance_name, resource_group=rg_name, m3=True)
-        mocked_responses.add(
-            method=responses.GET,
-            url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
-            f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-            json={"message": "HttpResponsePayloadAPISpecValidationFailed"},
-            status=412,
-            content_type="application/json",
-        )
-        instance_body["properties"]["version"] = current_version
-        mocked_instances.show.return_value = instance_body
+    instance_body = _generate_instance(instance_name=instance_name, resource_group=rg_name)
+    instance_body["properties"]["version"] = current_version
+    mocked_instances.show.return_value = instance_body
 
     kwargs = {
         "cmd": mocked_cmd,
@@ -310,8 +275,6 @@ def test_upgrade_lifecycle(
 
     upgrade_ops_resources(**kwargs)
 
-    # no matter what, we always try the m2 get
-    assert len(mocked_responses.calls) == 1
     # extension update calls
     extensions_to_update = {}
     extension_update_calls = extension_update_mock.call_args_list
@@ -336,46 +299,17 @@ def test_upgrade_lifecycle(
             assert payload["properties"]["autoUpgradeMinorVersion"] == "false"
             assert payload["properties"]["releaseTrain"] == new_trains[key]
             assert payload["properties"]["version"] == new_versions[key]
-
-            if key == "microsoft.openservicemesh":
-                assert payload["properties"]["configurationSettings"]
             # calls should be ordered together
             call += 1
 
     assert len(extensions_to_update) == len(extension_update_calls)
 
     # overall upgrade call
-    assert spy_upgrade_manager["_process"].called is any([extensions_to_update, current_version == "0.7.31"])
+    assert spy_upgrade_manager["_process"].called is bool(extension_update_calls)
 
-    if current_version == "0.7.31":
-        update_args = mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.call_args.kwargs
-        update_body = update_args["resource"]
-
-        # props that were kept the same
-        for prop in ["extendedLocation", "id", "name", "location", "resourceGroup", "type"]:
-            assert update_body[prop] == instance_body[prop]
-        for prop in ["description", "provisioningState"]:
-            assert update_body["properties"][prop] == instance_body["properties"][prop]
-
-        # props that were removed
-        assert "systemData" not in update_body
-        assert "schemaRegistryNamespace" not in update_body["properties"]
-        assert "components" not in update_body["properties"]
-
-        # props that were added/changed - also ensure right sr id is used
-        assert update_body["properties"]["version"] == new_versions["iot_operations"]
-        aio_ext_props = current_extensions["iot_operations"]["properties"]
-        expected_sr_resource_id = (
-            sr_resource_id or aio_ext_props["configurationSettings"]["schemaRegistry.values.resourceId"]
-        )
-        if current_version != "0.7.31":
-            expected_sr_resource_id = instance_body["properties"]["schemaRegistryRef"]["resourceId"]
-
-        assert update_body["properties"]["schemaRegistryRef"]["resourceId"] == expected_sr_resource_id
-    else:
-        # make sure we tried to get the m3
-        assert mocked_instances.show.call_count == (2 if extension_update_calls else 1)
-        mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.assert_not_called()
+    # make sure we tried to get the m3
+    assert mocked_instances.show.call_count == (2 if extension_update_calls else 1)
+    mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.assert_not_called()
 
     # no progress check
     if no_progress:
@@ -384,9 +318,7 @@ def test_upgrade_lifecycle(
 
 
 def test_upgrade_error(
-    mocker,
     mocked_cmd: Mock,
-    mocked_responses: responses,
     mocked_instances: Mock,
     mocked_wait_for_terminal_state: Mock,
     mocked_live_display: Mock,
@@ -397,7 +329,7 @@ def test_upgrade_error(
 
     rg_name = generate_random_string()
     instance_name = generate_random_string()
-    m2_instance = _generate_instance(instance_name=instance_name, resource_group=rg_name)
+    instance = _generate_instance(instance_name=instance_name, resource_group=rg_name)
     kwargs = {
         "cmd": mocked_cmd,
         "instance_name": instance_name,
@@ -407,106 +339,31 @@ def test_upgrade_error(
     extensions = _generate_extensions()
     mocked_resource_map = mocked_instances.get_resource_map()
     mocked_resource_map.connected_cluster.extensions = list(extensions.values())
+    mocked_instances.show.return_value = instance
 
     # slowly work backwards
-    # instance update fails
-    mocked_responses.add(
-        method=responses.GET,
-        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
-        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-        json=m2_instance,
-        status=200,
-        content_type="application/json",
-    )
-    error_msg = "instance update failed"
-    mocked_instances.iotops_mgmt_client.instance.begin_create_or_update.side_effect = HttpResponseError(
-        error_msg
-    )
-    with pytest.raises(HttpResponseError) as e:
-        upgrade_ops_resources(**kwargs)
-    assert error_msg in e.value.message
-
     # some random extension has a hidden status error
-    mocked_responses.add(
-        method=responses.GET,
-        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
-        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-        json=m2_instance,
-        status=200,
-        content_type="application/json",
-    )
     error_msg = generate_random_string()
     extensions["platform"]["properties"]["statuses"] = [{"code": "InstallationFailed", "message": error_msg}]
-    extension_update_mock = mocked_resource_map.connected_cluster.clusters.extensions.update_cluster_extension
-    extension_update_mock.return_value = extensions["platform"]
+    mocked_wait_for_terminal_state.return_value = extensions["platform"]
     with pytest.raises(AzureResponseError) as e:
         upgrade_ops_resources(**kwargs)
     assert error_msg in e.value.error_msg
     assert extensions["platform"]["name"] in e.value.error_msg
 
     # extension update fails
-    mocked_responses.add(
-        method=responses.GET,
-        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
-        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-        json=m2_instance,
-        status=200,
-        content_type="application/json",
-    )
     error_msg = "extension update failed"
-    extension_update_mock.side_effect = HttpResponseError(error_msg)
+    mocked_wait_for_terminal_state.side_effect = HttpResponseError(error_msg)
     with pytest.raises(HttpResponseError) as e:
         upgrade_ops_resources(**kwargs)
     assert error_msg in e.value.message
 
-    # need to update the instance but cannot get the sr resource id
-    mocked_responses.add(
-        method=responses.GET,
-        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
-        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-        json=m2_instance,
-        status=200,
-        content_type="application/json",
-    )
-    [ext["properties"].pop("configurationSettings") for ext in mocked_resource_map.connected_cluster.extensions]
-
-    with pytest.raises(RequiredArgumentMissingError):
-        upgrade_ops_resources(**kwargs)
-
     # instance is an unreleased bug bash version
-    m2_instance["properties"]["version"] = "0.7.25"
-    mocked_responses.add(
-        method=responses.GET,
-        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
-        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-        json=m2_instance,
-        status=200,
-        content_type="application/json",
-    )
+    instance["properties"]["version"] = "0.7.25"
     with pytest.raises(ArgumentUsageError):
         upgrade_ops_resources(**kwargs)
 
-    # other m2 get errors raise normally
-    mocked_responses.add(
-        method=responses.GET,
-        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
-        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-        status=404,
-        content_type="application/json",
-    )
-    with pytest.raises(HttpResponseError) as e:
-        upgrade_ops_resources(**kwargs)
-    assert e.value.response.status_code == 404
-
-    # other m3 get errors raise normally
-    mocked_responses.add(
-        method=responses.GET,
-        url=f"https://management.azure.com/subscriptions/{get_zeroed_subscription()}/resourcegroups/{rg_name}"
-        f"/providers/Microsoft.IoTOperations//instances/{instance_name}?api-version=2024-08-15-preview",
-        json={"message": "HttpResponsePayloadAPISpecValidationFailed"},
-        status=412,
-        content_type="application/json",
-    )
+    # other instance get errors raise normally
     error_msg = "instance get failed"
     mocked_instances.show.side_effect = HttpResponseError(error_msg)
     with pytest.raises(HttpResponseError) as e:
