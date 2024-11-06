@@ -205,7 +205,7 @@ class AEPTypes(Enum):
     """Asset Endpoint Profile (connector) Types"""
 
     # TODO: ensure this is the final enum
-    opcua = "OpcUa"
+    opcua = "Microsoft.OpcUa"
 
 
 class TopicRetain(Enum):

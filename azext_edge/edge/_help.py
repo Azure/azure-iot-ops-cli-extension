@@ -416,18 +416,6 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops verify-host"
-    ] = """
-        type: command
-        short-summary: Runs a set of cluster host verifications for IoT Operations deployment compatibility.
-        long-summary: Intended to be run directly on a target cluster host.
-          The command may prompt to apply a set of privileged actions such as installing a dependency.
-          In this case the CLI must be run with elevated permissions. For example
-
-            `sudo AZURE_EXTENSION_DIR=~/.azure/cliextensions az iot ops verify-host`.
-    """
-
-    helps[
         "iot ops init"
     ] = """
         type: command
@@ -534,8 +522,6 @@ def load_iotops_help():
         long-summary: Optionally the command can output a tree structure of associated resources representing
           the IoT Operations deployment against the backing cluster.
 
-          If this command fails, please use `az iot ops upgrade` to upgrade your instance to the latest version before continuing.
-
         examples:
         - name: Basic usage to show an instance.
           text: >
@@ -569,7 +555,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update an IoT Operations instance.
-        long-summary: Currently instance tags and description can be updated. If you want to upgrade your instance to a newer version, please use `az iot ops upgrade` instead.
+        long-summary: Currently instance tags and description can be updated.
 
         examples:
         - name: Update instance tags. This is equivalent to a replace.
@@ -665,19 +651,17 @@ def load_iotops_help():
         type: command
         short-summary: Enable secret sync for an instance.
         long-summary: |
-            The operation handles federation, creation of a secret provider class
-            and role assignments of the managed identity to the target Key Vault.
-
-            Only one Secret Provider Class must be associated to the instance at a time.
+            The operation handles identity federation, creation of a default secret provider class
+            and role assignments of the managed identity against the target Key Vault.
 
         examples:
         - name: Enable the target instance for Key Vault secret sync.
           text: >
-            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
         - name: Same as prior example except flag to skip Key Vault role assignments.
           text: >
-            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --skip-ra
     """
 
@@ -690,7 +674,7 @@ def load_iotops_help():
         examples:
         - name: List the secret sync configs associated with an instance.
           text: >
-            az iot ops secretsync list --name myinstance -g myresourcegroup
+            az iot ops secretsync list --instance myinstance -g myresourcegroup
     """
 
     helps[
@@ -705,7 +689,7 @@ def load_iotops_help():
         examples:
         - name: Disable secret sync for an instance.
           text: >
-            az iot ops secretsync disable --name myinstance -g myresourcegroup
+            az iot ops secretsync disable --instance myinstance -g myresourcegroup
     """
 
     helps[
