@@ -1234,7 +1234,6 @@ def load_iotops_arguments(self, _):
             "associated with the certificate(s). This option will delete and "
             "purge the secrets.",
             arg_type=get_three_state_flag(),
-            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "certificate_names",

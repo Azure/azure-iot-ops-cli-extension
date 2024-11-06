@@ -1465,7 +1465,7 @@ def load_iotops_help():
             --subject-name "aio-opc-opcuabroker"
             --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
       """
-    
+
     helps[
         "iot ops connector opcua client remove"
     ] = """
@@ -1479,18 +1479,29 @@ def load_iotops_help():
             Please make sure to remove both public(.der) and private key(.pem) certificate pair to avoid orphaned
             secret.
         examples:
-          - name: Remove issuer certificates and its revocation list with .crl extension from issuer certificate list.
+          - name: Remove client certificates from the OPC UA Broker's client certificate store.
             text: >
-              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
-              --certificate-names testcert.der testcert.crl
-          - name: Remove issuer certificates from issuer certificate list, including remove related keyvault secret.
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem
+          - name: Remove client certificates from client certificate store, including remove related keyvault secret.
             text: >
-              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
-              --certificate-names testcert.der --include-secrets
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem --include-secrets
           - name: Force remove certificates operation regardless of warnings. May lead to errors.
             text: >
-              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
-              --certificate-names testcert.der --force
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem --force
+    """
+
+    helps[
+        "iot ops connector opcua client show"
+    ] = """
+        type: command
+        short-summary: Show details of secretsync resource 'aio-opc-ua-broker-client-certificate'.
+        examples:
+        - name: Show details of 'aio-opc-ua-broker-client-certificate' secretsync resource.
+          text: >
+            az iot ops connector opcua client show --instance instance --resource-group instanceresourcegroup
     """
 
     helps[
