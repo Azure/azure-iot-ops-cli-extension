@@ -19,12 +19,14 @@ def add_connector_opcua_trust(
     resource_group: str,
     file: str,
     secret_name: Optional[str] = None,
+    overwrite_secret: Optional[bool] = False,
 ) -> dict:
     return OpcUACerts(cmd).trust_add(
         instance_name=instance_name,
         resource_group=resource_group,
         file=file,
         secret_name=secret_name,
+        overwrite_secret=overwrite_secret,
     )
 
 
@@ -34,12 +36,14 @@ def add_connector_opcua_issuer(
     resource_group: str,
     file: str,
     secret_name: Optional[str] = None,
+    overwrite_secret: Optional[bool] = False,
 ) -> dict:
     return OpcUACerts(cmd).issuer_add(
         instance_name=instance_name,
         resource_group=resource_group,
         file=file,
         secret_name=secret_name,
+        overwrite_secret=overwrite_secret
     )
 
 
@@ -53,6 +57,7 @@ def add_connector_opcua_client(
     application_uri: str,
     public_key_secret_name: Optional[str] = None,
     private_key_secret_name: Optional[str] = None,
+    overwrite_secret: Optional[bool] = False,
 ) -> dict:
     return OpcUACerts(cmd).client_add(
         instance_name=instance_name,
@@ -63,6 +68,7 @@ def add_connector_opcua_client(
         application_uri=application_uri,
         public_key_secret_name=public_key_secret_name,
         private_key_secret_name=private_key_secret_name,
+        overwrite_secret=overwrite_secret,
     )
 
 
@@ -71,6 +77,7 @@ def remove_connector_opcua_trust(
     instance_name: str,
     resource_group: str,
     certificate_names: List[str],
+    confirm_yes: Optional[bool] = False,
     force: Optional[bool] = False,
     include_secrets: Optional[bool] = False,
 ) -> dict:
@@ -79,6 +86,7 @@ def remove_connector_opcua_trust(
         resource_group=resource_group,
         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
+        confirm_yes=confirm_yes,
         force=force,
         include_secrets=include_secrets,
     )
@@ -89,6 +97,7 @@ def remove_connector_opcua_issuer(
     instance_name: str,
     resource_group: str,
     certificate_names: List[str],
+    confirm_yes: Optional[bool] = False,
     force: Optional[bool] = False,
     include_secrets: Optional[bool] = False,
 ) -> dict:
@@ -97,6 +106,7 @@ def remove_connector_opcua_issuer(
         resource_group=resource_group,
         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
+        confirm_yes=confirm_yes,
         force=force,
         include_secrets=include_secrets,
     )
@@ -107,6 +117,7 @@ def remove_connector_opcua_client(
     instance_name: str,
     resource_group: str,
     certificate_names: List[str],
+    confirm_yes: Optional[bool] = False,
     force: Optional[bool] = False,
     include_secrets: Optional[bool] = False,
 ) -> dict:
@@ -115,6 +126,7 @@ def remove_connector_opcua_client(
         resource_group=resource_group,
         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
+        confirm_yes=confirm_yes,
         force=force,
         include_secrets=include_secrets,
     )
