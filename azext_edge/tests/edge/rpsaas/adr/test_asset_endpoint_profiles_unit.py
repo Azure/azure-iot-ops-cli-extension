@@ -77,7 +77,7 @@ def test_create(
 
     call_body_props = call_body["properties"]
     # TODO: will change later
-    assert call_body_props["endpointProfileType"] == "OpcUa"
+    assert call_body_props["endpointProfileType"] == "Microsoft.OpcUa"
     assert call_body_props["targetAddress"] == target_address
 
     auth_props = call_body_props["authentication"]
