@@ -26,17 +26,15 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops",
         command_type=edge_resource_ops,
-        is_preview=True,
     ) as cmd_group:
-        cmd_group.command("check", "check")
+        cmd_group.command("check", "check", is_preview=True)
         cmd_group.command("init", "init")
-        cmd_group.command("upgrade", "upgrade")
+        cmd_group.command("upgrade", "upgrade", deprecate_info=cmd_group.deprecate(hide=True))
         cmd_group.command("create", "create_instance")
         cmd_group.command("update", "update_instance")
         cmd_group.show_command("show", "show_instance")
         cmd_group.command("list", "list_instances")
         cmd_group.command("delete", "delete")
-        cmd_group.command("verify-host", "verify_host")
 
     with self.command_group(
         "iot ops identity",
@@ -49,6 +47,7 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops secretsync",
         command_type=secretsync_resource_ops,
+        is_preview=True,
     ) as cmd_group:
         cmd_group.command("enable", "secretsync_enable")
         cmd_group.command("disable", "secretsync_disable")
@@ -57,6 +56,7 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops support",
         command_type=edge_resource_ops,
+        is_preview=True,
     ) as cmd_group:
         cmd_group.command("create-bundle", "support_bundle")
 
@@ -168,11 +168,12 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops schema",
         command_type=schema_resource_ops,
+        is_preview=True,
     ) as cmd_group:
         cmd_group.command("create", "create_schema")
         cmd_group.show_command("show", "show_schema")
         cmd_group.command("list", "list_schemas")
-        cmd_group.command("show-dataflow-refs", "list_schema_versions_dataflow_format")
+        cmd_group.command("show-dataflow-refs", "list_schema_versions_dataflow_format", is_experimental=True)
         cmd_group.command("delete", "delete_schema")
 
     with self.command_group(
@@ -183,6 +184,22 @@ def load_iotops_commands(self, _):
         cmd_group.show_command("show", "show_registry")
         cmd_group.command("list", "list_registries")
         cmd_group.command("delete", "delete_registry")
+
+    with self.command_group(
+        "iot ops schema version",
+        command_type=schema_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_version")
+        cmd_group.show_command("show", "show_version")
+        cmd_group.command("list", "list_versions")
+        cmd_group.command("remove", "remove_version")
+
+    with self.command_group(
+        "iot ops connector",
+        command_type=connector_resource_ops,
+        is_preview=True,
+    ) as cmd_group:
+        pass
 
     with self.command_group(
         "iot ops connector opcua trust",
@@ -201,12 +218,3 @@ def load_iotops_commands(self, _):
         command_type=connector_resource_ops,
     ) as cmd_group:
         cmd_group.command("add", "add_connector_opcua_client")
-
-    with self.command_group(
-        "iot ops schema version",
-        command_type=schema_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("add", "add_version")
-        cmd_group.show_command("show", "show_version")
-        cmd_group.command("list", "list_versions")
-        cmd_group.command("remove", "remove_version")
