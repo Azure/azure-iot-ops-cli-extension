@@ -13,7 +13,7 @@ from knack.log import get_logger
 
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.edge_api import META_API_V1B1
+from .providers.edge_api import META_API_V1
 from .providers.orchestration.common import (
     IdentityUsageType,
     KubernetesDistroType,
@@ -60,7 +60,7 @@ def check(
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
 
-    aio_deployed = META_API_V1B1.is_deployed()
+    aio_deployed = META_API_V1.is_deployed()
     # by default - run prechecks if AIO is not deployed, otherwise use argument
     run_pre = not aio_deployed if pre_deployment_checks is None else pre_deployment_checks
     # by default - run postchecks if AIO is deployed, otherwise use argument
@@ -93,16 +93,6 @@ def check(
         post_deployment=run_post,
         resource_kinds=resource_kinds,
     )
-
-
-def verify_host(
-    cmd,
-    no_progress: Optional[bool] = None,
-):
-    from .providers.orchestration import run_host_verify
-
-    run_host_verify(render_progress=not no_progress)
-    return
 
 
 def init(
@@ -173,6 +163,7 @@ def create_instance(
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
     ops_config: Optional[List[str]] = None,
     ops_version: Optional[str] = None,
+    ops_train: Optional[str] = None,
     # Broker
     custom_broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
@@ -223,11 +214,12 @@ def create_instance(
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
         trust_settings=trust_settings,
-        # Ops Extension
+        # Ops extension
         container_runtime_socket=container_runtime_socket,
         kubernetes_distro=kubernetes_distro,
         ops_config=ops_config,
         ops_version=ops_version,
+        ops_train=ops_train,
         # Broker
         custom_broker_config=custom_broker_config,
         broker_memory_profile=broker_memory_profile,

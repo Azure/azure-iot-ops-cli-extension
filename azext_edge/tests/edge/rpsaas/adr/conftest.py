@@ -340,7 +340,7 @@ FULL_AEP = {
             },
             "runAssetDiscovery": True
         },
-        "endpointProfileType": "OpcUa",
+        "endpointProfileType": "Microsoft.OpcUa",
         "targetAddress": generate_random_string(),
         "authentication": {
             "method": "UsernamePassword",

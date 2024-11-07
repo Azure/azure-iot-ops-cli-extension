@@ -11,7 +11,6 @@ from knack.help_files import helps
 
 from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
 
-from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
     COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
@@ -78,7 +77,7 @@ def load_iotops_help():
           text: >
             az iot ops support create-bundle --ops-service broker --log-age 172800
 
-        - name: Include mqtt broker traces in the support bundle. This is an alias for stats trace fetch capability.
+        - name: Include mqtt broker traces in the support bundle.
           text: >
             az iot ops support create-bundle --ops-service broker --broker-traces
 
@@ -144,39 +143,6 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Mqtt broker management.
-    """
-
-    helps[
-        "iot ops broker stats"
-    ] = f"""
-        type: command
-        short-summary: Show dmqtt running statistics.
-        long-summary: |
-            {{Supported service APIs}}
-            - {MQ_ACTIVE_API.as_str()}
-
-        examples:
-        - name: Fetch key performance indicators from the diagnostics Prometheus metrics endpoint.
-          text: >
-            az iot ops broker stats
-
-        - name: Same as prior example except with a dynamic display that refreshes periodically.
-          text: >
-            az iot ops broker stats --watch
-
-        - name: Return the raw output of the metrics endpoint with minimum processing.
-          text: >
-            az iot ops broker stats --raw
-
-        - name: Fetch all available mqtt broker traces from the diagnostics Protobuf endpoint.
-                This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
-                A trace files last modified attribute will match the trace timestamp.
-          text: >
-            az iot ops broker stats --trace-dir .
-
-        - name: Fetch traces by trace Ids provided in space-separated hex format. Only `Otel` format is shown.
-          text: >
-            az iot ops broker stats --trace-ids 4e84000155a98627cdac7de46f53055d
     """
 
     helps[
@@ -450,18 +416,6 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops verify-host"
-    ] = """
-        type: command
-        short-summary: Runs a set of cluster host verifications for IoT Operations deployment compatibility.
-        long-summary: Intended to be run directly on a target cluster host.
-          The command may prompt to apply a set of privileged actions such as installing a dependency.
-          In this case the CLI must be run with elevated permissions. For example
-
-            `sudo AZURE_EXTENSION_DIR=~/.azure/cliextensions az iot ops verify-host`.
-    """
-
-    helps[
         "iot ops init"
     ] = """
         type: command
@@ -568,8 +522,6 @@ def load_iotops_help():
         long-summary: Optionally the command can output a tree structure of associated resources representing
           the IoT Operations deployment against the backing cluster.
 
-          If this command fails, please use `az iot ops upgrade` to upgrade your instance to the latest version before continuing.
-
         examples:
         - name: Basic usage to show an instance.
           text: >
@@ -603,7 +555,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update an IoT Operations instance.
-        long-summary: Currently instance tags and description can be updated. If you want to upgrade your instance to a newer version, please use `az iot ops upgrade` instead.
+        long-summary: Currently instance tags and description can be updated.
 
         examples:
         - name: Update instance tags. This is equivalent to a replace.
@@ -699,32 +651,30 @@ def load_iotops_help():
         type: command
         short-summary: Enable secret sync for an instance.
         long-summary: |
-            The operation handles federation, creation of a secret provider class
-            and role assignments of the managed identity to the target Key Vault.
-
-            Only one Secret Provider Class must be associated to the instance at a time.
+            The operation handles identity federation, creation of a default secret provider class
+            and role assignments of the managed identity against the target Key Vault.
 
         examples:
         - name: Enable the target instance for Key Vault secret sync.
           text: >
-            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
         - name: Same as prior example except flag to skip Key Vault role assignments.
           text: >
-            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --skip-ra
     """
 
     helps[
-        "iot ops secretsync show"
+        "iot ops secretsync list"
     ] = """
         type: command
-        short-summary: Show the secret sync config associated with an instance.
+        short-summary: List the secret sync configs associated with an instance.
 
         examples:
-        - name: Show the secret sync config associated with an instance.
+        - name: List the secret sync configs associated with an instance.
           text: >
-            az iot ops secretsync show --name myinstance -g myresourcegroup
+            az iot ops secretsync list --instance myinstance -g myresourcegroup
     """
 
     helps[
@@ -732,11 +682,14 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Disable secret sync for an instance.
+        long-summary: |
+          All the secret provider classes associated with the instance, and all the secret
+          syncs associated with the secret provider classes will be deleted.
 
         examples:
         - name: Disable secret sync for an instance.
           text: >
-            az iot ops secretsync disable --name myinstance -g myresourcegroup
+            az iot ops secretsync disable --instance myinstance -g myresourcegroup
     """
 
     helps[

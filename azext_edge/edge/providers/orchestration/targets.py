@@ -47,6 +47,7 @@ class InitTargets:
         enable_fault_tolerance: Optional[bool] = None,
         ops_config: Optional[List[str]] = None,
         ops_version: Optional[str] = None,
+        ops_train: Optional[str] = None,
         trust_settings: Optional[List[str]] = None,
         # Dataflow
         dataflow_profile_instances: int = 1,
@@ -83,6 +84,7 @@ class InitTargets:
         self.enable_fault_tolerance = enable_fault_tolerance
         self.ops_config = assemble_nargs_to_dict(ops_config)
         self.ops_version = ops_version
+        self.ops_train = ops_train
         self.trust_settings = assemble_nargs_to_dict(trust_settings)
         self.trust_config = self.get_trust_settings_target_map()
         self.advanced_config = self.get_advanced_config_target_map()
@@ -190,12 +192,11 @@ class InitTargets:
         if self.ops_version:
             template.content["variables"]["VERSIONS"]["iotOperations"] = self.ops_version
 
+        if self.ops_train:
+            template.content["variables"]["TRAINS"]["iotOperations"] = self.ops_train
+
         instance = template.get_resource_by_key("aioInstance")
         instance["properties"]["description"] = self.instance_description
-
-        instance["properties"]["schemaRegistryRef"] = {
-            "resourceId": "[parameters('schemaRegistryId')]"
-        }
 
         if self.tags:
             instance["tags"] = self.tags

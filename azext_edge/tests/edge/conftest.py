@@ -194,9 +194,7 @@ def init_setup(request, cluster_connection, settings):
     settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.instance.value)
 
-    run("az iot ops verify-host")
     yield {
         "instanceName": settings.env.azext_edge_instance,
         "resourceGroup": settings.env.azext_edge_rg,
     }
-    return

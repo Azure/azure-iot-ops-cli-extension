@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from azext_edge.edge.providers.edge_api import META_API_V1B1
+from azext_edge.edge.providers.edge_api import META_API_V1
 from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
@@ -18,11 +18,11 @@ def test_create_bundle_meta(init_setup, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, "meta")["aio"]
 
-    check_custom_resource_files(file_objs=file_map, resource_api=META_API_V1B1)
+    check_custom_resource_files(file_objs=file_map, resource_api=META_API_V1)
 
     expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     optional_workload_types = ["job"]
-    expected_types = set(expected_workload_types + optional_workload_types).union(META_API_V1B1.kinds)
+    expected_types = set(expected_workload_types + optional_workload_types).union(META_API_V1.kinds)
     assert set(file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(
         file_objs=file_map,

@@ -5,14 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from pathlib import Path
-from typing import Generator
-
-
-@pytest.fixture
-def stub_raw_stats() -> Generator:
-    with open(Path(__file__).parent.joinpath("raw_stats.txt"), mode="rb", encoding=None) as f:
-        yield f
 
 
 @pytest.fixture
