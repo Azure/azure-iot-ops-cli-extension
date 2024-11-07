@@ -1305,7 +1305,7 @@ def load_iotops_help():
         short-summary: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
         long-summary: |
             The certificate file extension must be .der or .crt. Azure resource secretproviderclass
-            'opc-ua-connector' and secretsync resource 'aio-opc-ua-broker-trust-list' will be created if not found.
+            'opc-ua-connector' and secretsync 'aio-opc-ua-broker-trust-list' will be created if not found.
         examples:
         - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
           text: >
