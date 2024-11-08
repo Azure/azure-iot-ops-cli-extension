@@ -1240,14 +1240,8 @@ def load_iotops_arguments(self, _):
             options_list=["--certificate-names", "--cn"],
             nargs="+",
             help="Space-separated certificate names to remove. "
-            "Note: the names can be found under corresponding secretsync "
-            "resource property 'targetKey'.",
-        )
-        context.argument(
-            "force",
-            options_list=["--force"],
-            help="Force the operation to execute.",
-            arg_type=get_three_state_flag(),
+            "Note: the names can be found under the corresponding "
+            "secretsync resource property 'targetKey'.",
         )
         context.argument(
             "overwrite_secret",
