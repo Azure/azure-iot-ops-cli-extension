@@ -182,11 +182,9 @@ jobs:
             --set installCRDs=true \
             --set startupapicheck.timeout=5m
 
-          kubectl create namespace azure-iot-operations
           helm upgrade trust-manager jetstack/trust-manager \
             --install \
             --namespace cert-manager \
-            --set app.trust.namespace=azure-iot-operations \
             --wait
 
           kubectl apply -f - <<EOF
