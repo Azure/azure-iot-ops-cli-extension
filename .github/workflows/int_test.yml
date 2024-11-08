@@ -150,7 +150,6 @@ jobs:
           # vars
           release_url="https://github.com/k3s-io/k3s/releases/download"
           install_dir="/usr/local/bin/k3s"
-          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
           # install
           sudo apt install nfs-common
@@ -167,6 +166,7 @@ jobs:
           mkdir ~/.kube 2> /dev/null
           sudo k3s kubectl config view --raw > ~/.kube/config
           chmod 600 ~/.kube/config
+          export KUBECONFIG=~/.kube/config
       - name: "Apply custom cluster issuer"
         if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         run: |
