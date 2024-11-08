@@ -66,8 +66,12 @@ def get_secretsync_endpoint(secretsync_name: str, resource_group_name: str) -> s
     )
 
 
-def get_secret_endpoint(keyvault_name: str, secret_name: Optional[str] = None) -> str:
-    resource_path = "/secrets"
+def get_secret_endpoint(
+    keyvault_name: str,
+    secret_name: Optional[str] = None,
+    deleted: Optional[bool] = False,
+) -> str:
+    resource_path = "/deletedsecrets" if deleted else "/secrets"
     if secret_name:
         resource_path += f"/{secret_name}"
 
@@ -91,7 +95,7 @@ def get_mock_spc_record(spc_name: str, resource_group_name: str, objects: Option
     )
 
 
-def get_mock_secretsync_record(secretsync_name: str, resource_group_name: str, objects: Optional[str] = None) -> dict:
+def get_mock_secretsync_record(secretsync_name: str, resource_group_name: str, objects: Optional[dict] = None) -> dict:
     objects = objects or []
     return get_mock_resource(
         name=secretsync_name,

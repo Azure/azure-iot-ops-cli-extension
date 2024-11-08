@@ -9,7 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 import responses
-from azext_edge.edge.commands_connector import add_connector_opcua_trust
+from azext_edge.edge.commands_connector import add_connector_opcua_trust, remove_connector_opcua_trust
 from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import (
     OPCUA_SPC_NAME,
     OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
@@ -17,6 +17,7 @@ from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs imp
 from azext_edge.tests.edge.orchestration.resources.connector.opcua.conftest import (
     get_mock_spc_record,
     get_mock_secretsync_record,
+    get_secret_endpoint,
     get_secretsync_endpoint,
     get_spc_endpoint,
     setup_mock_common_responses,
@@ -254,3 +255,168 @@ def test_trust_add_error(
             overwrite_secret=True,
         )
     assert expected_error in e.value.args[0]
+
+
+@pytest.mark.parametrize("include_secrets", [False, True])
+@pytest.mark.parametrize(
+    "expected_resources_map, trust_list_spc, trust_list_secretsync, certificate_names, expected_secret_sync",
+    [
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(
+                        spc_name=OPCUA_SPC_NAME,
+                        resource_group_name="mock-rg",
+                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
+                    ),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                        resource_group_name="mock-rg",
+                        objects=[
+                            {
+                                "sourcePath": "cert-der",
+                                "targetKey": "cert.der"
+                            },
+                        ],
+                    ),
+                ],
+                "resource sync rules": [generate_ops_resource()],
+                "custom locations": [generate_ops_resource()],
+                "extensions": [generate_ops_resource()],
+                "meta": {
+                    "expected_total": 2,
+                    "resource_batches": 1,
+                },
+            },
+            get_mock_spc_record(
+                spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
+            ),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "cert-der",
+                        "targetKey": "cert.der"
+                    },
+                ],
+            ),
+            ["cert.der"],
+            None,
+        ),
+    ],
+)
+def test_trust_remove(
+    mocker,
+    mocked_cmd,
+    mocked_logger: Mock,
+    mocked_sleep: Mock,
+    expected_resources_map: dict,
+    trust_list_spc: dict,
+    trust_list_secretsync: dict,
+    certificate_names: list,
+    include_secrets: bool,
+    expected_secret_sync: dict,
+    mocked_responses: responses,
+):
+    instance_name = generate_random_string()
+    rg_name = "mock-rg"
+
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
+        return_value=expected_resources_map["resources"],
+    )
+
+    # get opcua secretsync
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_secretsync_endpoint(
+            secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+            resource_group_name=rg_name
+        ),
+        json=trust_list_secretsync,
+        status=200,
+        content_type="application/json",
+    )
+
+    # get opcua spc
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+        json=trust_list_spc,
+        status=200,
+        content_type="application/json",
+    )
+
+    # delete opcua secretsync
+    mocked_responses.add(
+        method=responses.DELETE,
+        url=get_secretsync_endpoint(
+            secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
+        ),
+        json={},
+        status=204,
+        content_type="application/json",
+    )
+
+    # set opcua spc
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+        json={},
+        status=200,
+        content_type="application/json",
+    )
+
+    if include_secrets:
+        # get secrets
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_secret_endpoint(keyvault_name="mock-keyvault"),
+            json={
+                "value": [
+                    {
+                        "id": "https://mock-keyvault.vault.azure.net/secrets/cert-der",
+                    }
+                ]
+            },
+            status=200,
+            content_type="application/json",
+        )
+
+        # delete secret
+        mocked_responses.add(
+            method=responses.DELETE,
+            url=get_secret_endpoint(keyvault_name="mock-keyvault", secret_name="cert-der"),
+            status=200,
+            json={},
+            content_type="application/json",
+        )
+
+        # purge secret
+        mocked_responses.add(
+            method=responses.DELETE,
+            url=get_secret_endpoint(
+                keyvault_name="mock-keyvault",
+                secret_name="cert-der",
+                deleted=True,
+            ),
+            json={},
+            status=204,
+            content_type="application/json",
+        )
+
+    result = remove_connector_opcua_trust(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group=rg_name,
+        certificate_names=certificate_names,
+        confirm_yes=True,
+        force=True,
+        include_secrets=include_secrets,
+    )
+
+    if result:
+        assert result == expected_secret_sync
