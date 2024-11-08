@@ -1315,7 +1315,7 @@ def load_iotops_help():
           text: >
             az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
             --certificate-file "certificate.crt" --secret-name custom-secret-name
-        - name: Add a trusted certificate to trusted certificate list and skip overwrite confirmation prompt when secret already exists.
+        - name: Add a trusted certificate to the trusted certificate list and skip the overwrite confirmation prompt when the secret already exists.
           text: >
             az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
             --certificate-file "certificate.der" --overwrite-secret
@@ -1328,7 +1328,7 @@ def load_iotops_help():
         short-summary: Remove trusted certificate(s) from the OPC UA Broker's trusted certificate list.
         long-summary: |
             Note: Removing all trusted certificates from the OPC UA Broker's trusted certificate list
-            will trigger deletion the secretsync resource 'aio-opc-ua-broker-trust-list'.
+            will trigger deletion of the secretsync resource 'aio-opc-ua-broker-trust-list'.
         examples:
           - name: Remove trusted certificates called 'testcert1.der' and 'testcert2.crt' from trusted certificate list.
             text: >
@@ -1396,7 +1396,7 @@ def load_iotops_help():
           text: >
             az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
             --certificate-file "certificate.der" --secret-name custom-secret-name
-        - name: Add an issuer certificate to issuer certificate list and skip overwrite confirmation prompt when secret already exists.
+        - name: Add an issuer certificate to the issuer certificate list and skip the overwrite confirmation prompt when the secret already exists.
           text: >
             az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
             --certificate-file "certificate.der" --overwrite-secret
@@ -1409,7 +1409,7 @@ def load_iotops_help():
         short-summary: Remove trusted certificate(s) from the OPC UA Broker's issuer certificate list.
         long-summary: |
             Note: Removing all issuer certificates from the OPC UA Broker's issuer certificate list
-            will trigger deletion the secretsync resource 'aio-opc-ua-broker-issuer-list'.
+            will trigger deletion of the secretsync resource 'aio-opc-ua-broker-issuer-list'.
             Please make sure to remove corresponding .crl if exist when removing .der/.crt certificate
             to avoid orphaned secret.
         examples:
@@ -1466,17 +1466,17 @@ def load_iotops_help():
             if not found. The newly added certificate will replace the existing
             certificate if there is any.
         examples:
-        - name: Add an client certificate.
+        - name: Add a client certificate.
           text: >
             az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
             --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
             --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
-        - name: Add an client certificate and skip overwrite confirmation prompt when secret already exists.
+        - name: Add a client certificate and skip the overwrite confirmation prompt when the secret already exists.
           text: >
             az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
             --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
             --application-uri "urn:microsoft.com:aio:opc:opcuabroker" --overwrite-secret
-        - name: Add an client certificate with custom public and private key secret name.
+        - name: Add a client certificate with custom public and private key secret name.
           text: >
             az iot ops connector opcua client add
             --instance instance

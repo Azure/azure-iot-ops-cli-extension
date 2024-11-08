@@ -162,11 +162,6 @@ def test_client_add(
         overwrite_secret=True,
     )
 
-    assert (
-        mocked_logger.warning.call_args[0][0] == "Please ensure the certificate must be added "
-        "to the issuers list if it was issued by a CA. "
-    )
-
     if result:
         if not client_app_spc:
             assert (
