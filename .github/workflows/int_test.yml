@@ -181,16 +181,20 @@ jobs:
             --set installCRDs=true \
             --set startupapicheck.timeout=5m
 
+          kubectl create namespace azure-iot-operations
+
           helm upgrade trust-manager jetstack/trust-manager \
             --install \
             --namespace cert-manager \
+            --set app.trust.namespace=azure-iot-operations \
             --wait
 
           kubectl apply -f - <<EOF
           apiVersion: cert-manager.io/v1
-          kind: ClusterIssuer
+          kind: Issuer
           metadata:
-            name: trust-manager-selfsigned-issuer
+            name: selfsigned-issuer
+            namespace: azure-iot-operations
           spec:
             selfSigned: {}
           ---
@@ -198,7 +202,7 @@ jobs:
           kind: Certificate
           metadata:
             name: trust-manager-example-ca
-            namespace: cert-manager
+            namespace: azure-iot-operations
           spec:
             isCA: true
             commonName: trust-manager-example-ca
@@ -207,16 +211,18 @@ jobs:
               algorithm: ECDSA
               size: 256
             issuerRef:
-              name: trust-manager-selfsigned-issuer
-              kind: ClusterIssuer
+              name: selfsigned-issuer
+              kind: Issuer
               group: cert-manager.io
           EOF
+
 
           kubectl apply -f - <<EOF
           apiVersion: trust.cert-manager.io/v1alpha1
           kind: Bundle
           metadata:
             name: example-bundle
+            namespace: azure-iot-operations
           spec:
             sources:
             - useDefaultCAs: true
@@ -226,6 +232,9 @@ jobs:
             target:
               configMap:
                 key: "trust-bundle.pem"
+              namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: azure-iot-operations
           EOF
       - name: "Checkout extension source for build"
         uses: actions/checkout@v4
