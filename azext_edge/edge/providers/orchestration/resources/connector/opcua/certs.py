@@ -15,8 +15,6 @@ from knack.log import get_logger
 from rich.console import Console
 import yaml
 
-from azext_edge.edge.util.common import should_continue_prompt
-
 from ....common import CUSTOM_LOCATIONS_API_VERSION
 from ...instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from ....work import IOT_OPS_EXTENSION_TYPE
@@ -27,6 +25,7 @@ from ......util.az_client import (
     get_ssc_mgmt_client,
     wait_for_terminal_state,
 )
+from ......util.common import should_continue_prompt
 
 logger = get_logger(__name__)
 
@@ -228,7 +227,9 @@ class OpcUACerts(Queryable):
         overwrite_secret: Optional[bool] = False,
     ) -> dict:
         # inform user if the provided cert was issued by a CA, the CA cert must be added to the issuers list.
-        logger.warning("Please ensure the certificate must be added to the issuers list if it was issued by a CA. ")
+        print(
+            "Please ensure the certificate must be added to the issuers list if it was issued by a CA."
+        )
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
 
@@ -339,9 +340,6 @@ class OpcUACerts(Queryable):
         force: Optional[bool] = False,
         include_secrets: Optional[bool] = False,
     ) -> dict:
-        # check if secret sync exists
-        cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
-
         # prompt for deletion
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
         if should_bail:
@@ -355,6 +353,7 @@ class OpcUACerts(Queryable):
                 )
                 return
 
+        cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         target_secretsync = self.instances.find_existing_resources(
             cl_resources=cl_resources,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
