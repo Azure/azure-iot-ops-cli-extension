@@ -367,11 +367,6 @@ def test_client_add_errors(
         (
             {
                 "resources": [
-                    get_mock_spc_record(
-                        spc_name=OPCUA_SPC_NAME,
-                        resource_group_name="mock-rg",
-                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
-                    ),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                         resource_group_name="mock-rg",
@@ -381,6 +376,11 @@ def test_client_add_errors(
                                 "targetKey": "cert.der"
                             },
                         ],
+                    ),
+                    get_mock_spc_record(
+                        spc_name=OPCUA_SPC_NAME,
+                        resource_group_name="mock-rg",
+                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
                     ),
                 ],
                 "resource sync rules": [generate_ops_resource()],
@@ -425,13 +425,8 @@ def test_client_remove(
     mocked_instance: Mock,
     mocked_responses: responses,
 ):
-    instance_name = generate_random_string()
+    instance_name = "mock-instance"
     rg_name = "mock-rg"
-
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
-        return_value=expected_resources_map["resources"],
-    )
 
     assemble_resource_map_mock(
         resource_map_mock=mocked_instance.get_resource_map,
@@ -439,27 +434,14 @@ def test_client_remove(
         custom_locations=expected_resources_map["custom locations"],
         resources=expected_resources_map["resources"],
     )
-
-    # get opcua secretsync
-    mocked_responses.add(
-        method=responses.GET,
-        url=get_secretsync_endpoint(
-            secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-            resource_group_name=rg_name
-        ),
-        json=client_list_secretsync,
-        status=200,
-        content_type="application/json",
+    mocked_instance.find_existing_resources.side_effect = [
+        [client_list_secretsync],
+        [client_list_spc],
+    ]
+    mocked_get_resource_client: Mock = mocker.patch(
+        "azext_edge.edge.util.queryable.get_resource_client",
     )
-
-    # get opcua spc
-    mocked_responses.add(
-        method=responses.GET,
-        url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-        json=client_list_spc,
-        status=200,
-        content_type="application/json",
-    )
+    mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
 
     # delete opcua secretsync
     mocked_responses.add(
@@ -530,4 +512,16 @@ def test_client_remove(
     )
 
     if result:
-        assert result == expected_secret_sync
+        mocked_instance.get_resource_map().connected_cluster.get_extensions_by_type.assert_called_once_with(
+            "microsoft.iotoperations"
+        )
+        mocked_instance.get_resource_map().connected_cluster.update_aio_extension.assert_called_once_with(
+            extension_name=expected_resources_map["extension"][IOT_OPS_EXTENSION_TYPE]["name"],
+            properties={
+                "configurationSettings": {
+                    "connectors.values.securityPki.applicationCert": "",
+                    "connectors.values.securityPki.subjectName": "",
+                    "connectors.values.securityPki.applicationUri": "",
+                }
+            },
+        )
