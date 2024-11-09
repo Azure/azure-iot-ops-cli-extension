@@ -400,7 +400,9 @@ class Instances(Queryable):
     ) -> Optional[List[dict]]:
         resources = []
         if not cl_resources:
-            raise ResourceNotFoundError("No resources found in the connected cluster.")
+            raise ResourceNotFoundError(
+                "No custom location resources found associated with the IoT Operations deployment."
+            )
 
         for resource in cl_resources:
             resource_id_container = parse_resource_id(resource["id"])
