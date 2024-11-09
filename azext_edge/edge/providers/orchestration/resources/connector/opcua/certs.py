@@ -343,6 +343,7 @@ class OpcUACerts(Queryable):
         if should_bail:
             return
 
+        cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         if not force:
             if not self.resource_map.connected_cluster.connected:
                 logger.warning(
@@ -351,7 +352,6 @@ class OpcUACerts(Queryable):
                 )
                 return
 
-        cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         target_secretsync = self.instances.find_existing_resources(
             cl_resources=cl_resources,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
