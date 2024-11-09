@@ -500,6 +500,7 @@ class OpcUACerts(Queryable):
         # TODO: formatting will be removed once fortos service fixes the formatting issue
         return object_text.replace("\n- |", "\n    - |")
 
+    # TODO: revisit self.get_cl_resources and self.instances.find_existing_resources
     def _get_cl_resources(self, instance_name: str, resource_group: str) -> List[dict]:
         self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
         self.resource_map = self.instances.get_resource_map(self.instance)
