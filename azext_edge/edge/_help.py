@@ -1314,21 +1314,63 @@ def load_iotops_help():
         - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list with custom secret name.
           text: >
             az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
-            --certificate-file "certificate.crt" --secret custom-secret-name
+            --certificate-file "certificate.crt" --secret-name custom-secret-name
+        - name: Add a trusted certificate to the trusted certificate list and skip the overwrite confirmation prompt when the secret already exists.
+          text: >
+            az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der" --overwrite-secret
+    """
+
+    helps[
+        "iot ops connector opcua trust remove"
+    ] = """
+        type: command
+        short-summary: Remove trusted certificate(s) from the OPC UA Broker's trusted certificate list.
+        long-summary: |
+            Note: Removing all trusted certificates from the OPC UA Broker's trusted certificate list
+            will trigger deletion of the secretsync resource 'aio-opc-ua-broker-trust-list'.
+        examples:
+          - name: Remove trusted certificates called 'testcert1.der' and 'testcert2.crt' from trusted certificate list.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt
+          - name: Remove trusted certificates from trusted certificate list, including remove related keyvault secret.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt --include-secrets
+          - name: Force remove certificates operation regardless of warnings. May lead to errors.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt --force
+          - name: Remove trusted certificates from trusted certificate list and skip confirmation prompt for removal.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt --yes
+    """
+
+    helps[
+        "iot ops connector opcua trust show"
+    ] = """
+        type: command
+        short-summary: Show details of secretsync resource 'aio-opc-ua-broker-trust-list'.
+        examples:
+        - name: Show details of 'aio-opc-ua-broker-trust-list' resource.
+          text: >
+            az iot ops connector opcua trust show --instance instance --resource-group instanceresourcegroup
     """
 
     helps[
         "iot ops connector opcua issuer"
     ] = """
-        type: group
-        short-summary: Manage issuer certificates for the OPC UA Broker.
-        long-summary: |
-          The issuer certificate list stores the certificate authority certificates that the connector
-          for OPC UA trusts. If user's OPC UA server's application instance certificate is signed by
-          an intermediate certificate authority, but user does not want to automatically trust all the
-          certificates issued by the certificate authority, an issuer certificate list can be used to
-          manage the trust relationship.
-          For more info, see https://aka.ms/opcua-certificates
+      type: group
+      short-summary: Manage issuer certificates for the OPC UA Broker.
+      long-summary: |
+        The issuer certificate list stores the certificate authority certificates that the connector
+        for OPC UA trusts. If user's OPC UA server's application instance certificate is signed by
+        an intermediate certificate authority, but user does not want to automatically trust all the
+        certificates issued by the certificate authority, an issuer certificate list can be used to
+        manage the trust relationship.
+        For more info, see https://aka.ms/opcua-certificates
     """
 
     helps[
@@ -1353,7 +1395,51 @@ def load_iotops_help():
         - name: Add an issuer certificate to the OPC UA Broker's issuer certificate list with custom secret name.
           text: >
             az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
-            --certificate-file "certificate.der" --secret custom-secret-name
+            --certificate-file "certificate.der" --secret-name custom-secret-name
+        - name: Add an issuer certificate to the issuer certificate list and skip the overwrite confirmation prompt when the secret already exists.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der" --overwrite-secret
+    """
+
+    helps[
+        "iot ops connector opcua issuer remove"
+    ] = """
+        type: command
+        short-summary: Remove trusted certificate(s) from the OPC UA Broker's issuer certificate list.
+        long-summary: |
+            Note: Removing all issuer certificates from the OPC UA Broker's issuer certificate list
+            will trigger deletion of the secretsync resource 'aio-opc-ua-broker-issuer-list'.
+            Please make sure to remove corresponding .crl if exist when removing .der/.crt certificate
+            to avoid orphaned secret.
+        examples:
+          - name: Remove issuer certificates and its revocation list with .crl extension from issuer certificate list.
+            text: >
+              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.crl
+          - name: Remove issuer certificates from issuer certificate list, including remove related keyvault secret.
+            text: >
+              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der --include-secrets
+          - name: Force remove certificates operation regardless of warnings. May lead to errors.
+            text: >
+              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der --force
+          - name: Remove issuer certificates from issuer certificate list and skip confirmation prompt for removal.
+            text: >
+              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der --yes
+    """
+
+    helps[
+        "iot ops connector opcua issuer show"
+    ] = """
+        type: command
+        short-summary: Show details of secretsync resource 'aio-opc-ua-broker-issuer-list'.
+        examples:
+        - name: Show details of 'aio-opc-ua-broker-issuer-list' secretsync resource.
+          text: >
+            az iot ops connector opcua issuer show --instance instance --resource-group instanceresourcegroup
     """
 
     helps[
@@ -1377,25 +1463,74 @@ def load_iotops_help():
             must be .pem. Please make sure to use same filename for public key and
             private key file. Azure resource secretproviderclass 'opc-ua-connector'
             and secretsync 'aio-opc-ua-broker-client-certificate' will be created
-            if not found.
+            if not found. The newly added certificate will replace the existing
+            certificate if there is any.
         examples:
-        - name: Add an client certificate.
+        - name: Add a client certificate.
           text: >
             az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
             --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
             --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
-        - name: Add an client certificate with custom public and private key secret name.
+        - name: Add a client certificate and skip the overwrite confirmation prompt when the secret already exists.
+          text: >
+            az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
+            --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
+            --application-uri "urn:microsoft.com:aio:opc:opcuabroker" --overwrite-secret
+        - name: Add a client certificate with custom public and private key secret name.
           text: >
             az iot ops connector opcua client add
             --instance instance
             --resource-group instanceresourcegroup
             --public-key-file "newopc.der"
             --private-key-file "newopc.pem"
-            --public-key-secret public-secret-name
-            --private-key-secret private-secret-name
+            --public-key-secret-name public-secret-name
+            --private-key-secret-name private-secret-name
             --subject-name "aio-opc-opcuabroker"
             --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
       """
+
+    helps[
+        "iot ops connector opcua client remove"
+    ] = """
+        type: command
+        short-summary: Remove client application instance certificate from the OPC UA Broker.
+        long-summary: |
+            Note: Removing all certificates from the OPC UA Broker's client certificate store
+            will trigger deletion of the secretsync resource 'aio-opc-ua-broker-client-certificate'.
+            And this operation will trigger the fallback to default (cert-manager based) certificate.
+            This fallback requires an aio extension update.
+            Please make sure to remove both public(.der) and private(.pem) key certificate pair to
+            avoid orphaned secret.
+        examples:
+          - name: Remove client certificates from the OPC UA Broker's client certificate store.
+            text: >
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem
+          - name: Remove client certificates from client certificate store, including remove related keyvault secret.
+            text: >
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem --include-secrets
+          - name: Force remove certificates operation regardless of warnings. May lead to errors.
+            text: >
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem --force
+          - name: Remove client certificates from client certificate store and skip confirmation prompt for removal.
+            text: >
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem --yes
+
+    """
+
+    helps[
+        "iot ops connector opcua client show"
+    ] = """
+        type: command
+        short-summary: Show details of secretsync resource 'aio-opc-ua-broker-client-certificate'.
+        examples:
+        - name: Show details of 'aio-opc-ua-broker-client-certificate' secretsync resource.
+          text: >
+            az iot ops connector opcua client show --instance instance --resource-group instanceresourcegroup
+    """
 
     helps[
         "iot ops schema version"

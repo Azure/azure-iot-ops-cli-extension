@@ -1227,6 +1227,30 @@ def load_iotops_arguments(self, _):
             options_list=["--resource-group", "-g"],
             help="Instance resource group.",
         )
+        context.argument(
+            "include_secrets",
+            options_list=["--include-secrets"],
+            help="Indicates the command should remove the key vault secrets "
+            "associated with the certificate(s). This option will delete and "
+            "purge the secrets.",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "certificate_names",
+            options_list=["--certificate-names", "--cn"],
+            nargs="+",
+            help="Space-separated certificate names to remove. "
+            "Note: the names can be found under the corresponding "
+            "secretsync resource property 'targetKey'.",
+        )
+        context.argument(
+            "overwrite_secret",
+            options_list=["--overwrite-secret"],
+            arg_type=get_three_state_flag(),
+            help="Confirm [y]es without a prompt to overwrite secret. "
+            "if secret name existed in Azure key vault. Useful for "
+            "CI and automation scenarios.",
+        )
 
     with self.argument_context("iot ops connector opcua trust") as context:
         context.argument(
@@ -1236,7 +1260,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "secret_name",
-            options_list=["--secret", "-s"],
+            options_list=["--secret-name", "-s"],
             help="Secret name in the Key Vault. If not provided, the "
             "certificate file name will be used to generate the secret name.",
         )
@@ -1272,22 +1296,24 @@ def load_iotops_arguments(self, _):
         context.argument(
             "subject_name",
             options_list=["--subject-name", "--sn"],
-            help="The subject name string embedded in the application instance certificate.",
+            help="The subject name string embedded in the application instance certificate."
+            "Can be found under public key certificate.",
         )
         context.argument(
             "application_uri",
             options_list=["--application-uri", "--au"],
-            help="The application instance URI embedded in the application instance.",
+            help="The application instance URI embedded in the application instance."
+            "Can be found under public key certificate.",
         )
         context.argument(
             "public_key_secret_name",
-            options_list=["--public-key-secret", "--pks"],
+            options_list=["--public-key-secret-name", "--pks"],
             help="Public key secret name in the Key Vault. If not provided, the "
             "certificate file name will be used to generate the secret name.",
         )
         context.argument(
             "private_key_secret_name",
-            options_list=["--private-key-secret", "--prks"],
+            options_list=["--private-key-secret-name", "--prks"],
             help="Private key secret name in the Key Vault. If not provided, the "
             "certificate file name will be used to generate the secret name.",
         )
