@@ -168,7 +168,7 @@ jobs:
           chmod 600 ~/.kube/config
           export KUBECONFIG=~/.kube/config
       - name: "Apply custom cluster issuer"
-        if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'trustbundle' || contains(steps.init.outputs.INIT_ARG, '--user-trust') }}
         run: |
           set -x
           helm repo add jetstack https://charts.jetstack.io --force-update
