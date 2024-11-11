@@ -52,8 +52,8 @@ class OpcUACerts(Queryable):
         instance_name: str,
         resource_group: str,
         file: str,
+        overwrite_secret: bool = False,
         secret_name: Optional[str] = None,
-        overwrite_secret: Optional[bool] = False,
     ) -> dict:
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
@@ -128,8 +128,8 @@ class OpcUACerts(Queryable):
         instance_name: str,
         resource_group: str,
         file: str,
+        overwrite_secret: bool = False,
         secret_name: Optional[str] = None,
-        overwrite_secret: Optional[bool] = False,
     ) -> dict:
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
@@ -222,14 +222,12 @@ class OpcUACerts(Queryable):
         private_key_file: str,
         subject_name: str,
         application_uri: str,
+        overwrite_secret: bool = False,
         public_key_secret_name: Optional[str] = None,
         private_key_secret_name: Optional[str] = None,
-        overwrite_secret: Optional[bool] = False,
     ) -> dict:
         # inform user if the provided cert was issued by a CA, the CA cert must be added to the issuers list.
-        print(
-            "Please ensure the certificate must be added to the issuers list if it was issued by a CA."
-        )
+        logger.warning("Please ensure the certificate must be added to the issuers list if it was issued by a CA.")
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
 
@@ -345,6 +343,7 @@ class OpcUACerts(Queryable):
         if should_bail:
             return
 
+        cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         if not force:
             if not self.resource_map.connected_cluster.connected:
                 logger.warning(
@@ -353,7 +352,6 @@ class OpcUACerts(Queryable):
                 )
                 return
 
-        cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         target_secretsync = self.instances.find_existing_resources(
             cl_resources=cl_resources,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
@@ -502,6 +500,7 @@ class OpcUACerts(Queryable):
         # TODO: formatting will be removed once fortos service fixes the formatting issue
         return object_text.replace("\n- |", "\n    - |")
 
+    # TODO: revisit self.get_cl_resources and self.instances.find_existing_resources
     def _get_cl_resources(self, instance_name: str, resource_group: str) -> List[dict]:
         self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
         self.resource_map = self.instances.get_resource_map(self.instance)
@@ -535,7 +534,7 @@ class OpcUACerts(Queryable):
         secret_name: str,
         spc_keyvault_name: str,
         flag: str,
-        overwrite_secret: Optional[bool] = False,
+        overwrite_secret: bool = False,
     ) -> str:
         from rich.prompt import Confirm
 

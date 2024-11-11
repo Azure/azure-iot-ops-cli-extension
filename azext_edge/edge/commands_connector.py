@@ -18,6 +18,7 @@ def add_connector_opcua_trust(
     instance_name: str,
     resource_group: str,
     file: str,
+    overwrite_secret: bool = False,
     secret_name: Optional[str] = None,
     overwrite_secret: Optional[bool] = False,
 ) -> dict:
@@ -35,6 +36,7 @@ def add_connector_opcua_issuer(
     instance_name: str,
     resource_group: str,
     file: str,
+    overwrite_secret: bool = False,
     secret_name: Optional[str] = None,
     overwrite_secret: Optional[bool] = False,
 ) -> dict:
@@ -55,6 +57,7 @@ def add_connector_opcua_client(
     private_key_file: str,
     subject_name: str,
     application_uri: str,
+    overwrite_secret: bool = False,
     public_key_secret_name: Optional[str] = None,
     private_key_secret_name: Optional[str] = None,
     overwrite_secret: Optional[bool] = False,
