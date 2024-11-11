@@ -20,7 +20,6 @@ def add_connector_opcua_trust(
     file: str,
     overwrite_secret: bool = False,
     secret_name: Optional[str] = None,
-    overwrite_secret: Optional[bool] = False,
 ) -> dict:
     return OpcUACerts(cmd).trust_add(
         instance_name=instance_name,
@@ -38,7 +37,6 @@ def add_connector_opcua_issuer(
     file: str,
     overwrite_secret: bool = False,
     secret_name: Optional[str] = None,
-    overwrite_secret: Optional[bool] = False,
 ) -> dict:
     return OpcUACerts(cmd).issuer_add(
         instance_name=instance_name,
@@ -60,7 +58,6 @@ def add_connector_opcua_client(
     overwrite_secret: bool = False,
     public_key_secret_name: Optional[str] = None,
     private_key_secret_name: Optional[str] = None,
-    overwrite_secret: Optional[bool] = False,
 ) -> dict:
     return OpcUACerts(cmd).client_add(
         instance_name=instance_name,

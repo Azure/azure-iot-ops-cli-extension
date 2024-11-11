@@ -9,7 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 import responses
-from azext_edge.edge.commands_connector import add_connector_opcua_trust, remove_connector_opcua_trust
+from azext_edge.edge.commands_connector import add_connector_opcua_trust, remove_connector_opcua_trust, show_connector_opcua_trust
 from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import (
     OPCUA_SPC_NAME,
     OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
@@ -420,3 +420,122 @@ def test_trust_remove(
 
     if result:
         assert result == expected_secret_sync
+
+
+@pytest.mark.parametrize(
+    "expected_resources_map, expected_secretsync",
+    [
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(
+                        spc_name=OPCUA_SPC_NAME,
+                        resource_group_name="mock-rg",
+                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
+                    ),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                        resource_group_name="mock-rg",
+                        objects=[
+                            {
+                                "sourcePath": "cert-der",
+                                "targetKey": "cert.der"
+                            },
+                        ],
+                    ),
+                ],
+            },
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "cert-der",
+                        "targetKey": "cert.der"
+                    },
+                ],
+            ),
+        ),
+    ],
+)
+def test_trust_show(
+    mocker,
+    mocked_cmd,
+    mocked_logger: Mock,
+    mocked_sleep: Mock,
+    expected_resources_map: dict,
+    expected_secretsync: dict,
+    mocked_responses: responses,
+):
+    instance_name = generate_random_string()
+    rg_name = "mock-rg"
+
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
+        return_value=expected_resources_map["resources"],
+    )
+
+    # get opcua secretsync
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_secretsync_endpoint(
+            secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+            resource_group_name=rg_name
+        ),
+        json=expected_secretsync,
+        status=200,
+        content_type="application/json",
+    )
+
+    result = show_connector_opcua_trust(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group=rg_name,
+    )
+    assert result == expected_secretsync
+
+
+@pytest.mark.parametrize(
+    "expected_resources_map, expected_error",
+    [
+        (
+            {
+                "resources": None,
+            },
+            "No custom location resources found associated with the IoT Operations deployment.",
+        ),
+        # only spc
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                ],
+            },
+            "Secretsync resource aio-opc-ua-broker-trust-list not found.",
+        ),
+    ],
+)
+def test_trust_show_error(
+    mocker,
+    mocked_cmd,
+    mocked_logger: Mock,
+    mocked_sleep: Mock,
+    expected_resources_map: dict,
+    expected_error: str,
+    mocked_responses: responses,
+):
+    instance_name = generate_random_string()
+    rg_name = "mock-rg"
+
+    mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
+        return_value=expected_resources_map["resources"],
+    )
+
+    with pytest.raises(Exception) as e:
+        show_connector_opcua_trust(
+            cmd=mocked_cmd,
+            instance_name=instance_name,
+            resource_group=rg_name,
+        )
+    assert e.value.args[0] == expected_error
