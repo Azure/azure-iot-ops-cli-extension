@@ -29,11 +29,11 @@ def mocked_get_resource_client(mocker):
 
 
 @pytest.fixture
-def mocked_resource_map(mocker):
+def mocked_instance(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.Instances",
     )
-    yield patched().get_resource_map
+    yield patched()
 
 
 @pytest.fixture
@@ -131,7 +131,7 @@ def setup_mock_common_responses(
         content_type="application/json",
     )
 
-    if secret_name != "mock-secret":
+    if secret_name != "mock-secret" and secret_name != "mock_secret":
         # set secret
         mocked_responses.add(
             method=responses.PUT,

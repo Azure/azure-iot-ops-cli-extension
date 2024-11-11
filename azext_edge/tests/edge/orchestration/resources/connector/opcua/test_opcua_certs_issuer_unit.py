@@ -215,6 +215,7 @@ def test_issuer_add(
         resource_group=rg_name,
         file=file_name,
         secret_name=secret_name,
+        overwrite_secret=True,
     )
 
     if result:
@@ -258,7 +259,6 @@ def test_issuer_add(
             {
                 "resources": [
                     get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
-                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
                     ),
@@ -279,44 +279,11 @@ def test_issuer_add(
             "new-secret",
             "Cannot add .crl certificate2.crl without corresponding .crt or .der file.",
         ),
-        # duplicate targetKey in objectSecretMapping
+        # invalid secret name
         (
             {
                 "resources": [
                     get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
-                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
-                    get_mock_secretsync_record(
-                        secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
-                    ),
-                ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
-                "extensions": [generate_ops_resource()],
-                "meta": {
-                    "expected_total": 4,
-                    "resource_batches": 1,
-                },
-            },
-            get_mock_spc_record(spc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
-            get_mock_secretsync_record(
-                secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
-                resource_group_name="mock-rg",
-                objects=[
-                    {
-                        "targetKey": "certificate3.der",
-                    },
-                ],
-            ),
-            "/fake/path/certificate3.der",
-            "new-secret",
-            "Cannot have duplicate targetKey in objectSecretMapping.",
-        ),
-        # secret existed
-        (
-            {
-                "resources": [
-                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
-                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
                     ),
@@ -335,9 +302,9 @@ def test_issuer_add(
                 resource_group_name="mock-rg",
             ),
             "/fake/path/certificate.der",
-            "mock-secret",
-            "Secret with name mock-secret already exists in keyvault mock-keyvault. "
-            "Please provide a different name via --secret.",
+            "mock_secret",
+            "Secret name mock_secret is invalid. Secret name must be alphanumeric and can contain hyphens. "
+            "Please provide a valid secret name via --secret-name.",
         ),
     ],
 )
@@ -404,7 +371,7 @@ def test_issuer_add_errors(
                 content_type="application/json",
             )
 
-            if secret_name != "mock-secret":
+            if secret_name != "mock-secret" and secret_name != "mock_secret":
                 # set secret
                 mocked_responses.add(
                     method=responses.PUT,
@@ -451,6 +418,7 @@ def test_issuer_add_errors(
             resource_group=rg_name,
             file=file_name,
             secret_name=secret_name,
+            overwrite_secret=True,
         )
 
     assert expected_error in e.value.args[0]
