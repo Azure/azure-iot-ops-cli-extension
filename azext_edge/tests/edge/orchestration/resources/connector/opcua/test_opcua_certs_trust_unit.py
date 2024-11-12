@@ -9,12 +9,17 @@ from unittest.mock import Mock
 import pytest
 
 import responses
-from azext_edge.edge.commands_connector import add_connector_opcua_trust, remove_connector_opcua_trust, show_connector_opcua_trust
+from azext_edge.edge.commands_connector import (
+    add_connector_opcua_trust,
+    remove_connector_opcua_trust,
+    show_connector_opcua_trust,
+)
 from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import (
     OPCUA_SPC_NAME,
     OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
 )
 from azext_edge.tests.edge.orchestration.resources.connector.opcua.conftest import (
+    generate_fortos_object_string,
     get_mock_spc_record,
     get_mock_secretsync_record,
     get_secret_endpoint,
@@ -38,13 +43,7 @@ from azext_edge.tests.helpers import generate_ops_resource
                         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
-                "meta": {
-                    "expected_total": 4,
-                    "resource_batches": 1,
-                },
             },
             get_mock_spc_record(spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
             get_mock_secretsync_record(
@@ -156,12 +155,7 @@ def test_trust_add(
         (
             {
                 "resources": None,
-                "resource sync rules": None,
-                "custom locations": None,
                 "extensions": None,
-                "meta": {
-                    "expected_total": 0,
-                },
             },
             {},
             {},
@@ -178,13 +172,7 @@ def test_trust_add(
                         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
-                "meta": {
-                    "expected_total": 4,
-                    "resource_batches": 1,
-                },
             },
             get_mock_spc_record(spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
             get_mock_secretsync_record(
@@ -201,7 +189,6 @@ def test_trust_add(
 def test_trust_add_error(
     mocker,
     mocked_cmd,
-    mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     trust_list_spc: dict,
@@ -267,7 +254,7 @@ def test_trust_add_error(
                     get_mock_spc_record(
                         spc_name=OPCUA_SPC_NAME,
                         resource_group_name="mock-rg",
-                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
+                        objects=generate_fortos_object_string(["cert-der"]),
                     ),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
@@ -280,18 +267,12 @@ def test_trust_add_error(
                         ],
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
-                "meta": {
-                    "expected_total": 2,
-                    "resource_batches": 1,
-                },
             },
             get_mock_spc_record(
                 spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
-                objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
+                objects=generate_fortos_object_string(["cert-der"]),
             ),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
@@ -312,8 +293,7 @@ def test_trust_add_error(
                     get_mock_spc_record(
                         spc_name=OPCUA_SPC_NAME,
                         resource_group_name="mock-rg",
-                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n"
-                        "    - |\n      objectEncoding: hex\n      objectName: cert2-der\n      objectType: secret\n",
+                        objects=generate_fortos_object_string(["cert-der", "cert2-der"]),
                     ),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
@@ -330,19 +310,12 @@ def test_trust_add_error(
                         ],
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
-                "meta": {
-                    "expected_total": 2,
-                    "resource_batches": 1,
-                },
             },
             get_mock_spc_record(
                 spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
-                objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n"
-                "    - |\n      objectEncoding: hex\n      objectName: cert2-der\n      objectType: secret\n",
+                objects=generate_fortos_object_string(["cert-der", "cert2-der"]),
             ),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
@@ -377,7 +350,7 @@ def test_trust_add_error(
                     get_mock_spc_record(
                         spc_name=OPCUA_SPC_NAME,
                         resource_group_name="mock-rg",
-                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert3-der\n      objectType: secret\n",
+                        objects=generate_fortos_object_string(["cert3-der"]),
                     ),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
@@ -390,18 +363,12 @@ def test_trust_add_error(
                         ],
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extensions": [generate_ops_resource()],
-                "meta": {
-                    "expected_total": 2,
-                    "resource_batches": 1,
-                },
             },
             get_mock_spc_record(
                 spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
-                objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert3-der\n      objectType: secret\n",
+                objects=generate_fortos_object_string(["cert3-der"]),
             ),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
@@ -546,15 +513,16 @@ def test_trust_remove(
 
     if "cert3.der" in certificate_names and include_secrets:
         assert (
-            mocked_logger.warning.call_args[0][0]
-            == "Secret cert3-der not found in keyvault mock-keyvault. Skipping removal..."
+            mocked_logger.warning.call_args[0][0] == "Secret cert3-der "
+            "not found in keyvault mock-keyvault. Skipping removal..."
         )
 
     assert result == expected_secret_sync
 
 
 @pytest.mark.parametrize(
-    "expected_resources_map, trust_list_spc, trust_list_secretsync, certificate_names, include_secrets, expected_secret_sync, expected_error",
+    "expected_resources_map, trust_list_spc, trust_list_secretsync,"
+    "certificate_names, include_secrets, expected_error",
     [
         # no cl resources
         (
@@ -565,7 +533,6 @@ def test_trust_remove(
             {},
             [],
             False,
-            {},
             "No custom location resources found associated with the IoT Operations deployment.",
         ),
         # target secretsync resource not found
@@ -579,7 +546,6 @@ def test_trust_remove(
             {},
             [],
             False,
-            {},
             "Secretsync resource aio-opc-ua-broker-trust-list not found.",
         ),
         # no available certificate names
@@ -597,7 +563,6 @@ def test_trust_remove(
             ),
             ["thisshouldnotwork"],
             False,
-            {},
             "Please provide valid certificate name(s) to remove.",
         ),
         # no target spc resource found
@@ -621,7 +586,6 @@ def test_trust_remove(
             ),
             ["cert.der"],
             False,
-            {},
             "Secret Provider Class resource opc-ua-connector not found.",
         ),
     ],
@@ -629,14 +593,12 @@ def test_trust_remove(
 def test_trust_remove_error(
     mocker,
     mocked_cmd,
-    mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     trust_list_spc: dict,
     trust_list_secretsync: dict,
     certificate_names: list,
     include_secrets: bool,
-    expected_secret_sync: dict,
     expected_error: str,
     mocked_responses: responses,
 ):
@@ -693,7 +655,7 @@ def test_trust_remove_error(
                     get_mock_spc_record(
                         spc_name=OPCUA_SPC_NAME,
                         resource_group_name="mock-rg",
-                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
+                        objects=generate_fortos_object_string(["cert-der"]),
                     ),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
@@ -723,7 +685,6 @@ def test_trust_remove_error(
 def test_trust_show(
     mocker,
     mocked_cmd,
-    mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     expected_secretsync: dict,
@@ -780,11 +741,9 @@ def test_trust_show(
 def test_trust_show_error(
     mocker,
     mocked_cmd,
-    mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     expected_error: str,
-    mocked_responses: responses,
 ):
     instance_name = generate_random_string()
     rg_name = "mock-rg"

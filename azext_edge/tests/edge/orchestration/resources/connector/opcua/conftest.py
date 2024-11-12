@@ -176,10 +176,16 @@ def setup_mock_common_responses(
 def assemble_resource_map_mock(
     resource_map_mock: Mock,
     extension: Optional[dict],
-    custom_locations: Optional[List[dict]],
     resources: Optional[List[dict]],
 ):
-    resource_map_mock().custom_locations = custom_locations
-    resource_map_mock().get_resources.return_value = resources
     resource_map_mock().connected_cluster.get_extensions_by_type.return_value = extension
     resource_map_mock().connected_cluster.get_aio_resources.return_value = resources
+
+
+def generate_fortos_object_string(
+    names: List[str]
+):
+    object_string = "array:\n"
+    for name in names:
+        object_string += f"    - |\n      objectEncoding: hex\n      objectName: {name}\n      objectType: secret\n"
+    return object_string

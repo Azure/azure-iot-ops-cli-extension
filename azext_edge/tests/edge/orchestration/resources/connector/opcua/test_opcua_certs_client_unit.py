@@ -20,6 +20,7 @@ from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs imp
 from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
 from .conftest import (
     assemble_resource_map_mock,
+    generate_fortos_object_string,
     get_mock_spc_record,
     get_mock_secretsync_record,
     get_secret_endpoint,
@@ -27,7 +28,6 @@ from .conftest import (
     get_spc_endpoint,
 )
 from azext_edge.tests.generators import generate_random_string
-from azext_edge.tests.helpers import generate_ops_resource
 
 
 @pytest.mark.parametrize(
@@ -43,13 +43,7 @@ from azext_edge.tests.helpers import generate_ops_resource
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
-                "meta": {
-                    "expected_total": 4,
-                    "resource_batches": 1,
-                },
             },
             get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
             get_mock_secretsync_record(
@@ -86,7 +80,6 @@ def test_client_add(
     assemble_resource_map_mock(
         resource_map_mock=mocked_instance.get_resource_map,
         extension=expected_resources_map["extension"],
-        custom_locations=expected_resources_map["custom locations"],
         resources=expected_resources_map["resources"],
     )
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
@@ -204,12 +197,7 @@ def test_client_add(
         (
             {
                 "resources": None,
-                "resource sync rules": None,
-                "custom locations": None,
                 "extension": None,
-                "meta": {
-                    "expected_total": 0,
-                },
             },
             {},
             {},
@@ -227,13 +215,7 @@ def test_client_add(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extension": {},
-                "meta": {
-                    "expected_total": 4,
-                    "resource_batches": 1,
-                },
             },
             get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
             get_mock_secretsync_record(
@@ -247,13 +229,7 @@ def test_client_add(
         (
             {
                 "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
-                "meta": {
-                    "expected_total": 4,
-                    "resource_batches": 1,
-                },
             },
             {},
             {},
@@ -267,7 +243,6 @@ def test_client_add_errors(
     mocker,
     mocked_cmd,
     mocked_sleep: Mock,
-    mocked_logger: Mock,
     expected_resources_map: dict,
     client_app_spc: dict,
     client_app_secretsync: dict,
@@ -284,7 +259,6 @@ def test_client_add_errors(
     assemble_resource_map_mock(
         resource_map_mock=mocked_instance.get_resource_map,
         extension=expected_resources_map["extension"],
-        custom_locations=expected_resources_map["custom locations"],
         resources=expected_resources_map["resources"],
     )
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
@@ -386,21 +360,15 @@ def test_client_add_errors(
                     get_mock_spc_record(
                         spc_name=OPCUA_SPC_NAME,
                         resource_group_name="mock-rg",
-                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
+                        objects=generate_fortos_object_string(["cert-der"]),
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
-                "meta": {
-                    "expected_total": 2,
-                    "resource_batches": 1,
-                },
             },
             get_mock_spc_record(
                 spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
-                objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
+                objects=generate_fortos_object_string(["cert-der"]),
             ),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
@@ -435,23 +403,15 @@ def test_client_add_errors(
                     get_mock_spc_record(
                         spc_name=OPCUA_SPC_NAME,
                         resource_group_name="mock-rg",
-                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n"
-                        "    - |\n      objectEncoding: hex\n      objectName: cert-pem\n      objectType: secret\n",
+                        objects=generate_fortos_object_string(["cert-der", "cert-pem"]),
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
-                "meta": {
-                    "expected_total": 2,
-                    "resource_batches": 1,
-                },
             },
             get_mock_spc_record(
                 spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
-                objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n"
-                "    - |\n      objectEncoding: hex\n      objectName: cert-pem\n      objectType: secret\n",
+                objects=generate_fortos_object_string(["cert-der", "cert-pem"]),
             ),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
@@ -475,7 +435,6 @@ def test_client_add_errors(
 def test_client_remove(
     mocker,
     mocked_cmd,
-    mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     client_list_spc: dict,
@@ -492,7 +451,6 @@ def test_client_remove(
     assemble_resource_map_mock(
         resource_map_mock=mocked_instance.get_resource_map,
         extension=expected_resources_map["extension"],
-        custom_locations=expected_resources_map["custom locations"],
         resources=expected_resources_map["resources"],
     )
     mocked_instance.find_existing_resources.side_effect = [
@@ -575,7 +533,7 @@ def test_client_remove(
             content_type="application/json",
         )
 
-    result = remove_connector_opcua_client(
+    remove_connector_opcua_client(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group=rg_name,
@@ -585,7 +543,7 @@ def test_client_remove(
         include_secrets=include_secrets,
     )
 
-    if result and len(certificate_names) == len(mapping):
+    if len(certificate_names) == len(mapping):
         mocked_instance.get_resource_map().connected_cluster.get_extensions_by_type.assert_called_once_with(
             "microsoft.iotoperations"
         )
@@ -602,7 +560,8 @@ def test_client_remove(
 
 
 @pytest.mark.parametrize(
-    "expected_resources_map, client_list_spc, client_list_secretsync, certificate_names, include_secrets, expected_secret_sync, expected_error",
+    "expected_resources_map, client_list_spc, client_list_secretsync,"
+    "certificate_names, include_secrets, expected_error",
     [
         # target secretsync resource not found
         (
@@ -610,19 +569,12 @@ def test_client_remove(
                 "resources": [
                     get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
-                "meta": {
-                    "expected_total": 2,
-                    "resource_batches": 1,
-                },
             },
             [get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg")],
             [],
             ["cert.der"],
             False,
-            None,
             "Secretsync resource aio-opc-ua-broker-client-certificate not found.",
         ),
         # no valid certificate names
@@ -641,13 +593,7 @@ def test_client_remove(
                         ],
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
-                "meta": {
-                    "expected_total": 2,
-                    "resource_batches": 1,
-                },
             },
             [get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg")],
             [get_mock_secretsync_record(
@@ -662,7 +608,6 @@ def test_client_remove(
             )],
             ["thiswontwork"],
             False,
-            None,
             "Please provide valid certificate name(s) to remove.",
         ),
         # no target spc resource found
@@ -680,13 +625,7 @@ def test_client_remove(
                         ],
                     ),
                 ],
-                "resource sync rules": [generate_ops_resource()],
-                "custom locations": [generate_ops_resource()],
                 "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
-                "meta": {
-                    "expected_total": 1,
-                    "resource_batches": 1,
-                },
             },
             [],
             [get_mock_secretsync_record(
@@ -701,7 +640,6 @@ def test_client_remove(
             )],
             ["cert.der"],
             False,
-            None,
             "Secret Provider Class resource opc-ua-connector not found.",
         ),
     ],
@@ -709,17 +647,14 @@ def test_client_remove(
 def test_client_remove_error(
     mocker,
     mocked_cmd,
-    mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     client_list_spc: dict,
     client_list_secretsync: dict,
     certificate_names: list,
     include_secrets: bool,
-    expected_secret_sync: dict,
     mocked_instance: Mock,
     expected_error: str,
-    mocked_responses: responses,
 ):
     instance_name = "mock-instance"
     rg_name = "mock-rg"
@@ -727,7 +662,6 @@ def test_client_remove_error(
     assemble_resource_map_mock(
         resource_map_mock=mocked_instance.get_resource_map,
         extension=expected_resources_map["extension"],
-        custom_locations=expected_resources_map["custom locations"],
         resources=expected_resources_map["resources"],
     )
     mocked_instance.find_existing_resources.side_effect = [
@@ -762,7 +696,7 @@ def test_client_remove_error(
                     get_mock_spc_record(
                         spc_name=OPCUA_SPC_NAME,
                         resource_group_name="mock-rg",
-                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n",
+                        objects=generate_fortos_object_string(["cert-der"]),
                     ),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
@@ -792,7 +726,6 @@ def test_client_remove_error(
 def test_client_show(
     mocker,
     mocked_cmd,
-    mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     expected_secretsync: dict,
@@ -849,11 +782,9 @@ def test_client_show(
 def test_client_show_error(
     mocker,
     mocked_cmd,
-    mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     expected_error: str,
-    mocked_responses: responses,
 ):
     instance_name = generate_random_string()
     rg_name = "mock-rg"
