@@ -415,6 +415,61 @@ def test_client_add_errors(
             ["cert.der"],
             None,
         ),
+        (
+            {
+                "resources": [
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                        resource_group_name="mock-rg",
+                        objects=[
+                            {
+                                "sourcePath": "cert-der",
+                                "targetKey": "cert.der"
+                            },
+                            {
+                                "sourcePath": "cert-pem",
+                                "targetKey": "cert.pem"
+                            }
+                        ],
+                    ),
+                    get_mock_spc_record(
+                        spc_name=OPCUA_SPC_NAME,
+                        resource_group_name="mock-rg",
+                        objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n"
+                        "    - |\n      objectEncoding: hex\n      objectName: cert-pem\n      objectType: secret\n",
+                    ),
+                ],
+                "resource sync rules": [generate_ops_resource()],
+                "custom locations": [generate_ops_resource()],
+                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "meta": {
+                    "expected_total": 2,
+                    "resource_batches": 1,
+                },
+            },
+            get_mock_spc_record(
+                spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="array:\n    - |\n      objectEncoding: hex\n      objectName: cert-der\n      objectType: secret\n"
+                "    - |\n      objectEncoding: hex\n      objectName: cert-pem\n      objectType: secret\n",
+            ),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "cert-der",
+                        "targetKey": "cert.der"
+                    },
+                    {
+                        "sourcePath": "cert-pem",
+                        "targetKey": "cert.pem"
+                    }
+                ],
+            ),
+            ["cert.der", "cert.pem"],
+            None,
+        ),
     ],
 )
 def test_client_remove(
@@ -449,16 +504,29 @@ def test_client_remove(
     )
     mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
 
-    # delete opcua secretsync
-    mocked_responses.add(
-        method=responses.DELETE,
-        url=get_secretsync_endpoint(
-            secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name
-        ),
-        json={},
-        status=204,
-        content_type="application/json",
-    )
+    mapping = client_list_secretsync.get("properties", {}).get("objectSecretMapping", [])
+    if len(certificate_names) < len(mapping):
+        # set opcua secretsync
+        mocked_responses.add(
+            method=responses.PUT,
+            url=get_secretsync_endpoint(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name
+            ),
+            json=expected_secret_sync,
+            status=200,
+            content_type="application/json",
+        )
+    else:
+        # delete opcua secretsync
+        mocked_responses.add(
+            method=responses.DELETE,
+            url=get_secretsync_endpoint(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name
+            ),
+            json={},
+            status=204,
+            content_type="application/json",
+        )
 
     # set opcua spc
     mocked_responses.add(
@@ -517,7 +585,7 @@ def test_client_remove(
         include_secrets=include_secrets,
     )
 
-    if result:
+    if result and len(certificate_names) == len(mapping):
         mocked_instance.get_resource_map().connected_cluster.get_extensions_by_type.assert_called_once_with(
             "microsoft.iotoperations"
         )
@@ -531,6 +599,158 @@ def test_client_remove(
                 }
             },
         )
+
+
+@pytest.mark.parametrize(
+    "expected_resources_map, client_list_spc, client_list_secretsync, certificate_names, include_secrets, expected_secret_sync, expected_error",
+    [
+        # target secretsync resource not found
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                ],
+                "resource sync rules": [generate_ops_resource()],
+                "custom locations": [generate_ops_resource()],
+                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "meta": {
+                    "expected_total": 2,
+                    "resource_batches": 1,
+                },
+            },
+            [get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg")],
+            [],
+            ["cert.der"],
+            False,
+            None,
+            "Secretsync resource aio-opc-ua-broker-client-certificate not found.",
+        ),
+        # no valid certificate names
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                        resource_group_name="mock-rg",
+                        objects=[
+                            {
+                                "sourcePath": "cert-der",
+                                "targetKey": "cert.der"
+                            },
+                        ],
+                    ),
+                ],
+                "resource sync rules": [generate_ops_resource()],
+                "custom locations": [generate_ops_resource()],
+                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "meta": {
+                    "expected_total": 2,
+                    "resource_batches": 1,
+                },
+            },
+            [get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg")],
+            [get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "cert-der",
+                        "targetKey": "cert.der"
+                    },
+                ],
+            )],
+            ["thiswontwork"],
+            False,
+            None,
+            "Please provide valid certificate name(s) to remove.",
+        ),
+        # no target spc resource found
+        (
+            {
+                "resources": [
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                        resource_group_name="mock-rg",
+                        objects=[
+                            {
+                                "sourcePath": "cert-der",
+                                "targetKey": "cert.der"
+                            },
+                        ],
+                    ),
+                ],
+                "resource sync rules": [generate_ops_resource()],
+                "custom locations": [generate_ops_resource()],
+                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "meta": {
+                    "expected_total": 1,
+                    "resource_batches": 1,
+                },
+            },
+            [],
+            [get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "cert-der",
+                        "targetKey": "cert.der"
+                    },
+                ],
+            )],
+            ["cert.der"],
+            False,
+            None,
+            "Secret Provider Class resource opc-ua-connector not found.",
+        ),
+    ],
+)
+def test_client_remove_error(
+    mocker,
+    mocked_cmd,
+    mocked_logger: Mock,
+    mocked_sleep: Mock,
+    expected_resources_map: dict,
+    client_list_spc: dict,
+    client_list_secretsync: dict,
+    certificate_names: list,
+    include_secrets: bool,
+    expected_secret_sync: dict,
+    mocked_instance: Mock,
+    expected_error: str,
+    mocked_responses: responses,
+):
+    instance_name = "mock-instance"
+    rg_name = "mock-rg"
+
+    assemble_resource_map_mock(
+        resource_map_mock=mocked_instance.get_resource_map,
+        extension=expected_resources_map["extension"],
+        custom_locations=expected_resources_map["custom locations"],
+        resources=expected_resources_map["resources"],
+    )
+    mocked_instance.find_existing_resources.side_effect = [
+        client_list_secretsync,
+        client_list_spc,
+    ]
+    mocked_get_resource_client: Mock = mocker.patch(
+        "azext_edge.edge.util.queryable.get_resource_client",
+    )
+    mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
+
+    with pytest.raises(Exception) as e:
+        remove_connector_opcua_client(
+            cmd=mocked_cmd,
+            instance_name=instance_name,
+            resource_group=rg_name,
+            certificate_names=certificate_names,
+            confirm_yes=True,
+            force=True,
+            include_secrets=include_secrets,
+        )
+
+    assert expected_error in e.value.args[0]
 
 
 @pytest.mark.parametrize(
