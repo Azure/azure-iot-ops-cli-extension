@@ -64,6 +64,7 @@ def test_trust_add(
     mocked_cmd,
     mocked_cl_resources: Mock,
     mocked_logger: Mock,
+    mocked_read_file_content: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     trust_list_spc: dict,
@@ -76,12 +77,8 @@ def test_trust_add(
     file_content = b"\x00\x01\x02\x03"
     instance_name = generate_random_string()
     rg_name = "mock-rg"
-
     mocked_cl_resources.return_value = expected_resources_map["resources"]
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.read_file_content",
-        return_value=file_content,
-    )
+    mocked_read_file_content.return_value = file_content
 
     if expected_resources_map["resources"]:
         # get default spc
@@ -188,6 +185,7 @@ def test_trust_add_error(
     mocker,
     mocked_cmd,
     mocked_cl_resources: Mock,
+    mocked_read_file_content: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     trust_list_spc: dict,
@@ -200,12 +198,8 @@ def test_trust_add_error(
     file_content = b"\x00\x01\x02\x03"
     instance_name = generate_random_string()
     rg_name = "mock-rg"
-
     mocked_cl_resources.return_value = expected_resources_map["resources"]
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.read_file_content",
-        return_value=file_content,
-    )
+    mocked_read_file_content.return_value = file_content
 
     if expected_resources_map["resources"]:
         # get default spc

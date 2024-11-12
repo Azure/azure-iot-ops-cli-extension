@@ -62,6 +62,7 @@ from azext_edge.tests.generators import generate_random_string
 def test_client_add(
     mocker,
     mocked_cmd,
+    mocked_read_file_content: Mock,
     mocked_sleep: Mock,
     mocked_logger: Mock,
     expected_resources_map: dict,
@@ -70,6 +71,7 @@ def test_client_add(
     public_file_name: str,
     private_file_name: str,
     expected_secret_sync: dict,
+    mocked_get_resource_client: Mock,
     mocked_instance: Mock,
     mocked_responses: responses,
 ):
@@ -83,14 +85,8 @@ def test_client_add(
         resources=expected_resources_map["resources"],
     )
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
-    mocked_get_resource_client: Mock = mocker.patch(
-        "azext_edge.edge.util.queryable.get_resource_client",
-    )
     mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.read_file_content",
-        return_value=file_content,
-    )
+    mocked_read_file_content.return_value = file_content
 
     if expected_resources_map["resources"]:
         # get secrets
@@ -242,6 +238,7 @@ def test_client_add(
 def test_client_add_errors(
     mocker,
     mocked_cmd,
+    mocked_read_file_content: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     client_app_spc: dict,
@@ -249,6 +246,7 @@ def test_client_add_errors(
     public_file_name: str,
     private_file_name: str,
     expected_error: str,
+    mocked_get_resource_client: Mock,
     mocked_instance: Mock,
     mocked_responses: responses,
 ):
@@ -262,14 +260,8 @@ def test_client_add_errors(
         resources=expected_resources_map["resources"],
     )
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
-    mocked_get_resource_client: Mock = mocker.patch(
-        "azext_edge.edge.util.queryable.get_resource_client",
-    )
     mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.read_file_content",
-        return_value=file_content,
-    )
+    mocked_read_file_content.return_value = file_content
 
     if client_app_spc:
         # get secrets
@@ -442,6 +434,7 @@ def test_client_remove(
     certificate_names: list,
     include_secrets: bool,
     expected_secret_sync: dict,
+    mocked_get_resource_client: Mock,
     mocked_instance: Mock,
     mocked_responses: responses,
 ):
@@ -457,9 +450,6 @@ def test_client_remove(
         [client_list_secretsync],
         [client_list_spc],
     ]
-    mocked_get_resource_client: Mock = mocker.patch(
-        "azext_edge.edge.util.queryable.get_resource_client",
-    )
     mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
 
     mapping = client_list_secretsync.get("properties", {}).get("objectSecretMapping", [])
@@ -653,6 +643,7 @@ def test_client_remove_error(
     client_list_secretsync: dict,
     certificate_names: list,
     include_secrets: bool,
+    mocked_get_resource_client: Mock,
     mocked_instance: Mock,
     expected_error: str,
 ):
@@ -668,9 +659,6 @@ def test_client_remove_error(
         client_list_secretsync,
         client_list_spc,
     ]
-    mocked_get_resource_client: Mock = mocker.patch(
-        "azext_edge.edge.util.queryable.get_resource_client",
-    )
     mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
 
     with pytest.raises(Exception) as e:

@@ -23,12 +23,6 @@ def mocked_logger(mocker):
 
 
 @pytest.fixture
-def mocked_get_resource_client(mocker):
-    patched = mocker.patch("azext_edge.edge.util.queryable")
-    yield patched().get_resource_client
-
-
-@pytest.fixture
 def mocked_instance(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.Instances",
@@ -46,6 +40,22 @@ def mocked_sleep(mocker):
 def mocked_cl_resources(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
+    )
+    yield patched
+
+
+@pytest.fixture
+def mocked_read_file_content(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.read_file_content",
+    )
+    yield patched
+
+
+@pytest.fixture
+def mocked_get_resource_client(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.util.queryable.get_resource_client",
     )
     yield patched
 
