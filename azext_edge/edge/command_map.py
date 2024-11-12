@@ -204,7 +204,6 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops connector opcua trust",
         command_type=connector_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         cmd_group.command("add", "add_connector_opcua_trust")
         cmd_group.command("remove", "remove_connector_opcua_trust")
@@ -213,7 +212,6 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops connector opcua issuer",
         command_type=connector_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         cmd_group.command("add", "add_connector_opcua_issuer")
         cmd_group.command("remove", "remove_connector_opcua_issuer")
@@ -222,7 +220,6 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops connector opcua client",
         command_type=connector_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         cmd_group.command("add", "add_connector_opcua_client")
         cmd_group.command("remove", "remove_connector_opcua_client")
