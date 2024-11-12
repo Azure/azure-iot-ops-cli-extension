@@ -42,6 +42,14 @@ def mocked_sleep(mocker):
     yield patched
 
 
+@pytest.fixture
+def mocked_cl_resources(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
+    )
+    yield patched
+
+
 def get_spc_endpoint(spc_name: str, resource_group_name: str) -> str:
     resource_path = "/azureKeyVaultSecretProviderClasses"
     if spc_name:

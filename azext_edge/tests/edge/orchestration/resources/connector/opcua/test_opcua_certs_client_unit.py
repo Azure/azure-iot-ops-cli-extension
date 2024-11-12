@@ -726,6 +726,7 @@ def test_client_remove_error(
 def test_client_show(
     mocker,
     mocked_cmd,
+    mocked_cl_resources: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     expected_secretsync: dict,
@@ -733,11 +734,7 @@ def test_client_show(
 ):
     instance_name = generate_random_string()
     rg_name = "mock-rg"
-
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
-        return_value=expected_resources_map["resources"],
-    )
+    mocked_cl_resources.return_value = expected_resources_map["resources"]
 
     # get opcua secretsync
     mocked_responses.add(
@@ -782,17 +779,14 @@ def test_client_show(
 def test_client_show_error(
     mocker,
     mocked_cmd,
+    mocked_cl_resources: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     expected_error: str,
 ):
     instance_name = generate_random_string()
     rg_name = "mock-rg"
-
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
-        return_value=expected_resources_map["resources"],
-    )
+    mocked_cl_resources.return_value = expected_resources_map["resources"]
 
     with pytest.raises(Exception) as e:
         show_connector_opcua_client(

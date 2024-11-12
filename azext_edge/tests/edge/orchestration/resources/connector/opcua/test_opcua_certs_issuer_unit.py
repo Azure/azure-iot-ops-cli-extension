@@ -92,6 +92,7 @@ from azext_edge.tests.helpers import generate_ops_resource
 def test_issuer_add(
     mocker,
     mocked_cmd,
+    mocked_cl_resources: Mock,
     mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
@@ -105,11 +106,7 @@ def test_issuer_add(
     file_content = b"\x00\x01\x02\x03"
     instance_name = generate_random_string()
     rg_name = "mock-rg"
-
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
-        return_value=expected_resources_map["resources"],
-    )
+    mocked_cl_resources.return_value = expected_resources_map["resources"]
     mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.read_file_content",
         return_value=file_content,
@@ -287,6 +284,7 @@ def test_issuer_add(
 def test_issuer_add_errors(
     mocker,
     mocked_cmd,
+    mocked_cl_resources: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     issuer_list_spc: dict,
@@ -299,11 +297,7 @@ def test_issuer_add_errors(
     file_content = b"\x00\x01\x02\x03"
     instance_name = generate_random_string()
     rg_name = "mock-rg"
-
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
-        return_value=expected_resources_map["resources"],
-    )
+    mocked_cl_resources.return_value = expected_resources_map["resources"]
     mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.read_file_content",
         return_value=file_content,
@@ -543,6 +537,7 @@ def test_issuer_add_errors(
 def test_issuer_remove(
     mocker,
     mocked_cmd,
+    mocked_cl_resources: Mock,
     mocked_logger: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
@@ -555,11 +550,7 @@ def test_issuer_remove(
 ):
     instance_name = generate_random_string()
     rg_name = "mock-rg"
-
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
-        return_value=expected_resources_map["resources"],
-    )
+    mocked_cl_resources.return_value = expected_resources_map["resources"]
 
     # get opcua secretsync
     mocked_responses.add(
@@ -748,6 +739,7 @@ def test_issuer_remove(
 def test_issuer_remove_error(
     mocker,
     mocked_cmd,
+    mocked_cl_resources: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     issuer_list_spc: dict,
@@ -759,11 +751,7 @@ def test_issuer_remove_error(
 ):
     instance_name = generate_random_string()
     rg_name = "mock-rg"
-
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
-        return_value=expected_resources_map["resources"],
-    )
+    mocked_cl_resources.return_value = expected_resources_map["resources"]
 
     if issuer_list_secretsync:
         # get opcua secretsync
@@ -840,6 +828,7 @@ def test_issuer_remove_error(
 def test_issuer_show(
     mocker,
     mocked_cmd,
+    mocked_cl_resources: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     expected_secretsync: dict,
@@ -847,11 +836,7 @@ def test_issuer_show(
 ):
     instance_name = generate_random_string()
     rg_name = "mock-rg"
-
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
-        return_value=expected_resources_map["resources"],
-    )
+    mocked_cl_resources.return_value = expected_resources_map["resources"]
 
     # get opcua secretsync
     mocked_responses.add(
@@ -896,17 +881,14 @@ def test_issuer_show(
 def test_issuer_show_error(
     mocker,
     mocked_cmd,
+    mocked_cl_resources: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     expected_error: str,
 ):
     instance_name = generate_random_string()
     rg_name = "mock-rg"
-
-    mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
-        return_value=expected_resources_map["resources"],
-    )
+    mocked_cl_resources.return_value = expected_resources_map["resources"]
 
     with pytest.raises(Exception) as e:
         show_connector_opcua_issuer(
