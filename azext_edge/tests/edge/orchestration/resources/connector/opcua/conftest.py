@@ -68,8 +68,8 @@ def get_secretsync_endpoint(secretsync_name: str, resource_group_name: str) -> s
 
 def get_secret_endpoint(
     keyvault_name: str,
+    deleted: bool = False,
     secret_name: Optional[str] = None,
-    deleted: Optional[bool] = False,
 ) -> str:
     resource_path = "/deletedsecrets" if deleted else "/secrets"
     if secret_name:
