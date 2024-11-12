@@ -128,7 +128,7 @@ jobs:
             echo "CREATE_ARG=--enable-rsync" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "redeploy" ]]; then
             echo "REDEPLOY=True" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "redeploy" ]]; then
+          elif [[ ${{ matrix.feature }} == "custom-input" ]]; then
             echo "CREATE_ARG=${{ inputs.runtime-create-args }}" >> $GITHUB_OUTPUT
             echo "INIT_ARG=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "trustbundle" ]]; then
