@@ -5,12 +5,13 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-from typing import Dict, List, Optional, Union
 from os.path import isfile
+from typing import Dict, List, Optional, Union
 
 import pytest
 from knack.log import get_logger
 
+from azext_edge.edge.common import DEFAULT_BROKER, DEFAULT_BROKER_LISTENER
 from azext_edge.edge.util.common import assemble_nargs_to_dict
 
 from ....generators import generate_random_string
@@ -122,6 +123,7 @@ def test_init_scenario(init_test_setup, tracked_files):
             assert_aio_instance,
             assert_broker_args,
             assert_dataflow_profile_args,
+            assert_trust_config_args,
         ]:
             assertion(
                 instance_name=instance_name,
@@ -326,6 +328,21 @@ def assert_dataflow_profile_args(
     profile = run(f"az iot ops dataflow profile list -g {resource_group} -i {instance_name}")
     profile_props = profile[0]["properties"]
     assert profile_props["instanceCount"] == (dataflow_profile_instances or 1)
+
+
+def assert_trust_config_args(instance_name: str, resource_group: str, trust_settings: Optional[str] = None, **_):
+    listener = run(
+        f"az iot ops broker listener show -b {DEFAULT_BROKER} -n {DEFAULT_BROKER_LISTENER} "
+        f"-g {resource_group} -i {instance_name}"
+    )
+    issuer = listener["properties"]["ports"][0]["tls"]["certManagerCertificateSpec"]["issuerRef"]
+    if not trust_settings:
+        assert issuer["name"] == "azure-iot-operations-aio-certificate-issuer"
+        assert issuer["kind"] == "ClusterIssuer"
+    else:
+        trust_args = assemble_nargs_to_dict(trust_settings.split())
+        assert issuer["name"] == trust_args["issuerName"]
+        assert issuer["kind"] == trust_args["issuerKind"]
 
 
 def _process_additional_args(additional_args: str) -> Dict[str, Union[str, bool]]:

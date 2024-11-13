@@ -98,7 +98,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [custom-input, default, insecure-listener, syncrules, redeploy]
+        feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
         runtime-args:
           - ${{ inputs.runtime-init-args != '' || inputs.runtime-create-args != '' }}
         exclude:
@@ -111,6 +111,8 @@ jobs:
           - feature: syncrules
             runtime-args: true
           - feature: redeploy
+            runtime-args: true
+          - feature: trustbundle
             runtime-args: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
@@ -126,9 +128,12 @@ jobs:
             echo "CREATE_ARG=--enable-rsync" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "redeploy" ]]; then
             echo "REDEPLOY=True" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} != "default" ]]; then
+          elif [[ ${{ matrix.feature }} == "custom-input" ]]; then
             echo "CREATE_ARG=${{ inputs.runtime-create-args }}" >> $GITHUB_OUTPUT
-            echo "INIT_ARGS=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
+            echo "INIT_ARG=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
+          elif [[ ${{ matrix.feature }} == "trustbundle" ]]; then
+            echo "CREATE_ARG=--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer " >> $GITHUB_OUTPUT
+            echo "INIT_ARG=--user-trust true" >> $GITHUB_OUTPUT
           fi
       - name: "Output variables for future steps"
         id: "env_out"
@@ -161,6 +166,85 @@ jobs:
           mkdir ~/.kube 2> /dev/null
           sudo k3s kubectl config view --raw > ~/.kube/config
           chmod 600 ~/.kube/config
+          export KUBECONFIG=~/.kube/config
+      - name: "Apply custom cluster issuer"
+        if: ${{ matrix.feature == 'trustbundle' || contains(inputs.runtime-init-args, '--user-trust') }}
+        run: |
+          set -x
+          helm repo add jetstack https://charts.jetstack.io --force-update
+
+          helm install \
+            cert-manager jetstack/cert-manager \
+            --namespace cert-manager \
+            --create-namespace \
+            --version v1.13.6 \
+            --set installCRDs=true \
+            --set startupapicheck.timeout=5m
+
+          kubectl create namespace azure-iot-operations
+
+          helm upgrade trust-manager jetstack/trust-manager \
+            --install \
+            --namespace cert-manager \
+            --set app.trust.namespace=cert-manager \
+            --wait
+
+          kubectl apply -f - <<EOF
+          apiVersion: cert-manager.io/v1
+          kind: Issuer
+          metadata:
+            name: selfsigned-issuer
+            namespace: cert-manager
+          spec:
+            selfSigned: {}
+          ---
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            name: trust-manager-example-ca
+            namespace: cert-manager
+          spec:
+            isCA: true
+            commonName: trust-manager-example-ca
+            secretName: trust-manager-example-ca-secret
+            privateKey:
+              algorithm: ECDSA
+              size: 256
+            issuerRef:
+              name: selfsigned-issuer
+              kind: Issuer
+              group: cert-manager.io
+          EOF
+
+          kubectl apply -f - <<EOF
+          apiVersion: trust.cert-manager.io/v1alpha1
+          kind: Bundle
+          metadata:
+            name: example-bundle
+            namespace: cert-manager
+          spec:
+            sources:
+            - useDefaultCAs: true
+            - secret:
+                name: "trust-manager-example-ca-secret"
+                key: "tls.crt"
+            target:
+              configMap:
+                key: "trust-bundle.pem"
+              namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: azure-iot-operations
+          EOF
+
+          kubectl apply -f - <<EOF
+          apiVersion: cert-manager.io/v1
+          kind: Issuer
+          metadata:
+            name: selfsigned-issuer
+            namespace: azure-iot-operations
+          spec:
+            selfSigned: {}
+          EOF
       - name: "Checkout extension source for build"
         uses: actions/checkout@v4
         with:
