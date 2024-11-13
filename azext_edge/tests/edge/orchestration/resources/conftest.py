@@ -4,10 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import re
 from typing import Optional
-
-from requests.models import PreparedRequest
-from responses import CallList
 
 from ....generators import generate_random_string, get_zeroed_subscription
 
@@ -92,7 +90,5 @@ def get_resource_id(
     ).split("?")[0][len(BASE_URL) :]
 
 
-def find_request_by_url(calls: CallList, url: str) -> Optional[PreparedRequest]:
-    for call in calls:
-        if call.request.url == url:
-            return call.request
+def get_authz_endpoint_pattern() -> re.Pattern:
+    return re.compile(r"https:\/\/.*\/providers\/Microsoft\.Authorization\/roleAssignments.*")
