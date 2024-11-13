@@ -345,8 +345,9 @@ def test_schema_registry_create(
     )
 
     if create_role_assignment_code not in [200, 201]:
-        with pytest.raises(AzureResponseError):
+        with pytest.raises(AzureResponseError) as error:
             create_registry(**create_registry_kwargs)
+        assert str(error.value).startswith("Role assignment failed")
         return
 
     create_result = create_registry(**create_registry_kwargs)
