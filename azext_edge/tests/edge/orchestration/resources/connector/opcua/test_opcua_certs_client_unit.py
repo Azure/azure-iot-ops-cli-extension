@@ -20,7 +20,7 @@ from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs imp
 from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
 from .conftest import (
     assemble_resource_map_mock,
-    generate_fortos_object_string,
+    generate_ssc_object_string,
     get_mock_spc_record,
     get_mock_secretsync_record,
     get_secret_endpoint,
@@ -352,7 +352,7 @@ def test_client_add_errors(
                     get_mock_spc_record(
                         spc_name=OPCUA_SPC_NAME,
                         resource_group_name="mock-rg",
-                        objects=generate_fortos_object_string(["cert-der"]),
+                        objects=generate_ssc_object_string(["cert-der"]),
                     ),
                 ],
                 "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
@@ -360,7 +360,7 @@ def test_client_add_errors(
             get_mock_spc_record(
                 spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
-                objects=generate_fortos_object_string(["cert-der"]),
+                objects=generate_ssc_object_string(["cert-der"]),
             ),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
@@ -395,7 +395,7 @@ def test_client_add_errors(
                     get_mock_spc_record(
                         spc_name=OPCUA_SPC_NAME,
                         resource_group_name="mock-rg",
-                        objects=generate_fortos_object_string(["cert-der", "cert-pem"]),
+                        objects=generate_ssc_object_string(["cert-der", "cert-pem"]),
                     ),
                 ],
                 "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
@@ -403,7 +403,7 @@ def test_client_add_errors(
             get_mock_spc_record(
                 spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
-                objects=generate_fortos_object_string(["cert-der", "cert-pem"]),
+                objects=generate_ssc_object_string(["cert-der", "cert-pem"]),
             ),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
@@ -684,7 +684,7 @@ def test_client_remove_error(
                     get_mock_spc_record(
                         spc_name=OPCUA_SPC_NAME,
                         resource_group_name="mock-rg",
-                        objects=generate_fortos_object_string(["cert-der"]),
+                        objects=generate_ssc_object_string(["cert-der"]),
                     ),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,

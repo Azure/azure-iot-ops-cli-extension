@@ -200,7 +200,7 @@ def assemble_resource_map_mock(
     resource_map_mock().connected_cluster.get_aio_resources.return_value = resources
 
 
-def generate_fortos_object_string(
+def generate_ssc_object_string(
     names: List[str]
 ):
     object_string = "array:\n"
