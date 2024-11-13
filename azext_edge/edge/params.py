@@ -308,67 +308,8 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker name.",
         )
 
-    with self.argument_context("iot ops broker stats") as context:
-        context.argument(
-            "refresh_in_seconds",
-            options_list=["--refresh"],
-            help="Number of seconds between a stats refresh. Applicable with --watch.",
-            type=int,
-        )
-        context.argument(
-            "watch",
-            options_list=["--watch"],
-            help="The operation blocks and dynamically updates a stats table.",
-            arg_type=get_three_state_flag(),
-        )
-        context.argument(
-            "diag_service_pod_prefix",
-            options_list=["--diag-svc-pod"],
-            help="The diagnostic service pod prefix. The first pod fulfilling the condition will be connected to.",
-            arg_group="Diagnostics Pod",
-        )
-        context.argument(
-            "pod_metrics_port",
-            type=int,
-            options_list=["--metrics-port"],
-            help="Diagnostic service metrics API port.",
-            arg_group="Diagnostics Pod",
-        )
-        context.argument(
-            "pod_protobuf_port",
-            type=int,
-            options_list=["--protobuf-port"],
-            help="Diagnostic service protobuf API port.",
-            arg_group="Diagnostics Pod",
-        )
-        context.argument(
-            "raw_response_print",
-            options_list=["--raw"],
-            arg_type=get_three_state_flag(),
-            help="Return raw output from the metrics API.",
-        )
-        context.argument(
-            "trace_ids",
-            nargs="*",
-            options_list=["--trace-ids"],
-            help="Space-separated trace ids in hex format.",
-            arg_group="Trace",
-        )
-        context.argument(
-            "trace_dir",
-            options_list=["--trace-dir"],
-            help="Local directory where traces will be bundled and stored at.",
-            arg_group="Trace",
-        )
-
     for cmd_space in ["iot ops init", "iot ops create"]:
         with self.argument_context(cmd_space) as context:
-            context.argument(
-                "instance_name",
-                options_list=["--name", "-n"],
-                help="IoT Operations instance name. An instance name must be provided to "
-                "deploy an instance during init orchestration.",
-            )
             context.argument(
                 "cluster_name",
                 options_list=["--cluster"],
@@ -516,6 +457,12 @@ def load_iotops_arguments(self, _):
                 deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
+                "ops_train",
+                options_list=["--ops-train"],
+                help="Use to override the built-in IoT Operations arc extension release train. ",
+                deprecate_info=context.deprecate(hide=True),
+            )
+            context.argument(
                 "enable_fault_tolerance",
                 arg_type=get_three_state_flag(),
                 options_list=["--enable-fault-tolerance"],
@@ -580,14 +527,19 @@ def load_iotops_arguments(self, _):
         context.argument(
             "spc_name",
             options_list=["--spc"],
-            help="The secret provider class name for secret sync enablement. "
-            "The default pattern is '{instance_name}-spc'.",
+            help="The default secret provider class name for secret sync enablement. "
+            "The default pattern is 'spc-ops-{hash}'.",
         )
         context.argument(
             "skip_role_assignments",
             options_list=["--skip-ra"],
             arg_type=get_three_state_flag(),
             help="When used the role assignment step of the operation will be skipped.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i", "-n"],
+            help="IoT Operations instance name.",
         )
 
     with self.argument_context("iot ops asset") as context:
@@ -657,12 +609,6 @@ def load_iotops_arguments(self, _):
             "disabled",
             options_list=["--disable"],
             help="Disable an asset.",
-            arg_type=get_three_state_flag(),
-        )
-        context.argument(
-            "discovered",
-            options_list=["--discovered"],
-            help="Flag to determine if an asset was discovered on the cluster.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -993,13 +939,6 @@ def load_iotops_arguments(self, _):
             deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
-            "discovered",
-            options_list=["--discovered"],
-            help="Flag to determine if an asset endpoint profile was discovered on the cluster.",
-            arg_group="Additional Info",
-            arg_type=get_three_state_flag(),
-        )
-        context.argument(
             "target_address",
             options_list=["--target-address", "--ta"],
             help="Target Address. Must be a valid local address that follows the opc.tcp protocol.",
@@ -1280,13 +1219,37 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops connector opcua") as context:
         context.argument(
             "instance_name",
-            options_list=["--instance", "-i"],
+            options_list=["--instance", "-i", "-n"],
             help="IoT Operations instance name.",
         )
         context.argument(
             "resource_group",
             options_list=["--resource-group", "-g"],
             help="Instance resource group.",
+        )
+        context.argument(
+            "include_secrets",
+            options_list=["--include-secrets"],
+            help="Indicates the command should remove the key vault secrets "
+            "associated with the certificate(s). This option will delete and "
+            "purge the secrets.",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "certificate_names",
+            options_list=["--certificate-names", "--cn"],
+            nargs="+",
+            help="Space-separated certificate names to remove. "
+            "Note: the names can be found under the corresponding "
+            "secretsync resource property 'targetKey'.",
+        )
+        context.argument(
+            "overwrite_secret",
+            options_list=["--overwrite-secret"],
+            arg_type=get_three_state_flag(),
+            help="Confirm [y]es without a prompt to overwrite secret. "
+            "if secret name existed in Azure key vault. Useful for "
+            "CI and automation scenarios.",
         )
 
     with self.argument_context("iot ops connector opcua trust") as context:
@@ -1297,7 +1260,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "secret_name",
-            options_list=["--secret", "-s"],
+            options_list=["--secret-name", "-s"],
             help="Secret name in the Key Vault. If not provided, the "
             "certificate file name will be used to generate the secret name.",
         )
@@ -1333,22 +1296,24 @@ def load_iotops_arguments(self, _):
         context.argument(
             "subject_name",
             options_list=["--subject-name", "--sn"],
-            help="The subject name string embedded in the application instance certificate.",
+            help="The subject name string embedded in the application instance certificate."
+            "Can be found under public key certificate.",
         )
         context.argument(
             "application_uri",
             options_list=["--application-uri", "--au"],
-            help="The application instance URI embedded in the application instance.",
+            help="The application instance URI embedded in the application instance."
+            "Can be found under public key certificate.",
         )
         context.argument(
             "public_key_secret_name",
-            options_list=["--public-key-secret", "--pks"],
+            options_list=["--public-key-secret-name", "--pks"],
             help="Public key secret name in the Key Vault. If not provided, the "
             "certificate file name will be used to generate the secret name.",
         )
         context.argument(
             "private_key_secret_name",
-            options_list=["--private-key-secret", "--prks"],
+            options_list=["--private-key-secret-name", "--prks"],
             help="Private key secret name in the Key Vault. If not provided, the "
             "certificate file name will be used to generate the secret name.",
         )

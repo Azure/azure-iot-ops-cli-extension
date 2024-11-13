@@ -23,12 +23,12 @@ from rich.style import Style
 from rich.table import Table
 
 from ...util.az_client import (
-    REGISTRY_API_VERSION,
+    REGISTRY_PREVIEW_API_VERSION,
     get_resource_client,
     parse_resource_id,
     wait_for_terminal_state,
 )
-from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager
+from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from .resource_map import IoTOperationsResourceMap
 from .targets import InitTargets
 
@@ -341,7 +341,7 @@ class WorkManager:
                 # Ensure schema registry exists.
                 self.resource_client.resources.get_by_id(
                     resource_id=self._targets.schema_registry_resource_id,
-                    api_version=REGISTRY_API_VERSION,
+                    api_version=REGISTRY_PREVIEW_API_VERSION,
                 )
                 if not self._extension_map:
                     self._extension_map = self._resource_map.connected_cluster.get_extensions_by_type(
@@ -418,6 +418,7 @@ class WorkManager:
                             subscription_id=schema_registry_id_parts.subscription_id,
                             role_id=CONTRIBUTOR_ROLE_ID,
                         ),
+                        principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
                     )
                 except Exception as e:
                     role_assignment_error = get_user_msg_warn_ra(
