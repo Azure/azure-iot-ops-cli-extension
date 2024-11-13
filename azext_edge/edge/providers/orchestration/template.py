@@ -50,13 +50,13 @@ class TemplateBlueprint(NamedTuple):
 IOT_OPERATIONS_VERSION_MONIKER = "v0.8.0-preview"
 
 M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
-    commit_id="78864ae529f698cf1c9bf0be0a6957e6c9f3cf38",
+    commit_id="d44c47bf46d6d01667c93524d5c53390fea36cf5",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "3270298329645311323"}
+            "_generator": {"name": "bicep", "version": "0.31.34.60546", "templateHash": "3322333164880261279"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -351,13 +351,13 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
 )
 
 M3_INSTANCE_TEMPLATE = TemplateBlueprint(
-    commit_id="230d9cadd5d881896865992ab95739fdcfc6d9c1",
+    commit_id="d44c47bf46d6d01667c93524d5c53390fea36cf5",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.30.23.60470", "templateHash": "17393495510372529582"}
+            "_generator": {"name": "bicep", "version": "0.31.34.60546", "templateHash": "9520109892569949061"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -530,7 +530,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
             "VERSIONS": {"iotOperations": "1.0.9"},
-            "TRAINS": {"iotOperations": "integration"},
+            "TRAINS": {"iotOperations": "stable"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
@@ -611,7 +611,7 @@ M3_INSTANCE_TEMPLATE = TemplateBlueprint(
                     "displayName": "[parameters('customLocationName')]",
                     "clusterExtensionIds": "[flatten(createArray(parameters('clExtentionIds'), createArray(extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))))))]",
                 },
-                "dependsOn": ["aio_extension", "cluster"],
+                "dependsOn": ["aio_extension"],
             },
             "aio_syncRule": {
                 "condition": "[parameters('deployResourceSyncRules')]",
