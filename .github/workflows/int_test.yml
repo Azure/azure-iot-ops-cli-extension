@@ -132,7 +132,7 @@ jobs:
             echo "CREATE_ARG=${{ inputs.runtime-create-args }}" >> $GITHUB_OUTPUT
             echo "INIT_ARG=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "trustbundle" ]]; then
-            echo "CREATE_ARG= --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=ClusterIssuer issuerName=trust-manager-selfsigned-issuer" >> $GITHUB_OUTPUT
+            echo "CREATE_ARG=--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer " >> $GITHUB_OUTPUT
             echo "INIT_ARG=--user-trust true" >> $GITHUB_OUTPUT
           fi
       - name: "Output variables for future steps"
@@ -181,16 +181,20 @@ jobs:
             --set installCRDs=true \
             --set startupapicheck.timeout=5m
 
+          kubectl create namespace azure-iot-operations
+
           helm upgrade trust-manager jetstack/trust-manager \
             --install \
             --namespace cert-manager \
+            --set app.trust.namespace=cert-manager \
             --wait
 
           kubectl apply -f - <<EOF
           apiVersion: cert-manager.io/v1
-          kind: ClusterIssuer
+          kind: Issuer
           metadata:
-            name: trust-manager-selfsigned-issuer
+            name: selfsigned-issuer
+            namespace: cert-manager
           spec:
             selfSigned: {}
           ---
@@ -207,8 +211,8 @@ jobs:
               algorithm: ECDSA
               size: 256
             issuerRef:
-              name: trust-manager-selfsigned-issuer
-              kind: ClusterIssuer
+              name: selfsigned-issuer
+              kind: Issuer
               group: cert-manager.io
           EOF
 
@@ -217,6 +221,7 @@ jobs:
           kind: Bundle
           metadata:
             name: example-bundle
+            namespace: cert-manager
           spec:
             sources:
             - useDefaultCAs: true
@@ -226,6 +231,19 @@ jobs:
             target:
               configMap:
                 key: "trust-bundle.pem"
+              namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: azure-iot-operations
+          EOF
+
+          kubectl apply -f - <<EOF
+          apiVersion: cert-manager.io/v1
+          kind: Issuer
+          metadata:
+            name: selfsigned-issuer
+            namespace: azure-iot-operations
+          spec:
+            selfSigned: {}
           EOF
       - name: "Checkout extension source for build"
         uses: actions/checkout@v4
