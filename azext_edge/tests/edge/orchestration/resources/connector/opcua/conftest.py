@@ -23,12 +23,6 @@ def mocked_logger(mocker):
 
 
 @pytest.fixture
-def mocked_get_resource_client(mocker):
-    patched = mocker.patch("azext_edge.edge.util.queryable")
-    yield patched().get_resource_client
-
-
-@pytest.fixture
 def mocked_instance(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.Instances",
@@ -39,6 +33,30 @@ def mocked_instance(mocker):
 @pytest.fixture
 def mocked_sleep(mocker):
     patched = mocker.patch("azext_edge.edge.util.az_client.sleep", return_value=None)
+    yield patched
+
+
+@pytest.fixture
+def mocked_cl_resources(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_cl_resources",
+    )
+    yield patched
+
+
+@pytest.fixture
+def mocked_read_file_content(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.read_file_content",
+    )
+    yield patched
+
+
+@pytest.fixture
+def mocked_get_resource_client(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.util.queryable.get_resource_client",
+    )
     yield patched
 
 
@@ -66,8 +84,12 @@ def get_secretsync_endpoint(secretsync_name: str, resource_group_name: str) -> s
     )
 
 
-def get_secret_endpoint(keyvault_name: str, secret_name: Optional[str] = None) -> str:
-    resource_path = "/secrets"
+def get_secret_endpoint(
+    keyvault_name: str,
+    deleted: bool = False,
+    secret_name: Optional[str] = None,
+) -> str:
+    resource_path = "/deletedsecrets" if deleted else "/secrets"
     if secret_name:
         resource_path += f"/{secret_name}"
 
@@ -91,7 +113,7 @@ def get_mock_spc_record(spc_name: str, resource_group_name: str, objects: Option
     )
 
 
-def get_mock_secretsync_record(secretsync_name: str, resource_group_name: str, objects: Optional[str] = None) -> dict:
+def get_mock_secretsync_record(secretsync_name: str, resource_group_name: str, objects: Optional[dict] = None) -> dict:
     objects = objects or []
     return get_mock_resource(
         name=secretsync_name,
@@ -172,10 +194,16 @@ def setup_mock_common_responses(
 def assemble_resource_map_mock(
     resource_map_mock: Mock,
     extension: Optional[dict],
-    custom_locations: Optional[List[dict]],
     resources: Optional[List[dict]],
 ):
-    resource_map_mock().custom_locations = custom_locations
-    resource_map_mock().get_resources.return_value = resources
     resource_map_mock().connected_cluster.get_extensions_by_type.return_value = extension
     resource_map_mock().connected_cluster.get_aio_resources.return_value = resources
+
+
+def generate_ssc_object_string(
+    names: List[str]
+):
+    object_string = "array:\n"
+    for name in names:
+        object_string += f"    - |\n      objectEncoding: hex\n      objectName: {name}\n      objectType: secret\n"
+    return object_string
