@@ -50,7 +50,7 @@ class TemplateBlueprint(NamedTuple):
 IOT_OPERATIONS_VERSION_MONIKER = "v0.8.0-preview"
 
 M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
-    commit_id="d44c47bf46d6d01667c93524d5c53390fea36cf5",
+    commit_id="ade4c2645c9ee6c4a1038f2bfef12773ca30691a",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
@@ -351,7 +351,7 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
 )
 
 M3_INSTANCE_TEMPLATE = TemplateBlueprint(
-    commit_id="d44c47bf46d6d01667c93524d5c53390fea36cf5",
+    commit_id="ade4c2645c9ee6c4a1038f2bfef12773ca30691a",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
