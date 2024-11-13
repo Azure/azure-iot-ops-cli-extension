@@ -6,11 +6,16 @@
 
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from azure.cli.core.azclierror import ValidationError, FileOperationError, ForbiddenError, InvalidArgumentValueError
+from azure.cli.core.azclierror import (
+    AzureResponseError,
+    FileOperationError,
+    ForbiddenError,
+    InvalidArgumentValueError,
+    ValidationError,
+)
 from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
-
 
 from ....util.az_client import (
     get_registry_mgmt_client,
@@ -21,7 +26,7 @@ from ....util.az_client import (
 from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
 from ..common import SchemaFormat, SchemaType
-from ..permissions import PermissionManager, ROLE_DEF_FORMAT_STR, PrincipalType
+from ..permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 
 logger = get_logger(__name__)
 console = Console()
@@ -68,7 +73,7 @@ class SchemaRegistries(Queryable):
         custom_role_id: Optional[str] = None,
         **kwargs,
     ) -> dict:
-        from ..rp_namespace import register_providers, ADR_PROVIDER
+        from ..rp_namespace import ADR_PROVIDER, register_providers
         with console.status("Working...") as c:
             # Register the schema (ADR) provider
             register_providers(self.default_subscription_id, ADR_PROVIDER)
@@ -140,9 +145,9 @@ class SchemaRegistries(Queryable):
                 )
             except Exception as e:
                 c.stop()
-                logger.warning(
+                raise AzureResponseError(
                     get_user_msg_warn_ra(
-                        prefix=f"Role assignment failed with:\n{str(e)}.",
+                        prefix=f"Role assignment failed with:\n{str(e)}",
                         principal_id=result["identity"]["principalId"],
                         scope=blob_container["id"],
                     )
