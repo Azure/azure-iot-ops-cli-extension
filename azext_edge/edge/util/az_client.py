@@ -35,7 +35,6 @@ logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
-    # from azure.keyvault.secrets import SecretClient
 
     from ..vendor.clients.authzmgmt import AuthorizationManagementClient
     from ..vendor.clients.clusterconfigmgmt import KubernetesConfigurationClient
@@ -48,7 +47,7 @@ if TYPE_CHECKING:
     from ..vendor.clients.storagemgmt import StorageManagementClient
     from ..vendor.clients.msimgmt import ManagedServiceIdentityClient
     from ..vendor.clients.secretsyncmgmt import MicrosoftSecretSyncController
-    from ..vendor.clients.keyvaultsecret import KeyVaultClient
+    from ..vendor.clients.keyvault import KeyVaultClient
 
 
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
@@ -187,22 +186,13 @@ def get_authz_client(subscription_id: str, **kwargs) -> "AuthorizationManagement
 
 
 def get_keyvault_client(subscription_id: str, **kwargs) -> "KeyVaultClient":
-    # from azure.keyvault.secrets import SecretClient
-    from ..vendor.clients.keyvaultsecret import KeyVaultClient
+    from ..vendor.clients.keyvault import KeyVaultClient
 
     # TODO: this only supports azure public cloud for now
-    # client = SecretClient(
-    #     credential=AZURE_CLI_CREDENTIAL,
-    #     subscription_id=subscription_id,
-    #     user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
-    #     vault_url=f"https://{keyvault_name}.vault.azure.net",
-    #     **kwargs,
-    # )
     client = KeyVaultClient(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
-        # vault_url=f"https://{keyvault_name}.vault.azure.net",
         credential_scopes=["https://vault.azure.net/.default"],
         **kwargs,
     )
