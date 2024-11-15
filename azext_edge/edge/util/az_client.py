@@ -211,18 +211,6 @@ def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC, 
     return poller.result()
 
 
-def wait_for_terminal_TRY(poller: JSON, wait_sec: int = POLL_WAIT_SEC, **_) -> JSON:
-    # resource client does not handle sigint well
-    counter = 0
-    while counter < POLL_RETRIES:
-        sleep(wait_sec)
-        counter = counter + 1
-        # check status of the poller
-        if poller["status"] == 200:
-            break
-    return poller
-
-
 def wait_for_terminal_states(
     *pollers: "LROPoller", retries: int = POLL_RETRIES, wait_sec: int = POLL_WAIT_SEC, **_
 ) -> Tuple["LROPoller"]:
