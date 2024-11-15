@@ -13,13 +13,8 @@ from azure.core.rest import HttpRequest, HttpResponse
 from azure.mgmt.core import ARMPipelineClient
 
 from ._configuration import KeyVaultClientConfiguration
+from ._operations import KeyVaultClientOperationsMixin
 from ._serialization import Deserializer, Serializer
-from .operations import (
-    HSMSecurityDomainOperations,
-    KeyVaultClientOperationsMixin,
-    RoleAssignmentsOperations,
-    RoleDefinitionsOperations,
-)
 
 if TYPE_CHECKING:
     # pylint: disable=unused-import,ungrouped-imports
@@ -30,12 +25,6 @@ class KeyVaultClient(KeyVaultClientOperationsMixin):  # pylint: disable=client-a
     """The key vault client performs cryptographic key operations and vault operations against the Key
     Vault service.
 
-    :ivar role_definitions: RoleDefinitionsOperations operations
-    :vartype role_definitions: keyvault.secret.operations.RoleDefinitionsOperations
-    :ivar role_assignments: RoleAssignmentsOperations operations
-    :vartype role_assignments: keyvault.secret.operations.RoleAssignmentsOperations
-    :ivar hsm_security_domain: HSMSecurityDomainOperations operations
-    :vartype hsm_security_domain: keyvault.secret.operations.HSMSecurityDomainOperations
     :param credential: Credential needed for the client to connect to Azure. Required.
     :type credential: ~azure.core.credentials.TokenCredential
     :keyword api_version: Api Version. Default value is "7.5". Note that overriding this default
@@ -53,15 +42,6 @@ class KeyVaultClient(KeyVaultClientOperationsMixin):  # pylint: disable=client-a
         self._serialize = Serializer()
         self._deserialize = Deserializer()
         self._serialize.client_side_validation = False
-        self.role_definitions = RoleDefinitionsOperations(
-            self._client, self._config, self._serialize, self._deserialize
-        )
-        self.role_assignments = RoleAssignmentsOperations(
-            self._client, self._config, self._serialize, self._deserialize
-        )
-        self.hsm_security_domain = HSMSecurityDomainOperations(
-            self._client, self._config, self._serialize, self._deserialize
-        )
 
     def send_request(self, request: HttpRequest, **kwargs: Any) -> HttpResponse:
         """Runs the network request through the client's chained policies.
