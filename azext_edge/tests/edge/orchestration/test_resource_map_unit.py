@@ -13,7 +13,7 @@ import pytest
 from rich.tree import Tree
 
 from azext_edge.edge.providers.orchestration.resource_map import IoTOperationsResource
-from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
+from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
 
 from ...generators import generate_random_string, get_zeroed_subscription
 
@@ -68,7 +68,7 @@ def _assemble_connected_cluster_mock(
     cluster_mock().get_aio_custom_locations.return_value = custom_locations
     cluster_mock().get_aio_resources.return_value = resources
     cluster_mock().get_resource_sync_rules.return_value = sync_rules
-    cluster_mock().get_extensions_by_type.return_value = {IOT_OPS_EXTENSION_TYPE: aio_extension}
+    cluster_mock().get_extensions_by_type.return_value = {EXTENSION_TYPE_OPS: aio_extension}
 
 
 @pytest.mark.parametrize(

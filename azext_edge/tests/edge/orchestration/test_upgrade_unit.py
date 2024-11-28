@@ -81,7 +81,7 @@ def _assemble_template_mock(mocker, new_versions, new_trains):
     }
     versions = {variable_to_key_map[v]: new_versions[v] for v in variable_to_key_map}
     trains = {variable_to_key_map[v]: new_trains[v] for v in variable_to_key_map}
-    inst_temp_patch = mocker.patch("azext_edge.edge.providers.orchestration.template.M3_INSTANCE_TEMPLATE")
+    inst_temp_patch = mocker.patch("azext_edge.edge.providers.orchestration.template.TEMPLATE_BLUEPRINT_INSTANCE")
     inst_temp_patch.content = {
         "variables": {
             "VERSIONS": {"iotOperations": versions.pop("iotOperations")},
@@ -89,7 +89,7 @@ def _assemble_template_mock(mocker, new_versions, new_trains):
         }
     }
 
-    enable_temp_patch = mocker.patch("azext_edge.edge.providers.orchestration.template.M3_ENABLEMENT_TEMPLATE")
+    enable_temp_patch = mocker.patch("azext_edge.edge.providers.orchestration.template.TEMPLATE_BLUEPRINT_ENABLEMENT")
     enable_temp_patch.content = {
         "variables": {
             "VERSIONS": versions,

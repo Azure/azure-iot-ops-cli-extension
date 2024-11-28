@@ -1104,16 +1104,10 @@ def load_iotops_arguments(self, _):
             help="Schema registry name.",
         )
         context.argument(
-            "schema_format",
-            options_list=["--format"],
-            help="Schema format.",
-            arg_type=get_enum_type(SchemaFormat)
+            "schema_format", options_list=["--format"], help="Schema format.", arg_type=get_enum_type(SchemaFormat)
         )
         context.argument(
-            "schema_type",
-            options_list=["--type"],
-            help="Schema type.",
-            arg_type=get_enum_type(SchemaType)
+            "schema_type", options_list=["--type"], help="Schema type.", arg_type=get_enum_type(SchemaType)
         )
         context.argument(
             "description",
@@ -1130,19 +1124,19 @@ def load_iotops_arguments(self, _):
             options_list=["--version", "--ver"],
             help="Schema version name.",
             type=int,
-            arg_group="Version"
+            arg_group="Version",
         )
         context.argument(
             "schema_version_content",
             options_list=["--version-content", "--vc"],
             help="File path containing or inline content for the version.",
-            arg_group="Version"
+            arg_group="Version",
         )
         context.argument(
             "schema_version_description",
             options_list=["--version-desc", "--vd"],
             help="Description for the version.",
-            arg_group="Version"
+            arg_group="Version",
         )
 
     with self.argument_context("iot ops schema show-dataflow-refs") as context:
@@ -1156,7 +1150,7 @@ def load_iotops_arguments(self, _):
             options_list=["--version", "--ver"],
             help="Schema version name. If used, --latest will be ignored.",
             type=int,
-            arg_group=None
+            arg_group=None,
         )
         context.argument(
             "latest",
@@ -1319,12 +1313,7 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops schema version") as context:
-        context.argument(
-            "version_name",
-            options_list=["--name", "-n"],
-            help="Schema version name.",
-            type=int
-        )
+        context.argument("version_name", options_list=["--name", "-n"], help="Schema version name.", type=int)
         context.argument(
             "schema_name",
             options_list=["--schema"],
@@ -1339,5 +1328,5 @@ def load_iotops_arguments(self, _):
             "schema_version_content",
             options_list=["--content"],
             help="File path containing or inline content for the version.",
-            arg_group=None
+            arg_group=None,
         )
