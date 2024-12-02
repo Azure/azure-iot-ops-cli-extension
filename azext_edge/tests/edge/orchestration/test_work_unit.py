@@ -437,10 +437,10 @@ def test_iot_ops_init(
         assert_exception(expected_exc_meta=exc_meta, call_func=init, call_kwargs=init_call_kwargs)
         return
 
-    init_result = init(**init_call_kwargs)
+    init_result = init(**init_call_kwargs)  # pylint: disable=assignment-from-no-return
     expected_call_count_map = {
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
-        CallKey.GET_RESOURCE_PROVIDERS: 1,  # TODO: Register RPs
+        CallKey.GET_RESOURCE_PROVIDERS: 1,
         CallKey.GET_CLUSTER: 1,
         CallKey.DEPLOY_INIT_WHATIF: 1,
         CallKey.DEPLOY_INIT: 1,
@@ -663,11 +663,11 @@ def test_iot_ops_create(
         assert_exception(expected_exc_meta=exc_meta, call_func=create_instance, call_kwargs=create_call_kwargs)
         return
 
-    create_result = create_instance(**create_call_kwargs)
+    create_result = create_instance(**create_call_kwargs)  # pylint: disable=assignment-from-no-return
 
     expected_call_count_map = {
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
-        CallKey.GET_RESOURCE_PROVIDERS: 1,  # TODO: Register RPs
+        CallKey.GET_RESOURCE_PROVIDERS: 1,
         CallKey.GET_CLUSTER: 1,
         CallKey.GET_SCHEMA_REGISTRY: 1,
         CallKey.GET_CLUSTER_EXTENSIONS: 2,
