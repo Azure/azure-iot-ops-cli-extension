@@ -825,8 +825,7 @@ class OpcUACerts(Queryable):
                 if e.status_code == 403:
                     # Permission issue encountered; exit loop
                     break
-                else:
-                    raise
+                raise
 
         # Failed to confirm deletion after retries
         raise TimeoutError(f"Failed to delete secret '{secret_name}' within {SECRET_DELETE_MAX_RETRIES} retries.")
