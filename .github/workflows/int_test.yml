@@ -145,6 +145,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: "Checkout extension source for build"
+        uses: actions/checkout@v4
+        with:
+          # ensure source checkout uses our repo instead of calling workflow
+          repository: azure/azure-iot-ops-cli-extension
+          path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+      - name: "Build and install local IoT Ops extension from source"
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          pip install -r dev_requirements.txt
+          python -m setup bdist_wheel -d dist
+          wheel=$(find ./dist/*.whl)
+          az extension add --source $wheel -y
       - name: "Create k3s cluster"
         run: |
           # vars
@@ -245,19 +258,6 @@ jobs:
           spec:
             selfSigned: {}
           EOF
-      - name: "Checkout extension source for build"
-        uses: actions/checkout@v4
-        with:
-          # ensure source checkout uses our repo instead of calling workflow
-          repository: azure/azure-iot-ops-cli-extension
-          path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-      - name: "Build and install local IoT Ops extension from source"
-        run: |
-          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-          pip install -r dev_requirements.txt
-          python -m setup bdist_wheel -d dist
-          wheel=$(find ./dist/*.whl)
-          az extension add --source $wheel -y
       - name: "Az CLI login"
         uses: azure/login@v2
         with:
