@@ -11,10 +11,9 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 from azure.cli.core.azclierror import ArgumentUsageError
 from knack.log import get_logger
 
-from .common import OpsServiceType
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.edge_api import META_API_V1B1
+from .providers.edge_api import META_API_V1
 from .providers.orchestration.common import (
     IdentityUsageType,
     KubernetesDistroType,
@@ -30,17 +29,17 @@ logger = get_logger(__name__)
 def support_bundle(
     cmd,
     log_age_seconds: int = 60 * 60 * 24,
-    ops_service: str = OpsServiceType.auto.value,
     bundle_dir: Optional[str] = None,
     include_mq_traces: Optional[bool] = None,
     context_name: Optional[str] = None,
+    ops_services: Optional[List[str]] = None,
 ) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.support_bundle import build_bundle
 
     bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir)
     return build_bundle(
-        ops_service=ops_service,
+        ops_services=ops_services,
         bundle_path=str(bundle_path),
         log_age_seconds=log_age_seconds,
         include_mq_traces=include_mq_traces,
@@ -61,7 +60,7 @@ def check(
     load_config_context(context_name=context_name)
     from .providers.checks import run_checks
 
-    aio_deployed = META_API_V1B1.is_deployed()
+    aio_deployed = META_API_V1.is_deployed()
     # by default - run prechecks if AIO is not deployed, otherwise use argument
     run_pre = not aio_deployed if pre_deployment_checks is None else pre_deployment_checks
     # by default - run postchecks if AIO is deployed, otherwise use argument
@@ -96,29 +95,14 @@ def check(
     )
 
 
-def verify_host(
-    cmd,
-    no_progress: Optional[bool] = None,
-):
-    from .providers.orchestration import run_host_verify
-
-    run_host_verify(render_progress=not no_progress)
-    return
-
-
 def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
-    schema_registry_resource_id: str,
-    container_runtime_socket: Optional[str] = None,
-    kubernetes_distro: str = KubernetesDistroType.k8s.value,
-    trust_settings: Optional[List[str]] = None,
     enable_fault_tolerance: Optional[bool] = None,
-    ops_config: Optional[List[str]] = None,
-    ops_version: Optional[str] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
+    user_trust: Optional[bool] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
@@ -135,13 +119,29 @@ def init(
         pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
-        container_runtime_socket=container_runtime_socket,
-        kubernetes_distro=kubernetes_distro,
         enable_fault_tolerance=enable_fault_tolerance,
-        ops_config=ops_config,
-        ops_version=ops_version,
-        trust_settings=trust_settings,
-        schema_registry_resource_id=schema_registry_resource_id,
+        user_trust=user_trust,
+    )
+
+
+def upgrade(
+    cmd,
+    resource_group_name: str,
+    instance_name: str,
+    schema_registry_resource_id: Optional[str] = None,
+    no_progress: Optional[bool] = None,
+    confirm_yes: Optional[bool] = None,
+    **kwargs
+):
+    from .providers.orchestration.upgrade import upgrade_ops_resources
+    return upgrade_ops_resources(
+        cmd=cmd,
+        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        sr_resource_id=schema_registry_resource_id,
+        no_progress=no_progress,
+        confirm_yes=confirm_yes,
+        **kwargs
     )
 
 
@@ -150,12 +150,20 @@ def create_instance(
     cluster_name: str,
     resource_group_name: str,
     instance_name: str,
+    schema_registry_resource_id: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     location: Optional[str] = None,
     custom_location_name: Optional[str] = None,
     enable_rsync_rules: Optional[bool] = None,
     instance_description: Optional[str] = None,
     dataflow_profile_instances: int = 1,
+    trust_settings: Optional[List[str]] = None,
+    # Ops extension
+    container_runtime_socket: Optional[str] = None,
+    kubernetes_distro: str = KubernetesDistroType.k8s.value,
+    ops_config: Optional[List[str]] = None,
+    ops_version: Optional[str] = None,
+    ops_train: Optional[str] = None,
     # Broker
     custom_broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
@@ -197,6 +205,7 @@ def create_instance(
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         cluster_namespace=cluster_namespace,
+        schema_registry_resource_id=schema_registry_resource_id,
         location=location,
         custom_location_name=custom_location_name,
         enable_rsync_rules=enable_rsync_rules,
@@ -204,6 +213,13 @@ def create_instance(
         instance_description=instance_description,
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
+        trust_settings=trust_settings,
+        # Ops extension
+        container_runtime_socket=container_runtime_socket,
+        kubernetes_distro=kubernetes_distro,
+        ops_config=ops_config,
+        ops_version=ops_version,
+        ops_train=ops_train,
         # Broker
         custom_broker_config=custom_broker_config,
         broker_memory_profile=broker_memory_profile,

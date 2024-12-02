@@ -35,6 +35,12 @@ def mocked_urlopen(mocker):
 
 
 @pytest.fixture
+def mocked_register_providers(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.rp_namespace.register_providers", autospec=True)
+    yield patched
+
+
+@pytest.fixture
 def mocked_resource_management_client(request, mocker):
     request_results = getattr(request, "param", {})
     resource_mgmt_client = mocker.Mock()
@@ -152,7 +158,7 @@ def tracked_resources():
         try:
             run(f"az resource delete --id {res} -v")
         except CLIInternalError:
-            logger.warning(f"failed to delete {res}")
+            logger.error(f"Failed to delete {res}")
 
 
 @pytest.fixture(scope="session")
@@ -188,9 +194,7 @@ def init_setup(request, cluster_connection, settings):
     settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.instance.value)
 
-    run("az iot ops verify-host")
     yield {
         "instanceName": settings.env.azext_edge_instance,
         "resourceGroup": settings.env.azext_edge_rg,
     }
-    return

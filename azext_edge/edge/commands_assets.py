@@ -46,6 +46,7 @@ def create_asset(
     ev_sampling_interval: int = 500,
     ev_queue_size: int = 1,
     tags: Optional[Dict[str, str]] = None,
+    **kwargs
 ):
     return Assets(cmd).create(
         asset_name=asset_name,
@@ -78,7 +79,8 @@ def create_asset(
         ev_publishing_interval=ev_publishing_interval,
         ev_sampling_interval=ev_sampling_interval,
         ev_queue_size=ev_queue_size,
-        tags=tags
+        tags=tags,
+        **kwargs
     )
 
 
@@ -86,17 +88,21 @@ def delete_asset(
     cmd,
     asset_name: str,
     resource_group_name: str,
+    **kwargs
 ) -> dict:
-    return Assets(cmd).delete(asset_name=asset_name, resource_group_name=resource_group_name)
+    return Assets(cmd).delete(
+        asset_name=asset_name,
+        resource_group_name=resource_group_name,
+        **kwargs
+    )
 
 
 # TODO: add in once GA
 def list_assets(
     cmd,
-    # discovered: bool = False,  # TODO: discovered
     resource_group_name: str = None,
 ) -> List[dict]:
-    return Assets(cmd).list(discovered=False, resource_group_name=resource_group_name)
+    return Assets(cmd).list(resource_group_name=resource_group_name)
 
 
 def query_assets(
@@ -107,7 +113,6 @@ def query_assets(
     default_topic_retain: Optional[str] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
-    # discovered: Optional[bool] = None,  # TODO: discovered
     display_name: Optional[str] = None,
     documentation_uri: Optional[str] = None,
     endpoint_profile: Optional[str] = None,
@@ -131,7 +136,6 @@ def query_assets(
         default_topic_retain=default_topic_retain,
         description=description,
         display_name=display_name,
-        discovered=False,
         disabled=disabled,
         documentation_uri=documentation_uri,
         endpoint_profile=endpoint_profile,
@@ -183,6 +187,7 @@ def update_asset(
     ev_sampling_interval: Optional[int] = None,
     ev_queue_size: Optional[int] = None,
     tags: Optional[Dict[str, str]] = None,
+    **kwargs
 ):
     return Assets(cmd).update(
         asset_name=asset_name,
@@ -207,7 +212,8 @@ def update_asset(
         ev_publishing_interval=ev_publishing_interval,
         ev_sampling_interval=ev_sampling_interval,
         ev_queue_size=ev_queue_size,
-        tags=tags
+        tags=tags,
+        **kwargs
     )
 
 
@@ -247,7 +253,8 @@ def add_asset_data_point(
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
-    replace: Optional[bool] = None
+    replace: Optional[bool] = None,
+    **kwargs
 ):
     return Assets(cmd).add_dataset_data_point(
         asset_name=asset_name,
@@ -258,7 +265,8 @@ def add_asset_data_point(
         queue_size=queue_size,
         sampling_interval=sampling_interval,
         resource_group_name=resource_group_name,
-        replace=replace
+        replace=replace,
+        **kwargs
     )
 
 
@@ -288,13 +296,15 @@ def import_asset_data_points(
     file_path: str,
     resource_group_name: str,
     replace: bool = False,
+    **kwargs
 ):
     return Assets(cmd).import_dataset_data_points(
         asset_name=asset_name,
         dataset_name=dataset_name,
         file_path=file_path,
         replace=replace,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        **kwargs
     )
 
 
@@ -317,12 +327,14 @@ def remove_asset_data_point(
     dataset_name: str,
     data_point_name: str,
     resource_group_name: str,
+    **kwargs
 ):
     return Assets(cmd).remove_dataset_data_point(
         asset_name=asset_name,
         dataset_name=dataset_name,
         data_point_name=data_point_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        **kwargs
     )
 
 
@@ -336,7 +348,8 @@ def add_asset_event(
     observability_mode: Optional[str] = None,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,  # Note: not in DOE
-    replace: Optional[bool] = None
+    replace: Optional[bool] = None,
+    **kwargs
 ):
     return Assets(cmd).add_event(
         asset_name=asset_name,
@@ -347,6 +360,7 @@ def add_asset_event(
         sampling_interval=sampling_interval,
         resource_group_name=resource_group_name,
         replace=replace,
+        **kwargs
     )
 
 
@@ -373,12 +387,14 @@ def import_asset_events(
     file_path: str,
     resource_group_name: str,
     replace: bool = False,
+    **kwargs
 ):
     return Assets(cmd).import_events(
         asset_name=asset_name,
         file_path=file_path,
         replace=replace,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        **kwargs
     )
 
 
@@ -397,9 +413,11 @@ def remove_asset_event(
     asset_name: str,
     event_name: str,
     resource_group_name: str,
+    **kwargs
 ):
     return Assets(cmd).remove_event(
         asset_name=asset_name,
         event_name=event_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        **kwargs
     )

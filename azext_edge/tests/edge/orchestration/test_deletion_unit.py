@@ -10,6 +10,8 @@ from unittest.mock import Mock
 import pytest
 
 from azext_edge.edge.providers.orchestration.deletion import IoTOperationsResource
+from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
+from azext_edge.tests.helpers import generate_ops_resource
 
 from ...generators import generate_random_string
 
@@ -61,20 +63,6 @@ def spy_deletion_manager(mocker):
     }
 
 
-def _generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
-    resource_id = ""
-    for _ in range(segments):
-        resource_id = f"{resource_id}/{generate_random_string()}"
-
-    resource = IoTOperationsResource(
-        resource_id=resource_id,
-        display_name=resource_id.split("/")[-1],
-        api_version=generate_random_string(),
-    )
-
-    return resource
-
-
 def _assemble_resource_map_mock(
     resource_map_mock: Mock,
     extensions: Optional[List[dict]],
@@ -86,6 +74,12 @@ def _assemble_resource_map_mock(
     resource_map_mock().custom_locations = custom_locations
     resource_map_mock().get_resources.return_value = resources
     resource_map_mock().get_resource_sync_rules.return_value = sync_rules
+    resource_map_mock().connected_cluster.get_extensions_by_type.return_value = {
+        IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id"}
+    }
+    resource_map_mock().extensions.append(
+        IoTOperationsResource(resource_id="aio-ext-id", display_name="aio-extension", api_version="aio-ext-api")
+    )
 
 
 @pytest.mark.parametrize(
@@ -95,18 +89,18 @@ def _assemble_resource_map_mock(
             "resources": None,
             "resource sync rules": None,
             "custom locations": None,
-            "extensions": None,
+            "extensions": [],
             "meta": {
                 "expected_total": 0,
             },
         },
         {
             "resources": [
-                _generate_ops_resource(4),
+                generate_ops_resource(4),
             ],
-            "resource sync rules": [_generate_ops_resource()],
-            "custom locations": [_generate_ops_resource()],
-            "extensions": [_generate_ops_resource()],
+            "resource sync rules": [generate_ops_resource()],
+            "custom locations": [generate_ops_resource()],
+            "extensions": [generate_ops_resource()],
             "meta": {
                 "expected_total": 4,
                 "resource_batches": 1,
@@ -114,14 +108,14 @@ def _assemble_resource_map_mock(
         },
         {
             "resources": [
-                _generate_ops_resource(4),
-                _generate_ops_resource(4),
-                _generate_ops_resource(3),
-                _generate_ops_resource(1),
+                generate_ops_resource(4),
+                generate_ops_resource(4),
+                generate_ops_resource(3),
+                generate_ops_resource(1),
             ],
             "resource sync rules": [],
-            "custom locations": [_generate_ops_resource()],
-            "extensions": [_generate_ops_resource(), _generate_ops_resource()],
+            "custom locations": [generate_ops_resource()],
+            "extensions": [generate_ops_resource(), generate_ops_resource()],
             "meta": {
                 "expected_total": 7,
                 "resource_batches": 3,
@@ -183,13 +177,14 @@ def test_batch_resources(
             "extensions": [],
             "meta": {
                 "expected_total": 0,
+                "expected_delete_calls": 1,  # aio extension
             },
         },
         {
-            "resources": [_generate_ops_resource(4), _generate_ops_resource(2)],
-            "resource sync rules": [_generate_ops_resource(), _generate_ops_resource()],
-            "custom locations": [_generate_ops_resource()],
-            "extensions": [_generate_ops_resource()],
+            "resources": [generate_ops_resource(4), generate_ops_resource(2)],
+            "resource sync rules": [generate_ops_resource(), generate_ops_resource()],
+            "custom locations": [generate_ops_resource()],
+            "extensions": [generate_ops_resource()],
             "meta": {
                 "expected_total": 5,
                 "resource_batches": 2,
@@ -198,10 +193,10 @@ def test_batch_resources(
         },
         # Currently no associated custom location means no non-extensions get deleted
         {
-            "resources": [_generate_ops_resource(4), _generate_ops_resource(2)],
-            "resource sync rules": [_generate_ops_resource()],
+            "resources": [generate_ops_resource(4), generate_ops_resource(2)],
+            "resource sync rules": [generate_ops_resource()],
             "custom locations": [],
-            "extensions": [_generate_ops_resource()],
+            "extensions": [generate_ops_resource()],
             "meta": {
                 "expected_total": 4,
                 "resource_batches": 2,
@@ -212,7 +207,7 @@ def test_batch_resources(
             "resources": [],
             "resource sync rules": [],
             "custom locations": [],
-            "extensions": [_generate_ops_resource()],
+            "extensions": [generate_ops_resource()],
             "meta": {
                 "expected_total": 1,
                 "resource_batches": 0,
@@ -260,8 +255,6 @@ def test_delete_lifecycle(
     delete_ops_resources(**kwargs)
 
     expected_delete_calls: int = expected_resources_map["meta"].get("expected_delete_calls", 0)
-    if not include_dependencies and expected_delete_calls > 0:
-        expected_delete_calls = expected_delete_calls - 1
 
     spy_deletion_manager["_display_resource_tree"].assert_called_once()
     spy_deletion_manager["_process"].assert_called_once()

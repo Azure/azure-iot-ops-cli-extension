@@ -39,8 +39,6 @@ KEY_CONVERSION_MAP = {"enable_rsync_rules": "deploy_resource_sync_rules"}
 KVP_KEYS = frozenset(["ops_config", "trust_settings"])
 ENABLEMENT_PARAM_CONVERSION_MAP = {
     "clusterName": "cluster_name",
-    "kubernetesDistro": "kubernetes_distro",
-    "containerRuntimeSocket": "container_runtime_socket",
     "trustConfig": "trust_config",
     "schemaRegistryId": "schema_registry_resource_id",
     "advancedConfig": "advanced_config",
@@ -49,11 +47,14 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "clusterName": "cluster_name",
     "clusterNamespace": "cluster_namespace",
     "clusterLocation": "location",
+    "kubernetesDistro": "kubernetes_distro",
+    "containerRuntimeSocket": "container_runtime_socket",
     "customLocationName": "custom_location_name",
     "deployResourceSyncRules": "deploy_resource_sync_rules",
     "schemaRegistryId": "schema_registry_resource_id",
     "defaultDataflowinstanceCount": "dataflow_profile_instances",
     "brokerConfig": "broker_config",
+    "trustConfig": "trust_config",
 }
 
 
@@ -89,6 +90,7 @@ INSTANCE_PARAM_CONVERSION_MAP = {
             enable_fault_tolerance=True,
             ops_config=[f"{generate_random_string()}={generate_random_string()}"],
             ops_version=generate_random_string(),
+            ops_train=generate_random_string(),
             trust_settings=get_trust_settings(),
             dataflow_profile_instances=randint(1, 10),
             broker_memory_profile=generate_random_string(),
@@ -102,6 +104,16 @@ INSTANCE_PARAM_CONVERSION_MAP = {
             kubernetes_distro=generate_random_string(),
             container_runtime_socket=generate_random_string(),
             custom_broker_config={generate_random_string(): generate_random_string()},
+        ),
+        build_target_scenario(
+            cluster_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+            schema_registry_resource_id=get_resource_id(
+                resource_path="/schemaRegistries/myregistry",
+                resource_group_name=generate_random_string(),
+                resource_provider="Microsoft.DeviceRegistry",
+            ),
+            user_trust=True,
         ),
     ],
 )
@@ -126,18 +138,12 @@ def test_init_targets(target_scenario: dict):
     if target_scenario.get("enable_fault_tolerance"):
         assert targets.advanced_config == {"edgeStorageAccelerator": {"faultToleranceEnabled": True}}
 
-    if target_scenario.get("trust_settings"):
-        assert targets.trust_config == {
-            "source": "CustomerManaged",
-            "settings": {
-                "issuerKind": target_scenario["trust_settings"]["issuerKind"],
-                "configMapKey": target_scenario["trust_settings"]["configMapKey"],
-                "issuerName": target_scenario["trust_settings"]["issuerName"],
-                "configMapName": target_scenario["trust_settings"]["configMapName"],
-            },
-        }
+    verify_user_trust_settings(targets, target_scenario)
 
     enablement_template, enablement_parameters = targets.get_ops_enablement_template()
+
+    verify_user_trust_enablement(targets, enablement_template, target_scenario)
+
     for parameter in enablement_parameters:
         targets_key = parameter
         if parameter in ENABLEMENT_PARAM_CONVERSION_MAP:
@@ -146,17 +152,25 @@ def test_init_targets(target_scenario: dict):
             targets, targets_key
         ), f"{parameter} value mismatch with targets {targets_key} value."
 
+    extension_ids = [generate_random_string(), generate_random_string()]
+    target_scenario_has_user_trust = target_scenario.get("trust_settings")
+    if target_scenario_has_user_trust:
+        targets.trust_config = None
+
+    instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids)
+
+    if targets.ops_version:
+        assert instance_template["variables"]["VERSIONS"]["iotOperations"] == targets.ops_version
+
+    if targets.ops_train:
+        assert instance_template["variables"]["TRAINS"]["iotOperations"] == targets.ops_train
+
     if targets.ops_config:
-        aio_config_settings = enablement_template["variables"]["defaultAioConfigurationSettings"]
+        aio_config_settings = instance_template["variables"]["defaultAioConfigurationSettings"]
         for c in targets.ops_config:
             assert c in aio_config_settings
             assert aio_config_settings[c] == targets.ops_config[c]
 
-    if targets.ops_version:
-        assert enablement_template["variables"]["VERSIONS"]["aio"] == targets.ops_version
-
-    extension_ids = [generate_random_string(), generate_random_string()]
-    instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids)
     for parameter in instance_parameters:
         if parameter == "clExtentionIds":
             assert instance_parameters[parameter]["value"] == extension_ids
@@ -169,6 +183,10 @@ def test_init_targets(target_scenario: dict):
         ), f"{parameter} value mismatch with targets {targets_key} value."
 
     assert instance_template["resources"]["aioInstance"]["properties"]["description"] == targets.instance_description
+
+    assert instance_template["resources"]["aioInstance"]["properties"]["schemaRegistryRef"] == {
+        "resourceId": "[parameters('schemaRegistryId')]"
+    }
 
     if targets.tags:
         assert instance_template["resources"]["aioInstance"]["tags"] == targets.tags
@@ -188,3 +206,31 @@ def test_init_targets(target_scenario: dict):
         assert instance_template["resources"]["broker_listener_insecure"] == get_insecure_listener(
             targets.instance_name, "default"
         )
+
+    verify_user_trust_settings(targets, target_scenario)
+
+
+def verify_user_trust_settings(targets: InitTargets, target_scenario: dict):
+    target_scenario_has_user_trust = target_scenario.get("trust_settings")
+    if not target_scenario_has_user_trust:
+        assert targets.trust_config == {"source": "SelfSigned"}
+        return
+
+    assert targets.trust_config == {
+        "source": "CustomerManaged",
+        "settings": {
+            "issuerKind": target_scenario["trust_settings"]["issuerKind"],
+            "configMapKey": target_scenario["trust_settings"]["configMapKey"],
+            "issuerName": target_scenario["trust_settings"]["issuerName"],
+            "configMapName": target_scenario["trust_settings"]["configMapName"],
+        },
+    }
+
+
+def verify_user_trust_enablement(targets: InitTargets, enablement_template: dict, target_scenario: dict):
+    if target_scenario.get("user_trust"):
+        assert targets.trust_config["source"] == "CustomerManaged"
+        # TODO @c-ryan-k - Enablement template should not require "settings" for customer managed trust config
+        assert enablement_template["definitions"]["_1.CustomerManaged"]["properties"]["settings"]["nullable"]
+    elif not target_scenario.get("trust_settings"):
+        assert targets.trust_config["source"] == "SelfSigned"

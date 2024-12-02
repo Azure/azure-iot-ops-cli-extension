@@ -11,7 +11,6 @@ from knack.help_files import helps
 
 from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
 
-from .providers.edge_api import MQ_ACTIVE_API
 from .providers.support_bundle import (
     COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
@@ -78,7 +77,7 @@ def load_iotops_help():
           text: >
             az iot ops support create-bundle --ops-service broker --log-age 172800
 
-        - name: Include mqtt broker traces in the support bundle. This is an alias for stats trace fetch capability.
+        - name: Include mqtt broker traces in the support bundle.
           text: >
             az iot ops support create-bundle --ops-service broker --broker-traces
 
@@ -89,6 +88,14 @@ def load_iotops_help():
         - name: Include secretstore resources in the support bundle.
           text: >
             az iot ops support create-bundle --ops-service secretstore
+
+        - name: Include multiple services in the support bundle with single --ops-service flag.
+          text: >
+            az iot ops support create-bundle --ops-service broker opcua deviceregistry
+
+        - name: Include multiple services in the support bundle with multiple --ops-service flags.
+          text: >
+            az iot ops support create-bundle --ops-service broker --ops-service opcua --ops-service deviceregistry
     """
 
     helps[
@@ -136,39 +143,6 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Mqtt broker management.
-    """
-
-    helps[
-        "iot ops broker stats"
-    ] = f"""
-        type: command
-        short-summary: Show dmqtt running statistics.
-        long-summary: |
-            {{Supported service APIs}}
-            - {MQ_ACTIVE_API.as_str()}
-
-        examples:
-        - name: Fetch key performance indicators from the diagnostics Prometheus metrics endpoint.
-          text: >
-            az iot ops broker stats
-
-        - name: Same as prior example except with a dynamic display that refreshes periodically.
-          text: >
-            az iot ops broker stats --watch
-
-        - name: Return the raw output of the metrics endpoint with minimum processing.
-          text: >
-            az iot ops broker stats --raw
-
-        - name: Fetch all available mqtt broker traces from the diagnostics Protobuf endpoint.
-                This will produce a `.zip` with both `Otel` and Grafana `tempo` file formats.
-                A trace files last modified attribute will match the trace timestamp.
-          text: >
-            az iot ops broker stats --trace-dir .
-
-        - name: Fetch traces by trace Ids provided in space-separated hex format. Only `Otel` format is shown.
-          text: >
-            az iot ops broker stats --trace-ids 4e84000155a98627cdac7de46f53055d
     """
 
     helps[
@@ -442,18 +416,6 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops verify-host"
-    ] = """
-        type: command
-        short-summary: Runs a set of cluster host verifications for IoT Operations deployment compatibility.
-        long-summary: Intended to be run directly on a target cluster host.
-          The command may prompt to apply a set of privileged actions such as installing a dependency.
-          In this case the CLI must be run with elevated permissions. For example
-
-            `sudo AZURE_EXTENSION_DIR=~/.azure/cliextensions az iot ops verify-host`.
-    """
-
-    helps[
         "iot ops init"
     ] = """
         type: command
@@ -470,16 +432,14 @@ def load_iotops_help():
         examples:
         - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
           text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             az iot ops init --cluster mycluster -g myresourcegroup
         - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
           text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --enable-fault-tolerance
-        - name: This example highlights trust settings for a user provided cert manager config.
+             az iot ops init --cluster mycluster -g myresourcegroup --enable-fault-tolerance
+        - name: This example highlights enabling user trust settings for a custom cert-manager config.
+            This will skip deployment of the system cert-manager and trust-manager.
           text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=ClusterIssuer
-             issuerName=trust-manager-selfsigned-issuer
+             az iot ops init --cluster mycluster -g myresourcegroup --user-trust
 
     """
 
@@ -497,24 +457,31 @@ def load_iotops_help():
         examples:
         - name: Create the target instance with minimum input.
           text: >
-            az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+            az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
         - name: The following example adds customization to the default broker instance resource
             as well as an instance description and tags.
           text: >
-             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --broker-mem-profile High --broker-backend-workers 4 --description 'Contoso Factory'
              --tags tier=testX1
         - name: This example shows deploying an additional insecure (no authn or authz) broker listener
             configured for port 1883 of service type load balancer. Useful for testing and/or demos.
             Do not use the insecure option in production.
           text: >
-             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --add-insecure-listener
         - name: This form shows how to enable resource sync for the instance deployment.
             To enable resource sync role assignment write is necessary on the target resource group.
           text: >
-             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --enable-rsync
+        - name: This example highlights trust settings for a user provided cert-manager config.
+            Note that the cluster must have been initialized with `--user-trust` and a user cert-manager deployment must be present.
+          text: >
+              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+              --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem
+              issuerKind=ClusterIssuer issuerName=trust-manager-selfsigned-issuer
+
     """
 
     helps[
@@ -603,6 +570,30 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops upgrade"
+    ] = """
+        type: command
+        short-summary: Upgrade an IoT Operations instance to the latest version.
+        long-summary: |
+                      WARNING: This command may fail and require you to delete and re-create your cluster and instance.
+
+                      Upgrade an IoT Operations instance, including updating the extensions to the latest versions.
+                      Use this command if `az iot ops show` or similiar commands are failing.
+
+                      Schema registry resource Id is an optional parameter and may be required in specific scenarios.
+        examples:
+        - name: Upgrade the instance with minimal inputs.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup
+        - name: Skip the conformation prompt during instance upgrade.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup -y
+        - name: Upgrade the instance and specify the schema registry resource Id.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+    """
+
+    helps[
         "iot ops identity"
     ] = """
         type: group
@@ -660,32 +651,30 @@ def load_iotops_help():
         type: command
         short-summary: Enable secret sync for an instance.
         long-summary: |
-            The operation handles federation, creation of a secret provider class
-            and role assignments of the managed identity to the target Key Vault.
-
-            Only one Secret Provider Class must be associated to the instance at a time.
+            The operation handles identity federation, creation of a default secret provider class
+            and role assignments of the managed identity against the target Key Vault.
 
         examples:
         - name: Enable the target instance for Key Vault secret sync.
           text: >
-            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
         - name: Same as prior example except flag to skip Key Vault role assignments.
           text: >
-            az iot ops secretsync enable --name myinstance -g myresourcegroup
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --skip-ra
     """
 
     helps[
-        "iot ops secretsync show"
+        "iot ops secretsync list"
     ] = """
         type: command
-        short-summary: Show the secret sync config associated with an instance.
+        short-summary: List the secret sync configs associated with an instance.
 
         examples:
-        - name: Show the secret sync config associated with an instance.
+        - name: List the secret sync configs associated with an instance.
           text: >
-            az iot ops secretsync show --name myinstance -g myresourcegroup
+            az iot ops secretsync list --instance myinstance -g myresourcegroup
     """
 
     helps[
@@ -693,11 +682,14 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Disable secret sync for an instance.
+        long-summary: |
+          All the secret provider classes associated with the instance, and all the secret
+          syncs associated with the secret provider classes will be deleted.
 
         examples:
         - name: Disable secret sync for an instance.
           text: >
-            az iot ops secretsync disable --name myinstance -g myresourcegroup
+            az iot ops secretsync disable --instance myinstance -g myresourcegroup
     """
 
     helps[
@@ -1133,6 +1125,69 @@ def load_iotops_help():
         long-summary: |
           Schemas are documents that describe data to enable processing and contextualization.
           Message schemas describe the format of a message and its contents.
+          A schema registry is required to create and manage schemas.
+    """
+
+    helps[
+        "iot ops schema show"
+    ] = """
+        type: command
+        short-summary: Show details of a schema within a schema registry.
+        examples:
+        - name: Show details of target schema 'myschema' within a schema registry 'myregistry'.
+          text: >
+            az iot ops schema show --name myschema --registry myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema list"
+    ] = """
+        type: command
+        short-summary: List schemas within a schema registry.
+        examples:
+        - name: List schema registeries in the schema registry 'myregistry'.
+          text: >
+            az iot ops schema list -g myresourcegroup --registry myregistry
+    """
+
+    helps[
+        "iot ops schema delete"
+    ] = """
+        type: command
+        short-summary: Delete a target schema within a schema registry.
+        examples:
+        - name: Delete a target schema 'myschema' within a schema registry 'myregistry'.
+          text: >
+            az iot ops schema delete --name myschema --registry myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema create"
+    ] = """
+        type: command
+        short-summary: Create a schema within a schema registry.
+        long-summary: |
+                      This operation requires a pre-created schema registry and will add a schema version.
+                      To create the schema and add a version, the associated storage account will need to have public network access enabled.
+                      For more information on the delta file format, please see aka.ms/lakehouse-delta-sample
+        examples:
+        - name: Create a schema called 'myschema' in the registry 'myregistry' with minimum inputs. Schema version 1 will be created for this schema with the file content.
+          text: >
+            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+            --format json --type message --version-content myschema.json
+        - name: Create a schema called 'myschema' with additional customization. Schema version 14 will be created for this schema. The inline content is a powershell syntax example.
+          text: >
+            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+            --format delta --type message --desc "Schema for Assets" --display-name myassetschema
+            --version-content '{\\\"hello\\\": \\\"world\\\"}' --ver 14 --vd "14th version"
+        - name: Create a schema called 'myschema'. Schema version 1 will be created for this schema. The inline content is a cmd syntax example.
+          text: >
+            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+            --format json --type message --version-content "{\\\"hello\\\": \\\"world\\\"}"
+        - name: Create a schema called 'myschema'. Schema version 1 will be created for this schema. The inline content is a bash syntax example.
+          text: >
+            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
+            --format json --type message --version-content '{"hello": "world"}'
     """
 
     helps[
@@ -1192,11 +1247,14 @@ def load_iotops_help():
                       This operation will create a schema registry with system managed identity enabled.
 
                       It will then assign the system identity the built-in "Storage Blob Data Contributor"
-                      role against the storage account scope by default. If necessary you can provide a custom
-                      role via --custom-role-id to use instead.
+                      role against the storage account container scope by default. If necessary you can provide a
+                      custom role via --custom-role-id to use instead.
 
                       If the indicated storage account container does not exist it will be created with default
                       settings.
+
+                      This operation will also register the Microsoft.DeviceRegistry resource provider if it is
+                      not registered.
         examples:
         - name: Create a schema registry called 'myregistry' with minimum inputs.
           text: >
@@ -1207,4 +1265,358 @@ def load_iotops_help():
             az iot ops schema registry create -n myregistry -g myresourcegroup --registry-namespace myschemas
             --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID --sa-container myschemacontainer
             -l westus2 --desc 'Contoso factory X1 schemas' --display-name 'Contoso X1' --tags env=prod
+    """
+
+    helps[
+        "iot ops connector"
+    ] = """
+        type: group
+        short-summary: Connector management.
+    """
+
+    helps[
+        "iot ops connector opcua"
+    ] = """
+        type: group
+        short-summary: OPC UA connector management.
+        long-summary: |
+          The connector for OPC UA enables your industrial OPC UA environment to input data into
+          your local workloads running on a Kubernetes cluster, and into your cloud workloads.
+          See the following resource for more info https://aka.ms/overview-connector-opcua-broker
+    """
+
+    helps[
+        "iot ops connector opcua trust"
+    ] = """
+        type: group
+        short-summary: Manage trusted certificates for the OPC UA Broker.
+        long-summary: |
+          The trusted certificate list contains the certificates of all the OPC UA servers that the
+          connector for OPC UA trusts. If the connector for OPC UA trusts a certificate authority,
+          it automatically trusts any server that has a valid application instance certificate signed
+          by the certificate authority.
+          For more info, see https://aka.ms/opcua-certificates
+    """
+
+    helps[
+        "iot ops connector opcua trust add"
+    ] = """
+        type: command
+        short-summary: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
+        long-summary: |
+            The certificate file extension must be .der or .crt. Azure resource secretproviderclass
+            'opc-ua-connector' and secretsync 'aio-opc-ua-broker-trust-list' will be created if not found.
+        examples:
+        - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list.
+          text: >
+            az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der"
+        - name: Add a trusted certificate to the OPC UA Broker's trusted certificate list with custom secret name.
+          text: >
+            az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.crt" --secret-name custom-secret-name
+        - name: Add a trusted certificate to the trusted certificate list and skip the overwrite confirmation prompt when the secret already exists.
+          text: >
+            az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der" --overwrite-secret
+    """
+
+    helps[
+        "iot ops connector opcua trust remove"
+    ] = """
+        type: command
+        short-summary: Remove trusted certificate(s) from the OPC UA Broker's trusted certificate list.
+        long-summary: |
+            Note: Removing all trusted certificates from the OPC UA Broker's trusted certificate list
+            will trigger deletion of the secretsync resource 'aio-opc-ua-broker-trust-list'.
+        examples:
+          - name: Remove trusted certificates called 'testcert1.der' and 'testcert2.crt' from trusted certificate list.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt
+          - name: Remove trusted certificates from trusted certificate list, including remove related keyvault secret.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt --include-secrets
+          - name: Force remove certificates operation regardless of warnings. May lead to errors.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt --force
+          - name: Remove trusted certificates from trusted certificate list and skip confirmation prompt for removal.
+            text: >
+              az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert1.der testcert2.crt --yes
+    """
+
+    helps[
+        "iot ops connector opcua trust show"
+    ] = """
+        type: command
+        short-summary: Show details of secretsync resource 'aio-opc-ua-broker-trust-list'.
+        examples:
+        - name: Show details of 'aio-opc-ua-broker-trust-list' resource.
+          text: >
+            az iot ops connector opcua trust show --instance instance --resource-group instanceresourcegroup
+    """
+
+    helps[
+        "iot ops connector opcua issuer"
+    ] = """
+      type: group
+      short-summary: Manage issuer certificates for the OPC UA Broker.
+      long-summary: |
+        The issuer certificate list stores the certificate authority certificates that the connector
+        for OPC UA trusts. If user's OPC UA server's application instance certificate is signed by
+        an intermediate certificate authority, but user does not want to automatically trust all the
+        certificates issued by the certificate authority, an issuer certificate list can be used to
+        manage the trust relationship.
+        For more info, see https://aka.ms/opcua-certificates
+    """
+
+    helps[
+        "iot ops connector opcua issuer add"
+    ] = """
+        type: command
+        short-summary: Add an issuer certificate to the OPC UA Broker's issuer certificate list.
+        long-summary: |
+            The certificate file extension must be .der, .crt or .crl. When adding a .crl file, a .der
+            or .crt file with same file name must be added first. Azure resource secretproviderclass
+            'opc-ua-connector'and secretsync 'aio-opc-ua-broker-issuer-list' will be created if not found.
+        examples:
+        - name: Add an issuer certificate in the OPC UA Broker's issuer certificate list.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der"
+        - name: Add an issuer certificate with .crl extension to the OPC UA Broker's issuer certificate list with same
+                file name as the .der file mentioned above.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.crl"
+        - name: Add an issuer certificate to the OPC UA Broker's issuer certificate list with custom secret name.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der" --secret-name custom-secret-name
+        - name: Add an issuer certificate to the issuer certificate list and skip the overwrite confirmation prompt when the secret already exists.
+          text: >
+            az iot ops connector opcua issuer add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der" --overwrite-secret
+    """
+
+    helps[
+        "iot ops connector opcua issuer remove"
+    ] = """
+        type: command
+        short-summary: Remove trusted certificate(s) from the OPC UA Broker's issuer certificate list.
+        long-summary: |
+            Note: Removing all issuer certificates from the OPC UA Broker's issuer certificate list
+            will trigger deletion of the secretsync resource 'aio-opc-ua-broker-issuer-list'.
+            Please make sure to remove corresponding .crl if exist when removing .der/.crt certificate
+            to avoid orphaned secret.
+        examples:
+          - name: Remove issuer certificates and its revocation list with .crl extension from issuer certificate list.
+            text: >
+              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.crl
+          - name: Remove issuer certificates from issuer certificate list, including remove related keyvault secret.
+            text: >
+              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der --include-secrets
+          - name: Force remove certificates operation regardless of warnings. May lead to errors.
+            text: >
+              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der --force
+          - name: Remove issuer certificates from issuer certificate list and skip confirmation prompt for removal.
+            text: >
+              az iot ops connector opcua issuer remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der --yes
+    """
+
+    helps[
+        "iot ops connector opcua issuer show"
+    ] = """
+        type: command
+        short-summary: Show details of secretsync resource 'aio-opc-ua-broker-issuer-list'.
+        examples:
+        - name: Show details of 'aio-opc-ua-broker-issuer-list' secretsync resource.
+          text: >
+            az iot ops connector opcua issuer show --instance instance --resource-group instanceresourcegroup
+    """
+
+    helps[
+        "iot ops connector opcua client"
+    ] = """
+        type: group
+        short-summary: Manage enterprise grade client application instance certificate for the OPC UA Broker.
+        long-summary: |
+          The connector for OPC UA makes use of a single OPC UA application instance certificate
+          for all the sessions it establishes to collect telemetry data from OPC UA servers.
+          For more info, see https://aka.ms/opcua-certificates
+    """
+
+    helps[
+        "iot ops connector opcua client add"
+    ] = """
+        type: command
+        short-summary: Add an enterprise grade client application instance certificate.
+        long-summary: |
+            The public key file extension must be .der and private key file extension
+            must be .pem. Please make sure to use same filename for public key and
+            private key file. Azure resource secretproviderclass 'opc-ua-connector'
+            and secretsync 'aio-opc-ua-broker-client-certificate' will be created
+            if not found. The newly added certificate will replace the existing
+            certificate if there is any.
+        examples:
+        - name: Add a client certificate.
+          text: >
+            az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
+            --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
+            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
+        - name: Add a client certificate and skip the overwrite confirmation prompt when the secret already exists.
+          text: >
+            az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
+            --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
+            --application-uri "urn:microsoft.com:aio:opc:opcuabroker" --overwrite-secret
+        - name: Add a client certificate with custom public and private key secret name.
+          text: >
+            az iot ops connector opcua client add
+            --instance instance
+            --resource-group instanceresourcegroup
+            --public-key-file "newopc.der"
+            --private-key-file "newopc.pem"
+            --public-key-secret-name public-secret-name
+            --private-key-secret-name private-secret-name
+            --subject-name "aio-opc-opcuabroker"
+            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
+      """
+
+    helps[
+        "iot ops connector opcua client remove"
+    ] = """
+        type: command
+        short-summary: Remove client application instance certificate from the OPC UA Broker.
+        long-summary: |
+            Note: Removing all certificates from the OPC UA Broker's client certificate store
+            will trigger deletion of the secretsync resource 'aio-opc-ua-broker-client-certificate'.
+            And this operation will trigger the fallback to default (cert-manager based) certificate.
+            This fallback requires an aio extension update.
+            Please make sure to remove both public(.der) and private(.pem) key certificate pair to
+            avoid orphaned secret.
+        examples:
+          - name: Remove client certificates from the OPC UA Broker's client certificate store.
+            text: >
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem
+          - name: Remove client certificates from client certificate store, including remove related keyvault secret.
+            text: >
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem --include-secrets
+          - name: Force remove certificates operation regardless of warnings. May lead to errors.
+            text: >
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem --force
+          - name: Remove client certificates from client certificate store and skip confirmation prompt for removal.
+            text: >
+              az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
+              --certificate-names testcert.der testcert.pem --yes
+
+    """
+
+    helps[
+        "iot ops connector opcua client show"
+    ] = """
+        type: command
+        short-summary: Show details of secretsync resource 'aio-opc-ua-broker-client-certificate'.
+        examples:
+        - name: Show details of 'aio-opc-ua-broker-client-certificate' secretsync resource.
+          text: >
+            az iot ops connector opcua client show --instance instance --resource-group instanceresourcegroup
+    """
+
+    helps[
+        "iot ops schema version"
+    ] = """
+        type: group
+        short-summary: Schema version management.
+        long-summary: |
+          A schema version contains the schema content associated with that version.
+    """
+
+    helps[
+        "iot ops schema version show"
+    ] = """
+        type: command
+        short-summary: Show details of a schema version.
+        examples:
+        - name: Show details of target schema version 1.
+          text: >
+            az iot ops schema version show --name 1 --schema myschema --registry myregistry -g myresourcegroup
+    """
+
+    helps[
+        "iot ops schema version list"
+    ] = """
+        type: command
+        short-summary: List schema versions for a specific schema.
+        examples:
+        - name: List all schema versions for the schema 'myschema' in the schema registry 'myregistry'.
+          text: >
+            az iot ops schema version list -g myresourcegroup --registry myregistry --schema myschema
+    """
+
+    helps[
+        "iot ops schema version remove"
+    ] = """
+        type: command
+        short-summary: Remove a target schema version.
+        examples:
+        - name: Remove schema version 1.
+          text: >
+            az iot ops schema version remove -n 1 -g myresourcegroup --registry myregistry --schema myschema
+    """
+
+    helps[
+        "iot ops schema version add"
+    ] = """
+        type: command
+        short-summary: Add a schema version to a schema.
+        long-summary: |
+                      To add a version, the associated storage account will need to have public network access enabled.
+                      For more information on the delta file format, please see aka.ms/lakehouse-delta-sample
+        examples:
+        - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
+                minimum inputs. The content is inline json (powershell syntax example).
+          text: >
+            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{\\\"hello\\\": \\\"world\\\"}'
+        - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
+                minimum inputs. The content is inline json (cmd syntax example).
+          text: >
+            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content "{\\\"hello\\\": \\\"world\\\"}"
+        - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
+                minimum inputs. The content is inline json (bash syntax example).
+          text: >
+            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{"hello": "world"}'
+        - name: Add a schema version 2 to a schema called 'myschema' within the registry 'myregistry' with
+                a description. The file should contain the schema content.
+          text: >
+            az iot ops schema version add -n 2 -g myresourcegroup --registry myregistry --schema myschema --content myschemav2.json --desc "New schema"
+    """
+
+    helps[
+        "iot ops schema show-dataflow-refs"
+    ] = """
+        type: command
+        short-summary: Show the schema references used for dataflows.
+        examples:
+        - name: Show schema reference for schema "myschema" and version 1.
+          text: >
+            az iot ops schema show-dataflow-refs --version 1 --schema myschema --registry myregistry -g myresourcegroup
+        - name: Show schema reference for all versions in schema "myschema".
+          text: >
+            az iot ops schema show-dataflow-refs --schema myschema --registry myregistry -g myresourcegroup
+        - name: Show schema reference for all versions and schemas in schema registry "myregistry".
+          text: >
+            az iot ops schema show-dataflow-refs --registry myregistry -g myresourcegroup
+        - name: Show schema reference for all schemas but only the latest versions in schema registry "myregistry".
+          text: >
+            az iot ops schema show-dataflow-refs --registry myregistry -g myresourcegroup --latest
     """

@@ -14,14 +14,15 @@ from rich.console import Console, NewLine
 from ..common import OpsServiceType
 from ..providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
-    MQTT_BROKER_API_V1B1,
+    MQTT_BROKER_API_V1,
     OPCUA_API_V1,
     DEVICEREGISTRY_API_V1,
-    DATAFLOW_API_V1B1,
-    META_API_V1B1,
+    DATAFLOW_API_V1,
+    META_API_V1,
     ARCCONTAINERSTORAGE_API_V1,
     SECRETSYNC_API_V1,
     SECRETSTORE_API_V1,
+    AZUREMONITOR_API_V1,
     EdgeApiManager,
 )
 
@@ -30,19 +31,20 @@ logger = get_logger(__name__)
 console = Console()
 
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
-COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1B1])
+COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
-COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1B1])
-COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1B1])
+COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1])
+COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1])
 COMPAT_ARCCONTAINERSTORAGE_APIS = EdgeApiManager(resource_apis=[ARCCONTAINERSTORAGE_API_V1])
 COMPAT_SECRETSTORE_APIS = EdgeApiManager(resource_apis=[SECRETSYNC_API_V1, SECRETSTORE_API_V1])
+COMPAT_AZUREMONITOR_APIS = EdgeApiManager(resource_apis=[AZUREMONITOR_API_V1])
 
 
 def build_bundle(
-    ops_service: str,
     bundle_path: str,
     log_age_seconds: Optional[int] = None,
+    ops_services: Optional[List[str]] = None,
     include_mq_traces: Optional[bool] = None,
 ):
     from rich.live import Live
@@ -61,6 +63,7 @@ def build_bundle(
     from .support.schemaregistry import prepare_bundle as prepare_schema_registry_bundle
     from .support.arccontainerstorage import prepare_bundle as prepare_arccontainerstorage_bundle
     from .support.secretstore import prepare_bundle as prepare_secretstore_bundle
+    from .support.azuremonitor import prepare_bundle as prepare_azuremonitor_bundle
 
     def collect_default_works(
         pending_work: dict,
@@ -77,7 +80,6 @@ def build_bundle(
         pending_work["meta"] = prepare_meta_bundle(log_age_seconds, deployed_meta_apis)
 
     pending_work = {k: {} for k in OpsServiceType.list()}
-    pending_work.pop(OpsServiceType.auto.value)
 
     api_map = {
         OpsServiceType.mq.value: {"apis": COMPAT_MQTT_BROKER_APIS, "prepare_bundle": prepare_mq_bundle},
@@ -110,37 +112,49 @@ def build_bundle(
             "apis": COMPAT_SECRETSTORE_APIS,
             "prepare_bundle": prepare_secretstore_bundle,
         },
+        OpsServiceType.azuremonitor.value: {
+            "apis": COMPAT_AZUREMONITOR_APIS,
+            "prepare_bundle": prepare_azuremonitor_bundle,
+        },
     }
 
-    for service_moniker, api_info in api_map.items():
-        if ops_service in [OpsServiceType.auto.value, service_moniker]:
-            deployed_apis = api_info["apis"].get_deployed() if api_info["apis"] else None
+    if not ops_services:
+        parsed_ops_services = OpsServiceType.list()
+    else:
+        # remove duplicates
+        parsed_ops_services = list(set(ops_services))
 
-            if not deployed_apis and service_moniker not in [
-                OpsServiceType.schemaregistry.value,
-                OpsServiceType.akri.value,
-            ]:
-                expected_api_version = api_info["apis"].as_str()
-                logger.warning(
-                    f"The following API(s) were not detected {expected_api_version}. "
-                    f"CR capture for {service_moniker} will be skipped. "
-                    "Still attempting capture of runtime resources..."
-                )
+    for ops_service in parsed_ops_services:
+        # assign key and value to service_moniker and api_info
+        service_moniker = [k for k, _ in api_map.items() if k == ops_service][0]
+        api_info = api_map.get(service_moniker)
+        deployed_apis = api_info["apis"].get_deployed() if api_info["apis"] else None
 
-            # still try fetching other resources even crds are not available due to api version mismatch
-            bundle_method = api_info["prepare_bundle"]
-            # Check if the function takes a second argument
-            # TODO: Change to kwargs based pattern
-            if service_moniker == OpsServiceType.deviceregistry.value:
-                bundle = bundle_method(deployed_apis)
-            elif service_moniker == OpsServiceType.mq.value:
-                bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
-            elif service_moniker in [OpsServiceType.schemaregistry.value, OpsServiceType.akri.value]:
-                bundle = bundle_method(log_age_seconds)
-            else:
-                bundle = bundle_method(log_age_seconds, deployed_apis)
+        if not deployed_apis and service_moniker not in [
+            OpsServiceType.schemaregistry.value,
+            OpsServiceType.akri.value,
+        ]:
+            expected_api_version = api_info["apis"].as_str()
+            logger.warning(
+                f"The following API(s) were not detected {expected_api_version}. "
+                f"CR capture for {service_moniker} will be skipped. "
+                "Still attempting capture of runtime resources..."
+            )
 
-            pending_work[service_moniker].update(bundle)
+        # still try fetching other resources even crds are not available due to api version mismatch
+        bundle_method = api_info["prepare_bundle"]
+        # Check if the function takes a second argument
+        # TODO: Change to kwargs based pattern
+        if service_moniker == OpsServiceType.deviceregistry.value:
+            bundle = bundle_method(deployed_apis)
+        elif service_moniker == OpsServiceType.mq.value:
+            bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
+        elif service_moniker in [OpsServiceType.schemaregistry.value, OpsServiceType.akri.value]:
+            bundle = bundle_method(log_age_seconds)
+        else:
+            bundle = bundle_method(log_age_seconds, deployed_apis)
+
+        pending_work[service_moniker].update(bundle)
 
     collect_default_works(pending_work, log_age_seconds)
 

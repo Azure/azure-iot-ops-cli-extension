@@ -24,8 +24,8 @@ from ..orchestration.common import (
 from .common import KubernetesDistroType
 from .template import (
     IOT_OPERATIONS_VERSION_MONIKER,
-    M2_ENABLEMENT_TEMPLATE,
-    M2_INSTANCE_TEMPLATE,
+    M3_ENABLEMENT_TEMPLATE,
+    M3_INSTANCE_TEMPLATE,
     TemplateBlueprint,
     get_insecure_listener,
 )
@@ -47,6 +47,7 @@ class InitTargets:
         enable_fault_tolerance: Optional[bool] = None,
         ops_config: Optional[List[str]] = None,
         ops_version: Optional[str] = None,
+        ops_train: Optional[str] = None,
         trust_settings: Optional[List[str]] = None,
         # Dataflow
         dataflow_profile_instances: int = 1,
@@ -63,6 +64,8 @@ class InitTargets:
         # Akri
         kubernetes_distro: str = KubernetesDistroType.k8s.value,
         container_runtime_socket: Optional[str] = None,
+        # User Trust Config
+        user_trust: Optional[bool] = None,
         **_,
     ):
         self.cluster_name = cluster_name
@@ -81,9 +84,11 @@ class InitTargets:
         self.enable_fault_tolerance = enable_fault_tolerance
         self.ops_config = assemble_nargs_to_dict(ops_config)
         self.ops_version = ops_version
+        self.ops_train = ops_train
         self.trust_settings = assemble_nargs_to_dict(trust_settings)
         self.trust_config = self.get_trust_settings_target_map()
         self.advanced_config = self.get_advanced_config_target_map()
+        self.user_trust = user_trust
 
         # Dataflow
         self.dataflow_profile_instances = self._sanitize_int(dataflow_profile_instances)
@@ -137,7 +142,7 @@ class InitTargets:
 
     def get_extension_versions(self) -> dict:
         # Don't need a deep copy here.
-        return M2_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
+        return M3_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
 
     def get_ops_enablement_template(
         self,
@@ -145,13 +150,39 @@ class InitTargets:
         template, parameters = self._handle_apply_targets(
             param_to_target={
                 "clusterName": self.cluster_name,
-                "kubernetesDistro": self.kubernetes_distro,
-                "containerRuntimeSocket": self.container_runtime_socket,
                 "trustConfig": self.trust_config,
-                "schemaRegistryId": self.schema_registry_resource_id,
                 "advancedConfig": self.advanced_config,
             },
-            template_blueprint=M2_ENABLEMENT_TEMPLATE,
+            template_blueprint=M3_ENABLEMENT_TEMPLATE,
+        )
+        if self.user_trust:
+            # disable cert and trust manager
+            parameters["trustConfig"]["value"]["source"] = "CustomerManaged"
+            # patch enablement template expecting full trust settings for source: CustomerManaged
+            template.get_type_definition("_1.CustomerManaged")["properties"]["settings"]["nullable"] = True
+        return template.content, parameters
+
+    def get_ops_instance_template(
+        self, cl_extension_ids: List[str],
+    ) -> Tuple[dict, dict]:
+        self.trust_config = self.get_trust_settings_target_map()
+
+        template, parameters = self._handle_apply_targets(
+            param_to_target={
+                "clusterName": self.cluster_name,
+                "clusterNamespace": self.cluster_namespace,
+                "clusterLocation": self.location,
+                "kubernetesDistro": self.kubernetes_distro,
+                "containerRuntimeSocket": self.container_runtime_socket,
+                "customLocationName": self.custom_location_name,
+                "clExtentionIds": cl_extension_ids,
+                "deployResourceSyncRules": self.deploy_resource_sync_rules,
+                "schemaRegistryId": self.schema_registry_resource_id,
+                "defaultDataflowinstanceCount": self.dataflow_profile_instances,
+                "brokerConfig": self.broker_config,
+                "trustConfig": self.trust_config,
+            },
+            template_blueprint=M3_INSTANCE_TEMPLATE,
         )
 
         if self.ops_config:
@@ -159,26 +190,11 @@ class InitTargets:
             aio_default_config.update(self.ops_config)
 
         if self.ops_version:
-            template.content["variables"]["VERSIONS"]["aio"] = self.ops_version
+            template.content["variables"]["VERSIONS"]["iotOperations"] = self.ops_version
 
-        # TODO - @digimaun - expand trustSource for self managed & trustBundleSettings
-        return template.content, parameters
+        if self.ops_train:
+            template.content["variables"]["TRAINS"]["iotOperations"] = self.ops_train
 
-    def get_ops_instance_template(self, cl_extension_ids: List[str]) -> Tuple[dict, dict]:
-        template, parameters = self._handle_apply_targets(
-            param_to_target={
-                "clusterName": self.cluster_name,
-                "clusterNamespace": self.cluster_namespace,
-                "clusterLocation": self.location,
-                "customLocationName": self.custom_location_name,
-                "clExtentionIds": cl_extension_ids,
-                "deployResourceSyncRules": self.deploy_resource_sync_rules,
-                "schemaRegistryId": self.schema_registry_resource_id,
-                "defaultDataflowinstanceCount": self.dataflow_profile_instances,
-                "brokerConfig": self.broker_config,
-            },
-            template_blueprint=M2_INSTANCE_TEMPLATE,
-        )
         instance = template.get_resource_by_key("aioInstance")
         instance["properties"]["description"] = self.instance_description
 
@@ -225,7 +241,7 @@ class InitTargets:
         processed_config_map = {}
 
         validation_errors = []
-        broker_config_def = M2_INSTANCE_TEMPLATE.get_type_definition("_1.BrokerConfig")["properties"]
+        broker_config_def = M3_INSTANCE_TEMPLATE.get_type_definition("_1.BrokerConfig")["properties"]
         for config in to_process_config_map:
             if to_process_config_map[config] is None:
                 continue
@@ -269,7 +285,7 @@ class InitTargets:
         if self.trust_settings:
             target_settings: Dict[str, str] = {}
             result["source"] = "CustomerManaged"
-            trust_bundle_def = M2_ENABLEMENT_TEMPLATE.get_type_definition("_1.TrustBundleSettings")["properties"]
+            trust_bundle_def = M3_ENABLEMENT_TEMPLATE.get_type_definition("_1.TrustBundleSettings")["properties"]
             allowed_issuer_kinds: Optional[List[str]] = trust_bundle_def.get(TRUST_ISSUER_KIND_KEY, {}).get(
                 "allowedValues"
             )

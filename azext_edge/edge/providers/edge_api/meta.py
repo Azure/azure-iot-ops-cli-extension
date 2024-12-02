@@ -12,6 +12,6 @@ class MetaResourceKinds(ListableEnum):
     Instance = "instance"
 
 
-META_API_V1B1 = EdgeResourceApi(
-    group="iotoperations.azure.com", version="v1beta1", moniker="meta", label="microsoft-iotoperations"
+META_API_V1 = EdgeResourceApi(
+    group="iotoperations.azure.com", version="v1", moniker="meta", label="microsoft-iotoperations"
 )

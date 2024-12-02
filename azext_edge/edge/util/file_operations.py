@@ -23,7 +23,7 @@ def dump_content_to_file(
     extension: str,
     fieldnames: Optional[List[str]] = None,
     output_dir: Optional[str] = None,
-    replace: bool = False
+    replace: bool = False,
 ) -> PurePath:
     output_dir = normalize_dir(output_dir)
     file_path = os.path.join(output_dir, f"{file_name}.{extension}")
@@ -99,38 +99,36 @@ def deserialize_file_content(file_path: str) -> Any:
     if not valid_extension or extension == "json":
         # will always be a list or dict
         result = _try_loading_as(
-            loader=json.loads,
-            content=content,
-            error_type=json.JSONDecodeError,
-            raise_error=valid_extension
+            loader=json.loads, content=content, error_type=json.JSONDecodeError, raise_error=valid_extension
         )
     if (not result and not valid_extension) or extension in ["yaml", "yml"]:
         # can be list, dict, str, int, bool, none
         result = _try_loading_as(
-            loader=yaml.safe_load,
-            content=content,
-            error_type=yaml.YAMLError,
-            raise_error=valid_extension
+            loader=yaml.safe_load, content=content, error_type=yaml.YAMLError, raise_error=valid_extension
         )
     if (not result and not valid_extension) or extension == "csv":
         # iterrable object so lets cast to list
         result = _try_loading_as(
-            loader=csv.DictReader,
-            content=content.splitlines(),
-            error_type=csv.Error,
-            raise_error=valid_extension
+            loader=csv.DictReader, content=content.splitlines(), error_type=csv.Error, raise_error=valid_extension
         )
     if result is not None or valid_extension:
         return result
     raise FileOperationError(f"File contents for {file_path} cannot be read.")
 
 
-def _try_loading_as(
-    loader: Callable,
-    content: str,
-    error_type: Exception,
-    raise_error: bool = True
-) -> Optional[Any]:
+def validate_file_extension(file_name: str, expected_exts: List[str]) -> str:
+    ext = os.path.splitext(file_name)[1]
+    lowercased_exts = [ext.lower() for ext in expected_exts]
+    if ext.lower() not in lowercased_exts:
+        exts_text = ", ".join(expected_exts)
+        raise ValueError(
+            f"Invalid file extension found for {file_name}, only {exts_text} file extensions are supported."
+        )
+
+    return ext
+
+
+def _try_loading_as(loader: Callable, content: str, error_type: Exception, raise_error: bool = True) -> Optional[Any]:
     try:
         return loader(content)
     except error_type as e:

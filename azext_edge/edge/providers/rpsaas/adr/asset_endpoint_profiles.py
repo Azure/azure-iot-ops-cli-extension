@@ -6,7 +6,7 @@
 
 import json
 from rich.console import Console
-from typing import TYPE_CHECKING, Dict, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from knack.log import get_logger
 
@@ -22,20 +22,18 @@ from .user_strings import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG,
 )
-from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state
+from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state, REGISTRY_API_VERSION
 from ....util.queryable import Queryable
 from ....common import AEPAuthModes, AEPTypes
 
 if TYPE_CHECKING:
     from ....vendor.clients.deviceregistrymgmt.operations import (
-        DiscoveredAssetEndpointProfilesOperations as DAEPOperations,
         AssetEndpointProfilesOperations as AEPOperations
     )
 
 console = Console()
 logger = get_logger(__name__)
 AEP_RESOURCE_TYPE = "Microsoft.DeviceRegistry/assetEndpointProfiles"
-DISCOVERED_AEP_RESOURCE_TYPE = "Microsoft.DeviceRegistry/discoveredAssetEndpointProfiless"
 
 
 # TODO: soul searching to see if I should combine with assets class
@@ -43,11 +41,10 @@ class AssetEndpointProfiles(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id
+            subscription_id=self.default_subscription_id,
+            api_version=REGISTRY_API_VERSION
         )
         self.ops: "AEPOperations" = self.deviceregistry_mgmt_client.asset_endpoint_profiles
-        self.discovered_ops: "DAEPOperations" = self.deviceregistry_mgmt_client.discovered_asset_endpoint_profiles
-        self.update_ops: Optional[Union["AEPOperations", "DAEPOperations"]] = None
 
     def create(
         self,
@@ -63,7 +60,6 @@ class AssetEndpointProfiles(Queryable):
         password_reference: Optional[str] = None,
         username_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
-        discovered: bool = False,  # for easy discovered debugging
         **additional_configuration
     ):
         from .helpers import get_extended_location
@@ -93,12 +89,6 @@ class AssetEndpointProfiles(Queryable):
             password_reference=password_reference,
             certificate_reference=certificate_reference,
         )
-        # discovered
-        if discovered:
-            self.ops = self.discovered_ops
-            properties.pop("authentication", None)
-            properties["version"] = 1
-            properties["discoveryId"] = "discoveryid1"
 
         aep_body = {
             "extendedLocation": extended_location,
@@ -113,20 +103,20 @@ class AssetEndpointProfiles(Queryable):
                 asset_endpoint_profile_name,
                 resource=aep_body
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **additional_configuration)
 
-    def delete(self, asset_endpoint_profile_name: str, resource_group_name: str):
+    def delete(self, asset_endpoint_profile_name: str, resource_group_name: str, **kwargs):
         self.show(
             asset_endpoint_profile_name=asset_endpoint_profile_name,
             resource_group_name=resource_group_name,
             check_cluster=True
         )
         with console.status(f"Deleting {asset_endpoint_profile_name}..."):
-            poller = self.update_ops.begin_delete(
+            poller = self.ops.begin_delete(
                 resource_group_name,
                 asset_endpoint_profile_name,
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
     def show(
         self, asset_endpoint_profile_name: str, resource_group_name: str, check_cluster: bool = False
@@ -134,18 +124,13 @@ class AssetEndpointProfiles(Queryable):
         asset_endpoint = self.ops.get(
             resource_group_name=resource_group_name, asset_endpoint_profile_name=asset_endpoint_profile_name
         )
-        self.update_ops = self.ops
+        self.ops = self.ops
         if check_cluster:
             from .helpers import check_cluster_connectivity
             check_cluster_connectivity(self.cmd, asset_endpoint)
         return asset_endpoint
 
     def list(self, resource_group_name: Optional[str] = None, discovered: bool = False) -> Iterable[dict]:
-        if discovered:
-            if resource_group_name:
-                return self.discovered_ops.list_by_resource_group(resource_group_name=resource_group_name)
-            return self.discovered_ops.list_by_subscription()
-
         if resource_group_name:
             return self.ops.list_by_resource_group(resource_group_name=resource_group_name)
         return self.ops.list_by_subscription()
@@ -156,7 +141,6 @@ class AssetEndpointProfiles(Queryable):
         asset_endpoint_profile_name: Optional[str] = None,
         auth_mode: Optional[str] = None,
         custom_query: Optional[str] = None,
-        discovered: Optional[bool] = None,
         endpoint_profile_type: Optional[str] = None,
         instance_name: Optional[str] = None,
         instance_resource_group: Optional[str] = None,
@@ -172,15 +156,7 @@ class AssetEndpointProfiles(Queryable):
             resource_group_name=resource_group_name,
             target_address=target_address
         )
-
-        if discovered is not None:
-            resource_type = DISCOVERED_AEP_RESOURCE_TYPE if discovered else AEP_RESOURCE_TYPE
-            query = f"Resources | where type =~\"{resource_type}\" " + query_body
-        else:
-            # we put the query body into the each type query and then union to avoid the union result from
-            # becoming too big
-            query = f"Resources | where type =~ \"{AEP_RESOURCE_TYPE}\" {query_body} "\
-                f"| union (Resources | where type =~ \"{DISCOVERED_AEP_RESOURCE_TYPE}\" {query_body})"
+        query = f"Resources | where type =~\"{AEP_RESOURCE_TYPE}\" " + query_body
 
         if any([instance_name, instance_resource_group]):
             instance_query = "Resources | where type =~ 'microsoft.iotoperations/instances' "
@@ -205,6 +181,7 @@ class AssetEndpointProfiles(Queryable):
         password_reference: Optional[str] = None,
         certificate_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
+        **kwargs
     ):
         # get the asset
         original_aep = self.show(
@@ -227,12 +204,12 @@ class AssetEndpointProfiles(Queryable):
         )
         # use this over update since we want to make sure we get the tags in
         with console.status(f"Updating {asset_endpoint_profile_name}..."):
-            poller = self.update_ops.begin_create_or_replace(
+            poller = self.ops.begin_create_or_replace(
                 resource_group_name,
                 asset_endpoint_profile_name,
                 original_aep
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
 
 # Helpers
@@ -267,6 +244,7 @@ def _build_opcua_config(
     security_mode: Optional[str] = None,
     sub_max_items: Optional[int] = None,
     sub_life_time: Optional[int] = None,
+    **_
 ) -> str:
     config = json.loads(original_config) if original_config else {}
 

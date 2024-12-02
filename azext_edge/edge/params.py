@@ -31,6 +31,8 @@ from .providers.orchestration.common import (
     MqMemoryProfile,
     MqServiceType,
     TRUST_SETTING_KEYS,
+    SchemaFormat,
+    SchemaType,
 )
 
 
@@ -130,11 +132,14 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops support") as context:
         context.argument(
-            "ops_service",
+            "ops_services",
+            nargs="+",
+            action="extend",
             options_list=["--ops-service", "--svc"],
             choices=CaseInsensitiveList(OpsServiceType.list()),
             help="The IoT Operations service the support bundle creation should apply to. "
-            "If auto is selected, the operation will detect which services are available.",
+            "If no service is provided, the operation will default to capture all services. "
+            "--ops-service can be used one or more times.",
         )
         context.argument(
             "log_age_seconds",
@@ -305,67 +310,8 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker name.",
         )
 
-    with self.argument_context("iot ops broker stats") as context:
-        context.argument(
-            "refresh_in_seconds",
-            options_list=["--refresh"],
-            help="Number of seconds between a stats refresh. Applicable with --watch.",
-            type=int,
-        )
-        context.argument(
-            "watch",
-            options_list=["--watch"],
-            help="The operation blocks and dynamically updates a stats table.",
-            arg_type=get_three_state_flag(),
-        )
-        context.argument(
-            "diag_service_pod_prefix",
-            options_list=["--diag-svc-pod"],
-            help="The diagnostic service pod prefix. The first pod fulfilling the condition will be connected to.",
-            arg_group="Diagnostics Pod",
-        )
-        context.argument(
-            "pod_metrics_port",
-            type=int,
-            options_list=["--metrics-port"],
-            help="Diagnostic service metrics API port.",
-            arg_group="Diagnostics Pod",
-        )
-        context.argument(
-            "pod_protobuf_port",
-            type=int,
-            options_list=["--protobuf-port"],
-            help="Diagnostic service protobuf API port.",
-            arg_group="Diagnostics Pod",
-        )
-        context.argument(
-            "raw_response_print",
-            options_list=["--raw"],
-            arg_type=get_three_state_flag(),
-            help="Return raw output from the metrics API.",
-        )
-        context.argument(
-            "trace_ids",
-            nargs="*",
-            options_list=["--trace-ids"],
-            help="Space-separated trace ids in hex format.",
-            arg_group="Trace",
-        )
-        context.argument(
-            "trace_dir",
-            options_list=["--trace-dir"],
-            help="Local directory where traces will be bundled and stored at.",
-            arg_group="Trace",
-        )
-
     for cmd_space in ["iot ops init", "iot ops create"]:
         with self.argument_context(cmd_space) as context:
-            context.argument(
-                "instance_name",
-                options_list=["--name", "-n"],
-                help="IoT Operations instance name. An instance name must be provided to "
-                "deploy an instance during init orchestration.",
-            )
             context.argument(
                 "cluster_name",
                 options_list=["--cluster"],
@@ -513,6 +459,12 @@ def load_iotops_arguments(self, _):
                 deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
+                "ops_train",
+                options_list=["--ops-train"],
+                help="Use to override the built-in IoT Operations arc extension release train. ",
+                deprecate_info=context.deprecate(hide=True),
+            )
+            context.argument(
                 "enable_fault_tolerance",
                 arg_type=get_three_state_flag(),
                 options_list=["--enable-fault-tolerance"],
@@ -536,6 +488,23 @@ def load_iotops_arguments(self, _):
                 "used, a system provided self-signed trust bundle is configured.",
                 arg_group="Trust",
             )
+            context.argument(
+                "user_trust",
+                options_list=["--user-trust", "--ut"],
+                arg_type=get_three_state_flag(),
+                help="Skip the deployment of the system cert-manager and trust-manager "
+                "in favor of a user-provided configuration.",
+                arg_group="Trust",
+            )
+
+    with self.argument_context("iot ops upgrade") as context:
+        # Schema Registry
+        context.argument(
+            "schema_registry_resource_id",
+            options_list=["--sr-resource-id"],
+            help="The schema registry resource Id to use with IoT Operations. Required if the schema registry "
+            "resource Id is no longer found within IoT Operations.",
+        )
 
     with self.argument_context("iot ops delete") as context:
         context.argument(
@@ -560,14 +529,19 @@ def load_iotops_arguments(self, _):
         context.argument(
             "spc_name",
             options_list=["--spc"],
-            help="The secret provider class name for secret sync enablement. "
-            "The default pattern is '{instance_name}-spc'.",
+            help="The default secret provider class name for secret sync enablement. "
+            "The default pattern is 'spc-ops-{hash}'.",
         )
         context.argument(
             "skip_role_assignments",
             options_list=["--skip-ra"],
             arg_type=get_three_state_flag(),
             help="When used the role assignment step of the operation will be skipped.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i", "-n"],
+            help="IoT Operations instance name.",
         )
 
     with self.argument_context("iot ops asset") as context:
@@ -582,14 +556,12 @@ def load_iotops_arguments(self, _):
             help="Asset endpoint profile name.",
         )
         context.argument(
-            "instance_name",
-            options_list=["--instance"],
-            help="Instance name to associate the created asset with."
+            "instance_name", options_list=["--instance"], help="Instance name to associate the created asset with."
         )
         context.argument(
             "instance_resource_group",
             options_list=["--instance-resource-group", "--ig"],
-            help="Instance resource group. If not provided, asset resource group will be used."
+            help="Instance resource group. If not provided, asset resource group will be used.",
         )
         context.argument(
             "instance_subscription",
@@ -639,12 +611,6 @@ def load_iotops_arguments(self, _):
             "disabled",
             options_list=["--disable"],
             help="Disable an asset.",
-            arg_type=get_three_state_flag(),
-        )
-        context.argument(
-            "discovered",
-            options_list=["--discovered"],
-            help="Flag to determine if an asset was discovered on the cluster.",
             arg_type=get_three_state_flag(),
         )
         context.argument(
@@ -966,20 +932,13 @@ def load_iotops_arguments(self, _):
         context.argument(
             "instance_resource_group",
             options_list=["--instance-resource-group", "--ig"],
-            help="Instance resource group. If not provided, asset endpoint profile resource group will be used."
+            help="Instance resource group. If not provided, asset endpoint profile resource group will be used.",
         )
         context.argument(
             "instance_subscription",
             options_list=["--instance-subscription", "--is"],
             help="Instance subscription id. If not provided, asset endpoint profile subscription id will be used.",
             deprecate_info=context.deprecate(hide=True),
-        )
-        context.argument(
-            "discovered",
-            options_list=["--discovered"],
-            help="Flag to determine if an asset endpoint profile was discovered on the cluster.",
-            arg_group="Additional Info",
-            arg_type=get_three_state_flag(),
         )
         context.argument(
             "target_address",
@@ -996,7 +955,7 @@ def load_iotops_arguments(self, _):
             options_list=["--authentication-mode", "--am"],
             help="Authentication Mode.",
             arg_group="Authentication",
-            arg_type=get_enum_type(AEPAuthModes)
+            arg_type=get_enum_type(AEPAuthModes),
         )
         context.argument(
             "certificate_reference",
@@ -1135,6 +1094,79 @@ def load_iotops_arguments(self, _):
             arg_group="Connector",
         )
 
+    with self.argument_context("iot ops schema") as context:
+        context.argument(
+            "schema_name",
+            options_list=["--name", "-n"],
+            help="Schema name.",
+        )
+        context.argument(
+            "schema_registry_name",
+            options_list=["--registry"],
+            help="Schema registry name.",
+        )
+        context.argument(
+            "schema_format",
+            options_list=["--format"],
+            help="Schema format.",
+            arg_type=get_enum_type(SchemaFormat)
+        )
+        context.argument(
+            "schema_type",
+            options_list=["--type"],
+            help="Schema type.",
+            arg_type=get_enum_type(SchemaType)
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description for the schema.",
+        )
+        context.argument(
+            "display_name",
+            options_list=["--display-name"],
+            help="Display name for the schema.",
+        )
+        context.argument(
+            "schema_version",
+            options_list=["--version", "--ver"],
+            help="Schema version name.",
+            type=int,
+            arg_group="Version"
+        )
+        context.argument(
+            "schema_version_content",
+            options_list=["--version-content", "--vc"],
+            help="File path containing or inline content for the version.",
+            arg_group="Version"
+        )
+        context.argument(
+            "schema_version_description",
+            options_list=["--version-desc", "--vd"],
+            help="Description for the version.",
+            arg_group="Version"
+        )
+
+    with self.argument_context("iot ops schema show-dataflow-refs") as context:
+        context.argument(
+            "schema_name",
+            options_list=["--schema"],
+            help="Schema name. Required if using --version.",
+        )
+        context.argument(
+            "schema_version",
+            options_list=["--version", "--ver"],
+            help="Schema version name. If used, --latest will be ignored.",
+            type=int,
+            arg_group=None
+        )
+        context.argument(
+            "latest",
+            options_list=["--latest"],
+            help="Flag to show only the latest version(s).",
+            arg_type=get_three_state_flag(),
+        )
+
     with self.argument_context("iot ops schema registry") as context:
         context.argument(
             "schema_registry_name",
@@ -1184,4 +1216,130 @@ def load_iotops_arguments(self, _):
             options_list=["--custom-role-id"],
             help="Fully qualified role definition Id in the following format: "
             "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
+        )
+
+    with self.argument_context("iot ops connector opcua") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i", "-n"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "resource_group",
+            options_list=["--resource-group", "-g"],
+            help="Instance resource group.",
+        )
+        context.argument(
+            "include_secrets",
+            options_list=["--include-secrets"],
+            help="Indicates the command should remove the key vault secrets "
+            "associated with the certificate(s). This option will delete and "
+            "purge the secrets.",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "certificate_names",
+            options_list=["--certificate-names", "--cn"],
+            nargs="+",
+            help="Space-separated certificate names to remove. "
+            "Note: the names can be found under the corresponding "
+            "secretsync resource property 'targetKey'.",
+        )
+        context.argument(
+            "overwrite_secret",
+            options_list=["--overwrite-secret"],
+            arg_type=get_three_state_flag(),
+            help="Confirm [y]es without a prompt to overwrite secret. "
+            "if secret name existed in Azure key vault. Useful for "
+            "CI and automation scenarios.",
+        )
+
+    with self.argument_context("iot ops connector opcua trust") as context:
+        context.argument(
+            "file",
+            options_list=["--certificate-file", "--cf"],
+            help="Path to the certificate file in .der or .crt format.",
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "-s"],
+            help="Secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
+        )
+
+    with self.argument_context("iot ops connector opcua issuer") as context:
+        context.argument(
+            "file",
+            options_list=["--certificate-file", "--cf"],
+            help="Path to the certificate file in .der, .crt or .crl format.",
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "-s"],
+            help="Secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
+        )
+
+    with self.argument_context("iot ops connector opcua client") as context:
+        context.argument(
+            "public_key_file",
+            options_list=["--public-key-file", "--pkf"],
+            help="File that contains the enterprise grade application "
+            "instance certificate public key in .der format. File "
+            "name will be used to generate the public key secret name.",
+        )
+        context.argument(
+            "private_key_file",
+            options_list=["--private-key-file", "--prkf"],
+            help="File that contains the enterprise grade application "
+            "instance certificate private key in .pem format. File name "
+            "will be used to generate the private key secret name.",
+        )
+        context.argument(
+            "subject_name",
+            options_list=["--subject-name", "--sn"],
+            help="The subject name string embedded in the application instance certificate."
+            "Can be found under public key certificate.",
+        )
+        context.argument(
+            "application_uri",
+            options_list=["--application-uri", "--au"],
+            help="The application instance URI embedded in the application instance."
+            "Can be found under public key certificate.",
+        )
+        context.argument(
+            "public_key_secret_name",
+            options_list=["--public-key-secret-name", "--pks"],
+            help="Public key secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
+        )
+        context.argument(
+            "private_key_secret_name",
+            options_list=["--private-key-secret-name", "--prks"],
+            help="Private key secret name in the Key Vault. If not provided, the "
+            "certificate file name will be used to generate the secret name.",
+        )
+
+    with self.argument_context("iot ops schema version") as context:
+        context.argument(
+            "version_name",
+            options_list=["--name", "-n"],
+            help="Schema version name.",
+            type=int
+        )
+        context.argument(
+            "schema_name",
+            options_list=["--schema"],
+            help="Schema name.",
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description for the schema version.",
+        )
+        context.argument(
+            "schema_version_content",
+            options_list=["--content"],
+            help="File path containing or inline content for the version.",
+            arg_group=None
         )

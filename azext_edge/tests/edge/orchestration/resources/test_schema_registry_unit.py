@@ -6,11 +6,10 @@
 
 import json
 from typing import Optional
-from azure.cli.core.azclierror import ValidationError
-from unittest.mock import Mock
 
 import pytest
 import responses
+from azure.cli.core.azclierror import AzureResponseError, ValidationError
 
 from azext_edge.edge.commands_schema import (
     create_registry,
@@ -22,9 +21,16 @@ from azext_edge.edge.providers.orchestration.resources.schema_registries import 
     ROLE_DEF_FORMAT_STR,
     STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID,
 )
+from azext_edge.edge.providers.orchestration.rp_namespace import ADR_PROVIDER
 
 from ....generators import generate_random_string
-from .conftest import get_base_endpoint, get_mock_resource, get_resource_id, find_request_by_url, ZEROED_SUBSCRIPTION
+from .conftest import (
+    ZEROED_SUBSCRIPTION,
+    get_authz_endpoint_pattern,
+    get_base_endpoint,
+    get_mock_resource,
+    get_resource_id,
+)
 
 SCHEMA_REGISTRY_RP = "Microsoft.DeviceRegistry"
 SCHEMA_REGISTRY_RP_API_VERSION = "2024-09-01-preview"
@@ -174,21 +180,22 @@ def test_schema_registry_list(mocked_cmd, mocked_responses: responses, resource_
     assert len(mocked_responses.calls) == 1
 
 
-def test_schema_registry_delete(mocked_cmd, mocked_responses: responses):
+@pytest.mark.parametrize("status", [200, 204])
+def test_schema_registry_delete(mocked_cmd, mocked_responses: responses, status: int):
     registery_name = generate_random_string()
     resource_group_name = generate_random_string()
 
     mocked_responses.add(
         method=responses.DELETE,
         url=get_schema_registry_endpoint(resource_group_name=resource_group_name, registry_name=registery_name),
-        status=204,
+        status=status,
     )
     delete_registry(
         cmd=mocked_cmd,
         schema_registry_name=registery_name,
         resource_group_name=resource_group_name,
         confirm_yes=True,
-        wait_sec=0.25,
+        wait_sec=0,
     )
     assert len(mocked_responses.calls) == 1
 
@@ -206,8 +213,8 @@ def test_schema_registry_delete(mocked_cmd, mocked_responses: responses):
     [200, 404],
 )
 @pytest.mark.parametrize(
-    "can_apply_role_assignment",
-    [True, False],
+    "create_role_assignment_code",
+    [200, 403],
 )
 @pytest.mark.parametrize(
     "display_name,description,tags,custom_role_id",
@@ -218,15 +225,16 @@ def test_schema_registry_delete(mocked_cmd, mocked_responses: responses):
 )
 def test_schema_registry_create(
     mocked_cmd,
-    mocked_responses: responses,
     mocker,
+    mocked_register_providers,
+    mocked_responses: responses,
     location: Optional[str],
     display_name: Optional[str],
     description: Optional[str],
     tags: Optional[dict],
     is_hns_enabled: bool,
     container_fetch_code: int,
-    can_apply_role_assignment: bool,
+    create_role_assignment_code: int,
     custom_role_id: Optional[str],
 ):
     registery_name = generate_random_string()
@@ -246,13 +254,6 @@ def test_schema_registry_create(
             status=200,
         )
     expected_location = location or mock_resource_group["location"]
-
-    # TODO - @digimaun
-    # mock_logger: Mock = mocker.patch("azext_edge.edge.providers.orchestration.resources.schema_registries.logger")
-    mock_permission_manager: Mock = mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.schema_registries.PermissionManager"
-    )
-    mock_permission_manager().can_apply_role_assignment.return_value = can_apply_role_assignment
 
     storage_resource_id = get_resource_id(
         resource_path=f"/storageAccounts/{storage_account_name}",
@@ -281,7 +282,7 @@ def test_schema_registry_create(
         "description": description,
         "tags": tags,
         "custom_role_id": custom_role_id,
-        "wait_sec": 0.25,
+        "wait_sec": 0,
     }
     if not is_hns_enabled:
         with pytest.raises(ValidationError):
@@ -319,18 +320,50 @@ def test_schema_registry_create(
         resource_group_name=resource_group_name, registry_name=registery_name
     )
 
-    mocked_responses.add(
+    target_role_id = custom_role_id or ROLE_DEF_FORMAT_STR.format(
+        subscription_id=ZEROED_SUBSCRIPTION, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
+    )
+
+    sr_create_response = mocked_responses.add(
         method=responses.PUT,
         url=create_registry_endpoint,
         json=mock_registry_record,
         status=200,
     )
 
-    create_result = create_registry(**create_registry_kwargs)
-    assert create_result == mock_registry_record
-    schema_registry_create_payload = json.loads(
-        find_request_by_url(mocked_responses.calls, create_registry_endpoint).body
+    get_role_response = mocked_responses.add(
+        method=responses.GET,
+        url=get_authz_endpoint_pattern(),
+        json={"value": []},
+        status=200,
     )
+    create_role_response = mocked_responses.add(
+        method=responses.PUT,
+        url=get_authz_endpoint_pattern(),
+        json={},
+        status=create_role_assignment_code,
+    )
+
+    if create_role_assignment_code not in [200, 201]:
+        with pytest.raises(AzureResponseError) as error:
+            create_registry(**create_registry_kwargs)
+        assert str(error.value).startswith("Role assignment failed")
+        return
+
+    create_result = create_registry(**create_registry_kwargs)
+    mocked_register_providers.assert_called_with(ZEROED_SUBSCRIPTION, ADR_PROVIDER)
+
+    assert get_role_response.calls[0].request.url.endswith(
+        f"?$filter=principalId%20eq%20'{mock_registry_record['identity']['principalId']}'&api-version=2022-04-01"
+    )
+
+    create_role_request_json = json.loads(create_role_response.calls[0].request.body)
+    assert create_role_request_json["properties"]["roleDefinitionId"] == target_role_id
+    assert create_role_request_json["properties"]["principalId"] == mock_registry_record["identity"]["principalId"]
+    assert create_role_request_json["properties"]["principalType"] == "ServicePrincipal"
+
+    assert create_result == mock_registry_record
+    schema_registry_create_payload = json.loads(sr_create_response.calls[0].request.body)
     assert schema_registry_create_payload["location"] == expected_location
     if tags:
         assert schema_registry_create_payload["tags"] == tags
@@ -341,14 +374,4 @@ def test_schema_registry_create(
     assert (
         schema_registry_create_payload["properties"]["storageAccountContainerUrl"]
         == f"{mock_storage_record['properties']['primaryEndpoints']['blob']}{storage_container_name}"
-    )
-
-    mock_permission_manager.assert_called_with(ZEROED_SUBSCRIPTION)
-    target_role_id = custom_role_id or ROLE_DEF_FORMAT_STR.format(
-        subscription_id=ZEROED_SUBSCRIPTION, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
-    )
-    mock_permission_manager().apply_role_assignment.assert_called_with(
-        scope=storage_resource_id,
-        principal_id=mock_registry_record["identity"]["principalId"],
-        role_def_id=target_role_id,
     )

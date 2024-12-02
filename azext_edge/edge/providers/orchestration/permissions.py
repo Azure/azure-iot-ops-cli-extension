@@ -47,7 +47,7 @@ def verify_write_permission_against_rg(subscription_id: str, resource_group_name
         "This IoT Operations deployment config includes resource sync rules which require the logged-in principal\n"
         "to have permission to write role assignments (Microsoft.Authorization/roleAssignments/write) "
         "against the resource group.\n\n"
-        "Use --disable-rsync-rules to not include resource sync rules in the deployment.\n"
+        "Run the command with --enable-rsync False to not include resource sync rules in the deployment.\n"
     )
 
 
@@ -62,29 +62,39 @@ class PermissionState(Enum):
     ActionUndefined = 3
 
 
+class PrincipalType(Enum):
+    # There are more types but keeping this short with respect to what we use for now
+    USER = "User"
+    SERVICE_PRINCIPAL = "ServicePrincipal"
+
+
 class PermissionManager:
     def __init__(self, subscription_id: str):
         self.authz_client = get_authz_client(
             subscription_id=subscription_id,
         )
 
-    def apply_role_assignment(self, scope: str, principal_id: str, role_def_id: str) -> Optional[dict]:
+    def apply_role_assignment(
+        self, scope: str, principal_id: str, role_def_id: str, principal_type: Optional[str] = None
+    ) -> Optional[dict]:
         role_assignments_iter = self.authz_client.role_assignments.list_for_scope(
             scope=scope, filter=f"principalId eq '{principal_id}'"
         )
         for role_assignment in role_assignments_iter:
             if role_assignment["properties"]["roleDefinitionId"] == role_def_id:
                 return
-
+        props = {
+            "properties": {
+                "roleDefinitionId": role_def_id,
+                "principalId": principal_id,
+            }
+        }
+        if principal_type:
+            props["properties"]["principalType"] = principal_type
         return self.authz_client.role_assignments.create(
             scope=scope,
             role_assignment_name=str(uuid4()),
-            parameters={
-                "properties": {
-                    "roleDefinitionId": role_def_id,
-                    "principalId": principal_id,
-                }
-            },
+            parameters=props,
         )
 
     def can_apply_role_assignment(

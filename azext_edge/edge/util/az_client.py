@@ -35,6 +35,7 @@ logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
+    from azure.keyvault.secrets import SecretClient
 
     from ..vendor.clients.authzmgmt import AuthorizationManagementClient
     from ..vendor.clients.clusterconfigmgmt import KubernetesConfigurationClient
@@ -122,7 +123,8 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
     )
 
 
-REGISTRY_API_VERSION = "2024-09-01-preview"
+REGISTRY_PREVIEW_API_VERSION = "2024-09-01-preview"
+REGISTRY_API_VERSION = "2024-11-01"
 
 
 def get_registry_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftDeviceRegistryManagementService":
@@ -183,7 +185,22 @@ def get_authz_client(subscription_id: str, **kwargs) -> "AuthorizationManagement
     )
 
 
-def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC) -> JSON:
+def get_keyvault_client(subscription_id: str, keyvault_name: str, **kwargs) -> "SecretClient":
+    from azure.keyvault.secrets import SecretClient
+
+    # TODO: this only supports azure public cloud for now
+    client = SecretClient(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        vault_url=f"https://{keyvault_name}.vault.azure.net",
+        **kwargs,
+    )
+
+    return client
+
+
+def wait_for_terminal_state(poller: "LROPoller", wait_sec: int = POLL_WAIT_SEC, **_) -> JSON:
     # resource client does not handle sigint well
     counter = 0
     while counter < POLL_RETRIES:

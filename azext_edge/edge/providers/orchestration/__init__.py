@@ -5,11 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 from .deletion import delete_ops_resources
-from .host import run_host_verify
 from .work import WorkManager
 
 __all__ = [
     "WorkManager",
     "delete_ops_resources",
-    "run_host_verify",
 ]

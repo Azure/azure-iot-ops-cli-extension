@@ -12,25 +12,20 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     RequiredArgumentMissingError,
 )
-# from azure.core.exceptions import ResourceNotFoundError
 
 from .user_strings import DUPLICATE_EVENT_ERROR, DUPLICATE_POINT_ERROR, INVALID_OBSERVABILITY_MODE_ERROR
 from ....util import assemble_nargs_to_dict
 from ....common import FileType
-from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state
+from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state, REGISTRY_API_VERSION
 from ....util.queryable import Queryable
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistrymgmt.operations import (
-        AssetsOperations,
-        DiscoveredAssetsOperations
-    )
+    from ....vendor.clients.deviceregistrymgmt.operations import AssetsOperations
 
 
 console = Console()
 logger = get_logger(__name__)
 ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/assets"
-DISCOVERED_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/discoveredAssets"
 VALID_DATA_OBSERVABILITY_MODES = frozenset(["None", "Gauge", "Counter", "Histogram", "Log"])
 VALID_EVENT_OBSERVABILITY_MODES = frozenset(["None", "Log"])
 
@@ -39,11 +34,10 @@ class Assets(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id
+            subscription_id=self.default_subscription_id,
+            api_version=REGISTRY_API_VERSION
         )
         self.ops: "AssetsOperations" = self.deviceregistry_mgmt_client.assets
-        self.discovered_ops: "DiscoveredAssetsOperations" = self.deviceregistry_mgmt_client.discovered_assets
-        self.update_ops: Optional[Union["AssetsOperations", "DiscoveredAssetsOperations"]] = None
 
     def create(
         self,
@@ -78,7 +72,7 @@ class Assets(Queryable):
         ev_sampling_interval: int = 500,
         ev_queue_size: int = 1,
         tags: Optional[Dict[str, str]] = None,
-        discovered: bool = False  # for quick discovered debugging
+        **kwargs
     ):
         from .helpers import get_extended_location
         extended_location = get_extended_location(
@@ -124,12 +118,6 @@ class Assets(Queryable):
             ev_sampling_interval=ev_sampling_interval,
             ev_queue_size=ev_queue_size,
         )
-        # discovered
-        if discovered:
-            self.ops = self.discovered_ops
-            properties.pop("enabled", None)
-            properties["version"] = 1
-            properties["discoveryId"] = "discoveryid1"
 
         asset_body = {
             "extendedLocation": extended_location,
@@ -143,55 +131,33 @@ class Assets(Queryable):
                 asset_name,
                 resource=asset_body
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
-    def delete(self, asset_name: str, resource_group_name: str):
+    def delete(self, asset_name: str, resource_group_name: str, **kwargs):
         self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
             check_cluster=True
         )
         with console.status(f"Deleting {asset_name}..."):
-            poller = self.update_ops.begin_delete(
+            poller = self.ops.begin_delete(
                 resource_group_name,
                 asset_name,
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
     def show(
         self, asset_name: str, resource_group_name: str, check_cluster: bool = False
     ) -> dict:
-        # TODO: re-add try except when discovered is exposed
-        # try:
         asset = self.ops.get(
             resource_group_name=resource_group_name, asset_name=asset_name
         )
-        self.update_ops = self.ops
-        # except ResourceNotFoundError:
-        #     try:
-        #         asset = self.discovered_ops.get(
-        #             resource_group_name=resource_group_name, discovered_asset_name=asset_name
-        #         )
-        #         self.update_ops = self.discovered_ops
-        #     except ResourceNotFoundError:
-        #         # raise combined exception
-        #         raise ResourceNotFoundError(
-        #             f"Niether 'Microsoft.DeviceRegistry/assets/{asset_name}' nor "
-        #             f"'Microsoft.DeviceRegistry/discoveredAssets/{asset_name}' under resource group "
-        #             f"'{resource_group_name}' was not found. For more details please go to "
-        #             "https://aka.ms/ARMResourceNotFoundFix"
-        #         )
         if check_cluster:
             from .helpers import check_cluster_connectivity
             check_cluster_connectivity(self.cmd, asset)
         return asset
 
-    def list(self, resource_group_name: Optional[str] = None, discovered: bool = False) -> Iterable[dict]:
-        if discovered:
-            if resource_group_name:
-                return self.discovered_ops.list_by_resource_group(resource_group_name=resource_group_name)
-            return self.discovered_ops.list_by_subscription()
-
+    def list(self, resource_group_name: Optional[str] = None) -> Iterable[dict]:
         if resource_group_name:
             return self.ops.list_by_resource_group(resource_group_name=resource_group_name)
         return self.ops.list_by_subscription()
@@ -241,15 +207,7 @@ class Assets(Queryable):
             serial_number=serial_number,
             software_revision=software_revision
         )
-
-        if discovered is not None:
-            resource_type = DISCOVERED_ASSET_RESOURCE_TYPE if discovered else ASSET_RESOURCE_TYPE
-            query = f"Resources | where type =~\"{resource_type}\" " + query_body
-        else:
-            # we put the query body into the each type query and then union to avoid the union result from
-            # becoming too big
-            query = f"Resources | where type =~ \"{ASSET_RESOURCE_TYPE}\" {query_body} "\
-                f"| union (Resources | where type =~ \"{DISCOVERED_ASSET_RESOURCE_TYPE}\" {query_body})"
+        query = f"Resources | where type =~\"{ASSET_RESOURCE_TYPE}\" " + query_body
 
         if any([instance_name, instance_resource_group]):
             instance_query = "Resources | where type =~ 'microsoft.iotoperations/instances' "
@@ -289,6 +247,7 @@ class Assets(Queryable):
         ev_sampling_interval: Optional[int] = None,
         ev_queue_size: Optional[int] = None,
         tags: Optional[Dict[str, str]] = None,
+        **kwargs
     ):
         # get the asset
         original_asset = self.show(
@@ -325,12 +284,12 @@ class Assets(Queryable):
         )
 
         with console.status(f"Updating {asset_name}..."):
-            poller = self.update_ops.begin_create_or_replace(
+            poller = self.ops.begin_create_or_replace(
                 resource_group_name,
                 asset_name,
                 original_asset
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
     # Dataset
     # TODO: multi-dataset support
@@ -368,7 +327,8 @@ class Assets(Queryable):
         observability_mode: Optional[str] = None,
         queue_size: Optional[int] = None,
         sampling_interval: Optional[int] = None,
-        replace: bool = False
+        replace: bool = False,
+        **kwargs
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -393,12 +353,12 @@ class Assets(Queryable):
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.update_ops.begin_create_or_replace(
+            poller = self.ops.begin_create_or_replace(
                 resource_group_name,
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
 
@@ -447,7 +407,8 @@ class Assets(Queryable):
         dataset_name: str,
         file_path: str,
         resource_group_name: str,
-        replace: bool = False
+        replace: bool = False,
+        **kwargs
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -465,12 +426,12 @@ class Assets(Queryable):
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.update_ops.begin_create_or_replace(
+            poller = self.ops.begin_create_or_replace(
                 resource_group_name,
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return _get_dataset(asset, dataset_name)["dataPoints"]
@@ -494,6 +455,7 @@ class Assets(Queryable):
         dataset_name: str,
         data_point_name: str,
         resource_group_name: str,
+        **kwargs,
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -506,12 +468,12 @@ class Assets(Queryable):
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.update_ops.begin_create_or_replace(
+            poller = self.ops.begin_create_or_replace(
                 resource_group_name,
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
 
@@ -529,7 +491,8 @@ class Assets(Queryable):
         sampling_interval: Optional[int] = None,
         topic_path: Optional[str] = None,
         topic_retain: Optional[str] = None,
-        replace: bool = False
+        replace: bool = False,
+        **kwargs
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -559,12 +522,12 @@ class Assets(Queryable):
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.update_ops.begin_create_or_replace(
+            poller = self.ops.begin_create_or_replace(
                 resource_group_name,
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
@@ -607,7 +570,8 @@ class Assets(Queryable):
         asset_name: str,
         file_path: str,
         resource_group_name: str,
-        replace: bool = False
+        replace: bool = False,
+        **kwargs
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -623,12 +587,12 @@ class Assets(Queryable):
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.update_ops.begin_create_or_replace(
+            poller = self.ops.begin_create_or_replace(
                 resource_group_name,
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
@@ -650,6 +614,7 @@ class Assets(Queryable):
         asset_name: str,
         event_name: str,
         resource_group_name: str,
+        **kwargs
     ):
         asset = self.show(
             asset_name=asset_name,
@@ -662,12 +627,12 @@ class Assets(Queryable):
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.update_ops.begin_create_or_replace(
+            poller = self.ops.begin_create_or_replace(
                 resource_group_name,
                 asset_name,
                 asset
             )
-            asset = wait_for_terminal_state(poller)
+            asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]

@@ -16,6 +16,7 @@ edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edg
 secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_secretsync#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
+connector_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_connector#{}")
 
 
 def load_iotops_commands(self, _):
@@ -25,16 +26,15 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops",
         command_type=edge_resource_ops,
-        is_preview=True,
     ) as cmd_group:
-        cmd_group.command("check", "check")
+        cmd_group.command("check", "check", is_preview=True)
         cmd_group.command("init", "init")
+        cmd_group.command("upgrade", "upgrade", deprecate_info=cmd_group.deprecate(hide=True))
         cmd_group.command("create", "create_instance")
         cmd_group.command("update", "update_instance")
         cmd_group.show_command("show", "show_instance")
         cmd_group.command("list", "list_instances")
         cmd_group.command("delete", "delete")
-        cmd_group.command("verify-host", "verify_host")
 
     with self.command_group(
         "iot ops identity",
@@ -47,14 +47,16 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops secretsync",
         command_type=secretsync_resource_ops,
+        is_preview=True,
     ) as cmd_group:
         cmd_group.command("enable", "secretsync_enable")
         cmd_group.command("disable", "secretsync_disable")
-        cmd_group.show_command("show", "secretsync_show")
+        cmd_group.show_command("list", "secretsync_list")
 
     with self.command_group(
         "iot ops support",
         command_type=edge_resource_ops,
+        is_preview=True,
     ) as cmd_group:
         cmd_group.command("create-bundle", "support_bundle")
 
@@ -62,7 +64,6 @@ def load_iotops_commands(self, _):
         "iot ops broker",
         command_type=mq_resource_ops,
     ) as cmd_group:
-        cmd_group.command("stats", "stats")
         cmd_group.show_command("show", "show_broker")
         cmd_group.command("list", "list_brokers")
         cmd_group.command("delete", "delete_broker")
@@ -165,6 +166,17 @@ def load_iotops_commands(self, _):
         cmd_group.command("opcua", "create_opcua_asset_endpoint_profile")
 
     with self.command_group(
+        "iot ops schema",
+        command_type=schema_resource_ops,
+        is_preview=True,
+    ) as cmd_group:
+        cmd_group.command("create", "create_schema")
+        cmd_group.show_command("show", "show_schema")
+        cmd_group.command("list", "list_schemas")
+        cmd_group.command("show-dataflow-refs", "list_schema_versions_dataflow_format", is_experimental=True)
+        cmd_group.command("delete", "delete_schema")
+
+    with self.command_group(
         "iot ops schema registry",
         command_type=schema_resource_ops,
     ) as cmd_group:
@@ -172,3 +184,43 @@ def load_iotops_commands(self, _):
         cmd_group.show_command("show", "show_registry")
         cmd_group.command("list", "list_registries")
         cmd_group.command("delete", "delete_registry")
+
+    with self.command_group(
+        "iot ops schema version",
+        command_type=schema_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_version")
+        cmd_group.show_command("show", "show_version")
+        cmd_group.command("list", "list_versions")
+        cmd_group.command("remove", "remove_version")
+
+    with self.command_group(
+        "iot ops connector",
+        command_type=connector_resource_ops,
+        is_preview=True,
+    ) as cmd_group:
+        pass
+
+    with self.command_group(
+        "iot ops connector opcua trust",
+        command_type=connector_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_connector_opcua_trust")
+        cmd_group.command("remove", "remove_connector_opcua_trust")
+        cmd_group.show_command("show", "show_connector_opcua_trust")
+
+    with self.command_group(
+        "iot ops connector opcua issuer",
+        command_type=connector_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_connector_opcua_issuer")
+        cmd_group.command("remove", "remove_connector_opcua_issuer")
+        cmd_group.show_command("show", "show_connector_opcua_issuer")
+
+    with self.command_group(
+        "iot ops connector opcua client",
+        command_type=connector_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_connector_opcua_client")
+        cmd_group.command("remove", "remove_connector_opcua_client")
+        cmd_group.show_command("show", "show_connector_opcua_client")

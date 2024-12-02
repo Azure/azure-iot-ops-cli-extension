@@ -65,6 +65,7 @@ def test_create(
         target_address=target_address,
         resource_group_name=resource_group_name,
         instance_name=instance_name,
+        wait_sec=0,
         **req
     )
     assert result == mock_profile_record
@@ -76,7 +77,7 @@ def test_create(
 
     call_body_props = call_body["properties"]
     # TODO: will change later
-    assert call_body_props["endpointProfileType"] == "OpcUa"
+    assert call_body_props["endpointProfileType"] == "Microsoft.OpcUa"
     assert call_body_props["targetAddress"] == target_address
 
     auth_props = call_body_props["authentication"]
@@ -128,6 +129,7 @@ def test_delete(mocked_cmd, mocked_check_cluster_connectivity, mocked_responses:
         cmd=mocked_cmd,
         asset_endpoint_profile_name=profile_name,
         resource_group_name=resource_group_name,
+        wait_sec=0,
     )
     assert len(mocked_responses.calls) == (3 if discovered else 2)
 
@@ -248,6 +250,7 @@ def test_update(
         cmd=mocked_cmd,
         asset_endpoint_profile_name=profile_name,
         resource_group_name=resource_group_name,
+        wait_sec=0,
         **req
     )
     assert result == mock_profile_record

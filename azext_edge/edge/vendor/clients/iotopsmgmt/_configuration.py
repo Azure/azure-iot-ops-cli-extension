@@ -31,14 +31,14 @@ class MicrosoftIoTOperationsManagementServiceConfiguration(
     :type subscription_id: str
     :param credential: Credential needed for the client to connect to Azure. Required.
     :type credential: ~azure.core.credentials.TokenCredential
-    :keyword api_version: Api Version. Default value is "2024-08-15-preview". Note that overriding
-     this default value may result in unsupported behavior.
+    :keyword api_version: Api Version. Default value is "2024-11-01". Note that overriding this
+     default value may result in unsupported behavior.
     :paramtype api_version: str
     """
 
     def __init__(self, subscription_id: str, credential: "TokenCredential", **kwargs: Any) -> None:
         super(MicrosoftIoTOperationsManagementServiceConfiguration, self).__init__(**kwargs)
-        api_version: str = kwargs.pop("api_version", "2024-08-15-preview")
+        api_version: str = kwargs.pop("api_version", "2024-11-01")
 
         if subscription_id is None:
             raise ValueError("Parameter 'subscription_id' must not be None.")
