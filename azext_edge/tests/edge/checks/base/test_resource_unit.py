@@ -1008,7 +1008,6 @@ def test_validate_ref(mocker, name, namespace, ref_type, ref_obj, expected_text,
     mocker.patch("azext_edge.edge.providers.check.base.resource.get_namespaced_secret", return_value=ref_obj)
     mocker.patch("azext_edge.edge.providers.check.base.resource.get_config_map", return_value=ref_obj)
 
-    text, is_valid = validate_ref(name, namespace, ref_type)
+    is_valid = validate_ref(name, namespace, ref_type)
 
-    assert text == expected_text
     assert is_valid == expected_is_valid
