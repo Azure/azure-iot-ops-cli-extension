@@ -114,35 +114,18 @@ def init(
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
     work_manager = WorkManager(cmd)
-    return work_manager.execute_ops_init(
+    result_payload = work_manager.execute_ops_init(
         show_progress=not no_progress,
         pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
         enable_fault_tolerance=enable_fault_tolerance,
         user_trust=user_trust,
+        **kwargs,
     )
-
-
-def upgrade(
-    cmd,
-    resource_group_name: str,
-    instance_name: str,
-    schema_registry_resource_id: Optional[str] = None,
-    no_progress: Optional[bool] = None,
-    confirm_yes: Optional[bool] = None,
-    **kwargs
-):
-    from .providers.orchestration.upgrade import upgrade_ops_resources
-    return upgrade_ops_resources(
-        cmd=cmd,
-        resource_group_name=resource_group_name,
-        instance_name=instance_name,
-        sr_resource_id=schema_registry_resource_id,
-        no_progress=no_progress,
-        confirm_yes=confirm_yes,
-        **kwargs
-    )
+    if no_progress and result_payload:
+        # @digimaun - TODO
+        pass
 
 
 def create_instance(
@@ -198,7 +181,7 @@ def create_instance(
         )
 
     work_manager = WorkManager(cmd)
-    return work_manager.execute_ops_init(
+    result_payload = work_manager.execute_ops_init(
         show_progress=not no_progress,
         pre_flight=not no_pre_flight,
         apply_foundation=False,
@@ -230,6 +213,32 @@ def create_instance(
         broker_frontend_workers=broker_frontend_workers,
         broker_frontend_replicas=broker_frontend_replicas,
         tags=tags,
+        **kwargs,
+    )
+    if no_progress and result_payload:
+        # @digimaun - TODO
+        pass
+
+
+def upgrade(
+    cmd,
+    resource_group_name: str,
+    instance_name: str,
+    schema_registry_resource_id: Optional[str] = None,
+    no_progress: Optional[bool] = None,
+    confirm_yes: Optional[bool] = None,
+    **kwargs,
+):
+    from .providers.orchestration.upgrade import upgrade_ops_resources
+
+    return upgrade_ops_resources(
+        cmd=cmd,
+        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        sr_resource_id=schema_registry_resource_id,
+        no_progress=no_progress,
+        confirm_yes=confirm_yes,
+        **kwargs,
     )
 
 

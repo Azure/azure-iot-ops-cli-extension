@@ -86,8 +86,8 @@ class UpgradeManager:
         self._progress_shown = False
 
     def do_work(self, confirm_yes: Optional[bool] = None):
-        from .template import M3_INSTANCE_TEMPLATE
-        self.new_aio_version = M3_INSTANCE_TEMPLATE.content["variables"]["VERSIONS"]["iotOperations"]
+        from .template import TEMPLATE_BLUEPRINT_INSTANCE
+        self.new_aio_version = TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["VERSIONS"]["iotOperations"]
         # get the resource map from the instance (checks if update is needed for instance)
         self.resource_map = self._get_resource_map()
         # Ensure cluster exists with existing resource_map pattern.
@@ -127,11 +127,11 @@ class UpgradeManager:
         return self._process()
 
     def _check_extensions(self) -> str:
-        from .template import M3_ENABLEMENT_TEMPLATE, M3_INSTANCE_TEMPLATE
-        version_map = M3_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
-        version_map.update(M3_INSTANCE_TEMPLATE.content["variables"]["VERSIONS"].copy())
-        train_map = M3_ENABLEMENT_TEMPLATE.content["variables"]["TRAINS"].copy()
-        train_map.update(M3_INSTANCE_TEMPLATE.content["variables"]["TRAINS"].copy())
+        from .template import TEMPLATE_BLUEPRINT_ENABLEMENT, TEMPLATE_BLUEPRINT_INSTANCE
+        version_map = TEMPLATE_BLUEPRINT_ENABLEMENT.content["variables"]["VERSIONS"].copy()
+        version_map.update(TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["VERSIONS"].copy())
+        train_map = TEMPLATE_BLUEPRINT_ENABLEMENT.content["variables"]["TRAINS"].copy()
+        train_map.update(TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["TRAINS"].copy())
 
         # note that the secret store type changes but somehow it all works out :)
         # the order is determined by depends on in the template

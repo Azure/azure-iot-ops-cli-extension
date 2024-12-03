@@ -47,9 +47,7 @@ class TemplateBlueprint(NamedTuple):
         )
 
 
-IOT_OPERATIONS_VERSION_MONIKER = "v0.8.0-preview"
-
-M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
+TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
     commit_id="ade4c2645c9ee6c4a1038f2bfef12773ca30691a",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -350,7 +348,7 @@ M3_ENABLEMENT_TEMPLATE = TemplateBlueprint(
     },
 )
 
-M3_INSTANCE_TEMPLATE = TemplateBlueprint(
+TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
     commit_id="ade4c2645c9ee6c4a1038f2bfef12773ca30691a",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",

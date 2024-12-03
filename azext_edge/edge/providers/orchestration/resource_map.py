@@ -6,10 +6,11 @@
 
 from typing import Dict, List, Optional
 
+from knack.log import get_logger
 from rich.tree import Tree
 
+from .common import EXTENSION_TYPE_OPS
 from .connected_cluster import ConnectedCluster
-from knack.log import get_logger
 
 logger = get_logger(__name__)
 
@@ -135,16 +136,14 @@ class IoTOperationsResourceMap:
         self._cluster_container = refreshed_cluster_container
 
     def build_tree(self, include_dependencies: bool = True, category_color: str = "cyan") -> Tree:
-        from .work import IOT_OPS_EXTENSION_TYPE
-
         tree = Tree(f"[green]{self.connected_cluster.cluster_name}")
 
         extensions_node = tree.add(label=f"[{category_color}]extensions")
         if not include_dependencies:
             # only show aio extension
             # TODO: @c-ryan-k hacky
-            aio_ext_obj = self.connected_cluster.get_extensions_by_type(IOT_OPS_EXTENSION_TYPE).get(
-                IOT_OPS_EXTENSION_TYPE, {}
+            aio_ext_obj = self.connected_cluster.get_extensions_by_type(EXTENSION_TYPE_OPS).get(
+                EXTENSION_TYPE_OPS, {}
             )
             if aio_ext_obj:
                 aio_ext_id: str = aio_ext_obj.get("id", "")

@@ -5,10 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import IntEnum
-from functools import reduce
 from json import dumps
 from time import sleep
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
@@ -27,6 +26,12 @@ from ...util.az_client import (
     get_resource_client,
     parse_resource_id,
     wait_for_terminal_state,
+)
+from .common import (
+    EXTENSION_TYPE_OPS,
+    EXTENSION_TYPE_PLATFORM,
+    EXTENSION_TYPE_SSC,
+    OPS_EXTENSION_DEPS,
 )
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from .resource_map import IoTOperationsResourceMap
@@ -61,9 +66,7 @@ class WorkRecord:
 
 PROVISIONING_STATE_SUCCESS = "Succeeded"
 CONNECTIVITY_STATUS_CONNECTED = "Connected"
-IOT_OPS_EXTENSION_TYPE = "microsoft.iotoperations"
-IOT_OPS_PLAT_EXTENSION_TYPE = "microsoft.iotoperations.platform"
-SECRET_SYNC_EXTENSION_TYPE = "microsoft.azure.secretstore"
+
 CONTRIBUTOR_ROLE_ID = "b24988ac-6180-42a0-ab88-20f7382dd24c"
 
 
@@ -84,8 +87,10 @@ class WorkDisplay:
         self._steps: Dict[int, Dict[int, str]] = {}
         self._headers: Dict[int, str] = {}
 
-    def add_category(self, category: WorkCategoryKey, title: str, skipped: bool = False):
-        self._categories[category] = (WorkRecord(title), skipped)
+    def add_category(
+        self, category: WorkCategoryKey, title: str, skipped: bool = False, description: Optional[str] = None
+    ):
+        self._categories[category] = (WorkRecord(title, description), skipped)
         self._steps[category] = {}
 
     def add_step(self, category: WorkCategoryKey, step: WorkStepKey, title: str, description: Optional[str] = None):
@@ -125,16 +130,23 @@ class WorkManager:
     def _format_enablement_desc(self) -> str:
         version_map = self._targets.get_extension_versions()
         display_desc = "[dim]"
-        for ver in version_map:
-            display_desc += f"• {ver}: {version_map[ver]}\n"
-        return display_desc[:-1] + ""
+        for moniker in version_map:
+            display_desc += f"• {moniker}: {version_map[moniker]['version']} {version_map[moniker]['train']}\n"
+        return display_desc[:-1]
 
     def _format_instance_desc(self) -> str:
+        version_map = self._targets.get_extension_versions(False)
+        display_desc = "[dim]"
+        for moniker in version_map:
+            display_desc += f"v{version_map[moniker]['version']} {version_map[moniker]['train']}\n"
+        return display_desc[:-1]
+
+    def _format_instance_config_desc(self) -> str:
         instance_config = {"resource sync": "enabled" if self._targets.deploy_resource_sync_rules else "disabled"}
         display_desc = ""
         for c in instance_config:
             display_desc += f"• {c}: {instance_config[c]}\n"
-        return display_desc[:-1] + ""
+        return display_desc[:-1]
 
     def _build_display(self):
         pre_check_cat_desc = "Pre-Flight"
@@ -146,7 +158,9 @@ class WorkManager:
 
         if self._apply_foundation:
             self._display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
-            self._display.add_step(WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation")
+            self._display.add_step(
+                WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation"
+            )
             self._display.add_step(
                 WorkCategoryKey.ENABLE_IOT_OPS,
                 WorkStepKey.DEPLOY_ENABLEMENT,
@@ -155,13 +169,15 @@ class WorkManager:
             )
 
         if self._targets.instance_name:
-            self._display.add_category(WorkCategoryKey.DEPLOY_IOT_OPS, "Deploy IoT Operations")
+            self._display.add_category(
+                WorkCategoryKey.DEPLOY_IOT_OPS, "Deploy IoT Operations", False, self._format_instance_desc()
+            )
             self._display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.WHAT_IF_INSTANCE, "What-If evaluation")
             self._display.add_step(
                 WorkCategoryKey.DEPLOY_IOT_OPS,
                 WorkStepKey.DEPLOY_INSTANCE,
                 f"Create instance [cyan]{self._targets.instance_name}",
-                self._format_instance_desc(),
+                self._format_instance_config_desc(),
             )
 
     def _process_connected_cluster(self):
@@ -181,6 +197,80 @@ class WorkManager:
 
         if self._targets.enable_fault_tolerance and cluster_properties["totalNodeCount"] < 3:
             raise ValidationError("Arc Container Storage fault tolerance enablement requires at least 3 nodes.")
+
+    def _process_extension_dependencies(self):
+        missing_exts = []
+        bad_provisioning_state = []
+        dependencies = self.ops_extension_dependencies
+        for ext in dependencies:
+            ext_attr = dependencies.get(ext)
+            if not ext_attr:
+                missing_exts.append(ext)
+                continue
+
+            ext_provisioning_state: str = ext_attr.get("properties", {}).get("provisioningState")
+            if ext_provisioning_state.lower() != PROVISIONING_STATE_SUCCESS.lower():
+                bad_provisioning_state.append(ext)
+
+        if missing_exts:
+            raise ValidationError(
+                "Foundational service(s) not detected on the cluster:\n\n"
+                + "\n".join(missing_exts)
+                + "\n\nInstance deployment will not continue. Please run 'az iot ops init'."
+            )
+
+        if bad_provisioning_state:
+            raise ValidationError(
+                "Foundational service(s) with non-successful provisioning state detected on the cluster:\n\n"
+                + "\n".join(bad_provisioning_state)
+                + "\n\nInstance deployment will not continue. Please run 'az iot ops init'."
+            )
+
+        # validate trust config in platform extension matches trust settings in create
+        platform_extension_config = dependencies[EXTENSION_TYPE_PLATFORM]["properties"]["configurationSettings"]
+        is_user_trust = platform_extension_config.get("installCertManager", "").lower() != "true"
+        if is_user_trust and not self._targets.trust_settings:
+            raise ValidationError(
+                "Cluster was enabled with user-managed trust configuration, "
+                "--trust-settings arguments are required to create an instance on this cluster."
+            )
+        elif not is_user_trust and self._targets.trust_settings:
+            raise ValidationError(
+                "Cluster was enabled with system cert-manager, "
+                "trust settings (--trust-settings) are not applicable to this cluster."
+            )
+
+    def _apply_sr_role_assignment(self) -> Optional[str]:
+        ops_ext = self.ops_extension
+        if not ops_ext:
+            raise ValidationError("IoT Operations extension not detected. Please run 'az iot ops create'.")
+        # TODO - add non-success provisioningState
+        ops_ext_principal_id = ops_ext.get("identity", {}).get("principalId")
+        if not ops_ext_principal_id:
+            raise ValidationError(
+                "Unable to determine the IoT Operations system-managed identity principal Id.\n"
+                "Please re-deploy via 'az iot ops create'."
+            )
+
+        try:
+            schema_registry_id_parts = parse_resource_id(self._targets.schema_registry_resource_id)
+            self.permission_manager.apply_role_assignment(
+                scope=self._targets.schema_registry_resource_id,
+                principal_id=ops_ext_principal_id,
+                role_def_id=ROLE_DEF_FORMAT_STR.format(
+                    subscription_id=schema_registry_id_parts.subscription_id,
+                    role_id=CONTRIBUTOR_ROLE_ID,
+                ),
+                principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
+            )
+        except HttpResponseError as e:
+            self._warnings.append(
+                get_user_msg_warn_ra(
+                    prefix=f"Role assignment failed with:\n{str(e)}",
+                    principal_id=ops_ext_principal_id,
+                    scope=self._targets.schema_registry_resource_id,
+                )
+            )
 
     def _deploy_template(
         self,
@@ -226,18 +316,21 @@ class WorkManager:
         self._completed_steps: Dict[int, int] = {}
         self._active_step: int = 0
         self._targets = InitTargets(subscription_id=self.subscription_id, **kwargs)
-        self._extension_map = None
         self._resource_map = IoTOperationsResourceMap(
             cmd=self.cmd,
             cluster_name=self._targets.cluster_name,
             resource_group_name=self._targets.resource_group_name,
             defer_refresh=True,
         )
+        self._result_payload = {}
+        self._warnings: List[str] = []
+        self._ops_ext_dependencies = None
+        self._ops_ext = None
         self._build_display()
 
         return self._do_work()
 
-    def _do_work(self):  # noqa: C901
+    def _do_work(self):
         from .base import (
             verify_custom_location_namespace,
             verify_custom_locations_enabled,
@@ -246,11 +339,9 @@ class WorkManager:
         from .permissions import verify_write_permission_against_rg
         from .rp_namespace import register_providers
 
-        work_kpis = {}
-
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
-            self.render_display()
+            self._render_display()
             verify_cli_client_connections()
             self._process_connected_cluster()
 
@@ -258,9 +349,9 @@ class WorkManager:
             if self._pre_flight:
 
                 # WorkStepKey.REG_RP
-                self.render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
+                self._render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
                 register_providers(self.subscription_id)
-                self.complete_step(
+                self._complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.REG_RP,
                     active_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
@@ -280,7 +371,7 @@ class WorkManager:
                     verify_write_permission_against_rg(
                         subscription_id=self.subscription_id, resource_group_name=self._targets.resource_group_name
                     )
-                self.complete_step(
+                self._complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
                 )
@@ -288,7 +379,9 @@ class WorkManager:
             # Enable IoT Ops workflow
             if self._apply_foundation:
                 enablement_work_name = self._work_format_str.format(op="enablement")
-                self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT)
+                self._render_display(
+                    category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
+                )
                 enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
                 self._deploy_template(
                     content=enablement_content,
@@ -296,7 +389,7 @@ class WorkManager:
                     deployment_name=enablement_work_name,
                     what_if=True,
                 )
-                self.complete_step(
+                self._complete_step(
                     category=WorkCategoryKey.ENABLE_IOT_OPS,
                     completed_step=WorkStepKey.WHAT_IF_ENABLEMENT,
                     active_step=WorkStepKey.DEPLOY_ENABLEMENT,
@@ -306,35 +399,17 @@ class WorkManager:
                     parameters=enablement_parameters,
                     deployment_name=enablement_work_name,
                 )
-                enablement_deploy_link = (
-                    "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
-                    f"%2Fsubscriptions%2F{self.subscription_id}%2FresourceGroups%2F{self._targets.resource_group_name}"
-                    f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{enablement_work_name}"
-                )
                 # Pattern needs work, it is this way to dynamically update UI
                 self._display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title = (
-                    f"[link={enablement_deploy_link}]"
+                    f"[link={self._get_deployment_link(enablement_work_name)}]"
                     f"{self._display.categories[WorkCategoryKey.ENABLE_IOT_OPS][0].title}[/link]"
                 )
-                self.render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
+                self._render_display(category=WorkCategoryKey.ENABLE_IOT_OPS)
                 _ = wait_for_terminal_state(enablement_poller)
 
-                self._extension_map = self._resource_map.connected_cluster.get_extensions_by_type(
-                    IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
-                )
-
-                self.complete_step(
+                self._complete_step(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, completed_step=WorkStepKey.DEPLOY_ENABLEMENT
                 )
-
-                if self._show_progress:
-                    self._resource_map.refresh_resource_state()
-                    resource_tree = self._resource_map.build_tree()
-                    self.stop_display()
-                    print(resource_tree)
-                    return
-                # TODO @digimaun - work_kpis
-                return work_kpis
 
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
@@ -343,37 +418,15 @@ class WorkManager:
                     resource_id=self._targets.schema_registry_resource_id,
                     api_version=REGISTRY_PREVIEW_API_VERSION,
                 )
-                if not self._extension_map:
-                    self._extension_map = self._resource_map.connected_cluster.get_extensions_by_type(
-                        IOT_OPS_PLAT_EXTENSION_TYPE, SECRET_SYNC_EXTENSION_TYPE
-                    )
-                    # TODO - @digmaun revisit
-                    if any(not v for v in self._extension_map.values()):
-                        raise ValidationError(
-                            "Foundational service installation not detected. "
-                            "Instance deployment will not continue. Please run `az iot ops init`."
-                        )
-
-                # validate trust config in platform extension matches trust settings in create
-                platform_extension_config = self._extension_map[IOT_OPS_PLAT_EXTENSION_TYPE]["properties"][
-                    "configurationSettings"
-                ]
-                is_user_trust = platform_extension_config.get("installCertManager", "").lower() != "true"
-                if is_user_trust and not self._targets.trust_settings:
-                    raise ValidationError(
-                        "Cluster was enabled with user-managed trust configuration, "
-                        "--trust-settings arguments are required to create an instance on this cluster."
-                    )
-                elif not is_user_trust and self._targets.trust_settings:
-                    raise ValidationError(
-                        "Cluster was enabled with system cert-manager, "
-                        "trust settings (--trust-settings) are not applicable to this cluster."
-                    )
+                self._process_extension_dependencies()
 
                 instance_work_name = self._work_format_str.format(op="instance")
-                self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)
+                self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)
                 instance_content, instance_parameters = self._targets.get_ops_instance_template(
-                    cl_extension_ids=[self._extension_map[ext]["id"] for ext in self._extension_map],
+                    cl_extension_ids=[
+                        self.ops_extension_dependencies[ext]["id"]
+                        for ext in [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
+                    ],
                 )
                 self._deploy_template(
                     content=instance_content,
@@ -381,7 +434,7 @@ class WorkManager:
                     deployment_name=instance_work_name,
                     what_if=True,
                 )
-                self.complete_step(
+                self._complete_step(
                     category=WorkCategoryKey.DEPLOY_IOT_OPS,
                     completed_step=WorkStepKey.WHAT_IF_INSTANCE,
                     active_step=WorkStepKey.DEPLOY_INSTANCE,
@@ -391,74 +444,36 @@ class WorkManager:
                     parameters=instance_parameters,
                     deployment_name=instance_work_name,
                 )
-                instance_deploy_link = (
-                    "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
-                    f"%2Fsubscriptions%2F{self.subscription_id}%2FresourceGroups%2F{self._targets.resource_group_name}"
-                    f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{instance_work_name}"
-                )
                 # Pattern needs work, it is this way to dynamically update UI
                 self._display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title = (
-                    f"[link={instance_deploy_link}]"
+                    f"[link={self._get_deployment_link(instance_work_name)}]"
                     f"{self._display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title}[/link]"
                 )
-                self.render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS)
-                instance_output = wait_for_terminal_state(instance_poller)
+                self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS)
+                _ = wait_for_terminal_state(instance_poller)
+                self._apply_sr_role_assignment()
 
-                # safely get nested property
-                keys = ["properties", "outputs", "aioExtension", "value", "identityPrincipalId"]
-                extension_principal_id = reduce(lambda val, key: val.get(key) if val else None, keys, instance_output)
-                # TODO - @c-ryan-k consider setting role_assignment_error if extension_principal_id is None
-                role_assignment_error = None
-                try:
-                    schema_registry_id_parts = parse_resource_id(self._targets.schema_registry_resource_id)
-                    self.permission_manager.apply_role_assignment(
-                        scope=self._targets.schema_registry_resource_id,
-                        principal_id=extension_principal_id,
-                        role_def_id=ROLE_DEF_FORMAT_STR.format(
-                            subscription_id=schema_registry_id_parts.subscription_id,
-                            role_id=CONTRIBUTOR_ROLE_ID,
-                        ),
-                        principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
-                    )
-                except Exception as e:
-                    role_assignment_error = get_user_msg_warn_ra(
-                        prefix=f"Role assignment failed with:\n{str(e)}.",
-                        principal_id=extension_principal_id,
-                        scope=self._targets.schema_registry_resource_id,
-                    )
-
-                self.complete_step(
+                self._complete_step(
                     category=WorkCategoryKey.DEPLOY_IOT_OPS,
                     completed_step=WorkStepKey.DEPLOY_INSTANCE,
                 )
-                if role_assignment_error:
-                    logger.warning(role_assignment_error)
 
-                if self._show_progress:
-                    # hopefully this adds the aio extension correctly
-                    self._resource_map.refresh_resource_state()
-                    resource_tree = self._resource_map.build_tree()
-                    self.stop_display()
-                    print(resource_tree)
-                    return
-                # TODO @digimaun - work_kpis
-                return work_kpis
-
+            return self._get_user_result()
         except HttpResponseError as e:
             # TODO: repeated error messages.
             raise AzureResponseError(e.message)
         except KeyboardInterrupt:
             return
         finally:
-            self.stop_display()
+            self._stop_display()
 
-    def complete_step(
+    def _complete_step(
         self, category: WorkCategoryKey, completed_step: WorkStepKey, active_step: Optional[WorkStepKey] = None
     ):
         self._completed_steps[completed_step] = 1
-        self.render_display(category, active_step=active_step)
+        self._render_display(category, active_step=active_step)
 
-    def render_display(self, category: Optional[WorkCategoryKey] = None, active_step: Optional[WorkStepKey] = None):
+    def _render_display(self, category: Optional[WorkCategoryKey] = None, active_step: Optional[WorkStepKey] = None):
         if active_step:
             self._active_step = active_step
 
@@ -490,6 +505,14 @@ class WorkManager:
                     f"{self._display.categories[c][0].title} "
                     f"{'[[dark_khaki]skipped[/dark_khaki]]' if self._display.categories[c][1] else ''}",
                 )
+                if self._display.categories[c][0].description:
+                    content_grid.add_row(
+                        "",
+                        Padding(
+                            self._display.categories[c][0].description,
+                            (0, 0, 0, 4),
+                        ),
+                    )
                 if c in self._display.steps:
                     for s in self._display.steps[c]:
                         if s in self._completed_steps:
@@ -535,9 +558,46 @@ class WorkManager:
         if self._show_progress and not self._live.is_started:
             self._live.start(True)
 
-    def stop_display(self):
+    def _stop_display(self):
         if self._show_progress and self._live.is_started:
             if self._progress_shown:
                 self._progress_bar.update(self._task_id, description="Done.")
                 sleep(0.5)
             self._live.stop()
+
+    @property
+    def ops_extension_dependencies(self) -> Dict[str, Optional[dict]]:
+        if not self._ops_ext_dependencies:
+            self._ops_ext_dependencies = self._resource_map.connected_cluster.get_extensions_by_type(
+                *OPS_EXTENSION_DEPS
+            )
+        return self._ops_ext_dependencies
+
+    @property
+    def ops_extension(self) -> Optional[dict]:
+        if not self._ops_ext:
+            self._ops_ext = self._resource_map.connected_cluster.get_extensions_by_type(EXTENSION_TYPE_OPS)[
+                EXTENSION_TYPE_OPS
+            ]
+        return self._ops_ext
+
+    def _get_user_result(self) -> Optional[dict]:
+        if self._show_progress:
+            self._resource_map.refresh_resource_state()
+            resource_tree = self._resource_map.build_tree()
+            self._stop_display()
+            print(resource_tree)
+
+        if self._warnings:
+            for w in self._warnings:
+                logger.warning(w + "\n")
+
+        # TODO @digimaun - work kpis
+        return self._result_payload
+
+    def _get_deployment_link(self, deployment_name: str) -> str:
+        return (
+            "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
+            f"%2Fsubscriptions%2F{self.subscription_id}%2FresourceGroups%2F{self._targets.resource_group_name}"
+            f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{deployment_name}"
+        )

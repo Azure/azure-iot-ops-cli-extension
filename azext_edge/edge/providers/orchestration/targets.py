@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import Dict, List, Optional, Tuple
+from functools import partial
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
@@ -23,9 +24,8 @@ from ..orchestration.common import (
 )
 from .common import KubernetesDistroType
 from .template import (
-    IOT_OPERATIONS_VERSION_MONIKER,
-    M3_ENABLEMENT_TEMPLATE,
-    M3_INSTANCE_TEMPLATE,
+    TEMPLATE_BLUEPRINT_ENABLEMENT,
+    TEMPLATE_BLUEPRINT_INSTANCE,
     TemplateBlueprint,
     get_insecure_listener,
 )
@@ -48,7 +48,6 @@ class InitTargets:
         ops_config: Optional[List[str]] = None,
         ops_version: Optional[str] = None,
         ops_train: Optional[str] = None,
-        trust_settings: Optional[List[str]] = None,
         # Dataflow
         dataflow_profile_instances: int = 1,
         # Broker
@@ -66,6 +65,7 @@ class InitTargets:
         container_runtime_socket: Optional[str] = None,
         # User Trust Config
         user_trust: Optional[bool] = None,
+        trust_settings: Optional[List[str]] = None,
         **_,
     ):
         self.cluster_name = cluster_name
@@ -85,10 +85,10 @@ class InitTargets:
         self.ops_config = assemble_nargs_to_dict(ops_config)
         self.ops_version = ops_version
         self.ops_train = ops_train
+        self.user_trust = user_trust
         self.trust_settings = assemble_nargs_to_dict(trust_settings)
         self.trust_config = self.get_trust_settings_target_map()
         self.advanced_config = self.get_advanced_config_target_map()
-        self.user_trust = user_trust
 
         # Dataflow
         self.dataflow_profile_instances = self._sanitize_int(dataflow_profile_instances)
@@ -136,13 +136,19 @@ class InitTargets:
 
         return template_copy, deploy_params
 
-    @property
-    def iot_operations_version(self):
-        return IOT_OPERATIONS_VERSION_MONIKER
+    def get_extension_versions(self, for_enablement: bool = True) -> dict:
+        version_map = {}
+        get_template_method = self.get_ops_enablement_template
+        if not for_enablement:
+            get_template_method = partial(self.get_ops_instance_template, cl_extension_ids=[])
+        template, _ = get_template_method()
+        template_vars = template["variables"]
+        for moniker in template_vars["VERSIONS"]:
+            version_map[moniker] = {"version": template_vars["VERSIONS"][moniker]}
+        for moniker in template_vars["TRAINS"]:
+            version_map[moniker]["train"] = template_vars["TRAINS"][moniker]
 
-    def get_extension_versions(self) -> dict:
-        # Don't need a deep copy here.
-        return M3_ENABLEMENT_TEMPLATE.content["variables"]["VERSIONS"].copy()
+        return version_map
 
     def get_ops_enablement_template(
         self,
@@ -153,20 +159,17 @@ class InitTargets:
                 "trustConfig": self.trust_config,
                 "advancedConfig": self.advanced_config,
             },
-            template_blueprint=M3_ENABLEMENT_TEMPLATE,
+            template_blueprint=TEMPLATE_BLUEPRINT_ENABLEMENT,
         )
         if self.user_trust:
-            # disable cert and trust manager
-            parameters["trustConfig"]["value"]["source"] = "CustomerManaged"
             # patch enablement template expecting full trust settings for source: CustomerManaged
             template.get_type_definition("_1.CustomerManaged")["properties"]["settings"]["nullable"] = True
         return template.content, parameters
 
     def get_ops_instance_template(
-        self, cl_extension_ids: List[str],
+        self,
+        cl_extension_ids: List[str],
     ) -> Tuple[dict, dict]:
-        self.trust_config = self.get_trust_settings_target_map()
-
         template, parameters = self._handle_apply_targets(
             param_to_target={
                 "clusterName": self.cluster_name,
@@ -182,7 +185,7 @@ class InitTargets:
                 "brokerConfig": self.broker_config,
                 "trustConfig": self.trust_config,
             },
-            template_blueprint=M3_INSTANCE_TEMPLATE,
+            template_blueprint=TEMPLATE_BLUEPRINT_INSTANCE,
         )
 
         if self.ops_config:
@@ -241,7 +244,7 @@ class InitTargets:
         processed_config_map = {}
 
         validation_errors = []
-        broker_config_def = M3_INSTANCE_TEMPLATE.get_type_definition("_1.BrokerConfig")["properties"]
+        broker_config_def = TEMPLATE_BLUEPRINT_INSTANCE.get_type_definition("_1.BrokerConfig")["properties"]
         for config in to_process_config_map:
             if to_process_config_map[config] is None:
                 continue
@@ -281,11 +284,14 @@ class InitTargets:
 
     def get_trust_settings_target_map(self) -> dict:
         source = "SelfSigned"
+        if self.trust_settings or self.user_trust:
+            source = "CustomerManaged"
         result = {"source": source}
         if self.trust_settings:
             target_settings: Dict[str, str] = {}
-            result["source"] = "CustomerManaged"
-            trust_bundle_def = M3_ENABLEMENT_TEMPLATE.get_type_definition("_1.TrustBundleSettings")["properties"]
+            trust_bundle_def = TEMPLATE_BLUEPRINT_ENABLEMENT.get_type_definition("_1.TrustBundleSettings")[
+                "properties"
+            ]
             allowed_issuer_kinds: Optional[List[str]] = trust_bundle_def.get(TRUST_ISSUER_KIND_KEY, {}).get(
                 "allowedValues"
             )
