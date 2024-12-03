@@ -145,14 +145,26 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: "Checkout extension source for build"
+        uses: actions/checkout@v4
+        with:
+          # ensure source checkout uses our repo instead of calling workflow
+          repository: azure/azure-iot-ops-cli-extension
+          path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+      - name: "Build and install local IoT Ops extension from source"
+        run: |
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          pip install -r dev_requirements.txt
+          python -m setup bdist_wheel -d dist
+          wheel=$(find ./dist/*.whl)
+          az extension add --source $wheel -y
       - name: "Create k3s cluster"
         run: |
           # vars
           release_url="https://github.com/k3s-io/k3s/releases/download"
           install_dir="/usr/local/bin/k3s"
 
-          # install
-          sudo apt install nfs-common
+          # install k3s
           curl -Lo $install_dir "$release_url/${{ env.K3S_VERSION }}/k3s"
           chmod a+x $install_dir
 
@@ -161,7 +173,10 @@ jobs:
 
           # start cluster in background
           sudo k3s server --cluster-init &
-      - name: "Copy config"
+
+          # allow time for cluster to initialize
+          sleep 15s
+      - name: "Write cluster config"
         run: |
           mkdir ~/.kube 2> /dev/null
           sudo k3s kubectl config view --raw > ~/.kube/config
@@ -245,19 +260,6 @@ jobs:
           spec:
             selfSigned: {}
           EOF
-      - name: "Checkout extension source for build"
-        uses: actions/checkout@v4
-        with:
-          # ensure source checkout uses our repo instead of calling workflow
-          repository: azure/azure-iot-ops-cli-extension
-          path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-      - name: "Build and install local IoT Ops extension from source"
-        run: |
-          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-          pip install -r dev_requirements.txt
-          python -m setup bdist_wheel -d dist
-          wheel=$(find ./dist/*.whl)
-          az extension add --source $wheel -y
       - name: "Az CLI login"
         uses: azure/login@v2
         with:
@@ -364,7 +366,7 @@ jobs:
       - name: "Delete Cluster for redeployment"
         if: ${{ matrix.feature == 'redeploy' }}
         run: |
-          az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
+          az iot ops delete -n ${{ env.INSTANCE_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
       - name: "Redeploy cluster via tox"
         if: ${{ matrix.feature == 'redeploy' }}
         env:
