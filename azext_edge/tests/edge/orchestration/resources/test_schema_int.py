@@ -6,10 +6,13 @@
 
 from random import randint
 import json
+import pytest
 from ....generators import generate_random_string
 from ....helpers import run
 
 VERSION_STRINGIFY_FORMAT = "aio-sr://{schema_name}:{version}"
+# pytest mark for rpsaas (cloud-side) tests
+pytestmark = pytest.mark.rpsaas
 
 
 def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):

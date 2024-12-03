@@ -5,12 +5,16 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+import pytest
 from time import sleep
 from knack.log import get_logger
 from ....generators import generate_random_string
 from ....helpers import run
 
 logger = get_logger(__name__)
+
+# pytest mark for rpsaas (cloud-side) tests
+pytestmark = pytest.mark.rpsaas
 
 
 # TODO: update with OPCUA connector args
