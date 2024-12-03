@@ -10,15 +10,7 @@ from azext_edge.edge.util import get_timestamp_now_utc
 
 
 def pytest_configure(config):
-    config.addinivalue_line(
-        "markers", "init_scenario_test: mark tests that will run az iot ops init"
-    )
-
-
-@pytest.fixture
-def mocked_deploy(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.deploy", autospec=True)
-    yield patched
+    config.addinivalue_line("markers", "init_scenario_test: mark tests that will run az iot ops init")
 
 
 @pytest.fixture
@@ -39,32 +31,6 @@ def mocked_deploy_template(mocker):
         )
 
     patched.side_effect = handle_return
-    yield patched
-
-
-@pytest.fixture
-def mocked_verify_cli_client_connections(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.host.verify_cli_client_connections", autospec=True)
-    yield patched
-
-
-@pytest.fixture
-def mocked_edge_api_keyvault_api_v1(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.edge_api.keyvault.KEYVAULT_API_V1", autospec=False)
-    yield patched
-
-
-@pytest.fixture
-def mocked_verify_write_permission_against_rg(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.permissions.verify_write_permission_against_rg", autospec=True
-    )
-    yield patched
-
-
-@pytest.fixture
-def mocked_wait_for_terminal_state(mocker):
-    patched = mocker.patch("azext_edge.edge.providers.orchestration.work.wait_for_terminal_state", autospec=True)
     yield patched
 
 
@@ -91,14 +57,6 @@ def mocked_connected_cluster_extensions(mocker, request):
 
 
 @pytest.fixture
-def mocked_verify_custom_locations_enabled(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.base.verify_custom_locations_enabled", autospec=True
-    )
-    yield patched
-
-
-@pytest.fixture
 def mocked_verify_arc_cluster_config(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.verify_arc_cluster_config", autospec=True)
     yield patched
@@ -110,22 +68,3 @@ def mocked_verify_custom_location_namespace(mocker):
         "azext_edge.edge.providers.orchestration.base.verify_custom_location_namespace", autospec=True
     )
     yield patched
-
-
-@pytest.fixture
-def spy_get_current_template_copy(mocker):
-    from azext_edge.edge.providers.orchestration import work
-
-    spy = mocker.spy(work, "get_current_template_copy")
-
-    yield spy
-
-
-@pytest.fixture
-def spy_work_displays(mocker):
-    from azext_edge.edge.providers.orchestration.work import WorkManager
-
-    yield {
-        "render_display": mocker.spy(WorkManager, "render_display"),
-        "complete_step": mocker.spy(WorkManager, "complete_step"),
-    }

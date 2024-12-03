@@ -10,7 +10,7 @@ from unittest.mock import Mock
 import pytest
 
 from azext_edge.edge.providers.orchestration.deletion import IoTOperationsResource
-from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
+from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
 from azext_edge.tests.helpers import generate_ops_resource
 
 from ...generators import generate_random_string
@@ -75,7 +75,7 @@ def _assemble_resource_map_mock(
     resource_map_mock().get_resources.return_value = resources
     resource_map_mock().get_resource_sync_rules.return_value = sync_rules
     resource_map_mock().connected_cluster.get_extensions_by_type.return_value = {
-        IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id"}
+        EXTENSION_TYPE_OPS: {"id": "aio-ext-id"}
     }
     resource_map_mock().extensions.append(
         IoTOperationsResource(resource_id="aio-ext-id", display_name="aio-extension", api_version="aio-ext-api")

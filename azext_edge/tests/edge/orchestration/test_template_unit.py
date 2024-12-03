@@ -9,16 +9,14 @@ from unittest import TestCase
 import pytest
 
 from azext_edge.edge.providers.orchestration.template import (
-    IOT_OPERATIONS_VERSION_MONIKER,
-    M3_ENABLEMENT_TEMPLATE,
-    M3_INSTANCE_TEMPLATE,
+    TEMPLATE_BLUEPRINT_ENABLEMENT,
+    TEMPLATE_BLUEPRINT_INSTANCE,
     TemplateBlueprint,
     get_insecure_listener,
 )
 
 from ...generators import generate_random_string
 
-assert IOT_OPERATIONS_VERSION_MONIKER
 
 EXPECTED_EXTENSION_RESOURCE_KEYS = frozenset(
     [
@@ -59,37 +57,37 @@ EXPECTED_SHARED_DEFINITION_KEYS = frozenset(
 
 
 def test_enablement_template():
-    assert M3_ENABLEMENT_TEMPLATE.commit_id
-    assert M3_ENABLEMENT_TEMPLATE.content
+    assert TEMPLATE_BLUEPRINT_ENABLEMENT.commit_id
+    assert TEMPLATE_BLUEPRINT_ENABLEMENT.content
 
     for resource in EXPECTED_EXTENSION_RESOURCE_KEYS:
-        assert M3_ENABLEMENT_TEMPLATE.get_resource_by_key(resource)
+        assert TEMPLATE_BLUEPRINT_ENABLEMENT.get_resource_by_key(resource)
 
     for definition in EXPECTED_SHARED_DEFINITION_KEYS:
-        assert M3_ENABLEMENT_TEMPLATE.get_type_definition(definition)
+        assert TEMPLATE_BLUEPRINT_ENABLEMENT.get_type_definition(definition)
 
 
 def test_instance_template():
-    assert M3_INSTANCE_TEMPLATE.commit_id
-    assert M3_INSTANCE_TEMPLATE.content
+    assert TEMPLATE_BLUEPRINT_INSTANCE.commit_id
+    assert TEMPLATE_BLUEPRINT_INSTANCE.content
 
     for resource in EXPECTED_INSTANCE_RESOURCE_KEYS:
-        assert M3_INSTANCE_TEMPLATE.get_resource_by_key(resource)
+        assert TEMPLATE_BLUEPRINT_INSTANCE.get_resource_by_key(resource)
 
     for definition in EXPECTED_SHARED_DEFINITION_KEYS:
-        assert M3_INSTANCE_TEMPLATE.get_type_definition(definition)
+        assert TEMPLATE_BLUEPRINT_INSTANCE.get_type_definition(definition)
 
-    instance = M3_INSTANCE_TEMPLATE.get_resource_by_type("Microsoft.IoTOperations/instances")
+    instance = TEMPLATE_BLUEPRINT_INSTANCE.get_resource_by_type("Microsoft.IoTOperations/instances")
     assert instance and isinstance(instance, dict)
 
     # Copy test in other area
-    m3_template_copy = M3_INSTANCE_TEMPLATE.copy()
+    blueprint_template_copy = TEMPLATE_BLUEPRINT_INSTANCE.copy()
 
     instance_name = generate_random_string()
     broker_name = generate_random_string()
 
-    m3_template_copy.add_resource("insecure_listener", get_insecure_listener(instance_name, broker_name))
-    listeners = m3_template_copy.get_resource_by_type(
+    blueprint_template_copy.add_resource("insecure_listener", get_insecure_listener(instance_name, broker_name))
+    listeners = blueprint_template_copy.get_resource_by_type(
         "Microsoft.IoTOperations/instances/brokers/listeners", first=False
     )
     assert listeners and isinstance(listeners, list)
