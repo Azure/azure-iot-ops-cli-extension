@@ -74,3 +74,10 @@ def tracked_files():
 def mocked_responses():
     with responses.RequestsMock() as rsps:
         yield rsps
+
+
+# Mark all tests as "unmarked" by default for easier test selection
+def pytest_collection_modifyitems(items, config):
+    for item in items:
+        if not any(item.iter_markers() or all(marker.name == "parametrize" for marker in item.iter_markers())):
+            item.add_marker("unmarked")
