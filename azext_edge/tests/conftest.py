@@ -77,6 +77,7 @@ def mocked_responses():
 
 
 # Mark all tests as "unmarked" by default for easier test selection
+# TODO - @c-ryan-k - change from 'unmarked' to specifically marking 'e2e' test marks
 def pytest_collection_modifyitems(items, config):
     for item in items:
         if not any(item.iter_markers() or all(marker.name == "parametrize" for marker in item.iter_markers())):
