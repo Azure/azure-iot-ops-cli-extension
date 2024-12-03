@@ -163,22 +163,18 @@ def evaluate_broker_listeners(
             listener_eval_value["spec"] = listener_spec
 
             # check broker reference
+            listener_desc = f"\n- Broker Listener {{{colorize_string(listener_name)}}}."
             broker_ref = auth_metadata.get("ownerReferences", [])
-            ref_display = _evaluate_broker_reference(
+            _evaluate_broker_reference(
                 check_manager=check_manager,
                 owner_reference=broker_ref,
                 target_name=target_listeners,
                 namespace=namespace,
                 resource_name=listener_name,
                 added_condition=added_broker_ref_condition,
+                display_text=listener_desc,
             )
 
-            listener_desc = f"\n- Broker Listener {{{colorize_string(listener_name)}}}. {ref_display}"
-            check_manager.add_display(
-                target_name=target_listeners,
-                namespace=namespace,
-                display=Padding(listener_desc, (0, 0, 0, DEFAULT_PADDING)),
-            )
             listener_properties_padding = DEFAULT_PADDING + 4
 
             if listener_status_state:
@@ -231,8 +227,9 @@ def evaluate_broker_listeners(
 
                     authn_eval_value = {"spec.ports[*].authenticationRef": authn}
 
-                    authn_validity = "valid" if authn in valid_authns else "invalid"
-                    authn_color = "green" if authn in valid_authns else "red"
+                    is_authn_valid = authn in valid_authns
+                    authn_validity = "valid" if is_authn_valid else "invalid"
+                    authn_color = "green" if is_authn_valid else "red"
                     authn_display = f"Authentication reference: {{{colorize_string(authn)}}} is {colorize_string(color=authn_color, value=authn_validity)}."
                     authn_eval_status = (
                         CheckTaskStatus.error.value if authn_validity == "invalid" else CheckTaskStatus.success.value
@@ -271,8 +268,9 @@ def evaluate_broker_listeners(
                     )
 
                     authz_eval_value = {"spec.ports[*].authorizationRef": authz}
-                    authz_validity = "valid" if authz in valid_authzs else "invalid"
-                    authz_color = "green" if authz in valid_authzs else "red"
+                    is_authz_valid = authz in valid_authzs
+                    authz_validity = "valid" if is_authz_valid else "invalid"
+                    authz_color = "green" if is_authz_valid else "red"
                     authz_display = (
                         f"Authorization reference: {{{colorize_string(authz)}}} is "
                         f"{colorize_string(color=authz_color, value=authz_validity)}."
@@ -362,6 +360,7 @@ def evaluate_broker_listeners(
             )
 
         # remove duplicate conditions
+        # TODO - add remove duplicates on insertion under checkmanager itself
         listener_conditions = check_manager.targets.get(target_listeners, {}).get(namespace, {}).get("conditions", [])
         listener_conditions = list(set(listener_conditions))
         check_manager.set_target_conditions(
@@ -695,21 +694,17 @@ def evaluate_broker_authentications(
 
             # check broker reference
             broker_ref = auth_metadata.get("ownerReferences", [])
-            ref_display = _evaluate_broker_reference(
+            auth_desc = f"\n- Broker Authentication {{{colorize_string(auth_name)}}}."
+            _evaluate_broker_reference(
                 check_manager=check_manager,
                 owner_reference=broker_ref,
                 target_name=target_authentications,
                 namespace=namespace,
                 resource_name=auth_name,
                 added_condition=added_broker_ref_condition,
+                display_text=auth_desc,
             )
 
-            auth_desc = f"\n- Broker Authentication {{{colorize_string(auth_name)}}}. {ref_display}"
-            check_manager.add_display(
-                target_name=target_authentications,
-                namespace=namespace,
-                display=Padding(auth_desc, (0, 0, 0, DEFAULT_PADDING)),
-            )
             authn_properties_padding = DEFAULT_PADDING + 4
 
             # status
@@ -837,21 +832,17 @@ def evaluate_broker_authorizations(
 
             # check broker reference
             broker_ref = authz_metadata.get("ownerReferences", [])
-            ref_display = _evaluate_broker_reference(
+            authz_desc = f"\n- Broker Authorization {{{colorize_string(authz_name)}}}."
+            _evaluate_broker_reference(
                 check_manager=check_manager,
                 owner_reference=broker_ref,
                 target_name=target_authorizations,
                 namespace=namespace,
                 resource_name=authz_name,
                 added_condition=added_broker_ref_condition,
+                display_text=authz_desc,
             )
 
-            authz_desc = f"\n- Broker Authorization {{{colorize_string(authz_name)}}}. {ref_display}"
-            check_manager.add_display(
-                target_name=target_authorizations,
-                namespace=namespace,
-                display=Padding(authz_desc, (0, 0, 0, DEFAULT_PADDING)),
-            )
             authz_properties_padding = DEFAULT_PADDING + 4
 
             # status
@@ -923,7 +914,9 @@ def _evaluate_broker_reference(
     namespace: str,
     resource_name: str,
     added_condition: bool,
-) -> str:
+    display_text: str,
+    padding: Optional[int] = DEFAULT_PADDING,
+):
     broker_reference = [ref for ref in owner_reference if ref.get("kind").lower() == MqResourceKinds.BROKER.value]
     if not broker_reference:
         # skip this check
@@ -953,7 +946,7 @@ def _evaluate_broker_reference(
         ref_eval_value["valid(spec.brokerRef)"] = True
 
     ref_display = (
-        f"broker reference {{{colorize_string(broker_reference_name)}}} is "
+        f"Broker reference {{{colorize_string(broker_reference_name)}}} is "
         f"{colorize_string(color=ref_color, value='Invalid' if ref_color == 'red' else 'Valid')}."
     )
 
@@ -965,7 +958,11 @@ def _evaluate_broker_reference(
         resource_name=resource_name,
     )
 
-    return ref_display
+    check_manager.add_display(
+        target_name=target_name,
+        namespace=namespace,
+        display=Padding(f"{display_text} {ref_display}", (0, 0, 0, padding)),
+    )
 
 
 def _evaluate_listener_service(

@@ -472,28 +472,28 @@ def process_custom_resource_status(
                 )
 
 
-def validate_ref(name: str, namespace: str, ref_type: ValidationResourceType) -> Tuple[str, bool]:
+def validate_ref(name: str, namespace: str, ref_type: ValidationResourceType) -> bool:
     ref_obj = None
     if ref_type == ValidationResourceType.secret:
         ref_obj = get_namespaced_secret(secret_name=name, namespace=namespace)
     elif ref_type == ValidationResourceType.configmap:
         ref_obj = get_config_map(name=name, namespace=namespace)
+    else:
+        raise ValueError(f"Unsupported ref type: {ref_type}")
 
     return bool(ref_obj)
 
 
 def get_valid_references(
     api: EdgeResourceApi, kind: Union[Enum, str], namespace: Optional[str] = None
-) -> Dict[str, Any]:
-    result = {}
+) -> List[str]:
+    result = []
     custom_objects = api.get_resources(kind=kind, namespace=namespace)
     if custom_objects:
         objects: List[dict] = custom_objects.get("items", [])
         for object in objects:
-            o: dict = object
-            metadata: dict = o.get("metadata", {})
-            name = metadata.get("name")
+            name = get_resource_metadata_property(object, prop_name="name")
             if name:
-                result[name] = True
+                result.append(name)
 
     return result
