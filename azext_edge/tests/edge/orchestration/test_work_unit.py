@@ -53,6 +53,14 @@ path_pattern_base = r"^/subscriptions/[0-9a-fA-F-]+/resourcegroups/[a-zA-Z0-9]+"
 STANDARD_HEADERS = {"content-type": "application/json"}
 
 
+class ExpectedAPIVersion(Enum):
+    CONNECTED_CLUSTER = "2024-07-15-preview"
+    CLUSTER_EXTENSION = "2023-05-01"
+    RESOURCE = "2024-03-01"
+    SCHEMA_REGISTRY = "2024-09-01-preview"
+    AUTHORIZATION = "2022-04-01"
+
+
 class CallKey(Enum):
     CONNECT_RESOURCE_MANAGER = "connectResourceManager"
     GET_CLUSTER = "getCluster"
@@ -130,7 +138,7 @@ class ServiceGenerator:
 
         if request_kpis.method == responses.GET:
             if request_kpis.path_url == f"/subscriptions/{ZEROED_SUBSCRIPTION}/providers":
-                assert request_kpis.params["api-version"] == "2024-03-01"
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 self.call_map[CallKey.GET_RESOURCE_PROVIDERS].append(request_kpis)
                 return (200, STANDARD_HEADERS, json.dumps(self.scenario["providerNamespace"]))
 
@@ -138,7 +146,7 @@ class ServiceGenerator:
                 f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourcegroups/{self.scenario['resourceGroup']}"
                 f"/providers/Microsoft.Kubernetes/connectedClusters/{self.scenario['cluster']['name']}"
             ):
-                assert request_kpis.params["api-version"] == "2024-07-15-preview"
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.CONNECTED_CLUSTER.value
                 self.call_map[CallKey.GET_CLUSTER].append(request_kpis)
                 return (200, STANDARD_HEADERS, json.dumps(self.scenario["cluster"]))
 
@@ -149,7 +157,7 @@ class ServiceGenerator:
                 path_pattern_base + url_deployment_seg + r"/whatIf$",
                 request_kpis.path_url,
             ):
-                assert request_kpis.params["api-version"] == "2024-03-01"
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
                 assert_init_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
                 self.call_map[CallKey.DEPLOY_INIT_WHATIF].append(request_kpis)
@@ -161,7 +169,7 @@ class ServiceGenerator:
                 path_pattern_base + url_deployment_seg,
                 request_kpis.path_url,
             ):
-                assert request_kpis.params["api-version"] == "2024-03-01"
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
                 assert_init_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
                 self.call_map[CallKey.DEPLOY_INIT].append(request_kpis)
@@ -173,7 +181,7 @@ class ServiceGenerator:
                 f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{self.scenario['resourceGroup']}"
                 f"/providers/microsoft.deviceregistry/schemaRegistries/{self.scenario['schemaRegistry']['name']}"
             ):
-                assert request_kpis.params["api-version"] == "2024-09-01-preview"
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.SCHEMA_REGISTRY.value
                 self.call_map[CallKey.GET_SCHEMA_REGISTRY].append(request_kpis)
                 return (200, STANDARD_HEADERS, json.dumps(self.scenario["schemaRegistry"]))
 
@@ -183,7 +191,7 @@ class ServiceGenerator:
                 f"/providers/Microsoft.Authorization/roleAssignments"
             ):
                 ops_ext_identity = self._get_extension_identity()
-                assert request_kpis.params["api-version"] == "2022-04-01"
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.AUTHORIZATION.value
                 assert request_kpis.params["$filter"] == f"principalId eq '{ops_ext_identity['principalId']}'"
                 self.call_map[CallKey.GET_SCHEMA_REGISTRY_RA].append(request_kpis)
                 return (200, STANDARD_HEADERS, json.dumps(self.scenario["schemaRegistry"]["roleAssignments"]))
@@ -193,7 +201,7 @@ class ServiceGenerator:
                 f"/providers/Microsoft.Kubernetes/connectedClusters/{self.scenario['cluster']['name']}"
                 f"/providers/Microsoft.KubernetesConfiguration/extensions"
             ):
-                assert request_kpis.params["api-version"] == "2023-05-01"
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.CLUSTER_EXTENSION.value
                 self.call_map[CallKey.GET_CLUSTER_EXTENSIONS].append(request_kpis)
                 return (200, STANDARD_HEADERS, json.dumps(self.scenario["cluster"]["extensions"]))
 
@@ -203,7 +211,7 @@ class ServiceGenerator:
                 path_pattern_base + url_deployment_seg + r"/whatIf$",
                 request_kpis.path_url,
             ):
-                assert request_kpis.params["api-version"] == "2024-03-01"
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
                 assert_instance_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
                 self.call_map[CallKey.DEPLOY_CREATE_WHATIF].append(request_kpis)
@@ -215,7 +223,7 @@ class ServiceGenerator:
                 path_pattern_base + url_deployment_seg,
                 request_kpis.path_url,
             ):
-                assert request_kpis.params["api-version"] == "2024-03-01"
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
                 assert_instance_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
                 self.call_map[CallKey.DEPLOY_CREATE].append(request_kpis)
@@ -227,7 +235,7 @@ class ServiceGenerator:
                 f"/providers/Microsoft.Authorization/roleAssignments/"
             ):
                 ops_ext_identity = self._get_extension_identity()
-                assert request_kpis.params["api-version"] == "2022-04-01"
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.AUTHORIZATION.value
                 self.call_map[CallKey.PUT_SCHEMA_REGISTRY_RA].append(request_kpis)
                 api_control = self.scenario["apiControl"][CallKey.PUT_SCHEMA_REGISTRY_RA]
 
