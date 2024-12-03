@@ -126,8 +126,6 @@ jobs:
             echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "syncrules" ]]; then
             echo "CREATE_ARG=--enable-rsync" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "redeploy" ]]; then
-            echo "REDEPLOY=True" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "custom-input" ]]; then
             echo "CREATE_ARG=${{ inputs.runtime-create-args }}" >> $GITHUB_OUTPUT
             echo "INIT_ARG=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
@@ -301,7 +299,8 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
           azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
-          azext_edge_init_redeployment: ${{ steps.init.outputs.REDEPLOY }}
+          # redeploy tested later in this workflow
+          azext_edge_init_redeployment: false
         run: |
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           tox r -e python-init-int --skip-pkg-install -- --durations=0
