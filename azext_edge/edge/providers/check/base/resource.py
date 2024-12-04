@@ -487,13 +487,10 @@ def validate_ref(name: str, namespace: str, ref_type: ValidationResourceType) ->
 def get_valid_references(
     api: EdgeResourceApi, kind: Union[Enum, str], namespace: Optional[str] = None
 ) -> List[str]:
-    result = []
     custom_objects = api.get_resources(kind=kind, namespace=namespace)
     if custom_objects:
         objects: List[dict] = custom_objects.get("items", [])
-        for object in objects:
-            name = get_resource_metadata_property(object, prop_name="name")
-            if name:
-                result.append(name)
+        if objects:
+            return [get_resource_metadata_property(object, prop_name="name") for object in objects]
 
-    return result
+    return []
