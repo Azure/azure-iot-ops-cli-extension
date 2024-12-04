@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple, cast
 
 from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
 from azure.core.pipeline.transport import HttpTransport
-from azure.cli.core.azclierror import InvalidArgumentValueError
+from azure.cli.core.azclierror import InvalidArgumentValueError, AzureConnectionError
 from knack.log import get_logger
 from rich.console import Console
 import yaml
@@ -323,7 +323,7 @@ class OpcUACerts(Queryable):
 
         # update opcua extension
         return self._update_client_secret_to_extension(
-            applicationCert=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            application_cert=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
             subject_name=subject_name,
             application_uri=application_uri,
         )
@@ -593,7 +593,7 @@ class OpcUACerts(Queryable):
         spc_tenant_id: str,
         spc_client_id: str,
         secrets_to_replace: Optional[List[str]] = None,
-    ) -> dict:
+    ):
         spc = spc[0] if spc else {}
         spc_properties = spc.get("properties", {})
         # stringified yaml array
@@ -695,7 +695,7 @@ class OpcUACerts(Queryable):
 
     def _update_client_secret_to_extension(
         self,
-        applicationCert: str,
+        application_cert: str,
         subject_name: str,
         application_uri: str,
     ):
@@ -711,13 +711,13 @@ class OpcUACerts(Queryable):
         if not config_settings:
             properties["configurationSettings"] = {}
 
-        config_settings["connectors.values.securityPki.applicationCert"] = applicationCert
+        config_settings["connectors.values.securityPki.applicationCert"] = application_cert
         config_settings["connectors.values.securityPki.subjectName"] = subject_name
         config_settings["connectors.values.securityPki.applicationUri"] = application_uri
 
         aio_extension["properties"]["configurationSettings"] = config_settings
 
-        status_text = f"Updating IoT Operations extension to use {applicationCert}..." if applicationCert else \
+        status_text = f"Updating IoT Operations extension to use {application_cert}..." if application_cert else \
             "Rollback client certificate from IoT Operations extension..."
 
         with console.status(status_text):
@@ -775,7 +775,7 @@ class OpcUACerts(Queryable):
             if name == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME:
                 # rollback aio extension settings
                 self._update_client_secret_to_extension(
-                    applicationCert="",
+                    application_cert="",
                     subject_name="",
                     application_uri="",
                 )
@@ -795,7 +795,7 @@ class OpcUACerts(Queryable):
         secret_iteratable = self.keyvault_client.get_secrets(
             vault_base_url=KEYVAULT_URL.format(keyvaultName=keyvault_name)
         )
-        return [secret.get("id") for secret in secret_iteratable]
+        return [secret["id"] for secret in secret_iteratable if "id" in secret]
 
     def _begin_delete_secret(self, keyvault_name: str, secret_name: str):
         # Construct vault URL
@@ -828,4 +828,6 @@ class OpcUACerts(Queryable):
                 raise
 
         # Failed to confirm deletion after retries
-        raise TimeoutError(f"Failed to delete secret '{secret_name}' within {SECRET_DELETE_MAX_RETRIES} retries.")
+        raise AzureConnectionError(
+            f"Failed to delete secret '{secret_name}' within {SECRET_DELETE_MAX_RETRIES} retries."
+        )
