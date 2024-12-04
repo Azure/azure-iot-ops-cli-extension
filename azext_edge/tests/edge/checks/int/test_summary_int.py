@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
 from azext_edge.edge.providers.edge_api import (
     DATAFLOW_API_V1,
@@ -13,6 +14,8 @@ from azext_edge.edge.providers.edge_api import (
 )
 
 from ....helpers import run
+
+pytestmark = pytest.mark.e2e
 
 
 def test_summary_checks():

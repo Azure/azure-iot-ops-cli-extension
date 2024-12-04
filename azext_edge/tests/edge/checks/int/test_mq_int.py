@@ -20,6 +20,8 @@ from ....helpers import get_kubectl_custom_items
 
 logger = get_logger(__name__)
 
+pytestmark = pytest.mark.e2e
+
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("resource_kind", [None, MqResourceKinds.BROKER.value, MqResourceKinds.BROKER_LISTENER.value])

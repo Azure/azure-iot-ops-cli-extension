@@ -20,6 +20,8 @@ from ....helpers import find_extra_or_missing_names
 
 logger = get_logger(__name__)
 
+pytestmark = pytest.mark.e2e
+
 
 def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
     # case = ops_service, mq_traces, bundle_dir

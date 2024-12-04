@@ -15,6 +15,8 @@ from ....generators import generate_names
 
 logger = get_logger(__name__)
 
+pytestmark = pytest.mark.e2e
+
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 # TODO: figure out if name match should be a general test vs each service (minimize test runs)

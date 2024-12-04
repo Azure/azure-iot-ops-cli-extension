@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
@@ -15,6 +16,8 @@ from .helpers import (
 )
 
 logger = get_logger(__name__)
+
+pytestmark = pytest.mark.e2e
 
 
 def test_create_bundle_billing(init_setup, tracked_files):
