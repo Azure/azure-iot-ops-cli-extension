@@ -65,7 +65,7 @@ def evaluate_assets(
     detail_level: int = ResourceOutputDetailLevel.summary.value,
     resource_name: str = None,
 ) -> Dict[str, Any]:
-    check_manager = CheckManager(check_name="evalAssets", check_desc="Evaluate Device Registry instances")
+    check_manager = CheckManager(check_name="evalAssets", check_desc="Evaluate Assets")
 
     asset_namespace_conditions = ["spec.assetEndpointProfileRef"]
 
