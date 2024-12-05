@@ -533,7 +533,7 @@ def test_broker_listener_checks(
         return_value=service,
     )
     mocker.patch(
-        "azext_edge.edge.providers.check.mq.get_valid_references",
+        "azext_edge.edge.providers.check.mq.get_valid_resource_names",
         return_value={"authn": True, "authz": True},
     )
 
@@ -562,7 +562,7 @@ def test_broker_listener_checks(
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("resource_name", [None, "mock*", "mock-name"])
 @pytest.mark.parametrize(
-    "authentication, conditions, evaluations",
+    "authentication, valid_resource_names, conditions, is_resource_ref_valid, evaluations",
     [
         # x509
         (
@@ -595,6 +595,8 @@ def test_broker_listener_checks(
                 },
                 status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
             ),
+            # valid_resource_names
+            ["broker"],
             # condition str
             [
                 "valid(brokerRef)",
@@ -603,6 +605,8 @@ def test_broker_listener_checks(
                 "spec.authenticationMethods[*].x509Settings",
                 "status",
             ],
+            # is_resource_ref_valid
+            True,
             # evaluations
             [
                 [("status", "success"), ("value/valid(spec.brokerRef)", True)],
@@ -676,6 +680,8 @@ def test_broker_listener_checks(
                 },
                 status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
             ),
+            # valid_resource_names
+            ["broker"],
             # condition str
             [
                 "valid(brokerRef)",
@@ -686,6 +692,8 @@ def test_broker_listener_checks(
                 "spec.authenticationMethods[*].customSettings.endpoint",
                 "valid(spec.authenticationMethods[*].customSettings.auth.x509.secretRef)",
             ],
+            # is_resource_ref_valid
+            True,
             # evaluations
             [
                 [("status", "success"), ("value/valid(spec.brokerRef)", True)],
@@ -746,6 +754,8 @@ def test_broker_listener_checks(
                 },
                 status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
             ),
+            # valid_resource_names
+            ["broker"],
             # condition str
             [
                 "valid(brokerRef)",
@@ -754,6 +764,8 @@ def test_broker_listener_checks(
                 "spec.authenticationMethods[*].serviceAccountTokenSettings",
                 "spec.authenticationMethods[*].serviceAccountTokenSettings.audiences",
             ],
+            # is_resource_ref_valid
+            True,
             # evaluations
             [
                 [("status", "success"), ("value/valid(spec.brokerRef)", True)],
@@ -783,6 +795,116 @@ def test_broker_listener_checks(
                 ],
             ],
         ),
+        # Invalid resource ref
+        (
+            # authentication
+            generate_resource_stub(
+                spec={
+                    "authenticationMethods": [
+                        {
+                            "method": "X509",
+                            "x509Settings": {
+                                "authorizationAttributes": {
+                                    "authorizationAttribute1": {
+                                        "attributes": {"key1": "value1", "key2": "value2"},
+                                        "subject": "value",
+                                    },
+                                    "authorizationAttribute2": {
+                                        "attributes": {"attribute1": "value"},
+                                        "subject": "value",
+                                    },
+                                },
+                                "trustedClientCaCert": "mocked_configmap",
+                            },
+                        }
+                    ]
+                },
+                metadata={
+                    "ownerReferences": [
+                        {"kind": "broker", "name": "broker"},
+                    ]
+                },
+                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+            ),
+            # valid_resource_names
+            ["broker"],
+            # condition str
+            [
+                "valid(brokerRef)",
+                "valid(spec.authenticationMethods[*].x509Settings.trustedClientCaCert)",
+            ],
+            # is_resource_ref_valid
+            False,
+            # evaluations
+            [
+                [("status", "success"), ("value/valid(spec.brokerRef)", True)],
+                [
+                    ("status", "success"),
+                    ("name", "mock-name"),
+                    (
+                        "value/status",
+                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                    ),
+                ],
+                [
+                    ("status", "success"),
+                    ("name", "mock-name"),
+                    ("value/len(spec.authenticationMethods)", 1),
+                ],
+                [
+                    ("status", "error"),
+                    ("name", "configmap/mocked_configmap"),
+                    (
+                        "value/spec.authenticationMethods[*].x509Settings.trustedClientCaCert",
+                        "mocked_configmap",
+                    ),
+                ],
+            ],
+        ),
+        # Invalid broker ref
+        (
+            # authentication
+            generate_resource_stub(
+                spec={
+                    "authenticationMethods": [
+                        {
+                            "method": "X509",
+                            "x509Settings": {
+                                "authorizationAttributes": {
+                                    "authorizationAttribute1": {
+                                        "attributes": {"key1": "value1", "key2": "value2"},
+                                        "subject": "value",
+                                    },
+                                    "authorizationAttribute2": {
+                                        "attributes": {"attribute1": "value"},
+                                        "subject": "value",
+                                    },
+                                },
+                                "trustedClientCaCert": "mocked_configmap",
+                            },
+                        }
+                    ]
+                },
+                metadata={
+                    "ownerReferences": [
+                        {"kind": "broker", "name": "broker"},
+                    ]
+                },
+                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+            ),
+            # valid_resource_names
+            [],
+            # condition str
+            [
+                "valid(brokerRef)",
+            ],
+            # is_resource_ref_valid
+            False,
+            # evaluations
+            [
+                [("status", "error"), ("value/valid(spec.brokerRef)", False)],
+            ],
+        ),
         # unknown method
         (
             # authentication
@@ -797,6 +919,8 @@ def test_broker_listener_checks(
                 },
                 status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
             ),
+            # valid_resource_names
+            ["broker"],
             # condition str
             [
                 "valid(brokerRef)",
@@ -804,6 +928,8 @@ def test_broker_listener_checks(
                 "status",
                 "spec.authenticationMethods[*].method",
             ],
+            # is_resource_ref_valid
+            True,
             # evaluations
             [
                 [("status", "success"), ("value/valid(spec.brokerRef)", True)],
@@ -831,12 +957,14 @@ def test_broker_listener_checks(
 )
 def test_broker_authentication_checks(
     mocker,
-    mocked_validate_ref,
+    mocked_validate_runtime_resource_ref,
     authentication,
     conditions,
     evaluations,
     detail_level,
     resource_name,
+    is_resource_ref_valid,
+    valid_resource_names,
 ):
     # mock authentication values
     namespace = generate_random_string()
@@ -846,9 +974,10 @@ def test_broker_authentication_checks(
         return_value={"items": [authentication]},
     )
     mocker.patch(
-        "azext_edge.edge.providers.check.mq.get_valid_references",
-        return_value={"broker": True},
+        "azext_edge.edge.providers.check.mq.get_valid_resource_names",
+        return_value=valid_resource_names,
     )
+    mocked_validate_runtime_resource_ref.return_value = is_resource_ref_valid
 
     result = evaluate_broker_authentications(detail_level=detail_level, resource_name=resource_name)
 
@@ -866,7 +995,7 @@ def test_broker_authentication_checks(
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("resource_name", [None, "mock*", "mock-name"])
 @pytest.mark.parametrize(
-    "authorization, conditions, evaluations",
+    "authorization, valid_resource_names, conditions, evaluations",
     [
         (
             # authorization
@@ -902,6 +1031,8 @@ def test_broker_authentication_checks(
                 },
                 status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
             ),
+            # valid_resource_names
+            ["broker"],
             # condition str
             ["valid(brokerRef)", "status", "spec.authorizationPolicies"],
             # evaluations
@@ -946,6 +1077,50 @@ def test_broker_authentication_checks(
                 ],
             ],
         ),
+        # invalid broker ref
+        (
+            # authorization
+            generate_resource_stub(
+                spec={
+                    "authorizationPolicies": {
+                        "cache": "Enabled",
+                        "rules": [
+                            {
+                                "brokerResources": [
+                                    {
+                                        "clientIds": ["{principal.attributes.building}*"],
+                                        "method": "Connect",
+                                        "topics": [],
+                                    },
+                                ],
+                                "principals": {
+                                    "attributes": [{"building": "17", "organization": "contoso"}],
+                                    "clientIds": [],
+                                    "usernames": ["temperature-sensor", "humidity-sensor"],
+                                },
+                                "stateStoreResources": [
+                                    {"keyType": "Binary", "keys": ["MTE2IDEwMSAxMTUgMTE2"], "method": "ReadWrite"}
+                                ],
+                            }
+                        ],
+                    }
+                },
+                metadata={
+                    "ownerReferences": [
+                        {"kind": "broker", "name": "broker"},
+                    ]
+                },
+                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+            ),
+            # valid_resource_names
+            [],
+            # condition str
+            ["valid(brokerRef)"],
+            # evaluations
+            [
+                [("status", "error"), ("value/valid(spec.brokerRef)", False)],
+            ],
+        ),
     ],
 )
 def test_broker_authorization_checks(
@@ -955,6 +1130,7 @@ def test_broker_authorization_checks(
     evaluations,
     detail_level,
     resource_name,
+    valid_resource_names,
 ):
     # mock authorization values
     namespace = generate_random_string()
@@ -964,8 +1140,8 @@ def test_broker_authorization_checks(
         return_value={"items": [authorization]},
     )
     mocker.patch(
-        "azext_edge.edge.providers.check.mq.get_valid_references",
-        return_value={"broker": True},
+        "azext_edge.edge.providers.check.mq.get_valid_resource_names",
+        return_value=valid_resource_names,
     )
 
     result = evaluate_broker_authorizations(detail_level=detail_level, resource_name=resource_name)

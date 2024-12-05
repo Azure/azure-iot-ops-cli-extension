@@ -246,10 +246,9 @@ def mocked_list_deployments(mocked_client):
 
 
 @pytest.fixture
-def mocked_validate_ref(mocker):
+def mocked_validate_runtime_resource_ref(mocker):
     patched = mocker.patch(
-        "azext_edge.edge.providers.check.mq.validate_ref",
-        return_value=True,
+        "azext_edge.edge.providers.check.mq.validate_runtime_resource_ref",
     )
 
     yield patched

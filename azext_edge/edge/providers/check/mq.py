@@ -18,8 +18,8 @@ from .base import (
     process_resource_properties,
     validate_one_of_conditions,
     process_custom_resource_status,
-    get_valid_references,
-    validate_ref,
+    get_valid_resource_names,
+    validate_runtime_resource_ref,
 )
 
 from rich.console import NewLine
@@ -213,7 +213,7 @@ def evaluate_broker_listeners(
 
                 if authn:
                     authn_condition = "spec.ports[*].authenticationRef"
-                    valid_authns = get_valid_references(
+                    valid_authns = get_valid_resource_names(
                         api=MQ_ACTIVE_API,
                         kind=MqResourceKinds.BROKER_AUTHENTICATION.value,
                         namespace=namespace,
@@ -255,7 +255,7 @@ def evaluate_broker_listeners(
 
                 if authz:
                     authz_condition = "spec.ports[*].authorizationRef"
-                    valid_authzs = get_valid_references(
+                    valid_authzs = get_valid_resource_names(
                         api=MQ_ACTIVE_API,
                         kind=MqResourceKinds.BROKER_AUTHORIZATION.value,
                         namespace=namespace,
@@ -933,7 +933,7 @@ def _evaluate_broker_reference(
         )
         added_condition = True
 
-    valid_broker_refs = get_valid_references(api=MQ_ACTIVE_API, kind=MqResourceKinds.BROKER, namespace=namespace)
+    valid_broker_refs = get_valid_resource_names(api=MQ_ACTIVE_API, kind=MqResourceKinds.BROKER, namespace=namespace)
     ref_eval_status = CheckTaskStatus.success.value
     ref_eval_value = {}
 
@@ -1307,7 +1307,7 @@ def _check_authentication_method(
             trusted_client_ca_cert_value = {
                 "spec.authenticationMethods[*].x509Settings.trustedClientCaCert": trusted_client_ca_cert
             }
-            is_valid = validate_ref(
+            is_valid = validate_runtime_resource_ref(
                 namespace=namespace,
                 name=trusted_client_ca_cert,
                 ref_type=ValidationResourceType.configmap,
@@ -1466,7 +1466,7 @@ def _evaluate_custom_authentication_method(
         # check x509
         secret_ref = auth.get("x509", {}).get("secretRef")
         secret_ref_value = {"spec.authenticationMethods[*].customSettings.auth.x509.secretRef": secret_ref}
-        is_valid = validate_ref(
+        is_valid = validate_runtime_resource_ref(
             namespace=namespace,
             name=secret_ref,
             ref_type=ValidationResourceType.secret,
@@ -1505,7 +1505,7 @@ def _evaluate_custom_authentication_method(
 
     if ca_cert_config_map:
         ca_cert_config_map_value = {"spec.authenticationMethods[*].customSettings.caCertConfigMap": ca_cert_config_map}
-        is_valid = validate_ref(
+        is_valid = validate_runtime_resource_ref(
             namespace=namespace,
             name=ca_cert_config_map,
             ref_type=ValidationResourceType.configmap,

@@ -26,7 +26,7 @@ from azext_edge.edge.providers.check.base.resource import (
     combine_statuses,
     decorate_resource_status,
     process_resource_property_by_type,
-    validate_ref,
+    validate_runtime_resource_ref,
 )
 from azext_edge.edge.providers.check.common import (
     ALL_NAMESPACES_TARGET,
@@ -968,14 +968,13 @@ def test_process_custom_resource_status(
 
 
 @pytest.mark.parametrize(
-    "name, namespace, ref_type, ref_obj, expected_text, expected_is_valid",
+    "name, namespace, ref_type, ref_obj, expected_is_valid",
     [
         (
             "test_secret",
             "test_namespace",
             ValidationResourceType.secret,
             {"metadata": {"name": "test_secret", "namespace": "test_namespace"}},
-            "[green]Valid[/green] secret reference {[green]test_secret[/green]}.",
             True,
         ),
         (
@@ -983,7 +982,6 @@ def test_process_custom_resource_status(
             "test_namespace",
             ValidationResourceType.secret,
             None,
-            "[red]Invalid[/red] secret reference {[red]test_secret[/red]}.",
             False,
         ),
         (
@@ -991,7 +989,6 @@ def test_process_custom_resource_status(
             "test_namespace",
             ValidationResourceType.configmap,
             {"metadata": {"name": "test_configmap", "namespace": "test_namespace"}},
-            "[green]Valid[/green] configmap reference {[green]test_configmap[/green]}.",
             True,
         ),
         (
@@ -999,15 +996,14 @@ def test_process_custom_resource_status(
             "test_namespace",
             ValidationResourceType.configmap,
             None,
-            "[red]Invalid[/red] configmap reference {[red]test_configmap[/red]}.",
             False,
         ),
     ],
 )
-def test_validate_ref(mocker, name, namespace, ref_type, ref_obj, expected_text, expected_is_valid):
+def test_validate_runtime_resource_ref(mocker, name, namespace, ref_type, ref_obj, expected_is_valid):
     mocker.patch("azext_edge.edge.providers.check.base.resource.get_namespaced_secret", return_value=ref_obj)
     mocker.patch("azext_edge.edge.providers.check.base.resource.get_config_map", return_value=ref_obj)
 
-    is_valid = validate_ref(name, namespace, ref_type)
+    is_valid = validate_runtime_resource_ref(name, namespace, ref_type)
 
     assert is_valid == expected_is_valid

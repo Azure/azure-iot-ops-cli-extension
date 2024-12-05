@@ -472,7 +472,7 @@ def process_custom_resource_status(
                 )
 
 
-def validate_ref(name: str, namespace: str, ref_type: ValidationResourceType) -> bool:
+def validate_runtime_resource_ref(name: str, namespace: str, ref_type: ValidationResourceType) -> bool:
     ref_obj = None
     if ref_type == ValidationResourceType.secret:
         ref_obj = get_namespaced_secret(secret_name=name, namespace=namespace)
@@ -484,7 +484,7 @@ def validate_ref(name: str, namespace: str, ref_type: ValidationResourceType) ->
     return bool(ref_obj)
 
 
-def get_valid_references(
+def get_valid_resource_names(
     api: EdgeResourceApi, kind: Union[Enum, str], namespace: Optional[str] = None
 ) -> List[str]:
     custom_objects = api.get_resources(kind=kind, namespace=namespace)
