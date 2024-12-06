@@ -45,8 +45,10 @@ env:
 jobs:
   test:
     env:
-      CLUSTER_NAME: "cluster_${{ github.run_number }}"
-      INSTANCE_NAME: "instance_${{ github.run_number }}"
+      CLUSTER_NAME: "cluster${{ github.run_number }}"
+      INSTANCE_NAME: "opsinst${{ github.run_number }}"
+      STORAGE_NAME: "opsdemostorage${{ github.run_number }}"
+      SCHEMAREG_NAME: "opsdemoschema${{ github.run_number }}"
       CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
       EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
       K3S_VERSION: "v1.28.5+k3s1"
@@ -134,12 +136,22 @@ jobs:
           # init
           az iot ops init --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }}
       - name: "ops create"
+        id: "create"
         run: |
-            # get schema registry
-            schema_registry=$(az iot ops schema registry show --name ${{ env.SCHEMA_REGISTRY }} -g ${{ env.RESOURCE_GROUP }} -o tsv --query "id")  
+            # create storage account
+            storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.STORAGE_NAME }} --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny --query "id" -o tsv)
+            echo "created storage account with id $storage_id"
+            
+            # create schema registry
+            schema_registry=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.SCHEMAREG_NAME }} --rn testnamespace --sa-resource-id $storage_id --query "id" -o tsv)
+            echo "created schema registry with id $schema_registry"
             
             # create
             az iot ops create --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }}  --sr-resource-id $schema_registry
+
+            # output
+            echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
+            echo "SCHEMAREGISTRY_ID=$schema_registry" >> $GITHUB_OUTPUT
       - name: "Output variables for future steps"
         id: "env_out"
         run: |
@@ -201,8 +213,13 @@ jobs:
       - name: "Delete AIO resources"
         if: ${{ always() }}
         run: |
-          az iot ops delete --n ${{ env.INSTANCE_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
+          az iot ops delete -n ${{ env.INSTANCE_NAME }} -g ${{ env.RESOURCE_GROUP }} -y --force
       - name: "Delete connected cluster"
         if: ${{ always() }}
         run: |
           az resource delete -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
+      - name: "Delete schemaregistry and storage"
+        if: ${{ always() }}
+        run: |
+          az resource delete -v --id ${{ steps.create.outputs.STORAGE_ID }} --verbose --no-wait
+          az resource delete -v --id ${{ steps.create.outputs.SCHEMAREGISTRY_ID }} --verbose --no-wait
