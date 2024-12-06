@@ -145,7 +145,7 @@ jobs:
             echo "created schema registry with id $schema_registry"
             
             # create
-            az iot ops create --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }}  --sr-resource-id $schema_registry
+            az iot ops create --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -n ${{ env.INSTANCE_NAME }}  --sr-resource-id $schema_registry
 
             # output
             echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
