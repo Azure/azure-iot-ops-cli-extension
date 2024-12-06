@@ -19,18 +19,13 @@ permissions:
     id-token: 'write'
 jobs:
   int-test:
-      uses: ./.github/workflows/int_test.yml
+      uses: ./.github/workflows/container_int_test.yml
       with:
         resource-group: ops-cli-int-test-rg
-        use-container: true
-        init-continue-on-error: ${{ inputs.continue-on-error }}
       secrets:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AIO_SP_APP_ID: ${{ secrets.AIO_SP_APP_ID }}
-          AIO_SP_OBJECT_ID: ${{ secrets.AIO_SP_OBJECT_ID }}
-          AIO_SP_SECRET: ${{ secrets.AIO_SP_SECRET }}
   build-and-deploy:
     needs: int-test
     environment: container_registry
