@@ -17,7 +17,7 @@ from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs imp
     OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
     OPCUA_SPC_NAME,
 )
-from azext_edge.edge.providers.orchestration.work import IOT_OPS_EXTENSION_TYPE
+from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_OPS
 from .conftest import (
     assemble_resource_map_mock,
     generate_ssc_object_string,
@@ -43,7 +43,7 @@ from azext_edge.tests.generators import generate_random_string
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
                     ),
                 ],
-                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
             get_mock_secretsync_record(
@@ -174,7 +174,7 @@ def test_client_add(
             "microsoft.iotoperations"
         )
         mocked_instance.get_resource_map().connected_cluster.update_aio_extension.assert_called_once_with(
-            extension_name=expected_resources_map["extension"][IOT_OPS_EXTENSION_TYPE]["name"],
+            extension_name=expected_resources_map["extension"][EXTENSION_TYPE_OPS]["name"],
             properties={
                 "configurationSettings": {
                     "connectors.values.securityPki.applicationCert": OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
@@ -225,7 +225,7 @@ def test_client_add(
         (
             {
                 "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
-                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             {},
             {},
@@ -355,7 +355,7 @@ def test_client_add_errors(
                         objects=generate_ssc_object_string(["cert-der"]),
                     ),
                 ],
-                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             get_mock_spc_record(
                 spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
@@ -398,7 +398,7 @@ def test_client_add_errors(
                         objects=generate_ssc_object_string(["cert-der", "cert-pem"]),
                     ),
                 ],
-                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             get_mock_spc_record(
                 spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
@@ -551,7 +551,7 @@ def test_client_remove(
             "microsoft.iotoperations"
         )
         mocked_instance.get_resource_map().connected_cluster.update_aio_extension.assert_called_once_with(
-            extension_name=expected_resources_map["extension"][IOT_OPS_EXTENSION_TYPE]["name"],
+            extension_name=expected_resources_map["extension"][EXTENSION_TYPE_OPS]["name"],
             properties={
                 "configurationSettings": {
                     "connectors.values.securityPki.applicationCert": "",
@@ -572,7 +572,7 @@ def test_client_remove(
                 "resources": [
                     get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
                 ],
-                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             [get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg")],
             [],
@@ -596,7 +596,7 @@ def test_client_remove(
                         ],
                     ),
                 ],
-                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             [get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg")],
             [get_mock_secretsync_record(
@@ -628,7 +628,7 @@ def test_client_remove(
                         ],
                     ),
                 ],
-                "extension": {IOT_OPS_EXTENSION_TYPE: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             [],
             [get_mock_secretsync_record(
