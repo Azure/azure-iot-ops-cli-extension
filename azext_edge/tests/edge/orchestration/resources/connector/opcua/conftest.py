@@ -93,7 +93,7 @@ def get_secret_endpoint(
     if secret_name:
         resource_path += f"/{secret_name}"
 
-    return f"https://{keyvault_name}.vault.azure.net{resource_path}?api-version=7.4"
+    return f"https://{keyvault_name}.vault.azure.net{resource_path}?api-version=7.5"
 
 
 def get_mock_spc_record(spc_name: str, resource_group_name: str, objects: Optional[str] = None) -> dict:
