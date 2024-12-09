@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple, cast
 
 from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
 from azure.core.pipeline.transport import HttpTransport
-from azure.cli.core.azclierror import InvalidArgumentValueError, AzureConnectionError
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 from rich.console import Console
 import yaml
@@ -531,7 +531,7 @@ class OpcUACerts(Queryable):
         spc_keyvault_name: str,
         flag: str,
         overwrite_secret: bool = False,
-    ) -> str:
+    ) -> Optional[str]:
         from rich.prompt import Confirm
 
         new_secret_name = secret_name
@@ -553,7 +553,7 @@ class OpcUACerts(Queryable):
                     "Secret overwrite operation cancelled. Please provide a different name "
                     f"via --{flag}."
                 )
-                return None
+                return
 
         return new_secret_name
 
@@ -828,6 +828,6 @@ class OpcUACerts(Queryable):
                 raise
 
         # Failed to confirm deletion after retries
-        raise AzureConnectionError(
+        raise TimeoutError(
             f"Failed to delete secret '{secret_name}' within {SECRET_DELETE_MAX_RETRIES} retries."
         )
