@@ -6,10 +6,10 @@
 
 import os
 import re
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, cast
 
-from azure.core.paging import PageIterator
-from azure.core.exceptions import ResourceNotFoundError
+from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
+from azure.core.pipeline.transport import HttpTransport
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 from rich.console import Console
@@ -36,6 +36,9 @@ OPCUA_TRUST_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-trust-list"
 OPCUA_ISSUER_LIST_SECRET_SYNC_NAME = "aio-opc-ua-broker-issuer-list"
 OPCUA_CLIENT_CERT_SECRET_SYNC_NAME = "aio-opc-ua-broker-client-certificate"
 SERVICE_ACCOUNT_NAME = "aio-ssc-sa"
+KEYVAULT_URL = "https://{keyvaultName}.vault.azure.net/"
+SECRET_DELETE_MAX_RETRIES = 10
+SECRET_DELETE_RETRY_INTERVAL = 2
 
 
 class OpcUACerts(Queryable):
@@ -44,6 +47,9 @@ class OpcUACerts(Queryable):
         super().__init__(cmd=cmd)
         self.instances = Instances(self.cmd)
         self.ssc_mgmt_client = get_ssc_mgmt_client(
+            subscription_id=self.default_subscription_id,
+        )
+        self.keyvault_client = get_keyvault_client(
             subscription_id=self.default_subscription_id,
         )
 
@@ -69,18 +75,11 @@ class OpcUACerts(Queryable):
         spc_tenant_id = spc_properties.get("tenantId", "")
         spc_client_id = spc_properties.get("clientId", "")
 
-        self.keyvault_client = get_keyvault_client(
-            subscription_id=self.default_subscription_id,
-            keyvault_name=spc_keyvault_name,
-        )
-
-        secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
-
         secret_name = secret_name if secret_name else file_name.replace(".", "-")
 
         # iterate over secrets to check if secret with same name exists
         secret_name = self._check_secret_name(
-            secret_names=[secret.id for secret in secrets],
+            secret_names=self._get_secret_names(spc_keyvault_name),
             secret_name=secret_name,
             spc_keyvault_name=spc_keyvault_name,
             flag="secret-name",
@@ -90,7 +89,12 @@ class OpcUACerts(Queryable):
         if not secret_name:
             return
 
-        self._upload_to_key_vault(secret_name, file, cert_extension)
+        self._upload_to_key_vault(
+            keyvault_name=spc_keyvault_name,
+            secret_name=secret_name,
+            file_path=file,
+            cert_extension=cert_extension
+        )
 
         # check if there is a spc called "opc-ua-connector", if not create one
         opcua_spc = self.instances.find_existing_resources(
@@ -144,13 +148,6 @@ class OpcUACerts(Queryable):
         spc_tenant_id = spc_properties.get("tenantId", "")
         spc_client_id = spc_properties.get("clientId", "")
 
-        self.keyvault_client = get_keyvault_client(
-            subscription_id=self.default_subscription_id,
-            keyvault_name=spc_keyvault_name,
-        )
-
-        secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
-
         # get cert name by removing extension
         cert_name = os.path.splitext(file_name)[0]
 
@@ -178,7 +175,7 @@ class OpcUACerts(Queryable):
 
         # iterate over secrets to check if secret with same name exists
         secret_name = self._check_secret_name(
-            secret_names=[secret.id for secret in secrets],
+            secret_names=self._get_secret_names(spc_keyvault_name),
             secret_name=secret_name,
             spc_keyvault_name=spc_keyvault_name,
             flag="secret-name",
@@ -188,7 +185,12 @@ class OpcUACerts(Queryable):
         if not secret_name:
             return
 
-        self._upload_to_key_vault(secret_name, file, cert_extension)
+        self._upload_to_key_vault(
+            keyvault_name=spc_keyvault_name,
+            secret_name=secret_name,
+            file_path=file,
+            cert_extension=cert_extension
+        )
 
         # check if there is a spc called "opc-ua-connector", if not create one
         opcua_spc = self.instances.find_existing_resources(
@@ -240,13 +242,6 @@ class OpcUACerts(Queryable):
         spc_client_id = spc_properties.get("clientId", "")
         spc_tenant_id = spc_properties.get("tenantId", "")
 
-        self.keyvault_client = get_keyvault_client(
-            subscription_id=self.default_subscription_id,
-            keyvault_name=spc_keyvault_name,
-        )
-
-        secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
-
         # check if there is a spc called "opc-ua-connector", if not create one
         opcua_spc = self.instances.find_existing_resources(
             cl_resources=cl_resources,
@@ -262,7 +257,7 @@ class OpcUACerts(Queryable):
         )
 
         secrets_to_add = []
-        secret_names = [secret.id for secret in secrets]
+        secret_names = self._get_secret_names(spc_keyvault_name)
         for file in [public_key_file, private_key_file]:
             file_name = os.path.basename(file)
             file_name_info = os.path.splitext(file_name)
@@ -293,7 +288,12 @@ class OpcUACerts(Queryable):
             if not secret_name:
                 return
 
-            self._upload_to_key_vault(secret_name, file, cert_extension)
+            self._upload_to_key_vault(
+                keyvault_name=spc_keyvault_name,
+                secret_name=secret_name,
+                file_path=file,
+                cert_extension=cert_extension
+            )
             secrets_to_add.append((secret_name, file_name))
 
         # use secret sync to find certificate pair secret names to be replaces
@@ -323,7 +323,7 @@ class OpcUACerts(Queryable):
 
         # update opcua extension
         return self._update_client_secret_to_extension(
-            applicationCert=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+            application_cert=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
             subject_name=subject_name,
             application_uri=application_uri,
         )
@@ -413,23 +413,19 @@ class OpcUACerts(Queryable):
         )
 
         if include_secrets:
-            # get keyvault client
-            self.keyvault_client = get_keyvault_client(
-                subscription_id=self.default_subscription_id,
-                keyvault_name=spc_keyvault_name,
-            )
             # verify the behaviour of non existed secret
-            secrets: PageIterator = self.keyvault_client.list_properties_of_secrets()
-            secret_names = [secret.id for secret in secrets]
+            secret_names = self._get_secret_names(spc_keyvault_name)
 
             # remove secret from keyvault
             for name in secret_to_remove:
                 # perform delete operation if name exists in secret_names(endwith)
                 if any(secret_name.endswith(name) for secret_name in secret_names):
                     with console.status(f"Deleting and purging secret {name} from keyvault {spc_keyvault_name}..."):
-                        poller = self.keyvault_client.begin_delete_secret(name)
-                        wait_for_terminal_state(poller)
-                        self.keyvault_client.purge_deleted_secret(name)
+                        self._begin_delete_secret(spc_keyvault_name, name)
+                        self.keyvault_client.purge_deleted_secret(
+                            vault_base_url=KEYVAULT_URL.format(keyvaultName=spc_keyvault_name),
+                            secret_name=name,
+                        )
                 else:
                     logger.warning(f"Secret {name} not found in keyvault {spc_keyvault_name}. Skipping removal...")
 
@@ -535,7 +531,7 @@ class OpcUACerts(Queryable):
         spc_keyvault_name: str,
         flag: str,
         overwrite_secret: bool = False,
-    ) -> str:
+    ) -> Optional[str]:
         from rich.prompt import Confirm
 
         new_secret_name = secret_name
@@ -557,11 +553,17 @@ class OpcUACerts(Queryable):
                     "Secret overwrite operation cancelled. Please provide a different name "
                     f"via --{flag}."
                 )
-                return None
+                return
 
         return new_secret_name
 
-    def _upload_to_key_vault(self, secret_name: str, file_path: str, cert_extension: str):
+    def _upload_to_key_vault(
+        self,
+        keyvault_name: str,
+        secret_name: str,
+        file_path: str,
+        cert_extension: str
+    ):
         with console.status(f"Uploading certificate to keyvault as secret {secret_name}..."):
             content = read_file_content(file_path=file_path, read_as_binary=True).hex()
             if cert_extension == ".crl":
@@ -571,8 +573,15 @@ class OpcUACerts(Queryable):
             else:
                 content_type = "application/x-pem-file"
 
+            parameters = {
+                "value": content,
+                "contentType": content_type,
+                "tags": {"file-encoding": "hex"},
+            }
             return self.keyvault_client.set_secret(
-                name=secret_name, value=content, content_type=content_type, tags={"file-encoding": "hex"}
+                vault_base_url=KEYVAULT_URL.format(keyvaultName=keyvault_name),
+                secret_name=secret_name,
+                parameters=parameters,
             )
 
     def _add_secrets_to_spc(
@@ -584,7 +593,7 @@ class OpcUACerts(Queryable):
         spc_tenant_id: str,
         spc_client_id: str,
         secrets_to_replace: Optional[List[str]] = None,
-    ) -> dict:
+    ):
         spc = spc[0] if spc else {}
         spc_properties = spc.get("properties", {})
         # stringified yaml array
@@ -686,7 +695,7 @@ class OpcUACerts(Queryable):
 
     def _update_client_secret_to_extension(
         self,
-        applicationCert: str,
+        application_cert: str,
         subject_name: str,
         application_uri: str,
     ):
@@ -702,13 +711,13 @@ class OpcUACerts(Queryable):
         if not config_settings:
             properties["configurationSettings"] = {}
 
-        config_settings["connectors.values.securityPki.applicationCert"] = applicationCert
+        config_settings["connectors.values.securityPki.applicationCert"] = application_cert
         config_settings["connectors.values.securityPki.subjectName"] = subject_name
         config_settings["connectors.values.securityPki.applicationUri"] = application_uri
 
         aio_extension["properties"]["configurationSettings"] = config_settings
 
-        status_text = f"Updating IoT Operations extension to use {applicationCert}..." if applicationCert else \
+        status_text = f"Updating IoT Operations extension to use {application_cert}..." if application_cert else \
             "Rollback client certificate from IoT Operations extension..."
 
         with console.status(status_text):
@@ -766,7 +775,7 @@ class OpcUACerts(Queryable):
             if name == OPCUA_CLIENT_CERT_SECRET_SYNC_NAME:
                 # rollback aio extension settings
                 self._update_client_secret_to_extension(
-                    applicationCert="",
+                    application_cert="",
                     subject_name="",
                     application_uri="",
                 )
@@ -781,3 +790,44 @@ class OpcUACerts(Queryable):
                     resource=secret_sync,
                 )
                 return wait_for_terminal_state(poller)
+
+    def _get_secret_names(self, keyvault_name: str) -> List[str]:
+        secret_iteratable = self.keyvault_client.get_secrets(
+            vault_base_url=KEYVAULT_URL.format(keyvaultName=keyvault_name)
+        )
+        return [secret["id"] for secret in secret_iteratable if "id" in secret]
+
+    def _begin_delete_secret(self, keyvault_name: str, secret_name: str):
+        # Construct vault URL
+        vault_url = KEYVAULT_URL.format(keyvaultName=keyvault_name)
+
+        # Initiate deletion
+        pipeline_response = self.keyvault_client.delete_secret(
+            vault_base_url=vault_url,
+            secret_name=secret_name,
+            cls=lambda pipeline_response, _, __: pipeline_response,
+        )
+
+        for attempt in range(SECRET_DELETE_MAX_RETRIES):
+            try:
+                # Check if secret is deleted
+                self.keyvault_client.get_deleted_secret(
+                    vault_base_url=vault_url,
+                    secret_name=secret_name,
+                )
+                return  # Exit if no exception, deletion confirmed
+            except ResourceNotFoundError:
+                # Secret not yet deleted; retry after delay
+                transport: HttpTransport = cast(HttpTransport, pipeline_response.context.transport)
+                transport.sleep(SECRET_DELETE_RETRY_INTERVAL)
+                attempt += 1
+            except HttpResponseError as e:
+                if e.status_code == 403:
+                    # Permission issue encountered; exit loop
+                    break
+                raise
+
+        # Failed to confirm deletion after retries
+        raise TimeoutError(
+            f"Failed to delete secret '{secret_name}' within {SECRET_DELETE_MAX_RETRIES} retries."
+        )
