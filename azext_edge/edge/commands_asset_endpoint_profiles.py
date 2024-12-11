@@ -14,6 +14,73 @@ from .common import AEPTypes
 logger = get_logger(__name__)
 
 
+def create_custom_asset_endpoint_profile(
+    cmd,
+    asset_endpoint_profile_name: str,
+    endpoint_profile_type: str,
+    instance_name: str,
+    resource_group_name: str,
+    target_address: str,
+    certificate_reference: Optional[str] = None,
+    instance_resource_group: Optional[str] = None,
+    instance_subscription: Optional[str] = None,
+    location: Optional[str] = None,
+    password_reference: Optional[str] = None,
+    username_reference: Optional[str] = None,
+    tags: Optional[Dict[str, str]] = None,
+    additional_configuration: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return AssetEndpointProfiles(cmd).create(
+        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        endpoint_profile_type=endpoint_profile_type,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        target_address=target_address,
+        certificate_reference=certificate_reference,
+        instance_resource_group=instance_resource_group,
+        instance_subscription=instance_subscription,
+        location=location,
+        password_reference=password_reference,
+        username_reference=username_reference,
+        tags=tags,
+        additional_configuration=additional_configuration,
+        **kwargs
+    )
+
+
+def create_onvif_asset_endpoint_profile(
+    cmd,
+    asset_endpoint_profile_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    target_address: str,
+    certificate_reference: Optional[str] = None,
+    instance_resource_group: Optional[str] = None,
+    instance_subscription: Optional[str] = None,
+    location: Optional[str] = None,
+    password_reference: Optional[str] = None,
+    username_reference: Optional[str] = None,
+    tags: Optional[Dict[str, str]] = None,
+    **kwargs
+) -> dict:
+    return AssetEndpointProfiles(cmd).create(
+        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        endpoint_profile_type=AEPTypes.onvif.value,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        target_address=target_address,
+        certificate_reference=certificate_reference,
+        instance_resource_group=instance_resource_group,
+        instance_subscription=instance_subscription,
+        location=location,
+        password_reference=password_reference,
+        username_reference=username_reference,
+        tags=tags,
+        **kwargs
+    )
+
+
 def create_opcua_asset_endpoint_profile(
     cmd,
     asset_endpoint_profile_name: str,
@@ -72,41 +139,6 @@ def create_opcua_asset_endpoint_profile(
         security_mode=security_mode,
         sub_life_time=sub_life_time,
         sub_max_items=sub_max_items,
-        **kwargs
-    )
-
-
-def create_custom_asset_endpoint_profile(
-    cmd,
-    asset_endpoint_profile_name: str,
-    endpoint_profile_type: str,
-    instance_name: str,
-    resource_group_name: str,
-    target_address: str,
-    certificate_reference: Optional[str] = None,
-    instance_resource_group: Optional[str] = None,
-    instance_subscription: Optional[str] = None,
-    location: Optional[str] = None,
-    password_reference: Optional[str] = None,
-    username_reference: Optional[str] = None,
-    tags: Optional[Dict[str, str]] = None,
-    additional_configuration: Optional[str] = None,
-    **kwargs
-) -> dict:
-    return AssetEndpointProfiles(cmd).create(
-        asset_endpoint_profile_name=asset_endpoint_profile_name,
-        endpoint_profile_type=endpoint_profile_type,
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-        target_address=target_address,
-        certificate_reference=certificate_reference,
-        instance_resource_group=instance_resource_group,
-        instance_subscription=instance_subscription,
-        location=location,
-        password_reference=password_reference,
-        username_reference=username_reference,
-        tags=tags,
-        additional_configuration=additional_configuration,
         **kwargs
     )
 

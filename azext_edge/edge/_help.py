@@ -1029,7 +1029,7 @@ def load_iotops_help():
         - name: Create an asset endpoint with username-password user authentication using the given instance in a different resource group but same subscription. The additional
                 configuration is provided as an inline json.
           text: >
-            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
             --instance-resource-group myinstanceresourcegroup
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
             --username-ref rest-server-auth-creds/username --password-ref rest-server-auth-creds/password
@@ -1049,6 +1049,25 @@ def load_iotops_help():
             az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
             --additional-configuration '{"hello": "world"}'
+    """
+
+    helps[
+        "iot ops asset endpoint create onvif"
+    ] = """
+        type: command
+        short-summary: Create an asset endpoint profile with an Onvif connector.
+        long-summary: For more information on how to create an Onvif connector, please see aka.ms/onvif-quickstart
+        examples:
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
+          text: >
+            az iot ops asset endpoint create onvif --name myprofile -g myresourcegroup --instance myinstance
+            --target-address http://onvif-rtsp-simulator:8000
+        - name: Create an asset endpoint with username-password user authentication using the given instance in a different resource group but same subscription.
+          text: >
+            az iot ops asset endpoint create onvif --name myprofile -g myresourcegroup --instance myinstance
+            --instance-resource-group myinstanceresourcegroup
+            --target-address http://onvif-rtsp-simulator:8000
+            --username-ref rest-server-auth-creds/username --password-ref rest-server-auth-creds/password
     """
 
     helps[

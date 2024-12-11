@@ -91,7 +91,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources, tracked_files
     password = generate_random_string()
     address = f"opc.tcp://{generate_random_string()}:5000"
     userpass_endpoint = run(
-        f"az iot ops asset endpoint create opcua -n {userpass_name} -g {rg} --instance {instance} "
+        f"az iot ops asset endpoint create onvif -n {userpass_name} -g {rg} --instance {instance} "
         f"--ta {address} --username-ref {username} --password-ref {password}"
     )
     tracked_resources.append(userpass_endpoint["id"])
@@ -102,7 +102,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources, tracked_files
         target_address=address,
         username_reference=username,
         password_reference=password,
-        endpoint_type="Microsoft.OpcUa",
+        endpoint_type="Microsoft.Onvif",
     )
 
     cert_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]

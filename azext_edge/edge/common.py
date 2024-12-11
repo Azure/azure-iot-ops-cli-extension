@@ -204,8 +204,8 @@ class AEPAuthModes(Enum):
 class AEPTypes(ListableEnum):
     """Asset Endpoint Profile (connector) Types"""
 
-    # TODO: ensure this is the final enum
     opcua = "Microsoft.OpcUa"
+    onvif = "Microsoft.Onvif"
 
 
 class TopicRetain(Enum):
