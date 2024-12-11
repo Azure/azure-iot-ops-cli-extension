@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("resource_kind", [None, MqResourceKinds.BROKER.value, MqResourceKinds.BROKER_LISTENER.value])
+@pytest.mark.parametrize("resource_kind", MqResourceKinds.list() + [None])
 # TODO: figure out if name match should be a general test vs each service (minimize test runs)
 @pytest.mark.parametrize("resource_match", [None])
 def test_mq_check(init_setup, detail_level, resource_match, resource_kind):
@@ -31,7 +31,7 @@ def test_mq_check(init_setup, detail_level, resource_match, resource_kind):
         ops_service="broker",
         resource_api=MQTT_BROKER_API_V1,
         resource_kind=resource_kind,
-        resource_match=resource_match
+        resource_match=resource_match,
     )
 
     # overall api
@@ -54,10 +54,9 @@ def test_mq_check(init_setup, detail_level, resource_match, resource_kind):
         custom_resources=custom_resources,
         resource_kind=resource_kind
     )
+    assert_eval_broker(post_deployment=post_deployment, custom_resources=custom_resources, resource_kind=resource_kind)
     assert_eval_broker_listener(
-        post_deployment=post_deployment,
-        custom_resources=custom_resources,
-        resource_kind=resource_kind
+        post_deployment=post_deployment, custom_resources=custom_resources, resource_kind=resource_kind
     )
 
 

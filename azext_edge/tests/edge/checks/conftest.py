@@ -94,6 +94,8 @@ def mock_resource_types(mocker, ops_service):
         "broker": {
             "Broker": [{}],
             "BrokerListener": [{}],
+            "BrokerAuthorization": [{}],
+            "BrokerAuthentication": [{}],
         },
         "akri": {"Configuration": [{}], "Instance": [{}]},
         "opcua": {
@@ -241,3 +243,12 @@ def mocked_list_deployments(mocked_client):
     mocked_client.AppsV1Api().list_deployment_for_all_namespaces.side_effect = _handle_list_deployments
 
     yield mocked_client
+
+
+@pytest.fixture
+def mocked_validate_runtime_resource_ref(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.check.mq.validate_runtime_resource_ref",
+    )
+
+    yield patched
