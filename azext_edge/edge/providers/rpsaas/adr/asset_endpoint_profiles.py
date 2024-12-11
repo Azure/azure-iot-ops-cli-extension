@@ -14,6 +14,7 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
+    FileOperationError,
 )
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
@@ -60,8 +61,9 @@ class AssetEndpointProfiles(Queryable):
         password_reference: Optional[str] = None,
         username_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
-        **additional_configuration
+        **kwargs
     ):
+        from ....util import read_file_content
         from .helpers import get_extended_location
         extended_location = get_extended_location(
             cmd=self.cmd,
@@ -78,9 +80,19 @@ class AssetEndpointProfiles(Queryable):
         # Properties
         properties = {"endpointProfileType": endpoint_profile_type}
 
+        configuration = None
         if endpoint_profile_type == AEPTypes.opcua.value:
-            properties["additionalConfiguration"] = _build_opcua_config(**additional_configuration)
-        # TODO: add other connector types in
+            configuration = _build_opcua_config(**kwargs)
+        elif kwargs.get("additional_configuration"):  # custom type
+            configuration = kwargs["additional_configuration"]
+            try:
+                logger.debug("Processing additional configuration.")
+                configuration = read_file_content(configuration)
+            except FileOperationError:
+                logger.debug("Given additional configuration is not a file.")
+                pass
+        properties["additionalConfiguration"] = configuration
+
         _update_properties(
             properties,
             target_address=target_address,
@@ -103,7 +115,7 @@ class AssetEndpointProfiles(Queryable):
                 asset_endpoint_profile_name,
                 resource=aep_body
             )
-            return wait_for_terminal_state(poller, **additional_configuration)
+            return wait_for_terminal_state(poller, **kwargs)
 
     def delete(self, asset_endpoint_profile_name: str, resource_group_name: str, **kwargs):
         self.show(

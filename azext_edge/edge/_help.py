@@ -1017,6 +1017,41 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops asset endpoint create custom"
+    ] = """
+        type: command
+        short-summary: Create an asset endpoint profile with a custom connector.
+        examples:
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
+          text: >
+            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
+            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
+        - name: Create an asset endpoint with username-password user authentication using the given instance in a different resource group but same subscription. The additional
+                configuration is provided as an inline json.
+          text: >
+            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
+            --instance-resource-group myinstanceresourcegroup
+            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
+            --username-ref rest-server-auth-creds/username --password-ref rest-server-auth-creds/password
+            --additional-configuration addition_configuration.json
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a powershell syntax example.
+          text: >
+            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
+            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
+            --additional-configuration '{\\\"hello\\\": \\\"world\\\"}'
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a cmd syntax example.
+          text: >
+            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
+            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
+            --additional-configuration "{\\\"hello\\\": \\\"world\\\"}"
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a bash syntax example.
+          text: >
+            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
+            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
+            --additional-configuration '{"hello": "world"}'
+    """
+
+    helps[
         "iot ops asset endpoint create opcua"
     ] = """
         type: command

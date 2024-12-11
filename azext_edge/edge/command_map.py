@@ -163,6 +163,7 @@ def load_iotops_commands(self, _):
         "iot ops asset endpoint create",
         command_type=aep_resource_ops,
     ) as cmd_group:
+        cmd_group.command("custom", "create_custom_asset_endpoint_profile")
         cmd_group.command("opcua", "create_opcua_asset_endpoint_profile")
 
     with self.command_group(

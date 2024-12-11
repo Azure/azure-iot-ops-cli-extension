@@ -76,6 +76,41 @@ def create_opcua_asset_endpoint_profile(
     )
 
 
+def create_custom_asset_endpoint_profile(
+    cmd,
+    asset_endpoint_profile_name: str,
+    endpoint_profile_type: str,
+    instance_name: str,
+    resource_group_name: str,
+    target_address: str,
+    certificate_reference: Optional[str] = None,
+    instance_resource_group: Optional[str] = None,
+    instance_subscription: Optional[str] = None,
+    location: Optional[str] = None,
+    password_reference: Optional[str] = None,
+    username_reference: Optional[str] = None,
+    tags: Optional[Dict[str, str]] = None,
+    additional_configuration: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return AssetEndpointProfiles(cmd).create(
+        asset_endpoint_profile_name=asset_endpoint_profile_name,
+        endpoint_profile_type=endpoint_profile_type,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        target_address=target_address,
+        certificate_reference=certificate_reference,
+        instance_resource_group=instance_resource_group,
+        instance_subscription=instance_subscription,
+        location=location,
+        password_reference=password_reference,
+        username_reference=username_reference,
+        tags=tags,
+        additional_configuration=additional_configuration,
+        **kwargs
+    )
+
+
 def delete_asset_endpoint_profile(
     cmd,
     asset_endpoint_profile_name: str,

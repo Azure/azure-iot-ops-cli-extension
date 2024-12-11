@@ -982,6 +982,20 @@ def load_iotops_arguments(self, _):
             arg_type=tags_type,
         )
 
+    with self.argument_context("iot ops asset endpoint create custom") as context:
+        context.argument(
+            "endpoint_profile_type",
+            options_list=["--endpoint-type", "--et"],
+            help="Endpoint Profile Type for the Connector.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "additional_configuration",
+            options_list=["--additional-config", "--ac"],
+            help="File path containing or inline json for the additional configuration.",
+            arg_group="Connector",
+        )
+
     with self.argument_context("iot ops asset endpoint create opcua") as context:
         context.argument(
             "application_name",
