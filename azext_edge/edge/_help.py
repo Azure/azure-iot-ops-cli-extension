@@ -1033,22 +1033,22 @@ def load_iotops_help():
             --instance-resource-group myinstanceresourcegroup
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
             --username-ref rest-server-auth-creds/username --password-ref rest-server-auth-creds/password
-            --additional-configuration addition_configuration.json
+            --additional-config addition_configuration.json
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a powershell syntax example.
           text: >
             az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --additional-configuration '{\\\"hello\\\": \\\"world\\\"}'
+            --additional-config '{\\\"hello\\\": \\\"world\\\"}'
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a cmd syntax example.
           text: >
             az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --additional-configuration "{\\\"hello\\\": \\\"world\\\"}"
+            --additional-config "{\\\"hello\\\": \\\"world\\\"}"
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a bash syntax example.
           text: >
             az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --additional-configuration '{"hello": "world"}'
+            --additional-config '{"hello": "world"}'
     """
 
     helps[
