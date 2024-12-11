@@ -19,7 +19,7 @@ from knack.log import get_logger
 logger = get_logger(__name__)
 
 
-def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
+def assemble_nargs_to_dict(hash_list: List[str], suppress_falsey_value_warning: bool = False) -> Dict[str, str]:
     result = {}
     if not hash_list:
         return result
@@ -32,12 +32,14 @@ def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
             continue
         split_hash = hash.split("=", 1)
         result[split_hash[0]] = split_hash[1]
-    for key in result:
-        if not result.get(key):
-            logger.warning(
-                "No value assigned to key '%s', input format is key=value | key='value value'.",
-                key,
-            )
+
+    if not suppress_falsey_value_warning:
+        for key in result:
+            if not result.get(key):
+                logger.warning(
+                    "No value assigned to key '%s', input format is key=value | key='value value'.",
+                    key,
+                )
     return result
 
 
