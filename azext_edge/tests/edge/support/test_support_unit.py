@@ -734,10 +734,17 @@ def assert_list_config_maps(
     label_selector: Optional[str] = None,
     field_selector: Optional[str] = None,
     mock_names: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ):
-    mocked_client.CoreV1Api().list_config_map_for_all_namespaces.assert_any_call(
-        label_selector=label_selector, field_selector=field_selector
-    )
+    if namespace:
+        mocked_client.CoreV1Api().list_namespaced_config_map.assert_any_call(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        mocked_client.CoreV1Api().list_config_map_for_all_namespaces.assert_any_call(
+            label_selector=label_selector, field_selector=field_selector
+        )
+
     mock_names = mock_names or ["mock_config_map"]
     for name in mock_names:
         assert_zipfile_write(
