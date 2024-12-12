@@ -61,6 +61,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     namespaces = process_top_levels(walk_result, ops_service)
     aio_namespace = namespaces.get("aio")
     acs_namespace = namespaces.get("acs")
+    acstor_namespace = namespaces.get("acstor")
     ssc_namespace = namespaces.get("ssc")
     arc_namespace = namespaces.get("arc")
 
@@ -85,6 +86,10 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     # remove acs resources from walk_result from aio namespace assertion
     if acs_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage"), {})
+
+    # remove acstor resources from walk_result from aio namespace assertion
+    if acstor_namespace:
+        walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage"), {})
 
     # remove ssc resources in ssc namespace from walk_result from aio namespace assertion
     if ssc_namespace:
