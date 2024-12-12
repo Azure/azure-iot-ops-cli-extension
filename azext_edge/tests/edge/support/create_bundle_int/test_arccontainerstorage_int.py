@@ -6,7 +6,7 @@
 
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import ARCCONTAINERSTORAGE_API_V1
+from azext_edge.edge.providers.edge_api import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1
 from azext_edge.tests.helpers import get_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
@@ -24,13 +24,16 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
     ops_service = OpsServiceType.arccontainerstorage.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
-    file_map = get_file_map(walk_result, ops_service)["acs"]
+    file_map = get_file_map(walk_result, ops_service)
 
-    check_custom_resource_files(file_objs=file_map, resource_api=ARCCONTAINERSTORAGE_API_V1)
+    # azure-arc-containerstorage
+    acs_file_map = file_map["acs"]
+
+    check_custom_resource_files(file_objs=acs_file_map, resource_api=ARCCONTAINERSTORAGE_API_V1)
 
     expected_workload_types = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service"]
     expected_types = set(expected_workload_types).union(ARCCONTAINERSTORAGE_API_V1.kinds)
-    assert set(file_map.keys()).issubset(set(expected_types))
+    assert set(acs_file_map.keys()).issubset(set(expected_types))
 
     workload_resource_prefixes = [
         "acsa-otel",
@@ -59,8 +62,54 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
         )
 
     check_workload_resource_files(
-        file_objs=file_map,
+        file_objs=acs_file_map,
         expected_workload_types=expected_workload_types,
         prefixes=workload_resource_prefixes,
         bundle_path=bundle_path,
     )
+
+    # validate azure-arc-acstor if exists
+
+    if "acstor" not in file_map:
+        return
+
+    acstor_file_map = get_file_map(walk_result, ops_service)["acstor"]
+
+    expected_workload_types = ["daemonset", "deployment", "pod", "replicaset", "service", "configmap"]
+    expected_types = set(expected_workload_types).union(CONTAINERSTORAGE_API_V1.kinds)
+    assert set(acstor_file_map.keys()).issubset(set(expected_types))
+
+    workload_resource_prefixes = [
+        "acstor-action",
+        "acstor-agent",
+        "acstor-api-rest",
+        "acstor-capacity",
+        "acstor-cert-manager",
+        "acstor-csi",
+        "acstor-etcd",
+        "acstor-io",
+        "acstor-ndm",
+        "acstor-operator",
+        "acstor-prereq",
+        "acstor-scripts",
+        "acstor-support-bundle",
+        "capacity-provisioner",
+        "diskpool-worker",
+        "etcd-acstor",
+        "etcdr",
+        "fluentd",
+        "geneva",
+        "gcstenant",
+        "kube-root-ca",
+        "overlay-etcd",
+        "webhook",
+    ]
+
+    check_workload_resource_files(
+        file_objs=acstor_file_map,
+        expected_workload_types=expected_workload_types,
+        prefixes=workload_resource_prefixes,
+        bundle_path=bundle_path,
+    )
+
+    check_custom_resource_files(file_objs=acstor_file_map, resource_api=CONTAINERSTORAGE_API_V1)

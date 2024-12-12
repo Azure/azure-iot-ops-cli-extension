@@ -74,11 +74,12 @@ def process_crd(
         try:
             namespace = r["metadata"]["namespace"]
         except KeyError:
-            if namespace:
+            if fallback_namespace:
                 namespace = fallback_namespace
             else:
                 raise ValueError("Namespace not found in CRD metadata and no fallback namespace provided.")
         name = r["metadata"]["name"]
+
         processed.append(
             {
                 "data": r,
@@ -485,8 +486,7 @@ def assemble_crd_work(
 
     result = {}
     for api in apis:
-        if not directory_path:
-            directory_path = api.moniker
+        path = directory_path or api.moniker
         for kind in api.kinds:
             file_prefix = file_prefix_map.get(kind)
             result[f"{api.moniker} {api.version} {kind}"] = partial(
@@ -495,7 +495,7 @@ def assemble_crd_work(
                 version=api.version,
                 kind=kind,
                 plural=api._kinds[kind],  # TODO: optimize
-                directory_path=directory_path,
+                directory_path=path,
                 file_prefix=file_prefix,
                 fallback_namespace=fallback_namespace,
             )
