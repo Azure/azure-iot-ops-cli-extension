@@ -26,8 +26,13 @@ from azext_edge.edge.providers.check.base.resource import (
     combine_statuses,
     decorate_resource_status,
     process_resource_property_by_type,
+    validate_runtime_resource_ref,
 )
-from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET, ResourceOutputDetailLevel
+from azext_edge.edge.providers.check.common import (
+    ALL_NAMESPACES_TARGET,
+    ResourceOutputDetailLevel,
+    ValidationResourceType,
+)
 from azext_edge.edge.providers.edge_api import (
     MQ_ACTIVE_API,
     MqResourceKinds,
@@ -960,3 +965,45 @@ def test_process_custom_resource_status(
 
     # Verify the expected calls to add_target_eval
     assert mocked_check_manager.add_target_eval.call_args_list == expected_eval_calls
+
+
+@pytest.mark.parametrize(
+    "name, namespace, ref_type, ref_obj, expected_is_valid",
+    [
+        (
+            "test_secret",
+            "test_namespace",
+            ValidationResourceType.secret,
+            {"metadata": {"name": "test_secret", "namespace": "test_namespace"}},
+            True,
+        ),
+        (
+            "test_secret",
+            "test_namespace",
+            ValidationResourceType.secret,
+            None,
+            False,
+        ),
+        (
+            "test_configmap",
+            "test_namespace",
+            ValidationResourceType.configmap,
+            {"metadata": {"name": "test_configmap", "namespace": "test_namespace"}},
+            True,
+        ),
+        (
+            "test_configmap",
+            "test_namespace",
+            ValidationResourceType.configmap,
+            None,
+            False,
+        ),
+    ],
+)
+def test_validate_runtime_resource_ref(mocker, name, namespace, ref_type, ref_obj, expected_is_valid):
+    mocker.patch("azext_edge.edge.providers.check.base.resource.get_namespaced_secret", return_value=ref_obj)
+    mocker.patch("azext_edge.edge.providers.check.base.resource.get_config_map", return_value=ref_obj)
+
+    is_valid = validate_runtime_resource_ref(name, namespace, ref_type)
+
+    assert is_valid == expected_is_valid

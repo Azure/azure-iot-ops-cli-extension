@@ -475,6 +475,19 @@ def test_trust_remove(
                 content_type="application/json",
             )
 
+            # get deleted secret
+            mocked_responses.add(
+                method=responses.GET,
+                url=get_secret_endpoint(
+                    keyvault_name="mock-keyvault",
+                    secret_name="cert-der",
+                    deleted=True,
+                ),
+                status=200,
+                json={},
+                content_type="application/json",
+            )
+
             # purge secret
             mocked_responses.add(
                 method=responses.DELETE,
