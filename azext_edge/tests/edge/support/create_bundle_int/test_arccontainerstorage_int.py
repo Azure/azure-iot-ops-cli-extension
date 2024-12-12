@@ -73,7 +73,7 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
     if "acstor" not in file_map:
         return
 
-    acstor_file_map = get_file_map(walk_result, ops_service)["acstor"]
+    acstor_file_map = file_map["acstor"]
 
     expected_workload_types = ["daemonset", "deployment", "pod", "replicaset", "service", "configmap"]
     expected_types = set(expected_workload_types).union(CONTAINERSTORAGE_API_V1.kinds)
