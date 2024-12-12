@@ -101,6 +101,7 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
         "fluentd",
         "geneva",
         "gcstenant",
+        "kube-root-ca",
         "overlay-etcd",
         "webhook",
     ]
