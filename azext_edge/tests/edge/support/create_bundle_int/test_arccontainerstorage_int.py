@@ -85,6 +85,7 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
         "acstor-api-rest",
         "acstor-capacity",
         "acstor-cert-manager",
+        "acstor-crd",
         "acstor-csi",
         "acstor-etcd",
         "acstor-io",
@@ -100,7 +101,6 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
         "fluentd",
         "geneva",
         "gcstenant",
-        "kube-root-ca",
         "overlay-etcd",
         "webhook",
     ]
