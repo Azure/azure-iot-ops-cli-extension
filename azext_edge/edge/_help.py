@@ -1020,7 +1020,8 @@ def load_iotops_help():
         "iot ops asset endpoint create custom"
     ] = """
         type: command
-        short-summary: Create an asset endpoint profile with a custom connector.
+        short-summary: Create an asset endpoint profile for a custom connector.
+        long-summary: For an example of a custom connector, please see https://aka.ms/rest-connector-quickstart
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >
@@ -1034,29 +1035,37 @@ def load_iotops_help():
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
             --username-ref rest-server-auth-creds/username --password-ref rest-server-auth-creds/password
             --additional-config addition_configuration.json
+        - name: Create an asset endpoint with certificate authentication using the given instance in the same resource group.
+          text: >
+            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
+            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
+            --certificate-ref mycertificate.pem
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a powershell syntax example.
           text: >
             az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --additional-config '{\\\"hello\\\": \\\"world\\\"}'
+            --additional-config '{\\\"displayName\\\": \\\"myconnector\\\", \\\"maxItems\\\": 100}'
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a cmd syntax example.
           text: >
             az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --additional-config "{\\\"hello\\\": \\\"world\\\"}"
+            --additional-config "{\\\"displayName\\\": \\\"myconnector\\\", \\\"maxItems\\\": 100}"
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a bash syntax example.
           text: >
             az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --additional-config '{"hello": "world"}'
+            --additional-config '{"displayName": "myconnector", "maxItems": 100}'
     """
 
     helps[
         "iot ops asset endpoint create onvif"
     ] = """
         type: command
-        short-summary: Create an asset endpoint profile with an Onvif connector.
-        long-summary: For more information on how to create an Onvif connector, please see aka.ms/onvif-quickstart
+        short-summary: Create an asset endpoint profile for an Onvif connector.
+        long-summary: |
+                      Certificate authentication is not supported yet for Onvif Connectors.
+
+                      For more information on how to create an Onvif connector, please see https://aka.ms/onvif-quickstart
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >
@@ -1074,7 +1083,7 @@ def load_iotops_help():
         "iot ops asset endpoint create opcua"
     ] = """
         type: command
-        short-summary: Create an asset endpoint profile with an OPCUA connector.
+        short-summary: Create an asset endpoint profile for an OPCUA connector.
         long-summary: |
                       Azure IoT OPC UA Connector (preview) uses the same client certificate for all secure
                       channels between itself and the OPC UA servers that it connects to.
@@ -1082,7 +1091,7 @@ def load_iotops_help():
                       For OPC UA connector arguments, a value of -1 means that parameter will not be used (ex: --session-reconnect-backoff -1 means that no exponential backoff should be used).
                       A value of 0 means use the fastest practical rate (ex: --default-sampling-int 0 means use the fastest sampling interval possible for the server).
 
-                      For more information on how to create an OPCUA connector, please see aka.ms/opcua-quickstart
+                      For more information on how to create an OPCUA connector, please see https://aka.ms/opcua-quickstart
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >

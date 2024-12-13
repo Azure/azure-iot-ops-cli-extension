@@ -83,15 +83,19 @@ class AssetEndpointProfiles(Queryable):
         configuration = None
         if endpoint_profile_type == AEPTypes.opcua.value:
             configuration = _build_opcua_config(**kwargs)
-        elif kwargs.get("additional_configuration"):  # custom type
+        elif "additional_configuration" in kwargs:  # custom type
             configuration = kwargs["additional_configuration"]
             try:
                 logger.debug("Processing additional configuration.")
                 configuration = read_file_content(configuration)
             except FileOperationError:
                 logger.debug("Given additional configuration is not a file.")
-                pass
-        properties["additionalConfiguration"] = configuration
+
+            # make sure it is an actual json
+            try:
+                json.loads(configuration)
+            except json.JSONDecodeError as e:
+                raise InvalidArgumentValueError(f"Additional configuration is not a valid JSON.\n{e.msg}")
 
         _update_properties(
             properties,
@@ -100,6 +104,7 @@ class AssetEndpointProfiles(Queryable):
             username_reference=username_reference,
             password_reference=password_reference,
             certificate_reference=certificate_reference,
+            additional_configuration=configuration
         )
 
         aep_body = {
