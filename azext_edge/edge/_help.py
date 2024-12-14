@@ -1021,7 +1021,6 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create an asset endpoint profile for a custom connector.
-        long-summary: For an example of a custom connector, please see https://aka.ms/rest-connector-quickstart
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >

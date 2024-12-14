@@ -10,8 +10,10 @@ import json
 import pytest
 import responses
 
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.commands_asset_endpoint_profiles import (
     create_custom_asset_endpoint_profile,
+    create_onvif_asset_endpoint_profile,
     create_opcua_asset_endpoint_profile,
     delete_asset_endpoint_profile,
     list_asset_endpoint_profiles,
@@ -38,6 +40,7 @@ from ....generators import generate_random_string
         "instance_resource_group": generate_random_string(),
         "password_reference": generate_random_string(),
         "username_reference": generate_random_string(),
+        "additional_configuration": json.dumps({generate_random_string(): generate_random_string()})
     }
 ])
 @pytest.mark.parametrize("endpoint_type", AEPTypes.list() + [generate_random_string()])
@@ -67,6 +70,8 @@ def test_create(
     create_command = partial(create_custom_asset_endpoint_profile, endpoint_profile_type=endpoint_type)
     if endpoint_type == AEPTypes.opcua.value:
         create_command = create_opcua_asset_endpoint_profile
+    elif endpoint_type == AEPTypes.onvif.value:
+        create_command = create_onvif_asset_endpoint_profile
     result = create_command(
         cmd=mocked_cmd,
         asset_endpoint_profile_name=profile_name,
@@ -100,8 +105,25 @@ def test_create(
     else:
         assert auth_props["method"] == "Anonymous"
 
-    if endpoint_type == AEPTypes.opcua.value:
-        assert call_body_props["additionalConfiguration"]
+    if "additional_configuration" in req and endpoint_type not in AEPTypes.list():
+        assert call_body_props["additionalConfiguration"] == req["additional_configuration"]
+    elif endpoint_type == AEPTypes.opcua.value:
+        assert call_body_props["additionalConfiguration"] == "{}"
+    else:
+        assert "additional_configuration" not in call_body_props
+
+
+def test_create_error(mocked_cmd, mocked_get_extended_location):
+    with pytest.raises(InvalidArgumentValueError):
+        create_custom_asset_endpoint_profile(
+            cmd=mocked_cmd,
+            asset_endpoint_profile_name=generate_random_string(),
+            target_address=generate_random_string(),
+            resource_group_name=generate_random_string(),
+            instance_name=generate_random_string(),
+            endpoint_profile_type=generate_random_string(),
+            additional_configuration=generate_random_string()
+        )
 
 
 @pytest.mark.parametrize("discovered", [False])  # TODO: discovered

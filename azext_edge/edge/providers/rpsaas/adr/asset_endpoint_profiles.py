@@ -83,7 +83,7 @@ class AssetEndpointProfiles(Queryable):
         configuration = None
         if endpoint_profile_type == AEPTypes.opcua.value:
             configuration = _build_opcua_config(**kwargs)
-        elif "additional_configuration" in kwargs:  # custom type
+        elif kwargs.get("additional_configuration"):  # custom type
             configuration = kwargs["additional_configuration"]
             try:
                 logger.debug("Processing additional configuration.")

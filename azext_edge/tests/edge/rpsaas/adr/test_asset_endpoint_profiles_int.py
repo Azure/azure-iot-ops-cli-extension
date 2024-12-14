@@ -8,7 +8,7 @@ import json
 from time import sleep
 from knack.log import get_logger
 from ....generators import generate_random_string
-from ....helpers import run
+from ....helpers import create_file, run
 
 logger = get_logger(__name__)
 
@@ -64,17 +64,19 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources, tracked_files
         },
         generate_random_string(): generate_random_string()
     })
-    file_name = f"test_schema_version_content_{generate_random_string(size=4)}.json"
-    tracked_files.append(file_name)
-    with open(file_name, "w", encoding="utf-8") as f:
-        f.write(json_content)
+    file_path = create_file(
+        file_name=f"test_additional_config_{generate_random_string(size=4)}.json",
+        module_file=__file__,
+        tracked_files=tracked_files,
+        content=json_content
+    )
 
     anon_name2 = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     address = f"opc.tcp://{generate_random_string()}:5000"
     endpoint_type = generate_random_string()
     anon_endpoint2 = run(
         f"az iot ops asset endpoint create custom -n {anon_name2} -g {rg} --instance {instance} "
-        f"--ta {address} --et {endpoint_type} --ac {file_name}"
+        f"--ta {address} --et {endpoint_type} --ac {file_path}"
     )
     tracked_resources.append(anon_endpoint2["id"])
     assert_endpoint_props(
