@@ -6,7 +6,6 @@
 
 import json
 import os
-import shutil
 from fnmatch import fnmatch
 from knack.log import get_logger
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -144,7 +143,7 @@ def create_file(
     """
     from pathlib import PurePath
     file_path = PurePath(PurePath(module_file).parent, file_name)
-    with open(file_path,"w", encoding=encoding) as f:
+    with open(file_path, "w", encoding=encoding) as f:
         f.write(content)
     tracked_files.append(file_path)
     return file_path
