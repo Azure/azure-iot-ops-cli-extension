@@ -239,6 +239,7 @@ def get_file_map(
     acstor_namespace = namespaces.get("acstor")
     ssc_namespace = namespaces.get("ssc")
     c_namespace = namespaces.get("usage_system")
+    certmanager_namespace = namespaces.get("certmanager")
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -302,6 +303,19 @@ def get_file_map(
 
         # no files for aio, skip the rest assertions
         return file_map
+    elif ops_service == "certmanager":
+        if not acstor_namespace:
+            assert len(walk_result) == 2 + expected_default_walk_result
+        else:
+            assert len(walk_result) == 3 + expected_default_walk_result
+            certmanager_acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
+            file_map["certmanager_acstor"] = convert_file_names(walk_result[certmanager_acstor_path]["files"])
+        certmanager_path = path.join(BASE_ZIP_PATH, certmanager_namespace, "certmanager")
+        file_map["certmanager"] = convert_file_names(walk_result[certmanager_path]["files"])
+        certmanager_aio_path = path.join(BASE_ZIP_PATH, aio_namespace, "certmanager")
+        file_map["certmanager_aio"] = convert_file_names(walk_result[certmanager_aio_path]["files"])
+        file_map["__namespaces__"]["certmanager"] = certmanager_namespace
+        return file_map
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
             assert len(walk_result) == expected_default_walk_result
@@ -333,6 +347,7 @@ def process_top_levels(
     acs_namespace = None
     acstor_namespace = None
     ssc_namespace = None
+    certmanager_namespace = None
 
     def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
@@ -349,22 +364,18 @@ def process_top_levels(
             name=name, folder=path.join("arcagents", ARC_AGENTS[0][0]), file_prefix="pod"
         ):
             arc_namespace = name
-        elif _get_namespace_determinating_files(
-            name=name,
-            folder=path.join("arccontainerstorage"),
-            file_prefix="pvc"
-        ):
+        elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
             acs_namespace = name
         elif _get_namespace_determinating_files(
-            name=name,
-            folder=path.join("containerstorage"),
-            file_prefix="configmap"
+            name=name, folder=path.join("containerstorage"), file_prefix="configmap"
         ):
             acstor_namespace = name
         elif _get_namespace_determinating_files(
             name=name, folder=OpsServiceType.secretstore.value, file_prefix="deployment"
         ):
             ssc_namespace = name
+        elif _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="configmap"):
+            certmanager_namespace = name
         else:
             namespace = name
 
@@ -375,6 +386,7 @@ def process_top_levels(
         (acs_namespace, ["arccontainerstorage"]),
         (acstor_namespace, ["containerstorage"]),
         (ssc_namespace, [OpsServiceType.secretstore.value]),
+        (certmanager_namespace, ["certmanager"]),
     ]:
         if namespace_folder:
             # remove empty folders in level 1
@@ -402,6 +414,7 @@ def process_top_levels(
     logger.debug(f"ACS namespace: {acs_namespace}")
     logger.debug(f"ACSTOR namespace: {acstor_namespace}")
     logger.debug(f"SSC namespace: {ssc_namespace}")
+    logger.debug(f"Certmanager namespace: {certmanager_namespace}")
 
     return {
         "arc": arc_namespace,
@@ -410,6 +423,7 @@ def process_top_levels(
         "acstor": acstor_namespace,
         "ssc": ssc_namespace,
         "usage_system": clusterconfig_namespace,
+        "certmanager": certmanager_namespace,
     }
 
 

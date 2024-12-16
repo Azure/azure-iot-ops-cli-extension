@@ -64,6 +64,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     acstor_namespace = namespaces.get("acstor")
     ssc_namespace = namespaces.get("ssc")
     arc_namespace = namespaces.get("arc")
+    certmanager_namespace = namespaces.get("certmanager")
 
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -88,6 +89,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         (acs_namespace, "arccontainerstorage"),
         (acstor_namespace, "containerstorage"),
         (ssc_namespace, OpsServiceType.secretstore.value),
+        (certmanager_namespace, OpsServiceType.certmanager.value),
     ]:
         if namespace:
             walk_result.pop(path.join(BASE_ZIP_PATH, namespace, service), {})

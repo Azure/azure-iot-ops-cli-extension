@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from .base import EdgeResourceApi, EdgeApiManager
+from .certmanager import CERTMANAGER_API_V1
 from .clusterconfig import CLUSTER_CONFIG_API_V1
 from .mq import MQ_ACTIVE_API, MQTT_BROKER_API_V1, MqResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
@@ -19,6 +20,7 @@ from .azuremonitor import AZUREMONITOR_API_V1
 __all__ = [
     "ARCCONTAINERSTORAGE_API_V1",
     "AZUREMONITOR_API_V1",
+    "CERTMANAGER_API_V1",
     "CLUSTER_CONFIG_API_V1",
     "CONTAINERSTORAGE_API_V1",
     "EdgeResourceApi",
