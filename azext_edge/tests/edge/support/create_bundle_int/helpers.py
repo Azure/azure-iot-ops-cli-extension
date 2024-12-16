@@ -305,15 +305,17 @@ def get_file_map(
         return file_map
     elif ops_service == "certmanager":
         if not acstor_namespace:
-            assert len(walk_result) == 2 + expected_default_walk_result
-        else:
             assert len(walk_result) == 3 + expected_default_walk_result
+        else:
+            assert len(walk_result) == 4 + expected_default_walk_result
             certmanager_acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
             file_map["certmanager_acstor"] = convert_file_names(walk_result[certmanager_acstor_path]["files"])
         certmanager_path = path.join(BASE_ZIP_PATH, certmanager_namespace, "certmanager")
         file_map["certmanager"] = convert_file_names(walk_result[certmanager_path]["files"])
         certmanager_aio_path = path.join(BASE_ZIP_PATH, aio_namespace, "certmanager")
         file_map["certmanager_aio"] = convert_file_names(walk_result[certmanager_aio_path]["files"])
+        certmanager_arc_path = path.join(BASE_ZIP_PATH, arc_namespace, "certmanager")
+        file_map["certmanager_arc"] = convert_file_names(walk_result[certmanager_arc_path]["files"])
         file_map["__namespaces__"]["certmanager"] = certmanager_namespace
         return file_map
     elif ops_service == "deviceregistry":
@@ -382,9 +384,9 @@ def process_top_levels(
     monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
     for namespace_folder, services in [
         (clusterconfig_namespace, ["clusterconfig"]),
-        (arc_namespace, ["arcagents"]),
+        (arc_namespace, ["arcagents", "certmanager"]),
         (acs_namespace, ["arccontainerstorage"]),
-        (acstor_namespace, ["containerstorage"]),
+        (acstor_namespace, ["certmanager", "containerstorage"]),
         (ssc_namespace, [OpsServiceType.secretstore.value]),
         (certmanager_namespace, ["certmanager"]),
     ]:
