@@ -1039,17 +1039,7 @@ def load_iotops_help():
             az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
             --certificate-ref mycertificate.pem
-        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a powershell syntax example.
-          text: >
-            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
-            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --additional-config '{\\\"displayName\\\": \\\"myconnector\\\", \\\"maxItems\\\": 100}'
-        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a cmd syntax example.
-          text: >
-            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
-            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --additional-config "{\\\"displayName\\\": \\\"myconnector\\\", \\\"maxItems\\\": 100}"
-        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a bash syntax example.
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a bash syntax example. For more examples, see https://aka.ms/inline-json-examples
           text: >
             az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
             --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
@@ -1237,19 +1227,11 @@ def load_iotops_help():
           text: >
             az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
             --format json --type message --version-content myschema.json
-        - name: Create a schema called 'myschema' with additional customization. Schema version 14 will be created for this schema. The inline content is a powershell syntax example.
+        - name: Create a schema called 'myschema' with additional customization. Schema version 14 will be created for this schema. The inline content is a bash syntax example. For more examples, see https://aka.ms/inline-json-examples
           text: >
             az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
             --format delta --type message --desc "Schema for Assets" --display-name myassetschema
-            --version-content '{\\\"hello\\\": \\\"world\\\"}' --ver 14 --vd "14th version"
-        - name: Create a schema called 'myschema'. Schema version 1 will be created for this schema. The inline content is a cmd syntax example.
-          text: >
-            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
-            --format json --type message --version-content "{\\\"hello\\\": \\\"world\\\"}"
-        - name: Create a schema called 'myschema'. Schema version 1 will be created for this schema. The inline content is a bash syntax example.
-          text: >
-            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
-            --format json --type message --version-content '{"hello": "world"}'
+            --version-content '{"hello": "world"}' --ver 14 --vd "14th version"
     """
 
     helps[
