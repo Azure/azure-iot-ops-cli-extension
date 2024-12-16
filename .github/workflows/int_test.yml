@@ -146,8 +146,6 @@ jobs:
       - name: "Checkout extension source for build"
         uses: actions/checkout@v4
         with:
-          # ensure source checkout uses our repo instead of calling workflow
-          repository: azure/azure-iot-ops-cli-extension
           path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
       - name: "Build and install local IoT Ops extension from source"
         run: |
