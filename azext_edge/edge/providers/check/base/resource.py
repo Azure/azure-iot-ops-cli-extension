@@ -14,10 +14,12 @@ from kubernetes.client.models import (
 from rich.padding import Padding
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from azext_edge.edge.providers.k8s.config_map import get_config_map
+
 from .check_manager import CheckManager
 from .display import process_value_color
-from ..common import COLOR_STR_FORMAT, PADDING_SIZE, ResourceOutputDetailLevel
-from ...base import get_cluster_custom_api
+from ..common import COLOR_STR_FORMAT, PADDING_SIZE, ResourceOutputDetailLevel, ValidationResourceType
+from ...base import get_cluster_custom_api, get_namespaced_secret
 from ...edge_api import EdgeResourceApi
 from ....common import CheckTaskStatus, ResourceState
 
@@ -468,3 +470,27 @@ def process_custom_resource_status(
                     namespace=namespace,
                     display=Padding(status_text, (0, 0, 0, padding + 4)),
                 )
+
+
+def validate_runtime_resource_ref(name: str, namespace: str, ref_type: ValidationResourceType) -> bool:
+    ref_obj = None
+    if ref_type == ValidationResourceType.secret:
+        ref_obj = get_namespaced_secret(secret_name=name, namespace=namespace)
+    elif ref_type == ValidationResourceType.configmap:
+        ref_obj = get_config_map(name=name, namespace=namespace)
+    else:
+        raise ValueError(f"Unsupported ref type: {ref_type}")
+
+    return bool(ref_obj)
+
+
+def get_valid_resource_names(
+    api: EdgeResourceApi, kind: Union[Enum, str], namespace: Optional[str] = None
+) -> List[str]:
+    custom_objects = api.get_resources(kind=kind, namespace=namespace)
+    if custom_objects:
+        objects: List[dict] = custom_objects.get("items", [])
+        if objects:
+            return [get_resource_metadata_property(object, prop_name="name") for object in objects]
+
+    return []

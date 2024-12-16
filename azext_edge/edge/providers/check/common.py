@@ -12,6 +12,7 @@ shared: Define shared data types(enums) and constant strings for IoT Operations 
 from enum import Enum
 from typing import List, NamedTuple
 from ...common import CheckTaskStatus, ListableEnum
+from rich.padding import Padding
 
 
 class ResourceOutputDetailLevel(ListableEnum):
@@ -33,6 +34,15 @@ class DataSourceStageType(ListableEnum):
     influxdb = "input/influxdb"
     mqtt = "input/mqtt"
     sql = "input/mssql"
+
+
+class ValidationResourceType(ListableEnum):
+    """
+    Validation resource type.
+    """
+
+    secret = "secret"
+    configmap = "configmap"
 
 
 ERROR_NO_DETAIL = "<No detail available>"
@@ -126,6 +136,11 @@ class DataflowEndpointType(ListableEnum):
     kafka = "kafka"
     local_storage = "localstorage"
     mqtt = "mqtt"
+
+
+class CheckResult(NamedTuple):
+    display: Padding
+    eval_status: str
 
 
 class DataFlowEndpointAuthenticationType(ListableEnum):
