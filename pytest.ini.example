@@ -21,3 +21,4 @@ env =
 markers =
     init_scenario_test: mark tests that will run az iot ops init
     rpsaas: mark tests that are purely cloud-side
+    e2e: mark tests that run in e2e pipeline
