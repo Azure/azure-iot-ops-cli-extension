@@ -95,7 +95,10 @@ class AssetEndpointProfiles(Queryable):
             try:
                 json.loads(configuration)
             except json.JSONDecodeError as e:
-                raise InvalidArgumentValueError(f"Additional configuration is not a valid JSON.\n{e.msg}")
+                raise InvalidArgumentValueError(
+                    "Additional configuration is not a valid JSON. For examples of valid JSON formating, please "
+                    f"see https://aka.ms/inline-json-examples \n{e.msg}"
+                )
 
         _update_properties(
             properties,
