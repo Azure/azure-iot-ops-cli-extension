@@ -22,4 +22,4 @@ RUN mkdir -p /root/.kube && touch /root/.kube/config
 RUN pip install tox==4.12.1 --no-cache-dir
 
 # run tests
-ENTRYPOINT ["tox", "r", "-vv", "-e", "python-e2e-int", "--", "--durations=0 --dist=loadfile -n auto"]
+ENTRYPOINT ["tox", "r", "-vv", "-e", "python-e2e-int", "--", "--durations=0", "--dist=loadfile", "-n", "auto"]
