@@ -63,7 +63,6 @@ class AssetEndpointProfiles(Queryable):
         tags: Optional[Dict[str, str]] = None,
         **kwargs
     ):
-        from ....util import read_file_content
         from .helpers import get_extended_location
         extended_location = get_extended_location(
             cmd=self.cmd,
@@ -84,21 +83,7 @@ class AssetEndpointProfiles(Queryable):
         if endpoint_profile_type == AEPTypes.opcua.value:
             configuration = _build_opcua_config(**kwargs)
         elif kwargs.get("additional_configuration"):  # custom type
-            configuration = kwargs["additional_configuration"]
-            try:
-                logger.debug("Processing additional configuration.")
-                configuration = read_file_content(configuration)
-            except FileOperationError:
-                logger.debug("Given additional configuration is not a file.")
-
-            # make sure it is an actual json
-            try:
-                json.loads(configuration)
-            except json.JSONDecodeError as e:
-                raise InvalidArgumentValueError(
-                    "Additional configuration is not a valid JSON. For examples of valid JSON formating, please "
-                    f"see https://aka.ms/inline-json-examples \n{e.msg}"
-                )
+            configuration = _process_additional_configuration(kwargs["additional_configuration"])
 
         _update_properties(
             properties,
@@ -364,6 +349,32 @@ def _build_query_body(
         "type, subscriptionId "
     return query_body
 
+
+def _process_additional_configuration(configuration: str) -> Optional[str]:
+    from ....util import read_file_content
+    inline_json = False
+    try:
+        logger.debug("Processing additional configuration.")
+        configuration = read_file_content(configuration)
+        if not configuration:
+            raise InvalidArgumentValueError("Given file is empty.")
+    except FileOperationError:
+        if not configuration:
+            return
+        inline_json = True
+        logger.debug("Given additional configuration is not a file.")
+
+    # make sure it is an actual json
+    try:
+        json.loads(configuration)
+        return configuration
+    except json.JSONDecodeError as e:
+        error_msg = "Additional configuration is not a valid JSON. "
+        if inline_json:
+            error_msg += "For examples of valid JSON formating, please see https://aka.ms/inline-json-examples "
+        raise InvalidArgumentValueError(
+            f"{error_msg}\n{e.msg}"
+        )
 
 def _process_authentication(
     auth_mode: Optional[str] = None,
