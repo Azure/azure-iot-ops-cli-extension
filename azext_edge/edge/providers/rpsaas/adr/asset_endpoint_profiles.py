@@ -82,7 +82,7 @@ class AssetEndpointProfiles(Queryable):
         configuration = None
         if endpoint_profile_type == AEPTypes.opcua.value:
             configuration = _build_opcua_config(**kwargs)
-        elif kwargs.get("additional_configuration"):  # custom type
+        elif "additional_configuration" in kwargs:  # custom type
             configuration = _process_additional_configuration(kwargs["additional_configuration"])
 
         _update_properties(
@@ -353,14 +353,15 @@ def _build_query_body(
 def _process_additional_configuration(configuration: str) -> Optional[str]:
     from ....util import read_file_content
     inline_json = False
+    if not configuration:
+        return
+
     try:
         logger.debug("Processing additional configuration.")
         configuration = read_file_content(configuration)
         if not configuration:
             raise InvalidArgumentValueError("Given file is empty.")
     except FileOperationError:
-        if not configuration:
-            return
         inline_json = True
         logger.debug("Given additional configuration is not a file.")
 
