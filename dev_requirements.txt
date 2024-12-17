@@ -10,6 +10,5 @@ pre-commit
 pylint==3.0.3
 flake8
 pytest-xdist
-pytest-randomly
 pytest-rerunfailures
 tox
