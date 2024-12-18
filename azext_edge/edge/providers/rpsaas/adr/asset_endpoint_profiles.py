@@ -377,6 +377,7 @@ def _process_additional_configuration(configuration: str) -> Optional[str]:
             f"{error_msg}\n{e.msg}"
         )
 
+
 def _process_authentication(
     auth_mode: Optional[str] = None,
     auth_props: Optional[Dict[str, str]] = None,
