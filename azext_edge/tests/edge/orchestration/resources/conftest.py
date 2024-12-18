@@ -20,8 +20,8 @@ CLUSTER_EXTENSIONS_API_VERSION = "2023-05-01"
 CUSTOM_LOCATION_NAME = generate_random_string()
 CLUSTER_EXTENSIONS_URL_MATCH_RE = re.compile(
     r"^https:\/\/management\.azure\.com\/subscriptions\/[0-9a-fA-F\-]{36}\/resourceGroups\/[a-zA-Z0-9]+\/"
-    r"providers\/Microsoft\.Kubernetes\/connectedClusters\/[a-zA-Z0-9]+\/providers\/Microsoft\.KubernetesConfiguration\/"
-    r"extensions\/[a-zA-Z0-9]+(\?api-version=2023-05-01)?$"
+    r"providers\/Microsoft\.Kubernetes\/connectedClusters\/[a-zA-Z0-9]+\/providers\/"
+    r"Microsoft\.KubernetesConfiguration\/extensions\/[a-zA-Z0-9]+(\?api-version=2023-05-01)?$"
 )
 
 

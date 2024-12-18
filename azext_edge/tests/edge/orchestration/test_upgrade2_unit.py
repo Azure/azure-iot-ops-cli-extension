@@ -327,8 +327,7 @@ def test_ops_upgrade(
     if expect_exception:
         with pytest.raises(expect_exception):
             upgrade_instance(**call_kwargs)
-        progress_count = 2 if expect_exception != ValidationError else 1
-        assert_displays(spy_upgrade_displays, no_progress, progress_count)
+        assert_displays(spy_upgrade_displays, no_progress, error_context=expect_exception)
         return
 
     upgrade_result = upgrade_instance(**call_kwargs)
@@ -385,7 +384,23 @@ def assert_patch_order(upgrade_result: List[dict], expected_types: List[str]):
         last_index = current_index
 
 
-def assert_displays(spy_upgrade_displays: Dict[str, Mock], no_progress: bool, progress_count: int = 2):
+def assert_displays(
+    spy_upgrade_displays: Dict[str, Mock],
+    no_progress: bool,
+    progress_count: Optional[int] = None,
+    error_context: Optional[Exception] = None,
+):
+    if not progress_count:
+        progress_count = 2
+
+    if error_context:
+        if error_context == ValidationError:
+            progress_count = 1
+
+    if all([not no_progress, not error_context]):
+        table = spy_upgrade_displays["print"].mock_calls[1].args[1]
+        assert table.title
+
     assert len(spy_upgrade_displays["progress.__init__"].mock_calls) == progress_count
     assert spy_upgrade_displays["progress.__init__"].mock_calls[0].kwargs == {
         "transient": True,
@@ -396,6 +411,3 @@ def assert_displays(spy_upgrade_displays: Dict[str, Mock], no_progress: bool, pr
             "transient": False,
             "disable": no_progress,
         }
-        if not no_progress:
-            table = spy_upgrade_displays["print"].mock_calls[1].args[1]
-            assert table.title
