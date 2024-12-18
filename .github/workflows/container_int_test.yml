@@ -143,12 +143,12 @@ jobs:
         id: "create_schema_registry"
         run: |
           # create schema registry
-          schema_registry=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.SCHEMAREG_NAME }} --rn ${{ env.SCHEMAREG_NAME }}-ns --sa-resource-id $storage_id --query "id" -o tsv)
+          schema_registry=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.SCHEMAREG_NAME }} --rn ${{ env.SCHEMAREG_NAME }}-ns --sa-resource-id ${{ steps.create_storage.outputs.STORAGE_ID}} --query "id" -o tsv)
           echo "created schema registry with id $schema_registry"
           echo "SCHEMAREGISTRY_ID=$schema_registry" >> $GITHUB_OUTPUT
       - name: "Run az iot ops create"
         run: |
-          az iot ops create --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -n ${{ env.INSTANCE_NAME }}  --sr-resource-id $schema_registry
+          az iot ops create --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -n ${{ env.INSTANCE_NAME }}  --sr-resource-id ${{ steps.create_schema_registry.outputs.SCHEMAREGISTRY_ID }}
       - name: "Output variables for future steps"
         id: "env_out"
         run: |
