@@ -56,6 +56,18 @@ EXTENSION_MONIKER_TO_ALIAS_MAP = {
     "iotOperations": "ops",
 }
 
+EXTENSION_ALIAS_TO_TYPE_MAP = {
+    "plat": EXTENSION_TYPE_PLATFORM,
+    "osm": EXTENSION_TYPE_OSM,
+    "ssc": EXTENSION_TYPE_SSC,
+    "acs": EXTENSION_TYPE_ACS,
+    "ops": EXTENSION_TYPE_OPS,
+}
+
+
+class ClusterConnectStatus(Enum):
+    CONNECTED = "Connected"
+
 
 class MqMode(Enum):
     auto = "auto"

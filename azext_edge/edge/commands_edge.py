@@ -220,7 +220,7 @@ def create_instance(
         pass
 
 
-def upgrade(
+def upgrade_instance(
     cmd,
     resource_group_name: str,
     instance_name: str,
@@ -242,10 +242,10 @@ def upgrade(
     plat_version: Optional[str] = None,
     plat_train: Optional[str] = None,
     **kwargs,
-):
-    from .providers.orchestration.upgrade2 import upgrade_ops
+) -> Optional[List[dict]]:
+    from .providers.orchestration.upgrade2 import upgrade_ops_instance
 
-    return upgrade_ops(
+    return upgrade_ops_instance(
         cmd=cmd,
         resource_group_name=resource_group_name,
         instance_name=instance_name,

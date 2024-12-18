@@ -511,8 +511,8 @@ def load_iotops_arguments(self, _):
                 options_list=[f"--{alias}-config"],
                 nargs="+",
                 action="extend",
-                help=f"{moniker} arc extension custom configuration. Format is space-separated key=value pairs. "
-                f"--{alias}-config can be used one or more times. For advanced use cases.",
+                help=f"{moniker} arc extension custom configuration. Format is space-separated key=value pairs "
+                f"or just the key. This option can be used one or more times.",
                 arg_group="Extension Config",
             )
             context.argument(
