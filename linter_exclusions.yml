@@ -8,6 +8,16 @@ iot ops asset query:
     instance_resource_group:
       rule_exclusions:
       - parameter_should_not_end_in_resource_group
+iot ops asset endpoint create custom:
+  parameters:
+    instance_resource_group:
+      rule_exclusions:
+      - parameter_should_not_end_in_resource_group
+iot ops asset endpoint create onvif:
+  parameters:
+    instance_resource_group:
+      rule_exclusions:
+      - parameter_should_not_end_in_resource_group
 iot ops asset endpoint create opcua:
   parameters:
     instance_resource_group:

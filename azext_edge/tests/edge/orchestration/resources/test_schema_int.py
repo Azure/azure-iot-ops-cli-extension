@@ -7,7 +7,7 @@
 from random import randint
 import json
 from ....generators import generate_random_string
-from ....helpers import run
+from ....helpers import create_file, run
 
 VERSION_STRINGIFY_FORMAT = "aio-sr://{schema_name}:{version}"
 
@@ -103,15 +103,17 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         },
         generate_random_string(): generate_random_string()
     })
-    file_name = f"test_schema_version_content_{generate_random_string(size=4)}.json"
-    tracked_files.append(file_name)
-    with open(file_name, "w", encoding="utf-8") as f:
-        f.write(json_content)
+    file_path = create_file(
+        file_name=f"test_schema_version_content_{generate_random_string(size=4)}.json",
+        module_file=__file__,
+        tracked_files=tracked_files,
+        content=json_content
+    )
 
     schema2 = run(
         f"az iot ops schema create -n {schema_name2} -g {registry_rg} --registry {registry_name} "
         f"--format json --type message --desc \"{description}\" --display-name {display_name} "
-        f"--vc {file_name} --vd {version_desc} --ver {version_num}"
+        f"--vc {file_path} --vd {version_desc} --ver {version_num}"
     )
     assert_schema(
         schema=schema2,

@@ -14,6 +14,7 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
+    FileOperationError,
 )
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
@@ -60,7 +61,7 @@ class AssetEndpointProfiles(Queryable):
         password_reference: Optional[str] = None,
         username_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
-        **additional_configuration
+        **kwargs
     ):
         from .helpers import get_extended_location
         extended_location = get_extended_location(
@@ -78,9 +79,12 @@ class AssetEndpointProfiles(Queryable):
         # Properties
         properties = {"endpointProfileType": endpoint_profile_type}
 
+        configuration = None
         if endpoint_profile_type == AEPTypes.opcua.value:
-            properties["additionalConfiguration"] = _build_opcua_config(**additional_configuration)
-        # TODO: add other connector types in
+            configuration = _build_opcua_config(**kwargs)
+        elif "additional_configuration" in kwargs:  # custom type
+            configuration = _process_additional_configuration(kwargs["additional_configuration"])
+
         _update_properties(
             properties,
             target_address=target_address,
@@ -88,6 +92,7 @@ class AssetEndpointProfiles(Queryable):
             username_reference=username_reference,
             password_reference=password_reference,
             certificate_reference=certificate_reference,
+            additional_configuration=configuration
         )
 
         aep_body = {
@@ -103,7 +108,7 @@ class AssetEndpointProfiles(Queryable):
                 asset_endpoint_profile_name,
                 resource=aep_body
             )
-            return wait_for_terminal_state(poller, **additional_configuration)
+            return wait_for_terminal_state(poller, **kwargs)
 
     def delete(self, asset_endpoint_profile_name: str, resource_group_name: str, **kwargs):
         self.show(
@@ -343,6 +348,34 @@ def _build_query_body(
         "| project id, customLocation, location, name, resourceGroup, provisioningState, tags, "\
         "type, subscriptionId "
     return query_body
+
+
+def _process_additional_configuration(configuration: str) -> Optional[str]:
+    from ....util import read_file_content
+    inline_json = False
+    if not configuration:
+        return
+
+    try:
+        logger.debug("Processing additional configuration.")
+        configuration = read_file_content(configuration)
+        if not configuration:
+            raise InvalidArgumentValueError("Given file is empty.")
+    except FileOperationError:
+        inline_json = True
+        logger.debug("Given additional configuration is not a file.")
+
+    # make sure it is an actual json
+    try:
+        json.loads(configuration)
+        return configuration
+    except json.JSONDecodeError as e:
+        error_msg = "Additional configuration is not a valid JSON. "
+        if inline_json:
+            error_msg += "For examples of valid JSON formating, please see https://aka.ms/inline-json-examples "
+        raise InvalidArgumentValueError(
+            f"{error_msg}\n{e.msg}"
+        )
 
 
 def _process_authentication(
