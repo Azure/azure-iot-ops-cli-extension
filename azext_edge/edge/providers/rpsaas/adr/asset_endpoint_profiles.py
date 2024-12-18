@@ -237,10 +237,8 @@ def _build_opcua_config(
     sub_life_time: Optional[int] = None,
     **_
 ) -> str:
-    from jsonschema import Draft7Validator, ValidationError, validate
     from .additional_configuration_schemas import OPCUA_SCHEMA
     config = json.loads(original_config) if original_config else {}
-    validator = Draft7Validator(schema=OPCUA_SCHEMA)
 
     if application_name:
         config["applicationName"] = application_name
@@ -295,18 +293,7 @@ def _build_opcua_config(
     if security_policy:
         config["security"]["securityPolicy"] = "http://opcfoundation.org/UA/SecurityPolicy#" + security_policy
 
-    # errors = [str(error) for error in validator.iter_errors(config)]
-    errors = []
-    error: ValidationError
-    for error in validator.iter_errors(config):
-        errors.append(f"- argument {error.schema['description']}: {error.message}")
-
-    if errors:
-        raise InvalidArgumentValueError(
-            "Invalid Additional Configuration arguments:\n" +
-            "\n".join(errors)
-        )
-
+    _validate_additional_configuration(schema=OPCUA_SCHEMA, config=config)
     return json.dumps(config)
 
 
@@ -430,4 +417,19 @@ def _update_properties(
             certificate_reference=certificate_reference,
             username_reference=username_reference,
             password_reference=password_reference
+        )
+
+
+def _validate_additional_configuration(schema: dict, config: dict):
+    from jsonschema import Draft7Validator, ValidationError
+    validator = Draft7Validator(schema=schema)
+
+    errors = []
+    error: ValidationError
+    for error in validator.iter_errors(config):
+        errors.append(f"- argument {error.schema['description']}: {error.message}")
+
+    if errors:
+        raise InvalidArgumentValueError(
+            "Invalid Additional Configuration arguments:\n" + "\n".join(errors)
         )
