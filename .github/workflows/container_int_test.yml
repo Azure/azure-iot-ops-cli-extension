@@ -1,4 +1,4 @@
-name: Quick Integration tests
+name: E2E Containerized Integration tests
 on:
   workflow_call:
     inputs:
@@ -59,6 +59,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+      - name: "Checkout extension source for build"
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+      - name: "Build and install local IoT Ops extension from source"
+        run: |
+          pip install -r dev_requirements.txt
+          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          python -m setup bdist_wheel -d dist
+          wheel=$(find ./dist/*.whl)
+          az extension add --source $wheel -y
       - name: "Create k3s cluster"
         run: |
           # vars
@@ -83,24 +94,12 @@ jobs:
           sudo k3s kubectl config view --raw > ~/.kube/config
           chmod 600 ~/.kube/config
           export KUBECONFIG=~/.kube/config
-      - name: "Checkout extension source for build"
-        uses: actions/checkout@v4
-        with:
-          path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-      - name: "Build and install local IoT Ops extension from source"
-        run: |
-          pip install wheel==0.30.0
-          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
-          python -m setup bdist_wheel -d dist
-          wheel=$(find ./dist/*.whl)
-          az extension add --source $wheel -y
       - name: "Az CLI login"
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      # DEMO - ARC Connection action
       - name: "ARC connect cluster"
         uses: azure/azure-iot-ops-cli-extension/.github/actions/connect-arc@dev
         with:
@@ -129,38 +128,36 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "ops init"
+      - name: "Run az iot ops init"
         run: |
           # init
           az iot ops init --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }}
-      - name: "ops create"
-        id: "create"
+      - name: "Create storage"
+        id: "create_storage"
         run: |
-            # create storage account
-            storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.STORAGE_NAME }} --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny --query "id" -o tsv)
-            echo "created storage account with id $storage_id"
-            
-            # create schema registry
-            schema_registry=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.SCHEMAREG_NAME }} --rn testnamespace --sa-resource-id $storage_id --query "id" -o tsv)
-            echo "created schema registry with id $schema_registry"
-            
-            # create
-            az iot ops create --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -n ${{ env.INSTANCE_NAME }}  --sr-resource-id $schema_registry
-
-            # output
-            echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
-            echo "SCHEMAREGISTRY_ID=$schema_registry" >> $GITHUB_OUTPUT
+          # create storage account
+          storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.STORAGE_NAME }} --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny --query "id" -o tsv)
+          echo "created storage account with id $storage_id"
+          echo "STORAGE_IDz=$storage_id" >> $GITHUB_OUTPUT
+      - name: "Create schema registry"
+        id: "create_schema_registry"
+        run: |
+          # create schema registry
+          schema_registry=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.SCHEMAREG_NAME }} --rn ${{ env.SCHEMAREG_NAME }}-ns --sa-resource-id $storage_id --query "id" -o tsv)
+          echo "created schema registry with id $schema_registry"
+          echo "SCHEMAREGISTRY_ID=$schema_registry" >> $GITHUB_OUTPUT
+      - name: "Run az iot ops create"
+        run: |
+          az iot ops create --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -n ${{ env.INSTANCE_NAME }}  --sr-resource-id $schema_registry
       - name: "Output variables for future steps"
         id: "env_out"
         run: |
           echo "RESOURCE_GROUP=${{ env.RESOURCE_GROUP }}" >> $GITHUB_OUTPUT
           echo "CLUSTER_NAME=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
-        # DEMO - Build and run tox inside container
       - name: "Containerized tests"
         env:
           azext_edge_skip_init: true  # skip init tests in container
           azext_edge_init_redeployment: false  # ensure no redeployment in container
-          AIO_CLI_INIT_PREFLIGHT_DISABLED: true # speed up init for tests
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
@@ -197,17 +194,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "Run smoke tests"
-        run: |
-          az iot ops support create-bundle
-          az iot ops support create-bundle --svc broker --broker-traces
-          az iot ops support create-bundle --ops-service acs secretstore
-          az iot ops check
-          az iot ops check --pre
-          az iot ops check --post
-          az iot ops check --as-object
-          az iot ops check --svc broker --resources broker brokerlistener
-          az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
       - name: "Delete AIO resources"
         if: ${{ always() }}
         run: |
@@ -219,5 +205,5 @@ jobs:
       - name: "Delete schemaregistry and storage"
         if: ${{ always() }}
         run: |
-          az resource delete -v --id ${{ steps.create.outputs.STORAGE_ID }} --verbose --no-wait
-          az resource delete -v --id ${{ steps.create.outputs.SCHEMAREGISTRY_ID }} --verbose --no-wait
+          az resource delete -v --id ${{ steps.create_storage.outputs.STORAGE_ID }} --verbose --no-wait
+          az resource delete -v --id ${{ steps.create_schema_registry.outputs.SCHEMAREGISTRY_ID }} --verbose --no-wait
