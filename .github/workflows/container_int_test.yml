@@ -138,7 +138,7 @@ jobs:
           # create storage account
           storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.STORAGE_NAME }} --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny --query "id" -o tsv)
           echo "created storage account with id $storage_id"
-          echo "STORAGE_IDz=$storage_id" >> $GITHUB_OUTPUT
+          echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
       - name: "Create schema registry"
         id: "create_schema_registry"
         run: |
