@@ -207,6 +207,8 @@ def load_iotops_arguments(self, _):
                         DeviceRegistryResourceKinds.ASSETENDPOINTPROFILE.value,
                         MqResourceKinds.BROKER.value,
                         MqResourceKinds.BROKER_LISTENER.value,
+                        MqResourceKinds.BROKER_AUTHENTICATION.value,
+                        MqResourceKinds.BROKER_AUTHORIZATION.value,
                         OpcuaResourceKinds.ASSET_TYPE.value,
                         DataflowResourceKinds.DATAFLOW.value,
                         DataflowResourceKinds.DATAFLOWENDPOINT.value,
@@ -1004,6 +1006,20 @@ def load_iotops_arguments(self, _):
             help="Asset Endpoint Profile resource tags. Property bag in key-value pairs with the following "
             "format: a=b c=d",
             arg_type=tags_type,
+        )
+
+    with self.argument_context("iot ops asset endpoint create custom") as context:
+        context.argument(
+            "endpoint_profile_type",
+            options_list=["--endpoint-type", "--et"],
+            help="Endpoint Profile Type for the Connector.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "additional_configuration",
+            options_list=["--additional-config", "--ac"],
+            help="File path containing or inline json for the additional configuration.",
+            arg_group="Connector",
         )
 
     with self.argument_context("iot ops asset endpoint create opcua") as context:

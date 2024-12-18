@@ -10,6 +10,7 @@ import pytest
 
 from azure.cli.core.azclierror import (
     CLIError,
+    FileOperationError,
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
@@ -19,6 +20,7 @@ from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
     _assert_above_min,
     _build_opcua_config,
     _build_query_body,
+    _process_additional_configuration,
     _process_authentication,
     _update_properties,
     AEPAuthModes
@@ -237,6 +239,51 @@ def test_build_query_body(
         assert f"where properties.endpointProfileType =~ \"{endpoint_profile_type}\"" in result
     if target_address:
         assert f"where properties.targetAddress =~ \"{target_address}\"" in result
+
+
+@pytest.mark.parametrize("configuration", [
+    "",
+    json.dumps({generate_random_string(): generate_random_string()}),
+])
+@pytest.mark.parametrize("is_file", [True, False])
+def test_process_additional_configuration(
+    mocker, configuration, is_file
+):
+    patched_read_file = mocker.patch("azext_edge.edge.util.read_file_content")
+    file_name = None
+    if is_file:
+        patched_read_file.return_value = configuration
+        file_name = generate_random_string()
+    else:
+        patched_read_file.side_effect = FileOperationError("Not a file.")
+
+    if is_file and not configuration:
+        with pytest.raises(InvalidArgumentValueError):
+            _process_additional_configuration(file_name)
+        return
+
+    result = _process_additional_configuration(file_name if is_file else configuration)
+    if configuration == "":
+        assert result is None
+    else:
+        assert result == configuration
+
+
+def test_process_additional_configuration_error(mocker):
+    configuration = json.dumps({generate_random_string(): generate_random_string()})
+    configuration = configuration[-2:-1]  # remove the } to make invalid
+    file_name = generate_random_string
+
+    # file
+    patched_read_file = mocker.patch("azext_edge.edge.util.read_file_content")
+    patched_read_file.return_value = configuration
+    with pytest.raises(InvalidArgumentValueError):
+        _process_additional_configuration(file_name)
+
+    # in-line
+    patched_read_file.side_effect = FileOperationError("Not a file.")
+    with pytest.raises(InvalidArgumentValueError):
+        _process_additional_configuration(configuration)
 
 
 @pytest.mark.parametrize("original_props", [
