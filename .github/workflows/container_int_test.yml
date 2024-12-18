@@ -1,3 +1,4 @@
+# TODO - consolidate re-used steps between int_test.yml into actions (cluster setup, etc)
 name: E2E Containerized Integration tests
 on:
   workflow_call:
@@ -40,18 +41,16 @@ permissions:
 
 env:
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
-  SCHEMA_REGISTRY: "iot-ops-schema-registry"
+  CLUSTER_NAME: "e2ecluster${{ github.run_number }}"
+  INSTANCE_NAME: "e2einst${{ github.run_number }}"
+  STORAGE_NAME: "e2estorage${{ github.run_number }}"
+  SCHEMAREG_NAME: "e2eschema${{ github.run_number }}"
+  CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
+  EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
+  K3S_VERSION: "v1.28.5+k3s1"
 
 jobs:
   test:
-    env:
-      CLUSTER_NAME: "e2ecluster${{ github.run_number }}"
-      INSTANCE_NAME: "e2einst${{ github.run_number }}"
-      STORAGE_NAME: "e2estorage${{ github.run_number }}"
-      SCHEMAREG_NAME: "e2eschema${{ github.run_number }}"
-      CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
-      EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
-      K3S_VERSION: "v1.28.5+k3s1"
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:

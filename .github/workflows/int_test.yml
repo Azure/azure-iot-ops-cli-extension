@@ -40,10 +40,6 @@ on:
         required: true
       AZURE_SUBSCRIPTION_ID:
         required: true
-      # optional --sp-* init params
-      AIO_SP_APP_ID:
-      AIO_SP_OBJECT_ID:
-      AIO_SP_SECRET:
   workflow_dispatch:
     inputs:
       resource-group:
@@ -84,17 +80,15 @@ permissions:
 
 env:
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
+  EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
+  K3S_VERSION: "v1.28.5+k3s1"
+  CUSTOM_LOCATIONS_OID: "${{ inputs.custom-locations-oid }}"
 
 jobs:
   test:
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
       INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.feature }}"
-      CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
-      EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
-      K3S_VERSION: "v1.28.5+k3s1"
-      CA_FILE: "test-ca.pem"
-      CA_KEY_FILE: "test-ca-key.pem"
     strategy:
       fail-fast: false
       matrix:
