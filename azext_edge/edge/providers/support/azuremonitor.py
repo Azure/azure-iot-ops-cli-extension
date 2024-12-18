@@ -91,7 +91,7 @@ def prepare_bundle(
     monitor_to_run = {}
 
     if apis:
-        monitor_to_run.update(assemble_crd_work(apis=apis, namespace=MONITOR_NAMESPACE))
+        monitor_to_run.update(assemble_crd_work(apis=apis, fallback_namespace=MONITOR_NAMESPACE))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     monitor_to_run.update(support_runtime_elements)
