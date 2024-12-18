@@ -45,10 +45,10 @@ env:
 jobs:
   test:
     env:
-      CLUSTER_NAME: "cluster${{ github.run_number }}"
-      INSTANCE_NAME: "opsinst${{ github.run_number }}"
-      STORAGE_NAME: "opsdemostorage${{ github.run_number }}"
-      SCHEMAREG_NAME: "opsdemoschema${{ github.run_number }}"
+      CLUSTER_NAME: "e2ecluster${{ github.run_number }}"
+      INSTANCE_NAME: "e2einst${{ github.run_number }}"
+      STORAGE_NAME: "e2estorage${{ github.run_number }}"
+      SCHEMAREG_NAME: "e2eschema${{ github.run_number }}"
       CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
       EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
       K3S_VERSION: "v1.28.5+k3s1"
