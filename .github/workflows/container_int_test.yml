@@ -65,8 +65,8 @@ jobs:
           path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
       - name: "Build and install local IoT Ops extension from source"
         run: |
-          pip install -r dev_requirements.txt
           cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
+          pip install -r dev_requirements.txt
           python -m setup bdist_wheel -d dist
           wheel=$(find ./dist/*.whl)
           az extension add --source $wheel -y
