@@ -80,20 +80,7 @@ def test_create_bundle_arccontainerstorage(init_setup, tracked_files):
     assert set(acstor_file_map.keys()).issubset(set(expected_types))
 
     workload_resource_prefixes = [
-        "acstor-action",
-        "acstor-agent",
-        "acstor-api-rest",
-        "acstor-capacity",
-        "acstor-cert-manager",
-        "acstor-crd",
-        "acstor-csi",
-        "acstor-etcd",
-        "acstor-io",
-        "acstor-ndm",
-        "acstor-operator",
-        "acstor-prereq",
-        "acstor-scripts",
-        "acstor-support-bundle",
+        "acstor",
         "capacity-provisioner",
         "diskpool-worker",
         "etcd-acstor",

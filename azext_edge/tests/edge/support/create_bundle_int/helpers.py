@@ -269,13 +269,15 @@ def get_file_map(
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "acs":
-        if not acstor_namespace:
-            assert len(walk_result) == 1 + expected_default_walk_result
-        else:
+        if acstor_namespace:
+            # resources in both acstor_namespace and acs_namespace
             assert len(walk_result) == 2 + expected_default_walk_result
             acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
             file_map["acstor"] = convert_file_names(walk_result[acstor_path]["files"])
             file_map["__namespaces__"]["acstor"] = acstor_namespace
+        else:
+            # resources only in acs_namespace
+            assert len(walk_result) == 1 + expected_default_walk_result
         acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
         file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
         file_map["__namespaces__"]["acs"] = acs_namespace
@@ -349,16 +351,10 @@ def process_top_levels(
             name=name, folder=path.join("arcagents", ARC_AGENTS[0][0]), file_prefix="pod"
         ):
             arc_namespace = name
-        elif _get_namespace_determinating_files(
-            name=name,
-            folder=path.join("arccontainerstorage"),
-            file_prefix="pvc"
-        ):
+        elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
             acs_namespace = name
         elif _get_namespace_determinating_files(
-            name=name,
-            folder=path.join("containerstorage"),
-            file_prefix="configmap"
+            name=name, folder=path.join("containerstorage"), file_prefix="configmap"
         ):
             acstor_namespace = name
         elif _get_namespace_determinating_files(
