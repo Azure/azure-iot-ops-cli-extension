@@ -9,8 +9,7 @@ OPCUA_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://azure-iot-operations/schemas/assetendpointprofile/additionalconfiguration/opcua/1.0.0.json",
     "title": "AIO OPC UA Asset Endpoint Profile Additional Configuration Schema",
-    "description": "Schema for the additional configuration of OPC UA asset endpoint profile in Azure "
-        "Industrial Operations",
+    "description": "Schema for the additional configuration of OPC UA AEP in AIO",
     "type": "object",
     "properties": {
         "applicationName": {
