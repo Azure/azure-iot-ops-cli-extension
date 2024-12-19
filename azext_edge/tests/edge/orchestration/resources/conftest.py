@@ -14,7 +14,15 @@ BASE_URL = "https://management.azure.com"
 RESOURCE_PROVIDER = "Microsoft.IoTOperations"
 QUALIFIED_INSTANCE_TYPE = f"{RESOURCE_PROVIDER}/instances"
 INSTANCES_API_VERSION = "2024-11-01"
+CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
+CONNECTED_CLUSTER_API_VERSION = "2024-07-15-preview"
+CLUSTER_EXTENSIONS_API_VERSION = "2023-05-01"
 CUSTOM_LOCATION_NAME = generate_random_string()
+CLUSTER_EXTENSIONS_URL_MATCH_RE = re.compile(
+    r"^https:\/\/management\.azure\.com\/subscriptions\/[0-9a-fA-F\-]{36}\/resourceGroups\/[a-zA-Z0-9]+\/"
+    r"providers\/Microsoft\.Kubernetes\/connectedClusters\/[a-zA-Z0-9]+\/providers\/"
+    r"Microsoft\.KubernetesConfiguration\/extensions\/[a-zA-Z0-9]+(\?api-version=2023-05-01)?$"
+)
 
 
 def get_base_endpoint(

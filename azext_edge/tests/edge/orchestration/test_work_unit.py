@@ -35,7 +35,7 @@ from azext_edge.edge.providers.orchestration.common import (
 )
 from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET
 from azext_edge.edge.providers.orchestration.work import (
-    CONNECTIVITY_STATUS_CONNECTED,
+    ClusterConnectStatus,
     PROVISIONING_STATE_SUCCESS,
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
@@ -304,7 +304,7 @@ def build_target_scenario(
             "location": generate_random_string(),
             "properties": {
                 "provisioningState": PROVISIONING_STATE_SUCCESS,
-                "connectivityStatus": CONNECTIVITY_STATUS_CONNECTED,
+                "connectivityStatus": ClusterConnectStatus.CONNECTED.value,
                 "totalNodeCount": 1,
             },
             "extensions": {"value": extensions_list},
