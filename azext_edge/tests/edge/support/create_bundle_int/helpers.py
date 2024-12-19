@@ -236,6 +236,7 @@ def get_file_map(
     arc_namespace = namespaces.get("arc")
     aio_namespace = namespaces.get("aio")
     acs_namespace = namespaces.get("acs")
+    acstor_namespace = namespaces.get("acstor")
     ssc_namespace = namespaces.get("ssc")
     c_namespace = namespaces.get("usage_system")
 
@@ -268,7 +269,15 @@ def get_file_map(
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "acs":
-        assert len(walk_result) == 1 + expected_default_walk_result
+        if acstor_namespace:
+            # resources in both acstor_namespace and acs_namespace
+            assert len(walk_result) == 2 + expected_default_walk_result
+            acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
+            file_map["acstor"] = convert_file_names(walk_result[acstor_path]["files"])
+            file_map["__namespaces__"]["acstor"] = acstor_namespace
+        else:
+            # resources only in acs_namespace
+            assert len(walk_result) == 1 + expected_default_walk_result
         acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
         file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
         file_map["__namespaces__"]["acs"] = acs_namespace
@@ -324,6 +333,7 @@ def process_top_levels(
     clusterconfig_namespace = None
     arc_namespace = None
     acs_namespace = None
+    acstor_namespace = None
     ssc_namespace = None
 
     def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
@@ -344,6 +354,10 @@ def process_top_levels(
         elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
             acs_namespace = name
         elif _get_namespace_determinating_files(
+            name=name, folder=path.join("containerstorage"), file_prefix="configmap"
+        ):
+            acstor_namespace = name
+        elif _get_namespace_determinating_files(
             name=name, folder=OpsServiceType.secretstore.value, file_prefix="deployment"
         ):
             ssc_namespace = name
@@ -355,6 +369,7 @@ def process_top_levels(
         (clusterconfig_namespace, ["clusterconfig"]),
         (arc_namespace, ["arcagents"]),
         (acs_namespace, ["arccontainerstorage"]),
+        (acstor_namespace, ["containerstorage"]),
         (ssc_namespace, [OpsServiceType.secretstore.value]),
     ]:
         if namespace_folder:
@@ -381,12 +396,14 @@ def process_top_levels(
     logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
     logger.debug(f"ARC namespace: {arc_namespace}")
     logger.debug(f"ACS namespace: {acs_namespace}")
+    logger.debug(f"ACSTOR namespace: {acstor_namespace}")
     logger.debug(f"SSC namespace: {ssc_namespace}")
 
     return {
         "arc": arc_namespace,
         "aio": namespace,
         "acs": acs_namespace,
+        "acstor": acstor_namespace,
         "ssc": ssc_namespace,
         "usage_system": clusterconfig_namespace,
     }

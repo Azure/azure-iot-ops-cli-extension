@@ -10,9 +10,9 @@ Help definitions for Digital Twins commands.
 from knack.help_files import helps
 
 from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
+from azext_edge.edge.providers.edge_api.arccontainerstorage import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1
 
 from .providers.support_bundle import (
-    COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
@@ -56,7 +56,8 @@ def load_iotops_help():
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
-            - {COMPAT_ARCCONTAINERSTORAGE_APIS.as_str()}
+            - {ARCCONTAINERSTORAGE_API_V1.as_str()}
+            - {CONTAINERSTORAGE_API_V1.as_str()}
             - {SECRETSYNC_API_V1.as_str()}
             - {SECRETSTORE_API_V1.as_str()}
 
