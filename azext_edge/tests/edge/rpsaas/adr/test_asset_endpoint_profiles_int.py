@@ -9,7 +9,7 @@ import pytest
 from time import sleep
 from knack.log import get_logger
 from ....generators import generate_random_string
-from ....helpers import run
+from ....helpers import create_file, run
 
 logger = get_logger(__name__)
 
@@ -17,8 +17,7 @@ logger = get_logger(__name__)
 pytestmark = pytest.mark.rpsaas
 
 
-# TODO: update with OPCUA connector args
-def test_asset_endpoint_lifecycle(require_init, tracked_resources):
+def test_asset_endpoint_lifecycle(require_init, tracked_resources, tracked_files):
     rg = require_init["resourceGroup"]
     instance = require_init["instanceName"]
     custom_location = require_init["customLocationId"]
@@ -26,16 +25,18 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
     # Create an endpoint profile
     anon_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     address = f"opc.tcp://{generate_random_string()}:5000"
+    endpoint_type = generate_random_string()
     anon_endpoint = run(
-        f"az iot ops asset endpoint create opcua -n {anon_name} -g {rg} --instance {instance} "
-        f"--ta {address}"
+        f"az iot ops asset endpoint create custom -n {anon_name} -g {rg} --instance {instance} "
+        f"--ta {address} --et {endpoint_type}"
     )
     tracked_resources.append(anon_endpoint["id"])
     assert_endpoint_props(
         result=anon_endpoint,
         name=anon_name,
         custom_location=custom_location,
-        target_address=address
+        target_address=address,
+        endpoint_type=endpoint_type,
     )
 
     show_endpoint = run(
@@ -45,7 +46,8 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
         result=show_endpoint,
         name=anon_name,
         custom_location=custom_location,
-        target_address=address
+        target_address=address,
+        endpoint_type=endpoint_type,
     )
 
     update_endpoint = run(
@@ -56,14 +58,46 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
         name=anon_name,
         custom_location=custom_location,
         target_address=address,
+        endpoint_type=endpoint_type,
     )
+
+    json_content = json.dumps({
+        generate_random_string(): generate_random_string(),
+        generate_random_string(): {
+            generate_random_string(): generate_random_string()
+        },
+        generate_random_string(): generate_random_string()
+    })
+    file_path = create_file(
+        file_name=f"test_additional_config_{generate_random_string(size=4)}.json",
+        module_file=__file__,
+        tracked_files=tracked_files,
+        content=json_content
+    )
+
+    anon_name2 = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
+    address = f"opc.tcp://{generate_random_string()}:5000"
+    endpoint_type = generate_random_string()
+    anon_endpoint2 = run(
+        f"az iot ops asset endpoint create custom -n {anon_name2} -g {rg} --instance {instance} "
+        f"--ta {address} --et {endpoint_type} --ac {file_path}"
+    )
+    tracked_resources.append(anon_endpoint2["id"])
+    assert_endpoint_props(
+        result=anon_endpoint2,
+        name=anon_name2,
+        custom_location=custom_location,
+        target_address=address,
+        endpoint_type=endpoint_type,
+    )
+    assert anon_endpoint2["properties"]["additionalConfiguration"] == json_content
 
     userpass_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
     username = generate_random_string()
     password = generate_random_string()
     address = f"opc.tcp://{generate_random_string()}:5000"
     userpass_endpoint = run(
-        f"az iot ops asset endpoint create opcua -n {userpass_name} -g {rg} --instance {instance} "
+        f"az iot ops asset endpoint create onvif -n {userpass_name} -g {rg} --instance {instance} "
         f"--ta {address} --username-ref {username} --password-ref {password}"
     )
     tracked_resources.append(userpass_endpoint["id"])
@@ -73,7 +107,8 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
         custom_location=custom_location,
         target_address=address,
         username_reference=username,
-        password_reference=password
+        password_reference=password,
+        endpoint_type="Microsoft.Onvif",
     )
 
     cert_name = "test-endpoint-" + generate_random_string(force_lower=True)[:4]
@@ -106,6 +141,10 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources):
         custom_location=custom_location,
         target_address=address,
         certificate_reference=cert,
+        endpoint_type="Microsoft.OpcUa",
+    )
+    assert_opcua_props(
+        result=cert_endpoint,
         accept_untrusted_certs=True,
         run_asset_discovery=True,
         **opcua_args
@@ -124,6 +163,7 @@ def assert_endpoint_props(result, **expected):
     assert result["extendedLocation"]["name"].endswith(expected["custom_location"])
 
     result_props = result["properties"]
+    assert result_props["endpointProfileType"] == expected["endpoint_type"]
     assert result_props["targetAddress"] == expected["target_address"]
 
     user_auth = result_props["authentication"]
@@ -137,7 +177,6 @@ def assert_endpoint_props(result, **expected):
         assert creds["usernameSecretName"] == expected["username_reference"]
     else:
         assert user_auth["method"] == "Anonymous"
-    assert_opcua_props(result, **expected)
 
 
 def assert_opcua_props(result, **expected):

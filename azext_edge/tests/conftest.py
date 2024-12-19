@@ -62,15 +62,24 @@ def mocked_send_raw_request(request, mocker):
 # Int test fixtures
 @pytest.fixture(scope="module")
 def tracked_files():
-    from .helpers import remove_file_or_folder
+    from .helpers import remove_file
 
     result = []
     yield result
     for file in result:
-        remove_file_or_folder(file)
+        remove_file(file)
 
 
 @pytest.fixture
 def mocked_responses():
     with responses.RequestsMock() as rsps:
         yield rsps
+
+
+@pytest.fixture
+def mocked_confirm(mocker):
+    mock = mocker.patch(
+        "rich.prompt.Confirm",
+    )
+    mock.ask.return_value = True
+    yield mock

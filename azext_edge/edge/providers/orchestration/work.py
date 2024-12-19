@@ -32,6 +32,7 @@ from .common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
+    ClusterConnectStatus,
 )
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from .resource_map import IoTOperationsResourceMap
@@ -65,7 +66,6 @@ class WorkRecord:
 
 
 PROVISIONING_STATE_SUCCESS = "Succeeded"
-CONNECTIVITY_STATUS_CONNECTED = "Connected"
 
 CONTRIBUTOR_ROLE_ID = "b24988ac-6180-42a0-ab88-20f7382dd24c"
 
@@ -186,7 +186,7 @@ class WorkManager:
         cluster_properties: Dict[str, Union[str, dict]] = cluster["properties"]
         cluster_validation_tuples = [
             ("provisioningState", PROVISIONING_STATE_SUCCESS),
-            ("connectivityStatus", CONNECTIVITY_STATUS_CONNECTED),
+            ("connectivityStatus", ClusterConnectStatus.CONNECTED.value),
         ]
         for v in cluster_validation_tuples:
             if cluster_properties[v[0]].lower() != v[1].lower():

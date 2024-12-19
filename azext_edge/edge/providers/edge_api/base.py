@@ -71,6 +71,7 @@ class EdgeApiManager:
         apis_str = ""
         sep = "\n" if len(self.api_group_map) > 1 else ""
         for group in self.api_group_map:
+            # TODO: Fix the separator logic
             apis_str += f"{group}/[{','.join(self.api_group_map[group])}]{sep}"
         return apis_str
 

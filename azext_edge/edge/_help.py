@@ -10,9 +10,9 @@ Help definitions for Digital Twins commands.
 from knack.help_files import helps
 
 from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
+from azext_edge.edge.providers.edge_api.arccontainerstorage import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1
 
 from .providers.support_bundle import (
-    COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
@@ -56,7 +56,8 @@ def load_iotops_help():
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
-            - {COMPAT_ARCCONTAINERSTORAGE_APIS.as_str()}
+            - {ARCCONTAINERSTORAGE_API_V1.as_str()}
+            - {CONTAINERSTORAGE_API_V1.as_str()}
             - {SECRETSYNC_API_V1.as_str()}
             - {SECRETSTORE_API_V1.as_str()}
 
@@ -573,24 +574,27 @@ def load_iotops_help():
         "iot ops upgrade"
     ] = """
         type: command
-        short-summary: Upgrade an IoT Operations instance to the latest version.
+        short-summary: Upgrade an IoT Operations instance.
         long-summary: |
-                      WARNING: This command may fail and require you to delete and re-create your cluster and instance.
-
-                      Upgrade an IoT Operations instance, including updating the extensions to the latest versions.
-                      Use this command if `az iot ops show` or similiar commands are failing.
-
-                      Schema registry resource Id is an optional parameter and may be required in specific scenarios.
+                      By default, with no options, the command will evaluate versions of the
+                      deployed cluster side services that make up IoT Operations and compare them
+                      with the built-in deployment that would be executed with `az iot ops init`
+                      and `az iot ops create`.
         examples:
         - name: Upgrade the instance with minimal inputs.
           text: >
             az iot ops upgrade --name myinstance -g myresourcegroup
-        - name: Skip the conformation prompt during instance upgrade.
+        - name: Skip the confirmation prompt for instance upgrade. Useful for CI scenarios.
           text: >
             az iot ops upgrade --name myinstance -g myresourcegroup -y
-        - name: Upgrade the instance and specify the schema registry resource Id.
+        - name: Set extension config settings that apply should be during upgrade.
+           To remove a setting provide the key with no value.
           text: >
-            az iot ops upgrade --name myinstance -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+            az iot ops upgrade --name myinstance -g myresourcegroup --ops-config key1=value1 deletekey
+        - name: Provide an explicit IoT Operations version or release train to upgrade to.
+            Not recommended for typical use cases.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup --ops-version x.y.z --ops-train preview
     """
 
     helps[
@@ -1017,10 +1021,62 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops asset endpoint create custom"
+    ] = """
+        type: command
+        short-summary: Create an asset endpoint profile for a custom connector.
+        examples:
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
+          text: >
+            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
+            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
+        - name: Create an asset endpoint with username-password user authentication using the given instance in a different resource group but same subscription. The additional
+                configuration is provided as an inline json.
+          text: >
+            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
+            --instance-resource-group myinstanceresourcegroup
+            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
+            --username-ref rest-server-auth-creds/username --password-ref rest-server-auth-creds/password
+            --additional-config addition_configuration.json
+        - name: Create an asset endpoint with certificate authentication using the given instance in the same resource group.
+          text: >
+            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
+            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
+            --certificate-ref mycertificate.pem
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a bash syntax example. For more examples, see https://aka.ms/inline-json-examples
+          text: >
+            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
+            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
+            --additional-config '{"displayName": "myconnector", "maxItems": 100}'
+    """
+
+    helps[
+        "iot ops asset endpoint create onvif"
+    ] = """
+        type: command
+        short-summary: Create an asset endpoint profile for an Onvif connector.
+        long-summary: |
+                      Certificate authentication is not supported yet for Onvif Connectors.
+
+                      For more information on how to create an Onvif connector, please see https://aka.ms/onvif-quickstart
+        examples:
+        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
+          text: >
+            az iot ops asset endpoint create onvif --name myprofile -g myresourcegroup --instance myinstance
+            --target-address http://onvif-rtsp-simulator:8000
+        - name: Create an asset endpoint with username-password user authentication using the given instance in a different resource group but same subscription.
+          text: >
+            az iot ops asset endpoint create onvif --name myprofile -g myresourcegroup --instance myinstance
+            --instance-resource-group myinstanceresourcegroup
+            --target-address http://onvif-rtsp-simulator:8000
+            --username-ref rest-server-auth-creds/username --password-ref rest-server-auth-creds/password
+    """
+
+    helps[
         "iot ops asset endpoint create opcua"
     ] = """
         type: command
-        short-summary: Create an asset endpoint profile with an OPCUA connector.
+        short-summary: Create an asset endpoint profile for an OPCUA connector.
         long-summary: |
                       Azure IoT OPC UA Connector (preview) uses the same client certificate for all secure
                       channels between itself and the OPC UA servers that it connects to.
@@ -1028,7 +1084,7 @@ def load_iotops_help():
                       For OPC UA connector arguments, a value of -1 means that parameter will not be used (ex: --session-reconnect-backoff -1 means that no exponential backoff should be used).
                       A value of 0 means use the fastest practical rate (ex: --default-sampling-int 0 means use the fastest sampling interval possible for the server).
 
-                      For more information on how to create an OPCUA connector, please see aka.ms/opcua-quickstart
+                      For more information on how to create an OPCUA connector, please see https://aka.ms/opcua-quickstart
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >
@@ -1045,10 +1101,6 @@ def load_iotops_help():
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000
             --username-ref myusername --password-ref mypassword
-        - name: Create an asset endpoint with certificate user authentication using the given given instance in the same resource group.
-          text: >
-            az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
-            --target-address opc.tcp://opcplc-000000:50000 --certificate-ref mycertificate.pem
         - name: Create an asset endpoint with anonymous user authentication and recommended values for the OPCUA configuration using the given instance in the same resource group.
                 Note that for successfully using the connector, you will need to have the OPC PLC service deployed and the target address must point to the service.
                 If the OPC PLC service is in the same cluster and namespace as IoT Ops, the target address should be formatted as `opc.tcp://{opc-plc-service-name}:{service-port}`
@@ -1175,19 +1227,11 @@ def load_iotops_help():
           text: >
             az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
             --format json --type message --version-content myschema.json
-        - name: Create a schema called 'myschema' with additional customization. Schema version 14 will be created for this schema. The inline content is a powershell syntax example.
+        - name: Create a schema called 'myschema' with additional customization. Schema version 14 will be created for this schema. The inline content is a bash syntax example. For more examples, see https://aka.ms/inline-json-examples
           text: >
             az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
             --format delta --type message --desc "Schema for Assets" --display-name myassetschema
-            --version-content '{\\\"hello\\\": \\\"world\\\"}' --ver 14 --vd "14th version"
-        - name: Create a schema called 'myschema'. Schema version 1 will be created for this schema. The inline content is a cmd syntax example.
-          text: >
-            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
-            --format json --type message --version-content "{\\\"hello\\\": \\\"world\\\"}"
-        - name: Create a schema called 'myschema'. Schema version 1 will be created for this schema. The inline content is a bash syntax example.
-          text: >
-            az iot ops schema create -n myschema -g myresourcegroup --registry myregistry
-            --format json --type message --version-content '{"hello": "world"}'
+            --version-content '{"hello": "world"}' --ver 14 --vd "14th version"
     """
 
     helps[

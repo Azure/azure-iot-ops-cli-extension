@@ -6,11 +6,11 @@
 
 import string
 from os import environ
-from typing import Tuple
+from typing import Tuple, List
 
 import pytest
 
-from azext_edge.edge.util import is_env_flag_enabled, url_safe_random_chars, is_enabled_str
+from azext_edge.edge.util import is_env_flag_enabled, url_safe_random_chars, is_enabled_str, parse_kvp_nargs
 
 from ..generators import generate_random_string
 
@@ -57,3 +57,21 @@ def test_is_enabled(input_pair: Tuple[str, bool]):
     is_enabled = is_enabled_str(input_pair[0])
 
     assert is_enabled is input_pair[1]
+
+
+@pytest.mark.parametrize(
+    "input,expected",
+    [
+        ([], {}),
+        (None, {}),
+        (["a="], {"a": ""}),
+        (["a=", "b="], {"a": "", "b": ""}),
+        (["a"], {"a": None}),
+        (["a", "b"], {"a": None, "b": None}),
+        (["a=b"], {"a": "b"}),
+        (["a=b", "c=d", "123=456"], {"a": "b", "c": "d", "123": "456"}),
+    ],
+)
+def test_parse_kvp_nargs(input: List[str], expected: dict):
+    result = parse_kvp_nargs(input)
+    assert result == expected

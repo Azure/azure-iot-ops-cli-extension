@@ -6,7 +6,6 @@
 
 import json
 import os
-import shutil
 from fnmatch import fnmatch
 from knack.log import get_logger
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -52,6 +51,8 @@ def find_extra_or_missing_names(
     ignore_missing: bool = False,
 ):
     error_msg = []
+    # expected_names might contains descriptor, if so, remove it
+    expected_names = [name.split(".")[0] for name in expected_names]
     extra_names = [name for name in result_names if name not in expected_names]
     if extra_names:
         msg = f"Extra {resource_type} names: {', '.join(extra_names)}."
@@ -134,17 +135,28 @@ def get_kubectl_workload_items(
     return filter_resources(kubectl_items=kubectl_items, prefixes=prefixes, resource_match=resource_match)
 
 
-def remove_file_or_folder(file_path):
+def create_file(
+    file_name: str, module_file: str, tracked_files: List[str], content: str, encoding: str = "utf-8"
+) -> str:
+    """
+    Creates a file in the module directory and return the full file path.
+
+    module_file must be __file__ to put the created file in the right directory
+    """
+    from pathlib import PurePath
+    file_path = PurePath(PurePath(module_file).parent, file_name)
+    with open(file_path, "w", encoding=encoding) as f:
+        f.write(content)
+    tracked_files.append(file_path)
+    return file_path
+
+
+def remove_file(file_path):
     if os.path.isfile(file_path):
         try:
             os.remove(file_path)
         except OSError as e:
             logger.error(f"Failed to remove file: {file_path}. {e}")
-    if os.path.isdir(file_path):
-        try:
-            shutil.rmtree(file_path)
-        except OSError as e:
-            logger.error(f"Failed to remove directory: {file_path}. {e}")
 
 
 def run(command: str, shell_mode: bool = True, expect_failure: bool = False):

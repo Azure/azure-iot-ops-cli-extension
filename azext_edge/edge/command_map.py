@@ -29,8 +29,8 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("check", "check", is_preview=True)
         cmd_group.command("init", "init")
-        cmd_group.command("upgrade", "upgrade", deprecate_info=cmd_group.deprecate(hide=True))
         cmd_group.command("create", "create_instance")
+        cmd_group.command("upgrade", "upgrade_instance")
         cmd_group.command("update", "update_instance")
         cmd_group.show_command("show", "show_instance")
         cmd_group.command("list", "list_instances")
@@ -163,6 +163,8 @@ def load_iotops_commands(self, _):
         "iot ops asset endpoint create",
         command_type=aep_resource_ops,
     ) as cmd_group:
+        cmd_group.command("custom", "create_custom_asset_endpoint_profile")
+        cmd_group.command("onvif", "create_onvif_asset_endpoint_profile", is_preview=True)
         cmd_group.command("opcua", "create_opcua_asset_endpoint_profile")
 
     with self.command_group(

@@ -18,7 +18,14 @@ from knack.arguments import CaseInsensitiveList
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
 from ._validators import validate_namespace, validate_resource_name
-from .common import FileType, OpsServiceType, SecurityModes, SecurityPolicies, TopicRetain, AEPAuthModes
+from .common import (
+    AEPAuthModes,
+    FileType,
+    OpsServiceType,
+    SecurityModes,
+    SecurityPolicies,
+    TopicRetain,
+)
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
     DeviceRegistryResourceKinds,
@@ -26,11 +33,12 @@ from .providers.edge_api import (
     OpcuaResourceKinds,
 )
 from .providers.orchestration.common import (
+    EXTENSION_MONIKER_TO_ALIAS_MAP,
+    TRUST_SETTING_KEYS,
     IdentityUsageType,
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
-    TRUST_SETTING_KEYS,
     SchemaFormat,
     SchemaType,
 )
@@ -498,13 +506,29 @@ def load_iotops_arguments(self, _):
             )
 
     with self.argument_context("iot ops upgrade") as context:
-        # Schema Registry
-        context.argument(
-            "schema_registry_resource_id",
-            options_list=["--sr-resource-id"],
-            help="The schema registry resource Id to use with IoT Operations. Required if the schema registry "
-            "resource Id is no longer found within IoT Operations.",
-        )
+        for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
+            alias = EXTENSION_MONIKER_TO_ALIAS_MAP[moniker]
+            context.argument(
+                f"{alias}_config",
+                options_list=[f"--{alias}-config"],
+                nargs="+",
+                action="extend",
+                help=f"{moniker} arc extension custom configuration. Format is space-separated key=value pairs "
+                f"or just the key. This option can be used one or more times.",
+                arg_group="Extension Config",
+            )
+            context.argument(
+                f"{alias}_version",
+                options_list=[f"--{alias}-version"],
+                help=f"Use to override the built-in {moniker} arc extension version. ",
+                arg_group="Extension Config",
+            )
+            context.argument(
+                f"{alias}_train",
+                options_list=[f"--{alias}-train"],
+                help=f"Use to override the built-in {moniker} arc extension release train. ",
+                arg_group="Extension Config",
+            )
 
     with self.argument_context("iot ops delete") as context:
         context.argument(
@@ -982,6 +1006,20 @@ def load_iotops_arguments(self, _):
             help="Asset Endpoint Profile resource tags. Property bag in key-value pairs with the following "
             "format: a=b c=d",
             arg_type=tags_type,
+        )
+
+    with self.argument_context("iot ops asset endpoint create custom") as context:
+        context.argument(
+            "endpoint_profile_type",
+            options_list=["--endpoint-type", "--et"],
+            help="Endpoint Profile Type for the Connector.",
+            arg_group="Connector",
+        )
+        context.argument(
+            "additional_configuration",
+            options_list=["--additional-config", "--ac"],
+            help="File path containing or inline json for the additional configuration.",
+            arg_group="Connector",
         )
 
     with self.argument_context("iot ops asset endpoint create opcua") as context:
