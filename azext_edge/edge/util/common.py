@@ -19,6 +19,20 @@ from knack.log import get_logger
 logger = get_logger(__name__)
 
 
+def parse_kvp_nargs(kvp_nargs: List[str]) -> dict:
+    """
+    Parses kvp nargs into a dict handling values of null and empty string.
+    """
+    result = {}
+    if not kvp_nargs:
+        return result
+
+    for item in kvp_nargs:
+        key, sep, value = item.partition("=")
+        result[key] = value if sep else None
+    return result
+
+
 def assemble_nargs_to_dict(hash_list: List[str]) -> Dict[str, str]:
     result = {}
     if not hash_list:
