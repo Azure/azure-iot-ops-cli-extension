@@ -46,7 +46,6 @@ env:
   STORAGE_NAME: "initstore${{ github.run_number }}"
   SCHEMAREG_NAME: "init-registry${{ github.run_number }}"
   CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
-  EXTENSION_SOURCE_DIRECTORY: "./azure-iot-ops-cli-extension"
   K3S_VERSION: "v1.28.5+k3s1"
 
 jobs:
@@ -60,39 +59,16 @@ jobs:
           python-version: "3.10"
       - name: "Checkout extension source for build"
         uses: actions/checkout@v4
-        with:
-          path: ${{ env.EXTENSION_SOURCE_DIRECTORY }}
       - name: "Build and install local IoT Ops extension from source"
         run: |
-          cd ${{ env.EXTENSION_SOURCE_DIRECTORY }}
           pip install -r dev_requirements.txt
           python -m setup bdist_wheel -d dist
           wheel=$(find ./dist/*.whl)
           az extension add --source $wheel -y
       - name: "Create k3s cluster"
-        run: |
-          # vars
-          release_url="https://github.com/k3s-io/k3s/releases/download"
-          install_dir="/usr/local/bin/k3s"
-          
-          # install
-          curl -Lo $install_dir "$release_url/${{ env.K3S_VERSION }}/k3s"
-          chmod a+x $install_dir
-          
-          # config
-          K3S_KUBECONFIG_MODE="644"
-          
-          # start cluster in background
-          sudo k3s server --cluster-init &
-          
-          # allow time for cluster to initialize
-          sleep 15s
-      - name: "Write cluster config"
-        run: |
-          mkdir ~/.kube 2> /dev/null
-          sudo k3s kubectl config view --raw > ~/.kube/config
-          chmod 600 ~/.kube/config
-          export KUBECONFIG=~/.kube/config
+        uses: ./.github/actions/create-k3s-cluster
+        with:
+          version: ${{ env.K3S_VERSION }}
       - name: "Az CLI login"
         uses: azure/login@v2
         with:
@@ -105,22 +81,6 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
-      - name: "Wait for cluster connection"
-        run: |
-          status=$(az connectedk8s show -n ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --query "connectivityStatus" -o tsv)
-          retry_count=0
-          max_retries=5
-          sleep=5
-          while [ "$status" != "Connected" ] && [ $retry_count -lt $max_retries ]; do
-            echo "Cluster status is "$status", Retrying in $sleep seconds..."
-            sleep $sleep
-            status=$(az connectedk8s show -n ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --query "connectivityStatus" -o tsv)
-            retry_count=$((retry_count + 1))
-          done
-          if [ "$status" != "Connected" ]; then
-            echo "Cluster connection failed after $max_retries attempts."
-            exit 1
-          fi
       - name: "Az CLI login refresh"
         uses: azure/login@v2
         with:
@@ -186,7 +146,7 @@ jobs:
             -v "${azure_dir}:/root/.azure" \
             -v "${tempLog}:/usr/src/azure-iot-ops/junit" \
             --network host \
-            $(docker build ${{ env.EXTENSION_SOURCE_DIRECTORY }} -q)
+            $(docker build . -q)
       - name: "Az CLI login refresh"
         uses: azure/login@v2
         with:
