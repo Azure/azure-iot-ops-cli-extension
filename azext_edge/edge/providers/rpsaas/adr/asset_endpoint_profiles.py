@@ -427,7 +427,7 @@ def _validate_additional_configuration(schema: dict, config: dict):
     errors = []
     error: ValidationError
     for error in validator.iter_errors(config):
-        errors.append(f"- argument {error.schema['description']}: {error.message}")
+        errors.append(f"- argument for {error.schema['description']}: {error.message}")
 
     if errors:
         raise InvalidArgumentValueError(

@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-# Description is the cli arguments for better error handing
+# Description is the cli arguments for better error handing - TODO, see if there is a better way
 OPCUA_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://azure-iot-operations/schemas/assetendpointprofile/additionalconfiguration/opcua/1.0.0.json",
