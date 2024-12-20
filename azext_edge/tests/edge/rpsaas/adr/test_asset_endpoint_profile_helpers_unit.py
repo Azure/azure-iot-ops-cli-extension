@@ -184,7 +184,7 @@ def test_build_opcua_config_error(req):
         param for param in req if (min_dict.get(param) is not None) and (req[param] < min_dict[param][0])
     ]
     for param in expected_error_params:
-        assert f"- argument {min_dict[param][1]}: {req[param]}" in e.value.error_msg
+        assert f"- argument for {min_dict[param][1]}: {req[param]}" in e.value.error_msg
         assert f"{min_dict[param][0]}" in e.value.error_msg
 
 
