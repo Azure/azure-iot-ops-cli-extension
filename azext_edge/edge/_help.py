@@ -10,9 +10,9 @@ Help definitions for Digital Twins commands.
 from knack.help_files import helps
 
 from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
+from azext_edge.edge.providers.edge_api.arccontainerstorage import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1
 
 from .providers.support_bundle import (
-    COMPAT_ARCCONTAINERSTORAGE_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
@@ -56,7 +56,8 @@ def load_iotops_help():
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
-            - {COMPAT_ARCCONTAINERSTORAGE_APIS.as_str()}
+            - {ARCCONTAINERSTORAGE_API_V1.as_str()}
+            - {CONTAINERSTORAGE_API_V1.as_str()}
             - {SECRETSYNC_API_V1.as_str()}
             - {SECRETSTORE_API_V1.as_str()}
 
@@ -573,24 +574,27 @@ def load_iotops_help():
         "iot ops upgrade"
     ] = """
         type: command
-        short-summary: Upgrade an IoT Operations instance to the latest version.
+        short-summary: Upgrade an IoT Operations instance.
         long-summary: |
-                      WARNING: This command may fail and require you to delete and re-create your cluster and instance.
-
-                      Upgrade an IoT Operations instance, including updating the extensions to the latest versions.
-                      Use this command if `az iot ops show` or similiar commands are failing.
-
-                      Schema registry resource Id is an optional parameter and may be required in specific scenarios.
+                      By default, with no options, the command will evaluate versions of the
+                      deployed cluster side services that make up IoT Operations and compare them
+                      with the built-in deployment that would be executed with `az iot ops init`
+                      and `az iot ops create`.
         examples:
         - name: Upgrade the instance with minimal inputs.
           text: >
             az iot ops upgrade --name myinstance -g myresourcegroup
-        - name: Skip the conformation prompt during instance upgrade.
+        - name: Skip the confirmation prompt for instance upgrade. Useful for CI scenarios.
           text: >
             az iot ops upgrade --name myinstance -g myresourcegroup -y
-        - name: Upgrade the instance and specify the schema registry resource Id.
+        - name: Set extension config settings that apply should be during upgrade.
+           To remove a setting provide the key with no value.
           text: >
-            az iot ops upgrade --name myinstance -g myresourcegroup --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+            az iot ops upgrade --name myinstance -g myresourcegroup --ops-config key1=value1 deletekey
+        - name: Provide an explicit IoT Operations version or release train to upgrade to.
+            Not recommended for typical use cases.
+          text: >
+            az iot ops upgrade --name myinstance -g myresourcegroup --ops-version x.y.z --ops-train preview
     """
 
     helps[

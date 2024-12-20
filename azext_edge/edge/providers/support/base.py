@@ -57,7 +57,7 @@ def process_crd(
     plural: str,
     directory_path: str,
     file_prefix: Optional[str] = None,
-    namespace: Optional[str] = None,
+    fallback_namespace: Optional[str] = None,
 ) -> List[dict]:
     result: dict = get_custom_objects(
         group=group,
@@ -69,12 +69,17 @@ def process_crd(
         file_prefix = kind
 
     processed = []
-    namespaces = []
     for r in result.get("items", []):
-        if not namespace:
+        # Try to get namespace from metadata, if not found, use fallback_namespace if provided
+        try:
             namespace = r["metadata"]["namespace"]
-        namespaces.append(namespace)
+        except KeyError:
+            if fallback_namespace:
+                namespace = fallback_namespace
+            else:
+                logger.debug("Namespace not found in CRD metadata and no fallback namespace provided.")
         name = r["metadata"]["name"]
+
         processed.append(
             {
                 "data": r,
@@ -337,11 +342,18 @@ def process_config_maps(
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
     prefix_names: Optional[List[str]] = None,
+    namespace: Optional[str] = None,
 ) -> List[dict]:
     v1_api = client.CoreV1Api()
-    config_maps = v1_api.list_config_map_for_all_namespaces(
-        label_selector=label_selector, field_selector=field_selector
-    )
+
+    if namespace:
+        config_maps = v1_api.list_namespaced_config_map(
+            namespace=namespace, label_selector=label_selector, field_selector=field_selector
+        )
+    else:
+        config_maps = v1_api.list_config_map_for_all_namespaces(
+            label_selector=label_selector, field_selector=field_selector
+        )
 
     return _process_kubernetes_resources(
         directory_path=directory_path,
@@ -467,15 +479,14 @@ def assemble_crd_work(
     apis: Iterable[EdgeResourceApi],
     file_prefix_map: Optional[Dict[str, str]] = None,
     directory_path: Optional[str] = None,
-    namespace: Optional[str] = None,
+    fallback_namespace: Optional[str] = None,
 ) -> dict:
     if not file_prefix_map:
         file_prefix_map = {}
 
     result = {}
     for api in apis:
-        if not directory_path:
-            directory_path = api.moniker
+        path = directory_path or api.moniker
         for kind in api.kinds:
             file_prefix = file_prefix_map.get(kind)
             result[f"{api.moniker} {api.version} {kind}"] = partial(
@@ -484,9 +495,9 @@ def assemble_crd_work(
                 version=api.version,
                 kind=kind,
                 plural=api._kinds[kind],  # TODO: optimize
-                directory_path=directory_path,
+                directory_path=path,
                 file_prefix=file_prefix,
-                namespace=namespace,
+                fallback_namespace=fallback_namespace,
             )
 
     return result

@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/pypi/pyversions/azure-cli.svg?maxAge=2592000)
 ![Build](https://github.com/azure/azure-iot-ops-cli-extension/actions/workflows/release_workflow.yml/badge.svg)
 
-The **Azure IoT Operations extension for Azure CLI** aims to accelerate the development, management and automation of Azure IoT Operations solutions. It does this via addition of rich features and functionality to the official [Azure CLI](https://docs.microsoft.com/en-us/cli/azure).
+The **Azure IoT Operations extension for Azure CLI** aims to accelerate the development, management and automation of Azure IoT Operations solutions. It does this via addition of rich features and functionality to the official [Azure CLI](https://learn.microsoft.com/en-us/cli/azure).
 
 ## Pre-requisites
 

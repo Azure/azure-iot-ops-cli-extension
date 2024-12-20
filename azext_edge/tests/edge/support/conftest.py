@@ -456,6 +456,7 @@ def mocked_list_config_maps(mocked_client):
         return config_map_list
 
     mocked_client.CoreV1Api().list_config_map_for_all_namespaces.side_effect = _handle_list_config_maps
+    mocked_client.CoreV1Api().list_namespaced_config_map.side_effect = _handle_list_config_maps
 
     yield mocked_client
 

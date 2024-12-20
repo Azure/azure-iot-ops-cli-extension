@@ -74,3 +74,12 @@ def tracked_files():
 def mocked_responses():
     with responses.RequestsMock() as rsps:
         yield rsps
+
+
+@pytest.fixture
+def mocked_confirm(mocker):
+    mock = mocker.patch(
+        "rich.prompt.Confirm",
+    )
+    mock.ask.return_value = True
+    yield mock

@@ -14,6 +14,7 @@ from rich.console import Console, NewLine
 from ..common import OpsServiceType
 from ..providers.edge_api import (
     CLUSTER_CONFIG_API_V1,
+    CONTAINERSTORAGE_API_V1,
     MQTT_BROKER_API_V1,
     OPCUA_API_V1,
     DEVICEREGISTRY_API_V1,
@@ -36,7 +37,7 @@ COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1])
 COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1])
-COMPAT_ARCCONTAINERSTORAGE_APIS = EdgeApiManager(resource_apis=[ARCCONTAINERSTORAGE_API_V1])
+COMPAT_ARCCONTAINERSTORAGE_APIS = EdgeApiManager(resource_apis=[ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1])
 COMPAT_SECRETSTORE_APIS = EdgeApiManager(resource_apis=[SECRETSYNC_API_V1, SECRETSTORE_API_V1])
 COMPAT_AZUREMONITOR_APIS = EdgeApiManager(resource_apis=[AZUREMONITOR_API_V1])
 
