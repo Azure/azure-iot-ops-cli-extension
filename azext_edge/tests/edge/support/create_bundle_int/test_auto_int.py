@@ -94,6 +94,10 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         if namespace:
             walk_result.pop(path.join(BASE_ZIP_PATH, namespace, service), {})
 
+    # remove certmanager resources in arc namespace from walk_result from aio namespace assertion
+    if arc_namespace and path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.certmanager.value) in walk_result:
+        walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.certmanager.value), {})
+
     # remove azuremonitor resources in arc namespace from walk_result from aio namespace assertion
     if arc_namespace and path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value) in walk_result:
         walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value), {})

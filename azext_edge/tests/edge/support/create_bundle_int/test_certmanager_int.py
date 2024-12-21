@@ -22,7 +22,11 @@ def test_create_bundle_certmanager(init_setup, tracked_files):
 
     # cert-manager namespace
     certmanager_file_map = file_map[OpsServiceType.certmanager.value]
-    check_custom_resource_files(file_objs=certmanager_file_map, resource_api=CERTMANAGER_API_V1)
+    check_custom_resource_files(
+        file_objs=certmanager_file_map,
+        resource_api=CERTMANAGER_API_V1,
+        namespace=file_map["__namespaces__"]["certmanager"],
+    )
     expected_workload_types = ["deployment", "pod", "replicaset", "service", "configmap"]
     expected_types = set(expected_workload_types).union(CERTMANAGER_API_V1.kinds)
     assert set(certmanager_file_map.keys()).issubset(expected_types)
@@ -35,9 +39,18 @@ def test_create_bundle_certmanager(init_setup, tracked_files):
 
     # aio namespace
     certmanager_aio_file_map = file_map["certmanager_aio"]
-    check_custom_resource_files(file_objs=certmanager_aio_file_map, resource_api=CERTMANAGER_API_V1)
+    check_custom_resource_files(
+        file_objs=certmanager_aio_file_map,
+        resource_api=CERTMANAGER_API_V1,
+        namespace=file_map["__namespaces__"]["aio"],
+        exclude_kinds=["clusterissuer"],
+    )
 
     # acstor namespace if present
-    certmanager_acstor_file_map = file_map["certmanager_acstor"]
+    certmanager_acstor_file_map = file_map.get("certmanager_acstor")
     if certmanager_acstor_file_map:
-        check_custom_resource_files(file_objs=certmanager_acstor_file_map, resource_api=CERTMANAGER_API_V1)
+        check_custom_resource_files(
+            file_objs=certmanager_acstor_file_map,
+            resource_api=CERTMANAGER_API_V1,
+            namespace=file_map["__namespaces__"]["acstor"],
+        )

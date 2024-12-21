@@ -124,13 +124,15 @@ def check_custom_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
     resource_api: EdgeResourceApi,
     namespace: Optional[str] = None,
+    exclude_kinds: Optional[List[str]] = None,
 ):
     # skip validation if resource is not deployed
     if not resource_api.is_deployed():
         return
 
     resource_map = get_kubectl_custom_items(resource_api=resource_api, namespace=namespace, include_plural=True)
-    for kind in resource_api.kinds:
+    resource_kinds = set(resource_api.kinds) - set(exclude_kinds or [])
+    for kind in resource_kinds:
         cluster_resources = resource_map[kind]
         # subresources like scale will not have a plural
         if cluster_resources.get(PLURAL_KEY):
@@ -305,11 +307,14 @@ def get_file_map(
         return file_map
     elif ops_service == "certmanager":
         if not acstor_namespace:
+            # certmanager resources are in arc namespace, aio namespace, and certmanager namespace
             assert len(walk_result) == 3 + expected_default_walk_result
         else:
+            # certmanager resources are in arc namespace, aio namespace, acstor namespace, and certmanager namespace
             assert len(walk_result) == 4 + expected_default_walk_result
             certmanager_acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
             file_map["certmanager_acstor"] = convert_file_names(walk_result[certmanager_acstor_path]["files"])
+            file_map["__namespaces__"]["acstor"] = acstor_namespace
         certmanager_path = path.join(BASE_ZIP_PATH, certmanager_namespace, "certmanager")
         file_map["certmanager"] = convert_file_names(walk_result[certmanager_path]["files"])
         certmanager_aio_path = path.join(BASE_ZIP_PATH, aio_namespace, "certmanager")
@@ -317,7 +322,6 @@ def get_file_map(
         certmanager_arc_path = path.join(BASE_ZIP_PATH, arc_namespace, "certmanager")
         file_map["certmanager_arc"] = convert_file_names(walk_result[certmanager_arc_path]["files"])
         file_map["__namespaces__"]["certmanager"] = certmanager_namespace
-        return file_map
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
             assert len(walk_result) == expected_default_walk_result
@@ -382,21 +386,22 @@ def process_top_levels(
             namespace = name
 
     monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
-    for namespace_folder, services in [
+    services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
+    for namespace_folder, monikers in [
         (clusterconfig_namespace, ["clusterconfig"]),
-        (arc_namespace, ["arcagents", "certmanager"]),
+        (arc_namespace, services + ["arcagents"]),
         (acs_namespace, ["arccontainerstorage"]),
-        (acstor_namespace, ["certmanager", "containerstorage"]),
+        (acstor_namespace, services + ["containerstorage"]),
         (ssc_namespace, [OpsServiceType.secretstore.value]),
-        (certmanager_namespace, ["certmanager"]),
+        (certmanager_namespace, services),
     ]:
         if namespace_folder:
             # remove empty folders in level 1
             level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace_folder))
 
             if namespace_folder == arc_namespace and monitor_path in walk_result:
-                services.append(OpsServiceType.azuremonitor.value)
-            assert set(level_1["folders"]) == set(services)
+                monikers.append(OpsServiceType.azuremonitor.value)
+            assert set(level_1["folders"]) == set(monikers)
             assert not level_1["files"]
 
     # remove empty folders in level 2

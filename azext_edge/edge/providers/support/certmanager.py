@@ -44,8 +44,8 @@ def fetch_replicasets():
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     return process_v1_pods(
         directory_path=CERT_DIRECTORY_PATH,
-        namespace=CERT_MANAGER_NAMESPACE,
         since_seconds=since_seconds,
+        namespace=CERT_MANAGER_NAMESPACE,
     )
 
 
@@ -78,7 +78,7 @@ def prepare_bundle(
     monitor_to_run = {}
 
     if apis:
-        monitor_to_run.update(assemble_crd_work(apis=apis))
+        monitor_to_run.update(assemble_crd_work(apis=apis, fallback_namespace=CERT_MANAGER_NAMESPACE))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     monitor_to_run.update(support_runtime_elements)
