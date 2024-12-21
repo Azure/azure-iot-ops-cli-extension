@@ -77,7 +77,7 @@ def process_crd(
             if fallback_namespace:
                 namespace = fallback_namespace
             else:
-                raise ValueError("Namespace not found in CRD metadata and no fallback namespace provided.")
+                logger.debug("Namespace not found in CRD metadata and no fallback namespace provided.")
         name = r["metadata"]["name"]
 
         processed.append(

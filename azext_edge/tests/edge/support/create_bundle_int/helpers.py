@@ -272,13 +272,15 @@ def get_file_map(
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "acs":
-        if not acstor_namespace:
-            assert len(walk_result) == 1 + expected_default_walk_result
-        else:
+        if acstor_namespace:
+            # resources in both acstor_namespace and acs_namespace
             assert len(walk_result) == 2 + expected_default_walk_result
             acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
             file_map["acstor"] = convert_file_names(walk_result[acstor_path]["files"])
             file_map["__namespaces__"]["acstor"] = acstor_namespace
+        else:
+            # resources only in acs_namespace
+            assert len(walk_result) == 1 + expected_default_walk_result
         acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
         file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
         file_map["__namespaces__"]["acs"] = acs_namespace
@@ -312,7 +314,7 @@ def get_file_map(
         else:
             # certmanager resources are in arc namespace, aio namespace, acstor namespace, and certmanager namespace
             assert len(walk_result) == 4 + expected_default_walk_result
-            certmanager_acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
+            certmanager_acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "certmanager")
             file_map["certmanager_acstor"] = convert_file_names(walk_result[certmanager_acstor_path]["files"])
             file_map["__namespaces__"]["acstor"] = acstor_namespace
         certmanager_path = path.join(BASE_ZIP_PATH, certmanager_namespace, "certmanager")
@@ -359,6 +361,9 @@ def process_top_levels(
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
         return [f for f in level1.get("files", []) if f.startswith(file_prefix)]
 
+    cert_resource_namespaces = []
+    containerstorage_service = ""
+
     for name in namespaces:
         # determine which namespace belongs to aio vs billing
         if _get_namespace_determinating_files(
@@ -375,6 +380,7 @@ def process_top_levels(
         elif _get_namespace_determinating_files(
             name=name, folder=path.join("containerstorage"), file_prefix="configmap"
         ):
+            containerstorage_service = "containerstorage"
             acstor_namespace = name
         elif _get_namespace_determinating_files(
             name=name, folder=OpsServiceType.secretstore.value, file_prefix="deployment"
@@ -382,8 +388,17 @@ def process_top_levels(
             ssc_namespace = name
         elif _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="configmap"):
             certmanager_namespace = name
-        else:
+        elif _get_namespace_determinating_files(name=name, folder="meta", file_prefix="instance"):
             namespace = name
+
+        if _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="certificate"):
+            cert_resource_namespaces.append(name)
+
+    # find the acstor namespace if not already found
+    if not acstor_namespace:
+        # acstor_namespace should be the namespace that is not in the list of namespaces that are not certmanager
+        acstor_namespace = set(cert_resource_namespaces) - set([certmanager_namespace, arc_namespace, namespace])
+        acstor_namespace = acstor_namespace.pop() if acstor_namespace else None
 
     monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
     services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
@@ -391,7 +406,7 @@ def process_top_levels(
         (clusterconfig_namespace, ["clusterconfig"]),
         (arc_namespace, services + ["arcagents"]),
         (acs_namespace, ["arccontainerstorage"]),
-        (acstor_namespace, services + ["containerstorage"]),
+        # (acstor_namespace, services),
         (ssc_namespace, [OpsServiceType.secretstore.value]),
         (certmanager_namespace, services),
     ]:
@@ -403,6 +418,13 @@ def process_top_levels(
                 monikers.append(OpsServiceType.azuremonitor.value)
             assert set(level_1["folders"]) == set(monikers)
             assert not level_1["files"]
+
+    if acstor_namespace:
+        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace))
+        if containerstorage_service:
+            services.append(containerstorage_service)
+        assert set(level_1["folders"]) == set(services)
+        assert not level_1["files"]
 
     # remove empty folders in level 2
     if clusterconfig_namespace:

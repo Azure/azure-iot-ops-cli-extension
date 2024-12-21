@@ -53,4 +53,5 @@ def test_create_bundle_certmanager(init_setup, tracked_files):
             file_objs=certmanager_acstor_file_map,
             resource_api=CERTMANAGER_API_V1,
             namespace=file_map["__namespaces__"]["acstor"],
+            exclude_kinds=["clusterissuer"],
         )

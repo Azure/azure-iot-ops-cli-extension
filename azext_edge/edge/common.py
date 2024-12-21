@@ -202,11 +202,11 @@ class AEPAuthModes(Enum):
     userpass = "UsernamePassword"
 
 
-class AEPTypes(Enum):
+class AEPTypes(ListableEnum):
     """Asset Endpoint Profile (connector) Types"""
 
-    # TODO: ensure this is the final enum
     opcua = "Microsoft.OpcUa"
+    onvif = "Microsoft.Onvif"
 
 
 class TopicRetain(Enum):
@@ -227,7 +227,6 @@ class SecurityModes(Enum):
 class SecurityPolicies(Enum):
     """Security policies for the OPCUA connector."""
 
-    # TODO: add in user friendly input mapping
     none = "none"
     basic128 = "Basic128Rsa15"
     basic256 = "Basic256"

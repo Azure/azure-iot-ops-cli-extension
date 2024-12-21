@@ -15,8 +15,13 @@ from azext_edge.edge.commands_edge import list_instances, show_instance, update_
 from azext_edge.edge.providers.orchestration.resources import Instances
 
 from ....generators import generate_random_string
-from .conftest import get_base_endpoint, get_mock_resource, get_resource_id, BASE_URL
-
+from .conftest import (
+    BASE_URL,
+    CUSTOM_LOCATIONS_API_VERSION,
+    get_base_endpoint,
+    get_mock_resource,
+    get_resource_id,
+)
 
 CUSTOM_LOCATION_RP = "Microsoft.ExtendedLocation"
 CONNECTED_CLUSTER_RP = "Microsoft.Kubernetes"
@@ -34,7 +39,10 @@ def get_cl_endpoint(resource_group_name: Optional[str] = None, cl_name: Optional
     if cl_name:
         resource_path += f"/{cl_name}"
     return get_base_endpoint(
-        resource_group_name=resource_group_name, resource_path=resource_path, resource_provider=CUSTOM_LOCATION_RP
+        resource_group_name=resource_group_name,
+        resource_path=resource_path,
+        resource_provider=CUSTOM_LOCATION_RP,
+        api_version=CUSTOM_LOCATIONS_API_VERSION,
     )
 
 

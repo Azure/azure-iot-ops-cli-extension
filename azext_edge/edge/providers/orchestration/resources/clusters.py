@@ -58,6 +58,7 @@ class ClusterExtensions(Queryable):
         cluster_name: str,
         extension_name: str,
         update_payload: dict,
+        **client_kwargs,
     ) -> Iterable[dict]:
         return wait_for_terminal_state(
             self.ops.begin_update(
@@ -67,5 +68,6 @@ class ClusterExtensions(Queryable):
                 cluster_name=cluster_name,
                 extension_name=extension_name,
                 patch_extension=update_payload,
+                **client_kwargs,
             )
         )

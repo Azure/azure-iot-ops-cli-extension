@@ -14,6 +14,7 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
+    FileOperationError,
 )
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
@@ -60,7 +61,7 @@ class AssetEndpointProfiles(Queryable):
         password_reference: Optional[str] = None,
         username_reference: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
-        **additional_configuration
+        **kwargs
     ):
         from .helpers import get_extended_location
         extended_location = get_extended_location(
@@ -78,9 +79,12 @@ class AssetEndpointProfiles(Queryable):
         # Properties
         properties = {"endpointProfileType": endpoint_profile_type}
 
+        configuration = None
         if endpoint_profile_type == AEPTypes.opcua.value:
-            properties["additionalConfiguration"] = _build_opcua_config(**additional_configuration)
-        # TODO: add other connector types in
+            configuration = _build_opcua_config(**kwargs)
+        elif "additional_configuration" in kwargs:  # custom type
+            configuration = _process_additional_configuration(kwargs["additional_configuration"])
+
         _update_properties(
             properties,
             target_address=target_address,
@@ -88,6 +92,7 @@ class AssetEndpointProfiles(Queryable):
             username_reference=username_reference,
             password_reference=password_reference,
             certificate_reference=certificate_reference,
+            additional_configuration=configuration
         )
 
         aep_body = {
@@ -103,7 +108,7 @@ class AssetEndpointProfiles(Queryable):
                 asset_endpoint_profile_name,
                 resource=aep_body
             )
-            return wait_for_terminal_state(poller, **additional_configuration)
+            return wait_for_terminal_state(poller, **kwargs)
 
     def delete(self, asset_endpoint_profile_name: str, resource_group_name: str, **kwargs):
         self.show(
@@ -213,20 +218,6 @@ class AssetEndpointProfiles(Queryable):
 
 
 # Helpers
-def _assert_above_min(param: str, value: int, minimum: int = 0) -> str:
-    if value < minimum:
-        return f"The parameter {param} needs to be at least {minimum}.\n"
-    return ""
-
-
-def _raise_if_connector_error(connector_type: str, error_msg: str):
-    if error_msg:
-        raise InvalidArgumentValueError(
-            f"The following {connector_type} connector arguments are invalid:\n {error_msg}"
-        )
-
-
-# TODO: use jsonschema lib
 def _build_opcua_config(
     original_config: Optional[str] = None,
     application_name: Optional[str] = None,
@@ -246,13 +237,12 @@ def _build_opcua_config(
     sub_life_time: Optional[int] = None,
     **_
 ) -> str:
+    from .additional_configuration_schemas import OPCUA_SCHEMA
     config = json.loads(original_config) if original_config else {}
 
-    error_msg = ""
     if application_name:
         config["applicationName"] = application_name
     if keep_alive:
-        error_msg += _assert_above_min("--keep-alive", keep_alive)
         config["keepAliveMilliseconds"] = keep_alive
     if run_asset_discovery is not None:
         config["runAssetDiscovery"] = run_asset_discovery
@@ -263,13 +253,10 @@ def _build_opcua_config(
     ]) and not config.get("defaults"):
         config["defaults"] = {}
     if default_publishing_interval:
-        error_msg += _assert_above_min("--default-publishing-int", default_publishing_interval, -1)
         config["defaults"]["publishingIntervalMilliseconds"] = default_publishing_interval
     if default_sampling_interval:
-        error_msg += _assert_above_min("--default-sampling-int", default_sampling_interval, -1)
         config["defaults"]["samplingIntervalMilliseconds"] = default_sampling_interval
     if default_queue_size:
-        error_msg += _assert_above_min("--default-queue-size", default_queue_size, 0)
         config["defaults"]["queueSize"] = default_queue_size
 
     # session
@@ -278,27 +265,21 @@ def _build_opcua_config(
     ]) and not config.get("session"):
         config["session"] = {}
     if session_timeout:
-        error_msg += _assert_above_min("--session-timeout", session_timeout)
         config["session"]["timeoutMilliseconds"] = session_timeout
     if session_keep_alive:
-        error_msg += _assert_above_min("--session-keep-alive", session_keep_alive)
         config["session"]["keepAliveIntervalMilliseconds"] = session_keep_alive
     if session_reconnect_period:
-        error_msg += _assert_above_min("--session-reconnect-period", session_reconnect_period)
         config["session"]["reconnectPeriodMilliseconds"] = session_reconnect_period
     if session_reconnect_exponential_back_off:
-        error_msg += _assert_above_min("--session-reconnect-backoff", session_reconnect_exponential_back_off, -1)
         config["session"]["reconnectExponentialBackOffMilliseconds"] = session_reconnect_exponential_back_off
 
     # subscription
     if any([sub_life_time, sub_max_items]) and not config.get("subscription"):
         config["subscription"] = {}
     if sub_life_time:
-        error_msg += _assert_above_min("--subscription-life-time", sub_life_time)
-        config["subscription"]["maxItems"] = sub_life_time
+        config["subscription"]["lifeTimeMilliseconds"] = sub_life_time
     if sub_max_items:
-        error_msg += _assert_above_min("--subscription-max-items", sub_max_items, 1)
-        config["subscription"]["lifeTimeMilliseconds"] = sub_max_items
+        config["subscription"]["maxItems"] = sub_max_items
 
     # security
     if any([
@@ -312,7 +293,7 @@ def _build_opcua_config(
     if security_policy:
         config["security"]["securityPolicy"] = "http://opcfoundation.org/UA/SecurityPolicy#" + security_policy
 
-    _raise_if_connector_error(connector_type="OPCUA", error_msg=error_msg)
+    _validate_additional_configuration(schema=OPCUA_SCHEMA, config=config)
     return json.dumps(config)
 
 
@@ -343,6 +324,34 @@ def _build_query_body(
         "| project id, customLocation, location, name, resourceGroup, provisioningState, tags, "\
         "type, subscriptionId "
     return query_body
+
+
+def _process_additional_configuration(configuration: str) -> Optional[str]:
+    from ....util import read_file_content
+    inline_json = False
+    if not configuration:
+        return
+
+    try:
+        logger.debug("Processing additional configuration.")
+        configuration = read_file_content(configuration)
+        if not configuration:
+            raise InvalidArgumentValueError("Given file is empty.")
+    except FileOperationError:
+        inline_json = True
+        logger.debug("Given additional configuration is not a file.")
+
+    # make sure it is an actual json
+    try:
+        json.loads(configuration)
+        return configuration
+    except json.JSONDecodeError as e:
+        error_msg = "Additional configuration is not a valid JSON. "
+        if inline_json:
+            error_msg += "For examples of valid JSON formating, please see https://aka.ms/inline-json-examples "
+        raise InvalidArgumentValueError(
+            f"{error_msg}\n{e.msg}"
+        )
 
 
 def _process_authentication(
@@ -408,4 +417,19 @@ def _update_properties(
             certificate_reference=certificate_reference,
             username_reference=username_reference,
             password_reference=password_reference
+        )
+
+
+def _validate_additional_configuration(schema: dict, config: dict):
+    from jsonschema import Draft7Validator, ValidationError
+    validator = Draft7Validator(schema=schema)
+
+    errors = []
+    error: ValidationError
+    for error in validator.iter_errors(config):
+        errors.append(f"- argument for {error.schema['description']}: {error.message}")
+
+    if errors:
+        raise InvalidArgumentValueError(
+            "Invalid Additional Configuration arguments:\n" + "\n".join(errors)
         )

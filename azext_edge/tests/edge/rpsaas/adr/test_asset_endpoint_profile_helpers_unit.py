@@ -10,31 +10,21 @@ import pytest
 
 from azure.cli.core.azclierror import (
     CLIError,
+    FileOperationError,
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
 )
 
 from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
-    _assert_above_min,
     _build_opcua_config,
     _build_query_body,
+    _process_additional_configuration,
     _process_authentication,
     _update_properties,
-    AEPAuthModes
 )
+from azext_edge.edge.common import AEPAuthModes, SecurityPolicies, SecurityModes
 from ....generators import generate_random_string
-
-
-@pytest.mark.parametrize("value", [-1, 100])
-@pytest.mark.parametrize("minimum", [-1, 0])
-def test_assert_above_min(value, minimum):
-    param = generate_random_string()
-    result = _assert_above_min(param=param, value=value, minimum=minimum)
-    if value < minimum:
-        assert param in result
-    else:
-        assert result == ""
 
 
 @pytest.mark.parametrize("original_config", [
@@ -60,8 +50,8 @@ def test_assert_above_min(value, minimum):
         },
         "security": {
             "autoAcceptUntrustedServerCertificates": False,
-            "securityMode": generate_random_string(),
-            "securityPolicy": generate_random_string()
+            "securityMode": SecurityModes.none.value,
+            "securityPolicy": "http://opcfoundation.org/UA/SecurityPolicy#" + SecurityPolicies.basic256sha256.value
         }
     }
 ])
@@ -79,8 +69,8 @@ def test_assert_above_min(value, minimum):
         "session_keep_alive": 666,
         "session_reconnect_period": 777,
         "session_reconnect_exponential_back_off": 888,
-        "security_policy": generate_random_string(),
-        "security_mode": generate_random_string(),
+        "security_policy": SecurityPolicies.aes128.value,
+        "security_mode": SecurityModes.sign_and_encrypt.value,
         "sub_max_items": 999,
         "sub_life_time": 1000,
     },
@@ -127,8 +117,8 @@ def test_build_opcua_config(original_config, req):
 
     og_sub = original_config.get("subscription", {})
     res_sub = result.get("subscription", {})
-    assert res_sub.get("maxItems") == req.get("sub_life_time", og_sub.get("maxItems"))
-    assert res_sub.get("lifeTimeMilliseconds") == req.get("sub_max_items", og_sub.get("lifeTimeMilliseconds"))
+    assert res_sub.get("maxItems") == req.get("sub_max_items", og_sub.get("maxItems"))
+    assert res_sub.get("lifeTimeMilliseconds") == req.get("sub_life_time", og_sub.get("lifeTimeMilliseconds"))
 
     og_security = original_config.get("security", {})
     res_security = result.get("security", {})
@@ -179,22 +169,23 @@ def test_build_opcua_config_error(req):
         )
     assert e.value.error_msg
     min_dict = {
-        "default_publishing_interval": (-1, "--default-publishing-int"),
-        "default_sampling_interval": (-1, "--default-sampling-int"),
-        "default_queue_size": (0, "--default-queue-size"),
-        "keep_alive": (0, "--keep-alive"),
-        "session_timeout": (0, "--session-timeout"),
-        "session_keep_alive": (0, "--session-keep-alive"),
-        "session_reconnect_period": (0, "--session-reconnect-period"),
-        "session_reconnect_exponential_back_off": (-1, "--session-reconnect-backoff"),
-        "sub_max_items": (1, "--subscription-max-items"),
-        "sub_life_time": (0, "--subscription-life-time"),
+        "default_publishing_interval": (-1, "--default-publishing-int/--dpi"),
+        "default_sampling_interval": (-1, "--default-sampling-int/--dsi"),
+        "default_queue_size": (0, "--default-queue-size/--dqs"),
+        "keep_alive": (0, "--keep-alive/--ka"),
+        "session_timeout": (0, "--session-timeout/--st"),
+        "session_keep_alive": (0, "--session-keep-alive/--ska"),
+        "session_reconnect_period": (0, "--session-reconnect-period/--srp"),
+        "session_reconnect_exponential_back_off": (-1, "--session-reconnect-backoff/--srb"),
+        "sub_max_items": (1, "--subscription-max-items/--smi"),
+        "sub_life_time": (0, "--subscription-life-time/--slt"),
     }
     expected_error_params = [
         param for param in req if (min_dict.get(param) is not None) and (req[param] < min_dict[param][0])
     ]
     for param in expected_error_params:
-        assert f"{min_dict[param][1]} needs to be at least {min_dict[param][0]}." in e.value.error_msg
+        assert f"- argument for {min_dict[param][1]}: {req[param]}" in e.value.error_msg
+        assert f"{min_dict[param][0]}" in e.value.error_msg
 
 
 @pytest.mark.parametrize("asset_endpoint_profile_name", [None, generate_random_string()])
@@ -237,6 +228,51 @@ def test_build_query_body(
         assert f"where properties.endpointProfileType =~ \"{endpoint_profile_type}\"" in result
     if target_address:
         assert f"where properties.targetAddress =~ \"{target_address}\"" in result
+
+
+@pytest.mark.parametrize("configuration", [
+    "",
+    json.dumps({generate_random_string(): generate_random_string()}),
+])
+@pytest.mark.parametrize("is_file", [True, False])
+def test_process_additional_configuration(
+    mocker, configuration, is_file
+):
+    patched_read_file = mocker.patch("azext_edge.edge.util.read_file_content")
+    file_name = None
+    if is_file:
+        patched_read_file.return_value = configuration
+        file_name = generate_random_string()
+    else:
+        patched_read_file.side_effect = FileOperationError("Not a file.")
+
+    if is_file and not configuration:
+        with pytest.raises(InvalidArgumentValueError):
+            _process_additional_configuration(file_name)
+        return
+
+    result = _process_additional_configuration(file_name if is_file else configuration)
+    if configuration == "":
+        assert result is None
+    else:
+        assert result == configuration
+
+
+def test_process_additional_configuration_error(mocker):
+    configuration = json.dumps({generate_random_string(): generate_random_string()})
+    configuration = configuration[-2:-1]  # remove the } to make invalid
+    file_name = generate_random_string
+
+    # file
+    patched_read_file = mocker.patch("azext_edge.edge.util.read_file_content")
+    patched_read_file.return_value = configuration
+    with pytest.raises(InvalidArgumentValueError):
+        _process_additional_configuration(file_name)
+
+    # in-line
+    patched_read_file.side_effect = FileOperationError("Not a file.")
+    with pytest.raises(InvalidArgumentValueError):
+        _process_additional_configuration(configuration)
 
 
 @pytest.mark.parametrize("original_props", [
