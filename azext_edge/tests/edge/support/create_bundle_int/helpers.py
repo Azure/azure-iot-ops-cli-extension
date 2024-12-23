@@ -394,47 +394,56 @@ def process_top_levels(
         if _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="certificate"):
             cert_resource_namespaces.append(name)
 
-    # find the acstor namespace if not already found
+    # find the acstor namespace if fault tolerance is not enabled
     if not acstor_namespace:
         # acstor_namespace should be the namespace that is not in the list of namespaces that are not certmanager
         acstor_namespace = set(cert_resource_namespaces) - set([certmanager_namespace, arc_namespace, namespace])
         acstor_namespace = acstor_namespace.pop() if acstor_namespace else None
 
-    monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
-    services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
-    for namespace_folder, monikers in [
-        (clusterconfig_namespace, ["clusterconfig"]),
-        (arc_namespace, services + ["arcagents"]),
-        (acs_namespace, ["arccontainerstorage"]),
-        # (acstor_namespace, services),
-        (ssc_namespace, [OpsServiceType.secretstore.value]),
-        (certmanager_namespace, services),
-    ]:
-        if namespace_folder:
-            # remove empty folders in level 1
-            level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace_folder))
+    _remove_empty_folders(
+        walk_result=walk_result,
+        arc_namespace=arc_namespace,
+        acs_namespace=acs_namespace,
+        acstor_namespace=acstor_namespace,
+        clusterconfig_namespace=clusterconfig_namespace,
+        containerstorage_service=containerstorage_service,
+        ssc_namespace=ssc_namespace,
+        certmanager_namespace=certmanager_namespace,
+    )
+    # monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
+    # services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
+    # for namespace_folder, monikers in [
+    #     (clusterconfig_namespace, ["clusterconfig"]),
+    #     (arc_namespace, services + ["arcagents"]),
+    #     (acs_namespace, ["arccontainerstorage"]),
+    #     (ssc_namespace, [OpsServiceType.secretstore.value]),
+    #     (certmanager_namespace, services),
+    # ]:
+    #     if namespace_folder:
+    #         # remove empty folders in level 1
+    #         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace_folder))
 
-            if namespace_folder == arc_namespace and monitor_path in walk_result:
-                monikers.append(OpsServiceType.azuremonitor.value)
-            assert set(level_1["folders"]) == set(monikers)
-            assert not level_1["files"]
+    #         if namespace_folder == arc_namespace and monitor_path in walk_result:
+    #             monikers.append(OpsServiceType.azuremonitor.value)
+    #         assert set(level_1["folders"]) == set(monikers)
+    #         assert not level_1["files"]
 
-    if acstor_namespace:
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace))
-        if containerstorage_service:
-            services.append(containerstorage_service)
-        assert set(level_1["folders"]) == set(services)
-        assert not level_1["files"]
+    # if acstor_namespace:
+    #     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace))
+    #     if containerstorage_service:
+    #         services.append(containerstorage_service)
+    #     assert set(level_1["folders"]) == set(services)
+    #     assert not level_1["files"]
 
-    # remove empty folders in level 2
-    if clusterconfig_namespace:
-        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
-        assert level_2["folders"] == ["billing"]
-        assert not level_2["files"]
-    if arc_namespace:
-        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))
-        assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS]
-        assert not level_2["files"]
+    # # remove empty folders in level 2
+    # if clusterconfig_namespace:
+    #     level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
+    #     assert level_2["folders"] == ["billing"]
+    #     assert not level_2["files"]
+    # if arc_namespace:
+    #     level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))
+    #     assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS]
+    #     assert not level_2["files"]
 
     logger.debug("Determined the following namespaces:")
     logger.debug(f"AIO namespace: {namespace}")
@@ -512,3 +521,49 @@ def split_name(name: str) -> List[str]:
             second_pass.append(first_pass[i])
 
     return second_pass
+
+
+def _remove_empty_folders(
+    walk_result: Dict[str, Dict[str, List[str]]],
+    arc_namespace: str,
+    acs_namespace: str,
+    acstor_namespace: str,
+    clusterconfig_namespace: str,
+    containerstorage_service: str,
+    ssc_namespace: str,
+    certmanager_namespace: str,
+):
+    monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
+    services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
+    for namespace_folder, monikers in [
+        (clusterconfig_namespace, ["clusterconfig"]),
+        (arc_namespace, services + ["arcagents"]),
+        (acs_namespace, ["arccontainerstorage"]),
+        (ssc_namespace, [OpsServiceType.secretstore.value]),
+        (certmanager_namespace, services),
+    ]:
+        if namespace_folder:
+            # remove empty folders in level 1
+            level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace_folder))
+
+            if namespace_folder == arc_namespace and monitor_path in walk_result:
+                monikers.append(OpsServiceType.azuremonitor.value)
+            assert set(level_1["folders"]) == set(monikers)
+            assert not level_1["files"]
+
+    if acstor_namespace:
+        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace))
+        if containerstorage_service:
+            services.append(containerstorage_service)
+        assert set(level_1["folders"]) == set(services)
+        assert not level_1["files"]
+
+    # remove empty folders in level 2
+    if clusterconfig_namespace:
+        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, clusterconfig_namespace, "clusterconfig"))
+        assert level_2["folders"] == ["billing"]
+        assert not level_2["files"]
+    if arc_namespace:
+        level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))
+        assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS]
+        assert not level_2["files"]
