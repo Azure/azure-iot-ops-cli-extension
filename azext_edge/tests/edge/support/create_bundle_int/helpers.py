@@ -400,15 +400,20 @@ def process_top_levels(
         acstor_namespace = set(cert_resource_namespaces) - set([certmanager_namespace, arc_namespace, namespace])
         acstor_namespace = acstor_namespace.pop() if acstor_namespace else None
 
+    namespaces = {
+        "arc": arc_namespace,
+        "aio": namespace,
+        "acs": acs_namespace,
+        "acstor": acstor_namespace,
+        "ssc": ssc_namespace,
+        "usage_system": clusterconfig_namespace,
+        "certmanager": certmanager_namespace,
+    }
+
     _remove_empty_folders(
         walk_result=walk_result,
-        arc_namespace=arc_namespace,
-        acs_namespace=acs_namespace,
-        acstor_namespace=acstor_namespace,
-        clusterconfig_namespace=clusterconfig_namespace,
+        namespaces=namespaces,
         containerstorage_service=containerstorage_service,
-        ssc_namespace=ssc_namespace,
-        certmanager_namespace=certmanager_namespace,
     )
 
     logger.debug("Determined the following namespaces:")
@@ -420,15 +425,7 @@ def process_top_levels(
     logger.debug(f"SSC namespace: {ssc_namespace}")
     logger.debug(f"Certmanager namespace: {certmanager_namespace}")
 
-    return {
-        "arc": arc_namespace,
-        "aio": namespace,
-        "acs": acs_namespace,
-        "acstor": acstor_namespace,
-        "ssc": ssc_namespace,
-        "usage_system": clusterconfig_namespace,
-        "certmanager": certmanager_namespace,
-    }
+    return namespaces
 
 
 def run_bundle_command(
@@ -491,14 +488,22 @@ def split_name(name: str) -> List[str]:
 
 def _remove_empty_folders(
     walk_result: Dict[str, Dict[str, List[str]]],
-    arc_namespace: str,
-    acs_namespace: str,
-    acstor_namespace: str,
-    clusterconfig_namespace: str,
+    namespaces: Dict[str, str],
+    # arc_namespace: str,
+    # acs_namespace: str,
+    # acstor_namespace: str,
+    # clusterconfig_namespace: str,
     containerstorage_service: str,
-    ssc_namespace: str,
-    certmanager_namespace: str,
+    # ssc_namespace: str,
+    # certmanager_namespace: str,
 ):
+    arc_namespace = namespaces.get("arc")
+    acs_namespace = namespaces.get("acs")
+    acstor_namespace = namespaces.get("acstor")
+    certmanager_namespace = namespaces.get("certmanager")
+    clusterconfig_namespace = namespaces.get("usage_system")
+    ssc_namespace = namespaces.get("ssc")
+
     monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
     services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
     for namespace_folder, monikers in [
