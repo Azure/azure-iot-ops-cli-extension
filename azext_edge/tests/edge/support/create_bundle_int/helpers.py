@@ -489,13 +489,7 @@ def split_name(name: str) -> List[str]:
 def _remove_empty_folders(
     walk_result: Dict[str, Dict[str, List[str]]],
     namespaces: Dict[str, str],
-    # arc_namespace: str,
-    # acs_namespace: str,
-    # acstor_namespace: str,
-    # clusterconfig_namespace: str,
     containerstorage_service: str,
-    # ssc_namespace: str,
-    # certmanager_namespace: str,
 ):
     arc_namespace = namespaces.get("arc")
     acs_namespace = namespaces.get("acs")
