@@ -205,7 +205,16 @@ def sort_kubectl_items_by_namespace(
 
 
 def process_additional_args(additional_args: str) -> Dict[str, Union[str, bool]]:
-    """Process additional args for init, create, upgrade."""
+    """
+    Process additional args for init, create, upgrade into dictionaries that can be passed in as kwargs.
+
+    This will transform the args into variable friendly keys (- into _).
+    Flag arguments will be converted to have the boolean value.
+
+    Examples:
+    --simulate-plc -> {"simulate_plc": True}
+    --desc "potato cluster" -> {"desc": "potato cluster"}
+    """
     arg_dict = {}
     if not additional_args:
         return arg_dict
