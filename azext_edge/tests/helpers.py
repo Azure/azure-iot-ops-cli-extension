@@ -204,6 +204,33 @@ def sort_kubectl_items_by_namespace(
     return sorted_items
 
 
+def process_additional_args(additional_args: str) -> Dict[str, Union[str, bool]]:
+    """Process additional args for init, create, upgrade."""
+    arg_dict = {}
+    if not additional_args:
+        return arg_dict
+    for arg in additional_args.split("--")[1:]:
+        arg = arg.strip().split(" ", maxsplit=1)
+        # --simulate-plc vs --desc "potato cluster"
+        arg[0] = arg[0].replace("-", "_")
+        if len(arg) == 1 or arg[1].lower() == "true":
+            arg_dict[arg[0]] = True
+        elif arg[1].lower() == "false":
+            arg_dict[arg[0]] = False
+        else:
+            arg_dict[arg[0]] = arg[1]
+    return arg_dict
+
+
+def strip_quotes(argument: Optional[str]) -> Optional[str]:
+    """Get rid of extra quotes when dealing with pipeline inputs."""
+    if not argument:
+        return argument
+    if argument[0] == argument[-1] and argument[0] in ("'", '"'):
+        argument = argument[1:-1]
+    return argument
+
+
 def generate_ops_resource(segments: int = 1) -> IoTOperationsResource:
     resource_id = ""
     for _ in range(segments):
