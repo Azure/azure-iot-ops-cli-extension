@@ -6,7 +6,7 @@
 
 from copy import deepcopy
 import random
-from typing import Any, Optional
+from typing import Any
 import pytest
 from azext_edge.edge.util import parse_kvp_nargs
 from azext_edge.edge.providers.orchestration.common import EXTENSION_ALIAS_TO_TYPE_MAP

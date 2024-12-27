@@ -6,7 +6,7 @@
 
 import json
 from os.path import isfile
-from typing import Dict, List, Optional, Union
+from typing import List, Optional
 
 import pytest
 from knack.log import get_logger
