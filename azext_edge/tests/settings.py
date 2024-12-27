@@ -26,7 +26,6 @@ class EnvironmentVariables(Enum):
     init_continue_on_error = "azext_edge_init_continue_on_error"
     init_redeployment = "azext_edge_init_redeployment"
     upgrade_args = "azext_edge_upgrade_args"
-    upgrade_continue_on_error = "azext_edge_upgrade_continue_on_error"
 
 
 class Setting(object):
