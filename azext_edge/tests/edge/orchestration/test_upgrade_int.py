@@ -6,7 +6,7 @@
 
 from copy import deepcopy
 import random
-from typing import Any
+from typing import Any, Dict, List
 import pytest
 from azext_edge.edge.util import parse_kvp_nargs
 from azext_edge.edge.providers.orchestration.common import EXTENSION_ALIAS_TO_TYPE_MAP
@@ -91,7 +91,7 @@ def test_upgrade(upgrade_int_setup):
 
 def assert_extensions(
     cluster_id: str,
-    original_ext_map: dict[str, Any],
+    original_ext_map: Dict[str, Any],
     additional_args: str = ""
 ):
     original_ext_map = deepcopy(original_ext_map)
@@ -123,7 +123,7 @@ def assert_extensions(
             assert ext_props["releaseTrain"] == original_ext_props["releaseTrain"]
 
 
-def get_extensions(cluster_id: str) -> list[dict[str, Any]]:
+def get_extensions(cluster_id: str) -> List[Dict[str, Any]]:
     extension_result = run(
         f"az rest --method GET --url {cluster_id}/providers/"
         "Microsoft.KubernetesConfiguration/extensions?api-version=2023-05-01"
