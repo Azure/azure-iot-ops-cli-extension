@@ -394,9 +394,10 @@ def process_top_levels(
         if _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="certificate"):
             cert_resource_namespaces.append(name)
 
-    # find the acstor namespace if fault tolerance is not enabled
+    # find the acstor namespace if fault tolerance is enabled,
+    # but support bundle only getting certmanager resources
     if not acstor_namespace:
-        # acstor_namespace should be the namespace that is not in the list of namespaces that are not certmanager
+        # acstor_namespace should be the namespace besides certmanager, arc, and aio namespace
         acstor_namespace = set(cert_resource_namespaces) - set([certmanager_namespace, arc_namespace, namespace])
         acstor_namespace = acstor_namespace.pop() if acstor_namespace else None
 
@@ -410,7 +411,7 @@ def process_top_levels(
         "certmanager": certmanager_namespace,
     }
 
-    _remove_empty_folders(
+    _clean_up_folders(
         walk_result=walk_result,
         namespaces=namespaces,
         containerstorage_service=containerstorage_service,
@@ -486,11 +487,15 @@ def split_name(name: str) -> List[str]:
     return second_pass
 
 
-def _remove_empty_folders(
+def _clean_up_folders(
     walk_result: Dict[str, Dict[str, List[str]]],
     namespaces: Dict[str, str],
     containerstorage_service: str,
 ):
+    """
+    Clean up folders from walk_result that are not needed for following
+    azure IoT operation namespace assertion.
+    """
     arc_namespace = namespaces.get("arc")
     acs_namespace = namespaces.get("acs")
     acstor_namespace = namespaces.get("acstor")
