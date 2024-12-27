@@ -398,8 +398,14 @@ def process_top_levels(
     # but support bundle only getting certmanager resources
     if not acstor_namespace:
         # acstor_namespace should be the namespace besides certmanager, arc, and aio namespace
-        acstor_namespace = set(cert_resource_namespaces) - set([certmanager_namespace, arc_namespace, namespace])
-        acstor_namespace = acstor_namespace.pop() if acstor_namespace else None
+        acstor_namespace = next(
+            (
+                name
+                for name in cert_resource_namespaces
+                if name not in [certmanager_namespace, arc_namespace, namespace]
+            ),
+            None,
+        )
 
     namespaces = {
         "arc": arc_namespace,
