@@ -231,7 +231,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "ARC connect cluster"
-        uses: azure/azure-iot-ops-cli-extension/.github/actions/connect-arc@dev
+        uses: ./.github/actions/connect-arc
         with:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
