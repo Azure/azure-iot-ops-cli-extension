@@ -74,12 +74,12 @@ def prepare_bundle(
     log_age_seconds: int = DAY_IN_SECONDS,
     apis: Optional[Iterable[EdgeResourceApi]] = None,
 ) -> dict:
-    acs_to_run = {}
+    osm_to_run = {}
 
     if apis:
-        acs_to_run.update(assemble_crd_work(apis=apis))
+        osm_to_run.update(assemble_crd_work(apis=apis))
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
-    acs_to_run.update(support_runtime_elements)
+    osm_to_run.update(support_runtime_elements)
 
-    return acs_to_run
+    return osm_to_run
