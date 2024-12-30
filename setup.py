@@ -34,6 +34,7 @@ DEPENDENCIES = [
     "protobuf~=4.25.0",
     "opentelemetry-proto~=1.20.0",
     "packaging>=23.2",
+    "jsonschema~=4.23.0"
 ]
 
 CLASSIFIERS = [

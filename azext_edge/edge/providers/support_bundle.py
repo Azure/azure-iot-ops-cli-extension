@@ -13,6 +13,7 @@ from rich.console import Console, NewLine
 
 from ..common import OpsServiceType
 from ..providers.edge_api import (
+    CERTMANAGER_API_V1,
     CLUSTER_CONFIG_API_V1,
     CONTAINERSTORAGE_API_V1,
     MQTT_BROKER_API_V1,
@@ -31,6 +32,7 @@ logger = get_logger(__name__)
 
 console = Console()
 
+COMPAT_CERTMANAGER_APIS = EdgeApiManager(resource_apis=[CERTMANAGER_API_V1])
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
 COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
@@ -65,6 +67,7 @@ def build_bundle(
     from .support.arccontainerstorage import prepare_bundle as prepare_arccontainerstorage_bundle
     from .support.secretstore import prepare_bundle as prepare_secretstore_bundle
     from .support.azuremonitor import prepare_bundle as prepare_azuremonitor_bundle
+    from .support.certmanager import prepare_bundle as prepare_certmanager_bundle
 
     def collect_default_works(
         pending_work: dict,
@@ -116,6 +119,10 @@ def build_bundle(
         OpsServiceType.azuremonitor.value: {
             "apis": COMPAT_AZUREMONITOR_APIS,
             "prepare_bundle": prepare_azuremonitor_bundle,
+        },
+        OpsServiceType.certmanager.value: {
+            "apis": COMPAT_CERTMANAGER_APIS,
+            "prepare_bundle": prepare_certmanager_bundle,
         },
     }
 
