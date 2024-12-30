@@ -31,7 +31,7 @@ def test_create_bundle_osm(init_setup, tracked_files):
     check_custom_resource_files(file_objs=osm_file_map, resource_api=OPENSERVICEMESH_CONFIG_API_V1)
     check_custom_resource_files(file_objs=osm_file_map, resource_api=OPENSERVICEMESH_POLICY_API_V1)
 
-    expected_workload_types = ["deployment", "pod", "replicaset", "service"]
+    expected_workload_types = ["configmap", "deployment", "pod", "replicaset", "service"]
     expected_types = set(expected_workload_types).union(OPENSERVICEMESH_CONFIG_API_V1.kinds)
     expected_types = expected_types.union(OPENSERVICEMESH_POLICY_API_V1.kinds)
 

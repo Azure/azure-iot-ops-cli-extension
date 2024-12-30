@@ -65,6 +65,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     ssc_namespace = namespaces.get("ssc")
     arc_namespace = namespaces.get("arc")
     certmanager_namespace = namespaces.get("certmanager")
+    osm_namespace = namespaces.get("osm")
 
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -90,6 +91,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         (acstor_namespace, "containerstorage"),
         (ssc_namespace, OpsServiceType.secretstore.value),
         (certmanager_namespace, OpsServiceType.certmanager.value),
+        (osm_namespace, OpsServiceType.openservicemesh.value),
     ]:
         if namespace:
             walk_result.pop(path.join(BASE_ZIP_PATH, namespace, service), {})
@@ -165,6 +167,13 @@ def _get_expected_services(
         and OpsServiceType.azuremonitor.value in expected_services
     ):
         expected_services.remove(OpsServiceType.azuremonitor.value)
+
+    # openservicemesh folder will not be created under aio namespace
+    if (
+        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.openservicemesh.value))
+        and OpsServiceType.openservicemesh.value in expected_services
+    ):
+        expected_services.remove(OpsServiceType.openservicemesh.value)
 
     expected_services.append("meta")
     return expected_services
