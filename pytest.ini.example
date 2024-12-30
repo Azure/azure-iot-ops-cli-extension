@@ -20,3 +20,4 @@ env =
 
 markers =
     init_scenario_test: mark tests that will run az iot ops init
+    upgrade_scenario_test: mark tests that will run az iot ops upgrade

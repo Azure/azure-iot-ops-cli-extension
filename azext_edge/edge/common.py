@@ -142,6 +142,7 @@ class OpsServiceType(ListableEnum):
     arccontainerstorage = "acs"
     secretstore = "secretstore"
     azuremonitor = "azuremonitor"
+    certmanager = "certmanager"
 
     @classmethod
     def list_check_services(cls):

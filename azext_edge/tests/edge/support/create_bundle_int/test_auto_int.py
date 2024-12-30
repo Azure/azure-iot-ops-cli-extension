@@ -64,6 +64,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     acstor_namespace = namespaces.get("acstor")
     ssc_namespace = namespaces.get("ssc")
     arc_namespace = namespaces.get("arc")
+    certmanager_namespace = namespaces.get("certmanager")
 
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -88,9 +89,16 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         (acs_namespace, "arccontainerstorage"),
         (acstor_namespace, "containerstorage"),
         (ssc_namespace, OpsServiceType.secretstore.value),
+        (certmanager_namespace, OpsServiceType.certmanager.value),
     ]:
         if namespace:
             walk_result.pop(path.join(BASE_ZIP_PATH, namespace, service), {})
+
+    # remove certmanager resources in other namespace from walk_result from aio namespace assertion
+
+    for namespace in [arc_namespace, acstor_namespace]:
+        if namespace and path.join(BASE_ZIP_PATH, namespace, OpsServiceType.certmanager.value) in walk_result:
+            walk_result.pop(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.certmanager.value), {})
 
     # remove azuremonitor resources in arc namespace from walk_result from aio namespace assertion
     if arc_namespace and path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value) in walk_result:

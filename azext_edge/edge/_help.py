@@ -22,6 +22,7 @@ from .providers.support_bundle import (
     COMPAT_MQTT_BROKER_APIS,
     COMPAT_OPCUA_APIS,
     COMPAT_DATAFLOW_APIS,
+    COMPAT_CERTMANAGER_APIS,
 )
 
 
@@ -58,6 +59,7 @@ def load_iotops_help():
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
+            - {COMPAT_CERTMANAGER_APIS.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
             - {ARCCONTAINERSTORAGE_API_V1.as_str()}
