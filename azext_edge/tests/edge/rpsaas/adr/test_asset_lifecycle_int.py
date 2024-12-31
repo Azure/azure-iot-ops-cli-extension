@@ -6,6 +6,7 @@
 
 import json
 import os
+import pytest
 from time import sleep
 from knack.log import get_logger
 from azext_edge.edge.common import FileType
@@ -16,6 +17,9 @@ from ....helpers import run
 logger = get_logger(__name__)
 QUERY_RETRIES = 4
 QUERY_RETRY_INT = 30
+
+# pytest mark for rpsaas (cloud-side) tests
+pytestmark = pytest.mark.rpsaas
 
 
 def test_asset_lifecycle(require_init, tracked_resources):

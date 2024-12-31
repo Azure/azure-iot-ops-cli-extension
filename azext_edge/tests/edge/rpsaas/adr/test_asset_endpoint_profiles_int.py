@@ -5,12 +5,16 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+import pytest
 from time import sleep
 from knack.log import get_logger
 from ....generators import generate_random_string
 from ....helpers import create_file, run
 
 logger = get_logger(__name__)
+
+# pytest mark for rpsaas (cloud-side) tests
+pytestmark = pytest.mark.rpsaas
 
 
 def test_asset_endpoint_lifecycle(require_init, tracked_resources, tracked_files):

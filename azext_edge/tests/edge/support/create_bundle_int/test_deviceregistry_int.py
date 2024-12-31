@@ -17,6 +17,8 @@ from .helpers import (
 
 logger = get_logger(__name__)
 
+pytestmark = pytest.mark.e2e
+
 
 def test_create_bundle_deviceregistry(init_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS deviceregistry."""

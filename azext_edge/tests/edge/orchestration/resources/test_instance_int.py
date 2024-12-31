@@ -13,6 +13,9 @@ from ....helpers import run
 
 logger = get_logger(__name__)
 
+# pytest mark for rpsaas (cloud-side) tests
+pytestmark = pytest.mark.rpsaas
+
 
 @pytest.fixture(scope="function")
 def instance_test_setup(settings):
