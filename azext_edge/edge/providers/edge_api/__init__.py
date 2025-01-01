@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from .base import EdgeResourceApi, EdgeApiManager
-from .certmanager import CERTMANAGER_API_V1
+from .certmanager import CERTMANAGER_API_V1, TRUSTMANAGER_API_V1
 from .clusterconfig import CLUSTER_CONFIG_API_V1
 from .mq import MQ_ACTIVE_API, MQTT_BROKER_API_V1, MqResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
@@ -40,4 +40,5 @@ __all__ = [
     "MetaResourceKinds",
     "SECRETSYNC_API_V1",
     "SECRETSTORE_API_V1",
+    "TRUSTMANAGER_API_V1",
 ]
