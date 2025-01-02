@@ -1,0 +1,44 @@
+# Copyright (c) Microsoft. All rights reserved.
+# Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+name: 'Create a k3s cluster in your agent'
+description: |
+  Action to create a k3s cluster in your Github workflow.
+inputs:
+  version:
+    required: false
+    description: 'K3S version string'
+    default: "v1.28.5+k3s1"
+runs:
+  using: 'composite'
+  steps:
+    - name: "Install K3S"
+      env:
+        K3S_VERSION: ${{ inputs.version }}
+      run: |
+        # vars
+        release_url="https://github.com/k3s-io/k3s/releases/download"
+        install_dir="/usr/local/bin/k3s"
+
+        # install k3s
+        curl -Lo $install_dir "$release_url/${{ env.K3S_VERSION }}/k3s"
+        chmod a+x $install_dir
+      shell: bash
+    - name: "Start K3S server"
+      env:
+        # config
+        K3S_KUBECONFIG_MODE: 644
+      run: |
+        # start cluster in background
+        sudo k3s server --cluster-init &
+
+        # allow time for cluster to initialize
+        sleep 15s
+      shell: bash
+    - name: "Write cluster config"
+      run: |
+        mkdir ~/.kube 2> /dev/null
+        sudo k3s kubectl config view --raw > ~/.kube/config
+        chmod 600 ~/.kube/config
+        export KUBECONFIG=~/.kube/config
+      shell: bash

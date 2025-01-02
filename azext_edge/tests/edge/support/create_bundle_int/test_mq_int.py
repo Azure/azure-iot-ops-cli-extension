@@ -18,6 +18,8 @@ from .helpers import (
 
 logger = get_logger(__name__)
 
+pytestmark = pytest.mark.e2e
+
 
 @pytest.mark.parametrize("mq_traces", [False, True])
 def test_create_bundle_mq(init_setup, tracked_files, mq_traces):

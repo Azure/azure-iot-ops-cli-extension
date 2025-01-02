@@ -59,3 +59,25 @@ runs:
         ${{ env.custom-locations-oid }}
         ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
       shell: bash
+    - name: "Wait for cluster connected status"
+      env:
+        cluster-name: "${{ inputs.cluster-name }}"
+        resource-group: "${{ inputs.resource-group }}"
+      run: |
+        retry_count=0
+        max_retries=5
+        sleep=5
+        
+        status=$(az connectedk8s show -n ${{ env.cluster-name }} -g ${{ env.resource-group }} --query "connectivityStatus" -o tsv)
+        
+        while [ "$status" != "Connected" ] && [ $retry_count -lt $max_retries ]; do
+          echo "Cluster status is "$status", Retrying in $sleep seconds..."
+          sleep $sleep
+          status=$(az connectedk8s show -n ${{ env.cluster-name }} -g ${{ env.resource-group }} --query "connectivityStatus" -o tsv)
+          retry_count=$((retry_count + 1))
+        done
+        if [ "$status" != "Connected" ]; then
+          echo "Cluster connection failed after $max_retries attempts."
+          exit 1
+        fi
+      shell: bash
