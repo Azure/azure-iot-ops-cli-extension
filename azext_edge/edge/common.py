@@ -132,6 +132,7 @@ class OpsServiceType(ListableEnum):
     """
 
     mq = "broker"
+    openservicemesh = "openservicemesh"
     opcua = "opcua"
     akri = "akri"
     deviceregistry = "deviceregistry"

@@ -9,6 +9,7 @@ from .certmanager import CERTMANAGER_API_V1, TRUSTMANAGER_API_V1
 from .clusterconfig import CLUSTER_CONFIG_API_V1
 from .mq import MQ_ACTIVE_API, MQTT_BROKER_API_V1, MqResourceKinds
 from .opcua import OPCUA_API_V1, OpcuaResourceKinds
+from .openservicemesh import OPENSERVICEMESH_CONFIG_API_V1, OPENSERVICEMESH_POLICY_API_V1
 from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
 from .deviceregistry import DEVICEREGISTRY_API_V1, DeviceRegistryResourceKinds
 from .dataflow import DATAFLOW_API_V1, DataflowResourceKinds
@@ -28,6 +29,8 @@ __all__ = [
     "MqResourceKinds",
     "MQ_ACTIVE_API",
     "MQTT_BROKER_API_V1",
+    "OPENSERVICEMESH_CONFIG_API_V1",
+    "OPENSERVICEMESH_POLICY_API_V1",
     "OPCUA_API_V1",
     "OpcuaResourceKinds",
     "KeyVaultResourceKinds",

@@ -67,6 +67,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     ssc_namespace = namespaces.get("ssc")
     arc_namespace = namespaces.get("arc")
     certmanager_namespace = namespaces.get("certmanager")
+    osm_namespace = namespaces.get("osm")
 
     # Level 1
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -92,6 +93,7 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
         (acstor_namespace, "containerstorage"),
         (ssc_namespace, OpsServiceType.secretstore.value),
         (certmanager_namespace, OpsServiceType.certmanager.value),
+        (osm_namespace, OpsServiceType.openservicemesh.value),
     ]:
         if namespace:
             walk_result.pop(path.join(BASE_ZIP_PATH, namespace, service), {})
@@ -140,33 +142,16 @@ def _get_expected_services(
 ) -> List[str]:
     expected_services = [ops_service] if ops_service else OpsServiceType.list()
 
-    # device registry folder will not be created if there are no device registry resources
-    if (
-        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.deviceregistry.value))
-        and OpsServiceType.deviceregistry.value in expected_services
-    ):
-        expected_services.remove(OpsServiceType.deviceregistry.value)
-
-    # arccotainerstorage folder will not be created under aio namespace
-    if (
-        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, "arccontainerstorage"))
-        and OpsServiceType.arccontainerstorage.value in expected_services
-    ):
-        expected_services.remove(OpsServiceType.arccontainerstorage.value)
-
-    # secretstore folder will not be created if there are no secretstore resources
-    if (
-        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.secretstore.value))
-        and OpsServiceType.secretstore.value in expected_services
-    ):
-        expected_services.remove(OpsServiceType.secretstore.value)
-
-    # azuremonitor folder will not be created if there are no azuremonitor resources
-    if (
-        not walk_result.get(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.azuremonitor.value))
-        and OpsServiceType.azuremonitor.value in expected_services
-    ):
-        expected_services.remove(OpsServiceType.azuremonitor.value)
+    # remove services that are not created in aio namespace
+    for monikor, service in [
+        (OpsServiceType.deviceregistry.value, OpsServiceType.deviceregistry.value),
+        ("arccontainerstorage", OpsServiceType.arccontainerstorage.value),
+        (OpsServiceType.secretstore.value, OpsServiceType.secretstore.value),
+        (OpsServiceType.azuremonitor.value, OpsServiceType.azuremonitor.value),
+        (OpsServiceType.openservicemesh.value, OpsServiceType.openservicemesh.value),
+    ]:
+        if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, monikor)) and service in expected_services:
+            expected_services.remove(service)
 
     expected_services.append("meta")
     return expected_services
