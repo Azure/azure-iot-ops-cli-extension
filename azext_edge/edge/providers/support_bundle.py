@@ -26,6 +26,7 @@ from ..providers.edge_api import (
     ARCCONTAINERSTORAGE_API_V1,
     SECRETSYNC_API_V1,
     SECRETSTORE_API_V1,
+    TRUSTMANAGER_API_V1,
     AZUREMONITOR_API_V1,
     EdgeApiManager,
 )
@@ -34,7 +35,7 @@ logger = get_logger(__name__)
 
 console = Console()
 
-COMPAT_CERTMANAGER_APIS = EdgeApiManager(resource_apis=[CERTMANAGER_API_V1])
+COMPAT_CERTMANAGER_APIS = EdgeApiManager(resource_apis=[CERTMANAGER_API_V1, TRUSTMANAGER_API_V1])
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
 COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1])
 COMPAT_OSM_APIS = EdgeApiManager(resource_apis=[OPENSERVICEMESH_CONFIG_API_V1, OPENSERVICEMESH_POLICY_API_V1])

@@ -8,3 +8,5 @@ from .base import EdgeResourceApi
 
 
 CERTMANAGER_API_V1 = EdgeResourceApi(group="cert-manager.io", version="v1", moniker="certmanager")
+
+TRUSTMANAGER_API_V1 = EdgeResourceApi(group="trust.cert-manager.io", version="v1alpha1", moniker="certmanager")

@@ -19,6 +19,8 @@ from azext_edge.edge.providers.check.common import (
 
 logger = get_logger(__name__)
 
+pytestmark = pytest.mark.e2e
+
 
 @pytest.mark.parametrize("post", [None, False, True])
 @pytest.mark.parametrize("pre", [None, False, True])

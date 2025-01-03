@@ -6,7 +6,7 @@
 
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import CERTMANAGER_API_V1
+from azext_edge.edge.providers.edge_api import CERTMANAGER_API_V1, TRUSTMANAGER_API_V1
 from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
@@ -27,8 +27,14 @@ def test_create_bundle_certmanager(init_setup, tracked_files):
         resource_api=CERTMANAGER_API_V1,
         namespace=file_map["__namespaces__"]["certmanager"],
     )
+    check_custom_resource_files(
+        file_objs=certmanager_file_map,
+        resource_api=TRUSTMANAGER_API_V1,
+        namespace=file_map["__namespaces__"]["certmanager"],
+    )
     expected_workload_types = ["deployment", "pod", "replicaset", "service", "configmap"]
     expected_types = set(expected_workload_types).union(CERTMANAGER_API_V1.kinds)
+    expected_types = expected_types.union(TRUSTMANAGER_API_V1.kinds)
     assert set(certmanager_file_map.keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=certmanager_file_map,

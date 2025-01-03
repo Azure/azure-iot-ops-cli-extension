@@ -4,12 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import AZUREMONITOR_API_V1
 from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
+
+pytestmark = pytest.mark.e2e
 
 
 def test_create_bundle_azuremonitor(init_setup, tracked_files):
