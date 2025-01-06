@@ -16,7 +16,7 @@ def generate_names(prefix: str = "", count: int = 1, max_length: int = 48) -> Un
     Generic name generator that returns a list of names. If only one
     name is generated, returns only the name as a string.
     """
-    names = [(prefix + generate_random_string())[:max_length] for _ in range(count)]
+    names = [(prefix + insecure_random_string())[:max_length] for _ in range(count)]
     return names[0] if count == 1 else names
 
 
@@ -24,7 +24,22 @@ def get_zeroed_subscription() -> str:
     return "00000000-0000-0000-0000-000000000000"
 
 
+def insecure_random_string(size: int = 36, force_lower: bool = False) -> str:
+    """
+    Generates a simple random string of the specified size.
+    Suitable for generating randomized resource names, etc.
+    """
+    from random import choice
+    valid_sequence = string.ascii_lowercase + string.digits
+    if not force_lower:
+        valid_sequence += string.ascii_uppercase
+    return "".join(choice(valid_sequence) for _ in range(size))
+
+
 def generate_random_string(size: int = 36, force_lower: bool = False):
+    """
+    Generates a crytopgraphically strong random string of the specified size.
+    """
     valid_sequence = string.ascii_lowercase + string.digits
     if not force_lower:
         valid_sequence += string.ascii_uppercase

@@ -6,7 +6,7 @@
 
 import json
 from os.path import isfile
-from typing import Dict, List, Optional, Union
+from typing import List, Optional
 
 import pytest
 from knack.log import get_logger
@@ -15,7 +15,7 @@ from azext_edge.edge.common import DEFAULT_BROKER, DEFAULT_BROKER_LISTENER
 from azext_edge.edge.util.common import assemble_nargs_to_dict
 
 from ....generators import generate_random_string
-from ....helpers import run
+from ....helpers import process_additional_args, run, strip_quotes
 
 logger = get_logger(__name__)
 
@@ -62,8 +62,8 @@ def init_test_setup(settings, tracked_resources):
         "resourceGroup": settings.env.azext_edge_rg,
         "schemaRegistryId": registry["id"],
         "instanceName": instance_name,
-        "additionalCreateArgs": _strip_quotes(settings.env.azext_edge_create_args),
-        "additionalInitArgs": _strip_quotes(settings.env.azext_edge_init_args),
+        "additionalCreateArgs": strip_quotes(settings.env.azext_edge_create_args),
+        "additionalInitArgs": strip_quotes(settings.env.azext_edge_init_args),
         "continueOnError": settings.env.azext_edge_init_continue_on_error or False,
         "redeployment": settings.env.azext_edge_init_redeployment or False,
     }
@@ -81,9 +81,9 @@ def init_test_setup(settings, tracked_resources):
 @pytest.mark.init_scenario_test
 def test_init_scenario(init_test_setup, tracked_files):
     additional_init_args = init_test_setup["additionalInitArgs"] or ""
-    init_arg_dict = _process_additional_args(additional_init_args)
+    init_arg_dict = process_additional_args(additional_init_args)
     additional_create_args = init_test_setup["additionalCreateArgs"] or ""
-    create_arg_dict = _process_additional_args(additional_create_args)
+    create_arg_dict = process_additional_args(additional_create_args)
     _process_broker_config_file_arg(create_arg_dict, tracked_files)
 
     cluster_name = init_test_setup["clusterName"]
@@ -345,21 +345,6 @@ def assert_trust_config_args(instance_name: str, resource_group: str, trust_sett
         assert issuer["kind"] == trust_args["issuerKind"]
 
 
-def _process_additional_args(additional_args: str) -> Dict[str, Union[str, bool]]:
-    arg_dict = {}
-    for arg in additional_args.split("--")[1:]:
-        arg = arg.strip().split(" ", maxsplit=1)
-        # --simulate-plc vs --desc "potato cluster"
-        arg[0] = arg[0].replace("-", "_")
-        if len(arg) == 1 or arg[1].lower() == "true":
-            arg_dict[arg[0]] = True
-        elif arg[1].lower() == "false":
-            arg_dict[arg[0]] = False
-        else:
-            arg_dict[arg[0]] = arg[1]
-    return arg_dict
-
-
 def _process_broker_config_file_arg(create_arg_dict: dict, tracked_files: List[str]):
     if "broker_config_file" in create_arg_dict:
         broker_config_path = create_arg_dict["broker_config_file"]
@@ -367,14 +352,6 @@ def _process_broker_config_file_arg(create_arg_dict: dict, tracked_files: List[s
             tracked_files.append(broker_config_path)
             with open(broker_config_path, "w", encoding="utf-8") as bcf:
                 json.dump(DEFAULT_BROKER_CONFIG, bcf)
-
-
-def _strip_quotes(argument: Optional[str]) -> Optional[str]:
-    if not argument:
-        return argument
-    if argument[0] == argument[-1] and argument[0] in ("'", '"'):
-        argument = argument[1:-1]
-    return argument
 
 
 DEFAULT_BROKER_CONFIG = {

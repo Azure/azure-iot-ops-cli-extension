@@ -4,11 +4,14 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from .helpers import check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
+
+pytestmark = pytest.mark.e2e
 
 
 def test_create_bundle_schemas(init_setup, tracked_files):

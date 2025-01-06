@@ -132,6 +132,7 @@ class OpsServiceType(ListableEnum):
     """
 
     mq = "broker"
+    openservicemesh = "openservicemesh"
     opcua = "opcua"
     akri = "akri"
     deviceregistry = "deviceregistry"
@@ -141,6 +142,7 @@ class OpsServiceType(ListableEnum):
     arccontainerstorage = "acs"
     secretstore = "secretstore"
     azuremonitor = "azuremonitor"
+    certmanager = "certmanager"
 
     @classmethod
     def list_check_services(cls):
@@ -226,7 +228,6 @@ class SecurityModes(Enum):
 class SecurityPolicies(Enum):
     """Security policies for the OPCUA connector."""
 
-    # TODO: add in user friendly input mapping
     none = "none"
     basic128 = "Basic128Rsa15"
     basic256 = "Basic256"

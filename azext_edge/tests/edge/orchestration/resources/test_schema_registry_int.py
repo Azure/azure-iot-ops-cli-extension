@@ -4,11 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 # TODO: temporary while delete is borked
 from azure.cli.core.azclierror import CLIInternalError
 
 from ....generators import generate_random_string
 from ....helpers import run
+
+# pytest mark for rpsaas (cloud-side) tests
+pytestmark = pytest.mark.rpsaas
 
 
 def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):

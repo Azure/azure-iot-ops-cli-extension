@@ -1,0 +1,168 @@
+# TODO - consolidate re-used steps between int_test.yml into actions (cluster setup, etc)
+name: E2E Containerized Integration tests
+on:
+  workflow_call:
+    inputs:
+      resource-group:
+        description: Resource group for cluster creation
+        type: string
+        required: true
+        default: ops-cli-int-test-rg
+      custom-locations-oid:
+        description: Object ID of Custom Locations RP
+        type: string
+        required: false
+        default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+    secrets:
+      # required for az login
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+  workflow_dispatch:
+    inputs:
+      resource-group:
+        description: Resource group for cluster creation
+        type: string
+        required: true
+        default: ops-cli-int-test-rg
+      custom-locations-oid:
+        description: Object ID of Custom Locations RP
+        type: string
+        required: false
+        default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+
+permissions:
+  # required for OpenID federation
+  contents: 'read'
+  id-token: 'write'
+
+env:
+  RESOURCE_GROUP: "${{ inputs.resource-group }}"
+  CLUSTER_NAME: "opt${{ github.run_number }}"
+  INSTANCE_NAME: "inst${{ github.run_number }}"
+  STORAGE_NAME: "initstore${{ github.run_number }}"
+  SCHEMAREG_NAME: "init-registry${{ github.run_number }}"
+  CUSTOM_LOCATIONS_OID: ${{ inputs.custom-locations-oid }}
+  K3S_VERSION: "v1.28.5+k3s1"
+
+jobs:
+  test:
+    name: "Run cluster tests"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Setup python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: "Checkout extension source for build"
+        uses: actions/checkout@v4
+      - name: "Build and install local IoT Ops extension from source"
+        run: |
+          pip install -r dev_requirements.txt
+          python -m setup bdist_wheel -d dist
+          wheel=$(find ./dist/*.whl)
+          az extension add --source $wheel -y
+      - name: "Create k3s cluster"
+        uses: ./.github/actions/create-k3s-cluster
+        with:
+          version: ${{ env.K3S_VERSION }}
+      - name: "Az CLI login"
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "ARC connect cluster"
+        uses: ./.github/actions/connect-arc
+        with:
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
+      - name: "Az CLI login refresh"
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Run az iot ops init"
+        run: |
+          # init
+          az iot ops init --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }}
+      - name: "Create storage"
+        id: "create_storage"
+        run: |
+          # create storage account
+          storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.STORAGE_NAME }} --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny --query "id" -o tsv)
+          echo "created storage account with id $storage_id"
+          echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
+      - name: "Create schema registry"
+        id: "create_schema_registry"
+        run: |
+          # create schema registry
+          schema_registry=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n ${{ env.SCHEMAREG_NAME }} --rn ${{ env.SCHEMAREG_NAME }}-ns --sa-resource-id ${{ steps.create_storage.outputs.STORAGE_ID}} --query "id" -o tsv)
+          echo "created schema registry with id $schema_registry"
+          echo "SCHEMAREGISTRY_ID=$schema_registry" >> $GITHUB_OUTPUT
+      - name: "Run az iot ops create"
+        run: |
+          az iot ops create --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -n ${{ env.INSTANCE_NAME }}  --sr-resource-id ${{ steps.create_schema_registry.outputs.SCHEMAREGISTRY_ID }}
+      - name: "Output variables for future steps"
+        id: "env_out"
+        run: |
+          echo "RESOURCE_GROUP=${{ env.RESOURCE_GROUP }}" >> $GITHUB_OUTPUT
+          echo "CLUSTER_NAME=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
+      - name: "Containerized tests"
+        env:
+          azext_edge_skip_init: true  # skip init tests in container
+          azext_edge_init_redeployment: false  # ensure no redeployment in container
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+        run: |
+          # volume mounts
+          azure_dir=$(realpath ~/.azure)
+          kubeconfig=$(realpath ~/.kube/config)
+          kubeconfig_mount=/root/.kube/config
+          tempLog=$(mktemp -d)
+
+          # env vars
+          envVars=()
+          envVars+=("-e" "azext_edge_skip_init=$azext_edge_skip_init")
+          envVars+=("-e" "azext_edge_init_redeployment=$azext_edge_init_redeployment")
+          envVars+=("-e" "AIO_CLI_INIT_PREFLIGHT_DISABLED=$AIO_CLI_INIT_PREFLIGHT_DISABLED")
+          envVars+=("-e" "azext_edge_rg=$azext_edge_rg")
+          envVars+=("-e" "azext_edge_cluster=$azext_edge_cluster")
+          envVars+=("-e" "azext_edge_instance=$azext_edge_instance")
+          envVars+=("-e" "KUBECONFIG=$kubeconfig_mount")
+
+          # Run tests
+          set +e
+          docker run \
+            --rm \
+            "${envVars[@]}" \
+            -v "$kubeconfig:$kubeconfig_mount:ro" \
+            -v "${azure_dir}:/root/.azure" \
+            -v "${tempLog}:/usr/src/azure-iot-ops/junit" \
+            --network host \
+            $(docker build . -q)
+      - name: "Az CLI login refresh"
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Delete AIO resources"
+        if: ${{ always() }}
+        run: |
+          az iot ops delete -n ${{ env.INSTANCE_NAME }} -g ${{ env.RESOURCE_GROUP }} -y --force
+      - name: "Delete connected cluster"
+        if: ${{ always() }}
+        run: |
+          az resource delete -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
+      - name: "Delete schemaregistry and storage"
+        if: ${{ always() }}
+        run: |
+          az resource delete -v --id ${{ steps.create_storage.outputs.STORAGE_ID }} --verbose --no-wait
+          az resource delete -v --id ${{ steps.create_schema_registry.outputs.SCHEMAREGISTRY_ID }} --verbose --no-wait

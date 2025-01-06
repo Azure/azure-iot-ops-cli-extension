@@ -5,12 +5,16 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+import pytest
 from time import sleep
 from knack.log import get_logger
 from ....generators import generate_random_string
 from ....helpers import create_file, run
 
 logger = get_logger(__name__)
+
+# pytest mark for rpsaas (cloud-side) tests
+pytestmark = pytest.mark.rpsaas
 
 
 def test_asset_endpoint_lifecycle(require_init, tracked_resources, tracked_files):
@@ -205,9 +209,9 @@ def assert_opcua_props(result, **expected):
 
     # subscription
     if expected.get("sub_life_time"):
-        result_config["subscription"]["maxItems"] = expected["sub_life_time"]
+        result_config["subscription"]["lifeTimeMilliseconds"] = expected["sub_life_time"]
     if expected.get("sub_max_items"):
-        result_config["subscription"]["lifeTimeMilliseconds"] = expected["sub_max_items"]
+        result_config["subscription"]["maxItems"] = expected["sub_max_items"]
 
     # security
     if expected.get("accept_untrusted_certs") is not None:

@@ -13,9 +13,12 @@ from rich.console import Console, NewLine
 
 from ..common import OpsServiceType
 from ..providers.edge_api import (
+    CERTMANAGER_API_V1,
     CLUSTER_CONFIG_API_V1,
     CONTAINERSTORAGE_API_V1,
     MQTT_BROKER_API_V1,
+    OPENSERVICEMESH_CONFIG_API_V1,
+    OPENSERVICEMESH_POLICY_API_V1,
     OPCUA_API_V1,
     DEVICEREGISTRY_API_V1,
     DATAFLOW_API_V1,
@@ -23,6 +26,7 @@ from ..providers.edge_api import (
     ARCCONTAINERSTORAGE_API_V1,
     SECRETSYNC_API_V1,
     SECRETSTORE_API_V1,
+    TRUSTMANAGER_API_V1,
     AZUREMONITOR_API_V1,
     EdgeApiManager,
 )
@@ -31,8 +35,10 @@ logger = get_logger(__name__)
 
 console = Console()
 
+COMPAT_CERTMANAGER_APIS = EdgeApiManager(resource_apis=[CERTMANAGER_API_V1, TRUSTMANAGER_API_V1])
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
 COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1])
+COMPAT_OSM_APIS = EdgeApiManager(resource_apis=[OPENSERVICEMESH_CONFIG_API_V1, OPENSERVICEMESH_POLICY_API_V1])
 COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1])
@@ -54,6 +60,7 @@ def build_bundle(
 
     from .support.billing import prepare_bundle as prepare_billing_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
+    from .support.openservicemesh import prepare_bundle as prepare_openservicemesh_bundle
     from .support.opcua import prepare_bundle as prepare_opcua_bundle
     from .support.dataflow import prepare_bundle as prepare_dataflow_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
@@ -65,6 +72,7 @@ def build_bundle(
     from .support.arccontainerstorage import prepare_bundle as prepare_arccontainerstorage_bundle
     from .support.secretstore import prepare_bundle as prepare_secretstore_bundle
     from .support.azuremonitor import prepare_bundle as prepare_azuremonitor_bundle
+    from .support.certmanager import prepare_bundle as prepare_certmanager_bundle
 
     def collect_default_works(
         pending_work: dict,
@@ -87,6 +95,10 @@ def build_bundle(
         OpsServiceType.billing.value: {
             "apis": COMPAT_CLUSTER_CONFIG_APIS,
             "prepare_bundle": prepare_billing_bundle,
+        },
+        OpsServiceType.openservicemesh.value: {
+            "apis": COMPAT_OSM_APIS,
+            "prepare_bundle": prepare_openservicemesh_bundle,
         },
         OpsServiceType.opcua.value: {
             "apis": COMPAT_OPCUA_APIS,
@@ -116,6 +128,10 @@ def build_bundle(
         OpsServiceType.azuremonitor.value: {
             "apis": COMPAT_AZUREMONITOR_APIS,
             "prepare_bundle": prepare_azuremonitor_bundle,
+        },
+        OpsServiceType.certmanager.value: {
+            "apis": COMPAT_CERTMANAGER_APIS,
+            "prepare_bundle": prepare_certmanager_bundle,
         },
     }
 

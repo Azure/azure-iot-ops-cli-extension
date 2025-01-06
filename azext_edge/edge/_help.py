@@ -9,8 +9,17 @@ Help definitions for Digital Twins commands.
 
 from knack.help_files import helps
 
-from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
-from azext_edge.edge.providers.edge_api.arccontainerstorage import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1
+from azext_edge.edge.providers.edge_api import (
+    ARCCONTAINERSTORAGE_API_V1,
+    CERTMANAGER_API_V1,
+    CONTAINERSTORAGE_API_V1,
+    OPENSERVICEMESH_CONFIG_API_V1,
+    OPENSERVICEMESH_POLICY_API_V1,
+    SECRETSTORE_API_V1,
+    SECRETSYNC_API_V1,
+    TRUSTMANAGER_API_V1,
+)
+
 
 from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
@@ -54,12 +63,16 @@ def load_iotops_help():
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
+            - {CERTMANAGER_API_V1.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
             - {ARCCONTAINERSTORAGE_API_V1.as_str()}
             - {CONTAINERSTORAGE_API_V1.as_str()}
+            - {OPENSERVICEMESH_CONFIG_API_V1.as_str()}
+            - {OPENSERVICEMESH_POLICY_API_V1.as_str()}
             - {SECRETSYNC_API_V1.as_str()}
             - {SECRETSTORE_API_V1.as_str()}
+            - {TRUSTMANAGER_API_V1.as_str()}
 
             Note: logs from evicted pod will not be captured, as they are inaccessible. For details
             on why a pod was evicted, please refer to the related pod and node files.
