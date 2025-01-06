@@ -4,10 +4,18 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 from random import randint
-from typing import Optional
+from typing import Optional, List
 
 import pytest
 
+from azext_edge.edge.providers.orchestration.common import (
+    EXTENSION_TYPE_ACS,
+    EXTENSION_TYPE_OPS,
+    EXTENSION_TYPE_OSM,
+    EXTENSION_TYPE_PLATFORM,
+    EXTENSION_TYPE_SSC,
+    EXTENSION_TYPE_TO_MONIKER_MAP,
+)
 from azext_edge.edge.providers.orchestration.targets import (
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
@@ -248,3 +256,24 @@ def verify_trust_config(target_scenario: dict, parameters: dict, template: Optio
 
     if parameters:
         assert parameters["trustConfig"]["value"] == expected_payload
+
+
+def test_get_extension_versions():
+    def _assert_version_map(extension_types: List[str], version_map: dict):
+        for ext_type in extension_types:
+            moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
+            assert version_map[moniker]["version"]
+            assert version_map[moniker]["train"]
+        assert len(extension_types) == len(version_map)
+
+    targets = InitTargets(generate_random_string(), generate_random_string())
+    enablement_version_map = targets.get_extension_versions()
+    enablement_types = [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_OSM, EXTENSION_TYPE_ACS, EXTENSION_TYPE_SSC]
+    _assert_version_map(enablement_types, enablement_version_map)
+
+    create_version_map = targets.get_extension_versions(False)
+    create_types = [EXTENSION_TYPE_OPS]
+    _assert_version_map(create_types, create_version_map)
+
+    combined_version_map = {**enablement_version_map, **create_version_map}
+    _assert_version_map(enablement_types + create_types, combined_version_map)

@@ -105,9 +105,10 @@ class UpgradeScenario:
     def __init__(self, description: Optional[str] = None, confirm_yes: bool = True):
         self.extensions: Dict[str, dict] = {}
         self.targets = InitTargets(cluster_name=generate_random_string(), resource_group_name=generate_random_string())
-        self.init_version_map: Dict[str, dict] = {}
-        self.init_version_map.update(self.targets.get_extension_versions())
-        self.init_version_map.update(self.targets.get_extension_versions(False))
+        self.init_version_map: Dict[str, dict] = {
+            **self.targets.get_extension_versions(),
+            **self.targets.get_extension_versions(False),
+        }
         self.user_kwargs: Dict[str, dict] = {}
         self.patch_record: Dict[str, dict] = {}
         self.ext_type_response_map: Dict[str, Tuple[int, Optional[dict]]] = {}
@@ -244,7 +245,7 @@ class UpgradeScenario:
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="0.5.0")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.2.0")
             .set_extension(ext_type=EXTENSION_TYPE_OSM, ext_vers="0.3.0"),
-            [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_OPS, EXTENSION_TYPE_OSM],
+            [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_OSM, EXTENSION_TYPE_OPS],
         ),
         (
             UpgradeScenario("Patch ops extension due to ops_config override").set_user_kwargs(
@@ -272,7 +273,7 @@ class UpgradeScenario:
                 acs_version="1.1.1",
                 acs_train=generate_random_string(),
             ),
-            [EXTENSION_TYPE_ACS, EXTENSION_TYPE_OPS, EXTENSION_TYPE_SSC],
+            [EXTENSION_TYPE_ACS, EXTENSION_TYPE_SSC, EXTENSION_TYPE_OPS],
         ),
         (
             UpgradeScenario("Throws ValidationError because cluster is not connected.")
@@ -344,7 +345,7 @@ def test_ops_upgrade(
 
     assert_patch_order(upgrade_result, expected_patched_ext_types)
     assert_overrides(target_scenario, upgrade_result)
-    assert_displays(spy_upgrade_displays, no_progress)
+    assert_displays(spy_upgrade_displays, no_progress, patched_ext_types=expected_patched_ext_types)
 
 
 def assert_overrides(target_scenario: UpgradeScenario, upgrade_result: List[dict]):
@@ -389,6 +390,7 @@ def assert_displays(
     no_progress: bool,
     progress_count: Optional[int] = None,
     error_context: Optional[Exception] = None,
+    patched_ext_types: Optional[list] = None,
 ):
     if not progress_count:
         progress_count = 2
@@ -400,6 +402,13 @@ def assert_displays(
     if all([not no_progress, not error_context]):
         table = spy_upgrade_displays["print"].mock_calls[1].args[1]
         assert table.title
+        if patched_ext_types:
+            table_monikers = list(table.columns[0].cells)
+            # Ensures table column monikers exist and match the order of update
+            for i in range(len(patched_ext_types)):
+                ext_type = patched_ext_types[i]
+                moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
+                assert moniker == table_monikers[i]
 
     assert len(spy_upgrade_displays["progress.__init__"].mock_calls) == progress_count
     assert spy_upgrade_displays["progress.__init__"].mock_calls[0].kwargs == {

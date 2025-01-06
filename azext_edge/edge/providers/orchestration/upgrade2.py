@@ -86,9 +86,10 @@ class UpgradeManager:
         self.targets = InitTargets(
             cluster_name=self.resource_map.connected_cluster.cluster_name, resource_group_name=resource_group_name
         )
-        self.init_version_map: Dict[str, dict] = {}
-        self.init_version_map.update(self.targets.get_extension_versions())
-        self.init_version_map.update(self.targets.get_extension_versions(False))
+        self.init_version_map: Dict[str, dict] = {
+            **self.targets.get_extension_versions(),
+            **self.targets.get_extension_versions(False),
+        }
 
     def analyze_cluster(self, **override_kwargs: dict) -> "ClusterUpgradeState":
         with Progress(
@@ -147,9 +148,9 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):
     for ext in upgrade_state.extension_upgrades:
         patch_payload = ext.get_patch()
         if not patch_payload:
-            patch_payload = "N/A"
-        else:
-            patch_payload = JSON(dumps(patch_payload))
+            continue
+
+        patch_payload = JSON(dumps(patch_payload))
 
         table.add_row(
             f"{ext.moniker}",
