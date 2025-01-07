@@ -53,15 +53,15 @@ def upgrade_ops_instance(
 
     upgrade_state = upgrade_manager.analyze_cluster(**kwargs)
 
+    if not upgrade_state.has_upgrades():
+        logger.warning("Nothing to upgrade :)")
+        return
+
     if not no_progress:
         render_upgrade_table(upgrade_state)
 
     should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Upgrade")
     if should_bail:
-        return
-
-    if not upgrade_state.has_upgrades():
-        logger.warning("Nothing to upgrade :)")
         return
 
     return upgrade_manager.apply_upgrades(upgrade_state)
