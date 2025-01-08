@@ -715,6 +715,8 @@ def assert_user_confirm(mocked_confirm: Mock, target_scenario: dict):
     backend_redundancy_factor = target_scenario["broker"].get("backendRedundancyFactor")
     if backend_redundancy_factor and backend_redundancy_factor < 2:
         mocked_confirm.ask.assert_called_once()
+        return
+    mocked_confirm.ask.assert_not_called()
 
 
 def assert_create_displays(spy_work_displays: Dict[str, Mock], target_scenario: dict):
