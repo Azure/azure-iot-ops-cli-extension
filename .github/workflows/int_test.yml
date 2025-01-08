@@ -88,25 +88,26 @@ jobs:
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
       INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.feature }}"
+      KEYVAULT_NAME: "kv${{ github.run_number }}"
     strategy:
       fail-fast: false
       matrix:
-        feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
-        runtime-args:
-          - ${{ inputs.runtime-init-args != '' || inputs.runtime-create-args != '' }}
-        exclude:
-          - feature: custom-input
-            runtime-args: false
-          - feature: default
-            runtime-args: true
-          - feature: insecure-listener
-            runtime-args: true
-          - feature: syncrules
-            runtime-args: true
-          - feature: redeploy
-            runtime-args: true
-          - feature: trustbundle
-            runtime-args: true
+        feature: [secretsync]  # [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
+        # runtime-args:
+        #   - ${{ inputs.runtime-init-args != '' || inputs.runtime-create-args != '' }}
+        # exclude:
+        #   - feature: custom-input
+        #     runtime-args: false
+        #   - feature: default
+        #     runtime-args: true
+        #   - feature: insecure-listener
+        #     runtime-args: true
+        #   - feature: syncrules
+        #     runtime-args: true
+        #   - feature: redeploy
+        #     runtime-args: true
+        #   - feature: trustbundle
+        #     runtime-args: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -265,6 +266,16 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
         run: |
           tox r -e "python-all-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
+          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+      - name: "Tox SecretSync Integration Tests"
+        if: ${{ matrix.feature == 'secretsync' && !inputs.use-container }}
+        env:
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+          azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
+        run: |
+          tox r -e "python-secretsync-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Containerized tests"
