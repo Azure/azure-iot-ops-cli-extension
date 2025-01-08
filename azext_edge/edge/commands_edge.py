@@ -23,6 +23,7 @@ from .providers.orchestration.common import (
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
 
+
 logger = get_logger(__name__)
 
 
@@ -159,6 +160,7 @@ def create_instance(
     add_insecure_listener: Optional[bool] = None,
     tags: Optional[dict] = None,
     no_progress: Optional[bool] = None,
+    confirm_yes: Optional[str] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
@@ -166,6 +168,7 @@ def create_instance(
     from .util import (
         is_env_flag_enabled,
         read_file_content,
+        should_continue_prompt,
     )
 
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
@@ -179,6 +182,16 @@ def create_instance(
         raise ArgumentUsageError(
             f"--add-insecure-listener cannot be used when --broker-service-type is {MqServiceType.load_balancer.value}."
         )
+
+    # TODO - @digimaun, should [temp] user confirms be moved to InitTargets?
+    if broker_backend_redundancy_factor < 2:
+        logger.warning(
+            "Deploying Azure IoT Operations with less than 2 broker backend replicas "
+            "prevents future version upgrades https://aka.ms/aio-broker-upgrade."
+        )
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Create")
+        if should_bail:
+            return
 
     work_manager = WorkManager(cmd)
     result_payload = work_manager.execute_ops_init(

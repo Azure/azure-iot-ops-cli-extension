@@ -21,8 +21,7 @@ from rich.progress import (
 )
 from rich.table import Table, box
 
-from ...util import parse_kvp_nargs
-from ...util.common import should_continue_prompt
+from ...util import parse_kvp_nargs, should_continue_prompt
 from .common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     EXTENSION_TYPE_OPS,

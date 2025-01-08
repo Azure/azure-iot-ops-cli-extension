@@ -329,6 +329,7 @@ def build_target_scenario(
             "containerRuntimeSocket": None,
             "kubernetesDistro": None,
         },
+        "broker": {},
         "noProgress": True,
         "raises": raises,
         "omitHttpMethods": omit_http_methods,
@@ -341,6 +342,9 @@ def build_target_scenario(
     if "cluster_properties" in kwargs:
         payload["cluster"]["properties"].update(kwargs["cluster_properties"])
         kwargs.pop("cluster_properties")
+    if "broker" in kwargs:
+        payload["broker"].update(kwargs["broker"])
+        kwargs.pop("broker")
     if "apiControl" in kwargs:
         for k in kwargs["apiControl"]:
             payload["apiControl"][k] = kwargs["apiControl"][k]
@@ -496,6 +500,7 @@ def assert_init_deployment_body(body_str: str, target_scenario: dict):
     "target_scenario",
     [
         build_target_scenario(),
+        build_target_scenario(broker={"backendRedundancyFactor": 1}),
         build_target_scenario(
             akri={"containerRuntimeSocket": "/var/containerd/socket", "kubernetesDistro": "K3s"},
             instance={
@@ -625,9 +630,10 @@ def test_iot_ops_create(
     mocked_cmd: Mock,
     mocked_responses: responses,
     mocked_sleep: Mock,
-    spy_work_displays: Dict[str, Mock],
+    mocked_confirm: Mock,
     mocked_logger: Mock,
-    target_scenario: dict,
+    spy_work_displays: Dict[str, Mock],
+    target_scenario: Dict[str, Union[bool, dict]],
 ):
     servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses)
     from azext_edge.edge.commands_edge import create_instance
@@ -662,6 +668,10 @@ def test_iot_ops_create(
     if target_scenario["akri"]["kubernetesDistro"]:
         create_call_kwargs["kubernetes_distro"] = target_scenario["akri"]["kubernetesDistro"]
 
+    backend_redundancy_factor = target_scenario["broker"].get("backendRedundancyFactor")
+    if backend_redundancy_factor:
+        create_call_kwargs["broker_backend_redundancy_factor"] = backend_redundancy_factor
+
     if target_scenario["noProgress"]:
         create_call_kwargs["no_progress"] = target_scenario["noProgress"]
 
@@ -687,6 +697,7 @@ def test_iot_ops_create(
     assert_call_map(expected_call_count_map, servgen.call_map)
     assert_create_displays(spy_work_displays, target_scenario)
     assert_logger(mocked_logger, target_scenario)
+    assert_user_confirm(mocked_confirm, target_scenario)
 
     # TODO - @digimaun
     if target_scenario["noProgress"]:
@@ -698,6 +709,12 @@ def assert_logger(mocked_logger: Mock, target_scenario: dict):
     warning_calls: List[Mock] = mocked_logger.warning.mock_calls
     for w in expeted_warnings:
         assert w[1] in warning_calls[w[0]].args[0]
+
+
+def assert_user_confirm(mocked_confirm: Mock, target_scenario: dict):
+    backend_redundancy_factor = target_scenario["broker"].get("backendRedundancyFactor")
+    if backend_redundancy_factor and backend_redundancy_factor < 2:
+        mocked_confirm.ask.assert_called_once()
 
 
 def assert_create_displays(spy_work_displays: Dict[str, Mock], target_scenario: dict):
@@ -764,12 +781,13 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict):
     expected_profile_instances = target_scenario.get("dataflow", {}).get("profileInstances") or 1
     assert parameters["defaultDataflowinstanceCount"]["value"] == expected_profile_instances
 
-    # @digimaun - this asserts defaults. brokerConfig should be primary tested in targets unit tests.
+    # @digimaun - this asserts defaults. brokerConfig should be primarily tested in targets unit tests.
+    expected_backend_redundancy_factor: int = target_scenario["broker"].get("backendRedundancyFactor", 2)
     assert parameters["brokerConfig"] == {
         "value": {
             "frontendReplicas": 2,
             "frontendWorkers": 2,
-            "backendRedundancyFactor": 2,
+            "backendRedundancyFactor": expected_backend_redundancy_factor,
             "backendWorkers": 2,
             "backendPartitions": 2,
             "memoryProfile": "Medium",
