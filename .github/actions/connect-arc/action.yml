@@ -62,7 +62,7 @@ runs:
         ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
       shell: bash
     - name: "Update cluster to enable workload identity"
-      if: ${{ inputs.enable-workload-identity }}
+      if: inputs.enable-workload-identity
       env:
         cluster-name: "${{ inputs.cluster-name }}"
         resource-group: "${{ inputs.resource-group }}"
