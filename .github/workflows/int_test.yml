@@ -237,6 +237,7 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
+          enable-workload-identity: ${{ matrix.feature == 'secretsync' }}
       - name: "Tox test environment setup for init"
         run: |
           python -m pip install tox
