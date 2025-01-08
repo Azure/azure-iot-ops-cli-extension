@@ -399,7 +399,7 @@ def assert_displays(
         if error_context == ValidationError:
             progress_count = 1
 
-    if all([not no_progress, not error_context]):
+    if all([not no_progress, not error_context, patched_ext_types]):
         table = spy_upgrade_displays["print"].mock_calls[1].args[1]
         assert table.title
         if patched_ext_types:
