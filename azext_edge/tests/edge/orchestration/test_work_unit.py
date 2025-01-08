@@ -681,7 +681,7 @@ def test_iot_ops_create(
         assert_exception(expected_exc_meta=exc_meta, call_func=create_instance, call_kwargs=create_call_kwargs)
         return
 
-    create_result = create_instance(**create_call_kwargs)  # pylint: disable=assignment-from-no-return
+    create_result = create_instance(**create_call_kwargs)  # pylint: disable=assignment-from-none
 
     expected_call_count_map = {
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
