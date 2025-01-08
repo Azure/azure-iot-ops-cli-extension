@@ -246,6 +246,13 @@ jobs:
         if: ${{ matrix.feature == 'default' && !inputs.use-container }}
         run: |
           tox r -vv -e "python-all-int" --notest
+      - name: "Az CLI login"
+        if: ${{ matrix.feature == 'secretsync' && !inputs.use-container }}
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Tox INIT Integration Tests"
         env:
           AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
