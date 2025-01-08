@@ -225,6 +225,18 @@ jobs:
           spec:
             selfSigned: {}
           EOF
+      - name: "Tox test environment setup for init"
+        run: |
+          python -m pip install tox
+          tox r -vv -e python-init-int --notest
+      - name: "Tox test environment setup for integration tests"
+        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
+        run: |
+          tox r -vv -e "python-all-int" --notest
+      - name: "Tox test environment setup for integration tests"
+        if: ${{ matrix.feature == 'secretsync' && !inputs.use-container }}
+        run: |
+          tox r -vv -e "python-secretsync-int" --notest
       - name: "Az CLI login"
         uses: azure/login@v2
         with:
@@ -238,14 +250,6 @@ jobs:
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
           enable-workload-identity: ${{ matrix.feature == 'secretsync' }}
-      - name: "Tox test environment setup for init"
-        run: |
-          python -m pip install tox
-          tox r -vv -e python-init-int --notest
-      - name: "Tox test environment setup for integration tests"
-        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
-        run: |
-          tox r -vv -e "python-all-int" --notest
       - name: "Az CLI login"
         if: ${{ matrix.feature == 'secretsync' && !inputs.use-container }}
         uses: azure/login@v2
