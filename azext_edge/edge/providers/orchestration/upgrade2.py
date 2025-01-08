@@ -21,8 +21,7 @@ from rich.progress import (
 )
 from rich.table import Table, box
 
-from ...util import parse_kvp_nargs
-from ...util.common import should_continue_prompt
+from ...util import parse_kvp_nargs, should_continue_prompt
 from .common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     EXTENSION_TYPE_OPS,
@@ -53,15 +52,15 @@ def upgrade_ops_instance(
 
     upgrade_state = upgrade_manager.analyze_cluster(**kwargs)
 
+    if not upgrade_state.has_upgrades():
+        logger.warning("Nothing to upgrade :)")
+        return
+
     if not no_progress:
         render_upgrade_table(upgrade_state)
 
     should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Upgrade")
     if should_bail:
-        return
-
-    if not upgrade_state.has_upgrades():
-        logger.warning("Nothing to upgrade :)")
         return
 
     return upgrade_manager.apply_upgrades(upgrade_state)

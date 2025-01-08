@@ -13,6 +13,7 @@ from .common import (
     is_env_flag_enabled,
     parse_kvp_nargs,
     set_log_level,
+    should_continue_prompt,
     url_safe_hash_phrase,
     url_safe_random_chars,
 )
@@ -40,4 +41,5 @@ __all__ = [
     "parse_kvp_nargs",
     "url_safe_hash_phrase",
     "url_safe_random_chars",
+    "should_continue_prompt",
 ]

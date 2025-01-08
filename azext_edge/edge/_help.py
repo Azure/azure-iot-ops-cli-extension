@@ -1097,7 +1097,7 @@ def load_iotops_help():
                       For OPC UA connector arguments, a value of -1 means that parameter will not be used (ex: --session-reconnect-backoff -1 means that no exponential backoff should be used).
                       A value of 0 means use the fastest practical rate (ex: --default-sampling-int 0 means use the fastest sampling interval possible for the server).
 
-                      For more information on how to create an OPCUA connector, please see https://aka.ms/opcua-quickstart
+                      For more information on how to configure asset endpoints for the OPC UA connector, please see https://aka.ms/opcua-quickstart
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >
