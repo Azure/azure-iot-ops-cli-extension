@@ -30,10 +30,9 @@ def secretsync_int_setup(settings, tracked_resources):
             f"Cannot run secretsync tests without an instance and resource group. Current settings:\n {settings}"
         )
     if not any([settings.env.azext_edge_kv, settings.env.azext_edge_sp_object_id]):
-        raise AssertionError(
+        pytest.skip(
             "Cannot run secretsync tests without a keyvault id or a object id. Object Id is needed to add "
             "'Key Vault Secrets Officer' to a newly created key vault."
-            f"Current settings:\n {settings}"
         )
 
     kv_id = settings.env.azext_edge_kv
