@@ -19,6 +19,7 @@ permissions:
     id-token: 'write'
 jobs:
   int-test:
+      needs: []
       uses: ./.github/workflows/container_int_test.yml
       with:
         resource-group: ops-cli-int-test-rg
@@ -27,7 +28,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   build-and-deploy:
-    needs: int-test
+    needs: []
     environment: container_registry
     runs-on: ubuntu-latest
     steps:
