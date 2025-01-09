@@ -6,6 +6,7 @@
 
 import pytest
 from knack.log import get_logger
+from time import sleep
 from typing import Optional
 
 from azure.cli.core.azclierror import CLIInternalError
@@ -13,6 +14,8 @@ from ...generators import generate_random_string
 from ...helpers import run
 
 logger = get_logger(__name__)
+ROLE_MAX_RETRIES = 5
+ROLE_RETRY_INTERVAL = 30
 
 
 @pytest.fixture
@@ -53,9 +56,16 @@ def secretsync_int_setup(settings, tracked_resources):
         )["id"]
         tracked_resources.append(mi_id)
 
+    instance_name = settings.env.azext_edge_instance
+    resource_group = settings.env.azext_edge_rg
+    # list to track initial result if there is something
+    initial_list_result = run(f"az iot ops secretsync list -n {instance_name} -g {resource_group}")
+    if initial_list_result:
+        run(f"az iot ops secretsync disable -n {instance_name} -g {resource_group} -y")
+
     yield {
-        "resourceGroup": settings.env.azext_edge_rg,
-        "instanceName": settings.env.azext_edge_instance,
+        "resourceGroup": resource_group,
+        "instanceName": instance_name,
         "keyvaultId": kv_id,
         "userAssignedId": mi_id,
     }
@@ -63,7 +73,25 @@ def secretsync_int_setup(settings, tracked_resources):
     # note that you need to purge the kv too...
     if kv_name:
         run(f"az keyvault delete -n {kv_name} -g {settings.env.azext_edge_rg}")
-        run(f"az keyvault purge -n {kv_name} -g {settings.env.azext_edge_rg}")
+        run(f"az keyvault purge -n {kv_name}")
+
+    # if it was enabled before, reenable
+    if initial_list_result:
+        kv_name = initial_list_result[0]["properties"]["keyvaultName"]
+        mi_client_id = initial_list_result[0]["properties"]["clientId"]
+        spc_name = initial_list_result[0]["name"]
+        try:
+            kv_id = run(f"az keyvault show -n {kv_name}")["id"]
+            mi_id = run(f"az identity list --query \"[?clientId=='{mi_client_id}']\"")[0]["id"]
+            # if the role assignments were applied, they should still exist
+            # TODO: phase 2 - direct cluster connection for --self-hosted-issuer
+            run(
+                f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
+                f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name} --skip-ra"
+            )
+        except (CLIInternalError, IndexError):
+            import pdb; pdb.set_trace()
+            logger.error("Could not reenable secretsync correctly.")
 
 
 @pytest.mark.rpsaas
@@ -82,15 +110,9 @@ def test_secretsync(secretsync_int_setup):
         "mi_client_id": mi_client_id,
     }
 
-    # list to make sure there is nothing
-    initial_list_result = run(f"az iot ops secretsync list -n {instance_name} -g {resource_group}")
     initial_role_list = [
-        role["roleDefinitionName"] for role in run(
-            f"az role assignment list --scope {kv_id} --assignee {mi_client_id}"
-        )
+        role["roleDefinitionName"] for role in _get_role_list(kv_id, mi_client_id)
     ]
-    if initial_list_result:
-        run(f"az iot ops secretsync disable -n {instance_name} -g {resource_group} -y")
 
     # enable with skip ra + check if test can be run
     try:
@@ -122,41 +144,27 @@ def test_secretsync(secretsync_int_setup):
     # disable
     run(f"az iot ops secretsync disable -n {instance_name} -g {resource_group} -y")
 
-    # second enable with custom name, self host issuer
-    spc_name = generate_random_string()
+    # second enable with custom name
+    spc_name = generate_random_string(force_lower=True)
     enable_result = run(
         f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
-        f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name} --self-hosted-issuer"
+        f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name}"
     )
+    # TODO: phase 2 - direct cluster connection for --self-hosted-issuer
     _assert_secret_sync_class(
-        result=list_result[0],
+        result=enable_result,
         spc_name=spc_name,
         **expected_result
     )
     _assert_role_assignments(
         initial_assignment_names=initial_role_list,
         kv_id=kv_id,
-        mi_client_id=mi_client_id
+        mi_client_id=mi_client_id,
+        expected_secretsync_roles=True
     )
 
     # disable
     run(f"az iot ops secretsync disable -n {instance_name} -g {resource_group} -y")
-
-    # if it was enabled before, reenable
-    if initial_list_result:
-        kv_name = initial_list_result["properties"]["keyvaultName"]
-        mi_client_id = initial_list_result["properties"]["clientId"]
-        spc_name = initial_list_result["name"]
-        try:
-            kv_id = run(f"az keyvault show -n {kv_name}")["id"]
-            mi_id = run(f"az identity list --query '[?clientId=='{mi_client_id}']'")[0]["id"]
-            # if the role assignments were applied, they should still exist
-            run(
-                f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
-                f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name} --skip-ra"
-            )
-        except (CLIInternalError, IndexError):
-            logger.error("Could not reenable secretsync correctly.")
 
 
 def _assert_secret_sync_class(
@@ -194,5 +202,20 @@ def _assert_role_assignments(
         assert "Key Vault Reader" in current_assignment_names
     else:
         # role could have been applied before - so just make sure nothing new was applied
-        difference_roles = set(expected_secretsync_roles).difference(set(initial_assignment_names))
+        difference_roles = set(current_assignment_names).difference(set(initial_assignment_names))
         assert not difference_roles
+
+
+def _get_role_list(
+    kv_id: str,
+    mi_client_id: str
+):
+    tries = 0
+    while tries < ROLE_MAX_RETRIES:
+        try:
+            return run(f"az role assignment list --scope {kv_id} --assignee {mi_client_id}")
+        except CLIInternalError:
+            tries += 1
+            sleep(ROLE_RETRY_INTERVAL)
+
+    raise AssertionError("Failed to create user assigned identity. Please retry with a given identity.")
