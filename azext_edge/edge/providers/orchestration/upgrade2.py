@@ -6,6 +6,7 @@
 
 from json import dumps
 from typing import Dict, List, Optional, Tuple
+from uuid import uuid4
 
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
@@ -29,10 +30,20 @@ from .common import (
 )
 from .resources import Instances
 from .targets import InitTargets
+from .template import TEMPLATE_BLUEPRINT_INSTANCE
+
+# TODO
+INSTANCE_TEMPLATE = TEMPLATE_BLUEPRINT_INSTANCE.copy()
 
 logger = get_logger(__name__)
 
 DEFAULT_CONSOLE = Console()
+
+CONFIG_DELTA_EXT_MAP = {
+    # EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS]: INSTANCE_TEMPLATE.content["variables"][
+    #     "defaultAioConfigurationSettings"
+    # ]
+}
 
 
 def upgrade_ops_instance(
@@ -127,6 +138,7 @@ class UpgradeManager:
                 ext for ext in upgrade_state.extension_upgrades if ext.can_upgrade()
             ]
             return_payload = []
+            headers = {"x-ms-correlation-request-id": str(uuid4()), "CommandName": "iot ops upgrade"}
             upgrade_task = progress.add_task("Applying changes...", total=len(upgradeable_extensions))
             for ext in upgradeable_extensions:
                 updated = self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
@@ -135,6 +147,7 @@ class UpgradeManager:
                     extension_name=ext.extension["name"],
                     update_payload=ext.get_patch(),
                     retry_total=0,
+                    headers=headers,
                 )
                 return_payload.append(updated)
                 progress.advance(upgrade_task)
@@ -236,6 +249,7 @@ class ExtensionUpgradeState:
         self.extension = extension
         self.desired_version_map = desired_version_map
         self.override = override or ConfigOverride()
+        self.config_delta = {}
 
     @property
     def current_version(self) -> Tuple[str, str]:
@@ -274,7 +288,9 @@ class ExtensionUpgradeState:
         if self._has_delta_in_train():
             payload["properties"]["releaseTrain"] = self.desired_version[1]
         if self._has_delta_in_config():
-            payload["properties"]["configurationSettings"] = self.override.config
+            config_settings = self.config_delta
+            config_settings.update(self.override.config)
+            payload["properties"]["configurationSettings"] = config_settings
 
         return payload
 
@@ -289,6 +305,12 @@ class ExtensionUpgradeState:
         )
 
     def _has_delta_in_config(self) -> bool:
+        if self.moniker in CONFIG_DELTA_EXT_MAP:
+            self.config_delta = calculate_config_delta(
+                current=self.extension["properties"]["configurationSettings"],
+                target=CONFIG_DELTA_EXT_MAP[self.moniker],
+            )
+            return bool(self.override.config) or bool(self.config_delta)
         return bool(self.override.config)
 
 
@@ -307,3 +329,18 @@ def get_default_table() -> Table:
     table.add_column("Patch Payload")
 
     return table
+
+
+def calculate_config_delta(current: Dict[str, str], target: Dict[str, str]) -> dict:
+    delta = {}
+    for key in current:
+        if key in target and current[key] != target[key]:
+            delta[key] = target[key]
+        elif key not in target:
+            delta[key] = None
+
+    for key in target:
+        if key not in current:
+            delta[key] = target[key]
+
+    return delta
