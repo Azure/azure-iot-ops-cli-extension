@@ -90,7 +90,6 @@ def secretsync_int_setup(settings, tracked_resources):
                 f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name} --skip-ra"
             )
         except (CLIInternalError, IndexError):
-            import pdb; pdb.set_trace()
             logger.error("Could not reenable secretsync correctly.")
 
 
