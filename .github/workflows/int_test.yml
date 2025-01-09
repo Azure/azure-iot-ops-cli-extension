@@ -92,7 +92,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [secretsync]  # [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
+        feature: [trustbundle]  # [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
         # runtime-args:
         #   - ${{ inputs.runtime-init-args != '' || inputs.runtime-create-args != '' }}
         # exclude:
@@ -249,9 +249,9 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
-          enable-workload-identity: ${{ matrix.feature == 'secretsync' }}
+          enable-workload-identity: ${{ matrix.feature == 'trustbundle' }}
       - name: "Az CLI login"
-        if: ${{ matrix.feature == 'secretsync' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -281,7 +281,7 @@ jobs:
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Tox SecretSync Integration Tests"
-        if: ${{ matrix.feature == 'secretsync' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
