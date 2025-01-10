@@ -107,8 +107,11 @@ def test_secretsync(secretsync_int_setup):
     instance_name = secretsync_int_setup["instanceName"]
     kv_id = secretsync_int_setup["keyvaultId"]
     mi_id = secretsync_int_setup["userAssignedId"]
+    use_self_hosted_issuer = False
+
     extended_loc = run(f"az iot ops show -g {resource_group} -n {instance_name}")["extendedLocation"]["name"]
     mi_client_id = run(f"az identity show --ids {mi_id}")["clientId"]
+    mi_principal_id = run(f"az identity show --ids {mi_id}")["principalId"]
     expected_result = {
         "extended_location": extended_loc,
         "resource_group": resource_group,
@@ -129,6 +132,14 @@ def test_secretsync(secretsync_int_setup):
     except CLIInternalError as e:
         if "not enabled as an oidc issuer or for workload identity federation." in e.error_msg:
             pytest.skip("Cluster is not enabled for secretsync.")
+        elif "No issuerUrl is available." in e.error_msg:
+            use_self_hosted_issuer = True
+            enable_result = run(
+                f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
+                f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --skip-ra --self-hosted-issuer"
+            )
+        else:
+            raise e
     _assert_secret_sync_class(
         result=enable_result,
         **expected_result
@@ -136,7 +147,7 @@ def test_secretsync(secretsync_int_setup):
     _assert_role_assignments(
         initial_assignment_names=initial_role_list,
         kv_id=kv_id,
-        mi_client_id=mi_client_id
+        mi_principal_id=mi_principal_id
     )
 
     # list
@@ -155,7 +166,7 @@ def test_secretsync(secretsync_int_setup):
     enable_result = run(
         f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
         f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name} "
-        "--skip-ra false"
+        f"--skip-ra false {'--self-hosted-issuer' if use_self_hosted_issuer else ''} "
     )
     # TODO: phase 2 - direct cluster connection for --self-hosted-issuer
     _assert_secret_sync_class(
@@ -166,7 +177,7 @@ def test_secretsync(secretsync_int_setup):
     _assert_role_assignments(
         initial_assignment_names=initial_role_list,
         kv_id=kv_id,
-        mi_client_id=mi_client_id,
+        mi_principal_id=mi_principal_id,
         expected_secretsync_roles=True
     )
 
@@ -196,7 +207,7 @@ def _assert_secret_sync_class(
 def _assert_role_assignments(
     initial_assignment_names: list,
     kv_id: str,
-    mi_client_id: str,
+    mi_principal_id: str,
     expected_secretsync_roles: bool = False
 ):
     tries = 0
@@ -204,7 +215,7 @@ def _assert_role_assignments(
         try:
             current_assignment_names = [
                 role["roleDefinitionName"] for role in run(
-                    f"az role assignment list --scope {kv_id} --assignee {mi_client_id}"
+                    f"az role assignment list --scope {kv_id} --assignee {mi_principal_id}"
                 )
             ]
             logger.warning(f"Expected secret sync roles: {expected_secretsync_roles}")
