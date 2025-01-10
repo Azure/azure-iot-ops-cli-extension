@@ -191,18 +191,27 @@ def _assert_role_assignments(
     mi_client_id: str,
     expected_secretsync_roles: bool = False
 ):
-    current_assignment_names = [
-        role["roleDefinitionName"] for role in run(
-            f"az role assignment list --scope {kv_id} --assignee {mi_client_id}"
-        )
-    ]
-    if expected_secretsync_roles:
-        assert "Key Vault Secrets User" in current_assignment_names
-        assert "Key Vault Reader" in current_assignment_names
-    else:
-        # role could have been applied before - so just make sure nothing new was applied
-        difference_roles = set(current_assignment_names).difference(set(initial_assignment_names))
-        assert not difference_roles
+    tries = 0
+    while tries < ROLE_MAX_RETRIES:
+        try:
+            current_assignment_names = [
+                role["roleDefinitionName"] for role in run(
+                    f"az role assignment list --scope {kv_id} --assignee {mi_client_id}"
+                )
+            ]
+            if expected_secretsync_roles:
+                assert "Key Vault Secrets User" in current_assignment_names
+                assert "Key Vault Reader" in current_assignment_names
+            else:
+                # role could have been applied before - so just make sure nothing new was applied
+                difference_roles = set(current_assignment_names).difference(set(initial_assignment_names))
+                assert not difference_roles
+            return
+        except AssertionError as e:
+            tries += 1
+            sleep(ROLE_RETRY_INTERVAL)
+            if tries == ROLE_MAX_RETRIES:
+                raise e
 
 
 def _get_role_list(
