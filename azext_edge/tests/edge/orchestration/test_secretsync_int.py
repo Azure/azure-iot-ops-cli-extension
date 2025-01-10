@@ -15,7 +15,7 @@ from ...helpers import run
 
 logger = get_logger(__name__)
 ROLE_MAX_RETRIES = 5
-ROLE_RETRY_INTERVAL = 30
+ROLE_RETRY_INTERVAL = 15
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def secretsync_int_setup(settings, tracked_resources):
             "az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 "
             f"--assignee {settings.env.azext_edge_sp_object_id} --scope {kv_id}"
         )
-        logger.warning(f"Assigned KV Secrets Officer")
+        logger.warning("Assigned KV Secrets Officer")
 
     mi_id = settings.env.azext_edge_user_assigned_mi_id
     if not mi_id:
@@ -77,6 +77,8 @@ def secretsync_int_setup(settings, tracked_resources):
     if kv_name:
         run(f"az keyvault delete -n {kv_name} -g {settings.env.azext_edge_rg}")
         logger.warning(f"Deleted KV {kv_name}")
+        # sometimes it takes a bit to get the deleted list to update
+        sleep(ROLE_RETRY_INTERVAL)
         run(f"az keyvault purge -n {kv_name}")
         logger.warning(f"Purged KV {kv_name}")
 
@@ -152,7 +154,8 @@ def test_secretsync(secretsync_int_setup):
     spc_name = generate_random_string(force_lower=True)
     enable_result = run(
         f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
-        f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name}"
+        f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name} "
+        "--skip-ra false"
     )
     # TODO: phase 2 - direct cluster connection for --self-hosted-issuer
     _assert_secret_sync_class(
