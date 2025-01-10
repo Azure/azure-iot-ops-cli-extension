@@ -43,11 +43,13 @@ def secretsync_int_setup(settings, tracked_resources):
     if not kv_id:
         kv_name = "spc" + generate_random_string(size=6)
         kv_id = run(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_rg}")["id"]
+        logger.warning(f"Created KV {kv_name}")
         # add "Key Vault Secrets Officer" role
         run(
             "az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 "
             f"--assignee {settings.env.azext_edge_sp_object_id} --scope {kv_id}"
         )
+        logger.warning(f"Assigned KV Secrets Officer")
 
     mi_id = settings.env.azext_edge_user_assigned_mi_id
     if not mi_id:
@@ -55,6 +57,7 @@ def secretsync_int_setup(settings, tracked_resources):
             f"az identity create -n {'spc' + generate_random_string(size=6)} -g {settings.env.azext_edge_rg}"
         )["id"]
         tracked_resources.append(mi_id)
+        logger.warning(f"Created MI {mi_id}")
 
     instance_name = settings.env.azext_edge_instance
     resource_group = settings.env.azext_edge_rg
@@ -73,7 +76,9 @@ def secretsync_int_setup(settings, tracked_resources):
     # note that you need to purge the kv too...
     if kv_name:
         run(f"az keyvault delete -n {kv_name} -g {settings.env.azext_edge_rg}")
+        logger.warning(f"Deleted KV {kv_name}")
         run(f"az keyvault purge -n {kv_name}")
+        logger.warning(f"Purged KV {kv_name}")
 
     # if it was enabled before, reenable
     if initial_list_result:
@@ -199,6 +204,8 @@ def _assert_role_assignments(
                     f"az role assignment list --scope {kv_id} --assignee {mi_client_id}"
                 )
             ]
+            logger.warning(f"Expected secret sync roles: {expected_secretsync_roles}")
+            logger.warning(f"Role Definition list: {current_assignment_names}")
             if expected_secretsync_roles:
                 assert "Key Vault Secrets User" in current_assignment_names
                 assert "Key Vault Reader" in current_assignment_names
