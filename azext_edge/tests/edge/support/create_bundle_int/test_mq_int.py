@@ -78,6 +78,6 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
     check_workload_resource_files(
         file_objs=file_map,
         expected_workload_types=expected_workload_types,
-        prefixes="aio-broker",
+        prefixes=["aio-broker", "aio-dmqtt"],
         bundle_path=bundle_path,
     )

@@ -138,7 +138,7 @@ def check_custom_resource_files(
         if cluster_resources.get(PLURAL_KEY):
             assert len(cluster_resources.keys()) - 1 == len(file_objs.get(kind, []))
             for resource in file_objs.get(kind, []):
-                assert resource["name"] in cluster_resources.keys()
+                assert resource["name"] in cluster_resources.keys(), f"Resource {resource['name']} of kind {kind} not found in resource map"
                 assert resource["version"] == resource_api.version
 
 

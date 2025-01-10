@@ -52,8 +52,9 @@ def find_extra_or_missing_names(
     ignore_prefixes: Optional[List[str]] = None,
 ):
     error_msg = []
-    # expected_names might contains descriptor, if so, remove it
+    # expected_names / result_names might contain a descriptor, if so, drop it and select prefix
     expected_names = [name.split(".")[0] for name in expected_names]
+    result_names = [name.split(".")[0] for name in result_names]
     extra_names = [name for name in result_names if name not in expected_names]
     if extra_names:
         msg = f"Extra {resource_type} names: {', '.join(extra_names)}."
