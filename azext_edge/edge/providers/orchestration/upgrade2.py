@@ -27,23 +27,14 @@ from .common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_TO_MONIKER_MAP,
+    ConfigSyncModeType,
 )
 from .resources import Instances
 from .targets import InitTargets
-from .template import TEMPLATE_BLUEPRINT_INSTANCE
-
-# TODO
-INSTANCE_TEMPLATE = TEMPLATE_BLUEPRINT_INSTANCE.copy()
 
 logger = get_logger(__name__)
 
 DEFAULT_CONSOLE = Console()
-
-CONFIG_DELTA_EXT_MAP = {
-    # EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS]: INSTANCE_TEMPLATE.content["variables"][
-    #     "defaultAioConfigurationSettings"
-    # ]
-}
 
 
 def upgrade_ops_instance(
@@ -96,10 +87,16 @@ class UpgradeManager:
         self.targets = InitTargets(
             cluster_name=self.resource_map.connected_cluster.cluster_name, resource_group_name=resource_group_name
         )
-        self.init_version_map: Dict[str, dict] = {
-            **self.targets.get_extension_versions(),
-            **self.targets.get_extension_versions(False),
-        }
+
+    def get_desired_config(self) -> Dict[str, str]:
+        return {}
+        # TODO @digimaun - enable with template gen.
+        # instance_template, _ = self.targets.get_ops_instance_template([])
+        # return {
+        #     EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS]: instance_template["variables"][
+        #         "defaultAioConfigurationSettings"
+        #     ]
+        # }
 
     def analyze_cluster(self, **override_kwargs: dict) -> "ClusterUpgradeState":
         with Progress(
@@ -117,7 +114,11 @@ class UpgradeManager:
                 extensions_map=self.resource_map.connected_cluster.get_extensions_by_type(
                     *list(EXTENSION_TYPE_TO_MONIKER_MAP.keys())
                 ),
-                init_version_map=self.init_version_map,
+                init_version_map={
+                    **self.targets.get_extension_versions(),
+                    **self.targets.get_extension_versions(False),
+                },
+                desired_config_map=self.get_desired_config(),
                 override_map=build_override_map(**override_kwargs),
             )
 
@@ -175,16 +176,17 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):
     DEFAULT_CONSOLE.print(table)
 
 
-def build_override_map(**override_kwargs) -> Dict[str, "ConfigOverride"]:
+def build_override_map(**override_kwargs: dict) -> Dict[str, "ConfigOverride"]:
     result_map = {}
     for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
         alias = EXTENSION_MONIKER_TO_ALIAS_MAP[moniker]
         config_override = ConfigOverride(
             config=override_kwargs.get(f"{alias}_config"),
+            config_sync_mode=override_kwargs.get(f"{alias}_config_sync_mode"),
             version=override_kwargs.get(f"{alias}_version"),
             train=override_kwargs.get(f"{alias}_train"),
         )
-        if not config_override.is_empty:
+        if not config_override.is_empty():
             result_map[moniker] = config_override
 
     return result_map
@@ -194,16 +196,17 @@ class ConfigOverride:
     def __init__(
         self,
         config: Optional[dict] = None,
+        config_sync_mode: Optional[str] = None,
         version: Optional[str] = None,
         train: Optional[str] = None,
     ):
         self.config = parse_kvp_nargs(config)
+        self.config_sync_mode = config_sync_mode
         self.version = version
         self.train = train
 
-    @property
     def is_empty(self):
-        return not any([self.config, self.version, self.train])
+        return not any([self.config, self.config_sync_mode, self.version, self.train])
 
 
 class ClusterUpgradeState:
@@ -211,10 +214,12 @@ class ClusterUpgradeState:
         self,
         extensions_map: Dict[str, dict],
         init_version_map: Dict[str, dict],
+        desired_config_map: Dict[str, str],
         override_map: Dict[str, "ConfigOverride"],
     ):
         self.extensions_map = extensions_map
         self.init_version_map = init_version_map
+        self.desired_config_map = desired_config_map
         self.override_map = override_map
         self.extension_upgrades = self.refresh_upgrade_state()
 
@@ -238,6 +243,7 @@ class ClusterUpgradeState:
                     ExtensionUpgradeState(
                         extension=extension,
                         desired_version_map=self.init_version_map.get(ext_moniker, {}),
+                        desired_config=self.desired_config_map.get(ext_moniker),
                         override=self.override_map.get(ext_moniker),
                     )
                 )
@@ -245,9 +251,16 @@ class ClusterUpgradeState:
 
 
 class ExtensionUpgradeState:
-    def __init__(self, extension: dict, desired_version_map: dict, override: Optional[ConfigOverride] = None):
+    def __init__(
+        self,
+        extension: dict,
+        desired_version_map: dict,
+        desired_config: Optional[Dict[str, str]] = None,
+        override: Optional[ConfigOverride] = None,
+    ):
         self.extension = extension
         self.desired_version_map = desired_version_map
+        self.desired_config = desired_config or {}
         self.override = override or ConfigOverride()
         self.config_delta = {}
 
@@ -305,10 +318,11 @@ class ExtensionUpgradeState:
         )
 
     def _has_delta_in_config(self) -> bool:
-        if self.moniker in CONFIG_DELTA_EXT_MAP:
+        if self.desired_config:
             self.config_delta = calculate_config_delta(
                 current=self.extension["properties"]["configurationSettings"],
-                target=CONFIG_DELTA_EXT_MAP[self.moniker],
+                target=self.desired_config,
+                sync_mode=self.override.config_sync_mode,
             )
             return bool(self.override.config) or bool(self.config_delta)
         return bool(self.override.config)
@@ -320,6 +334,7 @@ def get_default_table() -> Table:
         highlight=True,
         expand=False,
         title="The Upgrade Story",
+        min_width=79,
     )
     table.add_column(
         "Extension",
@@ -331,13 +346,19 @@ def get_default_table() -> Table:
     return table
 
 
-def calculate_config_delta(current: Dict[str, str], target: Dict[str, str]) -> dict:
+def calculate_config_delta(
+    current: Dict[str, str], target: Dict[str, str], sync_mode: str = ConfigSyncModeType.FULL.value
+) -> dict:
     delta = {}
-    for key in current:
-        if key in target and current[key] != target[key]:
-            delta[key] = target[key]
-        elif key not in target:
-            delta[key] = None
+    if sync_mode == ConfigSyncModeType.NONE.value:
+        return delta
+
+    if sync_mode == ConfigSyncModeType.FULL.value:
+        for key in current:
+            if key in target and current[key] != target[key]:
+                delta[key] = target[key]
+            elif key not in target:
+                delta[key] = None
 
     for key in target:
         if key not in current:

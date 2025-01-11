@@ -19,6 +19,7 @@ from .providers.orchestration.common import (
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
+    ConfigSyncModeType,
 )
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
@@ -233,6 +234,8 @@ def create_instance(
         pass
 
 
+# The extra-ordinary number of explicit params are due to how Azure CLI handles params/args.
+# Potentially this can be simplified by some Knack hacking.
 def upgrade_instance(
     cmd,
     resource_group_name: str,
@@ -240,20 +243,25 @@ def upgrade_instance(
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
     ops_config: Optional[List[str]] = None,
+    ops_config_sync_mode: Optional[str] = None,
     ops_version: Optional[str] = None,
     ops_train: Optional[str] = None,
     acs_config: Optional[List[str]] = None,
+    acs_config_sync_mode: Optional[str] = None,
     acs_version: Optional[str] = None,
     acs_train: Optional[str] = None,
     osm_config: Optional[List[str]] = None,
+    osm_config_sync_mode: Optional[str] = None,
     osm_version: Optional[str] = None,
     osm_train: Optional[str] = None,
     ssc_config: Optional[List[str]] = None,
     ssc_version: Optional[str] = None,
     ssc_train: Optional[str] = None,
+    ssc_config_sync_mode: Optional[str] = None,
     plat_config: Optional[List[str]] = None,
     plat_version: Optional[str] = None,
     plat_train: Optional[str] = None,
+    plat_config_sync_mode: Optional[str] = None,
     **kwargs,
 ) -> Optional[List[dict]]:
     from .providers.orchestration.upgrade2 import upgrade_ops_instance
@@ -267,18 +275,23 @@ def upgrade_instance(
         ops_config=ops_config,
         ops_version=ops_version,
         ops_train=ops_train,
+        ops_config_sync_mode=ops_config_sync_mode,
         acs_config=acs_config,
         acs_version=acs_version,
         acs_train=acs_train,
+        acs_config_sync_mode=acs_config_sync_mode,
         osm_config=osm_config,
         osm_version=osm_version,
         osm_train=osm_train,
+        osm_config_sync_mode=osm_config_sync_mode,
         ssc_config=ssc_config,
         ssc_version=ssc_version,
         ssc_train=ssc_train,
+        ssc_config_sync_mode=ssc_config_sync_mode,
         plat_config=plat_config,
         plat_version=plat_version,
         plat_train=plat_train,
+        plat_config_sync_mode=plat_config_sync_mode,
         **kwargs,
     )
 

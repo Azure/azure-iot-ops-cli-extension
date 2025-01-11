@@ -590,9 +590,9 @@ def load_iotops_help():
         short-summary: Upgrade an IoT Operations instance.
         long-summary: |
                       By default, with no options, the command will evaluate versions of the
-                      deployed cluster side services that make up IoT Operations and compare them
-                      with the built-in deployment that would be executed with `az iot ops init`
-                      and `az iot ops create`.
+                      deployed cluster side services that make up IoT Operations (referred to as 'current')
+                      and compare them with the built-in deployment (referred to as 'target') that would be
+                      executed with `az iot ops init` and `az iot ops create`.
         examples:
         - name: Upgrade the instance with minimal inputs.
           text: >

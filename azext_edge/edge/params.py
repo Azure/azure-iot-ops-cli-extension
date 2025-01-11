@@ -34,6 +34,7 @@ from .providers.orchestration.common import (
     MqServiceType,
     SchemaFormat,
     SchemaType,
+    ConfigSyncModeType,
 )
 
 
@@ -506,21 +507,33 @@ def load_iotops_arguments(self, _):
                 options_list=[f"--{alias}-config"],
                 nargs="+",
                 action="extend",
-                help=f"{moniker} arc extension custom configuration. Format is space-separated key=value pairs "
+                help=f"{moniker} arc extension custom config. Format is space-separated key=value pairs "
                 f"or just the key. This option can be used one or more times.",
                 arg_group="Extension Config",
+            )
+            context.argument(
+                f"{alias}_config_sync_mode",
+                options_list=[f"--{alias}-config-sync"],
+                help=f"{moniker} arc extension config sync mode. This option is applicable if an upgrade is "
+                "requested to a known version. Mode 'full' will alter current config to the target, "
+                "'add' will apply additive changes only, 'none' is a no-op.",
+                arg_type=get_enum_type(ConfigSyncModeType, default=ConfigSyncModeType.FULL.value),
+                arg_group="Extension Config",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 f"{alias}_version",
                 options_list=[f"--{alias}-version"],
                 help=f"Use to override the built-in {moniker} arc extension version. ",
                 arg_group="Extension Config",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 f"{alias}_train",
                 options_list=[f"--{alias}-train"],
                 help=f"Use to override the built-in {moniker} arc extension release train. ",
                 arg_group="Extension Config",
+                deprecate_info=context.deprecate(hide=True),
             )
 
     with self.argument_context("iot ops delete") as context:
