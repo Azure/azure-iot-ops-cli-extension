@@ -19,7 +19,6 @@ from .providers.orchestration.common import (
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
-    ConfigSyncModeType,
 )
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path

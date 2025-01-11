@@ -206,6 +206,7 @@ class UpgradeScenario:
 
     def patch_extension_response(self, request: requests.PreparedRequest) -> Optional[tuple]:
         ext_moniker = request.path_url.split("?")[0].split("/")[-1]
+        assert_upgrade_headers(request.headers)
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
             if EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] == ext_moniker:
                 status_code, response_body = self.ext_type_response_map.get(ext_type) or (
@@ -420,3 +421,12 @@ def assert_displays(
             "transient": False,
             "disable": no_progress,
         }
+
+
+def assert_upgrade_headers(headers: Dict[str, str]):
+    assert headers.get("User-Agent").startswith("IotOperationsCliExtension/")
+    assert headers.get("Accept") == "application/json"
+    assert headers.get("Content-Type") == "application/json"
+    assert headers.get("x-ms-correlation-request-id")
+    assert headers.get("x-ms-client-request-id")
+    assert headers.get("CommandName")

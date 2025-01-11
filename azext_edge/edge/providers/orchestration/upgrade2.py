@@ -90,7 +90,7 @@ class UpgradeManager:
 
     def get_desired_config(self) -> Dict[str, str]:
         return {}
-        # TODO @digimaun - enable with template gen.
+        # TODO @digimaun - enable with template gen or alt desired state diff.
         # instance_template, _ = self.targets.get_ops_instance_template([])
         # return {
         #     EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS]: instance_template["variables"][
@@ -324,8 +324,7 @@ class ExtensionUpgradeState:
                 target=self.desired_config,
                 sync_mode=self.override.config_sync_mode,
             )
-            return bool(self.override.config) or bool(self.config_delta)
-        return bool(self.override.config)
+        return bool(self.override.config) or bool(self.config_delta)
 
 
 def get_default_table() -> Table:
