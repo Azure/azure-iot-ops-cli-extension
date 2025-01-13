@@ -25,6 +25,7 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
     ClusterConnectStatus,
+    ConfigSyncModeType,
 )
 from azext_edge.edge.providers.orchestration.targets import InitTargets
 from azext_edge.edge.util import parse_kvp_nargs
@@ -430,3 +431,28 @@ def assert_upgrade_headers(headers: Dict[str, str]):
     assert headers.get("x-ms-correlation-request-id")
     assert headers.get("x-ms-client-request-id")
     assert headers.get("CommandName")
+
+
+@pytest.mark.parametrize(
+    "current,target,expected,sync_mode",
+    [
+        ({}, {}, {}, ConfigSyncModeType.FULL.value),
+        ({}, {"a": "b"}, {"a": "b"}, ConfigSyncModeType.FULL.value),
+        ({}, {"a": "b", "c": "d"}, {"a": "b", "c": "d"}, ConfigSyncModeType.FULL.value),
+        ({"a": "b"}, {"a": "c"}, {"a": "c"}, ConfigSyncModeType.FULL.value),
+        ({"a": "b"}, {}, {"a": None}, ConfigSyncModeType.FULL.value),
+        ({"a": "b", "c": "d"}, {"c": "e"}, {"a": None, "c": "e"}, ConfigSyncModeType.FULL.value),
+        ({"a": "b"}, {"c": "d"}, {}, ConfigSyncModeType.NONE.value),
+        ({"a": "b"}, {"c": None, "d": "e"}, {}, ConfigSyncModeType.NONE.value),
+        ({"a": "b"}, {"a": "c"}, {}, ConfigSyncModeType.ADD.value),
+        ({"a": "b"}, {"a": "c", "d": "e"}, {"d": "e"}, ConfigSyncModeType.ADD.value),
+        ({"a": "b"}, {"a": "c"}, {}, ConfigSyncModeType.ADD.value),
+    ],
+)
+def test_calculate_config_delta(
+    current: Dict[str, str], target: Dict[str, str], expected: Dict[str, str], sync_mode: str
+):
+    from azext_edge.edge.providers.orchestration.upgrade2 import calculate_config_delta
+
+    result = calculate_config_delta(current=current, target=target, sync_mode=sync_mode)
+    assert result == expected
