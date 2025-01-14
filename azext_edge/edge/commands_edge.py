@@ -187,7 +187,7 @@ def create_instance(
     if broker_backend_redundancy_factor < 2:
         logger.warning(
             "Deploying Azure IoT Operations with less than 2 broker backend replicas "
-            "prevents future version upgrades https://aka.ms/aio-broker-upgrade."
+            "prevents future version upgrades."
         )
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Create")
         if should_bail:
