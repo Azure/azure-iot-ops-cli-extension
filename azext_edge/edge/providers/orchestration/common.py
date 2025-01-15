@@ -118,3 +118,9 @@ class SchemaFormat(Enum):
     def full_value(self) -> str:
         format_map = {SchemaFormat.json: "JsonSchema/draft-07", SchemaFormat.delta: "Delta/1.0"}
         return format_map[self]
+
+
+class ConfigSyncModeType(Enum):
+    ADD = "add"
+    FULL = "full"
+    NONE = "none"
