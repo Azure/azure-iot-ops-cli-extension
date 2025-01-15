@@ -51,8 +51,9 @@ def find_extra_or_missing_names(
     ignore_missing: bool = False,
 ):
     error_msg = []
-    # expected_names might contains descriptor, if so, remove it
+    # names may contain descriptors after the initial '.', just comparing first prefix
     expected_names = [name.split(".")[0] for name in expected_names]
+    result_names = [name.split(".")[0] for name in result_names]
     extra_names = [name for name in result_names if name not in expected_names]
     if extra_names:
         msg = f"Extra {resource_type} names: {', '.join(extra_names)}."
