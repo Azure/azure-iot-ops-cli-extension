@@ -438,20 +438,25 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "certificate_reference",
-            options_list=["--certificate-ref", "--cert-ref", "--cr"],
+            options_list=["--certificate-ref", "--cert-ref", context.deprecate(target="--cr", redirect="--cert-ref")],
             help="Reference for the certificate used in authentication. This method of user authentication is not "
             "supported yet.",
             arg_group="Authentication",
         )
         context.argument(
             "password_reference",
-            options_list=["--password-ref", "--pr"],
+            options_list=["--password-ref", "--pass-ref", context.deprecate(target="--pr", redirect="--pass-ref")],
             help="Reference for the password used in authentication.",
             arg_group="Authentication",
         )
         context.argument(
             "username_reference",
-            options_list=["--username-reference", "--ur"],
+            options_list=[
+                context.deprecate(target="--username-reference", redirect="--user-ref"),
+                "--username-ref",
+                "--user-ref",
+                context.deprecate(target="--ur", redirect="--user-ref")
+            ],
             help="Reference for the username used in authentication.",
             arg_group="Authentication",
         )
