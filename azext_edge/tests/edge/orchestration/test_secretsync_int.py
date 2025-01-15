@@ -99,7 +99,7 @@ def secretsync_int_setup(settings, tracked_resources):
 
 
 @pytest.mark.rpsaas
-@pytest.mark.secretsync_test
+@pytest.mark.require_wlif_setup
 def test_secretsync(secretsync_int_setup):
     resource_group = secretsync_int_setup["resourceGroup"]
     instance_name = secretsync_int_setup["instanceName"]

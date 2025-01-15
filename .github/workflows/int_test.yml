@@ -251,7 +251,6 @@ jobs:
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
           enable-workload-identity: ${{ matrix.feature == 'trustbundle' }}
       - name: "Az CLI login"
-        if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -280,14 +279,14 @@ jobs:
           tox r -e "python-all-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
-      - name: "Tox SecretSync Integration Tests"
+      - name: "Tox Workload Identity Integration Tests"
         if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
         run: |
-          tox r -e "python-secretsync-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          tox r -e "python-wlif-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Containerized tests"
