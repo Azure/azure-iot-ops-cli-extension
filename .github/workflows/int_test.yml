@@ -88,6 +88,7 @@ jobs:
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
       INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.feature }}"
+      KEYVAULT_NAME: "kv${{ github.run_number }}"
     strategy:
       fail-fast: false
       matrix:
@@ -224,6 +225,18 @@ jobs:
           spec:
             selfSigned: {}
           EOF
+      - name: "Tox test environment setup for init"
+        run: |
+          python -m pip install tox
+          tox r -vv -e python-init-int --notest
+      - name: "Tox test environment setup for integration tests"
+        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
+        run: |
+          tox r -vv -e "python-all-int" --notest
+      - name: "Tox test environment setup for integration tests"
+        if: ${{ matrix.feature == 'secretsync' && !inputs.use-container }}
+        run: |
+          tox r -vv -e "python-secretsync-int" --notest
       - name: "Az CLI login"
         uses: azure/login@v2
         with:
@@ -236,14 +249,13 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
-      - name: "Tox test environment setup for init"
-        run: |
-          python -m pip install tox
-          tox r -vv -e python-init-int --notest
-      - name: "Tox test environment setup for integration tests"
-        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
-        run: |
-          tox r -vv -e "python-all-int" --notest
+          enable-workload-identity: ${{ matrix.feature == 'trustbundle' }}
+      - name: "Az CLI login"
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Tox INIT Integration Tests"
         env:
           AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
@@ -265,6 +277,16 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
         run: |
           tox r -e "python-all-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
+          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+      - name: "Tox Workload Identity Integration Tests"
+        if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
+        env:
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+          azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
+        run: |
+          tox r -e "python-wlif-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Containerized tests"

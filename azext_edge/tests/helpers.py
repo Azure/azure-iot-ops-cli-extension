@@ -165,6 +165,7 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
     Wrapper function for run_host_command used for testing.
     Parameter `expect_failure` determines if an error will be raised for the command result.
     The output is converted to non-binary text and loaded as a json if possible.
+    Raises CLIInternalError if there is an unexpected error or an unexpected success.
     """
     import subprocess
 
