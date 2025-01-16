@@ -205,13 +205,13 @@ def load_adr_arguments(self, _):
             "default_topic_path",
             options_list=["--topic-path", "--tp"],
             help="Default topic path.",
-            arg_group="Topic Default",
+            arg_group="MQTT Topic Default",
         )
         context.argument(
             "default_topic_retain",
             options_list=["--topic-retain", "--tr"],
             help="Default topic retain policy.",
-            arg_group="Topic Default",
+            arg_group="MQTT Topic Default",
             arg_type=get_enum_type(TopicRetain),
         )
         context.argument(

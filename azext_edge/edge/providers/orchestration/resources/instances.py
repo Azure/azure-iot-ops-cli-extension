@@ -283,7 +283,7 @@ class Instances(Queryable):
                 status.stop()
                 logger.warning(
                     f"Instance '{instance['name']}' is already enabled for secret sync.\n"
-                    f"Use 'az iot ops secretsync show -n {instance['name']} -g {resource_group_name}' for details."
+                    f"Use 'az iot ops secretsync list -n {instance['name']} -g {resource_group_name}' for details."
                 )
                 return
 
