@@ -591,3 +591,11 @@ def load_adr_arguments(self, _):
             type=int,
             arg_group="Connector",
         )
+        context.argument(
+            "certificate_reference",
+            options_list=["--certificate-ref", "--cert-ref", "--cr", "--cert-ref"],
+            help="Reference for the certificate used in authentication. This method of user authentication is not "
+            "supported yet.",
+            arg_group="Authentication",
+            deprecate_info=context.deprecate(hide=True)
+        )
