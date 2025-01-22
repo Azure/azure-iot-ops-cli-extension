@@ -16,6 +16,7 @@ from azure.cli.core.azclierror import (
     RequiredArgumentMissingError,
 )
 
+from azext_edge.edge.common import SecurityPolicies, SecurityModes
 from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
     _assert_above_min,
     _build_opcua_config,
@@ -62,8 +63,8 @@ def test_assert_above_min(value, minimum):
         },
         "security": {
             "autoAcceptUntrustedServerCertificates": False,
-            "securityMode": generate_random_string(),
-            "securityPolicy": generate_random_string()
+            "securityMode": SecurityModes.none.value,
+            "securityPolicy": "http://opcfoundation.org/UA/SecurityPolicy#" + SecurityPolicies.basic256sha256.value
         }
     }
 ])
@@ -81,8 +82,8 @@ def test_assert_above_min(value, minimum):
         "session_keep_alive": 666,
         "session_reconnect_period": 777,
         "session_reconnect_exponential_back_off": 888,
-        "security_policy": generate_random_string(),
-        "security_mode": generate_random_string(),
+        "security_policy": SecurityPolicies.aes128.value,
+        "security_mode": SecurityModes.sign_and_encrypt.value,
         "sub_max_items": 999,
         "sub_life_time": 1000,
     },
@@ -129,8 +130,8 @@ def test_build_opcua_config(original_config, req):
 
     og_sub = original_config.get("subscription", {})
     res_sub = result.get("subscription", {})
-    assert res_sub.get("maxItems") == req.get("sub_life_time", og_sub.get("maxItems"))
-    assert res_sub.get("lifeTimeMilliseconds") == req.get("sub_max_items", og_sub.get("lifeTimeMilliseconds"))
+    assert res_sub.get("maxItems") == req.get("sub_max_items", og_sub.get("maxItems"))
+    assert res_sub.get("lifeTimeMilliseconds") == req.get("sub_life_time", og_sub.get("lifeTimeMilliseconds"))
 
     og_security = original_config.get("security", {})
     res_security = result.get("security", {})

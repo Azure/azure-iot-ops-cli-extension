@@ -300,10 +300,10 @@ def _build_opcua_config(
         config["subscription"] = {}
     if sub_life_time:
         error_msg += _assert_above_min("--subscription-life-time", sub_life_time)
-        config["subscription"]["maxItems"] = sub_life_time
+        config["subscription"]["lifeTimeMilliseconds"] = sub_life_time
     if sub_max_items:
         error_msg += _assert_above_min("--subscription-max-items", sub_max_items, 1)
-        config["subscription"]["lifeTimeMilliseconds"] = sub_max_items
+        config["subscription"]["maxItems"] = sub_max_items
 
     # security
     if any([
