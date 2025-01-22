@@ -182,16 +182,16 @@ def test_build_opcua_config_error(req):
         )
     assert e.value.error_msg
     min_dict = {
-        "default_publishing_interval": (-1, "--default-publishing-int/--dpi"),
-        "default_sampling_interval": (-1, "--default-sampling-int/--dsi"),
-        "default_queue_size": (0, "--default-queue-size/--dqs"),
-        "keep_alive": (0, "--keep-alive/--ka"),
-        "session_timeout": (0, "--session-timeout/--st"),
-        "session_keep_alive": (0, "--session-keep-alive/--ska"),
-        "session_reconnect_period": (0, "--session-reconnect-period/--srp"),
-        "session_reconnect_exponential_back_off": (-1, "--session-reconnect-backoff/--srb"),
-        "sub_max_items": (1, "--subscription-max-items/--smi"),
-        "sub_life_time": (0, "--subscription-life-time/--slt"),
+        "default_publishing_interval": (-1, "--default-publishing-int"),
+        "default_sampling_interval": (-1, "--default-sampling-int"),
+        "default_queue_size": (0, "--default-queue-size"),
+        "keep_alive": (0, "--keep-alive"),
+        "session_timeout": (0, "--session-timeout"),
+        "session_keep_alive": (0, "--session-keep-alive"),
+        "session_reconnect_period": (0, "--session-reconnect-period"),
+        "session_reconnect_exponential_back_off": (-1, "--session-reconnect-backoff"),
+        "sub_max_items": (1, "--subscription-max-items"),
+        "sub_life_time": (0, "--subscription-life-time"),
     }
     expected_error_params = [
         param for param in req if (min_dict.get(param) is not None) and (req[param] < min_dict[param][0])
