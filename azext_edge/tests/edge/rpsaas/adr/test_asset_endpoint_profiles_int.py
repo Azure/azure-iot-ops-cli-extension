@@ -209,9 +209,9 @@ def assert_opcua_props(result, **expected):
 
     # subscription
     if expected.get("sub_life_time"):
-        result_config["subscription"]["maxItems"] = expected["sub_life_time"]
+        result_config["subscription"]["lifeTimeMilliseconds"] = expected["sub_life_time"]
     if expected.get("sub_max_items"):
-        result_config["subscription"]["lifeTimeMilliseconds"] = expected["sub_max_items"]
+        result_config["subscription"]["maxItems"] = expected["sub_max_items"]
 
     # security
     if expected.get("accept_untrusted_certs") is not None:
