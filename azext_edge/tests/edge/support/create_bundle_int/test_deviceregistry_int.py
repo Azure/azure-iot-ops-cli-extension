@@ -17,7 +17,8 @@ from .helpers import (
 
 logger = get_logger(__name__)
 
-pytestmark = pytest.mark.e2e
+# TODO - c-ryan-k - Re-enable tests when assets are not being modified during checks or we have a better way to isolate
+# pytestmark = pytest.mark.e2e
 
 
 def test_create_bundle_deviceregistry(init_setup, tracked_files):
