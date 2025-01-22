@@ -705,9 +705,9 @@ def test_iot_ops_create(
 
 
 def assert_logger(mocked_logger: Mock, target_scenario: dict):
-    expeted_warnings: List[Tuple[int, str]] = target_scenario.get("warnings", [])
+    expected_warnings: List[Tuple[int, str]] = target_scenario.get("warnings", [])
     warning_calls: List[Mock] = mocked_logger.warning.mock_calls
-    for w in expeted_warnings:
+    for w in expected_warnings:
         assert w[1] in warning_calls[w[0]].args[0]
 
 
