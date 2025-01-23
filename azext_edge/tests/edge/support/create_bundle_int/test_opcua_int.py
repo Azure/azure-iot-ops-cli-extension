@@ -43,5 +43,4 @@ def test_create_bundle_opcua(init_setup, tracked_files):
         prefixes=["aio-opc", "opcplc"],
         bundle_path=bundle_path,
         optional_workload_types=optional_workload_types,
-        ignore_prefixes=["opcplc"]
     )

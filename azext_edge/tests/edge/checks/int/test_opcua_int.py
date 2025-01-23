@@ -54,7 +54,6 @@ def test_opcua_check(init_setup, detail_level, resource_match, resource_kind):
             description_name="OPC UA broker",
             pod_prefix=["aio-opc-", "opcplc-"],
             resource_match=resource_match,
-            ignore_prefixes=["opcplc-"]
         )
     else:
         assert "evalCoreServiceRuntime" not in post_deployment
