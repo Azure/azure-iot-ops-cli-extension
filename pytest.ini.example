@@ -23,3 +23,4 @@ markers =
     rpsaas: mark tests that are purely cloud-side
     e2e: mark tests that run in e2e pipeline
     upgrade_scenario_test: mark tests that will run az iot ops upgrade
+    require_wlif_setup: mark tests that require a workload identity setup for the cluster

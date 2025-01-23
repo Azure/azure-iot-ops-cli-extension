@@ -52,7 +52,7 @@ def find_extra_or_missing_names(
     ignore_prefixes: Optional[List[str]] = None,
 ):
     error_msg = []
-    # expected_names / result_names might contain a descriptor, if so, drop it and select prefix
+    # names may contain descriptors after the initial '.', just comparing first prefix
     expected_names = [name.split(".")[0] for name in expected_names]
     result_names = [name.split(".")[0] for name in result_names]
     extra_names = [name for name in result_names if name not in expected_names]
@@ -169,6 +169,7 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
     Wrapper function for run_host_command used for testing.
     Parameter `expect_failure` determines if an error will be raised for the command result.
     The output is converted to non-binary text and loaded as a json if possible.
+    Raises CLIInternalError if there is an unexpected error or an unexpected success.
     """
     import subprocess
 

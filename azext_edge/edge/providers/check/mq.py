@@ -32,7 +32,6 @@ from ...common import (
 
 from .common import (
     AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX,
-    AIO_BROKER_FLUENT_BIT,
     AIO_BROKER_FRONTEND_PREFIX,
     AIO_BROKER_BACKEND_PREFIX,
     AIO_BROKER_AUTH_PREFIX,
@@ -592,7 +591,10 @@ def evaluate_brokers(
                 AIO_BROKER_HEALTH_MANAGER,
                 AIO_BROKER_DIAGNOSTICS_SERVICE,
                 AIO_BROKER_OPERATOR,
-                AIO_BROKER_FLUENT_BIT,
+                # AIO_BROKER_FLUENT_BIT,
+                # TODO: Fluent Bit is deployed to all nodes and stays in a pending state until an
+                # AIO workload is running on the node. For clusters with many nodes, usually
+                # some instances of Fluent Bit will be in a pending state. This is expected.
             ]:
                 prefixed_pods = get_namespaced_pods_by_prefix(
                     prefix=prefix,

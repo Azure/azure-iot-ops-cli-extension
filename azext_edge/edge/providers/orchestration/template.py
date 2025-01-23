@@ -48,13 +48,13 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="ade4c2645c9ee6c4a1038f2bfef12773ca30691a",
+    commit_id="db955b7c1f5942ed6adb355b6ce997d7c753a055",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.31.34.60546", "templateHash": "3322333164880261279"}
+            "_generator": {"name": "bicep", "version": "0.32.4.45862", "templateHash": "3534807839334108747"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -213,7 +213,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "VERSIONS": {
                 "platform": "0.7.6",
                 "secretStore": "0.6.7",
-                "containerStorage": "2.2.2",
+                "containerStorage": "2.2.3",
                 "openServiceMesh": "1.2.10",
             },
             "TRAINS": {
@@ -249,7 +249,6 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "installTrustManager": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), 'true', 'false')]",
                     },
                 },
-                "dependsOn": ["cluster"],
             },
             "secret_store_extension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
@@ -267,7 +266,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "validatingAdmissionPolicies.applyPolicies": "false",
                     },
                 },
-                "dependsOn": ["aio_platform_extension", "cluster"],
+                "dependsOn": ["aio_platform_extension"],
             },
             "open_service_mesh_extension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
@@ -288,7 +287,6 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "osm.osm.injector.resource.requests.cpu": "100m",
                     },
                 },
-                "dependsOn": ["cluster"],
             },
             "container_storage_extension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
@@ -303,7 +301,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'train'), variables('TRAINS').containerStorage)]",
                     "configurationSettings": "[union(createObject('edgeStorageConfiguration.create', 'true', 'feature.diskStorageClass', variables('kubernetesStorageClass')), if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), createObject('acstorConfiguration.create', 'true', 'acstorConfiguration.properties.diskMountPoint', '/mnt'), createObject()))]",
                 },
-                "dependsOn": ["aio_platform_extension", "cluster", "open_service_mesh_extension"],
+                "dependsOn": ["aio_platform_extension", "open_service_mesh_extension"],
             },
         },
         "outputs": {
@@ -349,13 +347,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="ade4c2645c9ee6c4a1038f2bfef12773ca30691a",
+    commit_id="db955b7c1f5942ed6adb355b6ce997d7c753a055",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.31.34.60546", "templateHash": "9520109892569949061"}
+            "_generator": {"name": "bicep", "version": "0.32.4.45862", "templateHash": "16118026265927091454"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -596,7 +594,6 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "scope": "[variables('AIO_EXTENSION_SCOPE')]",
                     "configurationSettings": "[union(variables('defaultAioConfigurationSettings'), coalesce(tryGet(tryGet(parameters('advancedConfig'), 'aio'), 'configurationSettingsOverride'), createObject()))]",
                 },
-                "dependsOn": ["cluster"],
             },
             "customLocation": {
                 "type": "Microsoft.ExtendedLocation/customLocations",

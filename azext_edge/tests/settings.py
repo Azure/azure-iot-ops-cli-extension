@@ -16,6 +16,7 @@ class EnvironmentVariables(Enum):
     instance = "azext_edge_instance"
     context_name = "azext_edge_context_name"
     kv = "azext_edge_kv"
+    user_assigned_mi_id = "azext_edge_user_assigned_mi_id"
     sp_app_id = "azext_edge_sp_app_id"
     sp_object_id = "azext_edge_sp_object_id"
     sp_secret = "azext_edge_sp_secret"

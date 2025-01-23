@@ -5,7 +5,7 @@
 
 name: 'Connect your cluster to Azure ARC'
 description: |
-  Action to connect your kubernetes cluster to Azure ARC using `az connectedk8s connect`. 
+  Action to connect your kubernetes cluster to Azure ARC using `az connectedk8s connect`.
   Will add the connectedk8s Azure CLI extension if not already installed.
 inputs:
   cluster-name:
@@ -18,10 +18,12 @@ inputs:
     description: Contents of kubeconfig to connect to cluster. If not provided, `~/.kube/config` will be used.
   custom-locations-oid:
     description: |
-      Object ID of Custom Locations Application in your tenant. 
+      Object ID of Custom Locations Application in your tenant.
       Find with: `az ad sp show --id bc313c14-388c-4e7d-a58e-70017303ee3b --query id -o tsv`.
-      
+
       Please provide this value if your azure login context lacks permission to make this call.
+  enable-workload-identity:
+    description: Enable workload identity so secret sync can be applied.
 
 runs:
   using: 'composite'
@@ -52,12 +54,23 @@ runs:
         -g ${{ env.resource-group }}
         ${{ env.custom-locations-oid }}
         ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
-        
+
         az connectedk8s enable-features --features custom-locations cluster-connect
         -n ${{ env.cluster-name }}
         -g ${{ env.resource-group }}
         ${{ env.custom-locations-oid }}
         ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
+      shell: bash
+    - name: "Update cluster to enable workload identity"
+      if: inputs.enable-workload-identity
+      env:
+        cluster-name: "${{ inputs.cluster-name }}"
+        resource-group: "${{ inputs.resource-group }}"
+      run: >-
+        az connectedk8s update
+        -n ${{ env.cluster-name }}
+        -g ${{ env.resource-group }}
+        --enable-oidc-issuer --enable-workload-identity
       shell: bash
     - name: "Wait for cluster connected status"
       env:
@@ -67,9 +80,9 @@ runs:
         retry_count=0
         max_retries=5
         sleep=5
-        
+
         status=$(az connectedk8s show -n ${{ env.cluster-name }} -g ${{ env.resource-group }} --query "connectivityStatus" -o tsv)
-        
+
         while [ "$status" != "Connected" ] && [ $retry_count -lt $max_retries ]; do
           echo "Cluster status is "$status", Retrying in $sleep seconds..."
           sleep $sleep
