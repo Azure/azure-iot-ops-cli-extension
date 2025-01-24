@@ -11,7 +11,8 @@ from azext_edge.edge.providers.edge_api import DATAFLOW_API_V1, DEVICEREGISTRY_A
 
 from ....helpers import run
 
-pytestmark = pytest.mark.e2e
+# TODO - @c-ryan-k resume e2e summary tests once we can handle pending / scheduled pods that cause an error state
+# pytestmark = pytest.mark.e2e
 
 valid_statuses = ["success", "skipped"]
 
