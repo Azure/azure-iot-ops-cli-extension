@@ -84,7 +84,7 @@ def assert_eval_core_service_runtime(
             pod_evals = [pod for pod in evals if name in pod["name"]]
             # if no pod evals, check if pod should be ignored
             if not pod_evals and ignore_prefixes:
-                if any([name.startswith(prefix) for prefix in ignore_prefixes]):
+                if any(name.startswith(prefix) for prefix in ignore_prefixes):
                     continue
 
             assert pod_evals, f"Pod {name} has no check evaluations"

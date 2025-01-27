@@ -4,8 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import pytest
-
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
 from azext_edge.edge.providers.edge_api import DATAFLOW_API_V1, DEVICEREGISTRY_API_V1, MQ_ACTIVE_API, OPCUA_API_V1
 

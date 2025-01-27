@@ -8,6 +8,7 @@ from knack.log import get_logger
 from typing import Dict, List, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
+import pytest
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
@@ -135,9 +136,10 @@ def check_custom_resource_files(
         cluster_resources = resource_map[kind]
         # subresources like scale will not have a plural
         if cluster_resources.get(PLURAL_KEY):
-            assert len(cluster_resources.keys()) - 1 == len(
-                file_objs.get(kind, [])
-            ), "Mismatch between file objs and cluster resources for kind {kind}:\n{cluster_resources.keys()=}\n{file_objs.get(kind, [])=}"
+            assert len(cluster_resources.keys()) - 1 == len(file_objs.get(kind, [])), (
+                f"Mismatch between file objs and cluster resources for kind {kind}:\n"
+                + f"{cluster_resources.keys()=}\n{file_objs.get(kind, [])=}"
+            )
             for resource in file_objs.get(kind, []):
                 assert (
                     resource["name"] in cluster_resources.keys()
