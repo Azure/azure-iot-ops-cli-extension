@@ -49,7 +49,6 @@ def find_extra_or_missing_names(
     ignore_extras: bool = False,
     # TODO: remove once dynamic pods check logic is implemented
     ignore_missing: bool = False,
-    ignore_prefixes: Optional[List[str]] = None,
 ):
     error_msg = []
     # names may contain descriptors after the initial '.', just comparing first prefix
@@ -63,9 +62,6 @@ def find_extra_or_missing_names(
         else:
             error_msg.append(msg)
     missing_names = [name for name in expected_names if name not in result_names]
-    # ignore certain name prefixes
-    for prefix in ignore_prefixes or []:
-        missing_names = [name for name in missing_names if not name.startswith(prefix)]
     if missing_names:
         error_msg.append(f"Missing {resource_type} names: {', '.join(missing_names)}.")
 

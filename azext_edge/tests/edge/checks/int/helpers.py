@@ -51,7 +51,6 @@ def assert_eval_core_service_runtime(
     description_name: str,
     pod_prefix: str,
     resource_match: Optional[str] = None,
-    ignore_prefixes: Optional[List[str]] = None,
 ):
     assert post_deployment["evalCoreServiceRuntime"]
     assert post_deployment["evalCoreServiceRuntime"]["description"] == f"Evaluate {description_name} core service"
@@ -82,10 +81,6 @@ def assert_eval_core_service_runtime(
             name = kubectl_pods[pod]["metadata"]["name"]
             # find all evals entries for this pod
             pod_evals = [pod for pod in evals if name in pod["name"]]
-            # if no pod evals, check if pod should be ignored
-            if not pod_evals and ignore_prefixes:
-                if any(name.startswith(prefix) for prefix in ignore_prefixes):
-                    continue
 
             assert pod_evals, f"Pod {name} has no check evaluations"
             assert pod_evals[0]["name"] == f"pod/{name}"

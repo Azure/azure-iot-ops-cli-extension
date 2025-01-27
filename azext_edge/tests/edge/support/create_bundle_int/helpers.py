@@ -154,7 +154,6 @@ def check_workload_resource_files(
     bundle_path: str,
     expected_label: Optional[str] = None,
     optional_workload_types: Optional[List[str]] = None,
-    ignore_prefixes: Optional[List[str]] = None,
 ):
     if "pod" in expected_workload_types:
         expected_workload_types.remove("pod")
@@ -207,7 +206,7 @@ def check_workload_resource_files(
                 for file in file_objs.get(key, []):
                     assert file["extension"] == "yaml"
                 present_names = [file["name"] for file in file_objs.get(key, [])]
-                find_extra_or_missing_names(key, present_names, expected_items.keys(), ignore_prefixes=ignore_prefixes)
+                find_extra_or_missing_names(key, present_names, expected_items.keys())
             except CLIInternalError as e:
                 if required:
                     raise e
