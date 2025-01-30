@@ -218,7 +218,7 @@ class InitTargets:
             dataflow_profile["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_PROFILE}"
             dataflow_endpoint["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_ENDPOINT}"
 
-            template.content["outputs"]["aio"]["name"] = self.instance_name
+            template.content["outputs"]["aio"]["value"]["name"] = self.instance_name
 
         if self.custom_broker_config:
             if "properties" in self.custom_broker_config:
