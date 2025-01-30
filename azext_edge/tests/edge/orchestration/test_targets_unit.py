@@ -210,6 +210,7 @@ def test_init_targets(target_scenario: dict):
         assert instance_template["resources"]["broker_listener"]["name"] == f"{targets.instance_name}/default/default"
         assert instance_template["resources"]["dataflow_profile"]["name"] == f"{targets.instance_name}/default"
         assert instance_template["resources"]["dataflow_endpoint"]["name"] == f"{targets.instance_name}/default"
+        assert instance_template["outputs"]["aio"]["name"] == targets.instance_name
 
     if targets.custom_broker_config:
         assert instance_template["resources"]["broker"]["properties"] == targets.custom_broker_config
