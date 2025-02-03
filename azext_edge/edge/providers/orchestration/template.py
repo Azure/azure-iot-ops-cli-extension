@@ -54,7 +54,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.32.4.45862", "templateHash": "3534807839334108747"}
+            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "11793491850121040860"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -211,9 +211,9 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
         },
         "variables": {
             "VERSIONS": {
-                "platform": "0.7.6",
-                "secretStore": "0.6.7",
-                "containerStorage": "2.2.3",
+                "platform": "0.7.11",
+                "secretStore": "0.7.5",
+                "containerStorage": "2.2.4",
                 "openServiceMesh": "1.2.10",
             },
             "TRAINS": {
@@ -353,7 +353,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.32.4.45862", "templateHash": "16118026265927091454"}
+            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "674500957660366604"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -525,8 +525,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "1.0.9"},
-            "TRAINS": {"iotOperations": "stable"},
+            "VERSIONS": {"iotOperations": "1.0.15"},
+            "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
