@@ -82,4 +82,5 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
         expected_workload_types=expected_workload_types,
         prefixes=["aio-broker", "aio-dmqtt", "otel-collector-service"],
         bundle_path=bundle_path,
+        expected_label=("app.kubernetes.io/name", "microsoft-iotoperations-mqttbroker")
     )
