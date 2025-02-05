@@ -248,6 +248,7 @@ def get_file_map(
     c_namespace = namespaces.get("usage_system")
     certmanager_namespace = namespaces.get("certmanager")
     osm_namespace = namespaces.get("osm")
+    ops_path = None
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
