@@ -39,7 +39,9 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
 
     check_custom_resource_files(file_objs=file_map, resource_api=MQ_ACTIVE_API)
 
-    expected_workload_types = ["pod", "daemonset", "replicaset", "service", "statefulset"]
+    expected_workload_types = [
+        "pod", "daemonset", "replicaset", "service", "statefulset", "job", "configmap"
+    ]
     expected_types = set(expected_workload_types).union(MQ_ACTIVE_API.kinds)
     assert set(file_map.keys()).issubset(expected_types)
 
