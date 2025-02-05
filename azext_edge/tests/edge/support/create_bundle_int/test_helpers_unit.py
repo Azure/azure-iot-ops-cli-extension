@@ -22,6 +22,10 @@ from .helpers import split_name
         "pod.aio-job-0.1.0-preview-0.42.0-instance.aio-upgrade-status-job.log",
         ["pod", "aio-job-0.1.0-preview-0.42.0-instance", "aio-upgrade-status-job", "log"]
     ],
+    [
+        "pod.aio-job-0.1.0-preview-0.42.0.log",
+        ["pod", "aio-job-0.1.0-preview-0.42.0", "log"]
+    ]
 ])
 def test_split_name(input: str, expected: List[str]):
     result = split_name(input)
