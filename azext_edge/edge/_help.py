@@ -669,7 +669,8 @@ def load_iotops_help():
         short-summary: Enable secret sync for an instance.
         long-summary: |
             The operation handles identity federation, creation of a default secret provider class
-            and role assignments of the managed identity against the target Key Vault.
+            and role assignments (Key Vault Reader, Key Vault Secrets User) of the managed identity
+            against the target Key Vault.
 
         examples:
         - name: Enable the target instance for Key Vault secret sync.

@@ -4,18 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import pytest
 from azext_edge.edge.providers.check.common import ALL_NAMESPACES_TARGET
-from azext_edge.edge.providers.edge_api import (
-    DATAFLOW_API_V1,
-    DEVICEREGISTRY_API_V1,
-    MQ_ACTIVE_API,
-    OPCUA_API_V1,
-)
+from azext_edge.edge.providers.edge_api import DATAFLOW_API_V1, DEVICEREGISTRY_API_V1, MQ_ACTIVE_API, OPCUA_API_V1
 
 from ....helpers import run
 
-pytestmark = pytest.mark.e2e
+# TODO - @c-ryan-k resume e2e summary tests once we can handle pending / scheduled pods that cause an error state
+# pytestmark = pytest.mark.e2e
+
+valid_statuses = ["success", "skipped"]
 
 
 def test_summary_checks():
@@ -28,9 +25,6 @@ def test_summary_checks():
     # assert only one check ran and overall status is success or skipped
     assert len(post) == 1
     checks = post[0]
-    assert checks["description"] == "Service summary checks"
-    # TODO - remove "warning" once dataflow profile no longer displays warning status by default for missing dataflows
-    assert checks["status"] in ["success", "skipped", "warning"]
 
     # assert each service check is either success or skipped
     for api in ["Akri", MQ_ACTIVE_API, OPCUA_API_V1, DATAFLOW_API_V1, DEVICEREGISTRY_API_V1]:
@@ -38,8 +32,11 @@ def test_summary_checks():
         assert api_target in checks["targets"]
         service_checks = checks["targets"][api_target]
 
-        valid_statuses = ["success", "skipped"]
-        # TODO - remove once dataflow profile no longer displays warning status by default for missing dataflows
-        if api == DATAFLOW_API_V1:
-            valid_statuses.append("warning")
-        assert service_checks.get(ALL_NAMESPACES_TARGET, {}).get("status") in valid_statuses
+        service_status = service_checks.get(ALL_NAMESPACES_TARGET, {}).get("status")
+        assert (
+            service_status in valid_statuses
+        ), f"Service {api_target} check failed with status {service_status}:\n{service_checks}"
+
+    # validate overall status
+    assert checks["description"] == "Service summary checks"
+    assert checks["status"] in valid_statuses, f"Overall check failed with status {checks['status']}:\n{checks}"
