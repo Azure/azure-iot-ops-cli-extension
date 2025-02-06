@@ -16,7 +16,9 @@ from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
     get_mq_namespaces,
+    process_config_maps,
     process_daemonsets,
+    process_jobs,
     process_replicasets,
     process_services,
     process_statefulset,
@@ -86,6 +88,20 @@ def fetch_replicasets():
     )
 
 
+def fetch_jobs():
+    return process_jobs(
+        directory_path=MQ_DIRECTORY_PATH,
+        label_selector=MQ_NAME_LABEL,
+    )
+
+
+def fetch_configmaps():
+    return process_config_maps(
+        directory_path=MQ_DIRECTORY_PATH,
+        label_selector=MQ_NAME_LABEL,
+    )
+
+
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     return process_v1_pods(
         directory_path=MQ_DIRECTORY_PATH,
@@ -96,6 +112,8 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
 support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
+    "configmaps": fetch_configmaps,
+    "jobs": fetch_jobs,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "daemonsets": fetch_daemonsets,
