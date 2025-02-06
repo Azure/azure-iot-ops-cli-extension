@@ -32,7 +32,7 @@ def test_create_bundle_dataflow(init_setup, tracked_files):
         resource_api=DATAFLOW_API_V1
     )
 
-    expected_workload_types = ["deployment", "pod", "replicaset"]
+    expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     expected_types = set(expected_workload_types).union(DATAFLOW_API_V1.kinds)
     assert set(file_map.keys()).issubset(expected_types)
     check_workload_resource_files(

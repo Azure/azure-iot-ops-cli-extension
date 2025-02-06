@@ -227,7 +227,7 @@ def _assert_above_min(param: str, value: int, minimum: int = 0) -> str:
 def _raise_if_connector_error(connector_type: str, error_msg: str):
     if error_msg:
         raise InvalidArgumentValueError(
-            f"The following {connector_type} connector arguments are invalid:\n {error_msg}"
+            f"The following {connector_type} connector arguments are invalid:\n{error_msg}"
         )
 
 

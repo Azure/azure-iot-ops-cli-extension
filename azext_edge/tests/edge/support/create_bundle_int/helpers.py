@@ -248,6 +248,7 @@ def get_file_map(
     c_namespace = namespaces.get("usage_system")
     certmanager_namespace = namespaces.get("certmanager")
     osm_namespace = namespaces.get("osm")
+    ops_path = None
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -502,12 +503,21 @@ def run_bundle_command(
 
 
 def split_name(name: str) -> List[str]:
+    """
+    Splits a name by the .'s.
+
+    If a number is present (ex: versioning like 1.0.0-preview), do not split that portion.
+    Make sure the extension is split out (last . for the extension).
+    """
     first_pass = name.split(".")
     second_pass = []
     for i in range(len(first_pass)):
         # we should not need to worry about trying to access too early
         # since the first part should be the workload type (ex: pod)
-        if first_pass[i].isnumeric() or first_pass[i - 1].isnumeric():
+        if all([
+            i != (len(first_pass) - 1),
+            first_pass[i].isnumeric() or first_pass[i - 1].isnumeric()
+        ]):
             second_pass[-1] = f"{second_pass[-1]}.{first_pass[i]}"
         else:
             second_pass.append(first_pass[i])
