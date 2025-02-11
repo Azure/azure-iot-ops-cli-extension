@@ -314,7 +314,8 @@ class ExtensionUpgradeState:
 
     def _has_delta_in_train(self) -> bool:
         return bool(self.override.train) or (
-            self._has_delta_in_version()
+            self.desired_version[0]
+            and version.parse(self.desired_version[0]) >= version.parse(self.current_version[0])
             and not self.override.version
             and self.desired_version[1]
             and self.desired_version[1].lower() != self.current_version[1].lower()

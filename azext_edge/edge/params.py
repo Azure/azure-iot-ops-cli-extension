@@ -510,6 +510,7 @@ def load_iotops_arguments(self, _):
                 help=f"{moniker} arc extension custom config. Format is space-separated key=value pairs "
                 f"or just the key. This option can be used one or more times.",
                 arg_group="Extension Config",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 f"{alias}_config_sync_mode",
@@ -526,12 +527,14 @@ def load_iotops_arguments(self, _):
                 options_list=[f"--{alias}-version"],
                 help=f"Use to override the built-in {moniker} arc extension version. ",
                 arg_group="Extension Config",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 f"{alias}_train",
                 options_list=[f"--{alias}-train"],
                 help=f"Use to override the built-in {moniker} arc extension release train. ",
                 arg_group="Extension Config",
+                deprecate_info=context.deprecate(hide=True),
             )
 
     with self.argument_context("iot ops delete") as context:
