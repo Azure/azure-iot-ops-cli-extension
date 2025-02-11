@@ -239,8 +239,8 @@ class UpgradeScenario:
         ),
         (
             UpgradeScenario(
-                "This variant of the prior test case ensures release train behavior even when user "
-                "explictly overrides extension version."
+                "This variant of the prior test case ensures release train does not increment when user "
+                "explictly overrides extension version to an unknown version."
             )
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="9.9.9", ext_train="stablez")
             .set_user_kwargs(
@@ -250,15 +250,25 @@ class UpgradeScenario:
         ),
         (
             UpgradeScenario(
-                "Nothing to update. Cluster extensions match deployment extensions sans platform which is ahead."
-            ).set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0"),
-            {},
+                "Ensure default version and train increments for ops when upgrade is known."
+            ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0", ext_train="stable"),
+            {
+                EXTENSION_TYPE_OPS: {
+                    "properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "x.y.z", "releaseTrain": "x.y.z"}
+                }
+            },
         ),
         (
             UpgradeScenario(
-                "Patch a single extension, platform. Ensure confirm prompt.", confirm_yes=False
+                "Ensure default version for platform when upgrade is known. Ensure confirm prompt.", confirm_yes=False
             ).set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="0.5.0"),
             {EXTENSION_TYPE_PLATFORM: {"properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": "x.y.z"}}},
+        ),
+        (
+            UpgradeScenario(
+                "Nothing to update. Cluster extensions match deployment extensions sans platform which is ahead."
+            ).set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="9.9.9"),
+            {},
         ),
         (
             UpgradeScenario("Patch platform, osm and ops extensions.")
@@ -411,6 +421,11 @@ def assert_result(
                 expected_types[ext_type]["properties"]["version"] = target_scenario.init_version_map[
                     EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
                 ]["version"]
+            expected_train = expected_types[ext_type]["properties"].get("releaseTrain")
+            if expected_train == "x.y.z":
+                expected_types[ext_type]["properties"]["releaseTrain"] = target_scenario.init_version_map[
+                    EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
+                ]["train"]
         assert result_type_to_payload == expected_types
 
 
