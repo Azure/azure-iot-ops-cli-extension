@@ -229,41 +229,65 @@ class UpgradeScenario:
 @pytest.mark.parametrize(
     "target_scenario,expected_patched_ext_types",
     [
-        (UpgradeScenario("Nothing to update. Cluster extensions match deployment extensions."), []),
+        (UpgradeScenario("Nothing to update. Cluster extensions match deployment extensions."), {}),
+        (
+            UpgradeScenario(
+                "Nothing to update. Ops extension release train has delta but is not applicable "
+                "when version is not upgradeable."
+            ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="9.9.9", ext_train="stablez"),
+            {},
+        ),
+        (
+            UpgradeScenario(
+                "This variant of the prior test case ensures release train behavior even when user "
+                "explictly overrides extension version."
+            )
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="9.9.9", ext_train="stablez")
+            .set_user_kwargs(
+                ops_version="8.8.8",
+            ),
+            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "8.8.8"}}},
+        ),
         (
             UpgradeScenario(
                 "Nothing to update. Cluster extensions match deployment extensions sans platform which is ahead."
             ).set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0"),
-            [],
+            {},
         ),
         (
             UpgradeScenario(
                 "Patch a single extension, platform. Ensure confirm prompt.", confirm_yes=False
             ).set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="0.5.0"),
-            [EXTENSION_TYPE_PLATFORM],
+            {EXTENSION_TYPE_PLATFORM: {"properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": "x.y.z"}}},
         ),
         (
             UpgradeScenario("Patch platform, osm and ops extensions.")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="0.5.0")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.2.0")
             .set_extension(ext_type=EXTENSION_TYPE_OSM, ext_vers="0.3.0"),
-            [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_OSM, EXTENSION_TYPE_OPS],
+            {
+                EXTENSION_TYPE_PLATFORM: {
+                    "properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": "x.y.z"}
+                },
+                EXTENSION_TYPE_OSM: {"properties": {"extensionType": EXTENSION_TYPE_OSM, "version": "x.y.z"}},
+                EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "x.y.z"}},
+            },
         ),
         (
-            UpgradeScenario("Patch ops extension due to ops_config override").set_user_kwargs(
-                ops_config=[f"{generate_random_string()}={generate_random_string()}"]
-            ),
-            [EXTENSION_TYPE_OPS],
+            UpgradeScenario("Patch ops extension due to ops_config override").set_user_kwargs(ops_config=["a=b"]),
+            {
+                EXTENSION_TYPE_OPS: {
+                    "properties": {"extensionType": EXTENSION_TYPE_OPS, "configurationSettings": {"a": "b"}}
+                }
+            },
         ),
         (
             UpgradeScenario("Patch ops extension due to ops_version override.").set_user_kwargs(ops_version="1.2.3"),
-            [EXTENSION_TYPE_OPS],
+            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "1.2.3"}}},
         ),
         (
-            UpgradeScenario("Patch ops extension due to ops_train override.").set_user_kwargs(
-                ops_train=f"{generate_random_string()}"
-            ),
-            [EXTENSION_TYPE_OPS],
+            UpgradeScenario("Patch ops extension due to ops_train override.").set_user_kwargs(ops_train="stablez"),
+            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "releaseTrain": "stablez"}}},
         ),
         (
             UpgradeScenario("Patch ops, ssc and acs extensions. Acs is patched due to overrides.")
@@ -271,29 +295,40 @@ class UpgradeScenario:
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0")
             .set_extension(ext_type=EXTENSION_TYPE_ACS, ext_vers="9.9.9")
             .set_user_kwargs(
-                acs_config=[f"{generate_random_string()}={generate_random_string()}"],
+                acs_config=["c=d", "e=f"],
                 acs_version="1.1.1",
-                acs_train=generate_random_string(),
+                acs_train="stablezz",
             ),
-            [EXTENSION_TYPE_ACS, EXTENSION_TYPE_SSC, EXTENSION_TYPE_OPS],
+            {
+                EXTENSION_TYPE_ACS: {
+                    "properties": {
+                        "extensionType": EXTENSION_TYPE_ACS,
+                        "releaseTrain": "stablezz",
+                        "version": "1.1.1",
+                        "configurationSettings": {"c": "d", "e": "f"},
+                    }
+                },
+                EXTENSION_TYPE_SSC: {"properties": {"extensionType": EXTENSION_TYPE_SSC, "version": "x.y.z"}},
+                EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "x.y.z"}},
+            },
         ),
         (
             UpgradeScenario("Throws ValidationError because cluster is not connected.")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="0.5.0")
             .set_cluster_connected_status("Disconnected"),
-            [EXTENSION_TYPE_PLATFORM],
+            {},
         ),
         (
             UpgradeScenario("Throws ValidationError because IoT Ops extension is missing.").set_extension(
                 ext_type=EXTENSION_TYPE_OPS, remove=True
             ),
-            [],
+            {},
         ),
         (
             UpgradeScenario("Throws HttpResponseError due to service 500.")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="0.5.0")
             .set_response_on_patch(ext_type=EXTENSION_TYPE_PLATFORM, code=500, body={"error": "server error"}),
-            [EXTENSION_TYPE_PLATFORM],
+            {EXTENSION_TYPE_PLATFORM: {}},
         ),
     ],
 )
@@ -301,7 +336,7 @@ def test_ops_upgrade(
     mocked_cmd: Mock,
     mocked_responses: responses,
     target_scenario: UpgradeScenario,
-    expected_patched_ext_types: List[str],
+    expected_patched_ext_types: Dict[str, dict],
     no_progress: bool,
     mocked_logger: Mock,
     mocked_sleep: Mock,
@@ -346,14 +381,15 @@ def test_ops_upgrade(
     assert len(mocked_confirm.ask.mock_calls) == bool(not target_scenario.confirm_yes)
 
     assert_patch_order(upgrade_result, expected_patched_ext_types)
-    assert_overrides(target_scenario, upgrade_result)
+    assert_result(target_scenario, upgrade_result, expected_patched_ext_types)
     assert_displays(spy_upgrade_displays, no_progress, patched_ext_types=expected_patched_ext_types)
 
 
-def assert_overrides(target_scenario: UpgradeScenario, upgrade_result: List[dict]):
+def assert_result(
+    target_scenario: UpgradeScenario, upgrade_result: List[dict], expected_types: Optional[Dict[str, dict]] = None
+):
     user_kwargs = target_scenario.user_kwargs
     result_type_to_payload = {k["properties"]["extensionType"]: k for k in upgrade_result}
-
     for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
         alias = EXTENSION_MONIKER_TO_ALIAS_MAP[moniker]
         ext_type = EXTENSION_ALIAS_TO_TYPE_MAP[alias]
@@ -368,8 +404,17 @@ def assert_overrides(target_scenario: UpgradeScenario, upgrade_result: List[dict
         if release_train:
             assert result_type_to_payload[ext_type]["properties"]["releaseTrain"] == release_train
 
+    if expected_types:
+        for ext_type in expected_types:
+            expected_version = expected_types[ext_type]["properties"].get("version")
+            if expected_version == "x.y.z":
+                expected_types[ext_type]["properties"]["version"] = target_scenario.init_version_map[
+                    EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
+                ]["version"]
+        assert result_type_to_payload == expected_types
 
-def assert_patch_order(upgrade_result: List[dict], expected_types: List[str]):
+
+def assert_patch_order(upgrade_result: List[dict], expected_types: Dict[str, dict]):
     result_type_to_payload = {k["properties"]["extensionType"]: k for k in upgrade_result}
     for ext_type in expected_types:
         assert ext_type in result_type_to_payload
@@ -392,7 +437,7 @@ def assert_displays(
     no_progress: bool,
     progress_count: Optional[int] = None,
     error_context: Optional[Exception] = None,
-    patched_ext_types: Optional[list] = None,
+    patched_ext_types: Optional[Dict[str, dict]] = None,
 ):
     if not progress_count:
         progress_count = 2
@@ -407,8 +452,9 @@ def assert_displays(
         if patched_ext_types:
             table_monikers = list(table.columns[0].cells)
             # Ensures table column monikers exist and match the order of update
-            for i in range(len(patched_ext_types)):
-                ext_type = patched_ext_types[i]
+            patched_ext_types_keys = list(patched_ext_types.keys())
+            for i in range(len(patched_ext_types_keys)):
+                ext_type = patched_ext_types_keys[i]
                 moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
                 assert moniker == table_monikers[i]
 
