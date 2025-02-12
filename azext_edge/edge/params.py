@@ -510,7 +510,6 @@ def load_iotops_arguments(self, _):
                 help=f"{moniker} arc extension custom config. Format is space-separated key=value pairs "
                 f"or just the key. This option can be used one or more times.",
                 arg_group="Extension Config",
-                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 f"{alias}_config_sync_mode",
