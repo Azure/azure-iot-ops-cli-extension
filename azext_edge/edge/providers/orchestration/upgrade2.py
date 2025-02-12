@@ -195,7 +195,7 @@ def build_override_map(**override_kwargs: dict) -> Dict[str, "ConfigOverride"]:
 class ConfigOverride:
     def __init__(
         self,
-        config: Optional[dict] = None,
+        config: Optional[List[str]] = None,
         config_sync_mode: Optional[str] = None,
         version: Optional[str] = None,
         train: Optional[str] = None,
@@ -314,7 +314,11 @@ class ExtensionUpgradeState:
 
     def _has_delta_in_train(self) -> bool:
         return bool(self.override.train) or (
-            self.desired_version[1] and self.desired_version[1].lower() != self.current_version[1].lower()
+            self.desired_version[0]
+            and version.parse(self.desired_version[0]) >= version.parse(self.current_version[0])
+            and not self.override.version
+            and self.desired_version[1]
+            and self.desired_version[1].lower() != self.current_version[1].lower()
         )
 
     def _has_delta_in_config(self) -> bool:

@@ -604,10 +604,6 @@ def load_iotops_help():
            To remove a setting provide the key with no value.
           text: >
             az iot ops upgrade --name myinstance -g myresourcegroup --ops-config key1=value1 deletekey
-        - name: Provide an explicit IoT Operations version or release train to upgrade to.
-            Not recommended for typical use cases.
-          text: >
-            az iot ops upgrade --name myinstance -g myresourcegroup --ops-version x.y.z --ops-train preview
     """
 
     helps[
