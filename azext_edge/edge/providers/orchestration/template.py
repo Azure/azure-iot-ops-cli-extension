@@ -48,13 +48,13 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="6b59c090a6b92ceb37d14b842aef399962af1f72",
+    commit_id="39e870f7654bae17c3eeba9dccb12afa91c73626",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "11793491850121040860"}
+            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "13776867008551554348"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -347,13 +347,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="d5f8a38d1c76f10d65452602ae9a55403151fdf4",
+    commit_id="7e05ba251db9d261956c379de0b8a3aceeed23d3",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "674500957660366604"}
+            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "6093590022463185967"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -526,7 +526,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
             "VERSIONS": {"iotOperations": "1.0.15"},
-            "TRAINS": {"iotOperations": "integration"},
+            "TRAINS": {"iotOperations": "stable"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
