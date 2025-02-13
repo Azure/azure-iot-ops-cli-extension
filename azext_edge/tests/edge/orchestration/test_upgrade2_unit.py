@@ -283,7 +283,6 @@ class UpgradeScenario:
                     "properties": {
                         "extensionType": EXTENSION_TYPE_OPS,
                         "version": BUILT_IN_VALUE,
-                        "releaseTrain": BUILT_IN_VALUE,
                     }
                 }
             },
