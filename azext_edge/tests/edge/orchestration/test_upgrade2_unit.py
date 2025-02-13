@@ -139,8 +139,12 @@ class UpgradeScenario:
             self.expect_exception = ValidationError
         return self
 
-    def set_user_kwargs(self: T, **kwargs):
+    def set_user_kwargs(self: T, **kwargs) -> T:
         self.user_kwargs.update(kwargs)
+        return self
+
+    def set_expected_exception(self: T, exc: Exception) -> T:
+        self.expect_exception = exc
         return self
 
     def set_extension(
@@ -253,6 +257,7 @@ class UpgradeScenario:
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="9.9.9", ext_train="stablez")
             .set_user_kwargs(
                 ops_version="8.8.8",
+                force=True,
             ),
             {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "8.8.8"}}},
         ),
@@ -326,7 +331,7 @@ class UpgradeScenario:
             UpgradeScenario("Patch ops, ssc and acs extensions. Acs is patched due to overrides.")
             .set_extension(ext_type=EXTENSION_TYPE_SSC, ext_vers="0.1.0")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0")
-            .set_extension(ext_type=EXTENSION_TYPE_ACS, ext_vers="9.9.9")
+            .set_extension(ext_type=EXTENSION_TYPE_ACS, ext_vers="1.0.0")
             .set_user_kwargs(
                 acs_config=["c=d", "e=f"],
                 acs_version="1.1.1",
@@ -363,6 +368,25 @@ class UpgradeScenario:
             .set_response_on_patch(ext_type=EXTENSION_TYPE_PLATFORM, code=500, body={"error": "server error"}),
             {EXTENSION_TYPE_PLATFORM: {}},
         ),
+        (
+            UpgradeScenario("Upgrade raises validation error if desired version is less than current.")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_expected_exception(ValidationError)
+            .set_user_kwargs(plat_version="0.9.9"),
+            {},
+        ),
+        (
+            UpgradeScenario("Validation error can be avoided with --force.")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_user_kwargs(plat_version="0.9.9", force=True),
+            {EXTENSION_TYPE_PLATFORM: {"properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": "0.9.9"}}},
+        ),
+        (
+            UpgradeScenario("Desired and current being the same will not raise a validation error.")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_user_kwargs(plat_version="1.0.0"),
+            {EXTENSION_TYPE_PLATFORM: {"properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": "1.0.0"}}},
+        ),
     ],
 )
 def test_ops_upgrade(
@@ -396,9 +420,9 @@ def test_ops_upgrade(
     expect_exception = target_scenario.expect_exception
 
     if expect_exception:
-        with pytest.raises(expect_exception):
+        with pytest.raises(expect_exception) as err:
             upgrade_instance(**call_kwargs)
-        assert_displays(spy_upgrade_displays, no_progress, error_context=expect_exception)
+        assert_displays(spy_upgrade_displays, no_progress, error_context=err)
         return
 
     upgrade_result = upgrade_instance(**call_kwargs)
@@ -477,12 +501,18 @@ def assert_displays(
     error_context: Optional[Exception] = None,
     patched_ext_types: Optional[Dict[str, dict]] = None,
 ):
+    # TODO: clean up function if spare cycles
+    if error_context:
+        error_context = error_context.value
+        if isinstance(error_context, ValidationError):
+            validation_err_str = str(error_context)
+            progress_count = 1
+            if validation_err_str.endswith("downgrade which is not supported.") and no_progress:
+                # Error is raised in first get_patch(). Table render is skipped if no_progress.
+                progress_count += 1
+
     if not progress_count:
         progress_count = 2
-
-    if error_context:
-        if error_context == ValidationError:
-            progress_count = 1
 
     if all([not no_progress, not error_context, patched_ext_types]):
         table = spy_upgrade_displays["print"].mock_calls[1].args[1]
