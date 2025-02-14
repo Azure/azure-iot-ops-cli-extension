@@ -233,8 +233,8 @@ jobs:
         if: ${{ matrix.feature == 'default' && !inputs.use-container }}
         run: |
           tox r -vv -e "python-edge-int" --notest
-      - name: "Tox test environment setup for loud integration tests"
-        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
+      - name: "Tox test environment setup for cloud integration tests"
+        if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
         run: |
           tox r -vv -e "python-rpsaas-int" --notest
       - name: "Tox test environment setup for Workload Identity integration tests"
@@ -269,8 +269,6 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
           azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
-          # redeploy tested later in this workflow
-          azext_edge_init_redeployment: false
         run: |
           tox r -e python-init-int --skip-pkg-install -- --durations=0
       - name: "Tox Edge Integration Tests"
