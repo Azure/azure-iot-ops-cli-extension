@@ -233,8 +233,8 @@ jobs:
         if: ${{ matrix.feature == 'default' && !inputs.use-container }}
         run: |
           tox r -vv -e "python-edge-int" --notest
-      - name: "Tox test environment setup for loud integration tests"
-        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
+      - name: "Tox test environment setup for cloud integration tests"
+        if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
         run: |
           tox r -vv -e "python-rpsaas-int" --notest
       - name: "Tox test environment setup for Workload Identity integration tests"
