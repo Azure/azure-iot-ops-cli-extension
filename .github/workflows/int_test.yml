@@ -269,8 +269,6 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
           azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
-          # redeploy tested later in this workflow
-          azext_edge_init_redeployment: false
         run: |
           tox r -e python-init-int --skip-pkg-install -- --durations=0
       - name: "Tox Edge Integration Tests"
