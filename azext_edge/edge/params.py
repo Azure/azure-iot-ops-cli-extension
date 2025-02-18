@@ -524,15 +524,25 @@ def load_iotops_arguments(self, _):
             context.argument(
                 f"{alias}_version",
                 options_list=[f"--{alias}-version"],
-                help=f"Use to override the built-in {moniker} arc extension version. ",
+                help=f"Use to override the built-in {moniker} arc extension version.",
                 arg_group="Extension Config",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 f"{alias}_train",
                 options_list=[f"--{alias}-train"],
-                help=f"Use to override the built-in {moniker} arc extension release train. ",
+                help=f"Use to override the built-in {moniker} arc extension release train.",
                 arg_group="Extension Config",
+                deprecate_info=context.deprecate(hide=True),
             )
+        context.argument(
+            "force",
+            options_list=["--force"],
+            arg_type=get_three_state_flag(),
+            help="Force the operation to continue. Use to get around guards, such as those preventing downgrade.",
+            arg_group="Extension Config",
+            deprecate_info=context.deprecate(hide=True),
+        )
 
     with self.argument_context("iot ops delete") as context:
         context.argument(

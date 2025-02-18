@@ -229,11 +229,15 @@ jobs:
         run: |
           python -m pip install tox
           tox r -vv -e python-init-int --notest
-      - name: "Tox test environment setup for integration tests"
+      - name: "Tox test environment setup for edge integration tests"
         if: ${{ matrix.feature == 'default' && !inputs.use-container }}
         run: |
-          tox r -vv -e "python-all-int" --notest
-      - name: "Tox test environment setup for integration tests"
+          tox r -vv -e "python-edge-int" --notest
+      - name: "Tox test environment setup for cloud integration tests"
+        if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
+        run: |
+          tox r -vv -e "python-rpsaas-int" --notest
+      - name: "Tox test environment setup for Workload Identity integration tests"
         if: ${{ matrix.feature == 'secretsync' && !inputs.use-container }}
         run: |
           tox r -vv -e "python-secretsync-int" --notest
@@ -265,18 +269,26 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
           azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
-          # redeploy tested later in this workflow
-          azext_edge_init_redeployment: false
         run: |
           tox r -e python-init-int --skip-pkg-install -- --durations=0
-      - name: "Tox Integration Tests"
+      - name: "Tox Edge Integration Tests"
         if: ${{ matrix.feature == 'default' && !inputs.use-container }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
         run: |
-          tox r -e "python-all-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          tox r -e "python-edge-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
+          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+      - name: "Tox Cloud Integration Tests"
+        if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
+        env:
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+        run: |
+          tox r -e "python-rpsaas-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Tox Workload Identity Integration Tests"

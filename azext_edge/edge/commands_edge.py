@@ -261,6 +261,7 @@ def upgrade_instance(
     plat_version: Optional[str] = None,
     plat_train: Optional[str] = None,
     plat_config_sync_mode: Optional[str] = None,
+    force: Optional[bool] = None,
     **kwargs,
 ) -> Optional[List[dict]]:
     from .providers.orchestration.upgrade2 import upgrade_ops_instance
@@ -291,6 +292,7 @@ def upgrade_instance(
         plat_version=plat_version,
         plat_train=plat_train,
         plat_config_sync_mode=plat_config_sync_mode,
+        force=force,
         **kwargs,
     )
 
