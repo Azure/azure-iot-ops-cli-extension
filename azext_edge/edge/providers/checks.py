@@ -62,7 +62,7 @@ def run_checks(
                 OpsServiceType.akri.value: check_akri_deployment,
                 OpsServiceType.mq.value: check_mq_deployment,
                 OpsServiceType.deviceregistry.value: check_deviceregistry_deployment,
-                OpsServiceType.opcua.value: check_opcua_deployment,
+                "opcua": check_opcua_deployment,
                 OpsServiceType.dataflow.value: check_dataflows_deployment,
                 None: check_summary,
             }
@@ -87,7 +87,7 @@ def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: Lis
     service_kinds_dict: Dict[str, ListableEnum] = {
         OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
-        OpsServiceType.opcua.value: OpcuaResourceKinds,
+        "opcua": OpcuaResourceKinds,
         OpsServiceType.dataflow.value: DataflowResourceKinds,
     }
 

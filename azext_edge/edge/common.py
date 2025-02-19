@@ -133,7 +133,7 @@ class OpsServiceType(ListableEnum):
 
     mq = "broker"
     openservicemesh = "openservicemesh"
-    opcua = "opcua"
+    connectors = "connectors"
     akri = "akri"
     deviceregistry = "deviceregistry"
     billing = "billing"
@@ -147,8 +147,9 @@ class OpsServiceType(ListableEnum):
     @classmethod
     def list_check_services(cls):
         return [
+            # TODO: check replace opcua with "connectors"?
+            "opcua",
             cls.mq.value,
-            cls.opcua.value,
             cls.akri.value,
             cls.deviceregistry.value,
             cls.dataflow.value,

@@ -56,7 +56,7 @@ def check_summary(
             check_func=check_deviceregistry_deployment,
         ),
         ServiceCheck(
-            svc=OpsServiceType.opcua.value,
+            svc="opcua",
             title="OPCUA",
             target=OPCUA_API_V1.as_str(),
             check_func=check_opcua_deployment,
