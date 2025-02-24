@@ -61,7 +61,7 @@ def build_bundle(
     from .support.billing import prepare_bundle as prepare_billing_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.openservicemesh import prepare_bundle as prepare_openservicemesh_bundle
-    from .support.opcua import prepare_bundle as prepare_opcua_bundle
+    from .support.connectors import prepare_bundle as prepare_opcua_bundle
     from .support.dataflow import prepare_bundle as prepare_dataflow_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
@@ -100,7 +100,7 @@ def build_bundle(
             "apis": COMPAT_OSM_APIS,
             "prepare_bundle": prepare_openservicemesh_bundle,
         },
-        OpsServiceType.opcua.value: {
+        OpsServiceType.connectors.value: {
             "apis": COMPAT_OPCUA_APIS,
             "prepare_bundle": prepare_opcua_bundle,
         },

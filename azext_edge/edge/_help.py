@@ -85,7 +85,7 @@ def load_iotops_help():
 
         - name: Constrain data capture on a specific service as well as producing the bundle in a custom output dir.
           text: >
-            az iot ops support create-bundle --ops-service opcua --bundle-dir ~/ops
+            az iot ops support create-bundle --ops-service connectors --bundle-dir ~/ops
 
         - name: Specify a custom container log age in seconds.
           text: >
@@ -105,11 +105,11 @@ def load_iotops_help():
 
         - name: Include multiple services in the support bundle with single --ops-service flag.
           text: >
-            az iot ops support create-bundle --ops-service broker opcua deviceregistry
+            az iot ops support create-bundle --ops-service broker connectors deviceregistry
 
         - name: Include multiple services in the support bundle with multiple --ops-service flags.
           text: >
-            az iot ops support create-bundle --ops-service broker --ops-service opcua --ops-service deviceregistry
+            az iot ops support create-bundle --ops-service broker --ops-service connectors --ops-service deviceregistry
     """
 
     helps[
