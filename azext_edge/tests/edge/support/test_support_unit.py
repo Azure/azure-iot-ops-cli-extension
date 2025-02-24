@@ -67,6 +67,7 @@ def test_create_bundle(
     mocked_os_makedirs,
     mocked_zipfile,
     mocked_get_custom_objects,
+    mocked_list_config_maps,
     mocked_list_cron_jobs,
     mocked_list_jobs,
     mocked_list_deployments,
@@ -194,8 +195,20 @@ def test_create_bundle(
                 label_selector=MQ_NAME_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
             )
+            assert_list_config_maps(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=MQ_NAME_LABEL,
+                directory_path=MQ_DIRECTORY_PATH,
+            )
 
         if api in [DATAFLOW_API_V1]:
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATAFLOW_API_V1.label,
+                directory_path=DATAFLOW_API_V1.moniker,
+            )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,

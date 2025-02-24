@@ -13,6 +13,8 @@ from ..edge_api import OPCUA_API_V1, EdgeResourceApi
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
+    process_config_maps,
+    process_daemonsets,
     process_deployments,
     process_services,
     process_v1_pods,
@@ -86,7 +88,30 @@ def fetch_services():
     return processed
 
 
+def fetch_configmaps():
+    return process_config_maps(
+        directory_path=CONNECTORS_DIRECTORY_PATH,
+        label_selector=OPCUA_NAME_LABEL,
+    )
+
+
+def fetch_daemonsets():
+    processed = process_daemonsets(
+        directory_path=CONNECTORS_DIRECTORY_PATH,
+        field_selector="metadata.name==aio-opc-asset-discovery",
+    )
+    processed.extend(
+        process_daemonsets(
+            directory_path=CONNECTORS_DIRECTORY_PATH,
+            label_selector=OPCUA_NAME_LABEL,
+        )
+    )
+    return processed
+
+
 support_runtime_elements = {
+    "daemonsets": fetch_daemonsets,
+    "configmaps": fetch_configmaps,
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "services": fetch_services,

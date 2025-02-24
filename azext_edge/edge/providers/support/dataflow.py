@@ -15,6 +15,7 @@ from .base import (
     assemble_crd_work,
     process_deployments,
     process_replicasets,
+    process_services,
     process_v1_pods,
 )
 from .common import NAME_LABEL_FORMAT
@@ -52,6 +53,13 @@ def fetch_replicasets():
     )
 
 
+def fetch_services():
+    return process_services(
+        directory_path=DATAFLOW_DIRECTORY_PATH,
+        label_selector=DATAFLOW_NAME_LABEL,
+    )
+
+
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     return process_v1_pods(
         directory_path=DATAFLOW_DIRECTORY_PATH,
@@ -62,6 +70,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
 support_runtime_elements = {
     "deployments": fetch_deployments,
+    "services": fetch_services,
     "replicasets": fetch_replicasets,
 }
 

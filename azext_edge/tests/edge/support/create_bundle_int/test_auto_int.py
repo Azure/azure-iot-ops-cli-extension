@@ -70,6 +70,8 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
     osm_namespace = namespaces.get("osm")
 
     # Level 1
+    if not aio_namespace:
+        raise AssertionError(f"Could not determine AIO namespace: namespaces {namespaces}")
     level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
     expected_services = _get_expected_services(walk_result, ops_service, aio_namespace)
     assert sorted(level_1["folders"]) == sorted(expected_services)

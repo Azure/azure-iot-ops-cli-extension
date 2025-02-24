@@ -43,6 +43,7 @@ def upgrade_ops_instance(
     instance_name: str,
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
+    force: Optional[bool] = None,
     **kwargs,
 ):
     upgrade_manager = UpgradeManager(
@@ -50,6 +51,7 @@ def upgrade_ops_instance(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         no_progress=no_progress,
+        force=force,
     )
 
     upgrade_state = upgrade_manager.analyze_cluster(**kwargs)
@@ -75,11 +77,13 @@ class UpgradeManager:
         resource_group_name: str,
         instance_name: str,
         no_progress: Optional[bool] = None,
+        force: Optional[bool] = None,
     ):
         self.cmd = cmd
         self.instance_name = instance_name
         self.resource_group_name = resource_group_name
         self.no_progress = no_progress
+        self.force = force
         self.instances = Instances(self.cmd)
         self.resource_map = self.instances.get_resource_map(
             self.instances.show(name=self.instance_name, resource_group_name=self.resource_group_name)
@@ -120,6 +124,7 @@ class UpgradeManager:
                 },
                 desired_config_map=self.get_desired_config(),
                 override_map=build_override_map(**override_kwargs),
+                force=self.force,
             )
 
     def apply_upgrades(
@@ -195,7 +200,7 @@ def build_override_map(**override_kwargs: dict) -> Dict[str, "ConfigOverride"]:
 class ConfigOverride:
     def __init__(
         self,
-        config: Optional[dict] = None,
+        config: Optional[List[str]] = None,
         config_sync_mode: Optional[str] = None,
         version: Optional[str] = None,
         train: Optional[str] = None,
@@ -216,11 +221,13 @@ class ClusterUpgradeState:
         init_version_map: Dict[str, dict],
         desired_config_map: Dict[str, str],
         override_map: Dict[str, "ConfigOverride"],
+        force: Optional[bool] = None,
     ):
         self.extensions_map = extensions_map
         self.init_version_map = init_version_map
         self.desired_config_map = desired_config_map
         self.override_map = override_map
+        self.force = force
         self.extension_upgrades = self.refresh_upgrade_state()
 
     def has_upgrades(self) -> bool:
@@ -245,6 +252,7 @@ class ClusterUpgradeState:
                         desired_version_map=self.init_version_map.get(ext_moniker, {}),
                         desired_config=self.desired_config_map.get(ext_moniker),
                         override=self.override_map.get(ext_moniker),
+                        force=self.force,
                     )
                 )
         return ext_queue
@@ -257,12 +265,14 @@ class ExtensionUpgradeState:
         desired_version_map: dict,
         desired_config: Optional[Dict[str, str]] = None,
         override: Optional[ConfigOverride] = None,
+        force: Optional[bool] = None,
     ):
         self.extension = extension
         self.desired_version_map = desired_version_map
         self.desired_config = desired_config or {}
         self.override = override or ConfigOverride()
         self.config_delta = {}
+        self.force = force
 
     @property
     def current_version(self) -> Tuple[str, str]:
@@ -297,6 +307,7 @@ class ExtensionUpgradeState:
         }
 
         if self._has_delta_in_version():
+            self._throw_on_downgrade()
             payload["properties"]["version"] = self.desired_version[0]
         if self._has_delta_in_train():
             payload["properties"]["releaseTrain"] = self.desired_version[1]
@@ -314,7 +325,11 @@ class ExtensionUpgradeState:
 
     def _has_delta_in_train(self) -> bool:
         return bool(self.override.train) or (
-            self.desired_version[1] and self.desired_version[1].lower() != self.current_version[1].lower()
+            self.desired_version[0]
+            and version.parse(self.desired_version[0]) >= version.parse(self.current_version[0])
+            and not self.override.version
+            and self.desired_version[1]
+            and self.desired_version[1].lower() != self.current_version[1].lower()
         )
 
     def _has_delta_in_config(self) -> bool:
@@ -325,6 +340,15 @@ class ExtensionUpgradeState:
                 sync_mode=self.override.config_sync_mode,
             )
         return bool(self.override.config) or bool(self.config_delta)
+
+    def _throw_on_downgrade(self):
+        if self.force:
+            return
+        if version.parse(self.desired_version[0]) < version.parse(self.current_version[0]):
+            raise ValidationError(
+                f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
+                f"The desired {self.desired_version[0]} version is a downgrade which is not supported."
+            )
 
 
 def get_default_table() -> Table:

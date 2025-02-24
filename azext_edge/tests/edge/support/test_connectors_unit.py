@@ -16,6 +16,8 @@ from azext_edge.edge.providers.support.connectors import (
     OPCUA_NAME_LABEL,
 )
 from azext_edge.tests.edge.support.test_support_unit import (
+    assert_list_config_maps,
+    assert_list_daemon_sets,
     assert_list_deployments,
     assert_list_pods,
     assert_list_replica_sets,
@@ -32,6 +34,8 @@ def test_create_bundle_connectors(
     mocked_config,
     mocked_os_makedirs,
     mocked_zipfile,
+    mocked_list_config_maps,
+    mocked_list_daemonsets,
     mocked_list_deployments,
     mocked_list_pods,
     mocked_list_replicasets,
@@ -65,17 +69,37 @@ def test_create_bundle_connectors(
             since_seconds=since_seconds,
             include_metrics=True,
         )
-    assert_list_deployments(
+        assert_list_deployments(
+            mocked_client,
+            mocked_zipfile,
+            label_selector=None,
+            directory_path=CONNECTORS_DIRECTORY_PATH,
+            mock_names=[
+                "aio-opc-admission-controller",
+                "aio-opc-supervisor",
+                "aio-opc-opc",
+                "opcplc-0000000",
+            ],
+        )
+    assert_list_config_maps(
         mocked_client,
         mocked_zipfile,
-        label_selector=None,
+        label_selector=OPCUA_NAME_LABEL,
         directory_path=CONNECTORS_DIRECTORY_PATH,
-        mock_names=[
-            "aio-opc-admission-controller",
-            "aio-opc-supervisor",
-            "aio-opc-opc",
-            "opcplc-0000000",
-        ],
+    )
+
+    # TODO: one-off field selector remove after label
+    assert_list_daemon_sets(
+        mocked_client,
+        mocked_zipfile,
+        field_selector="metadata.name==aio-opc-asset-discovery",
+        directory_path=CONNECTORS_DIRECTORY_PATH,
+    )
+    assert_list_daemon_sets(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=OPCUA_NAME_LABEL,
+        directory_path=CONNECTORS_DIRECTORY_PATH,
     )
     assert_list_deployments(
         mocked_client,

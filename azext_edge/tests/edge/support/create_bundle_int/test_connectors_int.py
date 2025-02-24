@@ -24,7 +24,7 @@ def test_create_bundle_connectors(init_setup, tracked_files):
 
     check_custom_resource_files(file_objs=file_map, resource_api=OPCUA_API_V1)
 
-    expected_workload_types = ["deployment", "pod", "replicaset", "service"]
+    expected_workload_types = ["daemonset", "deployment", "pod", "replicaset", "service", "configmap"]
     optional_workload_types = ["podmetric"]
     expected_types = set(expected_workload_types + optional_workload_types).union(OPCUA_API_V1.kinds)
     assert set(file_map.keys()).issubset(expected_types)
