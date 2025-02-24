@@ -148,7 +148,7 @@ class OpsServiceType(ListableEnum):
     def list_check_services(cls):
         return [
             # TODO: check replace opcua with "connectors"?
-            "opcua",
+            OPCUA_SERVICE,
             cls.mq.value,
             cls.akri.value,
             cls.deviceregistry.value,
@@ -288,3 +288,6 @@ DEFAULT_DATAFLOW_ENDPOINT = "default"
 # Init Env Control
 
 INIT_NO_PREFLIGHT_ENV_KEY = "AIO_CLI_INIT_PREFLIGHT_DISABLED"
+
+# OPC UA check constant
+OPCUA_SERVICE = "opcua"

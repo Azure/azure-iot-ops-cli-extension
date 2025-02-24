@@ -10,7 +10,7 @@ from azure.cli.core.azclierror import ArgumentUsageError
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 from rich.console import Console
 
-from ..common import ListableEnum, OpsServiceType
+from ..common import OPCUA_SERVICE, ListableEnum, OpsServiceType
 from .check.base import check_pre_deployment, display_as_list
 from .check.common import COLOR_STR_FORMAT, ResourceOutputDetailLevel
 from .check.deviceregistry import check_deviceregistry_deployment
@@ -62,7 +62,7 @@ def run_checks(
                 OpsServiceType.akri.value: check_akri_deployment,
                 OpsServiceType.mq.value: check_mq_deployment,
                 OpsServiceType.deviceregistry.value: check_deviceregistry_deployment,
-                "opcua": check_opcua_deployment,
+                OPCUA_SERVICE: check_opcua_deployment,
                 OpsServiceType.dataflow.value: check_dataflows_deployment,
                 None: check_summary,
             }
@@ -87,7 +87,7 @@ def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: Lis
     service_kinds_dict: Dict[str, ListableEnum] = {
         OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
-        "opcua": OpcuaResourceKinds,
+        OPCUA_SERVICE: OpcuaResourceKinds,
         OpsServiceType.dataflow.value: DataflowResourceKinds,
     }
 
