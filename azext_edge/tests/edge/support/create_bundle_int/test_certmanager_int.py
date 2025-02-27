@@ -7,15 +7,20 @@
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import CERTMANAGER_API_V1, TRUSTMANAGER_API_V1
-from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
+from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, get_workload_resources, run_bundle_command
 
 logger = get_logger(__name__)
 
 
-def test_create_bundle_certmanager(init_setup, tracked_files):
+def test_create_bundle_certmanager(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.certmanager.value
-
+    expected_workload_types = ["deployment", "pod", "replicaset", "service", "configmap"]
+    prefixes = ["aio-cert-manager", "aio-trust-manager", "kube-root-ca"]
+    pre_bundle_workload_items = get_workload_resources(
+        expected_workload_types=expected_workload_types,
+        prefixes=prefixes,
+    )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
@@ -32,14 +37,12 @@ def test_create_bundle_certmanager(init_setup, tracked_files):
         resource_api=TRUSTMANAGER_API_V1,
         namespace=file_map["__namespaces__"]["certmanager"],
     )
-    expected_workload_types = ["deployment", "pod", "replicaset", "service", "configmap"]
-    expected_types = set(expected_workload_types).union(CERTMANAGER_API_V1.kinds)
-    expected_types = expected_types.union(TRUSTMANAGER_API_V1.kinds)
+    expected_types = set(expected_workload_types).union(CERTMANAGER_API_V1.kinds).union(TRUSTMANAGER_API_V1.kinds)
     assert set(certmanager_file_map.keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=certmanager_file_map,
-        expected_workload_types=expected_workload_types,
-        prefixes=["aio-cert-manager", "aio-trust-manager", "kube-root-ca"],
+        pre_bundle_items=pre_bundle_workload_items,
+        prefixes=prefixes,
         bundle_path=bundle_path,
     )
 

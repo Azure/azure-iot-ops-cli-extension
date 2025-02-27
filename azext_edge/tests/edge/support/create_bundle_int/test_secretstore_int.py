@@ -8,17 +8,23 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
-from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
+from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, get_workload_resources, run_bundle_command
 
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
 
 
-def test_create_bundle_ssc(init_setup, tracked_files):
+def test_create_bundle_ssc(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.secretstore.value
+    expected_workload_types = ["deployment", "pod", "replicaset", "service"]
+    secret_store_prefixes = ["secrets-store-sync-controller-manager", "manager-metrics-service"]
 
+    pre_bundle_workload_items = get_workload_resources(
+        expected_workload_types=expected_workload_types,
+        prefixes=secret_store_prefixes,
+    )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
@@ -34,12 +40,11 @@ def test_create_bundle_ssc(init_setup, tracked_files):
     )
 
     # SECRETSTORE
-    expected_workload_types = ["deployment", "pod", "replicaset", "service"]
     expected_types = set(expected_workload_types)
     assert set(file_map[OpsServiceType.secretstore.value].keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=file_map[OpsServiceType.secretstore.value],
-        expected_workload_types=expected_workload_types,
-        prefixes=["secrets-store-sync-controller-manager", "manager-metrics-service"],
+        pre_bundle_items=pre_bundle_workload_items,
+        prefixes=secret_store_prefixes,
         bundle_path=bundle_path,
     )

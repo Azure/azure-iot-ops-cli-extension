@@ -13,6 +13,7 @@ from .helpers import (
     check_workload_resource_files,
     get_file_map,
     get_kubectl_workload_items,
+    get_workload_resources,
     run_bundle_command,
 )
 
@@ -22,11 +23,24 @@ pytestmark = pytest.mark.e2e
 
 
 @pytest.mark.parametrize("mq_traces", [False, True])
-def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
+def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
     """Test for ensuring file names and content. ONLY CHECKS mq."""
     mq_traces = True
 
     ops_service = OpsServiceType.mq.value
+    expected_workload_types = [
+        "pod", "daemonset", "replicaset", "service", "statefulset", "job", "configmap"
+    ]
+    prefixes = ["aio-broker", "aio-dmqtt", "otel-collector-service"]
+    pre_bundle_workload_items = get_workload_resources(
+        expected_workload_types=expected_workload_types,
+        prefixes=prefixes,
+        expected_label=("app.kubernetes.io/name", "microsoft-iotoperations-mqttbroker")
+    )
+    mq_trace_pods_names = []
+    if mq_traces:
+        mq_trace_pods_names = _get_trace_pods()
+
     command = f"az iot ops support create-bundle --broker-traces {mq_traces} --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service, mq_traces=mq_traces)["aio"]
@@ -39,9 +53,6 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
 
     check_custom_resource_files(file_objs=file_map, resource_api=MQ_ACTIVE_API)
 
-    expected_workload_types = [
-        "pod", "daemonset", "replicaset", "service", "statefulset", "job", "configmap"
-    ]
     expected_types = set(expected_workload_types).union(MQ_ACTIVE_API.kinds)
     assert set(file_map.keys()).issubset(expected_types)
 
@@ -51,8 +62,7 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
 
     if traces:
         # one trace should have two files - grab by id
-        expected_pods = get_kubectl_workload_items("aio-mq", service_type="pod")
-        expected_pod_names = [item["metadata"]["name"] for item in expected_pods]
+        post_expected_pods = _get_trace_pods()
         id_check = {}
         for file in traces["trace"]:
             assert file["action"] in [
@@ -64,7 +74,7 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
                 "subscribe",
                 "unsubscribe",
             ]
-            assert file["name"] in expected_pod_names
+            assert (file["name"] in mq_trace_pods_names) or (file["name"] in post_expected_pods)
 
             # should be a json for each pb
             if file["identifier"] not in id_check:
@@ -79,8 +89,12 @@ def test_create_bundle_mq(init_setup, tracked_files, mq_traces):
 
     check_workload_resource_files(
         file_objs=file_map,
-        expected_workload_types=expected_workload_types,
-        prefixes=["aio-broker", "aio-dmqtt", "otel-collector-service"],
+        pre_bundle_items=pre_bundle_workload_items,
+        prefixes=prefixes,
         bundle_path=bundle_path,
         expected_label=("app.kubernetes.io/name", "microsoft-iotoperations-mqttbroker")
     )
+
+
+def _get_trace_pods():
+    return get_workload_resources(expected_workload_types=["pod"], prefixes="aio-mq")["pod"]
