@@ -105,7 +105,10 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             name_obj["version"] = name.pop(0)
             assert name_obj["version"].startswith("v")
         name_obj["name"] = name.pop(0)
+        # custom re-adding
         if name_obj["name"] == "aio-opc-opc":
+            name_obj["name"] += f".{name.pop(0)}"
+        if name_obj["name"] == "kube-root-ca":
             name_obj["name"] += f".{name.pop(0)}"
 
         # something like "msi-adapter", "init-runner"
