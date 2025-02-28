@@ -91,8 +91,8 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
     import pdb; pdb.set_trace()
     check_workload_resource_files(
         file_objs=acs_file_map,
-        pre_bundle_items=pre_bundle_acstor_workload_items,
-        prefixes=pre_bundle_acs_workload_items,
+        pre_bundle_items=pre_bundle_acs_workload_items,
+        prefixes=acs_workload_resource_prefixes,
         bundle_path=bundle_path,
     )
     check_custom_resource_files(file_objs=acs_file_map, resource_api=ARCCONTAINERSTORAGE_API_V1)
