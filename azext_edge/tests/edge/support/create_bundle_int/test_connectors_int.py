@@ -20,15 +20,16 @@ def test_create_bundle_connectors(cluster_connection, tracked_files):
     ops_service = OpsServiceType.connectors.value
     expected_workload_types = ["daemonset", "deployment", "pod", "replicaset", "service", "configmap"]
     optional_workload_types = ["podmetric"]
-    prefixes = ["aio-opc", "opcplc"] # TODO may change
+    prefixes = ["aio-opc", "opcplc"]
     pre_bundle_workload_items = get_workload_resources(
         expected_workload_types=expected_workload_types,
         prefixes=prefixes,
     )
-    pre_bundle_optional_workload_items = get_workload_resources(
-        expected_workload_types=optional_workload_types,
-        prefixes=prefixes,
-    )
+    # TODO: not an actual type
+    # pre_bundle_optional_workload_items = get_workload_resources(
+    #     expected_workload_types=optional_workload_types,
+    #     prefixes=prefixes,
+    # )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)["aio"]
@@ -43,5 +44,5 @@ def test_create_bundle_connectors(cluster_connection, tracked_files):
         pre_bundle_items=pre_bundle_workload_items,
         prefixes=prefixes,
         bundle_path=bundle_path,
-        pre_bundle_optional_items=pre_bundle_optional_workload_items
+        # pre_bundle_optional_items=pre_bundle_optional_workload_items
     )

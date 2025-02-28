@@ -59,8 +59,8 @@ def find_extra_or_missing_names(
     error_msg = []
     # names may contain descriptors after the initial '.', just comparing first prefix
     # vilit double check if ^ is still needed
-    # pre_expected_names = [name.split(".")[0] for name in pre_expected_names]
-    # post_expected_names = [name.split(".")[0] for name in post_expected_names]
+    pre_expected_names = [name.split(".")[0] for name in pre_expected_names]
+    post_expected_names = [name.split(".")[0] for name in post_expected_names]
 
     extra_names = [name for name in result_names if name not in pre_expected_names]
     extra_names = [name for name in extra_names if name not in post_expected_names]

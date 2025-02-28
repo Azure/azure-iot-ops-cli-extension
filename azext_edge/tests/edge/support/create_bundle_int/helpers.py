@@ -207,6 +207,8 @@ def check_workload_resource_files(
                 for file in file_objs.get(key, []):
                     assert file["extension"] == "yaml"
                 present_names = [file["name"] for file in file_objs.get(key, [])]
+                if key == "configmap":
+                    import pdb; pdb.set_trace()
                 find_extra_or_missing_names(
                     resource_type=key,
                     result_names=present_names,

@@ -88,6 +88,7 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
 
     expected_types = set(expected_acs_workload_types).union(ARCCONTAINERSTORAGE_API_V1.kinds)
     assert set(acs_file_map.keys()).issubset(set(expected_types))
+    import pdb; pdb.set_trace()
     check_workload_resource_files(
         file_objs=acs_file_map,
         pre_bundle_items=pre_bundle_acstor_workload_items,
