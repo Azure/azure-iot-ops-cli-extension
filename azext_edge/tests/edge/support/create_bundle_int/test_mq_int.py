@@ -12,7 +12,6 @@ from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
-    get_kubectl_workload_items,
     get_workload_resources,
     run_bundle_command,
 )
@@ -20,6 +19,9 @@ from .helpers import (
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
+MQ_PREFIXES = ["aio-broker", "aio-dmqtt", "otel-collector-service"]
+MQ_WORKLOAD_TYPES = ["pod", "daemonset", "replicaset", "service", "statefulset", "job", "configmap"]
+MQ_LABEL = ("app.kubernetes.io/name", "microsoft-iotoperations-mqttbroker")
 
 
 @pytest.mark.parametrize("mq_traces", [False, True])
@@ -28,14 +30,10 @@ def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
     mq_traces = True
 
     ops_service = OpsServiceType.mq.value
-    expected_workload_types = [
-        "pod", "daemonset", "replicaset", "service", "statefulset", "job", "configmap"
-    ]
-    prefixes = ["aio-broker", "aio-dmqtt", "otel-collector-service"]
     pre_bundle_workload_items = get_workload_resources(
-        expected_workload_types=expected_workload_types,
-        prefixes=prefixes,
-        expected_label=("app.kubernetes.io/name", "microsoft-iotoperations-mqttbroker")
+        expected_workload_types=MQ_WORKLOAD_TYPES,
+        prefixes=MQ_PREFIXES,
+        expected_label=MQ_LABEL
     )
     mq_trace_pods_names = []
     if mq_traces:
@@ -53,7 +51,7 @@ def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
 
     check_custom_resource_files(file_objs=file_map, resource_api=MQ_ACTIVE_API)
 
-    expected_types = set(expected_workload_types).union(MQ_ACTIVE_API.kinds)
+    expected_types = set(MQ_WORKLOAD_TYPES).union(MQ_ACTIVE_API.kinds)
     assert set(file_map.keys()).issubset(expected_types)
 
     # There is a chance that traces are not present even if mq_traces is true
@@ -90,9 +88,9 @@ def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
     check_workload_resource_files(
         file_objs=file_map,
         pre_bundle_items=pre_bundle_workload_items,
-        prefixes=prefixes,
+        prefixes=MQ_PREFIXES,
         bundle_path=bundle_path,
-        expected_label=("app.kubernetes.io/name", "microsoft-iotoperations-mqttbroker")
+        expected_label=MQ_LABEL
     )
 
 

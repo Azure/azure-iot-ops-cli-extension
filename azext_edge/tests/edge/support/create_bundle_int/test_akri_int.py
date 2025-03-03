@@ -12,28 +12,28 @@ from .helpers import check_workload_resource_files, get_file_map, get_workload_r
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
+AKRI_PREFIXES = ["aio-akri"]
+AKRI_WORKLOAD_TYPES = ["deployment", "pod", "replicaset"]
 
 
 def test_create_bundle_akri(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS AKRI."""
     ops_service = OpsServiceType.akri.value
-    expected_workload_types = ["deployment", "pod", "replicaset"]
-    prefixes = "aio-akri"
 
     pre_bundle_workload_items = get_workload_resources(
-        expected_workload_types=expected_workload_types,
-        prefixes=prefixes,
+        expected_workload_types=AKRI_WORKLOAD_TYPES,
+        prefixes=AKRI_WORKLOAD_TYPES,
     )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)["aio"]
 
-    expected_types = set(expected_workload_types)
+    expected_types = set(AKRI_WORKLOAD_TYPES)
     assert set(file_map.keys()).issubset(expected_types)
 
     check_workload_resource_files(
         file_objs=file_map,
         pre_bundle_items=pre_bundle_workload_items,
-        prefixes=prefixes,
+        prefixes=AKRI_WORKLOAD_TYPES,
         bundle_path=bundle_path,
     )

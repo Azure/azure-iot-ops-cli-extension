@@ -40,7 +40,11 @@ WORKLOAD_TYPES = [
 
 
 def assert_file_names(files: List[str]):
-    """Asserts file names."""
+    """
+    Simple asserts for file names.
+
+    Ensures trace file conventions, extension conventions, etc
+    """
     for full_name in files:
         name = split_name(full_name)
         file_type = name.pop(0)
@@ -69,7 +73,11 @@ def assert_file_names(files: List[str]):
 
 
 def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
-    """Maps deployment/pod/etc to list of dissembled file names"""
+    """
+    Maps deployment/pod/etc to list of disassembled file names
+
+    Please see comments for examples/conventions.
+    """
     file_name_objs = {}
     for full_name in files:
         name = split_name(full_name)
@@ -77,6 +85,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
         name_obj = {"extension": name.pop(-1), "full_name": full_name}
 
         if file_type == "pod" and name[-1] == "metric":
+            # note: not a real type
             file_type = "podmetric"
 
         if name_obj["extension"] in ["pb", "json"]:
@@ -105,6 +114,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             name_obj["version"] = name.pop(0)
             assert name_obj["version"].startswith("v")
         name_obj["name"] = name.pop(0)
+
         # custom re-adding
         if name_obj["name"] == "aio-opc-opc":
             name_obj["name"] += f".{name.pop(0)}"
@@ -366,11 +376,11 @@ def get_file_map(
     return file_map
 
 
-# TODO rename
+# TODO rename + maybe move
 def get_workload_resources(
     expected_workload_types: Union[str, List[str]],
     prefixes: Union[str, List[str]],
-    expected_label: Optional[str] = None
+    expected_label: Optional[Tuple[str, str]] = None
 ) -> Dict[str, Iterable[str]]:
     """
     Fetch a list of the workload resources via kubectl.

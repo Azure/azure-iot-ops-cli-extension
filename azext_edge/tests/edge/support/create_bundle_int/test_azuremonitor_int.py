@@ -20,14 +20,15 @@ logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
 AZUREMONITOR_PREFIXES = ["diagnostics-operator", "diagnostics-v1"]
+AZUREMONITOR_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "statefulset", "configmap"]
+
 
 def test_create_bundle_azuremonitor(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.azuremonitor.value
-    expected_workload_types = ["deployment", "pod", "replicaset", "service", "statefulset", "configmap"]
 
     pre_bundle_workload_items = get_workload_resources(
-        expected_workload_types=expected_workload_types,
+        expected_workload_types=AZUREMONITOR_WORKLOAD_TYPES,
         prefixes=AZUREMONITOR_PREFIXES,
     )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
@@ -39,7 +40,7 @@ def test_create_bundle_azuremonitor(cluster_connection, tracked_files):
     )
 
     # arc namespace
-    expected_types = set(expected_workload_types).union(AZUREMONITOR_API_V1.kinds)
+    expected_types = set(AZUREMONITOR_WORKLOAD_TYPES).union(AZUREMONITOR_API_V1.kinds)
     assert set(file_map[OpsServiceType.azuremonitor.value].keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=file_map[OpsServiceType.azuremonitor.value],

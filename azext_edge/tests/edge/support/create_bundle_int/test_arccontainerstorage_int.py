@@ -22,25 +22,43 @@ logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
 
+ACS_PREFIXES = [
+    "acsa-otel",
+    "csi-wyvern-controller",
+    "csi-wyvern-node",
+    "config-operator",
+    "edgevolume-mounthelper",
+    "wyvern-operator",
+]
+ACS_OPTIONAL_PREFIXES = [
+    "w-adr-schema-registry",
+    "adr-schema-registry-cache-claimsrv",
+    "adr-schema-registry-cache-claim-user-pvc",
+    "adr-schema-registry-cache-claim-system-pvc",
+]
+ACS_WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service"]
+ACSTOR_PREFIXES = [
+    "acstor",
+    "capacity-provisioner",
+    "diskpool-worker",
+    "etcd-acstor",
+    "etcdr",
+    "fluentd",
+    "geneva",
+    "gcstenant",
+    "kube-root-ca",
+    "overlay-etcd",
+    "webhook",
+]
+ACSTOR_WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "replicaset", "service", "configmap"]
+
 
 def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arccontainerstorage."""
     ops_service = OpsServiceType.arccontainerstorage.value
 
     # ACS azure-arc-containerstorage
-    expected_acs_workload_types = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service"]
-    acs_workload_resource_prefixes = [
-        "acsa-otel",
-        "csi-wyvern-controller",
-        "csi-wyvern-node",
-        "config-operator",
-        "edgevolume-mounthelper",
-        "wyvern-operator",
-    ]
-    pre_bundle_acs_workload_items = get_workload_resources(
-        expected_workload_types=expected_acs_workload_types,
-        prefixes=acs_workload_resource_prefixes,
-    )
+    acs_workload_resource_prefixes = ACS_PREFIXES[:]
 
     schemas_pods = get_kubectl_workload_items(
         prefixes="adr-schema-registry",
@@ -50,33 +68,16 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
 
     # add following workload prefixes if schema registry is deployed
     if len(schemas_pods.items()) > 0:
-        acs_workload_resource_prefixes.extend(
-            [
-                "w-adr-schema-registry",
-                "adr-schema-registry-cache-claimsrv",
-                "adr-schema-registry-cache-claim-user-pvc",
-                "adr-schema-registry-cache-claim-system-pvc",
-            ]
-        )
+        acs_workload_resource_prefixes.extend(ACS_OPTIONAL_PREFIXES)
+    pre_bundle_acs_workload_items = get_workload_resources(
+        expected_workload_types=ACS_WORKLOAD_TYPES,
+        prefixes=acs_workload_resource_prefixes,
+    )
 
     # ACSTOR
-    expected_acstor_workload_types = ["daemonset", "deployment", "pod", "replicaset", "service", "configmap"]
-    workload_acstor_resource_prefixes = [
-        "acstor",
-        "capacity-provisioner",
-        "diskpool-worker",
-        "etcd-acstor",
-        "etcdr",
-        "fluentd",
-        "geneva",
-        "gcstenant",
-        "kube-root-ca",
-        "overlay-etcd",
-        "webhook",
-    ]
     pre_bundle_acstor_workload_items = get_workload_resources(
-        expected_workload_types=expected_acstor_workload_types,
-        prefixes=workload_acstor_resource_prefixes,
+        expected_workload_types=ACSTOR_WORKLOAD_TYPES,
+        prefixes=ACSTOR_PREFIXES,
     )
 
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
@@ -86,7 +87,7 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
     # ACS azure-arc-containerstorage
     acs_file_map = file_map["acs"]
 
-    expected_types = set(expected_acs_workload_types).union(ARCCONTAINERSTORAGE_API_V1.kinds)
+    expected_types = set(ACS_WORKLOAD_TYPES).union(ARCCONTAINERSTORAGE_API_V1.kinds)
     assert set(acs_file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(
         file_objs=acs_file_map,
@@ -100,14 +101,15 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
     if "acstor" not in file_map:
         # TODO: add assertion that this does not exist
         return
+
     acstor_file_map = file_map["acstor"]
-    expected_types = set(expected_acstor_workload_types).union(CONTAINERSTORAGE_API_V1.kinds)
+    expected_types = set(ACSTOR_WORKLOAD_TYPES).union(CONTAINERSTORAGE_API_V1.kinds)
     assert set(acstor_file_map.keys()).issubset(set(expected_types))
 
     check_workload_resource_files(
         file_objs=acstor_file_map,
         pre_bundle_items=pre_bundle_acstor_workload_items,
-        prefixes=workload_acstor_resource_prefixes,
+        prefixes=ACSTOR_PREFIXES,
         bundle_path=bundle_path,
     )
 

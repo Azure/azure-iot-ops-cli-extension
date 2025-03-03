@@ -10,16 +10,16 @@ from azext_edge.edge.providers.edge_api import CERTMANAGER_API_V1, TRUSTMANAGER_
 from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, get_workload_resources, run_bundle_command
 
 logger = get_logger(__name__)
+CERTMGMT_PREFIXES = ["aio-cert-manager", "aio-trust-manager", "kube-root-ca"]
+CERTMGMT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "configmap"]
 
 
 def test_create_bundle_certmanager(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.certmanager.value
-    expected_workload_types = ["deployment", "pod", "replicaset", "service", "configmap"]
-    prefixes = ["aio-cert-manager", "aio-trust-manager", "kube-root-ca"]
     pre_bundle_workload_items = get_workload_resources(
-        expected_workload_types=expected_workload_types,
-        prefixes=prefixes,
+        expected_workload_types=CERTMGMT_WORKLOAD_TYPES,
+        prefixes=CERTMGMT_PREFIXES,
     )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
@@ -37,12 +37,12 @@ def test_create_bundle_certmanager(cluster_connection, tracked_files):
         resource_api=TRUSTMANAGER_API_V1,
         namespace=file_map["__namespaces__"]["certmanager"],
     )
-    expected_types = set(expected_workload_types).union(CERTMANAGER_API_V1.kinds).union(TRUSTMANAGER_API_V1.kinds)
+    expected_types = set(CERTMGMT_WORKLOAD_TYPES).union(CERTMANAGER_API_V1.kinds).union(TRUSTMANAGER_API_V1.kinds)
     assert set(certmanager_file_map.keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=certmanager_file_map,
         pre_bundle_items=pre_bundle_workload_items,
-        prefixes=prefixes,
+        prefixes=CERTMGMT_PREFIXES,
         bundle_path=bundle_path,
     )
 
