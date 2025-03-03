@@ -7,7 +7,7 @@
 from enum import IntEnum
 from json import dumps
 from time import sleep
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple, Union
 from uuid import uuid4
 
 from azure.cli.core.azclierror import AzureResponseError, ValidationError
@@ -27,6 +27,7 @@ from ...util.az_client import (
     parse_resource_id,
     wait_for_terminal_state,
 )
+from ...util.common import insert_newlines
 from .common import (
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
@@ -36,7 +37,8 @@ from .common import (
 )
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from .resource_map import IoTOperationsResourceMap
-from .targets import InitTargets
+from .resources.custom_locations import CustomLocations
+from .targets import InitTargets, InstancePhase
 
 logger = get_logger(__name__)
 
@@ -55,8 +57,8 @@ class WorkStepKey(IntEnum):
     ENUMERATE_PRE_FLIGHT = 2
     WHAT_IF_ENABLEMENT = 3
     DEPLOY_ENABLEMENT = 4
-    WHAT_IF_INSTANCE = 5
-    DEPLOY_INSTANCE = 6
+    DEPLOY_INSTANCE = 5
+    DEPLOY_RESOURCES = 6
 
 
 class WorkRecord:
@@ -113,6 +115,7 @@ class WorkManager:
         self.subscription_id: str = get_subscription_id(cli_ctx=cmd.cli_ctx)
         self.resource_client = get_resource_client(subscription_id=self.subscription_id)
         self.permission_manager = PermissionManager(subscription_id=self.subscription_id)
+        self.custom_locations = CustomLocations(self.cmd)
 
     def _bootstrap_ux(self, show_progress: bool = False):
         self._display = WorkDisplay()
@@ -172,12 +175,16 @@ class WorkManager:
             self._display.add_category(
                 WorkCategoryKey.DEPLOY_IOT_OPS, "Deploy IoT Operations", False, self._format_instance_desc()
             )
-            self._display.add_step(WorkCategoryKey.DEPLOY_IOT_OPS, WorkStepKey.WHAT_IF_INSTANCE, "What-If evaluation")
             self._display.add_step(
                 WorkCategoryKey.DEPLOY_IOT_OPS,
                 WorkStepKey.DEPLOY_INSTANCE,
                 f"Create instance [cyan]{self._targets.instance_name}",
                 self._format_instance_config_desc(),
+            )
+            self._display.add_step(
+                WorkCategoryKey.DEPLOY_IOT_OPS,
+                WorkStepKey.DEPLOY_RESOURCES,
+                "Apply default resources",
             )
 
     def _process_connected_cluster(self):
@@ -331,10 +338,6 @@ class WorkManager:
         return self._do_work()
 
     def _do_work(self):
-        from .base import (
-            verify_custom_location_namespace,
-            verify_custom_locations_enabled,
-        )
         from .host import verify_cli_client_connections
         from .permissions import verify_write_permission_against_rg
         from .rp_namespace import register_providers
@@ -347,7 +350,6 @@ class WorkManager:
 
             # Pre-Flight workflow
             if self._pre_flight:
-
                 # WorkStepKey.REG_RP
                 self._render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
                 register_providers(self.subscription_id)
@@ -358,14 +360,6 @@ class WorkManager:
                 )
 
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
-                # TODO @digimaun - cluster checks
-                if False:
-                    verify_custom_locations_enabled(self.cmd)
-                    verify_custom_location_namespace(
-                        connected_cluster=self._resource_map.connected_cluster,
-                        custom_location_name=self._targets.custom_location_name,
-                        namespace=self._targets.cluster_namespace,
-                    )
                 if self._targets.deploy_resource_sync_rules and self._targets.instance_name:
                     # TODO - @digimaun use permission manager after fixing check access issue
                     verify_write_permission_against_rg(
@@ -419,26 +413,47 @@ class WorkManager:
                     api_version=REGISTRY_PREVIEW_API_VERSION,
                 )
                 self._process_extension_dependencies()
-
-                instance_work_name = self._work_format_str.format(op="instance")
-                self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.WHAT_IF_INSTANCE)
-                instance_content, instance_parameters = self._targets.get_ops_instance_template(
-                    cl_extension_ids=[
-                        self.ops_extension_dependencies[ext]["id"]
-                        for ext in [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
-                    ],
+                dependency_ext_ids = [
+                    self.ops_extension_dependencies[ext]["id"] for ext in [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
+                ]
+                self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.DEPLOY_INSTANCE)
+                self._create_or_update_custom_location(
+                    extension_ids=[self.ops_extension_dependencies[EXTENSION_TYPE_PLATFORM]["id"]]
                 )
-                self._deploy_template(
-                    content=instance_content,
-                    parameters=instance_parameters,
-                    deployment_name=instance_work_name,
-                    what_if=True,
+                instance_content, instance_parameters = self._targets.get_ops_instance_template(
+                    cl_extension_ids=dependency_ext_ids,
+                    phase=InstancePhase.EXT,
+                )
+                instance_work_name = self._work_format_str.format(op="extension")
+                wait_for_terminal_state(
+                    self._deploy_template(
+                        content=instance_content,
+                        parameters=instance_parameters,
+                        deployment_name=instance_work_name,
+                    )
+                )
+                self._create_or_update_custom_location(extension_ids=dependency_ext_ids + [self.ops_extension["id"]])
+                instance_work_name = self._work_format_str.format(op="instance")
+                instance_content, instance_parameters = self._targets.get_ops_instance_template(
+                    cl_extension_ids=dependency_ext_ids,
+                    phase=InstancePhase.INSTANCE,
+                )
+                wait_for_terminal_state(
+                    self._deploy_template(
+                        content=instance_content,
+                        parameters=instance_parameters,
+                        deployment_name=instance_work_name,
+                    )
                 )
                 self._complete_step(
                     category=WorkCategoryKey.DEPLOY_IOT_OPS,
-                    completed_step=WorkStepKey.WHAT_IF_INSTANCE,
-                    active_step=WorkStepKey.DEPLOY_INSTANCE,
+                    completed_step=WorkStepKey.DEPLOY_INSTANCE,
+                    active_step=WorkStepKey.DEPLOY_RESOURCES,
                 )
+                instance_content, instance_parameters = self._targets.get_ops_instance_template(
+                    cl_extension_ids=dependency_ext_ids, phase=InstancePhase.RESOURCES
+                )
+                instance_work_name = self._work_format_str.format(op="resources")
                 instance_poller = self._deploy_template(
                     content=instance_content,
                     parameters=instance_parameters,
@@ -450,7 +465,7 @@ class WorkManager:
                     f"{self._display.categories[WorkCategoryKey.DEPLOY_IOT_OPS][0].title}[/link]"
                 )
                 self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS)
-                _ = wait_for_terminal_state(instance_poller)
+                wait_for_terminal_state(instance_poller)
                 self._apply_sr_role_assignment()
 
                 self._complete_step(
@@ -601,3 +616,30 @@ class WorkManager:
             f"%2Fsubscriptions%2F{self.subscription_id}%2FresourceGroups%2F{self._targets.resource_group_name}"
             f"%2Fproviders%2FMicrosoft.Resources%2Fdeployments%2F{deployment_name}"
         )
+
+    def _create_or_update_custom_location(self, extension_ids: Iterable[str]) -> dict:
+        try:
+            return self.custom_locations.create(
+                name=self._targets.custom_location_name,
+                resource_group_name=self._targets.resource_group_name,
+                host_resource_id=self._resource_map.connected_cluster.resource_id,
+                namespace=self._targets.cluster_namespace,
+                display_name=self._targets.custom_location_name,
+                location=self._targets.location,
+                cluster_extension_ids=extension_ids,
+                tags=self._targets.tags,
+            )
+        except HttpResponseError as http_exc:
+            if http_exc.error.code == "UnauthorizedNamespaceError":
+                explain = (
+                    "[IoT Ops explanation]\n\nThis error generally happens for two reasons.\n"
+                    "- The arc custom locations feature was not enabled.\n"
+                    "- The arc custom locations feature was not enabled with the correct OID.\n\n"
+                    "To resolve the issue, re-run create after applying the instructions at the aka.ms "
+                    "link provided in the error."
+                )
+                cl_error_prefix = "Custom Locations Error:\n"
+                raise ValidationError(
+                    f"{insert_newlines(f'{cl_error_prefix}{http_exc.error.message}', 140)}\n\n{explain}"
+                )
+            raise http_exc

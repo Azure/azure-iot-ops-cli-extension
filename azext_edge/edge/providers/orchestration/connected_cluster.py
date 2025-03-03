@@ -68,6 +68,7 @@ class ConnectedCluster:
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
         self.resource_graph = ResourceGraph(cmd=cmd, subscriptions=[self.subscription_id])
+        self._resource_state = None
 
         # TODO - @digimaun - temp necessary due to circular import
         from ..orchestration.resources import ConnectedClusters
@@ -80,8 +81,11 @@ class ConnectedCluster:
 
     @property
     def resource(self) -> dict:
-        # TODO: Cache
-        return self.clusters.show(resource_group_name=self.resource_group_name, cluster_name=self.cluster_name)
+        if not self._resource_state:
+            self._resource_state = self.clusters.show(
+                resource_group_name=self.resource_group_name, cluster_name=self.cluster_name
+            )
+        return self._resource_state
 
     @property
     def location(self) -> str:

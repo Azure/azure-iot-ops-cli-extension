@@ -9,7 +9,7 @@ import json
 import re
 from enum import Enum
 from random import randint
-from typing import Callable, Dict, FrozenSet, List, NamedTuple, Optional, Tuple, Type, Union
+from typing import Callable, Dict, FrozenSet, List, NamedTuple, Optional, Tuple, Type, Union, Set
 from unittest.mock import Mock
 
 import pytest
@@ -38,13 +38,12 @@ from azext_edge.edge.providers.orchestration.work import (
     ClusterConnectStatus,
     PROVISIONING_STATE_SUCCESS,
 )
+from azext_edge.edge.providers.orchestration.targets import get_default_cl_name, InstancePhase
 from azext_edge.edge.util import assemble_nargs_to_dict
 
 from ...generators import generate_random_string, get_zeroed_subscription
-from .test_template_unit import (
-    EXPECTED_EXTENSION_RESOURCE_KEYS,
-    EXPECTED_INSTANCE_RESOURCE_KEYS,
-)
+from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS
+
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 
@@ -59,6 +58,7 @@ class ExpectedAPIVersion(Enum):
     RESOURCE = "2024-03-01"
     SCHEMA_REGISTRY = "2024-09-01-preview"
     AUTHORIZATION = "2022-04-01"
+    CUSTOM_LOCATION = "2021-08-31-preview"
 
 
 class CallKey(Enum):
@@ -72,7 +72,13 @@ class CallKey(Enum):
     GET_SCHEMA_REGISTRY_RA = "getSchemaRegistryRoleAssignments"
     PUT_SCHEMA_REGISTRY_RA = "putSchemaRegistryRoleAssignment"
     DEPLOY_CREATE_WHATIF = "deployCreateWhatIf"
-    DEPLOY_CREATE = "deployCreate"
+    DEPLOY_CREATE_EXT = "deployCreateExtension"
+    DEPLOY_CREATE_INSTANCE = "deployCreateInstance"
+    DEPLOY_CREATE_RESOURCES = "deployCreateResources"
+    CREATE_CUSTOM_LOCATION = "createCustomLocation"
+
+
+CL_EXTENSION_TYPES = ["microsoft.azure.secretstore", "microsoft.iotoperations.platform", "microsoft.iotoperations"]
 
 
 class RequestKPIs(NamedTuple):
@@ -89,20 +95,19 @@ class ExceptionMeta(NamedTuple):
 
 
 class ServiceGenerator:
-    def __init__(
-        self,
-        scenario: dict,
-        mocked_responses: responses,
-    ):
+    def __init__(self, scenario: dict, mocked_responses: responses, **overrides):
         self.scenario = scenario
         self.mocked_responses = mocked_responses
         self.call_map: Dict[CallKey, List[RequestKPIs]] = {}
-        self._bootstrap()
+        self._bootstrap(**overrides)
 
-    def _bootstrap(self):
+    def _bootstrap(self, **kwargs):
+        override_omit_http_method = kwargs.get("omit_http_methods", frozenset([]))
         omit_methods: Optional[FrozenSet[str]] = self.scenario.get("omitHttpMethods")
         if not omit_methods:
             omit_methods = frozenset([])
+
+        omit_methods = omit_methods.union(override_omit_http_method)
         for method in [
             responses.GET,
             responses.HEAD,
@@ -122,7 +127,7 @@ class ServiceGenerator:
 
     def _handle_requests(self, request: requests.PreparedRequest) -> Optional[tuple]:
         request_kpis = get_request_kpis(request)
-        for handler in [self._handle_common, self._handle_init, self._handle_create]:
+        for handler in [self._handle_common, self._handle_init, self._handle_cl_create, self._handle_create]:
             handler_response = handler(request_kpis)
             if handler_response:
                 return handler_response
@@ -175,6 +180,33 @@ class ServiceGenerator:
                 self.call_map[CallKey.DEPLOY_INIT].append(request_kpis)
                 return (200, STANDARD_HEADERS, json.dumps({}))
 
+    def _handle_cl_create(self, request_kpis: RequestKPIs):
+        if request_kpis.method == responses.PUT:
+            scenario_cl_name = self.scenario["customLocation"]["name"]
+            scenario_namespace = self.scenario["instance"]["namespace"] or "azure-iot-operations"
+            if not scenario_cl_name:
+                scenario_cl_name = get_default_cl_name(
+                    resource_group_name=self.scenario["resourceGroup"],
+                    cluster_name=self.scenario["cluster"]["name"],
+                    namespace=scenario_namespace,
+                )
+            if request_kpis.path_url == (
+                f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{self.scenario['resourceGroup']}"
+                f"/providers/Microsoft.ExtendedLocation/customLocations/{scenario_cl_name}"
+            ):
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.CUSTOM_LOCATION.value
+                cl_payload = json.loads(request_kpis.body_str)
+                assert cl_payload["properties"]["hostResourceId"] == self.scenario["cluster"]["id"]
+                cl_create_call_len = len(self.call_map.get(CallKey.CREATE_CUSTOM_LOCATION, []))
+                expected_ext_ids = self.scenario["cluster"]["extensions"]["value"]
+                types_in_play = ["microsoft.iotoperations.platform"] if not cl_create_call_len else CL_EXTENSION_TYPES
+                expected_cl_ext_ids = set(
+                    ext["id"] for ext in expected_ext_ids if ext["properties"]["extensionType"] in types_in_play
+                )
+                assert set(cl_payload["properties"]["clusterExtensionIds"]) == expected_cl_ext_ids
+                self.call_map[CallKey.CREATE_CUSTOM_LOCATION].append(request_kpis)
+                return (200, STANDARD_HEADERS, request_kpis.body_str)
+
     def _handle_create(self, request_kpis: RequestKPIs):
         if request_kpis.method == responses.GET:
             if request_kpis.path_url == (
@@ -205,28 +237,44 @@ class ServiceGenerator:
                 self.call_map[CallKey.GET_CLUSTER_EXTENSIONS].append(request_kpis)
                 return (200, STANDARD_HEADERS, json.dumps(self.scenario["cluster"]["extensions"]))
 
-        url_deployment_seg = r"/providers/Microsoft\.Resources/deployments/aziotops\.instance\.[a-zA-Z0-9\.-]+"
-        if request_kpis.method == responses.POST:
-            if re.match(
-                path_pattern_base + url_deployment_seg + r"/whatIf$",
-                request_kpis.path_url,
-            ):
-                assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
-                assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
-                assert_instance_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
-                self.call_map[CallKey.DEPLOY_CREATE_WHATIF].append(request_kpis)
-                api_response = self.scenario["apiControl"][CallKey.DEPLOY_CREATE_WHATIF]
-                return (api_response["code"], STANDARD_HEADERS, json.dumps(api_response["body"]))
-
         if request_kpis.method == responses.PUT:
+            url_resources_seg = get_deployment_path_regex("extension")
             if re.match(
-                path_pattern_base + url_deployment_seg,
+                path_pattern_base + url_resources_seg,
                 request_kpis.path_url,
             ):
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
-                assert_instance_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
-                self.call_map[CallKey.DEPLOY_CREATE].append(request_kpis)
+                assert_instance_deployment_body(
+                    body_str=request_kpis.body_str, target_scenario=self.scenario, phase=InstancePhase.EXT
+                )
+                self.call_map[CallKey.DEPLOY_CREATE_EXT].append(request_kpis)
+                return (200, STANDARD_HEADERS, json.dumps({}))
+
+            url_resources_seg = get_deployment_path_regex("instance")
+            if re.match(
+                path_pattern_base + url_resources_seg,
+                request_kpis.path_url,
+            ):
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
+                assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
+                assert_instance_deployment_body(
+                    body_str=request_kpis.body_str, target_scenario=self.scenario, phase=InstancePhase.INSTANCE
+                )
+                self.call_map[CallKey.DEPLOY_CREATE_INSTANCE].append(request_kpis)
+                return (200, STANDARD_HEADERS, json.dumps({}))
+
+            url_resources_seg = get_deployment_path_regex("resources")
+            if re.match(
+                path_pattern_base + url_resources_seg,
+                request_kpis.path_url,
+            ):
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
+                assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
+                assert_instance_deployment_body(
+                    body_str=request_kpis.body_str, target_scenario=self.scenario, phase=InstancePhase.RESOURCES
+                )
+                self.call_map[CallKey.DEPLOY_CREATE_RESOURCES].append(request_kpis)
                 return (200, STANDARD_HEADERS, json.dumps({}))
 
             if request_kpis.path_url.startswith(
@@ -245,6 +293,10 @@ class ServiceGenerator:
         for ext in self.scenario["cluster"]["extensions"]["value"]:
             if ext["properties"]["extensionType"] == extension_type:
                 return ext.get("identity")
+
+
+def get_deployment_path_regex(kind="instance") -> str:
+    return r"/providers/Microsoft\.Resources/deployments/aziotops\." + kind + r"\.[a-zA-Z0-9\.-]+"
 
 
 def get_request_kpis(request: requests.PreparedRequest):
@@ -300,6 +352,7 @@ def build_target_scenario(
         "location": None,
         "resourceGroup": resource_group_name,
         "cluster": {
+            "id": generate_random_string(),
             "name": generate_random_string(),
             "location": generate_random_string(),
             "properties": {
@@ -635,7 +688,9 @@ def test_iot_ops_create(
     spy_work_displays: Dict[str, Mock],
     target_scenario: Dict[str, Union[bool, dict]],
 ):
-    servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses)
+    servgen = ServiceGenerator(
+        scenario=target_scenario, mocked_responses=mocked_responses, omit_http_methods=frozenset([responses.POST])
+    )
     from azext_edge.edge.commands_edge import create_instance
 
     create_call_kwargs = {
@@ -691,8 +746,10 @@ def test_iot_ops_create(
         CallKey.GET_CLUSTER_EXTENSIONS: 2,
         CallKey.GET_SCHEMA_REGISTRY_RA: 1,
         CallKey.PUT_SCHEMA_REGISTRY_RA: 1,
-        CallKey.DEPLOY_CREATE_WHATIF: 1,
-        CallKey.DEPLOY_CREATE: 1,
+        CallKey.CREATE_CUSTOM_LOCATION: 2,
+        CallKey.DEPLOY_CREATE_EXT: 1,
+        CallKey.DEPLOY_CREATE_INSTANCE: 1,
+        CallKey.DEPLOY_CREATE_RESOURCES: 1,
     }
     assert_call_map(expected_call_count_map, servgen.call_map)
     assert_create_displays(spy_work_displays, target_scenario)
@@ -724,7 +781,21 @@ def assert_create_displays(spy_work_displays: Dict[str, Mock], target_scenario: 
     pass
 
 
-def assert_instance_deployment_body(body_str: str, target_scenario: dict):
+def get_expected_keys_for(phase: InstancePhase) -> Tuple[Set[str], Set[str]]:
+    ext_keys = {"cluster", "aio_extension"}
+    instance_keys = ext_keys.union({"customLocation", "aio_syncRule", "deviceRegistry_syncRule", "aioInstance"})
+    resource_keys = instance_keys.union(
+        {"broker", "broker_authn", "broker_listener", "dataflow_profile", "dataflow_endpoint"}
+    )
+    if phase == InstancePhase.EXT:
+        return ext_keys, {}
+    if phase == InstancePhase.INSTANCE:
+        return instance_keys, ext_keys.union({"customLocation"})
+    if phase == InstancePhase.RESOURCES:
+        return resource_keys, ext_keys.union(instance_keys)
+
+
+def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase: InstancePhase):
     assert body_str
     body = json.loads(body_str)
 
@@ -732,34 +803,24 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict):
     assert mode == "Incremental"
 
     template = body["properties"]["template"]
-    for key in EXPECTED_INSTANCE_RESOURCE_KEYS:
+
+    expected_keys, readonly_keys = get_expected_keys_for(phase=phase)
+    for key in expected_keys:
         assert template["resources"][key]
-    assert len(template["resources"]) == len(EXPECTED_INSTANCE_RESOURCE_KEYS)
+    assert len(template["resources"]) == len(expected_keys)
 
-    resources = template["resources"]
+    if readonly_keys:
+        for key in readonly_keys:
+            assert template["resources"][key]["existing"]
+            for rkey in template["resources"][key]:
+                assert rkey in {"type", "apiVersion", "name", "scope", "condition", "existing"}
+
     parameters = body["properties"]["parameters"]
-
     assert parameters["clusterName"]["value"] == target_scenario["cluster"]["name"]
     assert parameters["clusterNamespace"]["value"] == target_scenario["instance"]["namespace"] or DEFAULT_NAMESPACE
     assert (
         parameters["clusterLocation"]["value"] == target_scenario["location"] or target_scenario["cluster"]["location"]
     )
-
-    instance_name: str = target_scenario["instance"]["name"]
-    instance_name_lowered = instance_name.lower()
-    assert resources["aioInstance"]["name"] == instance_name_lowered
-    assert resources["broker"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}"
-    assert resources["broker_authn"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_AUTHN}"
-    assert (
-        resources["broker_listener"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
-    )
-    assert resources["dataflow_profile"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_PROFILE}"
-    assert resources["dataflow_endpoint"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_ENDPOINT}"
-
-    if target_scenario["instance"]["description"]:
-        assert resources["aioInstance"]["properties"]["description"] == target_scenario["instance"]["description"]
-    if target_scenario["instance"]["tags"]:
-        assert resources["aioInstance"]["tags"] == target_scenario["instance"]["tags"]
 
     cl_extension_ids = set(
         [
@@ -801,3 +862,24 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict):
         assembled_settings = assemble_nargs_to_dict(target_scenario["trust"]["settings"])
         expected_trust_config = {"source": "CustomerManaged", "settings": assembled_settings}
     assert parameters["trustConfig"]["value"] == expected_trust_config
+
+    instance_name: str = target_scenario["instance"]["name"]
+    instance_name_lowered = instance_name.lower()
+    resources = template["resources"]
+
+    if phase in [InstancePhase.INSTANCE]:
+        assert resources["aioInstance"]["name"] == instance_name_lowered
+        if target_scenario["instance"]["description"]:
+            assert resources["aioInstance"]["properties"]["description"] == target_scenario["instance"]["description"]
+        if target_scenario["instance"]["tags"]:
+            assert resources["aioInstance"]["tags"] == target_scenario["instance"]["tags"]
+
+    if phase in [InstancePhase.RESOURCES]:
+        assert resources["broker"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}"
+        assert resources["broker_authn"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_AUTHN}"
+        assert (
+            resources["broker_listener"]["name"]
+            == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
+        )
+        assert resources["dataflow_profile"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_PROFILE}"
+        assert resources["dataflow_endpoint"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_ENDPOINT}"
