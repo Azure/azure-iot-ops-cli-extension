@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 # pytestmark = pytest.mark.e2e
 
 
-def test_create_bundle_deviceregistry(init_setup, tracked_files):
+def test_create_bundle_deviceregistry(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS deviceregistry."""
     ops_service = OpsServiceType.deviceregistry.value
     command = f"az iot ops support create-bundle --ops-service {ops_service}"

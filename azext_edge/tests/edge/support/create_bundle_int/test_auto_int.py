@@ -34,7 +34,7 @@ def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
 
 
 @pytest.mark.parametrize("ops_service, mq_traces, bundle_dir", generate_bundle_test_cases())
-def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_files):
+def test_create_bundle(cluster_connection, bundle_dir, mq_traces, ops_service, tracked_files):
     """Test to focus on ops_service param."""
 
     # skip arccontainerstorage and azuremonitor for aio namespace check
@@ -133,9 +133,8 @@ def test_create_bundle(init_setup, bundle_dir, mq_traces, ops_service, tracked_f
             find_extra_or_missing_names(
                 resource_type=f"auto bundle files not found in {ops_service} bundle",
                 result_names=auto_files,
-                expected_names=ser_files,
-                ignore_extras=True,
-                ignore_missing=True,
+                pre_expected_names=ser_files,
+                post_expected_names=[]
             )
 
 

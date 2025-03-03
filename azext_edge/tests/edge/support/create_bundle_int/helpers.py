@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
 import pytest
@@ -40,7 +40,11 @@ WORKLOAD_TYPES = [
 
 
 def assert_file_names(files: List[str]):
-    """Asserts file names."""
+    """
+    Simple asserts for file names.
+
+    Ensures trace file conventions, extension conventions, etc
+    """
     for full_name in files:
         name = split_name(full_name)
         file_type = name.pop(0)
@@ -69,7 +73,11 @@ def assert_file_names(files: List[str]):
 
 
 def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
-    """Maps deployment/pod/etc to list of dissembled file names"""
+    """
+    Maps deployment/pod/etc to list of disassembled file names
+
+    Please see comments for examples/conventions.
+    """
     file_name_objs = {}
     for full_name in files:
         name = split_name(full_name)
@@ -77,6 +85,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
         name_obj = {"extension": name.pop(-1), "full_name": full_name}
 
         if file_type == "pod" and name[-1] == "metric":
+            # note: not a real type
             file_type = "podmetric"
 
         if name_obj["extension"] in ["pb", "json"]:
@@ -105,7 +114,11 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             name_obj["version"] = name.pop(0)
             assert name_obj["version"].startswith("v")
         name_obj["name"] = name.pop(0)
+
+        # custom re-adding
         if name_obj["name"] == "aio-opc-opc":
+            name_obj["name"] += f".{name.pop(0)}"
+        if name_obj["name"] == "kube-root-ca":
             name_obj["name"] += f".{name.pop(0)}"
 
         # something like "msi-adapter", "init-runner"
@@ -149,14 +162,12 @@ def check_custom_resource_files(
 
 def check_workload_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
-    expected_workload_types: List[str],
+    pre_bundle_items: List[str],
     prefixes: Union[str, List[str]],
     bundle_path: str,
     expected_label: Optional[str] = None,
-    optional_workload_types: Optional[List[str]] = None,
+   pre_bundle_optional_items: Optional[Dict[str, List[str]]] = None,
 ):
-    if "pod" in expected_workload_types:
-        expected_workload_types.remove("pod")
     # pod
     file_pods = {}
     for file in file_objs.get("pod", []):
@@ -184,14 +195,13 @@ def check_workload_resource_files(
             if file["descriptor"] not in converted_file:
                 converted_file[file["descriptor"]] = False
 
-    expected_pods = get_kubectl_workload_items(prefixes, service_type="pod", label_match=expected_label)
+    post_pods = get_kubectl_workload_items(prefixes, service_type="pod", label_match=expected_label)
     check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))
     find_extra_or_missing_names(
         resource_type="pod",
         result_names=file_pods.keys(),
-        expected_names=expected_pods.keys(),
-        ignore_extras=True,
-        ignore_missing=True,
+        pre_expected_names=pre_bundle_items.pop("pod", []),
+        post_expected_names=post_pods.keys(),
     )
 
     for name, files in file_pods.items():
@@ -199,21 +209,32 @@ def check_workload_resource_files(
             assert value, f"Pod {name} is missing {extension}."
 
     # other
-    def _check_non_pod_files(workload_types: List[str], required: bool = False, expected_label: Optional[str] = None):
-        for key in workload_types:
+    def _check_non_pod_files(
+        pre_bundle_items: Dict[str, List[str]],
+        required: bool = False,
+        expected_label: Optional[str] = None
+    ):
+        for key, names in pre_bundle_items.items():
             try:
-                expected_items = get_kubectl_workload_items(prefixes, service_type=key, label_match=expected_label)
+                post_bundle_items = get_kubectl_workload_items(prefixes, service_type=key, label_match=expected_label)
                 for file in file_objs.get(key, []):
                     assert file["extension"] == "yaml"
                 present_names = [file["name"] for file in file_objs.get(key, [])]
-                find_extra_or_missing_names(key, present_names, expected_items.keys())
+                # kube-root-ca.crt gets split configmap.kube-root-ca.crt.yaml
+                # maybe add in a way to compare full names? or limit splitting for certain types?
+                find_extra_or_missing_names(
+                    resource_type=key,
+                    result_names=present_names,
+                    pre_expected_names=names,
+                    post_expected_names=post_bundle_items.keys()
+                )
             except CLIInternalError as e:
                 if required:
                     raise e
 
-    _check_non_pod_files(expected_workload_types, expected_label=expected_label)
-    if optional_workload_types:
-        _check_non_pod_files(optional_workload_types, required=False, expected_label=expected_label)
+    _check_non_pod_files(pre_bundle_items, expected_label=expected_label)
+    if pre_bundle_optional_items:
+        _check_non_pod_files(pre_bundle_optional_items, required=False, expected_label=expected_label)
 
 
 def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]]):
@@ -353,6 +374,25 @@ def get_file_map(
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = aio_namespace
     return file_map
+
+
+# TODO rename + maybe move
+def get_workload_resources(
+    expected_workload_types: Union[str, List[str]],
+    prefixes: Union[str, List[str]],
+    expected_label: Optional[Tuple[str, str]] = None
+) -> Dict[str, Iterable[str]]:
+    """
+    Fetch a list of the workload resources via kubectl.
+    Returns a mapping of workload type to iterable (dict keys) of names.
+    """
+    result = {}
+    if not isinstance(expected_workload_types, list):
+        expected_workload_types = [expected_workload_types]
+    for key in expected_workload_types:
+        items = get_kubectl_workload_items(prefixes, service_type=key, label_match=expected_label)
+        result[key] = items.keys()
+    return result
 
 
 def process_top_levels(

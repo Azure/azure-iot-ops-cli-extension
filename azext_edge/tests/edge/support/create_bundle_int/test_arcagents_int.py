@@ -11,13 +11,13 @@ from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from .helpers import (
     check_workload_resource_files,
     get_file_map,
+    get_workload_resources,
     run_bundle_command
 )
 
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
-
 AGENT_RESOURCE_PREFIXES = {
     "cluster-identity-operator": "clusteridentityoperator",
     "clusterconnect-agent": "clusterconnect-agent",
@@ -29,11 +29,19 @@ AGENT_RESOURCE_PREFIXES = {
     "metrics-agent": "metrics-agent",
     "resource-sync-agent": "resource-sync-agent"
 }
+AGENT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset"]
+AGENT_SERVICE_WORKLOAD_TYPES = AGENT_WORKLOAD_TYPES[:] + ["service"]
 
 
-def test_create_bundle_arcagents(init_setup, tracked_files):
+def test_create_bundle_arcagents(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.akri.value
+    agent_map = {}
+    for agent, has_service in ARC_AGENTS:
+        agent_map[agent] = get_workload_resources(
+            expected_workload_types=AGENT_SERVICE_WORKLOAD_TYPES if has_service else AGENT_WORKLOAD_TYPES,
+            prefixes=AGENT_RESOURCE_PREFIXES[agent],
+        )
 
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
@@ -42,16 +50,14 @@ def test_create_bundle_arcagents(init_setup, tracked_files):
 
     for agent, has_service in ARC_AGENTS:
         file_map = agents_file_map[agent]
-        expected_workload_types = ["deployment", "pod", "replicaset"]
 
-        if has_service:
-            expected_workload_types.append("service")
-
-        assert set(file_map.keys()).issubset(set(expected_workload_types))
+        assert set(file_map.keys()).issubset(
+            set(AGENT_SERVICE_WORKLOAD_TYPES if has_service else AGENT_WORKLOAD_TYPES)
+        )
 
         check_workload_resource_files(
             file_objs=file_map,
-            expected_workload_types=expected_workload_types,
+            pre_bundle_items=agent_map[agent],
             prefixes=AGENT_RESOURCE_PREFIXES[agent],
             bundle_path=bundle_path
         )

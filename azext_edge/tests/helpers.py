@@ -45,23 +45,32 @@ def filter_resources(
 def find_extra_or_missing_names(
     resource_type: str,
     result_names: List[str],
-    expected_names: List[str],
+    pre_expected_names: List[str],
+    post_expected_names: List[str],
     ignore_extras: bool = False,
     # TODO: remove once dynamic pods check logic is implemented
     ignore_missing: bool = False,
 ):
+    """
+    Checks the result to find missing or extra names.
+    First checks the result name against the names in the kubectl results from before the result was fetched.
+    If anything is missing/extra, checks against the kubectl results from after the result was fetched.
+    """
     error_msg = []
     # names may contain descriptors after the initial '.', just comparing first prefix
-    expected_names = [name.split(".")[0] for name in expected_names]
-    result_names = [name.split(".")[0] for name in result_names]
-    extra_names = [name for name in result_names if name not in expected_names]
+    # vilit double check if ^ is still needed
+
+    extra_names = [name for name in result_names if name not in pre_expected_names]
+    extra_names = [name for name in extra_names if name not in post_expected_names]
     if extra_names:
         msg = f"Extra {resource_type} names: {', '.join(extra_names)}."
         if ignore_extras:
             logger.warning(msg)
         else:
             error_msg.append(msg)
-    missing_names = [name for name in expected_names if name not in result_names]
+
+    missing_names = [name for name in pre_expected_names if name not in result_names]
+    missing_names = [name for name in missing_names if name in post_expected_names]
     if missing_names:
         error_msg.append(f"Missing {resource_type} names: {', '.join(missing_names)}.")
 
