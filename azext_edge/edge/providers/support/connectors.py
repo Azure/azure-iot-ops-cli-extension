@@ -14,23 +14,24 @@ from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
     process_config_maps,
+    process_daemonsets,
     process_deployments,
     process_services,
     process_v1_pods,
     process_replicasets,
-    process_daemonsets,
 )
 from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
 
+# TODO: more connectors will be added
 SIMULATOR_PREFIX = "opcplc-"
 OPC_PREFIX = "aio-opc-"
 OPC_APP_LABEL = "app in (aio-opc-supervisor, aio-opc-admission-controller)"
 OPC_NAME_LABEL = NAME_LABEL_FORMAT.format(label="aio-opc-opcua-connector, opcplc")
 OPC_NAME_VAR_LABEL = "name in (aio-opc-asset-discovery)"
-OPC_DIRECTORY_PATH = OPCUA_API_V1.moniker
+CONNECTORS_DIRECTORY_PATH = "connectors"
 
 # TODO: once this label is stabled, we can remove the other labels
 OPCUA_NAME_LABEL = NAME_LABEL_FORMAT.format(label=OPCUA_API_V1.label)
@@ -46,7 +47,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     for pod_name_label in pod_name_labels:
         opcua_pods.extend(
             process_v1_pods(
-                directory_path=OPC_DIRECTORY_PATH,
+                directory_path=CONNECTORS_DIRECTORY_PATH,
                 label_selector=pod_name_label,
                 since_seconds=since_seconds,
                 include_metrics=True,
@@ -55,7 +56,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
     opcua_pods.extend(
         process_v1_pods(
-            directory_path=OPC_DIRECTORY_PATH,
+            directory_path=CONNECTORS_DIRECTORY_PATH,
             label_selector=OPCUA_NAME_LABEL,
             since_seconds=since_seconds,
             include_metrics=True,
@@ -65,41 +66,43 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
 
 
 def fetch_deployments():
-    processed = process_deployments(directory_path=OPC_DIRECTORY_PATH, prefix_names=[OPC_PREFIX, SIMULATOR_PREFIX])
-    processed.extend(process_deployments(directory_path=OPC_DIRECTORY_PATH, label_selector=OPC_NAME_LABEL))
-    processed.extend(process_deployments(directory_path=OPC_DIRECTORY_PATH, label_selector=OPCUA_NAME_LABEL))
+    processed = process_deployments(
+        directory_path=CONNECTORS_DIRECTORY_PATH, prefix_names=[OPC_PREFIX, SIMULATOR_PREFIX]
+    )
+    processed.extend(process_deployments(directory_path=CONNECTORS_DIRECTORY_PATH, label_selector=OPC_NAME_LABEL))
+    processed.extend(process_deployments(directory_path=CONNECTORS_DIRECTORY_PATH, label_selector=OPCUA_NAME_LABEL))
     return processed
 
 
 def fetch_replicasets():
-    processed = process_replicasets(directory_path=OPC_DIRECTORY_PATH, label_selector=OPC_APP_LABEL)
-    processed.extend(process_replicasets(directory_path=OPC_DIRECTORY_PATH, label_selector=OPC_NAME_LABEL))
-    processed.extend(process_replicasets(directory_path=OPC_DIRECTORY_PATH, label_selector=OPCUA_NAME_LABEL))
+    processed = process_replicasets(directory_path=CONNECTORS_DIRECTORY_PATH, label_selector=OPC_APP_LABEL)
+    processed.extend(process_replicasets(directory_path=CONNECTORS_DIRECTORY_PATH, label_selector=OPC_NAME_LABEL))
+    processed.extend(process_replicasets(directory_path=CONNECTORS_DIRECTORY_PATH, label_selector=OPCUA_NAME_LABEL))
     return processed
 
 
 def fetch_services():
-    processed = process_services(directory_path=OPC_DIRECTORY_PATH, label_selector=OPC_APP_LABEL)
-    processed.extend(process_services(directory_path=OPC_DIRECTORY_PATH, prefix_names=[SIMULATOR_PREFIX]))
-    processed.extend(process_services(directory_path=OPC_DIRECTORY_PATH, label_selector=OPCUA_NAME_LABEL))
+    processed = process_services(directory_path=CONNECTORS_DIRECTORY_PATH, label_selector=OPC_APP_LABEL)
+    processed.extend(process_services(directory_path=CONNECTORS_DIRECTORY_PATH, prefix_names=[SIMULATOR_PREFIX]))
+    processed.extend(process_services(directory_path=CONNECTORS_DIRECTORY_PATH, label_selector=OPCUA_NAME_LABEL))
     return processed
 
 
 def fetch_configmaps():
     return process_config_maps(
-        directory_path=OPC_DIRECTORY_PATH,
+        directory_path=CONNECTORS_DIRECTORY_PATH,
         label_selector=OPCUA_NAME_LABEL,
     )
 
 
 def fetch_daemonsets():
     processed = process_daemonsets(
-        directory_path=OPC_DIRECTORY_PATH,
+        directory_path=CONNECTORS_DIRECTORY_PATH,
         field_selector="metadata.name==aio-opc-asset-discovery",
     )
     processed.extend(
         process_daemonsets(
-            directory_path=OPC_DIRECTORY_PATH,
+            directory_path=CONNECTORS_DIRECTORY_PATH,
             label_selector=OPCUA_NAME_LABEL,
         )
     )
@@ -119,12 +122,12 @@ def prepare_bundle(
     log_age_seconds: int = DAY_IN_SECONDS,
     apis: Optional[Iterable[EdgeResourceApi]] = None,
 ) -> dict:
-    opcua_to_run = {}
+    connectors_to_run = {}
 
     if apis:
-        opcua_to_run.update(assemble_crd_work(apis))
+        connectors_to_run.update(assemble_crd_work(apis))
 
-    opcua_to_run["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
-    opcua_to_run.update(support_runtime_elements)
+    connectors_to_run["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
+    connectors_to_run.update(support_runtime_elements)
 
-    return opcua_to_run
+    return connectors_to_run
