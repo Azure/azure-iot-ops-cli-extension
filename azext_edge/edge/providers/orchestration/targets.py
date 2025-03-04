@@ -4,9 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict, List, Optional, Tuple, Set
-from functools import partial
 from enum import IntEnum
+from typing import Dict, List, Optional, Set, Tuple, NamedTuple
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
@@ -17,7 +16,7 @@ from ...common import (
     DEFAULT_DATAFLOW_ENDPOINT,
     DEFAULT_DATAFLOW_PROFILE,
 )
-from ...util import assemble_nargs_to_dict, url_safe_hash_phrase
+from ...util import parse_kvp_nargs, url_safe_hash_phrase
 from ...util.az_client import parse_resource_id
 from ..orchestration.common import (
     TRUST_ISSUER_KIND_KEY,
@@ -44,6 +43,12 @@ PHASE_KEY_MAP: Dict[str, Set[str]] = {
 }
 
 
+class VarAttr(NamedTuple):
+    value: str
+    template_key: str
+    moniker: str
+
+
 class InitTargets:
     def __init__(
         self,
@@ -58,9 +63,16 @@ class InitTargets:
         instance_description: Optional[str] = None,
         tags: Optional[dict] = None,
         enable_fault_tolerance: Optional[bool] = None,
+        # Extension config
         ops_config: Optional[List[str]] = None,
         ops_version: Optional[str] = None,
         ops_train: Optional[str] = None,
+        acs_config: Optional[List[str]] = None,
+        acs_version: Optional[str] = None,
+        acs_train: Optional[str] = None,
+        ssc_config: Optional[List[str]] = None,
+        ssc_version: Optional[str] = None,
+        ssc_train: Optional[str] = None,
         # Dataflow
         dataflow_profile_instances: int = 1,
         # Broker
@@ -100,11 +112,22 @@ class InitTargets:
         self.instance_description = instance_description
         self.tags = tags
         self.enable_fault_tolerance = enable_fault_tolerance
-        self.ops_config = assemble_nargs_to_dict(ops_config)
+
+        # Extensions
+        self.ops_config = parse_kvp_nargs(ops_config)
         self.ops_version = ops_version
         self.ops_train = ops_train
+
+        self.acs_config = parse_kvp_nargs(acs_config)
+        self.acs_version = acs_version
+        self.acs_train = acs_train
+
+        self.ssc_config = parse_kvp_nargs(ssc_config)
+        self.ssc_version = ssc_version
+        self.ssc_train = ssc_train
+
         self.user_trust = user_trust
-        self.trust_settings = assemble_nargs_to_dict(trust_settings)
+        self.trust_settings = parse_kvp_nargs(trust_settings)
         self.trust_config = self.get_trust_settings_target_map()
         self.advanced_config = self.get_advanced_config_target_map()
 
@@ -158,7 +181,7 @@ class InitTargets:
         version_map = {}
         get_template_method = self.get_ops_enablement_template
         if not for_enablement:
-            get_template_method = partial(self.get_ops_instance_template, cl_extension_ids=[])
+            get_template_method = self.get_ops_instance_template
         template, _ = get_template_method()
         template_vars = template["variables"]
         for moniker in template_vars["VERSIONS"]:
@@ -179,6 +202,30 @@ class InitTargets:
             },
             template_blueprint=TEMPLATE_BLUEPRINT_ENABLEMENT,
         )
+
+        base_acs_config = get_default_acs_config(enable_fault_tolerance=self.enable_fault_tolerance)
+        if self.acs_config:
+            base_acs_config.update(self.acs_config)
+        template.content["resources"]["container_storage_extension"]["properties"][
+            "configurationSettings"
+        ] = base_acs_config
+
+        base_ssc_config = get_default_ssc_config()
+        if self.ssc_config:
+            base_ssc_config.update(self.ssc_config)
+        template.content["resources"]["secret_store_extension"]["properties"][
+            "configurationSettings"
+        ] = base_ssc_config
+
+        for var_attr in [
+            VarAttr(value=self.acs_version, template_key="VERSIONS", moniker="containerStorage"),
+            VarAttr(value=self.acs_train, template_key="TRAINS", moniker="containerStorage"),
+            VarAttr(value=self.ssc_version, template_key="VERSIONS", moniker="secretStore"),
+            VarAttr(value=self.ssc_train, template_key="TRAINS", moniker="secretStore"),
+        ]:
+            if var_attr.value:
+                template.content["variables"][var_attr.template_key][var_attr.moniker] = var_attr.value
+
         if self.user_trust:
             # patch enablement template expecting full trust settings for source: CustomerManaged
             template.get_type_definition("_1.CustomerManaged")["properties"]["settings"]["nullable"] = True
@@ -366,3 +413,20 @@ def del_if_not_in(resources: Dict[str, Dict[str, dict]], include_keys: Set[str])
     for k in list(resources.keys()):
         if k not in include_keys:
             del resources[k]
+
+
+def get_default_acs_config(enable_fault_tolerance: bool = False) -> Dict[str, str]:
+    config = {"edgeStorageConfiguration.create": "true", "feature.diskStorageClass": "default,local-path"}
+    if enable_fault_tolerance:
+        config["feature.diskStorageClass"] = "acstor-arccontainerstorage-storage-pool"
+        config["acstorConfiguration.create"] = "true"
+        config["acstorConfiguration.properties.diskMountPoint"] = "/mnt"
+
+    return config
+
+
+def get_default_ssc_config() -> Dict[str, str]:
+    return {
+        "rotationPollIntervalInSeconds": "120",
+        "validatingAdmissionPolicies.applyPolicies": "false",
+    }

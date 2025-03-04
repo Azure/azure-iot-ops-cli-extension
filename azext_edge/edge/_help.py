@@ -443,6 +443,8 @@ def load_iotops_help():
 
                       After the foundation layer has been installed the `az iot ops create` command should
                       be used to deploy an instance.
+
+                      Note: --*-config options allow override of default configurations.
         examples:
         - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
           text: >
@@ -454,6 +456,12 @@ def load_iotops_help():
             This will skip deployment of the system cert-manager and trust-manager.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --user-trust
+        - name: Provide custom deploy-time configs for Arc Container Storage.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --enable-fault-tolerance --acs-config acstorConfiguration.properties.diskMountPoint=/mnt
+        - name: Provide custom deploy-time configs for Arc Secret Store.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --ssc-config rotationPollIntervalInSeconds=60
 
     """
 
