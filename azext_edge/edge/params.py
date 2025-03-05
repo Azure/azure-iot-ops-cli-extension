@@ -447,26 +447,6 @@ def load_iotops_arguments(self, _):
                 arg_group="Broker",
             )
             context.argument(
-                "ops_config",
-                options_list=["--ops-config"],
-                nargs="+",
-                action="extend",
-                help="IoT Operations arc extension custom configuration. Format is space-separated key=value pairs. "
-                "--ops-config can be used one or more times. For advanced use cases.",
-            )
-            context.argument(
-                "ops_version",
-                options_list=["--ops-version"],
-                help="Use to override the built-in IoT Operations arc extension version. ",
-                deprecate_info=context.deprecate(hide=True),
-            )
-            context.argument(
-                "ops_train",
-                options_list=["--ops-train"],
-                help="Use to override the built-in IoT Operations arc extension release train. ",
-                deprecate_info=context.deprecate(hide=True),
-            )
-            context.argument(
                 "enable_fault_tolerance",
                 arg_type=get_three_state_flag(),
                 options_list=["--enable-fault-tolerance"],
@@ -498,6 +478,33 @@ def load_iotops_arguments(self, _):
                 "in favor of a user-provided configuration.",
                 arg_group="Trust",
             )
+
+            for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
+                alias = EXTENSION_MONIKER_TO_ALIAS_MAP[moniker]
+                if alias in ["acs", "ssc", "ops"]:
+                    context.argument(
+                        f"{alias}_config",
+                        options_list=[f"--{alias}-config"],
+                        nargs="+",
+                        action="extend",
+                        help=f"{moniker} arc extension custom config. Format is space-separated key=value pairs "
+                        f"or just the key. This option can be used one or more times.",
+                        arg_group="Extension Config",
+                    )
+                    context.argument(
+                        f"{alias}_version",
+                        options_list=[f"--{alias}-version"],
+                        help=f"Use to override the built-in {moniker} arc extension version.",
+                        arg_group="Extension Config",
+                        deprecate_info=context.deprecate(hide=True),
+                    )
+                    context.argument(
+                        f"{alias}_train",
+                        options_list=[f"--{alias}-train"],
+                        help=f"Use to override the built-in {moniker} arc extension release train.",
+                        arg_group="Extension Config",
+                        deprecate_info=context.deprecate(hide=True),
+                    )
 
     with self.argument_context("iot ops upgrade") as context:
         for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
