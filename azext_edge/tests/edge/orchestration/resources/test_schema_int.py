@@ -22,11 +22,9 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     registry_namespace = f"test-namespace-{generate_random_string(force_lower=True, size=6)}"
     # create the storage account and get the id
     # NOTE: storage account needs to have public network access enabled to work.
-    # if we want to check the blobs (aka see that the schema content goes in the right place)
-    # we would need to enable shared key access too...
     storage_account = run(
         f"az storage account create -n {storage_account_name} -g {registry_rg} "
-        "--enable-hierarchical-namespace "
+        "--enable-hierarchical-namespace --public-network-access Enabled "
         "--allow-shared-key-access false --allow-blob-public-access false"
     )
     tracked_resources.append(storage_account['id'])
