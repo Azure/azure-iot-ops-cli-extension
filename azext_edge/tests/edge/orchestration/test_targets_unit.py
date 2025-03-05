@@ -20,7 +20,7 @@ from azext_edge.edge.providers.orchestration.targets import (
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
     InitTargets,
-    assemble_nargs_to_dict,
+    parse_kvp_nargs,
     get_insecure_listener,
 )
 
@@ -51,9 +51,15 @@ def get_schema_registry_id():
     )
 
 
+# def assert_kvp(actual: dict, expected: dict):
+#     for c in actual:
+#         assert c in aio_config_settings
+#         assert aio_config_settings[c] == targets.ops_config[c]
+
+
 K8S_NAME_KEYS = frozenset(["cluster_namespace", "custom_location_name", "instance_name"])
 KEY_CONVERSION_MAP = {"enable_rsync_rules": "deploy_resource_sync_rules"}
-KVP_KEYS = frozenset(["ops_config", "trust_settings"])
+KVP_KEYS = frozenset(["ops_config", "ssc_config", "acs_config", "trust_settings"])
 ENABLEMENT_PARAM_CONVERSION_MAP = {
     "clusterName": "cluster_name",
     "trustConfig": "trust_config",
@@ -121,6 +127,16 @@ INSTANCE_PARAM_CONVERSION_MAP = {
             container_runtime_socket=generate_random_string(),
             trust_settings=get_trust_settings(),
         ),
+        build_target_scenario(
+            cluster_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+            ssc_config=[f"{generate_random_string()}={generate_random_string()}"],
+            ssc_version=generate_random_string(),
+            ssc_train=generate_random_string(),
+            acs_config=[f"{generate_random_string()}={generate_random_string()}"],
+            acs_version=generate_random_string(),
+            acs_train=generate_random_string(),
+        ),
     ],
 )
 def test_init_targets(target_scenario: dict):
@@ -133,7 +149,7 @@ def test_init_targets(target_scenario: dict):
         if scenario_key in KEY_CONVERSION_MAP:
             targets_key = KEY_CONVERSION_MAP[scenario_key]
         if scenario_key in KVP_KEYS:
-            target_scenario[scenario_key] = assemble_nargs_to_dict(target_scenario[scenario_key])
+            target_scenario[scenario_key] = parse_kvp_nargs(target_scenario[scenario_key])
 
         targets_value = getattr(targets, targets_key)
 
@@ -141,8 +157,12 @@ def test_init_targets(target_scenario: dict):
             target_scenario[scenario_key] == targets_value
         ), f"{scenario_key} input mismatch with equivalent targets {targets_key} value."
 
+    expected_acs_config = {"edgeStorageConfiguration.create": "true", "feature.diskStorageClass": "default,local-path"}
     if target_scenario.get("enable_fault_tolerance"):
         assert targets.advanced_config == {"edgeStorageAccelerator": {"faultToleranceEnabled": True}}
+        expected_acs_config["feature.diskStorageClass"] = "acstor-arccontainerstorage-storage-pool"
+        expected_acs_config["acstorConfiguration.create"] = "true"
+        expected_acs_config["acstorConfiguration.properties.diskMountPoint"] = "/mnt"
 
     enablement_template, enablement_parameters = targets.get_ops_enablement_template()
     verify_trust_config(
@@ -158,6 +178,47 @@ def test_init_targets(target_scenario: dict):
         assert enablement_parameters[parameter]["value"] == getattr(
             targets, targets_key
         ), f"{parameter} value mismatch with targets {targets_key} value."
+
+    if targets.ssc_version:
+        assert enablement_template["variables"]["VERSIONS"]["secretStore"] == targets.ssc_version
+
+    if targets.ssc_train:
+        assert enablement_template["variables"]["TRAINS"]["secretStore"] == targets.ssc_train
+
+    expected_ssc_config = {
+        "rotationPollIntervalInSeconds": "120",
+        "validatingAdmissionPolicies.applyPolicies": "false",
+    }
+    ssc_config_settings = enablement_template["resources"]["secret_store_extension"]["properties"][
+        "configurationSettings"
+    ]
+    for c in expected_ssc_config:
+        assert ssc_config_settings[c] == expected_ssc_config[c]
+    ssc_custom_config_len = 0
+    if targets.ssc_config:
+        ssc_custom_config_len = len(targets.ssc_config)
+        for c in targets.ssc_config:
+            assert ssc_config_settings[c] == targets.ssc_config[c]
+    assert len(ssc_config_settings) == (len(expected_ssc_config) + ssc_custom_config_len)
+
+    if targets.acs_version:
+        assert enablement_template["variables"]["VERSIONS"]["containerStorage"] == targets.acs_version
+
+    if targets.acs_train:
+        assert enablement_template["variables"]["TRAINS"]["containerStorage"] == targets.acs_train
+
+    # TODO: Write a function for the repeated logic
+    acs_config_settings = enablement_template["resources"]["container_storage_extension"]["properties"][
+        "configurationSettings"
+    ]
+    for c in expected_acs_config:
+        assert acs_config_settings[c] == expected_acs_config[c]
+    acs_custom_config_len = 0
+    if targets.acs_config:
+        acs_custom_config_len = len(targets.acs_config)
+        for c in targets.acs_config:
+            assert acs_config_settings[c] == targets.acs_config[c]
+    assert len(acs_config_settings) == (len(expected_acs_config) + acs_custom_config_len)
 
     extension_ids = [generate_random_string(), generate_random_string()]
 
@@ -180,7 +241,6 @@ def test_init_targets(target_scenario: dict):
     if targets.ops_config:
         aio_config_settings = instance_template["variables"]["defaultAioConfigurationSettings"]
         for c in targets.ops_config:
-            assert c in aio_config_settings
             assert aio_config_settings[c] == targets.ops_config[c]
 
     for parameter in instance_parameters:
