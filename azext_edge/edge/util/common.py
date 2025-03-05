@@ -220,3 +220,7 @@ def should_continue_prompt(confirm_yes: Optional[bool] = None, context: str = "D
         return False
 
     return True
+
+
+def insert_newlines(s: str, every: int = 79):
+    return "\n".join(s[i : i + every] for i in range(0, len(s), every))

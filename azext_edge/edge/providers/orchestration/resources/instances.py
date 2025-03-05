@@ -276,9 +276,7 @@ class Instances(Queryable):
             oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
 
             cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
-            secretsync_spc = self.find_existing_resources(
-                cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE
-            )
+            secretsync_spc = self.find_existing_resources(cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE)
             if secretsync_spc:
                 status.stop()
                 logger.warning(
@@ -331,9 +329,7 @@ class Instances(Queryable):
             cl_resources = resource_map.connected_cluster.get_aio_resources(
                 custom_location_id=instance["extendedLocation"]["name"]
             )
-            secretsync_spcs = self.find_existing_resources(
-                cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE
-            )
+            secretsync_spcs = self.find_existing_resources(cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE)
             if secretsync_spcs:
                 return secretsync_spcs
         logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
@@ -356,9 +352,7 @@ class Instances(Queryable):
             cl_resources = resource_map.connected_cluster.get_aio_resources(
                 custom_location_id=instance["extendedLocation"]["name"]
             )
-            secretsync_spcs = self.find_existing_resources(
-                cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE
-            )
+            secretsync_spcs = self.find_existing_resources(cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE)
             secretsyncs = self.find_existing_resources(
                 cl_resources=cl_resources, resource_type=SECRET_SYNC_RESOURCE_TYPE
             )

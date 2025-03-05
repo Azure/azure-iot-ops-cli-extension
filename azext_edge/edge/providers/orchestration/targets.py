@@ -4,8 +4,9 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Set
 from functools import partial
+from enum import IntEnum
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
@@ -16,7 +17,7 @@ from ...common import (
     DEFAULT_DATAFLOW_ENDPOINT,
     DEFAULT_DATAFLOW_PROFILE,
 )
-from ...util import assemble_nargs_to_dict
+from ...util import assemble_nargs_to_dict, url_safe_hash_phrase
 from ...util.az_client import parse_resource_id
 from ..orchestration.common import (
     TRUST_ISSUER_KIND_KEY,
@@ -29,6 +30,18 @@ from .template import (
     TemplateBlueprint,
     get_insecure_listener,
 )
+
+
+class InstancePhase(IntEnum):
+    EXT = 1
+    INSTANCE = 2
+    RESOURCES = 3
+
+
+PHASE_KEY_MAP: Dict[str, Set[str]] = {
+    InstancePhase.EXT: {"cluster", "aio_extension"},
+    InstancePhase.INSTANCE: {"aioInstance", "aio_syncRule", "deviceRegistry_syncRule"},
+}
 
 
 class InitTargets:
@@ -76,6 +89,11 @@ class InitTargets:
         self.schema_registry_resource_id = schema_registry_resource_id
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
+        if not custom_location_name:
+            custom_location_name = get_default_cl_name(
+                resource_group_name=resource_group_name, cluster_name=cluster_name, namespace=cluster_namespace
+            )
+
         self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
         self.deploy_resource_sync_rules = bool(enable_rsync_rules)
         self.instance_name = self._sanitize_k8s_name(instance_name)
@@ -168,8 +186,11 @@ class InitTargets:
 
     def get_ops_instance_template(
         self,
-        cl_extension_ids: List[str],
+        cl_extension_ids: Optional[List[str]] = None,
+        phase: Optional[InstancePhase] = None,
     ) -> Tuple[dict, dict]:
+        if not cl_extension_ids:
+            cl_extension_ids = []
         template, parameters = self._handle_apply_targets(
             param_to_target={
                 "clusterName": self.cluster_name,
@@ -199,16 +220,13 @@ class InitTargets:
             template.content["variables"]["TRAINS"]["iotOperations"] = self.ops_train
 
         instance = template.get_resource_by_key("aioInstance")
-        instance["properties"]["description"] = self.instance_description
-
-        if self.tags:
-            instance["tags"] = self.tags
-
         broker = template.get_resource_by_key("broker")
         broker_authn = template.get_resource_by_key("broker_authn")
         broker_listener = template.get_resource_by_key("broker_listener")
         dataflow_profile = template.get_resource_by_key("dataflow_profile")
         dataflow_endpoint = template.get_resource_by_key("dataflow_endpoint")
+
+        instance["properties"]["description"] = self.instance_description
 
         if self.instance_name:
             instance["name"] = self.instance_name
@@ -220,6 +238,9 @@ class InitTargets:
 
             template.content["outputs"]["aio"]["value"]["name"] = self.instance_name
 
+        if self.tags:
+            instance["tags"] = self.tags
+
         if self.custom_broker_config:
             if "properties" in self.custom_broker_config:
                 self.custom_broker_config = self.custom_broker_config["properties"]
@@ -230,6 +251,25 @@ class InitTargets:
                 resource_key="broker_listener_insecure",
                 resource_def=get_insecure_listener(instance_name=self.instance_name, broker_name=DEFAULT_BROKER),
             )
+
+        resources: Dict[str, Dict[str, dict]] = template.content.get("resources", {})
+        if phase == InstancePhase.EXT:
+            del_if_not_in(resources, PHASE_KEY_MAP[InstancePhase.EXT])
+            return template.content, parameters
+
+        tracked_keys = (
+            PHASE_KEY_MAP[InstancePhase.EXT].union(PHASE_KEY_MAP[InstancePhase.INSTANCE]).union({"customLocation"})
+        )
+        if phase == InstancePhase.INSTANCE:
+            del_if_not_in(
+                resources,
+                tracked_keys,
+            )
+            set_read_only(resources, PHASE_KEY_MAP[InstancePhase.EXT].union({"customLocation"}))
+            return template.content, parameters
+
+        if phase == InstancePhase.RESOURCES:
+            set_read_only(resources, tracked_keys)
 
         return template.content, parameters
 
@@ -307,3 +347,22 @@ class InitTargets:
             result["settings"] = target_settings
 
         return result
+
+
+def get_default_cl_name(resource_group_name: str, cluster_name: str, namespace: str) -> str:
+    return "location-" + url_safe_hash_phrase(f"{resource_group_name}{cluster_name}{namespace}")[:5]
+
+
+def set_read_only(resources: Dict[str, Dict[str, dict]], resource_keys: Set[str]):
+    for r in resource_keys:
+        res: dict = resources.get(r, {})
+        for k in list(res.keys()):
+            if k not in {"type", "apiVersion", "name", "scope", "condition"}:
+                del res[k]
+        res["existing"] = True
+
+
+def del_if_not_in(resources: Dict[str, Dict[str, dict]], include_keys: Set[str]):
+    for k in list(resources.keys()):
+        if k not in include_keys:
+            del resources[k]
