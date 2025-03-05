@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 from random import randint
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import pytest
 
@@ -179,11 +179,12 @@ def test_init_targets(target_scenario: dict):
             targets, targets_key
         ), f"{parameter} value mismatch with targets {targets_key} value."
 
-    if targets.ssc_version:
-        assert enablement_template["variables"]["VERSIONS"]["secretStore"] == targets.ssc_version
-
-    if targets.ssc_train:
-        assert enablement_template["variables"]["TRAINS"]["secretStore"] == targets.ssc_train
+    assert_version_attr(
+        variables=enablement_template["variables"],
+        key="secretStore",
+        train=targets.ssc_train,
+        version=targets.ssc_version,
+    )
 
     expected_ssc_config = {
         "rotationPollIntervalInSeconds": "120",
@@ -192,33 +193,23 @@ def test_init_targets(target_scenario: dict):
     ssc_config_settings = enablement_template["resources"]["secret_store_extension"]["properties"][
         "configurationSettings"
     ]
-    for c in expected_ssc_config:
-        assert ssc_config_settings[c] == expected_ssc_config[c]
-    ssc_custom_config_len = 0
-    if targets.ssc_config:
-        ssc_custom_config_len = len(targets.ssc_config)
-        for c in targets.ssc_config:
-            assert ssc_config_settings[c] == targets.ssc_config[c]
-    assert len(ssc_config_settings) == (len(expected_ssc_config) + ssc_custom_config_len)
+    assert_extension_config(
+        settings=ssc_config_settings, expected_base_config=expected_ssc_config, custom_config=targets.ssc_config
+    )
 
-    if targets.acs_version:
-        assert enablement_template["variables"]["VERSIONS"]["containerStorage"] == targets.acs_version
+    assert_version_attr(
+        variables=enablement_template["variables"],
+        key="containerStorage",
+        train=targets.acs_train,
+        version=targets.acs_version,
+    )
 
-    if targets.acs_train:
-        assert enablement_template["variables"]["TRAINS"]["containerStorage"] == targets.acs_train
-
-    # TODO: Write a function for the repeated logic
     acs_config_settings = enablement_template["resources"]["container_storage_extension"]["properties"][
         "configurationSettings"
     ]
-    for c in expected_acs_config:
-        assert acs_config_settings[c] == expected_acs_config[c]
-    acs_custom_config_len = 0
-    if targets.acs_config:
-        acs_custom_config_len = len(targets.acs_config)
-        for c in targets.acs_config:
-            assert acs_config_settings[c] == targets.acs_config[c]
-    assert len(acs_config_settings) == (len(expected_acs_config) + acs_custom_config_len)
+    assert_extension_config(
+        settings=acs_config_settings, expected_base_config=expected_acs_config, custom_config=targets.acs_config
+    )
 
     extension_ids = [generate_random_string(), generate_random_string()]
 
@@ -232,11 +223,12 @@ def test_init_targets(target_scenario: dict):
         parameters=instance_parameters,
     )
 
-    if targets.ops_version:
-        assert instance_template["variables"]["VERSIONS"]["iotOperations"] == targets.ops_version
-
-    if targets.ops_train:
-        assert instance_template["variables"]["TRAINS"]["iotOperations"] == targets.ops_train
+    assert_version_attr(
+        variables=instance_template["variables"],
+        key="iotOperations",
+        train=targets.ops_train,
+        version=targets.ops_version,
+    )
 
     if targets.ops_config:
         aio_config_settings = instance_template["variables"]["defaultAioConfigurationSettings"]
@@ -338,3 +330,31 @@ def test_get_extension_versions():
 
     combined_version_map = {**enablement_version_map, **create_version_map}
     _assert_version_map(enablement_types + create_types, combined_version_map)
+
+
+def assert_extension_config(
+    settings: Dict[str, str], expected_base_config: Dict[str, str], custom_config: Optional[Dict[str, str]] = None
+):
+    for c in expected_base_config:
+        assert settings[c] == expected_base_config[c]
+    custom_config_len = 0
+    if custom_config:
+        custom_config_len = len(custom_config)
+        for c in custom_config:
+            assert settings[c] == custom_config[c]
+    assert len(settings) == (len(expected_base_config) + custom_config_len)
+
+
+def assert_version_attr(
+    variables: Dict[
+        str,
+        str,
+    ],
+    key: str,
+    version: Optional[str] = None,
+    train: Optional[str] = None,
+):
+    if version:
+        assert variables["VERSIONS"][key] == version
+    if train:
+        assert variables["TRAINS"][key] == train

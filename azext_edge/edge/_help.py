@@ -444,7 +444,21 @@ def load_iotops_help():
                       After the foundation layer has been installed the `az iot ops create` command should
                       be used to deploy an instance.
 
-                      Note: --*-config options allow override of default configurations.
+                      Note: --*-config options allow override of default config settings.
+
+                      The default config settings for container storage are:
+                        edgeStorageConfiguration.create=true
+                        feature.diskStorageClass=default,local-path
+
+                      if --enable-fault-tolerance is used the following delta applies:
+                        feature.diskStorageClass=acstor-arccontainerstorage-storage-pool
+                        acstorConfiguration.create=true
+                        acstorConfiguration.properties.diskMountPoint=/mnt
+
+                      The default config settings for secret store are:
+                        rotationPollIntervalInSeconds=120
+                        validatingAdmissionPolicies.applyPolicies=false
+
         examples:
         - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
           text: >
@@ -462,7 +476,6 @@ def load_iotops_help():
         - name: Provide custom deploy-time configs for Arc Secret Store.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --ssc-config rotationPollIntervalInSeconds=60
-
     """
 
     helps[
