@@ -10,7 +10,7 @@ from rich.padding import Padding
 from rich.table import Table
 from rich.console import NewLine
 
-from ...common import CheckTaskStatus, OpsServiceType
+from ...common import OPCUA_SERVICE, CheckTaskStatus, OpsServiceType
 from ...providers.edge_api import DATAFLOW_API_V1, DEVICEREGISTRY_API_V1, MQ_ACTIVE_API, OPCUA_API_V1
 from .akri import check_akri_deployment
 from .base import CheckManager
@@ -56,7 +56,7 @@ def check_summary(
             check_func=check_deviceregistry_deployment,
         ),
         ServiceCheck(
-            svc=OpsServiceType.opcua.value,
+            svc=OPCUA_SERVICE,
             title="OPCUA",
             target=OPCUA_API_V1.as_str(),
             check_func=check_opcua_deployment,

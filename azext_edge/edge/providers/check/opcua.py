@@ -32,7 +32,7 @@ from ..edge_api import (
     OpcuaResourceKinds,
 )
 
-from ..support.opcua import OPC_NAME_VAR_LABEL, OPCUA_NAME_LABEL
+from ..support.connectors import OPC_NAME_VAR_LABEL, OPCUA_NAME_LABEL
 
 
 def check_opcua_deployment(

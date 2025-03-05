@@ -21,7 +21,6 @@ from azext_edge.edge.providers.edge_api import (
     DEVICEREGISTRY_API_V1,
     MQ_ACTIVE_API,
     MQTT_BROKER_API_V1,
-    OPCUA_API_V1,
     DATAFLOW_API_V1,
     EdgeResourceApi,
 )
@@ -37,13 +36,6 @@ from azext_edge.edge.providers.support.billing import (
 )
 from azext_edge.edge.providers.support.meta import META_NAME_LABEL, META_PREFIX_NAMES
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_NAME_LABEL
-from azext_edge.edge.providers.support.opcua import (
-    OPC_APP_LABEL,
-    OPC_DIRECTORY_PATH,
-    OPC_NAME_LABEL,
-    OPC_NAME_VAR_LABEL,
-    OPCUA_NAME_LABEL,
-)
 from azext_edge.edge.providers.support.common import (
     COMPONENT_LABEL_FORMAT,
 )
@@ -62,10 +54,9 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
     [
         [MQTT_BROKER_API_V1],
         [MQTT_BROKER_API_V1, MQ_ACTIVE_API],
-        [MQTT_BROKER_API_V1, OPCUA_API_V1],
-        [MQTT_BROKER_API_V1, OPCUA_API_V1, DEVICEREGISTRY_API_V1],
-        [MQTT_BROKER_API_V1, OPCUA_API_V1, CLUSTER_CONFIG_API_V1],
-        [MQTT_BROKER_API_V1, OPCUA_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1],
+        [MQTT_BROKER_API_V1, DEVICEREGISTRY_API_V1],
+        [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1],
+        [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1],
     ],
     indirect=True,
 )
@@ -209,122 +200,6 @@ def test_create_bundle(
                 mocked_zipfile,
                 label_selector=MQ_NAME_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
-            )
-
-        if api in [OPCUA_API_V1]:
-            # Assert runtime resources
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=OPC_APP_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-                include_metrics=True,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=OPC_NAME_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-                include_metrics=True,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=OPC_NAME_VAR_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-                include_metrics=True,
-            )
-            assert_list_pods(
-                mocked_client,
-                mocked_zipfile,
-                mocked_list_pods,
-                label_selector=OPCUA_NAME_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-                since_seconds=since_seconds,
-                include_metrics=True,
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=None,
-                directory_path=OPC_DIRECTORY_PATH,
-                mock_names=[
-                    "aio-opc-admission-controller",
-                    "aio-opc-supervisor",
-                    "aio-opc-opc",
-                    "opcplc-0000000",
-                ],
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=OPC_NAME_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=OPCUA_NAME_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-            )
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=OPC_NAME_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-            )
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=OPC_APP_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-            )
-            assert_list_replica_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=OPCUA_NAME_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-            )
-            assert_list_config_maps(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=OPCUA_NAME_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-            )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=None,
-                directory_path=OPC_DIRECTORY_PATH,
-                mock_names=["opcplc-0000000"],
-            )
-            assert_list_services(
-                mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, directory_path=OPC_DIRECTORY_PATH
-            )
-            assert_list_services(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=OPCUA_NAME_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
-            )
-            # TODO: one-off field selector remove after label
-            assert_list_daemon_sets(
-                mocked_client,
-                mocked_zipfile,
-                field_selector="metadata.name==aio-opc-asset-discovery",
-                directory_path=OPC_DIRECTORY_PATH,
-            )
-            assert_list_daemon_sets(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=OPCUA_NAME_LABEL,
-                directory_path=OPC_DIRECTORY_PATH,
             )
 
         if api in [DATAFLOW_API_V1]:

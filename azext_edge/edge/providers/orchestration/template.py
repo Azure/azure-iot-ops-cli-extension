@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import Any, Dict, List, NamedTuple, Optional, Union
+from typing import Dict, List, NamedTuple, Optional, Union
 
 from .common import (
     AIO_INSECURE_LISTENER_NAME,
@@ -17,7 +17,7 @@ from .common import (
 
 class TemplateBlueprint(NamedTuple):
     commit_id: str
-    content: Dict[str, Any]
+    content: Dict[str, Dict[str, dict]]
 
     def get_type_definition(self, key: str) -> dict:
         return self.content["definitions"].get(key, {"properties": {}})
@@ -26,8 +26,8 @@ class TemplateBlueprint(NamedTuple):
     def parameters(self) -> dict:
         return self.content["parameters"]
 
-    def get_resource_by_key(self, key: str) -> Optional[dict]:
-        return self.content["resources"].get(key)
+    def get_resource_by_key(self, key: str) -> dict:
+        return self.content["resources"].get(key, {"properties": {}})
 
     def get_resource_by_type(self, type_name: str, first=True) -> Optional[Union[List[dict], dict]]:
         r = []
