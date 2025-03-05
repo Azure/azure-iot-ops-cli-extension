@@ -8,10 +8,10 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
+from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_workload_resource_files,
     get_file_map,
-    get_workload_resources,
     run_bundle_command
 )
 
@@ -38,7 +38,7 @@ def test_create_bundle_arcagents(cluster_connection, tracked_files):
     ops_service = OpsServiceType.akri.value
     agent_map = {}
     for agent, has_service in ARC_AGENTS:
-        agent_map[agent] = get_workload_resources(
+        agent_map[agent] = get_multi_kubectl_workload_items(
             expected_workload_types=AGENT_SERVICE_WORKLOAD_TYPES if has_service else AGENT_WORKLOAD_TYPES,
             prefixes=AGENT_RESOURCE_PREFIXES[agent],
         )

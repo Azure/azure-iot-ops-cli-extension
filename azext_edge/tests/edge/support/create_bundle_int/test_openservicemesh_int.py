@@ -7,11 +7,11 @@
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import OPENSERVICEMESH_CONFIG_API_V1, OPENSERVICEMESH_POLICY_API_V1
+from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
-    get_workload_resources,
     run_bundle_command,
 )
 
@@ -25,7 +25,7 @@ def test_create_bundle_osm(cluster_connection, tracked_files):
     # dir for unpacked files
     ops_service = OpsServiceType.openservicemesh.value
 
-    pre_bundle_workload_items = get_workload_resources(
+    pre_bundle_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=EXPECTED_WORKLOAD_TYPES,
         prefixes=EXPECTED_PREFIXES,
     )

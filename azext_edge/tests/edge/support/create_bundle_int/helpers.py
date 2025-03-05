@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
 import pytest
@@ -166,7 +166,7 @@ def check_workload_resource_files(
     prefixes: Union[str, List[str]],
     bundle_path: str,
     expected_label: Optional[str] = None,
-   pre_bundle_optional_items: Optional[Dict[str, List[str]]] = None,
+    pre_bundle_optional_items: Optional[Dict[str, List[str]]] = None,
 ):
     # pod
     file_pods = {}
@@ -374,25 +374,6 @@ def get_file_map(
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = aio_namespace
     return file_map
-
-
-# TODO rename + maybe move
-def get_workload_resources(
-    expected_workload_types: Union[str, List[str]],
-    prefixes: Union[str, List[str]],
-    expected_label: Optional[Tuple[str, str]] = None
-) -> Dict[str, Iterable[str]]:
-    """
-    Fetch a list of the workload resources via kubectl.
-    Returns a mapping of workload type to iterable (dict keys) of names.
-    """
-    result = {}
-    if not isinstance(expected_workload_types, list):
-        expected_workload_types = [expected_workload_types]
-    for key in expected_workload_types:
-        items = get_kubectl_workload_items(prefixes, service_type=key, label_match=expected_label)
-        result[key] = items.keys()
-    return result
 
 
 def process_top_levels(

@@ -8,11 +8,11 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
+from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
-    get_workload_resources,
     run_bundle_command
 )
 
@@ -28,12 +28,12 @@ USAGE_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service"]
 def test_create_bundle_billing(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS billing."""
     ops_service = OpsServiceType.billing.value
-    aio_workload_items = get_workload_resources(
+    aio_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=AIO_WORKLOAD_TYPES,
         prefixes=AIO_PREFIXES,
     )
 
-    usage_workload_items = get_workload_resources(
+    usage_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=USAGE_WORKLOAD_TYPES,
         prefixes=USAGE_PREFIXES,
     )

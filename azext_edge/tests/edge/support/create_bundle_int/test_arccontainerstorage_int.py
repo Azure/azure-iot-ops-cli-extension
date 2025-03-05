@@ -9,12 +9,11 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1
-from azext_edge.tests.helpers import get_kubectl_workload_items
+from ....helpers import get_multi_kubectl_workload_items, get_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
-    get_workload_resources,
     run_bundle_command,
 )
 
@@ -69,13 +68,13 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
     # add following workload prefixes if schema registry is deployed
     if len(schemas_pods.items()) > 0:
         acs_workload_resource_prefixes.extend(ACS_OPTIONAL_PREFIXES)
-    pre_bundle_acs_workload_items = get_workload_resources(
+    pre_bundle_acs_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=ACS_WORKLOAD_TYPES,
         prefixes=acs_workload_resource_prefixes,
     )
 
     # ACSTOR
-    pre_bundle_acstor_workload_items = get_workload_resources(
+    pre_bundle_acstor_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=ACSTOR_WORKLOAD_TYPES,
         prefixes=ACSTOR_PREFIXES,
     )

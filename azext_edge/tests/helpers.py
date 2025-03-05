@@ -8,7 +8,7 @@ import json
 import os
 from fnmatch import fnmatch
 from knack.log import get_logger
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from azure.cli.core.azclierror import CLIInternalError
 import pytest
 
@@ -143,6 +143,24 @@ def get_kubectl_workload_items(
     label_param = f"--selector {label_match[0]}={label_match[1]}" if label_match else ""
     kubectl_items = run(f"kubectl get {service_type} {namespace_param} {label_param} -o json")
     return filter_resources(kubectl_items=kubectl_items, prefixes=prefixes, resource_match=resource_match)
+
+
+def get_multi_kubectl_workload_items(
+    expected_workload_types: Union[str, List[str]],
+    prefixes: Union[str, List[str]],
+    expected_label: Optional[Tuple[str, str]] = None
+) -> Dict[str, Iterable[str]]:
+    """
+    Fetch a list of the workload resources via kubectl.
+    Returns a mapping of workload type to iterable (dict keys) of names.
+    """
+    result = {}
+    if not isinstance(expected_workload_types, list):
+        expected_workload_types = [expected_workload_types]
+    for key in expected_workload_types:
+        items = get_kubectl_workload_items(prefixes, service_type=key, label_match=expected_label)
+        result[key] = items.keys()
+    return result
 
 
 def create_file(

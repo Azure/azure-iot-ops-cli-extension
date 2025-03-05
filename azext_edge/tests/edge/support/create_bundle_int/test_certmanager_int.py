@@ -7,7 +7,13 @@
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import CERTMANAGER_API_V1, TRUSTMANAGER_API_V1
-from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, get_workload_resources, run_bundle_command
+from ....helpers import get_multi_kubectl_workload_items
+from .helpers import (
+    check_custom_resource_files,
+    check_workload_resource_files,
+    get_file_map,
+    run_bundle_command
+)
 
 logger = get_logger(__name__)
 CERTMGMT_PREFIXES = ["aio-cert-manager", "aio-trust-manager", "kube-root-ca"]
@@ -17,7 +23,7 @@ CERTMGMT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "config
 def test_create_bundle_certmanager(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.certmanager.value
-    pre_bundle_workload_items = get_workload_resources(
+    pre_bundle_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=CERTMGMT_WORKLOAD_TYPES,
         prefixes=CERTMGMT_PREFIXES,
     )

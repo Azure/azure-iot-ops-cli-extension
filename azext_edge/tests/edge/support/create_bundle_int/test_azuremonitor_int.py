@@ -8,11 +8,11 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import AZUREMONITOR_API_V1
+from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
-    get_workload_resources,
     run_bundle_command
 )
 
@@ -27,7 +27,7 @@ def test_create_bundle_azuremonitor(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.azuremonitor.value
 
-    pre_bundle_workload_items = get_workload_resources(
+    pre_bundle_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=AZUREMONITOR_WORKLOAD_TYPES,
         prefixes=AZUREMONITOR_PREFIXES,
     )

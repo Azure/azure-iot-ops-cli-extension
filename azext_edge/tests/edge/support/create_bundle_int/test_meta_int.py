@@ -7,7 +7,13 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.providers.edge_api import META_API_V1
-from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, get_workload_resources, run_bundle_command
+from ....helpers import get_multi_kubectl_workload_items
+from .helpers import (
+    check_custom_resource_files,
+    check_workload_resource_files,
+    get_file_map,
+    run_bundle_command
+)
 
 logger = get_logger(__name__)
 
@@ -19,11 +25,11 @@ META_OPTIONAL_WORKLOAD_TYPES = ["job"]
 
 def test_create_bundle_meta(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS meta."""
-    pre_bundle_workload_items = get_workload_resources(
+    pre_bundle_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=META_WORKLOAD_TYPES,
         prefixes=META_PREFIXES,
     )
-    pre_bundle_optional_workload_items = get_workload_resources(
+    pre_bundle_optional_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=META_OPTIONAL_WORKLOAD_TYPES,
         prefixes=META_PREFIXES,
     )

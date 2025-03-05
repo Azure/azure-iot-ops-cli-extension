@@ -7,7 +7,8 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from .helpers import check_workload_resource_files, get_file_map, get_workload_resources, run_bundle_command
+from ....helpers import get_multi_kubectl_workload_items
+from .helpers import check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
 
@@ -20,7 +21,7 @@ def test_create_bundle_akri(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS AKRI."""
     ops_service = OpsServiceType.akri.value
 
-    pre_bundle_workload_items = get_workload_resources(
+    pre_bundle_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=AKRI_WORKLOAD_TYPES,
         prefixes=AKRI_WORKLOAD_TYPES,
     )

@@ -8,11 +8,11 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API
+from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
-    get_workload_resources,
     run_bundle_command,
 )
 
@@ -30,7 +30,7 @@ def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
     mq_traces = True
 
     ops_service = OpsServiceType.mq.value
-    pre_bundle_workload_items = get_workload_resources(
+    pre_bundle_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=MQ_WORKLOAD_TYPES,
         prefixes=MQ_PREFIXES,
         expected_label=MQ_LABEL
@@ -95,4 +95,4 @@ def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
 
 
 def _get_trace_pods():
-    return get_workload_resources(expected_workload_types=["pod"], prefixes="aio-mq")["pod"]
+    return get_multi_kubectl_workload_items(expected_workload_types=["pod"], prefixes="aio-mq")["pod"]
