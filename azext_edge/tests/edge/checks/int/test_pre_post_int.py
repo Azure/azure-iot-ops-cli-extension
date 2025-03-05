@@ -9,7 +9,7 @@ from knack.log import get_logger
 from kubernetes.utils import parse_quantity
 from azure.cli.core.azclierror import CLIInternalError
 from ....helpers import run
-from .helpers import combine_statuses, expected_status
+from .helpers import combine_statuses, get_expected_status
 from azext_edge.edge.providers.check.common import (
     AIO_SUPPORTED_ARCHITECTURES,
     MIN_NODE_MEMORY,
@@ -24,7 +24,7 @@ pytestmark = pytest.mark.e2e
 
 @pytest.mark.parametrize("post", [None, False, True])
 @pytest.mark.parametrize("pre", [None, False, True])
-def test_check_pre_post(init_setup, post, pre):
+def test_check_pre_post(cluster_connection, post, pre):
     command = "az iot ops check --as-object "
     if pre is not None:
         command += f" --pre {pre}"
@@ -70,7 +70,7 @@ def test_check_pre_post(init_setup, post, pre):
     if k8s_version:
         expected_version = f"{k8s_version.get('major')}.{k8s_version.get('minor')}"
         assert k8s_target_result["evaluations"][0]["value"] == expected_version
-        assert k8s_status == expected_status(expected_version >= "1.20")
+        assert k8s_status == get_expected_status(expected_version >= "1.20")
     assert k8s_result["status"] == k8s_target_result["status"] == k8s_status
 
     # cluster node evaluation
@@ -83,9 +83,9 @@ def test_check_pre_post(init_setup, post, pre):
     assert "_all_" in node_result["targets"]["cluster/nodes"]
     node_count_target = node_result["targets"]["cluster/nodes"]["_all_"]
     assert node_count_target["conditions"] == ["len(cluster/nodes)>=1"]
-    assert node_count_target["evaluations"][0]["status"] == expected_status(success_or_fail=len(kubectl_nodes) >= 1)
+    assert node_count_target["evaluations"][0]["status"] == get_expected_status(success_or_fail=len(kubectl_nodes) >= 1)
     assert node_count_target["evaluations"][0]["value"] == {"len(cluster/nodes)": len(kubectl_nodes)}
-    final_status = expected_status(success_or_fail=len(kubectl_nodes) >= 1)
+    final_status = get_expected_status(success_or_fail=len(kubectl_nodes) >= 1)
     assert node_count_target["status"] == final_status
 
     # node eval
@@ -105,22 +105,22 @@ def test_check_pre_post(init_setup, post, pre):
 
         node_arch = node_target["evaluations"][0]["value"]["info.architecture"]
         assert node_arch == node["status"]["nodeInfo"]["architecture"]
-        assert node_target["evaluations"][0]["status"] == expected_status(node_arch in AIO_SUPPORTED_ARCHITECTURES)
+        assert node_target["evaluations"][0]["status"] == get_expected_status(node_arch in AIO_SUPPORTED_ARCHITECTURES)
 
         node_capacity = node["status"]["capacity"]
         node_cpu = node_target["evaluations"][1]["value"]["condition.cpu"]
         assert node_cpu == int(node_capacity["cpu"])
-        assert node_target["evaluations"][1]["status"] == expected_status(node_cpu >= int(MIN_NODE_VCPU))
+        assert node_target["evaluations"][1]["status"] == get_expected_status(node_cpu >= int(MIN_NODE_VCPU))
 
         node_memory = node_target["evaluations"][2]["value"]["condition.memory"]
         assert node_memory == int(parse_quantity(node_capacity["memory"]))
-        assert node_target["evaluations"][2]["status"] == expected_status(
+        assert node_target["evaluations"][2]["status"] == get_expected_status(
             node_memory >= parse_quantity(MIN_NODE_MEMORY)
         )
 
         node_storage = node_target["evaluations"][3]["value"]["condition.ephemeral-storage"]
         assert node_storage == int(parse_quantity(node_capacity["ephemeral-storage"]))
-        assert node_target["evaluations"][3]["status"] == expected_status(
+        assert node_target["evaluations"][3]["status"] == get_expected_status(
             node_storage >= parse_quantity(MIN_NODE_STORAGE)
         )
 

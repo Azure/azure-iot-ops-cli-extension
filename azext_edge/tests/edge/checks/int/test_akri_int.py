@@ -9,6 +9,7 @@ from knack.log import get_logger
 from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
 from .helpers import (
     assert_eval_core_service_runtime,
+    get_pods,
     run_check_command,
 )
 from ....generators import generate_names
@@ -16,12 +17,14 @@ from ....generators import generate_names
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
+AKRI_PREFIX = "aio-akri-"
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 # TODO: figure out if name match should be a general test vs each service (minimize test runs)
 @pytest.mark.parametrize("resource_match", [None, "aio-akri*", generate_names()])
-def test_akri_check(init_setup, detail_level, resource_match):
+def test_akri_check(cluster_connection, detail_level, resource_match):
+    pre_check_pods = get_pods(pod_prefix=AKRI_PREFIX, resource_match=resource_match)
     post_deployment, _ = run_check_command(
         detail_level=detail_level,
         ops_service="akri",
@@ -29,8 +32,9 @@ def test_akri_check(init_setup, detail_level, resource_match):
     )
 
     assert_eval_core_service_runtime(
-        post_deployment=post_deployment,
+        check_results=post_deployment,
         description_name="Akri",
-        pod_prefix="aio-akri-",
+        pod_prefix=AKRI_PREFIX,
+        pre_check_pods=pre_check_pods,
         resource_match=resource_match,
     )

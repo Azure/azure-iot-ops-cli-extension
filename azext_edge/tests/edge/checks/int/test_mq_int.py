@@ -27,7 +27,7 @@ pytestmark = pytest.mark.e2e
 @pytest.mark.parametrize("resource_kind", MqResourceKinds.list() + [None])
 # TODO: figure out if name match should be a general test vs each service (minimize test runs)
 @pytest.mark.parametrize("resource_match", [None])
-def test_mq_check(init_setup, detail_level, resource_match, resource_kind):
+def test_mq_check(cluster_connection, detail_level, resource_match, resource_kind):
     post_deployment, broker_present = run_check_command(
         detail_level=detail_level,
         ops_service="broker",

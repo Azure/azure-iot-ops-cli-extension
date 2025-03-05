@@ -15,6 +15,10 @@ from ....helpers import (
     sort_kubectl_items_by_namespace,
 )
 
+# use this to replace a kubectl pod body in checks to avoid key errors/minimize code
+MISSING_POD_BODY = {"status": {"phase": {}}}
+
+
 
 def assert_enumerate_resources(
     post_deployment: dict,
@@ -47,95 +51,57 @@ def assert_enumerate_resources(
 
 # Used by Akri and OPCUA
 def assert_eval_core_service_runtime(
-    post_deployment: dict,
+    check_results: dict,
     description_name: str,
     pod_prefix: str,
+    pre_check_pods: dict,
     resource_match: Optional[str] = None,
 ):
-    assert post_deployment["evalCoreServiceRuntime"]
-    assert post_deployment["evalCoreServiceRuntime"]["description"] == f"Evaluate {description_name} core service"
+    assert check_results["evalCoreServiceRuntime"]
+    assert check_results["evalCoreServiceRuntime"]["description"] == f"Evaluate {description_name} core service"
     overall_status = "skipped"
-    runtime_resource = post_deployment["evalCoreServiceRuntime"]["targets"]["coreServiceRuntimeResource"]
+    runtime_resource = check_results["evalCoreServiceRuntime"]["targets"]["coreServiceRuntimeResource"]
     for namespace in runtime_resource.keys():
         namespace_status = "skipped"
         evals = runtime_resource[namespace]["evaluations"]
-        kubectl_pods = get_kubectl_workload_items(
-            prefixes=pod_prefix, service_type="pod", resource_match=resource_match
-        )
+        post_check_pods = get_pods(pod_prefix=pod_prefix, resource_match=resource_match)
 
-        if kubectl_pods:
+        if post_check_pods:
             assert runtime_resource[namespace]["conditions"]
         else:
             assert not runtime_resource[namespace]["conditions"]
 
-        results = [pod["name"].replace("pod/", "") for pod in evals]
+        results = list(set(pod["name"].replace("pod/", "") for pod in evals))
+        # TODO: improve check
         find_extra_or_missing_names(
             resource_type="pods",
             result_names=results,
-            expected_names=kubectl_pods.keys(),
-            ignore_extras=True,
-            ignore_missing=True,
+            pre_expected_names=pre_check_pods.keys(),
+            post_expected_names=post_check_pods.keys(),
+            # ignore_extras=True,
+            # ignore_missing=True,
         )
 
-        for pod in kubectl_pods:
-            name = kubectl_pods[pod]["metadata"]["name"]
-            # find all evals entries for this pod
-            pod_evals = [pod for pod in evals if name in pod["name"]]
+        # note that missing/extra pod case should be caught by the find_extra_or_missing_names
+        for pod_name in results:
+            pre_pod = pre_check_pods.get(pod_name, MISSING_POD_BODY)
+            post_pod = post_check_pods.get(pod_name, MISSING_POD_BODY)
 
-            assert pod_evals, f"Pod {name} has no check evaluations"
-            assert pod_evals[0]["name"] == f"pod/{name}"
-
-            # check phase and conditions
-            phase_conditions_eval = [pod for pod in pod_evals if "status.phase" in pod["value"]].pop()
-            assert phase_conditions_eval["value"]["status.phase"] == kubectl_pods[pod]["status"]["phase"]
-            expected_status = "success"
-            if phase_conditions_eval["value"]["status.phase"] in ["Pending", "Unknown"]:
-                expected_status = "warning"
-                namespace_status = overall_status = expected_status
-            elif phase_conditions_eval["value"]["status.phase"] == "Failed":
-                expected_status = "error"
-                if namespace_status == "success":
-                    namespace_status = expected_status
-                if overall_status == "success":
-                    overall_status = expected_status
-
-            # check conditions
-            conditions_to_evaluate = [
-                ("Initialized", "status.conditions.initialized"),
-                ("Ready", "status.conditions.ready"),
-                ("ContainersReady", "status.conditions.containersready"),
-                ("PodScheduled", "status.conditions.podscheduled"),
-                ("PodReadyToStartContainers", "status.conditions.podreadytostartcontainers"),
-            ]
-            pod_conditions = kubectl_pods[pod]["status"].get("conditions", {})
-
-            known_conditions = [condition[0] for condition in conditions_to_evaluate]
-            unknown_conditions = [
-                condition["type"] for condition in pod_conditions if condition["type"] not in known_conditions
-            ]
-            # if all known conditions in pod_conditions are "True", set is_known_success to True
-            is_known_success = False
-            if _all_known_conditions_true(pod_conditions, known_conditions):
-                is_known_success = True
-
-            if not is_known_success:
-                expected_status = "error"
-
-            if is_known_success and unknown_conditions:
-                # if all known conditions are True, but there are unknown conditions, set status to warning
-                expected_status = "warning"
-
-            assert_pod_conditions(pod_conditions, phase_conditions_eval, expected_status)
-
+            try:
+                expected_status = _assert_pod_conditions(
+                    pod_name=pod_name, evals=evals, kubectl_pod=pre_pod
+                )
+            except AssertionError:
+                expected_status = _assert_pod_conditions(
+                    pod_name=pod_name, evals=evals, kubectl_pod=post_pod
+                )
             if namespace_status != "error":
                 namespace_status = expected_status
             if overall_status != "error":
                 overall_status = expected_status
 
-            assert phase_conditions_eval["status"] == expected_status
-
         assert runtime_resource[namespace]["status"] == namespace_status
-    assert post_deployment["evalCoreServiceRuntime"]["status"] == overall_status
+    assert check_results["evalCoreServiceRuntime"]["status"] == overall_status
 
 
 def assert_pod_conditions(pod_conditions, phase_conditions_eval, expected_status):
@@ -216,13 +182,19 @@ def combine_statuses(status_list: List[str]):
     return final_status
 
 
-def expected_status(
+def get_expected_status(
     success_or_fail: bool, success_or_warning: Optional[bool] = None, warning_or_fail: Optional[bool] = None
 ):
     status = "success" if success_or_fail else "error"
     if any([status == "success" and success_or_warning is False, status == "error" and warning_or_fail is True]):
         status = "warning"
     return status
+
+
+def get_pods(pod_prefix: str, resource_match: Optional[str] = None) -> dict:
+    return get_kubectl_workload_items(
+        prefixes=pod_prefix, service_type="pod", resource_match=resource_match
+    )
 
 
 def run_check_command(
@@ -259,3 +231,61 @@ def _all_known_conditions_true(
         if condition["type"] in known_conditions and condition["status"] != "True":
             return False
     return True
+
+
+def _assert_pod_conditions(
+    pod_name: str, evals: dict, kubectl_pod: dict,
+) -> str:
+    # find all evals entries for this pod
+    pod_evals = [pod for pod in evals if pod_name in pod["name"]]
+
+    assert pod_evals, f"Pod {pod_name} has no check evaluations"
+    assert pod_evals[0]["name"] == f"pod/{pod_name}"
+
+    # check phase and conditions
+    phase_conditions_eval = [pod for pod in pod_evals if "status.phase" in pod["value"]].pop()
+    assert phase_conditions_eval["value"]["status.phase"] == kubectl_pod["status"]["phase"]
+    expected_status = "success"
+    if phase_conditions_eval["value"]["status.phase"] in ["Pending", "Unknown"]:
+        expected_status = "warning"
+        namespace_status = overall_status = expected_status
+    elif phase_conditions_eval["value"]["status.phase"] == "Failed":
+        expected_status = "error"
+        if namespace_status == "success":
+            namespace_status = expected_status
+        if overall_status == "success":
+            overall_status = expected_status
+
+    # check conditions
+    conditions_to_evaluate = [
+        ("Initialized", "status.conditions.initialized"),
+        ("Ready", "status.conditions.ready"),
+        ("ContainersReady", "status.conditions.containersready"),
+        ("PodScheduled", "status.conditions.podscheduled"),
+        ("PodReadyToStartContainers", "status.conditions.podreadytostartcontainers"),
+    ]
+    pod_conditions = kubectl_pod["status"].get("conditions", {})
+
+    known_conditions = [condition[0] for condition in conditions_to_evaluate]
+    unknown_conditions = [
+        condition["type"] for condition in pod_conditions if condition["type"] not in known_conditions
+    ]
+    # if all known conditions in pod_conditions are "True", set is_known_success to True
+    is_known_success = False
+    if _all_known_conditions_true(pod_conditions, known_conditions):
+        is_known_success = True
+
+    if not is_known_success:
+        expected_status = "error"
+
+    if is_known_success and unknown_conditions:
+        # if all known conditions are True, but there are unknown conditions, set status to warning
+        expected_status = "warning"
+
+    assert_pod_conditions(pod_conditions, phase_conditions_eval, expected_status)
+
+    if overall_status != "error":
+        overall_status = expected_status
+
+    assert phase_conditions_eval["status"] == expected_status
+    return expected_status
