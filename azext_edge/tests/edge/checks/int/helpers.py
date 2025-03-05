@@ -19,7 +19,6 @@ from ....helpers import (
 MISSING_POD_BODY = {"status": {"phase": {}}}
 
 
-
 def assert_enumerate_resources(
     post_deployment: dict,
     description_name: str,
@@ -49,7 +48,7 @@ def assert_enumerate_resources(
             assert kind.lower() in resource_kinds
 
 
-# Used by Akri and OPCUA
+# Used by Akri and OPCUA and Dataflow
 def assert_eval_core_service_runtime(
     check_results: dict,
     description_name: str,
@@ -72,33 +71,35 @@ def assert_eval_core_service_runtime(
             assert not runtime_resource[namespace]["conditions"]
 
         results = list(set(pod["name"].replace("pod/", "") for pod in evals))
-        # TODO: improve check
         find_extra_or_missing_names(
             resource_type="pods",
             result_names=results,
             pre_expected_names=pre_check_pods.keys(),
             post_expected_names=post_check_pods.keys(),
-            # ignore_extras=True,
-            # ignore_missing=True,
         )
 
         # note that missing/extra pod case should be caught by the find_extra_or_missing_names
         for pod_name in results:
-            pre_pod = pre_check_pods.get(pod_name, MISSING_POD_BODY)
-            post_pod = post_check_pods.get(pod_name, MISSING_POD_BODY)
+            pre_pod = pre_check_pods.get(pod_name)
+            post_pod = post_check_pods.get(pod_name)
 
+            # preference for using pre-check kubectl results
             try:
-                expected_status = _assert_pod_conditions(
-                    pod_name=pod_name, evals=evals, kubectl_pod=pre_pod
+                namespace_status, overall_status = _assert_pod_conditions(
+                    pod_name=pod_name,
+                    evals=evals,
+                    kubectl_pod=pre_pod,
+                    namespace_status=namespace_status,
+                    overall_status=overall_status
                 )
             except AssertionError:
-                expected_status = _assert_pod_conditions(
-                    pod_name=pod_name, evals=evals, kubectl_pod=post_pod
+                namespace_status, overall_status = _assert_pod_conditions(
+                    pod_name=pod_name,
+                    evals=evals,
+                    kubectl_pod=post_pod,
+                    namespace_status=namespace_status,
+                    overall_status=overall_status
                 )
-            if namespace_status != "error":
-                namespace_status = expected_status
-            if overall_status != "error":
-                overall_status = expected_status
 
         assert runtime_resource[namespace]["status"] == namespace_status
     assert check_results["evalCoreServiceRuntime"]["status"] == overall_status
@@ -234,11 +235,12 @@ def _all_known_conditions_true(
 
 
 def _assert_pod_conditions(
-    pod_name: str, evals: dict, kubectl_pod: dict,
-) -> str:
+    pod_name: str, evals: dict, kubectl_pod: dict, namespace_status: str, overall_status: str
+) -> Tuple[str, str]:
     # find all evals entries for this pod
     pod_evals = [pod for pod in evals if pod_name in pod["name"]]
 
+    assert kubectl_pod, f"Pod {pod_name} could not be fetched via kubectl"
     assert pod_evals, f"Pod {pod_name} has no check evaluations"
     assert pod_evals[0]["name"] == f"pod/{pod_name}"
 
@@ -283,9 +285,11 @@ def _assert_pod_conditions(
         expected_status = "warning"
 
     assert_pod_conditions(pod_conditions, phase_conditions_eval, expected_status)
+    assert phase_conditions_eval["status"] == expected_status
 
+    if namespace_status != "error":
+        namespace_status = expected_status
     if overall_status != "error":
         overall_status = expected_status
 
-    assert phase_conditions_eval["status"] == expected_status
-    return expected_status
+    return namespace_status, overall_status
