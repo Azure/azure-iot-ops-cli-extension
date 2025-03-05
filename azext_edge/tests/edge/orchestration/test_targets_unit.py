@@ -51,12 +51,6 @@ def get_schema_registry_id():
     )
 
 
-# def assert_kvp(actual: dict, expected: dict):
-#     for c in actual:
-#         assert c in aio_config_settings
-#         assert aio_config_settings[c] == targets.ops_config[c]
-
-
 K8S_NAME_KEYS = frozenset(["cluster_namespace", "custom_location_name", "instance_name"])
 KEY_CONVERSION_MAP = {"enable_rsync_rules": "deploy_resource_sync_rules"}
 KVP_KEYS = frozenset(["ops_config", "ssc_config", "acs_config", "trust_settings"])
