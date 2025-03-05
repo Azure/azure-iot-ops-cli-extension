@@ -450,7 +450,7 @@ def load_iotops_help():
                         edgeStorageConfiguration.create=true
                         feature.diskStorageClass=default,local-path
 
-                      If --enable-fault-tolerance is used the following delta applies:
+                      If --enable-fault-tolerance is used the following config delta applies to container storage:
                         feature.diskStorageClass=acstor-arccontainerstorage-storage-pool
                         acstorConfiguration.create=true
                         acstorConfiguration.properties.diskMountPoint=/mnt
