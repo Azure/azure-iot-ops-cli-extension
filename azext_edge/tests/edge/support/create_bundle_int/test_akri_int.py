@@ -23,7 +23,7 @@ def test_create_bundle_akri(cluster_connection, tracked_files):
 
     pre_bundle_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=AKRI_WORKLOAD_TYPES,
-        prefixes=AKRI_WORKLOAD_TYPES,
+        prefixes=AKRI_PREFIXES,
     )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
@@ -35,6 +35,6 @@ def test_create_bundle_akri(cluster_connection, tracked_files):
     check_workload_resource_files(
         file_objs=file_map,
         pre_bundle_items=pre_bundle_workload_items,
-        prefixes=AKRI_WORKLOAD_TYPES,
+        prefixes=AKRI_PREFIXES,
         bundle_path=bundle_path,
     )

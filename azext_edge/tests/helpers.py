@@ -48,7 +48,6 @@ def find_extra_or_missing_names(
     pre_expected_names: List[str],
     post_expected_names: List[str],
     ignore_extras: bool = False,
-    # TODO: remove once dynamic pods check logic is implemented
     ignore_missing: bool = False,
 ):
     """
@@ -63,7 +62,7 @@ def find_extra_or_missing_names(
     extra_names = [name for name in result_names if name not in pre_expected_names]
     extra_names = [name for name in extra_names if name not in post_expected_names]
     if extra_names:
-        msg = f"Extra {resource_type} names: {', '.join(extra_names)}."
+        msg = f"Extra {resource_type} names: {', '.join(extra_names)}"
         if ignore_extras:
             logger.warning(msg)
         else:
@@ -72,7 +71,7 @@ def find_extra_or_missing_names(
     missing_names = [name for name in pre_expected_names if name not in result_names]
     missing_names = [name for name in missing_names if name in post_expected_names]
     if missing_names:
-        error_msg.append(f"Missing {resource_type} names: {', '.join(missing_names)}.")
+        error_msg.append(f"Missing {resource_type} names: {', '.join(missing_names)}")
 
     if error_msg:
         if ignore_missing:
@@ -152,14 +151,14 @@ def get_multi_kubectl_workload_items(
 ) -> Dict[str, Iterable[str]]:
     """
     Fetch a list of the workload resources via kubectl.
-    Returns a mapping of workload type to iterable (dict keys) of names.
+    Returns a mapping of workload type to another mapping of name to resource.
     """
     result = {}
     if not isinstance(expected_workload_types, list):
         expected_workload_types = [expected_workload_types]
     for key in expected_workload_types:
         items = get_kubectl_workload_items(prefixes, service_type=key, label_match=expected_label)
-        result[key] = items.keys()
+        result[key] = items
     return result
 
 

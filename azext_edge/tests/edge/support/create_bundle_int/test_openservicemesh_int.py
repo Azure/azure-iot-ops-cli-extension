@@ -16,8 +16,8 @@ from .helpers import (
 )
 
 logger = get_logger(__name__)
-EXPECTED_PREFIXES = ["configmap", "deployment", "pod", "replicaset", "service"]
-EXPECTED_WORKLOAD_TYPES = ["osm", "kube-root-ca", "preset-mesh-config"]
+EXPECTED_PREFIXES = ["osm", "kube-root-ca", "preset-mesh-config"]
+EXPECTED_WORKLOAD_TYPES = ["configmap", "deployment", "pod", "replicaset", "service"]
 
 
 def test_create_bundle_osm(cluster_connection, tracked_files):

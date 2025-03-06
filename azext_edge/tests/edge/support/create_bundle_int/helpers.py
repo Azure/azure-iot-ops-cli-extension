@@ -162,7 +162,7 @@ def check_custom_resource_files(
 
 def check_workload_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
-    pre_bundle_items: List[str],
+    pre_bundle_items: dict,
     prefixes: Union[str, List[str]],
     bundle_path: str,
     expected_label: Optional[str] = None,
@@ -197,11 +197,11 @@ def check_workload_resource_files(
 
     post_pods = get_kubectl_workload_items(prefixes, service_type="pod", label_match=expected_label)
     check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))
-    find_extra_or_missing_names(
+    _compare_support_bundle_names(
         resource_type="pod",
-        result_names=file_pods.keys(),
-        pre_expected_names=pre_bundle_items.pop("pod", []),
-        post_expected_names=post_pods.keys(),
+        bundle_names=file_pods.keys(),
+        pre_bundle_resources=pre_bundle_items.pop("pod", {}),
+        post_bundle_resources=post_pods,
     )
 
     for name, files in file_pods.items():
@@ -222,11 +222,11 @@ def check_workload_resource_files(
                 present_names = [file["name"] for file in file_objs.get(key, [])]
                 # kube-root-ca.crt gets split configmap.kube-root-ca.crt.yaml
                 # maybe add in a way to compare full names? or limit splitting for certain types?
-                find_extra_or_missing_names(
+                _compare_support_bundle_names(
                     resource_type=key,
-                    result_names=present_names,
-                    pre_expected_names=names,
-                    post_expected_names=post_bundle_items.keys()
+                    bundle_names=present_names,
+                    pre_bundle_resources=names,
+                    post_bundle_resources=post_bundle_items.keys()
                 )
             except CLIInternalError as e:
                 if required:
@@ -600,3 +600,39 @@ def _clean_up_folders(
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))
         assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS], f"Mismatch; folders: [{level_2['folders']}]"
         assert not level_2["files"]
+
+
+def _compare_support_bundle_names(
+    resource_type: str, bundle_names: str, pre_bundle_resources: dict, post_bundle_resources: dict
+):
+    """
+    Do the name comparison with some extra debug information.
+
+    Try to get labels for missing resources to help determine if labels are the reason.
+    """
+    try:
+        find_extra_or_missing_names(
+            resource_type=resource_type,
+            result_names=bundle_names,
+            pre_expected_names=pre_bundle_resources.keys(),
+            post_expected_names=post_bundle_resources.keys(),
+        )
+    except AssertionError as e:
+        error_text = str(e)
+        missing_error_text = error_text.rsplit("\n", maxsplit=1)[-1]
+        if "Missing " not in missing_error_text:
+            # cannot get labels from extra resources (only in support bundle)
+            raise e
+        resource_names = missing_error_text.partition(":")[-1].split(",")
+        label_error_texts = [error_text]
+        for name in resource_names:
+            name = name.strip()
+            bundle_to_use = pre_bundle_resources
+            if name not in bundle_to_use:
+                bundle_to_use = post_bundle_resources
+            labels = bundle_to_use[name]["metadata"]["labels"]
+            label_error_texts.append(
+                f"{resource_type.capitalize()} resource {name} has the following labels:\n\t"
+                " \n\t".join([f"{ln}: {labels[ln]}" for ln in labels])
+            )
+        raise AssertionError("\n".join(label_error_texts))
