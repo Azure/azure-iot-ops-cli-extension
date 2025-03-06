@@ -104,6 +104,12 @@ def init(
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     user_trust: Optional[bool] = None,
+    acs_config: Optional[List[str]] = None,
+    acs_version: Optional[str] = None,
+    acs_train: Optional[str] = None,
+    ssc_config: Optional[List[str]] = None,
+    ssc_version: Optional[str] = None,
+    ssc_train: Optional[str] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
@@ -122,6 +128,12 @@ def init(
         resource_group_name=resource_group_name,
         enable_fault_tolerance=enable_fault_tolerance,
         user_trust=user_trust,
+        acs_config=acs_config,
+        acs_version=acs_version,
+        acs_train=acs_train,
+        ssc_config=ssc_config,
+        ssc_version=ssc_version,
+        ssc_train=ssc_train,
         **kwargs,
     )
     if no_progress and result_payload:
@@ -142,9 +154,10 @@ def create_instance(
     instance_description: Optional[str] = None,
     dataflow_profile_instances: int = 1,
     trust_settings: Optional[List[str]] = None,
-    # Ops extension
+    # Akri
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
+    # Ops Extension
     ops_config: Optional[List[str]] = None,
     ops_version: Optional[str] = None,
     ops_train: Optional[str] = None,

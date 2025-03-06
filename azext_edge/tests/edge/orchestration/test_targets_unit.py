@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 from random import randint
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import pytest
 
@@ -20,7 +20,7 @@ from azext_edge.edge.providers.orchestration.targets import (
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
     InitTargets,
-    assemble_nargs_to_dict,
+    parse_kvp_nargs,
     get_insecure_listener,
 )
 
@@ -53,7 +53,7 @@ def get_schema_registry_id():
 
 K8S_NAME_KEYS = frozenset(["cluster_namespace", "custom_location_name", "instance_name"])
 KEY_CONVERSION_MAP = {"enable_rsync_rules": "deploy_resource_sync_rules"}
-KVP_KEYS = frozenset(["ops_config", "trust_settings"])
+KVP_KEYS = frozenset(["ops_config", "ssc_config", "acs_config", "trust_settings"])
 ENABLEMENT_PARAM_CONVERSION_MAP = {
     "clusterName": "cluster_name",
     "trustConfig": "trust_config",
@@ -121,6 +121,16 @@ INSTANCE_PARAM_CONVERSION_MAP = {
             container_runtime_socket=generate_random_string(),
             trust_settings=get_trust_settings(),
         ),
+        build_target_scenario(
+            cluster_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+            ssc_config=[f"{generate_random_string()}={generate_random_string()}"],
+            ssc_version=generate_random_string(),
+            ssc_train=generate_random_string(),
+            acs_config=[f"{generate_random_string()}={generate_random_string()}"],
+            acs_version=generate_random_string(),
+            acs_train=generate_random_string(),
+        ),
     ],
 )
 def test_init_targets(target_scenario: dict):
@@ -133,7 +143,7 @@ def test_init_targets(target_scenario: dict):
         if scenario_key in KEY_CONVERSION_MAP:
             targets_key = KEY_CONVERSION_MAP[scenario_key]
         if scenario_key in KVP_KEYS:
-            target_scenario[scenario_key] = assemble_nargs_to_dict(target_scenario[scenario_key])
+            target_scenario[scenario_key] = parse_kvp_nargs(target_scenario[scenario_key])
 
         targets_value = getattr(targets, targets_key)
 
@@ -141,8 +151,12 @@ def test_init_targets(target_scenario: dict):
             target_scenario[scenario_key] == targets_value
         ), f"{scenario_key} input mismatch with equivalent targets {targets_key} value."
 
+    expected_acs_config = {"edgeStorageConfiguration.create": "true", "feature.diskStorageClass": "default,local-path"}
     if target_scenario.get("enable_fault_tolerance"):
         assert targets.advanced_config == {"edgeStorageAccelerator": {"faultToleranceEnabled": True}}
+        expected_acs_config["feature.diskStorageClass"] = "acstor-arccontainerstorage-storage-pool"
+        expected_acs_config["acstorConfiguration.create"] = "true"
+        expected_acs_config["acstorConfiguration.properties.diskMountPoint"] = "/mnt"
 
     enablement_template, enablement_parameters = targets.get_ops_enablement_template()
     verify_trust_config(
@@ -159,6 +173,38 @@ def test_init_targets(target_scenario: dict):
             targets, targets_key
         ), f"{parameter} value mismatch with targets {targets_key} value."
 
+    assert_version_attr(
+        variables=enablement_template["variables"],
+        key="secretStore",
+        train=targets.ssc_train,
+        version=targets.ssc_version,
+    )
+
+    expected_ssc_config = {
+        "rotationPollIntervalInSeconds": "120",
+        "validatingAdmissionPolicies.applyPolicies": "false",
+    }
+    ssc_config_settings = enablement_template["resources"]["secret_store_extension"]["properties"][
+        "configurationSettings"
+    ]
+    assert_extension_config(
+        settings=ssc_config_settings, expected_base_config=expected_ssc_config, custom_config=targets.ssc_config
+    )
+
+    assert_version_attr(
+        variables=enablement_template["variables"],
+        key="containerStorage",
+        train=targets.acs_train,
+        version=targets.acs_version,
+    )
+
+    acs_config_settings = enablement_template["resources"]["container_storage_extension"]["properties"][
+        "configurationSettings"
+    ]
+    assert_extension_config(
+        settings=acs_config_settings, expected_base_config=expected_acs_config, custom_config=targets.acs_config
+    )
+
     extension_ids = [generate_random_string(), generate_random_string()]
 
     instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids)
@@ -171,16 +217,16 @@ def test_init_targets(target_scenario: dict):
         parameters=instance_parameters,
     )
 
-    if targets.ops_version:
-        assert instance_template["variables"]["VERSIONS"]["iotOperations"] == targets.ops_version
-
-    if targets.ops_train:
-        assert instance_template["variables"]["TRAINS"]["iotOperations"] == targets.ops_train
+    assert_version_attr(
+        variables=instance_template["variables"],
+        key="iotOperations",
+        train=targets.ops_train,
+        version=targets.ops_version,
+    )
 
     if targets.ops_config:
         aio_config_settings = instance_template["variables"]["defaultAioConfigurationSettings"]
         for c in targets.ops_config:
-            assert c in aio_config_settings
             assert aio_config_settings[c] == targets.ops_config[c]
 
     for parameter in instance_parameters:
@@ -278,3 +324,31 @@ def test_get_extension_versions():
 
     combined_version_map = {**enablement_version_map, **create_version_map}
     _assert_version_map(enablement_types + create_types, combined_version_map)
+
+
+def assert_extension_config(
+    settings: Dict[str, str], expected_base_config: Dict[str, str], custom_config: Optional[Dict[str, str]] = None
+):
+    for c in expected_base_config:
+        assert settings[c] == expected_base_config[c]
+    custom_config_len = 0
+    if custom_config:
+        custom_config_len = len(custom_config)
+        for c in custom_config:
+            assert settings[c] == custom_config[c]
+    assert len(settings) == (len(expected_base_config) + custom_config_len)
+
+
+def assert_version_attr(
+    variables: Dict[
+        str,
+        str,
+    ],
+    key: str,
+    version: Optional[str] = None,
+    train: Optional[str] = None,
+):
+    if version:
+        assert variables["VERSIONS"][key] == version
+    if train:
+        assert variables["TRAINS"][key] == train
