@@ -226,7 +226,7 @@ def check_workload_resource_files(
                     resource_type=key,
                     bundle_names=present_names,
                     pre_bundle_resources=names,
-                    post_bundle_resources=post_bundle_items.keys()
+                    post_bundle_resources=post_bundle_items
                 )
             except CLIInternalError as e:
                 if required:
