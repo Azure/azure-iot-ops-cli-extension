@@ -11,7 +11,6 @@ import pytest
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_ACS,
     EXTENSION_TYPE_OPS,
-    EXTENSION_TYPE_OSM,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
@@ -315,7 +314,7 @@ def test_get_extension_versions():
 
     targets = InitTargets(generate_random_string(), generate_random_string())
     enablement_version_map = targets.get_extension_versions()
-    enablement_types = [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_OSM, EXTENSION_TYPE_ACS, EXTENSION_TYPE_SSC]
+    enablement_types = [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_ACS, EXTENSION_TYPE_SSC]
     _assert_version_map(enablement_types, enablement_version_map)
 
     create_version_map = targets.get_extension_versions(False)

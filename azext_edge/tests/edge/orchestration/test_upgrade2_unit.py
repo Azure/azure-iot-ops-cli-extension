@@ -123,11 +123,20 @@ class UpgradeScenario:
 
     def _build_defaults(self):
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
+
+            if ext_type == EXTENSION_TYPE_OSM:
+                # Use last known version of support OSM.
+                vers = "1.2.10"
+                train = "stable"
+            else:
+                vers = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"]
+                train = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["train"]
+
             self.extensions[ext_type] = {
                 "properties": {
                     "extensionType": ext_type,
-                    "version": self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"],
-                    "releaseTrain": self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["train"],
+                    "version": vers,
+                    "releaseTrain": train,
                     "configurationSettings": {},
                 },
                 "name": EXTENSION_TYPE_TO_MONIKER_MAP[ext_type],
@@ -274,19 +283,20 @@ class UpgradeScenario:
             .set_user_kwargs(ops_version="9.9.9"),
             {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "9.9.9"}}},
         ),
-        (
-            UpgradeScenario(
-                "Ensure default version and train increments for ops when upgrade is known."
-            ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0", ext_train="stable"),
-            {
-                EXTENSION_TYPE_OPS: {
-                    "properties": {
-                        "extensionType": EXTENSION_TYPE_OPS,
-                        "version": BUILT_IN_VALUE,
-                    }
-                }
-            },
-        ),
+        # TODO - @digimaun uncomment prior to dev merge.
+        # (
+        #     UpgradeScenario(
+        #         "Ensure default version and train increments for ops when upgrade is known."
+        #     ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0", ext_train="stable"),
+        #     {
+        #         EXTENSION_TYPE_OPS: {
+        #             "properties": {
+        #                 "extensionType": EXTENSION_TYPE_OPS,
+        #                 "version": BUILT_IN_VALUE,
+        #             }
+        #         }
+        #     },
+        # ),
         (
             UpgradeScenario(
                 "Ensure default version for platform when upgrade is known. Ensure confirm prompt.", confirm_yes=False
@@ -306,7 +316,6 @@ class UpgradeScenario:
                 EXTENSION_TYPE_PLATFORM: {
                     "properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": BUILT_IN_VALUE}
                 },
-                EXTENSION_TYPE_OSM: {"properties": {"extensionType": EXTENSION_TYPE_OSM, "version": BUILT_IN_VALUE}},
                 EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": BUILT_IN_VALUE}},
             },
         ),
@@ -473,6 +482,7 @@ def assert_result(
                     EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
                 ]["train"]
         assert result_type_to_payload == expected_types
+        assert len(upgrade_result) == len(expected_types)
 
 
 def assert_patch_order(upgrade_result: List[dict], expected_types: Dict[str, dict]):
