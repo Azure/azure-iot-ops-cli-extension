@@ -8,7 +8,7 @@ import json
 import os
 from fnmatch import fnmatch
 from knack.log import get_logger
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from azure.cli.core.azclierror import CLIInternalError
 import pytest
 
@@ -43,27 +43,51 @@ def filter_resources(
 
 
 def find_extra_or_missing_names(
+    result_names: List[str],
+    pre_expected_names: List[str],
+    post_expected_names: List[str],
+) -> Tuple[List[str], List[str]]:
+    """
+    Checks the result to find missing or extra names and returns lists of names.
+    First checks the result name against the names in the kubectl results from before the result was fetched.
+    If anything is missing/extra, checks against the kubectl results from after the result was fetched.
+    """
+    extra_names = [name for name in result_names if name not in pre_expected_names]
+    extra_names = [name for name in extra_names if name not in post_expected_names]
+
+    missing_names = [name for name in pre_expected_names if name not in result_names]
+    missing_names = [name for name in missing_names if name in post_expected_names]
+
+    return extra_names, missing_names
+
+
+def assert_extra_or_missing_names(
     resource_type: str,
     result_names: List[str],
-    expected_names: List[str],
+    pre_expected_names: List[str],
+    post_expected_names: List[str],
     ignore_extras: bool = False,
-    # TODO: remove once dynamic pods check logic is implemented
     ignore_missing: bool = False,
 ):
+    """
+    Checks the result to find missing or extra names and raises if there are any extra or missing names.
+    """
+    extra_names, missing_names = find_extra_or_missing_names(
+        result_names=result_names,
+        pre_expected_names=pre_expected_names,
+        post_expected_names=post_expected_names
+    )
     error_msg = []
-    # names may contain descriptors after the initial '.', just comparing first prefix
-    expected_names = [name.split(".")[0] for name in expected_names]
-    result_names = [name.split(".")[0] for name in result_names]
-    extra_names = [name for name in result_names if name not in expected_names]
+
     if extra_names:
-        msg = f"Extra {resource_type} names: {', '.join(extra_names)}."
+        msg = f"Extra {resource_type} names: {', '.join(extra_names)}"
         if ignore_extras:
             logger.warning(msg)
         else:
             error_msg.append(msg)
-    missing_names = [name for name in expected_names if name not in result_names]
+
     if missing_names:
-        error_msg.append(f"Missing {resource_type} names: {', '.join(missing_names)}.")
+        error_msg.append(f"Missing {resource_type} names: {', '.join(missing_names)}")
 
     if error_msg:
         if ignore_missing:
@@ -134,6 +158,24 @@ def get_kubectl_workload_items(
     label_param = f"--selector {label_match[0]}={label_match[1]}" if label_match else ""
     kubectl_items = run(f"kubectl get {service_type} {namespace_param} {label_param} -o json")
     return filter_resources(kubectl_items=kubectl_items, prefixes=prefixes, resource_match=resource_match)
+
+
+def get_multi_kubectl_workload_items(
+    expected_workload_types: Union[str, List[str]],
+    prefixes: Union[str, List[str]],
+    expected_label: Optional[Tuple[str, str]] = None
+) -> Dict[str, Iterable[str]]:
+    """
+    Fetch a list of the workload resources via kubectl.
+    Returns a mapping of workload type to another mapping of name to resource.
+    """
+    result = {}
+    if not isinstance(expected_workload_types, list):
+        expected_workload_types = [expected_workload_types]
+    for key in expected_workload_types:
+        items = get_kubectl_workload_items(prefixes, service_type=key, label_match=expected_label)
+        result[key] = items
+    return result
 
 
 def create_file(

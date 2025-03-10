@@ -15,6 +15,7 @@ from .helpers import (
     assert_enumerate_resources,
     assert_eval_core_service_runtime,
     assert_general_eval_custom_resources,
+    get_pods,
     run_check_command
 )
 from ....helpers import get_kubectl_custom_items
@@ -22,11 +23,13 @@ from ....helpers import get_kubectl_custom_items
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
+DATAFLOW_PREFIX = "aio-dataflow-operator-"
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("resource_kind", DataflowResourceKinds.list() + [None])
-def test_dataflow_check(init_setup, detail_level, resource_kind):
+def test_dataflow_check(cluster_connection, detail_level, resource_kind):
+    pre_check_pods = get_pods(pod_prefix=DATAFLOW_PREFIX)
     post_deployment, dataflow_present = run_check_command(
         detail_level=detail_level,
         ops_service="dataflow",
@@ -46,9 +49,10 @@ def test_dataflow_check(init_setup, detail_level, resource_kind):
 
     if not resource_kind:
         assert_eval_core_service_runtime(
-            post_deployment=post_deployment,
+            check_results=post_deployment,
             description_name="Dataflow",
-            pod_prefix="aio-dataflow-operator-",
+            pod_prefix=DATAFLOW_PREFIX,
+            pre_check_pods=pre_check_pods
         )
     else:
         assert "evalCoreServiceRuntime" not in post_deployment

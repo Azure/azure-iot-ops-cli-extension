@@ -40,7 +40,11 @@ WORKLOAD_TYPES = [
 
 
 def assert_file_names(files: List[str]):
-    """Asserts file names."""
+    """
+    Simple asserts for file names.
+
+    Ensures trace file conventions, extension conventions, etc
+    """
     for full_name in files:
         name = split_name(full_name)
         file_type = name.pop(0)
@@ -69,7 +73,11 @@ def assert_file_names(files: List[str]):
 
 
 def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
-    """Maps deployment/pod/etc to list of dissembled file names"""
+    """
+    Maps deployment/pod/etc to list of disassembled file names
+
+    Please see comments for examples/conventions.
+    """
     file_name_objs = {}
     for full_name in files:
         name = split_name(full_name)
@@ -77,6 +85,7 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
         name_obj = {"extension": name.pop(-1), "full_name": full_name}
 
         if file_type == "pod" and name[-1] == "metric":
+            # note: not a real type
             file_type = "podmetric"
 
         if name_obj["extension"] in ["pb", "json"]:
@@ -105,7 +114,11 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             name_obj["version"] = name.pop(0)
             assert name_obj["version"].startswith("v")
         name_obj["name"] = name.pop(0)
+
+        # custom re-adding
         if name_obj["name"] == "aio-opc-opc":
+            name_obj["name"] += f".{name.pop(0)}"
+        if name_obj["name"] == "kube-root-ca":
             name_obj["name"] += f".{name.pop(0)}"
 
         # something like "msi-adapter", "init-runner"
@@ -149,14 +162,12 @@ def check_custom_resource_files(
 
 def check_workload_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
-    expected_workload_types: List[str],
+    pre_bundle_items: dict,
     prefixes: Union[str, List[str]],
     bundle_path: str,
     expected_label: Optional[str] = None,
-    optional_workload_types: Optional[List[str]] = None,
+    pre_bundle_optional_items: Optional[Dict[str, List[str]]] = None,
 ):
-    if "pod" in expected_workload_types:
-        expected_workload_types.remove("pod")
     # pod
     file_pods = {}
     for file in file_objs.get("pod", []):
@@ -184,14 +195,14 @@ def check_workload_resource_files(
             if file["descriptor"] not in converted_file:
                 converted_file[file["descriptor"]] = False
 
-    expected_pods = get_kubectl_workload_items(prefixes, service_type="pod", label_match=expected_label)
+    post_pods = get_kubectl_workload_items(prefixes, service_type="pod", label_match=expected_label)
     check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))
-    find_extra_or_missing_names(
+    _compare_support_bundle_names(
+        prefixes=prefixes,
         resource_type="pod",
-        result_names=file_pods.keys(),
-        expected_names=expected_pods.keys(),
-        ignore_extras=True,
-        ignore_missing=True,
+        bundle_names=file_pods.keys(),
+        pre_bundle_resources=pre_bundle_items.pop("pod", {}),
+        post_bundle_resources=post_pods,
     )
 
     for name, files in file_pods.items():
@@ -199,21 +210,33 @@ def check_workload_resource_files(
             assert value, f"Pod {name} is missing {extension}."
 
     # other
-    def _check_non_pod_files(workload_types: List[str], required: bool = False, expected_label: Optional[str] = None):
-        for key in workload_types:
+    def _check_non_pod_files(
+        pre_bundle_items: Dict[str, List[str]],
+        required: bool = False,
+        expected_label: Optional[str] = None
+    ):
+        for key, names in pre_bundle_items.items():
             try:
-                expected_items = get_kubectl_workload_items(prefixes, service_type=key, label_match=expected_label)
+                post_bundle_items = get_kubectl_workload_items(prefixes, service_type=key, label_match=expected_label)
                 for file in file_objs.get(key, []):
                     assert file["extension"] == "yaml"
                 present_names = [file["name"] for file in file_objs.get(key, [])]
-                find_extra_or_missing_names(key, present_names, expected_items.keys())
+                # kube-root-ca.crt gets split configmap.kube-root-ca.crt.yaml
+                # maybe add in a way to compare full names? or limit splitting for certain types?
+                _compare_support_bundle_names(
+                    prefixes=prefixes,
+                    resource_type=key,
+                    bundle_names=present_names,
+                    pre_bundle_resources=names,
+                    post_bundle_resources=post_bundle_items
+                )
             except CLIInternalError as e:
                 if required:
                     raise e
 
-    _check_non_pod_files(expected_workload_types, expected_label=expected_label)
-    if optional_workload_types:
-        _check_non_pod_files(optional_workload_types, required=False, expected_label=expected_label)
+    _check_non_pod_files(pre_bundle_items, expected_label=expected_label)
+    if pre_bundle_optional_items:
+        _check_non_pod_files(pre_bundle_optional_items, required=False, expected_label=expected_label)
 
 
 def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]]):
@@ -579,3 +602,66 @@ def _clean_up_folders(
         level_2 = walk_result.pop(path.join(BASE_ZIP_PATH, arc_namespace, "arcagents"))
         assert level_2["folders"] == [agent[0] for agent in ARC_AGENTS], f"Mismatch; folders: [{level_2['folders']}]"
         assert not level_2["files"]
+
+
+def _compare_support_bundle_names(
+    prefixes: Union[str, List[str]],
+    resource_type: str,
+    bundle_names: str,
+    pre_bundle_resources: dict,
+    post_bundle_resources: dict
+):
+    """
+    Do the name comparison with some extra debug information.
+
+    For extra names, will split into two groups:
+    1. "accepted" names - has the correct prefix so will just log. In this case, we assume that the resource
+    just got created and deleted in the timespan of pre - support - post
+    2. "unaccpeted" names - does NOT have the correct prefix so will error. In this case, the prefix is not valid
+    so more investigation as to why this got captured will be needed.
+
+    For missing names, try to get labels to help determine if labels are the reason.
+    """
+    if isinstance(prefixes, str):
+        prefixes = [prefixes]
+
+    extra_names, missing_names = find_extra_or_missing_names(
+        result_names=bundle_names,
+        pre_expected_names=pre_bundle_resources.keys(),
+        post_expected_names=post_bundle_resources.keys(),
+    )
+
+    error_msg = []
+    if extra_names:
+        # split the extra names into accepted (has a valid prefix) vs unaccepted (does not have valid prefix)
+        accepted_names = []
+        unaccepted_names = []
+        for name in extra_names:
+            if any(name.startswith(prefix) for prefix in prefixes):
+                accepted_names.append(name)
+            else:
+                unaccepted_names.append(name)
+
+        if accepted_names:
+            logger.warning(
+                f"Extra {resource_type} names in the support bundle with the correct prefixes {prefixes}: "
+                f"{', '.join(accepted_names)}"
+            )
+        if unaccepted_names:
+            error_msg.append(f"Extra {resource_type} names in the support bundle: {', '.join(unaccepted_names)}")
+
+    if missing_names:
+        error_msg.append(f"Missing {resource_type} names in the support bundle: {', '.join(missing_names)}")
+        # get the labels for the missing resource
+        for name in missing_names:
+            bundle_to_use = pre_bundle_resources
+            if name not in bundle_to_use:
+                bundle_to_use = post_bundle_resources
+            labels = bundle_to_use[name]["metadata"]["labels"]
+            label_txt = " \n\t".join([f"{ln}: {labels[ln]}" for ln in labels])
+            error_msg.append(
+                f"{name} has the following labels:\n\t{label_txt}"
+            )
+
+    if error_msg:
+        raise AssertionError("\n".join(error_msg))

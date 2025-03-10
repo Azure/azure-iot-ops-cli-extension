@@ -15,6 +15,7 @@ from .helpers import (
     assert_enumerate_resources,
     assert_eval_core_service_runtime,
     assert_general_eval_custom_resources,
+    get_pods,
     run_check_command
 )
 from ....helpers import get_kubectl_custom_items
@@ -23,13 +24,15 @@ from ....generators import generate_names
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
+OPCUA_PREFIX = ["aio-opc-", "opcplc-"]
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
 @pytest.mark.parametrize("resource_kind", OpcuaResourceKinds.list() + [None])
 # TODO: figure out if name match should be a general test vs each service (minimize test runs)
 @pytest.mark.parametrize("resource_match", [None, "*opc-supervisor*", generate_names()])
-def test_opcua_check(init_setup, detail_level, resource_match, resource_kind):
+def test_opcua_check(cluster_connection, detail_level, resource_match, resource_kind):
+    pre_check_pods = get_pods(pod_prefix=OPCUA_PREFIX, resource_match=resource_match)
     post_deployment, opcua_present = run_check_command(
         detail_level=detail_level,
         ops_service="opcua",
@@ -50,10 +53,11 @@ def test_opcua_check(init_setup, detail_level, resource_match, resource_kind):
 
     if not resource_kind:
         assert_eval_core_service_runtime(
-            post_deployment=post_deployment,
+            check_results=post_deployment,
             description_name="OPC UA broker",
-            pod_prefix=["aio-opc-", "opcplc-"],
+            pod_prefix=OPCUA_PREFIX,
             resource_match=resource_match,
+            pre_check_pods=pre_check_pods
         )
     else:
         assert "evalCoreServiceRuntime" not in post_deployment
