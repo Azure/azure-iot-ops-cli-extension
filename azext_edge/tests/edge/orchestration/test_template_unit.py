@@ -23,7 +23,6 @@ EXPECTED_EXTENSION_RESOURCE_KEYS = frozenset(
         "cluster",
         "aio_platform_extension",
         "secret_store_extension",
-        "open_service_mesh_extension",
         "container_storage_extension",
     ]
 )
@@ -60,8 +59,8 @@ def test_enablement_template():
     assert TEMPLATE_BLUEPRINT_ENABLEMENT.commit_id
     assert TEMPLATE_BLUEPRINT_ENABLEMENT.content
 
-    for resource in EXPECTED_EXTENSION_RESOURCE_KEYS:
-        assert TEMPLATE_BLUEPRINT_ENABLEMENT.get_resource_by_key(resource)
+    for key in EXPECTED_EXTENSION_RESOURCE_KEYS:
+        assert key in TEMPLATE_BLUEPRINT_ENABLEMENT.content["resources"]
 
     for definition in EXPECTED_SHARED_DEFINITION_KEYS:
         assert TEMPLATE_BLUEPRINT_ENABLEMENT.get_type_definition(definition)["properties"]
@@ -71,8 +70,8 @@ def test_instance_template():
     assert TEMPLATE_BLUEPRINT_INSTANCE.commit_id
     assert TEMPLATE_BLUEPRINT_INSTANCE.content
 
-    for resource in EXPECTED_INSTANCE_RESOURCE_KEYS:
-        assert TEMPLATE_BLUEPRINT_INSTANCE.get_resource_by_key(resource)
+    for key in EXPECTED_INSTANCE_RESOURCE_KEYS:
+        assert key in TEMPLATE_BLUEPRINT_INSTANCE.content["resources"]
 
     assert not TEMPLATE_BLUEPRINT_INSTANCE.get_resource_by_key("doesnotexist")["properties"]
     for definition in EXPECTED_SHARED_DEFINITION_KEYS:
