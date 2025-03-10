@@ -658,9 +658,9 @@ def _compare_support_bundle_names(
             if name not in bundle_to_use:
                 bundle_to_use = post_bundle_resources
             labels = bundle_to_use[name]["metadata"]["labels"]
+            label_txt = " \n\t".join([f"{ln}: {labels[ln]}" for ln in labels])
             error_msg.append(
-                f"{resource_type.capitalize()} resource {name} has the following labels:\n\t"
-                " \n\t".join([f"{ln}: {labels[ln]}" for ln in labels])
+                f"{name} has the following labels:\n\t{label_txt}"
             )
 
     if error_msg:
