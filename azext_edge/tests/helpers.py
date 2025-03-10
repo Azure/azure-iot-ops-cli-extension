@@ -43,6 +43,25 @@ def filter_resources(
 
 
 def find_extra_or_missing_names(
+    result_names: List[str],
+    pre_expected_names: List[str],
+    post_expected_names: List[str],
+) -> Tuple[List[str], List[str]]:
+    """
+    Checks the result to find missing or extra names and returns lists of names.
+    First checks the result name against the names in the kubectl results from before the result was fetched.
+    If anything is missing/extra, checks against the kubectl results from after the result was fetched.
+    """
+    extra_names = [name for name in result_names if name not in pre_expected_names]
+    extra_names = [name for name in extra_names if name not in post_expected_names]
+
+    missing_names = [name for name in pre_expected_names if name not in result_names]
+    missing_names = [name for name in missing_names if name in post_expected_names]
+
+    return extra_names, missing_names
+
+
+def assert_extra_or_missing_names(
     resource_type: str,
     result_names: List[str],
     pre_expected_names: List[str],
@@ -51,16 +70,15 @@ def find_extra_or_missing_names(
     ignore_missing: bool = False,
 ):
     """
-    Checks the result to find missing or extra names.
-    First checks the result name against the names in the kubectl results from before the result was fetched.
-    If anything is missing/extra, checks against the kubectl results from after the result was fetched.
+    Checks the result to find missing or extra names and raises if there are any extra or missing names.
     """
+    extra_names, missing_names = find_extra_or_missing_names(
+        result_names=result_names,
+        pre_expected_names=pre_expected_names,
+        post_expected_names=post_expected_names
+    )
     error_msg = []
-    # names may contain descriptors after the initial '.', just comparing first prefix
-    # vilit double check if ^ is still needed
 
-    extra_names = [name for name in result_names if name not in pre_expected_names]
-    extra_names = [name for name in extra_names if name not in post_expected_names]
     if extra_names:
         msg = f"Extra {resource_type} names: {', '.join(extra_names)}"
         if ignore_extras:
@@ -68,8 +86,6 @@ def find_extra_or_missing_names(
         else:
             error_msg.append(msg)
 
-    missing_names = [name for name in pre_expected_names if name not in result_names]
-    missing_names = [name for name in missing_names if name in post_expected_names]
     if missing_names:
         error_msg.append(f"Missing {resource_type} names: {', '.join(missing_names)}")
 

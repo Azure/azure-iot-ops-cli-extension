@@ -9,7 +9,7 @@ from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import (
     PLURAL_KEY,
-    find_extra_or_missing_names,
+    assert_extra_or_missing_names,
     get_kubectl_workload_items,
     run,
     sort_kubectl_items_by_namespace,
@@ -71,14 +71,14 @@ def assert_eval_core_service_runtime(
             assert not runtime_resource[namespace]["conditions"]
 
         results = list(set(pod["name"].replace("pod/", "") for pod in evals))
-        find_extra_or_missing_names(
+        assert_extra_or_missing_names(
             resource_type="pods",
             result_names=results,
             pre_expected_names=pre_check_pods.keys(),
             post_expected_names=post_check_pods.keys(),
         )
 
-        # note that missing/extra pod case should be caught by the find_extra_or_missing_names
+        # note that missing/extra pod case should be caught by the assert_extra_or_missing_names
         for pod_name in results:
             pre_pod = pre_check_pods.get(pod_name)
             post_pod = post_check_pods.get(pod_name)
@@ -245,7 +245,7 @@ def _assert_pod_conditions(
     assert pod_evals[0]["name"] == f"pod/{pod_name}"
 
     # check phase and conditions
-    phase_conditions_eval = [pod for pod in pod_evals if "status.phase" in pod["value"]].pop()
+    phase_conditions_eval = next(pod_eval for pod_eval in pod_evals if "status.phase" in pod_eval["value"])
     assert phase_conditions_eval["value"]["status.phase"] == kubectl_pod["status"]["phase"]
     expected_status = "success"
     if phase_conditions_eval["value"]["status.phase"] in ["Pending", "Unknown"]:

@@ -16,7 +16,7 @@ from .helpers import (
     run_bundle_command,
     BASE_ZIP_PATH,
 )
-from ....helpers import find_extra_or_missing_names
+from ....helpers import assert_extra_or_missing_names
 
 logger = get_logger(__name__)
 
@@ -130,7 +130,7 @@ def test_create_bundle(cluster_connection, bundle_dir, mq_traces, ops_service, t
             # make things easier if there is a different file
             auto_files = sorted(auto_walk_result[directory]["files"])
             ser_files = sorted(walk_result[directory]["files"])
-            find_extra_or_missing_names(
+            assert_extra_or_missing_names(
                 resource_type=f"auto bundle files not found in {ops_service} bundle",
                 result_names=auto_files,
                 pre_expected_names=ser_files,

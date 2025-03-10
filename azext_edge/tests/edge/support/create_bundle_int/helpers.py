@@ -198,6 +198,7 @@ def check_workload_resource_files(
     post_pods = get_kubectl_workload_items(prefixes, service_type="pod", label_match=expected_label)
     check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))
     _compare_support_bundle_names(
+        prefixes=prefixes,
         resource_type="pod",
         bundle_names=file_pods.keys(),
         pre_bundle_resources=pre_bundle_items.pop("pod", {}),
@@ -223,6 +224,7 @@ def check_workload_resource_files(
                 # kube-root-ca.crt gets split configmap.kube-root-ca.crt.yaml
                 # maybe add in a way to compare full names? or limit splitting for certain types?
                 _compare_support_bundle_names(
+                    prefixes=prefixes,
                     resource_type=key,
                     bundle_names=present_names,
                     pre_bundle_resources=names,
@@ -603,36 +605,63 @@ def _clean_up_folders(
 
 
 def _compare_support_bundle_names(
-    resource_type: str, bundle_names: str, pre_bundle_resources: dict, post_bundle_resources: dict
+    prefixes: Union[str, List[str]],
+    resource_type: str,
+    bundle_names: str,
+    pre_bundle_resources: dict,
+    post_bundle_resources: dict
 ):
     """
     Do the name comparison with some extra debug information.
 
-    Try to get labels for missing resources to help determine if labels are the reason.
+    For extra names, will split into two groups:
+    1. "accepted" names - has the correct prefix so will just log. In this case, we assume that the resource
+    just got created and deleted in the timespan of pre - support - post
+    2. "unaccpeted" names - does NOT have the correct prefix so will error. In this case, the prefix is not valid
+    so more investigation as to why this got captured will be needed.
+
+    For missing names, try to get labels to help determine if labels are the reason.
     """
-    try:
-        find_extra_or_missing_names(
-            resource_type=resource_type,
-            result_names=bundle_names,
-            pre_expected_names=pre_bundle_resources.keys(),
-            post_expected_names=post_bundle_resources.keys(),
-        )
-    except AssertionError as e:
-        error_text = str(e)
-        missing_error_text = error_text.rsplit("\n", maxsplit=1)[-1]
-        if "Missing " not in missing_error_text:
-            # cannot get labels from extra resources (only in support bundle)
-            raise e
-        resource_names = missing_error_text.partition(":")[-1].split(",")
-        label_error_texts = [error_text]
-        for name in resource_names:
-            name = name.strip()
+    if isinstance(prefixes, str):
+        prefixes = [prefixes]
+
+    extra_names, missing_names = find_extra_or_missing_names(
+        result_names=bundle_names,
+        pre_expected_names=pre_bundle_resources.keys(),
+        post_expected_names=post_bundle_resources.keys(),
+    )
+
+    error_msg = []
+    if extra_names:
+        # split the extra names into accepted (has a valid prefix) vs unaccepted (does not have valid prefix)
+        accepted_names = []
+        unaccepted_names = []
+        for name in extra_names:
+            if any(name.startswith(prefix) for prefix in prefixes):
+                accepted_names.append(name)
+            else:
+                unaccepted_names.append(name)
+
+        if accepted_names:
+            logger.warning(
+                f"Extra {resource_type} names in the support bundle with the correct prefixes {prefixes}: "
+                f"{', '.join(accepted_names)}"
+            )
+        if unaccepted_names:
+            error_msg.append(f"Extra {resource_type} names in the support bundle: {', '.join(unaccepted_names)}")
+
+    if missing_names:
+        error_msg.append(f"Missing {resource_type} names in the support bundle: {', '.join(missing_names)}")
+        # get the labels for the missing resource
+        for name in missing_names:
             bundle_to_use = pre_bundle_resources
             if name not in bundle_to_use:
                 bundle_to_use = post_bundle_resources
             labels = bundle_to_use[name]["metadata"]["labels"]
-            label_error_texts.append(
+            error_msg.append(
                 f"{resource_type.capitalize()} resource {name} has the following labels:\n\t"
                 " \n\t".join([f"{ln}: {labels[ln]}" for ln in labels])
             )
-        raise AssertionError("\n".join(label_error_texts))
+
+    if error_msg:
+        raise AssertionError("\n".join(error_msg))
