@@ -4,17 +4,24 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from copy import deepcopy
 import random
+from copy import deepcopy
 from typing import Any, Dict, List
+
 import pytest
+
+from azext_edge.edge.providers.orchestration.common import (
+    EXTENSION_ALIAS_TO_TYPE_MAP,
+    EXTENSION_TYPE_OSM,
+)
 from azext_edge.edge.util import parse_kvp_nargs
-from azext_edge.edge.providers.orchestration.common import EXTENSION_ALIAS_TO_TYPE_MAP
+
 from ...generators import generate_random_string
 from ...helpers import process_additional_args, run, strip_quotes
 
-EXTENSIONS = list(EXTENSION_ALIAS_TO_TYPE_MAP.keys())
 EXTENSION_TYPE_TO_ALIAS_MAP = {val: key for key, val in EXTENSION_ALIAS_TO_TYPE_MAP.items()}
+EXTENSION_TYPE_TO_ALIAS_MAP.pop(EXTENSION_TYPE_OSM, None)
+EXTENSIONS = list(EXTENSION_TYPE_TO_ALIAS_MAP.values())
 
 
 @pytest.fixture
@@ -64,11 +71,7 @@ def test_upgrade(upgrade_int_setup):
 
     # run first command with only additional args from input
     run(f"{command} {additional_args}")
-    assert_extensions(
-        cluster_id=cluster_id,
-        original_ext_map=original_ext_map,
-        additional_args=additional_args
-    )
+    assert_extensions(cluster_id=cluster_id, original_ext_map=original_ext_map, additional_args=additional_args)
     # if additional args present, only run once
     if additional_args:
         return
@@ -82,18 +85,10 @@ def test_upgrade(upgrade_int_setup):
         additional_args += ext_arg
 
     run(f"{command} {additional_args}")
-    assert_extensions(
-        cluster_id=cluster_id,
-        original_ext_map=original_ext_map,
-        additional_args=additional_args
-    )
+    assert_extensions(cluster_id=cluster_id, original_ext_map=original_ext_map, additional_args=additional_args)
 
 
-def assert_extensions(
-    cluster_id: str,
-    original_ext_map: Dict[str, Any],
-    additional_args: str = ""
-):
+def assert_extensions(cluster_id: str, original_ext_map: Dict[str, Any], additional_args: str = ""):
     original_ext_map = deepcopy(original_ext_map)
     additional_args_dict = process_additional_args(additional_args)
 
