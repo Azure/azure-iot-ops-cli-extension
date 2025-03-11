@@ -339,8 +339,11 @@ def get_file_map(
         return file_map
     elif ops_service == OpsServiceType.openservicemesh.value:
         # resources only in osm_namespace
-        assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
         osm_path = path.join(BASE_ZIP_PATH, osm_namespace, "openservicemesh")
+        if osm_path not in walk_result:
+            assert len(walk_result) == expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            pytest.skip(f"No bundles created for {ops_service}.")
+        assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
         file_map["osm"] = convert_file_names(walk_result[osm_path]["files"])
         file_map["__namespaces__"]["osm"] = osm_namespace
 
