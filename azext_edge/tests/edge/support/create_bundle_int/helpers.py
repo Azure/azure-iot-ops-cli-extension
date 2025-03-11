@@ -339,10 +339,11 @@ def get_file_map(
         return file_map
     elif ops_service == OpsServiceType.openservicemesh.value:
         # resources only in osm_namespace
-        osm_path = path.join(BASE_ZIP_PATH, osm_namespace, "openservicemesh")
-        if osm_path not in walk_result:
+        if not osm_namespace:
             assert len(walk_result) == expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
             pytest.skip(f"No bundles created for {ops_service}.")
+
+        osm_path = path.join(BASE_ZIP_PATH, osm_namespace, "openservicemesh")
         assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
         file_map["osm"] = convert_file_names(walk_result[osm_path]["files"])
         file_map["__namespaces__"]["osm"] = osm_namespace
@@ -587,11 +588,12 @@ def _clean_up_folders(
                 f"monikers: [{monikers}]"
             assert not level_1["files"]
 
+    # note that the acstor and acs namespace should be the same value
     if acstor_namespace or acs_namespace:
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace))
         if acs_namespace:
             services.append("arccontainerstorage")
-        if containerstorage_service:
+        if acstor_namespace and containerstorage_service:
             services.append(containerstorage_service)
         assert set(level_1["folders"]) == set(services), f"Mismatch; folders: [{level_1['folders']}], "\
             f"services [{services}]"
