@@ -18,6 +18,7 @@ pytestmark = pytest.mark.rpsaas
 
 
 def test_asset_endpoint_lifecycle(require_init, tracked_resources, tracked_files):
+    assert False
     rg = require_init["resourceGroup"]
     instance = require_init["instanceName"]
     custom_location = require_init["customLocationId"]
