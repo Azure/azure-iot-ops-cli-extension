@@ -27,6 +27,11 @@ on:
         type: boolean
         required: false
         default: true
+      keep-on-failure:
+          description: Keep the cluster(s) active on failure.
+          type: boolean
+          required: false
+          default: false
       use-container:
         description: Build container image for tests
         type: boolean
@@ -348,6 +353,13 @@ jobs:
           az iot ops check --as-object
           az iot ops check --svc broker --resources broker brokerlistener
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
+      - name: "Keep cluster alive"
+        if: ${{ inputs.keep-on-failure && failure() }}
+        run: |
+          for ((i=0; i < 180; i+=1)):
+            echo "Remaining time: $((180 - i)) minutes"
+            sleep 60s
+          done
       - name: "Delete Cluster for redeployment"
         if: ${{ matrix.feature == 'redeploy' }}
         run: |
