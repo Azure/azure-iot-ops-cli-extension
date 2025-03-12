@@ -72,6 +72,11 @@ on:
         type: boolean
         required: false
         default: true
+      keep-on-failure:
+          description: Keep the cluster(s) active on failure - TODO flip before merge.
+          type: boolean
+          required: false
+          default: true
       use-container:
         description: Build container image for tests
         type: boolean
