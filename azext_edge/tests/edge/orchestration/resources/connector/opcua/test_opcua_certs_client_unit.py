@@ -26,6 +26,7 @@ from .conftest import (
     get_secret_endpoint,
     get_secretsync_endpoint,
     get_spc_endpoint,
+    build_mock_cert,
 )
 from azext_edge.tests.generators import generate_random_string
 
@@ -240,7 +241,7 @@ def test_client_add(
             "uri",
             "Public key file name pubkey and private key file name prikey must match.",
         ),
-        # subject name not match
+        # subject name not found
         (
             {
                 "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
@@ -250,13 +251,12 @@ def test_client_add(
             {},
             "/fake/path/certificate.der",
             "/fake/path/certificate.pem",
-            "subjectnamenonexist",
+            " ",
             "uri",
-            "Given --subject-name subjectnamenonexist does not match certificate subject name "
-            "subjectname. Please provide the correct subject name via --subject-name or correct "
-            "certificate using --public-key-file.",
+            "Not able to extract subject name from the certificate. "
+            "Please provide the correct subject name in certificate via --public-key-file.",
         ),
-        # uri not match
+        # uri not found
         (
             {
                 "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
@@ -267,10 +267,9 @@ def test_client_add(
             "/fake/path/certificate.der",
             "/fake/path/certificate.pem",
             "subjectname",
-            "urinonexist",
-            "Given --application-uri urinonexist does not match certificate application URI uri. "
-            "Please provide the correct application URI via --application-uri or correct certificate "
-            "using --public-key-file.",
+            " ",
+            "Not able to extract application URI from the certificate. "
+            "Please provide the correct application URI in certificate via --public-key-file.",
         ),
     ],
 )
@@ -304,6 +303,7 @@ def test_client_add_errors(
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
     mocked_read_file_content.return_value = file_content
+    mocked_load_x509_cert.return_value = build_mock_cert(subject_name=subject_name, uri=uri)
 
     if client_app_spc:
         # get secrets

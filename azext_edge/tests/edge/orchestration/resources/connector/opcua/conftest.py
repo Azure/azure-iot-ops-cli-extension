@@ -54,14 +54,16 @@ def mocked_read_file_content(mocker):
     yield patched
 
 
-@pytest.fixture
-def mocked_load_x509_cert(mocker):
+def build_mock_cert(
+    subject_name: str = "subjectname",
+    uri: str = "uri",
+):
     mock_cert = Mock(spec=x509.Certificate)
 
     # Set up a mock subject and issuer
     mock_subject = x509.Name(
         [
-            x509.NameAttribute(NameOID.COMMON_NAME, "subjectname"),
+            x509.NameAttribute(NameOID.COMMON_NAME, subject_name),
         ]
     )
     mock_cert.subject = mock_subject
@@ -70,14 +72,19 @@ def mocked_load_x509_cert(mocker):
     mock_san_extension = Mock(spec=x509.SubjectAlternativeName)
     mock_san_general_names = [
         x509.DNSName("www.example.com"),
-        x509.UniformResourceIdentifier("uri"),
+        x509.UniformResourceIdentifier(uri),
     ]
     mock_san_extension.value = mock_san_general_names
     mock_cert.extensions.get_extension_for_oid.return_value = mock_san_extension
 
+    return mock_cert
+
+
+@pytest.fixture
+def mocked_load_x509_cert(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.decode_der_certificate",
-        return_value=mock_cert,
+        return_value=build_mock_cert(),
     )
     yield patched
 

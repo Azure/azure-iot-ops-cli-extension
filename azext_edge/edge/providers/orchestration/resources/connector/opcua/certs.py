@@ -217,9 +217,9 @@ class OpcUACerts(Queryable):
         resource_group: str,
         public_key_file: str,
         private_key_file: str,
-        subject_name: str,
-        application_uri: str,
         overwrite_secret: bool = False,
+        subject_name: Optional[str] = None,
+        application_uri: Optional[str] = None,
         public_key_secret_name: Optional[str] = None,
         private_key_secret_name: Optional[str] = None,
     ) -> dict:
@@ -231,8 +231,8 @@ class OpcUACerts(Queryable):
         # process all the file validations before secret creations
         self._validate_key_files(public_key_file, private_key_file)
 
-        # validate subject name and application URI matching public_key_file content
-        self._validate_cert_content(public_key_file, subject_name, application_uri)
+        # extract subject name and application URI from public_key_file content
+        subject_name, application_uri = self._extract_cert_content(public_key_file)
 
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
@@ -542,7 +542,8 @@ class OpcUACerts(Queryable):
                 "Do you want to overwrite the existing secret?"
             ):
                 logger.warning(
-                    "Secret overwrite operation cancelled. Please provide a different name " f"via --{flag}."
+                    "Secret overwrite operation cancelled. Please provide a different name "
+                    f"via --{flag}."
                 )
                 return
 
@@ -814,12 +815,10 @@ class OpcUACerts(Queryable):
         # Failed to confirm deletion after retries
         raise TimeoutError(f"Failed to delete secret '{secret_name}' within {SECRET_DELETE_MAX_RETRIES} retries.")
 
-    def _validate_cert_content(
+    def _extract_cert_content(
         self,
         public_key_file: str,
-        subject_name: str,
-        application_uri: str,
-    ):
+    ) -> Tuple[str, str]:
         from cryptography import x509
         from cryptography.x509.oid import NameOID, ExtensionOID
 
@@ -838,19 +837,15 @@ class OpcUACerts(Queryable):
                 if isinstance(general_name, x509.UniformResourceIdentifier):
                     cert_application_uri = general_name.value
 
-            if subject_name != cert_subject_name:
-                raise ValueError(
-                    f"Given --subject-name {subject_name} does not match certificate "
-                    f"subject name {cert_subject_name}. Please provide the correct subject "
-                    "name via --subject-name or correct certificate using --public-key-file."
-                )
+            for value, name in [(cert_subject_name, "subject name"), (cert_application_uri, "application URI")]:
+                # if value is empty or space, raise error
+                if not value or value.isspace():
+                    raise ValueError(
+                        f"Not able to extract {name} from the certificate. "
+                        f"Please provide the correct {name} in certificate via --public-key-file."
+                    )
 
-            if application_uri != cert_application_uri:
-                raise ValueError(
-                    f"Given --application-uri {application_uri} does not match certificate "
-                    f"application URI {cert_application_uri}. Please provide the correct "
-                    "application URI via --application-uri or correct certificate using --public-key-file."
-                )
+            return cert_subject_name, cert_application_uri
 
         else:
             raise ValueError("Error decoding DER certificate. Please make sure the certificate is valid.")

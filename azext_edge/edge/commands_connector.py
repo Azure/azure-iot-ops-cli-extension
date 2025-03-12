@@ -43,7 +43,7 @@ def add_connector_opcua_issuer(
         resource_group=resource_group,
         file=file,
         secret_name=secret_name,
-        overwrite_secret=overwrite_secret
+        overwrite_secret=overwrite_secret,
     )
 
 
@@ -53,9 +53,9 @@ def add_connector_opcua_client(
     resource_group: str,
     public_key_file: str,
     private_key_file: str,
-    subject_name: str,
-    application_uri: str,
     overwrite_secret: bool = False,
+    subject_name: Optional[str] = None,
+    application_uri: Optional[str] = None,
     public_key_secret_name: Optional[str] = None,
     private_key_secret_name: Optional[str] = None,
 ) -> dict:

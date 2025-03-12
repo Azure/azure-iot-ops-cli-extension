@@ -1544,13 +1544,11 @@ def load_iotops_help():
         - name: Add a client certificate.
           text: >
             az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
-            --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
-            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
+            --public-key-file "newopc.der" --private-key-file "newopc.pem"
         - name: Add a client certificate and skip the overwrite confirmation prompt when the secret already exists.
           text: >
             az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
-            --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
-            --application-uri "urn:microsoft.com:aio:opc:opcuabroker" --overwrite-secret
+            --public-key-file "newopc.der" --private-key-file "newopc.pem" --overwrite-secret
         - name: Add a client certificate with custom public and private key secret name.
           text: >
             az iot ops connector opcua client add
@@ -1560,8 +1558,6 @@ def load_iotops_help():
             --private-key-file "newopc.pem"
             --public-key-secret-name public-secret-name
             --private-key-secret-name private-secret-name
-            --subject-name "aio-opc-opcuabroker"
-            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
       """
 
     helps[
