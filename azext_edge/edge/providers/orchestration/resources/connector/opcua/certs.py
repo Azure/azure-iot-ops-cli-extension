@@ -15,6 +15,8 @@ from knack.log import get_logger
 from rich.console import Console
 import yaml
 
+from azext_edge.edge.util.x509 import decode_der_certificate
+
 from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS
 from ...instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from ......util.file_operations import read_file_content, validate_file_extension
@@ -89,10 +91,7 @@ class OpcUACerts(Queryable):
             return
 
         self._upload_to_key_vault(
-            keyvault_name=spc_keyvault_name,
-            secret_name=secret_name,
-            file_path=file,
-            cert_extension=cert_extension
+            keyvault_name=spc_keyvault_name, secret_name=secret_name, file_path=file, cert_extension=cert_extension
         )
 
         # check if there is a spc called "opc-ua-connector", if not create one
@@ -185,10 +184,7 @@ class OpcUACerts(Queryable):
             return
 
         self._upload_to_key_vault(
-            keyvault_name=spc_keyvault_name,
-            secret_name=secret_name,
-            file_path=file,
-            cert_extension=cert_extension
+            keyvault_name=spc_keyvault_name, secret_name=secret_name, file_path=file, cert_extension=cert_extension
         )
 
         # check if there is a spc called "opc-ua-connector", if not create one
@@ -235,6 +231,9 @@ class OpcUACerts(Queryable):
         # process all the file validations before secret creations
         self._validate_key_files(public_key_file, private_key_file)
 
+        # validate subject name and application URI matching public_key_file content
+        self._validate_cert_content(public_key_file, subject_name, application_uri)
+
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
         spc_keyvault_name = spc_properties.get("keyvaultName", "")
@@ -265,11 +264,13 @@ class OpcUACerts(Queryable):
 
             file_type_map = {
                 public_key_file: (
-                    "public-key-secret-name", public_key_secret_name if public_key_secret_name else secret_name
+                    "public-key-secret-name",
+                    public_key_secret_name if public_key_secret_name else secret_name,
                 ),
                 private_key_file: (
-                    "private-key-secret-name", private_key_secret_name if private_key_secret_name else secret_name
-                )
+                    "private-key-secret-name",
+                    private_key_secret_name if private_key_secret_name else secret_name,
+                ),
             }
 
             # Iterate over secrets to check if a secret with the same name exists
@@ -288,10 +289,7 @@ class OpcUACerts(Queryable):
                 return
 
             self._upload_to_key_vault(
-                keyvault_name=spc_keyvault_name,
-                secret_name=secret_name,
-                file_path=file,
-                cert_extension=cert_extension
+                keyvault_name=spc_keyvault_name, secret_name=secret_name, file_path=file, cert_extension=cert_extension
             )
             secrets_to_add.append((secret_name, file_name))
 
@@ -370,8 +368,7 @@ class OpcUACerts(Queryable):
         for name in certificate_names:
             if name not in [mapping["targetKey"] for mapping in secret_mapping]:
                 logger.warning(
-                    f"Certificate {name} not found in secretsync resource {secretsync_name}. "
-                    "Skipping removal..."
+                    f"Certificate {name} not found in secretsync resource {secretsync_name}. " "Skipping removal..."
                 )
             else:
                 # append corresponding "sourcePath" of matching "targetKey"
@@ -402,14 +399,10 @@ class OpcUACerts(Queryable):
             name=secretsync_name,
             secrets=secret_to_remove,
             secret_sync=target_secretsync,
-            resource_group=resource_group
+            resource_group=resource_group,
         )
 
-        self._remove_secrets_from_spc(
-            secrets=secret_to_remove,
-            spc=target_spc,
-            resource_group=resource_group
-        )
+        self._remove_secrets_from_spc(secrets=secret_to_remove, spc=target_spc, resource_group=resource_group)
 
         if include_secrets:
             # verify the behaviour of non existed secret
@@ -549,20 +542,13 @@ class OpcUACerts(Queryable):
                 "Do you want to overwrite the existing secret?"
             ):
                 logger.warning(
-                    "Secret overwrite operation cancelled. Please provide a different name "
-                    f"via --{flag}."
+                    "Secret overwrite operation cancelled. Please provide a different name " f"via --{flag}."
                 )
                 return
 
         return new_secret_name
 
-    def _upload_to_key_vault(
-        self,
-        keyvault_name: str,
-        secret_name: str,
-        file_path: str,
-        cert_extension: str
-    ):
+    def _upload_to_key_vault(self, keyvault_name: str, secret_name: str, file_path: str, cert_extension: str):
         with console.status(f"Uploading certificate to keyvault as secret {secret_name}..."):
             content = read_file_content(file_path=file_path, read_as_binary=True).hex()
             if cert_extension == ".crl":
@@ -716,8 +702,11 @@ class OpcUACerts(Queryable):
 
         aio_extension["properties"]["configurationSettings"] = config_settings
 
-        status_text = f"Updating IoT Operations extension to use {application_cert}..." if application_cert else \
-            "Rollback client certificate from IoT Operations extension..."
+        status_text = (
+            f"Updating IoT Operations extension to use {application_cert}..."
+            if application_cert
+            else "Rollback client certificate from IoT Operations extension..."
+        )
 
         with console.status(status_text):
             return self.resource_map.connected_cluster.update_aio_extension(
@@ -750,11 +739,7 @@ class OpcUACerts(Queryable):
             return wait_for_terminal_state(poller)
 
     def _remove_secrets_from_secret_sync(
-        self,
-        name: str,
-        secrets: List[str],
-        secret_sync: dict,
-        resource_group: str
+        self, name: str, secrets: List[str], secret_sync: dict, resource_group: str
     ) -> dict:
         # check if there is a secret sync called secret_sync_name, if not create one
         secret_mapping = secret_sync.get("properties", {}).get("objectSecretMapping", [])
@@ -827,6 +812,38 @@ class OpcUACerts(Queryable):
                 raise
 
         # Failed to confirm deletion after retries
-        raise TimeoutError(
-            f"Failed to delete secret '{secret_name}' within {SECRET_DELETE_MAX_RETRIES} retries."
-        )
+        raise TimeoutError(f"Failed to delete secret '{secret_name}' within {SECRET_DELETE_MAX_RETRIES} retries.")
+
+    def _validate_cert_content(
+        self,
+        public_key_file: str,
+        subject_name: str,
+        application_uri: str,
+    ):
+        from cryptography.x509.oid import NameOID, ExtensionOID
+
+        with open(public_key_file, "rb") as f:
+            der_data = f.read()
+
+            certificate = decode_der_certificate(der_data)
+
+            if certificate:
+                # Get the subject name and application uri from the certificate
+                # and validate it with the provided values
+                cert_subject_name = certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
+                cert_application_uri = certificate.extensions.get_extension_for_oid(
+                    ExtensionOID.SUBJECT_ALTERNATIVE_NAME
+                ).value
+
+                if subject_name != cert_subject_name:
+                    raise ValueError(
+                        f"Given --subject-name {subject_name} does not match certificate subject name {cert_subject_name}. Please provide the correct subject name via --subject-name or correct certificate using --public-key-file."
+                    )
+
+                if application_uri != cert_application_uri:
+                    raise ValueError(
+                        f"Given application URI {application_uri} does not match certificate application URI {cert_subject_name}. Please provide the correct application URI via --application-uri or correct certificate using --public-key-file."
+                    )
+
+            else:
+                raise ValueError("Error decoding DER certificate. Please make sure the certificate is valid.")
