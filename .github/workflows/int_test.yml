@@ -362,7 +362,7 @@ jobs:
       - name: "Keep cluster alive"
         if: ${{ inputs.keep-on-failure && failure() }}
         run: |
-          for ((i=0; i < 180; i+=1)):
+          for ((i=0; i < 180; i+=1)); do
             echo "Remaining time: $((180 - i)) minutes"
             sleep 60s
           done
