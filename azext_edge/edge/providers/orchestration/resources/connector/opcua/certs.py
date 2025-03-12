@@ -15,7 +15,7 @@ from knack.log import get_logger
 from rich.console import Console
 import yaml
 
-from azext_edge.edge.util.x509 import decode_der_certificate
+from ......util.x509 import decode_der_certificate
 
 from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS
 from ...instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
@@ -820,30 +820,37 @@ class OpcUACerts(Queryable):
         subject_name: str,
         application_uri: str,
     ):
+        from cryptography import x509
         from cryptography.x509.oid import NameOID, ExtensionOID
 
-        with open(public_key_file, "rb") as f:
-            der_data = f.read()
+        der_data = read_file_content(file_path=public_key_file, read_as_binary=True)
+        certificate = decode_der_certificate(der_data)
 
-            certificate = decode_der_certificate(der_data)
+        if certificate:
+            # Get the subject name and application uri from the certificate
+            # and validate it with the provided values
+            cert_subject_name = certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
 
-            if certificate:
-                # Get the subject name and application uri from the certificate
-                # and validate it with the provided values
-                cert_subject_name = certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
-                cert_application_uri = certificate.extensions.get_extension_for_oid(
-                    ExtensionOID.SUBJECT_ALTERNATIVE_NAME
-                ).value
+            cert_application_uri = ""
+            extension_value = certificate.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME).value
 
-                if subject_name != cert_subject_name:
-                    raise ValueError(
-                        f"Given --subject-name {subject_name} does not match certificate subject name {cert_subject_name}. Please provide the correct subject name via --subject-name or correct certificate using --public-key-file."
-                    )
+            for general_name in extension_value:
+                if isinstance(general_name, x509.UniformResourceIdentifier):
+                    cert_application_uri = general_name.value
 
-                if application_uri != cert_application_uri:
-                    raise ValueError(
-                        f"Given application URI {application_uri} does not match certificate application URI {cert_subject_name}. Please provide the correct application URI via --application-uri or correct certificate using --public-key-file."
-                    )
+            if subject_name != cert_subject_name:
+                raise ValueError(
+                    f"Given --subject-name {subject_name} does not match certificate "
+                    f"subject name {cert_subject_name}. Please provide the correct subject "
+                    "name via --subject-name or correct certificate using --public-key-file."
+                )
 
-            else:
-                raise ValueError("Error decoding DER certificate. Please make sure the certificate is valid.")
+            if application_uri != cert_application_uri:
+                raise ValueError(
+                    f"Given --application-uri {application_uri} does not match certificate "
+                    f"application URI {cert_application_uri}. Please provide the correct "
+                    "application URI via --application-uri or correct certificate using --public-key-file."
+                )
+
+        else:
+            raise ValueError("Error decoding DER certificate. Please make sure the certificate is valid.")
