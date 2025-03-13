@@ -207,6 +207,7 @@ def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: st
     ))
     aio_namespace = spc_data["metadata"]["namespace"]
 
+    # add in the reference for the secret (note that this is a stringified yaml in the json)
     object_string = "array:\n"
     if "objects" in spc_data["spec"]["parameters"]:
         object_string = spc_data["spec"]["parameters"]["objects"]
