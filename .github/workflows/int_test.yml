@@ -73,10 +73,10 @@ on:
         required: false
         default: true
       keep-on-failure:
-          description: Keep the cluster(s) active for 4 hours on failure - TODO flip before merge.
+          description: Keep the cluster(s) active for 4 hours on failure.
           type: boolean
           required: false
-          default: true
+          default: false
       use-container:
         description: Build container image for tests
         type: boolean
@@ -102,23 +102,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [custom-input, syncrules]
-        # feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
+        feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
         runtime-args:
           - ${{ inputs.runtime-init-args != '' || inputs.runtime-create-args != '' }}
         exclude:
           - feature: custom-input
             runtime-args: false
-          # - feature: default
-          #   runtime-args: true
-          # - feature: insecure-listener
-          #   runtime-args: true
+          - feature: default
+            runtime-args: true
+          - feature: insecure-listener
+            runtime-args: true
           - feature: syncrules
             runtime-args: true
-          # - feature: redeploy
-          #   runtime-args: true
-          # - feature: trustbundle
-          #   runtime-args: true
+          - feature: redeploy
+            runtime-args: true
+          - feature: trustbundle
+            runtime-args: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
