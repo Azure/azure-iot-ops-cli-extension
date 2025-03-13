@@ -48,7 +48,7 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="eb4acd9ed5eb895bea1f864dc0dc2ddb76bbaa25",
+    commit_id="b4198d335d6bd5c71c7707070c72938ae41d555e",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
@@ -311,13 +311,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="eb4acd9ed5eb895bea1f864dc0dc2ddb76bbaa25",
+    commit_id="2122bbc7426734dad05d482cb2a37ed5e6753192",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "707823651472006404"}
+            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "12128465284481135903"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -489,8 +489,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "1.0.27"},
-            "TRAINS": {"iotOperations": "integration"},
+            "VERSIONS": {"iotOperations": "1.0.34"},
+            "TRAINS": {"iotOperations": "stable"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,

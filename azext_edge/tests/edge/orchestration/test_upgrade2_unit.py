@@ -283,20 +283,19 @@ class UpgradeScenario:
             .set_user_kwargs(ops_version="9.9.9"),
             {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "9.9.9"}}},
         ),
-        # TODO - @digimaun uncomment prior to dev merge.
-        # (
-        #     UpgradeScenario(
-        #         "Ensure default version and train increments for ops when upgrade is known."
-        #     ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0", ext_train="stable"),
-        #     {
-        #         EXTENSION_TYPE_OPS: {
-        #             "properties": {
-        #                 "extensionType": EXTENSION_TYPE_OPS,
-        #                 "version": BUILT_IN_VALUE,
-        #             }
-        #         }
-        #     },
-        # ),
+        (
+            UpgradeScenario(
+                "Ensure default version and train increments for ops when upgrade is known."
+            ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0", ext_train="stable"),
+            {
+                EXTENSION_TYPE_OPS: {
+                    "properties": {
+                        "extensionType": EXTENSION_TYPE_OPS,
+                        "version": BUILT_IN_VALUE,
+                    }
+                }
+            },
+        ),
         (
             UpgradeScenario(
                 "Ensure default version for platform when upgrade is known. Ensure confirm prompt.", confirm_yes=False
