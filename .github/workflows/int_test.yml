@@ -361,6 +361,10 @@ jobs:
       - name: "Keep cluster alive"
         if: ${{ inputs.keep-on-failure && failure() }}
         run: |
+          echo "Cluster ${{ env.CLUSTER_NAME }} in resource group ${{ env.RESOURCE_GROUP }}"
+          echo "Instance name ${{ env.INSTANCE_NAME }}"
+          echo ""
+
           for ((i=0; i < 240; i+=10)); do
             echo "Remaining time: $((240 - i)) minutes"
             sleep 600s
