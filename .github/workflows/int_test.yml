@@ -362,7 +362,7 @@ jobs:
         if: ${{ inputs.keep-on-failure > 0 && failure() }}
         run: |
           time_limit = ${{ inputs.keep-on-failure }}
-          if [ time_limit > 240 ]; then
+          if [ $time_limit > 240 ]; then
             echo "Given time limit is over the maximum of 4 hours. Setting to 4 hours."
             time_limit = 240
           fi
@@ -371,9 +371,9 @@ jobs:
           echo "Instance name ${{ env.INSTANCE_NAME }}"
           echo ""
 
-          for ((i=0; i < time_limit; i+=1)); do
+          for ((i=0; i < $time_limit; i+=1)); do
             if [ $(( i % 10 )) == 0 ]; then
-              echo "Remaining time: $((time_limit - i)) minutes"
+              echo "Remaining time: $(( $time_limit - i )) minutes"
             fi
             sleep 60s
           done
