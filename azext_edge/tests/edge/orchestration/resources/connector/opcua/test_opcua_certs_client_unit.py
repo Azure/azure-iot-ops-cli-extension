@@ -156,9 +156,16 @@ def test_client_add(
         overwrite_secret=True,
     )
 
+    warnings = [call[0][0] for call in mocked_logger.warning.call_args_list]
+
     assert (
-        mocked_logger.warning.call_args[0][0] == "Please ensure the certificate must be added "
-        "to the issuers list if it was issued by a CA."
+        "Both the subject name and application URI are extracted directly from the certificate. "
+        "Any values provided via the --subject-name and --application-uri will be disregarded." in warnings
+    )
+
+    assert (
+        "If this certificate was issued by a CA, then please "
+        "ensure that the certificate is added to issuer list." in warnings
     )
 
     if result:
