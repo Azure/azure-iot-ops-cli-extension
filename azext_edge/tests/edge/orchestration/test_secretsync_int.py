@@ -195,7 +195,7 @@ def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: st
     secret_value = generate_random_string(size=100)
     kv_name = kv_id.rsplit("/", maxsplit=1)[1]
     run(
-        f"az keyvault secret set --vault_name {kv_name} --name {secret_name} "
+        f"az keyvault secret set --vault-name {kv_name} --name {secret_name} "
         f"--value {secret_value}"
     )
 
@@ -246,7 +246,7 @@ def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: st
     decoded = str(b64decode(secret_data["data"][secret_key_name]), encoding="utf-8")
     assert decoded == secret_value
 
-    run(f"az keyvault secret delete --vault_name {kv_name} --name {secret_name}")
+    run(f"az keyvault secret delete --vault-name {kv_name} --name {secret_name}")
 
 
 def _assert_secret_sync_class(
