@@ -235,8 +235,8 @@ def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: st
     with open(temp_sync_json, "w", encoding="utf-8") as f:
         json.dump(secret_sync_data, f)
 
-    run(f"kubectl apply {temp_spc_json}")
-    run(f"kubectl apply {temp_sync_json}")
+    run(f"kubectl apply -f {temp_spc_json}")
+    run(f"kubectl apply -f {temp_sync_json}")
 
     # wait a bit to populate secret
     sleep(5)
