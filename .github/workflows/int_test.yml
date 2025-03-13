@@ -28,7 +28,7 @@ on:
         required: false
         default: true
       keep-on-failure:
-          description: Keep the cluster(s) active on failure.
+          description: Keep the cluster(s) active for 4 hours on failure.
           type: boolean
           required: false
           default: false
@@ -73,7 +73,7 @@ on:
         required: false
         default: true
       keep-on-failure:
-          description: Keep the cluster(s) active on failure - TODO flip before merge.
+          description: Keep the cluster(s) active for 4 hours on failure - TODO flip before merge.
           type: boolean
           required: false
           default: true
@@ -362,9 +362,9 @@ jobs:
       - name: "Keep cluster alive"
         if: ${{ inputs.keep-on-failure && failure() }}
         run: |
-          for ((i=0; i < 180; i+=1)); do
-            echo "Remaining time: $((180 - i)) minutes"
-            sleep 60s
+          for ((i=0; i < 240; i+=10)); do
+            echo "Remaining time: $((240 - i)) minutes"
+            sleep 600s
           done
       - name: "Delete Cluster for redeployment"
         if: ${{ matrix.feature == 'redeploy' }}
