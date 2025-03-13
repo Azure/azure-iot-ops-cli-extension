@@ -28,10 +28,10 @@ on:
         required: false
         default: true
       keep-on-failure:
-          description: Keep the cluster(s) active for 4 hours on failure.
-          type: boolean
+          description: Number of minutes to keep the cluster(s) active on failure (max 240 min).
+          type: number
           required: false
-          default: false
+          default: 0
       use-container:
         description: Build container image for tests
         type: boolean
@@ -73,10 +73,10 @@ on:
         required: false
         default: true
       keep-on-failure:
-          description: Keep the cluster(s) active for 4 hours on failure.
-          type: boolean
+          description: Number of minutes to keep the cluster(s) active on failure (max 240 min).
+          type: number
           required: false
-          default: false
+          default: 0
       use-container:
         description: Build container image for tests
         type: boolean
@@ -359,15 +359,23 @@ jobs:
           az iot ops check --svc broker --resources broker brokerlistener
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
       - name: "Keep cluster alive"
-        if: ${{ inputs.keep-on-failure && failure() }}
+        if: ${{ inputs.keep-on-failure > 0 && failure() }}
         run: |
+          time_limit = ${{ inputs.keep-on-failure }}
+          if [ time_limit > 240 ]; then
+            echo "Given time limit is over the maximum of 4 hours. Setting to 4 hours."
+            time_limit = 240
+          fi
+
           echo "Cluster ${{ env.CLUSTER_NAME }} in resource group ${{ env.RESOURCE_GROUP }}"
           echo "Instance name ${{ env.INSTANCE_NAME }}"
           echo ""
 
-          for ((i=0; i < 240; i+=10)); do
-            echo "Remaining time: $((240 - i)) minutes"
-            sleep 600s
+          for ((i=0; i < time_limit; i+=1)); do
+            if [ $(( i % 10 )) == 0 ]; then
+              echo "Remaining time: $((time_limit - i)) minutes"
+            fi
+            sleep 60s
           done
       - name: "Delete Cluster for redeployment"
         if: ${{ matrix.feature == 'redeploy' }}
