@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from base64 import b64decode
 from copy import deepcopy
 import json
 import pytest
@@ -12,7 +13,7 @@ from time import sleep
 from typing import List, Optional
 
 from azure.cli.core.azclierror import CLIInternalError
-import yaml
+
 from ...generators import generate_random_string
 from ...helpers import run
 
@@ -190,8 +191,8 @@ def test_secretsync(cluster_connection, secretsync_int_setup, tracked_files: Lis
 
 def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: str):
     # add secret to kv
-    secret_name = generate_random_string()
-    secret_value = generate_random_string()
+    secret_name = f"clitest{generate_random_string()}"
+    secret_value = generate_random_string(size=100)
     kv_name = kv_id.rsplit("/", maxsplit=1)[1]
     run(
         f"az keyvault secret set --vault_name {kv_name} --name {secret_name} "
@@ -218,26 +219,34 @@ def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: st
         json.dump(spc_data, f)
 
     # generate the secretsync
-    secret_sync_name = f"sync-{generate_random_string(size=6)}"
+    secret_key_name = f"targetkey{generate_random_string()}"
+    secret_sync_name = f"sync-{generate_random_string(size=6, force_lower=True)}"
     secret_sync_data = deepcopy(SECRET_SYNC_TEMPLATE)
-    secret_sync_data["metatadata"]["name"] = secret_sync_name
-    secret_sync_data["metatadata"]["namespace"] = aio_namespace
+    secret_sync_data["metadata"]["name"] = secret_sync_name
+    secret_sync_data["metadata"]["namespace"] = aio_namespace
     secret_sync_data["spec"]["secretProviderClassName"] = spc_name
     secret_sync_data["spec"]["secretObject"]["data"].append({
         "sourcePath": secret_name,
-        "targetKey": f"{secret_name}-data-key0"
+        "targetKey": secret_key_name
     })
     temp_sync_json = f"temp{generate_random_string(size=6)}.json"
     tracked_files.append(temp_sync_json)
     with open(temp_sync_json, "w", encoding="utf-8") as f:
         json.dump(secret_sync_data, f)
 
-    run(f"kubectl apply {temp_spc_json} {temp_sync_json}")
+    run(f"kubectl apply {temp_spc_json}")
+    run(f"kubectl apply {temp_sync_json}")
+
+    # wait a bit to populate secret
+    sleep(5)
 
     # check the secret
     secret_data = run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json")
-    assert secret_name in secret_data["data"]
-    assert secret_data["data"][secret_name] == secret_value
+    assert secret_key_name in secret_data["data"]
+    decoded = str(b64decode(secret_data["data"][secret_key_name]), encoding="utf-8")
+    assert decoded == secret_value
+
+    run(f"az keyvault secret delete --vault_name {kv_name} --name {secret_name}")
 
 
 def _assert_secret_sync_class(
