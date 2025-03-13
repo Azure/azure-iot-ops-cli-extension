@@ -224,7 +224,14 @@ class OpcUACerts(Queryable):
         private_key_secret_name: Optional[str] = None,
     ) -> dict:
         # inform user if the provided cert was issued by a CA, the CA cert must be added to the issuers list.
-        logger.warning("Please ensure the certificate must be added to the issuers list if it was issued by a CA.")
+        logger.warning("If this certificate was issued by a CA, then please ensure that the certificate is added to issuer list.")
+
+        if subject_name or application_uri:
+            logger.warning(
+                "Both the subject name and application URI are extracted directly from the certificate. "
+                "Any values provided via the --subject-name and --application-uri will be disregarded."
+            )
+
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
 
@@ -825,27 +832,26 @@ class OpcUACerts(Queryable):
         der_data = read_file_content(file_path=public_key_file, read_as_binary=True)
         certificate = decode_der_certificate(der_data)
 
-        if certificate:
-            # Get the subject name and application uri from the certificate
-            # and validate it with the provided values
-            cert_subject_name = certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
-
-            cert_application_uri = ""
-            extension_value = certificate.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME).value
-
-            for general_name in extension_value:
-                if isinstance(general_name, x509.UniformResourceIdentifier):
-                    cert_application_uri = general_name.value
-
-            for value, name in [(cert_subject_name, "subject name"), (cert_application_uri, "application URI")]:
-                # if value is empty or space, raise error
-                if not value or value.isspace():
-                    raise ValueError(
-                        f"Not able to extract {name} from the certificate. "
-                        f"Please provide the correct {name} in certificate via --public-key-file."
-                    )
-
-            return cert_subject_name, cert_application_uri
-
-        else:
+        if not certificate:
             raise ValueError("Error decoding DER certificate. Please make sure the certificate is valid.")
+
+        # Get the subject name and application uri from the certificate
+        # and validate it with the provided values
+        cert_subject_name = certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
+
+        cert_application_uri = ""
+        extension_value = certificate.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME).value
+
+        for general_name in extension_value:
+            if isinstance(general_name, x509.UniformResourceIdentifier):
+                cert_application_uri = general_name.value
+
+        for value, name in [(cert_subject_name, "subject name"), (cert_application_uri, "application URI")]:
+            # if value is empty or space, raise error
+            if not value or value.isspace():
+                raise ValueError(
+                    f"Not able to extract {name} from the certificate. "
+                    f"Please provide the correct {name} in certificate via --public-key-file."
+                )
+
+        return cert_subject_name, cert_application_uri

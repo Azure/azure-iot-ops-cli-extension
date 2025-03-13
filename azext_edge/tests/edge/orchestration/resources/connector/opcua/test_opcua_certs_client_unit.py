@@ -31,6 +31,7 @@ from .conftest import (
 from azext_edge.tests.generators import generate_random_string
 
 
+# TODO: Resturcture parameters into dict
 @pytest.mark.parametrize(
     "expected_resources_map, client_app_spc, client_app_secretsync,"
     "public_file_name, private_file_name, expected_secret_sync",
