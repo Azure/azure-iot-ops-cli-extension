@@ -224,7 +224,10 @@ class OpcUACerts(Queryable):
         private_key_secret_name: Optional[str] = None,
     ) -> dict:
         # inform user if the provided cert was issued by a CA, the CA cert must be added to the issuers list.
-        logger.warning("If this certificate was issued by a CA, then please ensure that the certificate is added to issuer list.")
+        logger.warning(
+            "If this certificate was issued by a CA, then please ensure that the certificate is "
+            "added to issuer list."
+        )
 
         if subject_name or application_uri:
             logger.warning(
@@ -375,7 +378,8 @@ class OpcUACerts(Queryable):
         for name in certificate_names:
             if name not in [mapping["targetKey"] for mapping in secret_mapping]:
                 logger.warning(
-                    f"Certificate {name} not found in secretsync resource {secretsync_name}. " "Skipping removal..."
+                    f"Certificate {name} not found in secretsync resource {secretsync_name}. "
+                    "Skipping removal..."
                 )
             else:
                 # append corresponding "sourcePath" of matching "targetKey"
