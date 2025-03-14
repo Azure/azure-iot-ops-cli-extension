@@ -219,6 +219,8 @@ def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: st
     with open(temp_spc_json, "w", encoding="utf-8") as f:
         json.dump(spc_data, f)
 
+    run(f"kubectl apply -f {temp_spc_json}")
+
     # generate the secretsync
     secret_key_name = f"targetkey{generate_random_string()}"
     secret_sync_name = f"sync-{generate_random_string(size=6, force_lower=True)}"
@@ -235,17 +237,23 @@ def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: st
     with open(temp_sync_json, "w", encoding="utf-8") as f:
         json.dump(secret_sync_data, f)
 
-    run(f"kubectl apply -f {temp_spc_json}")
     run(f"kubectl apply -f {temp_sync_json}")
 
-    # wait a bit to populate secret
-    sleep(20)
-
-    # check the secret
-    secret_data = run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json")
-    assert secret_key_name in secret_data["data"]
-    decoded = str(b64decode(secret_data["data"][secret_key_name]), encoding="utf-8")
-    assert decoded == secret_value
+    # use the try mechanism for waiting for the secret to be created
+    tries = 0
+    while tries < ROLE_MAX_RETRIES:
+        try:
+            # check the secret
+            secret_data = run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json")
+            assert secret_key_name in secret_data["data"]
+            decoded = str(b64decode(secret_data["data"][secret_key_name]), encoding="utf-8")
+            assert decoded == secret_value
+            break
+        except CLIInternalError as e:
+            tries += 1
+            sleep(ROLE_RETRY_INTERVAL)
+            if tries == ROLE_MAX_RETRIES:
+                raise e
 
     run(f"az keyvault secret delete --vault-name {kv_name} --name {secret_name}")
 
@@ -310,7 +318,7 @@ def _get_role_list(
             tries += 1
             sleep(ROLE_RETRY_INTERVAL)
 
-    raise AssertionError("Failed to create user assigned identity. Please retry with a given identity.")
+    raise AssertionError("Failed to fetch role assignments.")
 
 
 SECRET_SYNC_TEMPLATE = {
