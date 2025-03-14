@@ -107,7 +107,7 @@ jobs:
       matrix:
         feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
         runtime-args:
-          - ${{ github.env.RUNTIME_INIT_ARGS != '' || github.env.RUNTIME_CREATE_ARGS != '' }}
+          - ${{ inputs.runtime-create-args != '' || inputs.runtime-init-args != '' }}
         exclude:
           - feature: custom-input
             runtime-args: false
