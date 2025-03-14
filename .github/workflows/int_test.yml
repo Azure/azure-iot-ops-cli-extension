@@ -92,7 +92,7 @@ env:
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
   K3S_VERSION: "v1.28.5+k3s1"
   CUSTOM_LOCATIONS_OID: "${{ inputs.custom-locations-oid }}"
-  KEEP_ALIVE: ${{ fromJson(inputs.keep-on-failure) }}
+  KEEP_ALIVE: ${{ inputs.keep-on-failure }}
   RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args }}"
   RUNTIME_INIT_ARGS: "${{ inputs.runtime-init-args }}"
 
@@ -124,6 +124,12 @@ jobs:
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
+      - name: "Check Keep On Failure arg"
+        run: |
+          if [[ ! ${{ env.KEEP_ALIVE }} =~ ^[0-9]+$ ]]; then
+            echo "The input is not a valid number"
+            exit 1
+          fi
       - name: "Determine Init Args"
         id: "init"
         run: |
