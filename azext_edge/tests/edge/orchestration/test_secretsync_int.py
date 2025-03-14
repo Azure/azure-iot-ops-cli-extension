@@ -239,7 +239,7 @@ def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: st
     run(f"kubectl apply -f {temp_sync_json}")
 
     # wait a bit to populate secret
-    sleep(10)
+    sleep(20)
 
     # check the secret
     secret_data = run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json")
