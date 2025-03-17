@@ -27,6 +27,11 @@ on:
         type: boolean
         required: false
         default: true
+      keep-on-failure:
+          description: Number of minutes to keep the cluster(s) active on failure (max 240 min).
+          type: number
+          required: false
+          default: 0
       use-container:
         description: Build container image for tests
         type: boolean
@@ -67,6 +72,11 @@ on:
         type: boolean
         required: false
         default: true
+      keep-on-failure:
+          description: Number of minutes to keep the cluster(s) active on failure (max 240 min).
+          type: number
+          required: false
+          default: 0
       use-container:
         description: Build container image for tests
         type: boolean
@@ -82,6 +92,9 @@ env:
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
   K3S_VERSION: "v1.28.5+k3s1"
   CUSTOM_LOCATIONS_OID: "${{ inputs.custom-locations-oid }}"
+  KEEP_ALIVE: ${{ inputs.keep-on-failure }}
+  RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args }}"
+  RUNTIME_INIT_ARGS: "${{ inputs.runtime-init-args }}"
 
 jobs:
   test:
@@ -94,7 +107,7 @@ jobs:
       matrix:
         feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
         runtime-args:
-          - ${{ inputs.runtime-init-args != '' || inputs.runtime-create-args != '' }}
+          - ${{ inputs.runtime-create-args != '' || inputs.runtime-init-args != '' }}
         exclude:
           - feature: custom-input
             runtime-args: false
@@ -111,6 +124,12 @@ jobs:
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
+      - name: "Check Keep On Failure arg"
+        run: |
+          if [[ ! ${{ env.KEEP_ALIVE }} =~ ^[0-9]+$ ]]; then
+            echo "The input is not a valid number"
+            exit 1
+          fi
       - name: "Determine Init Args"
         id: "init"
         run: |
@@ -121,8 +140,8 @@ jobs:
           elif [[ ${{ matrix.feature }} == "syncrules" ]]; then
             echo "CREATE_ARG=--enable-rsync" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "custom-input" ]]; then
-            echo "CREATE_ARG=${{ inputs.runtime-create-args }}" >> $GITHUB_OUTPUT
-            echo "INIT_ARG=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
+            echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
+            echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "trustbundle" ]]; then
             echo "CREATE_ARG=--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer " >> $GITHUB_OUTPUT
             echo "INIT_ARG=--user-trust true" >> $GITHUB_OUTPUT
@@ -148,7 +167,7 @@ jobs:
       - name: "Create k3s cluster"
         uses: ./.github/actions/create-k3s-cluster
       - name: "Apply custom cluster issuer"
-        if: ${{ matrix.feature == 'trustbundle' || contains(inputs.runtime-init-args, '--user-trust') }}
+        if: ${{ matrix.feature == 'trustbundle' || contains(env.RUNTIME_INIT_ARGS, '--user-trust') }}
         run: |
           set -x
           helm repo add jetstack https://charts.jetstack.io --force-update
@@ -348,6 +367,25 @@ jobs:
           az iot ops check --as-object
           az iot ops check --svc broker --resources broker brokerlistener
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
+      - name: "Keep cluster alive"
+        if: ${{ env.KEEP_ALIVE > 0 && failure() }}
+        run: |
+          TIME_LIMIT=${{ env.KEEP_ALIVE }}
+          if (( $TIME_LIMIT > 240 )); then
+            echo "Given time limit is over the maximum of 4 hours. Setting to 4 hours."
+            TIME_LIMIT=240
+          fi
+
+          echo "Cluster ${{ env.CLUSTER_NAME }} in resource group ${{ env.RESOURCE_GROUP }}"
+          echo "Instance name ${{ env.INSTANCE_NAME }}"
+          echo ""
+
+          for ((i=0; i < $TIME_LIMIT; i+=1)); do
+            if [ $(( i % 10 )) == 0 ]; then
+              echo "Remaining time: $(( $TIME_LIMIT - i )) minutes"
+            fi
+            sleep 60s
+          done
       - name: "Delete Cluster for redeployment"
         if: ${{ matrix.feature == 'redeploy' }}
         run: |
