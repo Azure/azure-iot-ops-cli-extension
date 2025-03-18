@@ -73,6 +73,7 @@ def build_bundle(
     from .support.secretstore import prepare_bundle as prepare_secretstore_bundle
     from .support.azuremonitor import prepare_bundle as prepare_azuremonitor_bundle
     from .support.certmanager import prepare_bundle as prepare_certmanager_bundle
+    from .support.meso import prepare_bundle as prepare_meso_bundle
 
     def collect_default_works(
         pending_work: dict,
@@ -133,6 +134,10 @@ def build_bundle(
             "apis": COMPAT_CERTMANAGER_APIS,
             "prepare_bundle": prepare_certmanager_bundle,
         },
+        OpsServiceType.meso.value: {
+            "apis": None,
+            "prepare_bundle": prepare_meso_bundle,
+        },
     }
 
     if not ops_services:
@@ -150,6 +155,7 @@ def build_bundle(
         if not deployed_apis and service_moniker not in [
             OpsServiceType.schemaregistry.value,
             OpsServiceType.akri.value,
+            OpsServiceType.meso.value,
         ]:
             expected_api_version = api_info["apis"].as_str()
             logger.warning(
@@ -166,7 +172,7 @@ def build_bundle(
             bundle = bundle_method(deployed_apis)
         elif service_moniker == OpsServiceType.mq.value:
             bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
-        elif service_moniker in [OpsServiceType.schemaregistry.value, OpsServiceType.akri.value]:
+        elif service_moniker in [OpsServiceType.schemaregistry.value, OpsServiceType.akri.value, OpsServiceType.meso.value]:
             bundle = bundle_method(log_age_seconds)
         else:
             bundle = bundle_method(log_age_seconds, deployed_apis)
