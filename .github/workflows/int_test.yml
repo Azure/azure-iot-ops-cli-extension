@@ -82,6 +82,11 @@ on:
         type: boolean
         required: false
         default: false
+      alias:
+        description: will be replaced with secret. I just dont have perms
+        type: string
+        required: false
+        default: ''
 
 permissions:
   # required for OpenID federation
@@ -96,18 +101,40 @@ env:
   RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args }}"
   RUNTIME_INIT_ARGS: "${{ inputs.runtime-init-args }}"
 
+
 jobs:
+  setup:
+    name: "Check Inputs"
+    runs-on: ubuntu-22.04
+    outputs:
+      create_args: ${{ steps.custom_input.outputs.CREATE_ARG }}
+      init_args: ${{ steps.custom_input.outputs.INIT_ARG }}
+    steps:
+      - name: "Check Keep On Failure arg"
+        run: |
+          if [[ ! ${{ env.KEEP_ALIVE }} =~ ^[0-9]+$ ]]; then
+            echo "The input is not a valid number"
+            exit 1
+          fi
+      - name: "Output custom inputs for future job"
+        id: custom_input
+        run: |
+          echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
+          echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
   test:
+    needs: setup
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
       INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.feature }}"
       KEYVAULT_NAME: "kv${{ github.run_number }}"
+      INIT_ARG: ${{ needs.setup.outputs.init_args }}
+      CREATE_ARG: ${{ needs.setup.outputs.create_args }}
     strategy:
       fail-fast: false
       matrix:
         feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
         runtime-args:
-          - ${{ inputs.runtime-create-args != '' || inputs.runtime-init-args != '' }}
+          - ${{ needs.setup.outputs.init_args != '' || needs.setup.outputs.create_args != '' }}
         exclude:
           - feature: custom-input
             runtime-args: false
@@ -124,12 +151,6 @@ jobs:
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
-      - name: "Check Keep On Failure arg"
-        run: |
-          if [[ ! ${{ env.KEEP_ALIVE }} =~ ^[0-9]+$ ]]; then
-            echo "The input is not a valid number"
-            exit 1
-          fi
       - name: "Determine Init Args"
         id: "init"
         run: |
@@ -370,6 +391,9 @@ jobs:
       - name: "Keep cluster alive"
         if: ${{ env.KEEP_ALIVE > 0 && failure() }}
         run: |
+          AAD_ENTITY_ID=${{ inputs.alias }}
+          kubectl create clusterrolebinding demo-user-binding --clusterrole cluster-admin --user=$AAD_ENTITY_ID
+
           TIME_LIMIT=${{ env.KEEP_ALIVE }}
           if (( $TIME_LIMIT > 240 )); then
             echo "Given time limit is over the maximum of 4 hours. Setting to 4 hours."
