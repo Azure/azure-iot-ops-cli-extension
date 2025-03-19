@@ -394,15 +394,24 @@ jobs:
           AAD_ENTITY_ID=${{ inputs.alias }}
           kubectl create clusterrolebinding demo-user-binding --clusterrole cluster-admin --user=$AAD_ENTITY_ID
 
+          CLUSTER_RID=$(az connectedk8s show -n ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --query id -o tsv)
+
+          echo "Cluster ${{ env.CLUSTER_NAME }} in resource group ${{ env.RESOURCE_GROUP }}"
+          echo "Instance name ${{ env.INSTANCE_NAME }}"
+
+          echo "Please add in role assignments manually"
+          echo "az role assignment create --role "Azure Arc Kubernetes Viewer" --assignee <your-alias>@microsoft.com --scope $CLUSTER_RID"
+          echo "az role assignment create --role "Azure Arc Enabled Kubernetes Cluster User Role" --assignee <your-alias>@microsoft.com --scope $CLUSTER_RID"
+
+          echo "To connect to the cluster please use"
+          echo "az connectedk8s proxy --ids $CLUSTER_RID"
+          echo ""
+
           TIME_LIMIT=${{ env.KEEP_ALIVE }}
           if (( $TIME_LIMIT > 240 )); then
             echo "Given time limit is over the maximum of 4 hours. Setting to 4 hours."
             TIME_LIMIT=240
           fi
-
-          echo "Cluster ${{ env.CLUSTER_NAME }} in resource group ${{ env.RESOURCE_GROUP }}"
-          echo "Instance name ${{ env.INSTANCE_NAME }}"
-          echo ""
 
           for ((i=0; i < $TIME_LIMIT; i+=1)); do
             if [ $(( i % 10 )) == 0 ]; then
