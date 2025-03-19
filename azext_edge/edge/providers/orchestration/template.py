@@ -48,13 +48,13 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="39e870f7654bae17c3eeba9dccb12afa91c73626",
+    commit_id="b4198d335d6bd5c71c7707070c72938ae41d555e",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "13776867008551554348"}
+            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "11919718419833561801"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -210,18 +210,8 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {
-                "platform": "0.7.11",
-                "secretStore": "0.7.5",
-                "containerStorage": "2.2.4",
-                "openServiceMesh": "1.2.10",
-            },
-            "TRAINS": {
-                "platform": "preview",
-                "secretStore": "preview",
-                "containerStorage": "stable",
-                "openServiceMesh": "stable",
-            },
+            "VERSIONS": {"platform": "0.7.11", "secretStore": "0.8.2", "containerStorage": "2.3.2"},
+            "TRAINS": {"platform": "preview", "secretStore": "preview", "containerStorage": "stable"},
             "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arccontainerstorage-storage-pool')]",
             "nonFaultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'default,local-path')]",
             "kubernetesStorageClass": "[if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), variables('faultTolerantStorageClass'), variables('nonFaultTolerantStorageClass'))]",
@@ -268,26 +258,6 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                 },
                 "dependsOn": ["aio_platform_extension"],
             },
-            "open_service_mesh_extension": {
-                "type": "Microsoft.KubernetesConfiguration/extensions",
-                "apiVersion": "2023-05-01",
-                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "open-service-mesh",
-                "properties": {
-                    "extensionType": "microsoft.openservicemesh",
-                    "autoUpgradeMinorVersion": False,
-                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'openServiceMesh'), 'version'), variables('VERSIONS').openServiceMesh)]",
-                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'openServiceMesh'), 'train'), variables('TRAINS').openServiceMesh)]",
-                    "configurationSettings": {
-                        "osm.osm.enablePermissiveTrafficPolicy": "false",
-                        "osm.osm.featureFlags.enableWASMStats": "false",
-                        "osm.osm.configResyncInterval": "10s",
-                        "osm.osm.osmController.resource.requests.cpu": "100m",
-                        "osm.osm.osmBootstrap.resource.requests.cpu": "100m",
-                        "osm.osm.injector.resource.requests.cpu": "100m",
-                    },
-                },
-            },
             "container_storage_extension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
@@ -301,7 +271,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'train'), variables('TRAINS').containerStorage)]",
                     "configurationSettings": "[union(createObject('edgeStorageConfiguration.create', 'true', 'feature.diskStorageClass', variables('kubernetesStorageClass')), if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), createObject('acstorConfiguration.create', 'true', 'acstorConfiguration.properties.diskMountPoint', '/mnt'), createObject()))]",
                 },
-                "dependsOn": ["aio_platform_extension", "open_service_mesh_extension"],
+                "dependsOn": ["aio_platform_extension"],
             },
         },
         "outputs": {
@@ -328,12 +298,6 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "version": "[reference('secret_store_extension').version]",
                         "releaseTrain": "[reference('secret_store_extension').releaseTrain]",
                     },
-                    "openServiceMesh": {
-                        "name": "open-service-mesh",
-                        "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'open-service-mesh')]",
-                        "version": "[reference('open_service_mesh_extension').version]",
-                        "releaseTrain": "[reference('open_service_mesh_extension').releaseTrain]",
-                    },
                     "containerStorage": {
                         "name": "azure-arc-containerstorage",
                         "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-arc-containerstorage')]",
@@ -347,13 +311,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="7e05ba251db9d261956c379de0b8a3aceeed23d3",
+    commit_id="2122bbc7426734dad05d482cb2a37ed5e6753192",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "6093590022463185967"}
+            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "12128465284481135903"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -525,7 +489,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "1.0.15"},
+            "VERSIONS": {"iotOperations": "1.0.34"},
             "TRAINS": {"iotOperations": "stable"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",

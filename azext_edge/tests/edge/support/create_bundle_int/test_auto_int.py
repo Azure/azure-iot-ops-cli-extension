@@ -25,7 +25,9 @@ pytestmark = pytest.mark.e2e
 
 def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
     # case = ops_service, mq_traces, bundle_dir
-    cases = [(service, False, "support_bundles") for service in OpsServiceType.list()]
+    service_list = OpsServiceType.list()
+    service_list.remove("openservicemesh")
+    cases = [(service, False, "support_bundles") for service in service_list]
     cases.append((OpsServiceType.mq.value, True, None))
 
     # test "all services" bundle
@@ -34,7 +36,7 @@ def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
 
 
 @pytest.mark.parametrize("ops_service, mq_traces, bundle_dir", generate_bundle_test_cases())
-def test_create_bundle(cluster_connection, bundle_dir, mq_traces, ops_service, tracked_files):
+def test_create_bundle(cluster_connection, ops_service, bundle_dir, mq_traces, tracked_files):
     """Test to focus on ops_service param."""
 
     # skip arccontainerstorage and azuremonitor for aio namespace check
