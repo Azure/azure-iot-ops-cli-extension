@@ -391,20 +391,23 @@ jobs:
       - name: "Keep cluster alive"
         if: ${{ env.KEEP_ALIVE > 0 && failure() }}
         run: |
-          AAD_ENTITY_ID=${{ inputs.alias }}
-          kubectl create clusterrolebinding demo-user-binding --clusterrole cluster-admin --user=$AAD_ENTITY_ID
-
-          CLUSTER_RID=$(az connectedk8s show -n ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --query id -o tsv)
+          num=1
+          for alias in ${{ inputs.alias }}
+          do
+            binding_name="tempbinding$num"
+            kubectl create clusterrolebinding binding_name --clusterrole cluster-admin --user=$alias
+            num=$((num + 1))
+          done
 
           echo "Cluster ${{ env.CLUSTER_NAME }} in resource group ${{ env.RESOURCE_GROUP }}"
           echo "Instance name ${{ env.INSTANCE_NAME }}"
 
           echo "Please add in role assignments manually"
-          echo "az role assignment create --role "Azure Arc Kubernetes Viewer" --assignee <your-alias>@microsoft.com --scope $CLUSTER_RID"
-          echo "az role assignment create --role "Azure Arc Enabled Kubernetes Cluster User Role" --assignee <your-alias>@microsoft.com --scope $CLUSTER_RID"
+          echo "az role assignment create --role "Azure Arc Kubernetes Viewer" --assignee <your-alias>@microsoft.com --scope <cluster-id>"
+          echo "az role assignment create --role "Azure Arc Enabled Kubernetes Cluster User Role" --assignee <your-alias>@microsoft.com --scope <cluster-id>"
 
           echo "To connect to the cluster please use"
-          echo "az connectedk8s proxy --ids $CLUSTER_RID"
+          echo "az connectedk8s proxy --ids <cluster-id>"
           echo ""
 
           TIME_LIMIT=${{ env.KEEP_ALIVE }}
