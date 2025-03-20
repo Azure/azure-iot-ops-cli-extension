@@ -82,11 +82,6 @@ on:
         type: boolean
         required: false
         default: false
-      alias:
-        description: will be replaced with secret. I just dont have perms
-        type: string
-        required: false
-        default: ''
 
 permissions:
   # required for OpenID federation
