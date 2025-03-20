@@ -386,7 +386,7 @@ jobs:
       - name: "Keep cluster alive"
         if: ${{ env.KEEP_ALIVE > 0 && failure() }}
         run: |
-          kubectl create clusterrolebinding teamaccessbinding --clusterrole cluster-admin --user ${{ secrets.CLUSTER_ACCESS_SG }} >/dev/null 2>&1
+          kubectl create clusterrolebinding teamaccessbinding --clusterrole cluster-admin --group ${{ secrets.CLUSTER_ACCESS_SG }} >/dev/null 2>&1
 
           echo "Cluster ${{ env.CLUSTER_NAME }} in resource group ${{ env.RESOURCE_GROUP }}"
           echo "Instance name ${{ env.INSTANCE_NAME }}"
