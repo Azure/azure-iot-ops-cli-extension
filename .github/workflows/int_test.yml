@@ -395,7 +395,7 @@ jobs:
           for alias in ${{ inputs.alias }}
           do
             binding_name="tempbinding$num"
-            kubectl create clusterrolebinding binding_name --clusterrole cluster-admin --user=$alias
+            kubectl create clusterrolebinding $binding_name --clusterrole cluster-admin --user=$alias
             num=$((num + 1))
           done
 
@@ -407,7 +407,7 @@ jobs:
           echo "az role assignment create --role "Azure Arc Enabled Kubernetes Cluster User Role" --assignee <your-alias>@microsoft.com --scope <cluster-id>"
 
           echo "To connect to the cluster please use"
-          echo "az connectedk8s proxy --ids <cluster-id>"
+          echo "az connectedk8s proxy -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }}"
           echo ""
 
           TIME_LIMIT=${{ env.KEEP_ALIVE }}
