@@ -80,7 +80,10 @@ def mock_broker_config():
 
 @pytest.fixture
 def mocked_sleep(mocker):
-    patched = mocker.patch("azext_edge.edge.util.az_client.sleep", autospec=True)
+    patched = {
+        "az_client.sleep": mocker.patch("azext_edge.edge.util.az_client.sleep", autospec=True),
+        "work.sleep": mocker.patch("azext_edge.edge.providers.orchestration.work.sleep", autospec=True)
+    }
     yield patched
 
 
