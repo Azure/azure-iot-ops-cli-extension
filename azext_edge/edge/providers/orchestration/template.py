@@ -54,7 +54,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "11919718419833561801"}
+            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "13109412550047077688"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -109,6 +109,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                             "train": {"type": "string", "nullable": True},
                             "diskStorageClass": {"type": "string", "nullable": True},
                             "faultToleranceEnabled": {"type": "bool", "nullable": True},
+                            "diskMountPoint": {"type": "string", "nullable": True},
                         },
                         "nullable": True,
                     },
@@ -177,6 +178,49 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                 },
                 "metadata": {"__bicep_imported_from!": {"sourceTemplate": "types.bicep"}},
             },
+            "_1.Features": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": {
+                    "$ref": "#/definitions/_1.InstanceFeature",
+                    "metadata": {"description": "Object of features"},
+                },
+                "metadata": {
+                    "description": "AIO Instance features.",
+                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
+                },
+            },
+            "_1.InstanceFeature": {
+                "type": "object",
+                "properties": {
+                    "mode": {"$ref": "#/definitions/_1.InstanceFeatureMode"},
+                    "settings": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": {"$ref": "#/definitions/_1.InstanceFeatureSettingValue"},
+                    },
+                },
+                "metadata": {
+                    "description": "Individual feature object within the AIO instance.",
+                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
+                },
+            },
+            "_1.InstanceFeatureMode": {
+                "type": "string",
+                "allowedValues": ["Disabled", "Preview", "Stable"],
+                "metadata": {
+                    "description": 'The mode of the AIO instance feature. Either "Stable", "Preview" or "Disabled".',
+                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
+                },
+            },
+            "_1.InstanceFeatureSettingValue": {
+                "type": "string",
+                "allowedValues": ["Disabled", "Enabled"],
+                "metadata": {
+                    "description": 'The setting value of the AIO instance feature. Either "Enabled" or "Disabled".',
+                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
+                },
+            },
             "_1.SelfSigned": {
                 "type": "object",
                 "properties": {"source": {"type": "string", "allowedValues": ["SelfSigned"]}},
@@ -210,11 +254,12 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"platform": "0.7.11", "secretStore": "0.8.2", "containerStorage": "2.3.2"},
+            "VERSIONS": {"platform": "0.7.12", "secretStore": "0.8.2", "containerStorage": "2.4.0"},
             "TRAINS": {"platform": "preview", "secretStore": "preview", "containerStorage": "stable"},
             "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arccontainerstorage-storage-pool')]",
             "nonFaultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'default,local-path')]",
-            "kubernetesStorageClass": "[if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), variables('faultTolerantStorageClass'), variables('nonFaultTolerantStorageClass'))]",
+            "diskStorageClass": "[if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), variables('faultTolerantStorageClass'), variables('nonFaultTolerantStorageClass'))]",
+            "diskMountPoint": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskMountPoint'), '/mnt')]",
         },
         "resources": {
             "cluster": {
@@ -269,7 +314,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "autoUpgradeMinorVersion": False,
                     "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'version'), variables('VERSIONS').containerStorage)]",
                     "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'train'), variables('TRAINS').containerStorage)]",
-                    "configurationSettings": "[union(createObject('edgeStorageConfiguration.create', 'true', 'feature.diskStorageClass', variables('kubernetesStorageClass')), if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), createObject('acstorConfiguration.create', 'true', 'acstorConfiguration.properties.diskMountPoint', '/mnt'), createObject()))]",
+                    "configurationSettings": "[union(createObject('edgeStorageConfiguration.create', 'true', 'feature.diskStorageClass', variables('diskStorageClass')), if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), createObject('acstorConfiguration.create', 'true', 'acstorConfiguration.properties.diskMountPoint', variables('diskMountPoint')), createObject()))]",
                 },
                 "dependsOn": ["aio_platform_extension"],
             },
@@ -317,7 +362,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "12128465284481135903"}
+            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "10273044277193289164"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -372,6 +417,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                             "train": {"type": "string", "nullable": True},
                             "diskStorageClass": {"type": "string", "nullable": True},
                             "faultToleranceEnabled": {"type": "bool", "nullable": True},
+                            "diskMountPoint": {"type": "string", "nullable": True},
                         },
                         "nullable": True,
                     },
@@ -440,6 +486,49 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 },
                 "metadata": {"__bicep_imported_from!": {"sourceTemplate": "types.bicep"}},
             },
+            "_1.Features": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": {
+                    "$ref": "#/definitions/_1.InstanceFeature",
+                    "metadata": {"description": "Object of features"},
+                },
+                "metadata": {
+                    "description": "AIO Instance features.",
+                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
+                },
+            },
+            "_1.InstanceFeature": {
+                "type": "object",
+                "properties": {
+                    "mode": {"$ref": "#/definitions/_1.InstanceFeatureMode"},
+                    "settings": {
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": {"$ref": "#/definitions/_1.InstanceFeatureSettingValue"},
+                    },
+                },
+                "metadata": {
+                    "description": "Individual feature object within the AIO instance.",
+                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
+                },
+            },
+            "_1.InstanceFeatureMode": {
+                "type": "string",
+                "allowedValues": ["Disabled", "Preview", "Stable"],
+                "metadata": {
+                    "description": 'The mode of the AIO instance feature. Either "Stable", "Preview" or "Disabled".',
+                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
+                },
+            },
+            "_1.InstanceFeatureSettingValue": {
+                "type": "string",
+                "allowedValues": ["Disabled", "Enabled"],
+                "metadata": {
+                    "description": 'The setting value of the AIO instance feature. Either "Enabled" or "Disabled".',
+                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
+                },
+            },
             "_1.SelfSigned": {
                 "type": "object",
                 "properties": {"source": {"type": "string", "allowedValues": ["SelfSigned"]}},
@@ -481,6 +570,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "deployResourceSyncRules": {"type": "bool", "defaultValue": False},
             "userAssignedIdentity": {"type": "string", "nullable": True},
             "schemaRegistryId": {"type": "string"},
+            "features": {"$ref": "#/definitions/_1.Features", "nullable": True},
             "brokerConfig": {"$ref": "#/definitions/_1.BrokerConfig", "nullable": True},
             "trustConfig": {"$ref": "#/definitions/_1.TrustConfig", "defaultValue": {"source": "SelfSigned"}},
             "defaultDataflowinstanceCount": {"type": "int", "defaultValue": 1},
@@ -489,11 +579,12 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "1.0.34"},
-            "TRAINS": {"iotOperations": "stable"},
+            "VERSIONS": {"iotOperations": "1.1.9"},
+            "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,
+                "brokerListenerHost": "[format('aio-broker.{0}', variables('AIO_EXTENSION_SCOPE').cluster.releaseNamespace)]",
                 "serviceAccountAudience": "aio-internal",
                 "selfSignedIssuerName": "[format('{0}-aio-certificate-issuer', parameters('clusterNamespace'))]",
                 "selfSignedConfigMapName": "[format('{0}-aio-ca-trust-bundle', parameters('clusterNamespace'))]",
@@ -513,7 +604,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
                 "connectors.values.opcPlcSimulation.deploy": "false",
                 "connectors.values.opcPlcSimulation.autoAcceptUntrustedCertificates": "false",
-                "connectors.values.discoveryHandler.enabled": "false",
+                "connectors.values.enablePreviewFeatures": "true",
                 "adr.values.Microsoft.CustomLocation.ServiceAccount": "default",
                 "akri.values.webhookConfiguration.enabled": "false",
                 "akri.values.certManagerWebhookCertificate.enabled": "false",
@@ -600,7 +691,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
-                "apiVersion": "2024-11-01",
+                "apiVersion": "2025-04-01",
                 "name": "[format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5)))]",
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": {
@@ -608,15 +699,12 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "type": "CustomLocation",
                 },
                 "identity": "[if(empty(parameters('userAssignedIdentity')), createObject('type', 'None'), createObject('type', 'UserAssigned', 'userAssignedIdentities', createObject(format('{0}', parameters('userAssignedIdentity')), createObject())))]",
-                "properties": {
-                    "description": "An AIO instance.",
-                    "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},
-                },
+                "properties": "[union(createObject('description', 'An AIO instance.', 'schemaRegistryRef', createObject('resourceId', parameters('schemaRegistryId'))), if(equals(parameters('features'), null()), createObject(), createObject('features', parameters('features'))))]",
                 "dependsOn": ["customLocation"],
             },
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
-                "apiVersion": "2024-11-01",
+                "apiVersion": "2025-04-01",
                 "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -641,7 +729,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "broker_authn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
-                "apiVersion": "2024-11-01",
+                "apiVersion": "2025-04-01",
                 "name": "[format('{0}/{1}/{2}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default', 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -661,7 +749,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "broker_listener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-                "apiVersion": "2024-11-01",
+                "apiVersion": "2025-04-01",
                 "name": "[format('{0}/{1}/{2}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default', 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -691,7 +779,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "dataflow_profile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
-                "apiVersion": "2024-11-01",
+                "apiVersion": "2025-04-01",
                 "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -702,7 +790,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "dataflow_endpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
-                "apiVersion": "2024-11-01",
+                "apiVersion": "2025-04-01",
                 "name": "[format('{0}/{1}', format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))), 'default')]",
                 "extendedLocation": {
                     "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -735,10 +823,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
                     "version": "[reference('aio_extension').version]",
                     "releaseTrain": "[reference('aio_extension').releaseTrain]",
-                    "config": {
-                        "brokerListenerName": "[variables('MQTT_SETTINGS').brokerListenerServiceName]",
-                        "brokerListenerPort": "[variables('MQTT_SETTINGS').brokerListenerPort]",
-                    },
+                    "config": {"trustConfig": "[parameters('trustConfig')]"},
                     "identityPrincipalId": "[reference('aio_extension', '2023-05-01', 'full').identity.principalId]",
                 },
             },
@@ -750,7 +835,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                         "name": "default",
                         "listener": "default",
                         "authn": "default",
-                        "settings": "[variables('BROKER_CONFIG')]",
+                        "settings": "[shallowMerge(createArray(variables('BROKER_CONFIG'), variables('MQTT_SETTINGS')))]",
                     },
                 },
             },
@@ -774,7 +859,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
 def get_insecure_listener(instance_name: str, broker_name: str) -> dict:
     return {
         "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-        "apiVersion": "2024-11-01",
+        "apiVersion": "2025-04-01",
         "name": f"{instance_name}/{broker_name}/{AIO_INSECURE_LISTENER_NAME}",
         "extendedLocation": {
             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
