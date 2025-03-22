@@ -26,10 +26,12 @@ from .conftest import (
     get_secret_endpoint,
     get_secretsync_endpoint,
     get_spc_endpoint,
+    build_mock_cert,
 )
 from azext_edge.tests.generators import generate_random_string
 
 
+# TODO: Resturcture parameters into dict
 @pytest.mark.parametrize(
     "expected_resources_map, client_app_spc, client_app_secretsync,"
     "public_file_name, private_file_name, expected_secret_sync",
@@ -63,6 +65,7 @@ def test_client_add(
     mocker,
     mocked_cmd,
     mocked_read_file_content: Mock,
+    mocked_load_x509_cert: Mock,
     mocked_sleep: Mock,
     mocked_logger: Mock,
     expected_resources_map: dict,
@@ -153,9 +156,16 @@ def test_client_add(
         overwrite_secret=True,
     )
 
+    warnings = [call[0][0] for call in mocked_logger.warning.call_args_list]
+
     assert (
-        mocked_logger.warning.call_args[0][0] == "Please ensure the certificate must be added "
-        "to the issuers list if it was issued by a CA."
+        "Both the subject name and application URI are extracted directly from the certificate. "
+        "Any values provided via the --subject-name and --application-uri will be disregarded." in warnings
+    )
+
+    assert (
+        "If this certificate was issued by a CA, then please "
+        "ensure that the certificate is added to issuer list." in warnings
     )
 
     if result:
@@ -187,7 +197,7 @@ def test_client_add(
 
 @pytest.mark.parametrize(
     "expected_resources_map, client_app_spc, client_app_secretsync,"
-    "public_file_name, private_file_name, expected_error",
+    "public_file_name, private_file_name, subject_name, uri, expected_error",
     [
         # no default spc
         (
@@ -199,6 +209,8 @@ def test_client_add(
             {},
             "/fake/path/certificate.der",
             "/fake/path/certificate.pem",
+            "subjectname",
+            "uri",
             "Please enable secret sync before adding certificate.",
         ),
         # no aio extension
@@ -219,6 +231,8 @@ def test_client_add(
             ),
             "/fake/path/certificate.der",
             "/fake/path/certificate.pem",
+            "subjectname",
+            "uri",
             "IoT Operations extension not found.",
         ),
         # file names not matching
@@ -231,7 +245,39 @@ def test_client_add(
             {},
             "/fake/path/pubkey.der",
             "/fake/path/prikey.pem",
+            "subjectname",
+            "uri",
             "Public key file name pubkey and private key file name prikey must match.",
+        ),
+        # subject name not found
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+            },
+            {},
+            {},
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            " ",
+            "uri",
+            "Not able to extract subject name from the certificate. "
+            "Please provide the correct subject name in certificate via --public-key-file.",
+        ),
+        # uri not found
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+            },
+            {},
+            {},
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            "subjectname",
+            " ",
+            "Not able to extract application URI from the certificate. "
+            "Please provide the correct application URI in certificate via --public-key-file.",
         ),
     ],
 )
@@ -239,12 +285,15 @@ def test_client_add_errors(
     mocker,
     mocked_cmd,
     mocked_read_file_content: Mock,
+    mocked_load_x509_cert: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     client_app_spc: dict,
     client_app_secretsync: dict,
     public_file_name: str,
     private_file_name: str,
+    subject_name: str,
+    uri: str,
     expected_error: str,
     mocked_get_resource_client: Mock,
     mocked_instance: Mock,
@@ -262,6 +311,7 @@ def test_client_add_errors(
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
     mocked_read_file_content.return_value = file_content
+    mocked_load_x509_cert.return_value = build_mock_cert(subject_name=subject_name, uri=uri)
 
     if client_app_spc:
         # get secrets
@@ -324,8 +374,8 @@ def test_client_add_errors(
             resource_group=rg_name,
             public_key_file=public_file_name,
             private_key_file=private_file_name,
-            application_uri="uri",
-            subject_name="subjectname",
+            application_uri=uri,
+            subject_name=subject_name,
             overwrite_secret=True,
         )
 
@@ -343,10 +393,7 @@ def test_client_add_errors(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                         resource_group_name="mock-rg",
                         objects=[
-                            {
-                                "sourcePath": "cert-der",
-                                "targetKey": "cert.der"
-                            },
+                            {"sourcePath": "cert-der", "targetKey": "cert.der"},
                         ],
                     ),
                     get_mock_spc_record(
@@ -366,10 +413,7 @@ def test_client_add_errors(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
                 objects=[
-                    {
-                        "sourcePath": "cert-der",
-                        "targetKey": "cert.der"
-                    },
+                    {"sourcePath": "cert-der", "targetKey": "cert.der"},
                 ],
             ),
             ["cert.der"],
@@ -382,14 +426,8 @@ def test_client_add_errors(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                         resource_group_name="mock-rg",
                         objects=[
-                            {
-                                "sourcePath": "cert-der",
-                                "targetKey": "cert.der"
-                            },
-                            {
-                                "sourcePath": "cert-pem",
-                                "targetKey": "cert.pem"
-                            }
+                            {"sourcePath": "cert-der", "targetKey": "cert.der"},
+                            {"sourcePath": "cert-pem", "targetKey": "cert.pem"},
                         ],
                     ),
                     get_mock_spc_record(
@@ -409,14 +447,8 @@ def test_client_add_errors(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
                 objects=[
-                    {
-                        "sourcePath": "cert-der",
-                        "targetKey": "cert.der"
-                    },
-                    {
-                        "sourcePath": "cert-pem",
-                        "targetKey": "cert.pem"
-                    }
+                    {"sourcePath": "cert-der", "targetKey": "cert.der"},
+                    {"sourcePath": "cert-pem", "targetKey": "cert.pem"},
                 ],
             ),
             ["cert.der", "cert.pem"],
@@ -589,26 +621,22 @@ def test_client_remove(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                         resource_group_name="mock-rg",
                         objects=[
-                            {
-                                "sourcePath": "cert-der",
-                                "targetKey": "cert.der"
-                            },
+                            {"sourcePath": "cert-der", "targetKey": "cert.der"},
                         ],
                     ),
                 ],
                 "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             [get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg")],
-            [get_mock_secretsync_record(
-                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-                resource_group_name="mock-rg",
-                objects=[
-                    {
-                        "sourcePath": "cert-der",
-                        "targetKey": "cert.der"
-                    },
-                ],
-            )],
+            [
+                get_mock_secretsync_record(
+                    secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                    resource_group_name="mock-rg",
+                    objects=[
+                        {"sourcePath": "cert-der", "targetKey": "cert.der"},
+                    ],
+                )
+            ],
             ["thiswontwork"],
             False,
             "Please provide valid certificate name(s) to remove.",
@@ -621,26 +649,22 @@ def test_client_remove(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                         resource_group_name="mock-rg",
                         objects=[
-                            {
-                                "sourcePath": "cert-der",
-                                "targetKey": "cert.der"
-                            },
+                            {"sourcePath": "cert-der", "targetKey": "cert.der"},
                         ],
                     ),
                 ],
                 "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             [],
-            [get_mock_secretsync_record(
-                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-                resource_group_name="mock-rg",
-                objects=[
-                    {
-                        "sourcePath": "cert-der",
-                        "targetKey": "cert.der"
-                    },
-                ],
-            )],
+            [
+                get_mock_secretsync_record(
+                    secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                    resource_group_name="mock-rg",
+                    objects=[
+                        {"sourcePath": "cert-der", "targetKey": "cert.der"},
+                    ],
+                )
+            ],
             ["cert.der"],
             False,
             "Secret Provider Class resource opc-ua-connector not found.",
@@ -703,10 +727,7 @@ def test_client_remove_error(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                         resource_group_name="mock-rg",
                         objects=[
-                            {
-                                "sourcePath": "cert-der",
-                                "targetKey": "cert.der"
-                            },
+                            {"sourcePath": "cert-der", "targetKey": "cert.der"},
                         ],
                     ),
                 ],
@@ -715,10 +736,7 @@ def test_client_remove_error(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
                 objects=[
-                    {
-                        "sourcePath": "cert-der",
-                        "targetKey": "cert.der"
-                    },
+                    {"sourcePath": "cert-der", "targetKey": "cert.der"},
                 ],
             ),
         ),
@@ -740,10 +758,7 @@ def test_client_show(
     # get opcua secretsync
     mocked_responses.add(
         method=responses.GET,
-        url=get_secretsync_endpoint(
-            secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-            resource_group_name=rg_name
-        ),
+        url=get_secretsync_endpoint(secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name),
         json=expected_secretsync,
         status=200,
         content_type="application/json",

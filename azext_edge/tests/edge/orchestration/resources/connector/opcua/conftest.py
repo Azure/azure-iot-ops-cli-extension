@@ -9,6 +9,8 @@ from unittest.mock import Mock
 import pytest
 
 import responses
+from cryptography import x509
+from cryptography.x509.oid import NameOID
 from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OPCUA_SPC_NAME
 from azext_edge.tests.edge.orchestration.resources.conftest import get_base_endpoint, get_mock_resource
 from azext_edge.tests.generators import generate_random_string
@@ -48,6 +50,41 @@ def mocked_cl_resources(mocker):
 def mocked_read_file_content(mocker):
     patched = mocker.patch(
         "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.read_file_content",
+    )
+    yield patched
+
+
+def build_mock_cert(
+    subject_name: str = "subjectname",
+    uri: str = "uri",
+):
+    mock_cert = Mock(spec=x509.Certificate)
+
+    # Set up a mock subject and issuer
+    mock_subject = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, subject_name),
+        ]
+    )
+    mock_cert.subject = mock_subject
+
+    # Set up a mock for subject alternative names extension
+    mock_san_extension = Mock(spec=x509.SubjectAlternativeName)
+    mock_san_general_names = [
+        x509.DNSName("www.example.com"),
+        x509.UniformResourceIdentifier(uri),
+    ]
+    mock_san_extension.value = mock_san_general_names
+    mock_cert.extensions.get_extension_for_oid.return_value = mock_san_extension
+
+    return mock_cert
+
+
+@pytest.fixture
+def mocked_load_x509_cert(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.decode_der_certificate",
+        return_value=build_mock_cert(),
     )
     yield patched
 
@@ -200,9 +237,7 @@ def assemble_resource_map_mock(
     resource_map_mock().connected_cluster.get_aio_resources.return_value = resources
 
 
-def generate_ssc_object_string(
-    names: List[str]
-):
+def generate_ssc_object_string(names: List[str]):
     object_string = "array:\n"
     for name in names:
         object_string += f"    - |\n      objectEncoding: hex\n      objectName: {name}\n      objectType: secret\n"
