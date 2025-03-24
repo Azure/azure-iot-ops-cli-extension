@@ -276,7 +276,7 @@ jobs:
       - name: "Tox test environment setup for Workload Identity integration tests"
         if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         run: |
-          tox r -vv -e "python-secretsync-int" --notest
+          tox r -vv -e "python-wlif-int" --notest
       - name: "Az CLI login"
         uses: azure/login@v2
         with:
