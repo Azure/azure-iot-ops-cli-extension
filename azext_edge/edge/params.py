@@ -446,6 +446,7 @@ def load_iotops_arguments(self, _):
                 options_list=["--broker-listener-type", "--lt"],
                 help="Service type associated with the default mqtt broker listener.",
                 arg_group="Broker",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 "enable_fault_tolerance",
