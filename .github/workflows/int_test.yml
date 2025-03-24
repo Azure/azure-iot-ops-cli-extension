@@ -274,7 +274,7 @@ jobs:
         run: |
           tox r -vv -e "python-rpsaas-int" --notest
       - name: "Tox test environment setup for Workload Identity integration tests"
-        if: ${{ matrix.feature == 'secretsync' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         run: |
           tox r -vv -e "python-secretsync-int" --notest
       - name: "Az CLI login"
@@ -291,7 +291,7 @@ jobs:
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
           enable-workload-identity: ${{ matrix.feature == 'trustbundle' }}
       - name: "Enable secure settings for k3s cluster"
-        if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
         run:
           TOKEN=$(az connectedk8s show -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --query oidcIssuerProfile.issuerUrl --output tsv)
           sudo cat /etc/rancher/k3s/config.yaml
