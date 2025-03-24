@@ -202,9 +202,7 @@ def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: st
     # get the current secret provider class
     list_result = run("kubectl get secretproviderclass -A -o json")["items"]
     assert list_result
-    spc_data = next(spc for spc in list_result if (
-        spc["metadata"]["name"] == spc_name if spc_name else spc["metadata"]["name"].startswith("spc-ops-")
-    ))
+    spc_data = next(spc for spc in list_result if spc["metadata"]["name"] == spc_name)
     aio_namespace = spc_data["metadata"]["namespace"]
 
     # add in the reference for the secret (note that this is a stringified yaml in the json)
