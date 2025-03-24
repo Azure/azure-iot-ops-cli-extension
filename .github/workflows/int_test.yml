@@ -27,6 +27,11 @@ on:
         type: boolean
         required: false
         default: true
+      keep-on-failure:
+          description: Number of minutes to keep the cluster(s) active on failure (max 240 min).
+          type: number
+          required: false
+          default: 0
       use-container:
         description: Build container image for tests
         type: boolean
@@ -67,6 +72,11 @@ on:
         type: boolean
         required: false
         default: true
+      keep-on-failure:
+          description: Number of minutes to keep the cluster(s) active on failure (max 240 min).
+          type: number
+          required: false
+          default: 0
       use-container:
         description: Build container image for tests
         type: boolean
@@ -82,20 +92,45 @@ env:
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
   K3S_VERSION: "v1.28.5+k3s1"
   CUSTOM_LOCATIONS_OID: "${{ inputs.custom-locations-oid }}"
+  KEEP_ALIVE: ${{ inputs.keep-on-failure }}
+  RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args }}"
+  RUNTIME_INIT_ARGS: "${{ inputs.runtime-init-args }}"
+
 
 jobs:
+  setup:
+    name: "Check Inputs"
+    runs-on: ubuntu-22.04
+    outputs:
+      create_args: ${{ steps.custom_input.outputs.CREATE_ARG }}
+      init_args: ${{ steps.custom_input.outputs.INIT_ARG }}
+    steps:
+      - name: "Check Keep On Failure arg"
+        run: |
+          if [[ ! ${{ env.KEEP_ALIVE }} =~ ^[0-9]+$ ]]; then
+            echo "The keep alive input is not a valid number"
+            exit 1
+          fi
+      - name: "Output custom inputs for future job"
+        id: custom_input
+        run: |
+          echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
+          echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
   test:
+    needs: setup
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
       INSTANCE_NAME: "inst${{ github.run_number }}${{ matrix.feature }}"
       KEYVAULT_NAME: "kv${{ github.run_number }}"
+      INIT_ARG: ${{ needs.setup.outputs.init_args }}
+      CREATE_ARG: ${{ needs.setup.outputs.create_args }}
     strategy:
       fail-fast: false
       matrix:
         feature: [trustbundle]
         # feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
         runtime-args:
-          - ${{ inputs.runtime-init-args != '' || inputs.runtime-create-args != '' }}
+          - ${{ needs.setup.outputs.init_args != '' || needs.setup.outputs.create_args != '' }}
         exclude:
           - feature: custom-input
             runtime-args: false
@@ -122,8 +157,8 @@ jobs:
           elif [[ ${{ matrix.feature }} == "syncrules" ]]; then
             echo "CREATE_ARG=--enable-rsync" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "custom-input" ]]; then
-            echo "CREATE_ARG=${{ inputs.runtime-create-args }}" >> $GITHUB_OUTPUT
-            echo "INIT_ARG=${{ inputs.runtime-init-args }}" >> $GITHUB_OUTPUT
+            echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
+            echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "trustbundle" ]]; then
             echo "CREATE_ARG=--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer " >> $GITHUB_OUTPUT
             echo "INIT_ARG=--user-trust true" >> $GITHUB_OUTPUT
@@ -149,7 +184,7 @@ jobs:
       - name: "Create k3s cluster"
         uses: ./.github/actions/create-k3s-cluster
       - name: "Apply custom cluster issuer"
-        if: ${{ matrix.feature == 'trustbundle' || contains(inputs.runtime-init-args, '--user-trust') }}
+        if: ${{ matrix.feature == 'trustbundle' || contains(env.RUNTIME_INIT_ARGS, '--user-trust') }}
         run: |
           set -x
           helm repo add jetstack https://charts.jetstack.io --force-update
@@ -359,6 +394,32 @@ jobs:
           az iot ops check --as-object
           az iot ops check --svc broker --resources broker brokerlistener
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
+      - name: "Keep cluster alive"
+        if: ${{ env.KEEP_ALIVE > 0 && failure() }}
+        run: |
+          kubectl create clusterrolebinding teamaccessbinding --clusterrole cluster-admin --group ${{ secrets.CLUSTER_ACCESS_SG }} >/dev/null 2>&1
+
+          echo "Cluster ${{ env.CLUSTER_NAME }} in resource group ${{ env.RESOURCE_GROUP }}"
+          echo "Instance name ${{ env.INSTANCE_NAME }}"
+          echo ""
+
+          echo "Please ensure you have the required roles: \"Azure Arc Kubernetes Viewer\" and \"Azure Arc Enabled Kubernetes Cluster User Role\""
+          echo "To connect to the cluster please use"
+          echo "az connectedk8s proxy -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }}"
+          echo ""
+
+          TIME_LIMIT=${{ env.KEEP_ALIVE }}
+          if (( $TIME_LIMIT > 240 )); then
+            echo "Given time limit is over the maximum of 4 hours. Setting to 4 hours."
+            TIME_LIMIT=240
+          fi
+
+          for ((i=0; i < $TIME_LIMIT; i+=1)); do
+            if [ $(( i % 10 )) == 0 ]; then
+              echo "Remaining time: $(( $TIME_LIMIT - i )) minutes"
+            fi
+            sleep 60s
+          done
       - name: "Delete Cluster for redeployment"
         if: ${{ matrix.feature == 'redeploy' }}
         run: |
