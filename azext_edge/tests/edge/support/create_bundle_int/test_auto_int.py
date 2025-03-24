@@ -102,7 +102,7 @@ def test_create_bundle(cluster_connection, bundle_dir, mq_traces, ops_service, t
 
     # remove certmanager resources in other namespace from walk_result from aio namespace assertion
 
-    for namespace in [arc_namespace, acstor_namespace]:
+    for namespace in [arc_namespace, acstor_namespace, ssc_namespace]:
         if namespace and path.join(BASE_ZIP_PATH, namespace, OpsServiceType.certmanager.value) in walk_result:
             walk_result.pop(path.join(BASE_ZIP_PATH, namespace, OpsServiceType.certmanager.value), {})
 
@@ -134,7 +134,7 @@ def test_create_bundle(cluster_connection, bundle_dir, mq_traces, ops_service, t
                 resource_type=f"auto bundle files not found in {ops_service} bundle",
                 result_names=auto_files,
                 pre_expected_names=ser_files,
-                post_expected_names=[]
+                post_expected_names=[],
             )
 
 

@@ -369,14 +369,17 @@ def process_cluster_roles(
     field_selector: Optional[str] = None,
 ) -> Dict[str, Union[dict, str]]:
     from kubernetes.client.models import V1ClusterRoleList
-    from kubernetes.client import RbacAuthorizationV1Api
 
     processed = []
-    rbac_api = RbacAuthorizationV1Api()
+    rbac_api = client.RbacAuthorizationV1Api()
 
-    cluster_roles: V1ClusterRoleList = rbac_api.list_cluster_role(label_selector=label_selector, field_selector=field_selector)
+    cluster_roles: V1ClusterRoleList = rbac_api.list_cluster_role(
+        label_selector=label_selector, field_selector=field_selector
+    )
     for role in cluster_roles.items:
-        namespace = role.metadata.annotations.get("meta.helm.sh/release-namespace") if role.metadata.annotations else None
+        namespace = (
+            role.metadata.annotations.get("meta.helm.sh/release-namespace") if role.metadata.annotations else None
+        )
         name = role.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.clusterrole.value)
 
@@ -397,14 +400,19 @@ def process_cluster_role_bindings(
     field_selector: Optional[str] = None,
 ) -> Dict[str, Union[dict, str]]:
     from kubernetes.client.models import V1ClusterRoleBindingList
-    from kubernetes.client import RbacAuthorizationV1Api
 
     processed = []
-    rbac_api = RbacAuthorizationV1Api()
+    rbac_api = client.RbacAuthorizationV1Api()
 
-    cluster_role_bindings: V1ClusterRoleBindingList = rbac_api.list_cluster_role_binding(label_selector=label_selector, field_selector=field_selector)
+    cluster_role_bindings: V1ClusterRoleBindingList = rbac_api.list_cluster_role_binding(
+        label_selector=label_selector, field_selector=field_selector
+    )
     for binding in cluster_role_bindings.items:
-        namespace = binding.metadata.annotations.get("meta.helm.sh/release-namespace") if binding.metadata.annotations else None
+        namespace = (
+            binding.metadata.annotations.get("meta.helm.sh/release-namespace")
+            if binding.metadata.annotations
+            else None
+        )
         name = binding.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.clusterrolebinding.value)
 

@@ -172,7 +172,11 @@ def build_bundle(
             bundle = bundle_method(deployed_apis)
         elif service_moniker == OpsServiceType.mq.value:
             bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
-        elif service_moniker in [OpsServiceType.schemaregistry.value, OpsServiceType.akri.value, OpsServiceType.meso.value]:
+        elif service_moniker in [
+            OpsServiceType.schemaregistry.value,
+            OpsServiceType.akri.value,
+            OpsServiceType.meso.value,
+        ]:
             bundle = bundle_method(log_age_seconds)
         else:
             bundle = bundle_method(log_age_seconds, deployed_apis)
