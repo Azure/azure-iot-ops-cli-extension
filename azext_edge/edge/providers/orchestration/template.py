@@ -48,14 +48,12 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="b4198d335d6bd5c71c7707070c72938ae41d555e",
+    commit_id="a983e704f6750e6fe9f2ee1e6bd42ee5c6da2aa1",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "13109412550047077688"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.34.1.11899", "templateHash": "561125219338655039"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -356,13 +354,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="2122bbc7426734dad05d482cb2a37ed5e6753192",
+    commit_id="a983e704f6750e6fe9f2ee1e6bd42ee5c6da2aa1",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.33.93.31351", "templateHash": "10273044277193289164"}
+            "_generator": {"name": "bicep", "version": "0.34.1.11899", "templateHash": "14984277744413954706"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -579,7 +577,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "1.1.9"},
+            "VERSIONS": {"iotOperations": "1.1.11"},
             "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
@@ -604,7 +602,6 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
                 "connectors.values.opcPlcSimulation.deploy": "false",
                 "connectors.values.opcPlcSimulation.autoAcceptUntrustedCertificates": "false",
-                "connectors.values.enablePreviewFeatures": "true",
                 "adr.values.Microsoft.CustomLocation.ServiceAccount": "default",
                 "akri.values.webhookConfiguration.enabled": "false",
                 "akri.values.certManagerWebhookCertificate.enabled": "false",
