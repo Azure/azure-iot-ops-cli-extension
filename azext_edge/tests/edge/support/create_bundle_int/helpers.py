@@ -602,7 +602,7 @@ def _clean_up_folders(
             if namespace_folder == arc_namespace and monitor_path in walk_result:
                 monikers.append(OpsServiceType.azuremonitor.value)
             assert set(level_1["folders"]) == set(monikers), (
-                f"Mismatch; folders: [{level_1['folders']}],"\
+                f"Mismatch; folders: [{level_1['folders']}],"
                 f"monikers: [{monikers}]"
             )
             assert not level_1["files"]
@@ -615,12 +615,12 @@ def _clean_up_folders(
 
         if certmanager_namespace:
             assert set(level_1["folders"]) == set(services), (
-                f"Mismatch; folders: [{level_1['folders']}], "\
+                f"Mismatch; folders: [{level_1['folders']}], "
                 f"monikers: [{services}]"
             )
         else:
             assert level_1["folders"] == [OpsServiceType.secretstore.value], (
-                f"Mismatch; folders: [{level_1['folders']}], "\
+                f"Mismatch; folders: [{level_1['folders']}], "
                 f"monikers: [{OpsServiceType.secretstore.value}]"
             )
 
@@ -640,7 +640,7 @@ def _clean_up_folders(
         ):
             services.append(containerstorage_service)
         assert set(level_1["folders"]) == set(services), (
-            f"Mismatch; folders: [{level_1['folders']}], "\
+            f"Mismatch; folders: [{level_1['folders']}], "
             f"services [{services}]"
         )
         assert not level_1["files"]
