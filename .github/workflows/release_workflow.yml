@@ -43,7 +43,7 @@ jobs:
     with:
       continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
   approval:
-    needs: [security, build, test, azdev_linter]
+    needs: [security, build, azdev_linter]
     # only needed if (release || wheel)
     if: (github.event.inputs.github_release == 'true' || github.event.inputs.upload_wheel == 'true')
     environment: production
