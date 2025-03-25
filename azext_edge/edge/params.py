@@ -17,7 +17,10 @@ from knack.arguments import CaseInsensitiveList
 
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
-from ._validators import validate_namespace, validate_resource_name
+from ._validators import (
+    validate_namespace,
+    validate_resource_name,
+)
 from .common import OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
@@ -28,13 +31,13 @@ from .providers.edge_api import (
 from .providers.orchestration.common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     TRUST_SETTING_KEYS,
+    ConfigSyncModeType,
     IdentityUsageType,
     KubernetesDistroType,
     MqMemoryProfile,
     MqServiceType,
     SchemaFormat,
     SchemaType,
-    ConfigSyncModeType,
 )
 
 
@@ -81,8 +84,6 @@ def load_iotops_arguments(self, _):
             "tags",
             options_list=["--tags"],
             arg_type=tags_type,
-            help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d. "
-            'Use --tags "" to remove all tags.',
         )
         context.argument(
             "instance_name",
@@ -445,6 +446,7 @@ def load_iotops_arguments(self, _):
                 options_list=["--broker-listener-type", "--lt"],
                 help="Service type associated with the default mqtt broker listener.",
                 arg_group="Broker",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 "enable_fault_tolerance",
@@ -505,6 +507,20 @@ def load_iotops_arguments(self, _):
                         arg_group="Extension Config",
                         deprecate_info=context.deprecate(hide=True),
                     )
+
+    for cmd_space in ["iot ops create", "iot ops update"]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "instance_features",
+                options_list=["--feature"],
+                nargs="+",
+                action="extend",
+                help="Instance feature config. The settings of a component and/or it's mode can be configured. "
+                "Component mode syntax is `{component}.mode={mode}` where known mode values are: "
+                "`Stable`, `Preview` and `Disabled`. Component setting syntax is "
+                "`{component}.settings.{setting}={value}` where known setting values are `Enabled` or `Disabled`. "
+                "This option can be used one or more times."
+            )
 
     with self.argument_context("iot ops upgrade") as context:
         for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
@@ -671,8 +687,6 @@ def load_iotops_arguments(self, _):
             "tags",
             options_list=["--tags"],
             arg_type=tags_type,
-            help="Schema registry tags. Property bag in key-value pairs with the following format: a=b c=d. "
-            'Use --tags "" to remove all tags.',
         )
         context.argument(
             "description",

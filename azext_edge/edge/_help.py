@@ -516,7 +516,10 @@ def load_iotops_help():
               az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
               --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem
               issuerKind=ClusterIssuer issuerName=trust-manager-selfsigned-issuer
-
+        - name: To configure component features such as preview settings, use the --feature option.
+          text: >
+              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+              --feature connectors.settings.preview=Enabled
     """
 
     helps[
@@ -590,7 +593,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update an IoT Operations instance.
-        long-summary: Currently instance tags and description can be updated.
+        long-summary: Currently instance tags, description and features can be updated.
 
         examples:
         - name: Update instance tags. This is equivalent to a replace.
@@ -602,6 +605,9 @@ def load_iotops_help():
         - name: Update the instance description.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
+        - name: Update an instance to enable preview config for connectors.
+          text: >
+            az iot ops update --name myinstance -g myresourcegroup --feature connectors.settings.preview=Enabled
     """
 
     helps[

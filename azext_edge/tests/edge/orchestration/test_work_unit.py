@@ -554,6 +554,7 @@ def assert_init_deployment_body(body_str: str, target_scenario: dict):
     [
         build_target_scenario(),
         build_target_scenario(broker={"backendRedundancyFactor": 1}),
+        build_target_scenario(instance_features=["connectors.settings.preview=Enabled"]),
         build_target_scenario(
             akri={"containerRuntimeSocket": "/var/containerd/socket", "kubernetesDistro": "K3s"},
             instance={
@@ -727,6 +728,10 @@ def test_iot_ops_create(
     if backend_redundancy_factor:
         create_call_kwargs["broker_backend_redundancy_factor"] = backend_redundancy_factor
 
+    instance_features = target_scenario.get("instance_features")
+    if instance_features:
+        create_call_kwargs["instance_features"] = instance_features
+
     if target_scenario["noProgress"]:
         create_call_kwargs["no_progress"] = target_scenario["noProgress"]
 
@@ -873,6 +878,12 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
             assert resources["aioInstance"]["properties"]["description"] == target_scenario["instance"]["description"]
         if target_scenario["instance"]["tags"]:
             assert resources["aioInstance"]["tags"] == target_scenario["instance"]["tags"]
+        instance_features = target_scenario.get("instance_features")
+        if instance_features:
+            assert resources["aioInstance"]["properties"]["features"]
+        else:
+            # TODO: think about general 'not in' or 'not' pattern
+            assert not resources["aioInstance"]["properties"]["features"]
 
     if phase in [InstancePhase.RESOURCES]:
         assert resources["broker"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}"

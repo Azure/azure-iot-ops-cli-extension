@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import TYPE_CHECKING, Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional, Dict
 
 from azure.cli.core.azclierror import (
     AzureResponseError,
@@ -69,7 +69,7 @@ class SchemaRegistries(Queryable):
         location: Optional[str] = None,
         description: Optional[str] = None,
         display_name: Optional[str] = None,
-        tags: Optional[str] = None,
+        tags: Optional[Dict[str, str]] = None,
         custom_role_id: Optional[str] = None,
         **kwargs,
     ) -> dict:
