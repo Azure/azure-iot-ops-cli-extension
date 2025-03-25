@@ -275,7 +275,11 @@ class UpgradeScenario:
                 "In this case, the train increments to match desired state if the desired state version "
                 "is equal to current state version."
             ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_train="stablez"),
-            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "releaseTrain": "x.y.z"}}},
+            {
+                EXTENSION_TYPE_OPS: {
+                    "properties": {"extensionType": EXTENSION_TYPE_OPS, "releaseTrain": BUILT_IN_VALUE}
+                }
+            },
         ),
         (
             UpgradeScenario("Variant of prior case. Train does not auto-increment if explicit version is provided.")
@@ -286,12 +290,13 @@ class UpgradeScenario:
         (
             UpgradeScenario(
                 "Ensure default version and train increments for ops when upgrade is known."
-            ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0", ext_train="stable"),
+            ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0", ext_train="train"),
             {
                 EXTENSION_TYPE_OPS: {
                     "properties": {
                         "extensionType": EXTENSION_TYPE_OPS,
                         "version": BUILT_IN_VALUE,
+                        "releaseTrain": BUILT_IN_VALUE,
                     }
                 }
             },
