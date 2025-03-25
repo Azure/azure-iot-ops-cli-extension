@@ -602,7 +602,6 @@ def _clean_up_folders(
     for namespace_folder, monikers in [
         (clusterconfig_namespace, ["clusterconfig"]),
         (arc_namespace, services + ["arcagents"]),
-        (acs_namespace, services + ["arccontainerstorage"]),
         (certmanager_namespace, services),
         (osm_namespace, ["openservicemesh"]),
     ]:
@@ -617,13 +616,8 @@ def _clean_up_folders(
             )
             assert not level_1["files"]
 
-    # note that the acstor and acs namespace should be the same value
-    if acstor_namespace or acs_namespace:
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace))
-        if acs_namespace:
-            services.append("arccontainerstorage")
-        if acstor_namespace and containerstorage_service:
     if ssc_namespace:
+        services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
         if path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretstore.value) in walk_result:
             services += [OpsServiceType.secretstore.value]
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, ssc_namespace))
@@ -638,8 +632,15 @@ def _clean_up_folders(
             )
 
     # note that the acstor and acs namespace should be the same value
-    if acstor_namespace or acs_namespace and path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace) in walk_result:
+    if (
+        acstor_namespace
+        or acs_namespace
+        and path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace) in walk_result
+    ):
+        services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace))
+        if acs_namespace:
+            services.append("arccontainerstorage")
         if (
             containerstorage_service
             and path.join(BASE_ZIP_PATH, acstor_namespace, containerstorage_service) in walk_result
