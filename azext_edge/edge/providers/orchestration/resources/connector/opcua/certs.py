@@ -225,24 +225,18 @@ class OpcUACerts(Queryable):
     ) -> dict:
         # inform user if the provided cert was issued by a CA, the CA cert must be added to the issuers list.
         logger.warning(
-            "If this certificate was issued by a CA, then please ensure that the certificate is "
+            "If this certificate was issued by a CA, then please ensure that the CA certificate is "
             "added to issuer list."
         )
-
-        if subject_name or application_uri:
-            logger.warning(
-                "Both the subject name and application URI are extracted directly from the certificate. "
-                "Any values provided via the --subject-name and --application-uri will be disregarded."
-            )
-
+    
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
 
         # process all the file validations before secret creations
         self._validate_key_files(public_key_file, private_key_file)
 
-        # extract subject name and application URI from public_key_file content
-        subject_name, application_uri = self._extract_cert_content(public_key_file)
+        # extract certificate information and validate if optional parameters are provided
+        self._process_cert_content(public_key_file, subject_name, application_uri)
 
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
@@ -846,9 +840,19 @@ class OpcUACerts(Queryable):
         cert_application_uri = ""
         extension_value = certificate.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME).value
 
+        uris = []
         for general_name in extension_value:
             if isinstance(general_name, x509.UniformResourceIdentifier):
-                cert_application_uri = general_name.value
+                uris.append(general_name.value)
+
+        if len(uris) > 1:
+            # warning if multiple URIs are found
+            logger.warning(
+                "Multiple URIs detected in provided certificate, "
+                "this might fail OPC UA stack validation going forward."
+            )
+        else:
+            cert_application_uri = uris[0] if uris else ""
 
         for value, name in [(cert_subject_name, "subject name"), (cert_application_uri, "application URI")]:
             # if value is empty or space, raise error
@@ -859,3 +863,23 @@ class OpcUACerts(Queryable):
                 )
 
         return cert_subject_name, cert_application_uri
+    
+
+    def _process_cert_content(
+        self,
+        public_key_file: str,
+        subject_name: Optional[str],
+        application_uri: Optional[str],
+    ):
+        # extract subject name and application URI from public_key_file content
+        cert_subject_name, cert_application_uri = self._extract_cert_content(public_key_file)
+
+        if subject_name and subject_name != cert_subject_name:
+            raise ValueError(
+                f"Given --subject-name {subject_name} does not match certificate subject name {cert_subject_name}. Please provide the correct subject name via --subject-name or correct certificate using --public-key-file."
+            )
+            
+        if application_uri and application_uri != cert_application_uri:
+            raise ValueError(
+                f"Given application URI {application_uri} does not match certificate application URI {cert_subject_name}. Please provide the correct application URI via --application-uri or correct certificate using --public-key-file."
+            )

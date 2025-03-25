@@ -789,14 +789,12 @@ def load_iotops_arguments(self, _):
             options_list=["--subject-name", "--sn"],
             help="The subject name string embedded in the application instance certificate. "
             "Can be found under public key certificate.",
-            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "application_uri",
             options_list=["--application-uri", "--au"],
             help="The application instance URI embedded in the application instance. "
             "Can be found under public key certificate.",
-            deprecate_info=context.deprecate(hide=True),
         )
         context.argument(
             "public_key_secret_name",

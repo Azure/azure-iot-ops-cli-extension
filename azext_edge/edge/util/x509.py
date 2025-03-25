@@ -78,7 +78,7 @@ def generate_self_signed_cert(valid_days: int = DEFAULT_VALID_DAYS) -> Tuple[byt
     return (cert.public_bytes(serialization.Encoding.PEM), key_bytes)
 
 
-def decode_der_certificate(der_data) -> Optional[x509.Certificate]:
+def decode_der_certificate(der_data: bytes) -> Optional[x509.Certificate]:
     # Decodes a DER-encoded X.509 certificate.
     try:
         cert = x509.load_der_x509_certificate(der_data, default_backend())
