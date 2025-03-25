@@ -21,6 +21,7 @@ from azext_edge.edge.providers.orchestration.targets import (
     InitTargets,
     parse_kvp_nargs,
     get_insecure_listener,
+    parse_feature_kvp_nargs,
 )
 
 from ...generators import generate_random_string
@@ -72,6 +73,8 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "brokerConfig": "broker_config",
     "trustConfig": "trust_config",
 }
+INSTANCE_FEATURE_MAP = {"connectors.settings.preview=Enabled": {"connectors": {"settings": {"preview": "Enabled"}}}}
+INSTANCE_FEATURE_ATTR = "instance_features"
 
 
 @pytest.mark.parametrize(
@@ -119,6 +122,7 @@ INSTANCE_PARAM_CONVERSION_MAP = {
             kubernetes_distro=generate_random_string(),
             container_runtime_socket=generate_random_string(),
             trust_settings=get_trust_settings(),
+            instance_features=["connectors.settings.preview=Enabled"],
         ),
         build_target_scenario(
             cluster_name=generate_random_string(),
@@ -143,6 +147,8 @@ def test_init_targets(target_scenario: dict):
             targets_key = KEY_CONVERSION_MAP[scenario_key]
         if scenario_key in KVP_KEYS:
             target_scenario[scenario_key] = parse_kvp_nargs(target_scenario[scenario_key])
+        if scenario_key == INSTANCE_FEATURE_ATTR:
+            target_scenario[scenario_key] = parse_feature_kvp_nargs(target_scenario[scenario_key])
 
         targets_value = getattr(targets, targets_key)
 
@@ -244,6 +250,8 @@ def test_init_targets(target_scenario: dict):
     assert instance_template["resources"]["aioInstance"]["properties"]["schemaRegistryRef"] == {
         "resourceId": "[parameters('schemaRegistryId')]"
     }
+
+    assert instance_template["resources"]["aioInstance"]["properties"]["features"] == targets.instance_features
 
     if targets.tags:
         assert instance_template["resources"]["aioInstance"]["tags"] == targets.tags
