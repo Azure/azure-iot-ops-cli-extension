@@ -47,9 +47,6 @@ def check_opcua_deployment(
     }
 
     return check_post_deployment(
-        api_info=OPCUA_API_V1,
-        check_name="enumerateOpcUaBrokerApi",
-        check_desc="Enumerate OPC UA broker API resources",
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,

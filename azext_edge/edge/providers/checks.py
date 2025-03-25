@@ -81,7 +81,7 @@ def run_checks(
 
 
 def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: List[str]) -> None:
-    if ops_service == OpsServiceType.akri.value:
+    if ops_service in [OpsServiceType.akri.value, OPCUA_SERVICE]:
         raise ArgumentUsageError(f"--resources is not supported for service {ops_service}.")
 
     service_kinds_dict: Dict[str, ListableEnum] = {

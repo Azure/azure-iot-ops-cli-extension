@@ -58,7 +58,7 @@ def check_summary(
         ServiceCheck(
             svc=OPCUA_SERVICE,
             title="OPCUA",
-            target=OPCUA_API_V1.as_str(),
+            target="OPCUA",
             check_func=check_opcua_deployment,
         ),
         ServiceCheck(
