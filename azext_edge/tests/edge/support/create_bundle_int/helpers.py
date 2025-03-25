@@ -356,16 +356,6 @@ def get_file_map(
         # no files for aio, skip the rest assertions
         return file_map
     elif ops_service == "certmanager":
-        # if not acstor_namespace:
-        #     # certmanager resources are in arc namespace, aio namespace, and certmanager namespace
-        #     assert len(walk_result) == 3 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
-        # else:
-        #     # certmanager resources are in arc namespace, aio namespace, acstor namespace, and certmanager namespace
-        #     assert len(walk_result) == 4 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
-        #     certmanager_acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "certmanager")
-        #     file_map["certmanager_acstor"] = convert_file_names(walk_result[certmanager_acstor_path]["files"])
-        #     file_map["__namespaces__"]["acstor"] = acstor_namespace
-
         if acstor_namespace:
             expected_default_walk_result += 1
             certmanager_acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "certmanager")
