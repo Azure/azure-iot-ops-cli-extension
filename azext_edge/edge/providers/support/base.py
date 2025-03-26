@@ -378,7 +378,8 @@ def process_cluster_roles(
     )
     for role in cluster_roles.items:
         namespace = (
-            role.metadata.annotations.get("meta.helm.sh/release-namespace") if role.metadata.annotations else None
+            getattr(role.metadata, "annotations", None)
+            and role.metadata.annotations.get("meta.helm.sh/release-namespace")
         )
         name = role.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.clusterrole.value)
@@ -409,9 +410,8 @@ def process_cluster_role_bindings(
     )
     for binding in cluster_role_bindings.items:
         namespace = (
-            binding.metadata.annotations.get("meta.helm.sh/release-namespace")
-            if binding.metadata.annotations
-            else None
+            getattr(binding.metadata, "annotations", None)
+            and binding.metadata.annotations.get("meta.helm.sh/release-namespace")
         )
         name = binding.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.clusterrolebinding.value)
