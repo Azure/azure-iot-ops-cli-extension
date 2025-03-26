@@ -7,7 +7,7 @@ set -o pipefail
 echo "Starting On Create Command"
 
 # Copy the custom first run notice over
-sudo cp .devcontainer/welcome.txt /usr/local/etc/vscode-dev-containers/first-run-notice.txt
+sudo cp .devcontainer/welcome.md /usr/local/etc/vscode-dev-containers/first-run-notice.md
 
 # wait for docker
 until docker version > /dev/null 2>&1
