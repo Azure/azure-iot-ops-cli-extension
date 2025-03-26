@@ -61,7 +61,6 @@ def load_iotops_help():
         long-summary: |
             {{Supported service APIs}}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
-            - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {CERTMANAGER_API_V1.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}

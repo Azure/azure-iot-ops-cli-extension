@@ -39,7 +39,6 @@ COMPAT_CERTMANAGER_APIS = EdgeApiManager(resource_apis=[CERTMANAGER_API_V1, TRUS
 COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
 COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1])
 COMPAT_OSM_APIS = EdgeApiManager(resource_apis=[OPENSERVICEMESH_CONFIG_API_V1, OPENSERVICEMESH_POLICY_API_V1])
-COMPAT_OPCUA_APIS = EdgeApiManager(resource_apis=[OPCUA_API_V1])
 COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
 COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1])
 COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1])
@@ -61,7 +60,7 @@ def build_bundle(
     from .support.billing import prepare_bundle as prepare_billing_bundle
     from .support.mq import prepare_bundle as prepare_mq_bundle
     from .support.openservicemesh import prepare_bundle as prepare_openservicemesh_bundle
-    from .support.connectors import prepare_bundle as prepare_opcua_bundle
+    from .support.connectors import prepare_bundle as prepare_connector_bundle
     from .support.dataflow import prepare_bundle as prepare_dataflow_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
     from .support.shared import prepare_bundle as prepare_shared_bundle
@@ -101,8 +100,8 @@ def build_bundle(
             "prepare_bundle": prepare_openservicemesh_bundle,
         },
         OpsServiceType.connectors.value: {
-            "apis": COMPAT_OPCUA_APIS,
-            "prepare_bundle": prepare_opcua_bundle,
+            "apis": None,
+            "prepare_bundle": prepare_connector_bundle,
         },
         OpsServiceType.akri.value: {"apis": None, "prepare_bundle": prepare_akri_bundle},
         OpsServiceType.deviceregistry.value: {
