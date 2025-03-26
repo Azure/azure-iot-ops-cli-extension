@@ -675,6 +675,49 @@ def assert_list_daemon_sets(
         )
 
 
+def assert_list_cluster_roles(
+    mocked_client,
+    mocked_zipfile,
+    directory_path: str,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+    mock_names: Optional[List[str]] = None,
+):
+    mocked_client.RbacAuthorizationV1Api().list_cluster_role.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    mock_names = mock_names or ["mock_cluster_role"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{directory_path}/clusterrole.{name}.yaml",
+            data=f"metadata:\n  annotations:\n    meta.helm.sh/release-namespace: mock_namespace\n  name: {name}\n",
+        )
+
+
+def assert_list_cluster_role_bindings(
+    mocked_client,
+    mocked_zipfile,
+    directory_path: str,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+    mock_names: Optional[List[str]] = None,
+):
+    mocked_client.RbacAuthorizationV1Api().list_cluster_role_binding.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    mock_names = mock_names or ["mock_cluster_role_binding"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{directory_path}/crb.{name}.yaml",
+            data="metadata:\n  annotations:\n    meta.helm.sh/release-namespace: "
+            f"mock_namespace\n  name: {name}\nroleRef:\n  kind: ClusterRole\n",
+        )
+
+
 def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
     for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_jobs]:
         kwargs = {
