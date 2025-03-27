@@ -228,7 +228,7 @@ class OpcUACerts(Queryable):
             "If this certificate was issued by a CA, then please ensure that the CA certificate is "
             "added to issuer list."
         )
-    
+
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
 
@@ -863,7 +863,6 @@ class OpcUACerts(Queryable):
                 )
 
         return cert_subject_name, cert_application_uri
-    
 
     def _process_cert_content(
         self,
@@ -876,10 +875,14 @@ class OpcUACerts(Queryable):
 
         if subject_name and subject_name != cert_subject_name:
             raise ValueError(
-                f"Given --subject-name {subject_name} does not match certificate subject name {cert_subject_name}. Please provide the correct subject name via --subject-name or correct certificate using --public-key-file."
+                f"Given --subject-name {subject_name} does not match certificate subject name {cert_subject_name}. "
+                "Please provide the correct subject name via --subject-name or correct certificate using "
+                "--public-key-file."
             )
-            
+
         if application_uri and application_uri != cert_application_uri:
             raise ValueError(
-                f"Given application URI {application_uri} does not match certificate application URI {cert_subject_name}. Please provide the correct application URI via --application-uri or correct certificate using --public-key-file."
+                f"Given --application-uri {application_uri} does not match certificate application URI "
+                f"{cert_application_uri}. Please provide the correct application URI via --application-uri "
+                "or correct certificate using --public-key-file."
             )

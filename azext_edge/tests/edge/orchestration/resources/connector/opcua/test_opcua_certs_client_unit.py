@@ -159,13 +159,8 @@ def test_client_add(
     warnings = [call[0][0] for call in mocked_logger.warning.call_args_list]
 
     assert (
-        "Both the subject name and application URI are extracted directly from the certificate. "
-        "Any values provided via the --subject-name and --application-uri will be disregarded." in warnings
-    )
-
-    assert (
         "If this certificate was issued by a CA, then please "
-        "ensure that the certificate is added to issuer list." in warnings
+        "ensure that the CA certificate is added to issuer list." in warnings
     )
 
     if result:
@@ -197,7 +192,7 @@ def test_client_add(
 
 @pytest.mark.parametrize(
     "expected_resources_map, client_app_spc, client_app_secretsync,"
-    "public_file_name, private_file_name, subject_name, uri, expected_error",
+    "public_file_name, private_file_name, subject_name, uri, cert_subject_name, cert_uri, expected_error",
     [
         # no default spc
         (
@@ -209,6 +204,8 @@ def test_client_add(
             {},
             "/fake/path/certificate.der",
             "/fake/path/certificate.pem",
+            "subjectname",
+            "uri",
             "subjectname",
             "uri",
             "Please enable secret sync before adding certificate.",
@@ -233,6 +230,8 @@ def test_client_add(
             "/fake/path/certificate.pem",
             "subjectname",
             "uri",
+            "subjectname",
+            "uri",
             "IoT Operations extension not found.",
         ),
         # file names not matching
@@ -247,6 +246,8 @@ def test_client_add(
             "/fake/path/prikey.pem",
             "subjectname",
             "uri",
+            "subjectname",
+            "uri",
             "Public key file name pubkey and private key file name prikey must match.",
         ),
         # subject name not found
@@ -259,6 +260,8 @@ def test_client_add(
             {},
             "/fake/path/certificate.der",
             "/fake/path/certificate.pem",
+            " ",
+            "uri",
             " ",
             "uri",
             "Not able to extract subject name from the certificate. "
@@ -276,8 +279,45 @@ def test_client_add(
             "/fake/path/certificate.pem",
             "subjectname",
             " ",
+            "subjectname",
+            " ",
             "Not able to extract application URI from the certificate. "
             "Please provide the correct application URI in certificate via --public-key-file.",
+        ),
+        # subject name provided not matching cert
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+            },
+            {},
+            {},
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            "subjectnamenotmatch",
+            "uri",
+            "subjectname",
+            "uri",
+            "Given --subject-name subjectnamenotmatch does not match certificate subject name subjectname. "
+            "Please provide the correct subject name via --subject-name or correct certificate using --public-key-file."
+        ),
+        # uri provided not matching cert
+        (
+            {
+                "resources": [get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg")],
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+            },
+            {},
+            {},
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            "subjectname",
+            "urinotmatch",
+            "subjectname",
+            "uri",
+            "Given --application-uri urinotmatch does not match certificate application URI uri. "
+            "Please provide the correct application URI via --application-uri or correct certificate "
+            "using --public-key-file."
         ),
     ],
 )
@@ -294,6 +334,8 @@ def test_client_add_errors(
     private_file_name: str,
     subject_name: str,
     uri: str,
+    cert_subject_name: str,
+    cert_uri: str,
     expected_error: str,
     mocked_get_resource_client: Mock,
     mocked_instance: Mock,
@@ -311,7 +353,7 @@ def test_client_add_errors(
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
     mocked_read_file_content.return_value = file_content
-    mocked_load_x509_cert.return_value = build_mock_cert(subject_name=subject_name, uri=uri)
+    mocked_load_x509_cert.return_value = build_mock_cert(subject_name=cert_subject_name, uri=cert_uri)
 
     if client_app_spc:
         # get secrets
