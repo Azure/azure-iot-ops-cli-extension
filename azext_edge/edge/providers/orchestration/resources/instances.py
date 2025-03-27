@@ -101,6 +101,13 @@ class Instances(Queryable):
 
         return result
 
+    def get_ext_loc(
+        self,
+        name: str,
+        resource_group_name: str,
+    ) -> Dict[str, str]:
+        return self.show(name=name, resource_group_name=resource_group_name)["extendedLocation"]
+
     def list(self, resource_group_name: Optional[str] = None) -> Iterable[dict]:
         if resource_group_name:
             return self.iotops_mgmt_client.instance.list_by_resource_group(resource_group_name=resource_group_name)

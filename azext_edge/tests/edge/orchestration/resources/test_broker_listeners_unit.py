@@ -4,15 +4,23 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 from typing import Optional
+from unittest.mock import Mock
 
 import pytest
 import responses
 
-from azext_edge.edge.commands_mq import list_broker_listeners, show_broker_listener, delete_broker_listener
+from azext_edge.edge.commands_mq import (
+    create_broker_listener,
+    delete_broker_listener,
+    list_broker_listeners,
+    show_broker_listener,
+)
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
+from .test_instances_unit import get_instance_endpoint, get_mock_instance_record
 
 
 def get_broker_listener_endpoint(
@@ -161,3 +169,57 @@ def test_broker_listener_delete(mocked_cmd, mocked_responses: responses):
         wait_sec=0.25,
     )
     assert len(mocked_responses.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        {"file_payload": {generate_random_string(): generate_random_string()}},
+    ],
+)
+def test_broker_listener_create(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
+    listener_name = generate_random_string()
+    broker_name = generate_random_string()
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+
+    expected_payload = None
+    file_payload = scenario.get("file_payload")
+    if file_payload:
+        expected_payload = file_payload
+        expected_file_content = json.dumps(file_payload)
+    mocked_get_file_config.return_value = expected_file_content
+
+    mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_instance_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+        ),
+        json=mock_instance_record,
+        status=200,
+    )
+    put_response = mocked_responses.add(
+        method=responses.PUT,
+        url=get_broker_listener_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            broker_name=broker_name,
+            listener_name=listener_name,
+        ),
+        json=expected_payload,
+        status=200,
+    )
+    create_result = create_broker_listener(
+        cmd=mocked_cmd,
+        listener_name=listener_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        wait_sec=0.1,
+        config_file="config.json",
+    )
+    assert len(mocked_responses.calls) == 2
+    assert create_result == expected_payload
+    assert put_response.calls[0].request.body["extendedLocation"] == mock_instance_record["extendedLocation"]
