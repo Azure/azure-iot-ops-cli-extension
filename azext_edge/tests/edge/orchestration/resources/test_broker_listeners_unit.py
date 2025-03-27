@@ -21,6 +21,7 @@ from azext_edge.edge.commands_mq import (
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
 from .test_instances_unit import get_instance_endpoint, get_mock_instance_record
+from azext_edge.edge.common import DEFAULT_BROKER
 
 
 def get_broker_listener_endpoint(
@@ -175,13 +176,15 @@ def test_broker_listener_delete(mocked_cmd, mocked_responses: responses):
     "scenario",
     [
         {"file_payload": {generate_random_string(): generate_random_string()}},
+        {"file_payload": {generate_random_string(): generate_random_string()}, "broker_name": generate_random_string()},
     ],
 )
 def test_broker_listener_create(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
     listener_name = generate_random_string()
-    broker_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
+
+    broker_name = scenario.get("broker_name")
 
     expected_payload = None
     file_payload = scenario.get("file_payload")
@@ -205,21 +208,25 @@ def test_broker_listener_create(mocked_cmd, mocked_responses: responses, mocked_
         url=get_broker_listener_endpoint(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
-            broker_name=broker_name,
+            broker_name=broker_name or DEFAULT_BROKER,
             listener_name=listener_name,
         ),
         json=expected_payload,
         status=200,
     )
+    kwargs = {}
+    if broker_name:
+        kwargs["broker_name"] = broker_name
     create_result = create_broker_listener(
         cmd=mocked_cmd,
         listener_name=listener_name,
-        broker_name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        wait_sec=0.1,
         config_file="config.json",
+        wait_sec=0.1,
+        **kwargs,
     )
     assert len(mocked_responses.calls) == 2
     assert create_result == expected_payload
-    assert put_response.calls[0].request.body["extendedLocation"] == mock_instance_record["extendedLocation"]
+    request_payload = json.loads(put_response.calls[0].request.body)
+    assert request_payload["extendedLocation"] == mock_instance_record["extendedLocation"]
