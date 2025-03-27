@@ -7,8 +7,7 @@
 import pytest
 from azure.cli.core.azclierror import ArgumentUsageError
 from azext_edge.edge.providers.check.common import CoreServiceResourceKinds, ResourceOutputDetailLevel
-from azext_edge.edge.providers.check.opcua import evaluate_asset_types, evaluate_core_service_runtime
-from azext_edge.edge.providers.edge_api.opcua import OpcuaResourceKinds
+from azext_edge.edge.providers.check.opcua import evaluate_core_service_runtime
 
 from .conftest import (
     assert_check_by_resource_types,

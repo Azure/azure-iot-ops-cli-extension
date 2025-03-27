@@ -9,7 +9,6 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
-    check_custom_resource_files,
     check_workload_resource_files,
     get_file_map,
     run_bundle_command

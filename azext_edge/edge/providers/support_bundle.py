@@ -148,6 +148,7 @@ def build_bundle(
         if not deployed_apis and service_moniker not in [
             OpsServiceType.schemaregistry.value,
             OpsServiceType.akri.value,
+            OpsServiceType.connectors.value,
         ]:
             expected_api_version = api_info["apis"].as_str()
             logger.warning(

@@ -5,14 +5,11 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, Optional
 
 from knack.log import get_logger
 
-from ..edge_api import OPCUA_API_V1, EdgeResourceApi
 from .base import (
     DAY_IN_SECONDS,
-    assemble_crd_work,
     process_config_maps,
     process_daemonsets,
     process_deployments,
