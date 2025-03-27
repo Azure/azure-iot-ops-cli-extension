@@ -143,6 +143,7 @@ class OpsServiceType(ListableEnum):
     secretstore = "secretstore"
     azuremonitor = "azuremonitor"
     certmanager = "certmanager"
+    meso = "meso"
 
     @classmethod
     def list_check_services(cls):
@@ -258,6 +259,8 @@ class FileType(ListableEnum):
 
 
 class BundleResourceKind(Enum):
+    clusterrole = "ClusterRole"
+    clusterrolebinding = "ClusterRoleBinding"
     deployment = "Deployment"
     statefulset = "Statefulset"
     service = "Service"
