@@ -26,7 +26,6 @@ from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
     DeviceRegistryResourceKinds,
     MqResourceKinds,
-    OpcuaResourceKinds,
 )
 from .providers.orchestration.common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
@@ -204,7 +203,6 @@ def load_iotops_arguments(self, _):
                         MqResourceKinds.BROKER_LISTENER.value,
                         MqResourceKinds.BROKER_AUTHENTICATION.value,
                         MqResourceKinds.BROKER_AUTHORIZATION.value,
-                        OpcuaResourceKinds.ASSET_TYPE.value,
                         DataflowResourceKinds.DATAFLOW.value,
                         DataflowResourceKinds.DATAFLOWENDPOINT.value,
                         DataflowResourceKinds.DATAFLOWPROFILE.value,

@@ -19,7 +19,6 @@ from ..providers.edge_api import (
     MQTT_BROKER_API_V1,
     OPENSERVICEMESH_CONFIG_API_V1,
     OPENSERVICEMESH_POLICY_API_V1,
-    OPCUA_API_V1,
     DEVICEREGISTRY_API_V1,
     DATAFLOW_API_V1,
     META_API_V1,
@@ -165,7 +164,11 @@ def build_bundle(
             bundle = bundle_method(deployed_apis)
         elif service_moniker == OpsServiceType.mq.value:
             bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
-        elif service_moniker in [OpsServiceType.schemaregistry.value, OpsServiceType.akri.value]:
+        elif service_moniker in [
+            OpsServiceType.schemaregistry.value,
+            OpsServiceType.akri.value,
+            OpsServiceType.connectors.value
+        ]:
             bundle = bundle_method(log_age_seconds)
         else:
             bundle = bundle_method(log_age_seconds, deployed_apis)

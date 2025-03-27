@@ -7,7 +7,6 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import OPCUA_API_V1
 from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
@@ -36,9 +35,7 @@ def test_create_bundle_connectors(cluster_connection, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)["aio"]
 
-    check_custom_resource_files(file_objs=file_map, resource_api=OPCUA_API_V1)
-
-    expected_types = set(CONNECTOR_WORKLOAD_TYPES + CONNECTOR_OPTIONAL_WORKLOAD_TYPES).union(OPCUA_API_V1.kinds)
+    expected_types = set(CONNECTOR_WORKLOAD_TYPES + CONNECTOR_OPTIONAL_WORKLOAD_TYPES)
     assert set(file_map.keys()).issubset(expected_types)
 
     check_workload_resource_files(

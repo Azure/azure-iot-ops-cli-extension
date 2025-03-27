@@ -34,7 +34,7 @@ OPC_NAME_VAR_LABEL = "name in (aio-opc-asset-discovery)"
 CONNECTORS_DIRECTORY_PATH = "connectors"
 
 # TODO: once this label is stabled, we can remove the other labels
-OPCUA_NAME_LABEL = NAME_LABEL_FORMAT.format(label=OPCUA_API_V1.label)
+OPCUA_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-opcua")
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
@@ -120,12 +120,8 @@ support_runtime_elements = {
 
 def prepare_bundle(
     log_age_seconds: int = DAY_IN_SECONDS,
-    apis: Optional[Iterable[EdgeResourceApi]] = None,
 ) -> dict:
     connectors_to_run = {}
-
-    if apis:
-        connectors_to_run.update(assemble_crd_work(apis))
 
     connectors_to_run["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     connectors_to_run.update(support_runtime_elements)
