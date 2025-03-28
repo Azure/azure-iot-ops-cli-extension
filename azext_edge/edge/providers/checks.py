@@ -21,7 +21,6 @@ from .edge_api.mq import MqResourceKinds
 from .check.akri import check_akri_deployment
 from .check.dataflow import check_dataflows_deployment
 from .check.summary import check_summary
-from .edge_api.opcua import OpcuaResourceKinds
 
 console = Console(width=100, highlight=False)
 
@@ -87,7 +86,6 @@ def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: Lis
     service_kinds_dict: Dict[str, ListableEnum] = {
         OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
-        OPCUA_SERVICE: OpcuaResourceKinds,
         OpsServiceType.dataflow.value: DataflowResourceKinds,
     }
 

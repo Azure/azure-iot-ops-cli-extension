@@ -80,7 +80,6 @@ def mocked_cluster_resources(request, mocker):
         EdgeResourceApi,
         MQ_ACTIVE_API,
         MQTT_BROKER_API_V1,
-        OPCUA_API_V1,
         DEVICEREGISTRY_API_V1,
         CLUSTER_CONFIG_API_V1,
     )
@@ -111,8 +110,6 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("DiagnosticService"))
             v1_resources.append(_get_api_resource("BrokerAuthentication"))
             v1_resources.append(_get_api_resource("BrokerAuthorization"))
-        if r == OPCUA_API_V1:
-            v1_resources.append(_get_api_resource("AssetType"))
 
         if r == DEVICEREGISTRY_API_V1:
             v1_resources.append(_get_api_resource("Asset"))

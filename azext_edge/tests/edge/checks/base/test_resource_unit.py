@@ -36,14 +36,12 @@ from azext_edge.edge.providers.check.common import (
 from azext_edge.edge.providers.edge_api import (
     MQ_ACTIVE_API,
     MqResourceKinds,
-    OPCUA_API_V1,
-    OpcuaResourceKinds,
 )
 from azext_edge.edge.providers.edge_api.deviceregistry import (
     DEVICEREGISTRY_API_V1,
     DeviceRegistryResourceKinds,
 )
-from azext_edge.tests.edge.checks.conftest import generate_api_resource_list, generate_pod_stub
+from azext_edge.tests.edge.checks.conftest import generate_pod_stub
 
 
 @pytest.mark.parametrize(
@@ -51,42 +49,6 @@ from azext_edge.tests.edge.checks.conftest import generate_api_resource_list, ge
         excluded_resources, api_resources, expected_resource_map, status",
     [
         (MQ_ACTIVE_API, MqResourceKinds.list(), "mq", "MQ", None, [], {}, CheckTaskStatus.error.value),
-        (
-            OPCUA_API_V1,
-            OpcuaResourceKinds.list(),
-            "opcua",
-            "OPCUA",
-            ["assettypes"],
-            generate_api_resource_list(
-                api_version=OPCUA_API_V1.version,
-                group_version=OPCUA_API_V1.as_str(),
-                resources=[
-                    {
-                        "categories": None,
-                        "group": None,
-                        "kind": "AssetType",
-                        "name": "assettypes",
-                        "namespaced": True,
-                        "short_names": None,
-                        "singular_name": "assettype",
-                        "storage_version_hash": "FCPRUJA7s2I=",
-                        "verbs": [
-                            "delete",
-                            "deletecollection",
-                            "get",
-                            "list",
-                            "patch",
-                            "create",
-                            "update",
-                            "watch",
-                        ],
-                        "version": None,
-                    },
-                ],
-            ),
-            {},
-            CheckTaskStatus.success.value,
-        ),
     ],
 )
 def test_enumerate_ops_service_resources(

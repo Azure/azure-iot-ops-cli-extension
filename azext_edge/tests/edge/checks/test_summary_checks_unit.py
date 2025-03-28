@@ -13,7 +13,6 @@ from azext_edge.edge.providers.edge_api import (
     DATAFLOW_API_V1,
     DEVICEREGISTRY_API_V1,
     MQ_ACTIVE_API,
-    OPCUA_API_V1,
 )
 
 
@@ -276,7 +275,7 @@ def test_summary_checks(
         ("Akri", akri_status),
         (MQ_ACTIVE_API.as_str(), broker_status),
         (DEVICEREGISTRY_API_V1.as_str(), deviceregistry_status),
-        (OPCUA_API_V1.as_str(), opcua_status),
+        ("Opcua", opcua_status),
         (DATAFLOW_API_V1.as_str(), dataflow_status),
     ]:
         assert service in result["postDeployment"][0]["targets"]
