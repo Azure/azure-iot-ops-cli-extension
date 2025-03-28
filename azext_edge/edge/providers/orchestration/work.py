@@ -71,6 +71,9 @@ PROVISIONING_STATE_SUCCESS = "Succeeded"
 
 CONTRIBUTOR_ROLE_ID = "b24988ac-6180-42a0-ab88-20f7382dd24c"
 
+# Baked-in time for CL service to catch up.
+CATCH_UP_SEC = 7
+
 
 # TODO - @digimaun - make common
 def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str) -> str:
@@ -433,6 +436,7 @@ class WorkManager:
                     )
                 )
                 self._create_or_update_custom_location(extension_ids=dependency_ext_ids + [self.ops_extension["id"]])
+                sleep(CATCH_UP_SEC)
                 instance_work_name = self._work_format_str.format(op="instance")
                 instance_content, instance_parameters = self._targets.get_ops_instance_template(
                     cl_extension_ids=dependency_ext_ids,
@@ -445,6 +449,7 @@ class WorkManager:
                         deployment_name=instance_work_name,
                     )
                 )
+                sleep(CATCH_UP_SEC)
                 self._complete_step(
                     category=WorkCategoryKey.DEPLOY_IOT_OPS,
                     completed_step=WorkStepKey.DEPLOY_INSTANCE,
