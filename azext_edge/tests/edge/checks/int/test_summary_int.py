@@ -27,8 +27,8 @@ def test_summary_checks():
     checks = post[0]
 
     # assert each service check is either success or skipped
-    for api in ["Akri", MQ_ACTIVE_API, "Opcua", DATAFLOW_API_V1, DEVICEREGISTRY_API_V1]:
-        api_target = api.as_str() if api != "Akri" else "Akri"
+    for api in ["Akri", MQ_ACTIVE_API, "OPCUA", DATAFLOW_API_V1, DEVICEREGISTRY_API_V1]:
+        api_target = api.as_str() if api not in ["Akri", "OPCUA"] else api
         assert api_target in checks["targets"]
         service_checks = checks["targets"][api_target]
 
