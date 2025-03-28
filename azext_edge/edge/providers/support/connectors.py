@@ -31,7 +31,7 @@ OPC_NAME_VAR_LABEL = "name in (aio-opc-asset-discovery)"
 CONNECTORS_DIRECTORY_PATH = "connectors"
 
 # TODO: once this label is stabled, we can remove the other labels
-OPCUA_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-opcua")
+OPCUA_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-opcuabroker")
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):

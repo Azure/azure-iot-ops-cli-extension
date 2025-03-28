@@ -31,11 +31,10 @@ def test_opcua_check(cluster_connection, detail_level, resource_match):
         resource_match=resource_match
     )
 
-    for prefix in OPCUA_PREFIX:
-        assert_eval_core_service_runtime(
-            check_results=post_deployment,
-            description_name="OPC UA broker",
-            pod_prefix=prefix,
-            resource_match=resource_match,
-            pre_check_pods=pre_check_pods
-        )
+    assert_eval_core_service_runtime(
+        check_results=post_deployment,
+        description_name="OPC UA broker",
+        pod_prefix=OPCUA_PREFIX,
+        resource_match=resource_match,
+        pre_check_pods=pre_check_pods
+    )
