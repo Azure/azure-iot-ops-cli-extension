@@ -265,6 +265,19 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops broker authn create"
+    ] = """
+        type: command
+        short-summary: Create an mqtt broker authentication resource.
+        long-summary: This is a create or replace operation.
+
+        examples:
+        - name: Create an authentication resource for the default broker using a config file.
+          text: >
+            az iot ops broker authn create -n authn --in myinstance -g myresourcegroup --config-file /path/to/authn/config.json
+    """
+
+    helps[
         "iot ops broker authn show"
     ] = """
         type: command
@@ -308,6 +321,19 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Mqtt broker authorization management.
+    """
+
+    helps[
+        "iot ops broker authz create"
+    ] = """
+        type: command
+        short-summary: Create an mqtt broker authorization resource.
+        long-summary: This is a create or replace operation.
+
+        examples:
+        - name: Create an authorization resource for the default broker using a config file.
+          text: >
+            az iot ops broker authz create -n authz --in myinstance -g myresourcegroup --config-file /path/to/authz/config.json
     """
 
     helps[
