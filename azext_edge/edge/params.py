@@ -115,6 +115,14 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Use the self-hosted oidc issuer for federation.",
         )
+        context.argument(
+            "config_file",
+            options_list=["--config-file"],
+            help="Path to a config file containing resource properties in json format. The config file "
+            "should contain an object with properties compatible with the ARM representation of the resource. "
+            "The object correlates directly with 'properties:{}' of the ARM resource.",
+            arg_group="Config",
+        )
 
     with self.argument_context("iot ops identity") as context:
         context.argument(
@@ -272,19 +280,19 @@ def load_iotops_arguments(self, _):
         context.argument(
             "broker_name",
             options_list=["--name", "-n"],
-            help="Mqtt broker name.",
+            help="Broker name.",
         )
 
     with self.argument_context("iot ops broker listener") as context:
         context.argument(
             "listener_name",
             options_list=["--name", "-n"],
-            help="Mqtt broker listener name.",
+            help="Listener name.",
         )
         context.argument(
             "broker_name",
             options_list=["--broker", "-b"],
-            help="Mqtt broker name.",
+            help="Broker name.",
         )
 
     with self.argument_context("iot ops broker authn") as context:
@@ -517,7 +525,7 @@ def load_iotops_arguments(self, _):
                 "Component mode syntax is `{component}.mode={mode}` where known mode values are: "
                 "`Stable`, `Preview` and `Disabled`. Component setting syntax is "
                 "`{component}.settings.{setting}={value}` where known setting values are `Enabled` or `Disabled`. "
-                "This option can be used one or more times."
+                "This option can be used one or more times.",
             )
 
     with self.argument_context("iot ops upgrade") as context:
@@ -799,14 +807,16 @@ def load_iotops_arguments(self, _):
         context.argument(
             "subject_name",
             options_list=["--subject-name", "--sn"],
-            help="The subject name string embedded in the application instance certificate."
-            "Can be found under public key certificate.",
+            help="The subject name string embedded in the application instance certificate. "
+            "Can be found under public key certificate. When provided, the value will be used to "
+            "validate the certificate's subject name.",
         )
         context.argument(
             "application_uri",
             options_list=["--application-uri", "--au"],
-            help="The application instance URI embedded in the application instance."
-            "Can be found under public key certificate.",
+            help="The application instance URI embedded in the application instance. "
+            "Can be found under public key certificate. When provided, the value will be used to "
+            "validate the certificate's application URI.",
         )
         context.argument(
             "public_key_secret_name",

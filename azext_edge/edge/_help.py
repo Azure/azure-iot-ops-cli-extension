@@ -163,9 +163,9 @@ def load_iotops_help():
         short-summary: Show details of an mqtt broker.
 
         examples:
-        - name: Show details of the default broker 'broker' in the instance 'mycluster-ops-instance'.
+        - name: Show details of the default instance mqtt broker.
           text: >
-            az iot ops broker show -n broker --in mycluster-ops-instance -g myresourcegroup
+            az iot ops broker show -n default --in myinstance -g myresourcegroup
     """
 
     helps[
@@ -175,9 +175,9 @@ def load_iotops_help():
         short-summary: List mqtt brokers associated with an instance.
 
         examples:
-        - name: Enumerate all brokers in the instance 'mycluster-ops-instance'.
+        - name: Enumerate all mqtt brokers in the instance.
           text: >
-            az iot ops broker list --in mycluster-ops-instance -g myresourcegroup
+            az iot ops broker list --in myinstance -g myresourcegroup
     """
 
     helps[
@@ -187,19 +187,32 @@ def load_iotops_help():
         short-summary: Delete an mqtt broker.
 
         examples:
-        - name: Delete the broker called 'broker' in the instance 'mycluster-ops-instance'.
+        - name: Delete an mqtt broker from the instance.
           text: >
-            az iot ops broker delete -n broker --in mycluster-ops-instance -g myresourcegroup
+            az iot ops broker delete -n default --in myinstance -g myresourcegroup
         - name: Same as prior example but skipping the confirmation prompt.
           text: >
-            az iot ops broker delete -n broker --in mycluster-ops-instance -g myresourcegroup -y
+            az iot ops broker delete -n default --in myinstance -g myresourcegroup -y
     """
 
     helps[
         "iot ops broker listener"
     ] = """
         type: group
-        short-summary: Broker listener management.
+        short-summary: Mqtt broker listener management.
+    """
+
+    helps[
+        "iot ops broker listener create"
+    ] = """
+        type: command
+        short-summary: Create an mqtt broker listener service.
+        long-summary: This is a create or replace operation.
+
+        examples:
+        - name: Create a listener for the default broker using a config file.
+          text: >
+            az iot ops broker listener create -n listener --in myinstance -g myresourcegroup --config-file /path/to/listener/config.json
     """
 
     helps[
@@ -209,9 +222,9 @@ def load_iotops_help():
         short-summary: Show details of an mqtt broker listener.
 
         examples:
-        - name: Show details of the default listener 'listener' associated with the default broker.
+        - name: Show details of the default listener associated with the default broker.
           text: >
-            az iot ops broker listener show -n listener -b broker --in mycluster-ops-instance -g myresourcegroup
+            az iot ops broker listener show -n default --in myinstance -g myresourcegroup
     """
 
     helps[
@@ -221,9 +234,9 @@ def load_iotops_help():
         short-summary: List mqtt broker listeners associated with a broker.
 
         examples:
-        - name: Enumerate all broker listeners associated with the default broker.
+        - name: Enumerate all mqtt broker listeners associated with the default broker.
           text: >
-            az iot ops broker listener list -b broker --in mycluster-ops-instance -g myresourcegroup
+            az iot ops broker listener list --in myinstance -g myresourcegroup
     """
 
     helps[
@@ -233,12 +246,12 @@ def load_iotops_help():
         short-summary: Delete an mqtt broker listener.
 
         examples:
-        - name: Delete the broker listener called 'listener' associated with broker 'broker'.
+        - name: Delete an mqtt broker listener associated with the default broker.
           text: >
-            az iot ops broker listener delete -n listener -b broker --in mycluster-ops-instance -g myresourcegroup
+            az iot ops broker listener delete -n listener --in myinstance -g myresourcegroup
         - name: Same as prior example but skipping the confirmation prompt.
           text: >
-            az iot ops broker listener delete -n listener -b broker --in mycluster-ops-instance -g myresourcegroup -y
+            az iot ops broker listener delete -n listener --in myinstance -g myresourcegroup -y
     """
 
     helps[
@@ -1543,18 +1556,28 @@ def load_iotops_help():
             and secretsync 'aio-opc-ua-broker-client-certificate' will be created
             if not found. The newly added certificate will replace the existing
             certificate if there is any.
+            Note: The subject name and application URI will be auto derived from the provided
+            certificate. Optional parameters may be used to validate the respective values
+            meet expectations before the operation proceeds.
         examples:
         - name: Add a client certificate.
           text: >
             az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
-            --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
-            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
+            --public-key-file "newopc.der" --private-key-file "newopc.pem"
         - name: Add a client certificate and skip the overwrite confirmation prompt when the secret already exists.
           text: >
             az iot ops connector opcua client add --instance instance --resource-group instanceresourcegroup
-            --public-key-file "newopc.der" --private-key-file "newopc.pem" --subject-name "aio-opc-opcuabroker"
-            --application-uri "urn:microsoft.com:aio:opc:opcuabroker" --overwrite-secret
+            --public-key-file "newopc.der" --private-key-file "newopc.pem" --overwrite-secret
         - name: Add a client certificate with custom public and private key secret name.
+          text: >
+            az iot ops connector opcua client add
+            --instance instance
+            --resource-group instanceresourcegroup
+            --public-key-file "newopc.der"
+            --private-key-file "newopc.pem"
+            --public-key-secret-name public-secret-name
+            --private-key-secret-name private-secret-name
+        - name: Add a client certificate with subject name and application URI specified. Values will be used to validate the existing certificate values.
           text: >
             az iot ops connector opcua client add
             --instance instance

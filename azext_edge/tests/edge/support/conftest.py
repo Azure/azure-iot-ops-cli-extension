@@ -459,6 +459,53 @@ def mocked_list_config_maps(mocked_client):
 
 
 @pytest.fixture
+def mocked_list_cluster_roles(mocked_client):
+    from kubernetes.client.models import V1ClusterRoleList, V1ClusterRole, V1ObjectMeta
+
+    def _handle_list_cluster_roles(*args, **kwargs):
+        names = ["mock_cluster_role"]
+
+        cluster_role_list = []
+        for name in names:
+            cluster_role_list.append(
+                V1ClusterRole(
+                    metadata=V1ObjectMeta(name=name, annotations={"meta.helm.sh/release-namespace": "mock_namespace"})
+                )
+            )
+        cluster_role_list = V1ClusterRoleList(items=cluster_role_list)
+
+        return cluster_role_list
+
+    mocked_client.RbacAuthorizationV1Api().list_cluster_role.side_effect = _handle_list_cluster_roles
+
+    yield mocked_client
+
+
+@pytest.fixture
+def mocked_list_cluster_role_bindings(mocked_client):
+    from kubernetes.client.models import V1ClusterRoleBindingList, V1ClusterRoleBinding, V1ObjectMeta
+
+    def _handle_list_cluster_role_bindings(*args, **kwargs):
+        names = ["mock_cluster_role_binding"]
+
+        cluster_role_binding_list = []
+        for name in names:
+            cluster_role_binding_list.append(
+                V1ClusterRoleBinding(
+                    metadata=V1ObjectMeta(name=name, annotations={"meta.helm.sh/release-namespace": "mock_namespace"}),
+                    role_ref={"kind": "ClusterRole"},
+                )
+            )
+        cluster_role_binding_list = V1ClusterRoleBindingList(items=cluster_role_binding_list)
+
+        return cluster_role_binding_list
+
+    mocked_client.RbacAuthorizationV1Api().list_cluster_role_binding.side_effect = _handle_list_cluster_role_bindings
+
+    yield mocked_client
+
+
+@pytest.fixture
 def mocked_mq_active_api(mocker):
     # Supports fetching events in support bundle as its based on MQ deployment
     patched_active_mq_api = mocker.patch("azext_edge.edge.providers.edge_api.MQ_ACTIVE_API")

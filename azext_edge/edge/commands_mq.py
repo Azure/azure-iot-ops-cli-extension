@@ -9,6 +9,7 @@ from typing import Iterable, Optional
 from knack.log import get_logger
 
 from .providers.orchestration.resources import Brokers
+from .common import DEFAULT_BROKER
 
 logger = get_logger(__name__)
 
@@ -33,8 +34,27 @@ def delete_broker(
     )
 
 
+def create_broker_listener(
+    cmd,
+    listener_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    config_file: str,
+    broker_name: str = DEFAULT_BROKER,
+    **kwargs,
+) -> dict:
+    return Brokers(cmd).listeners.create(
+        name=listener_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        config_file=config_file,
+        **kwargs,
+    )
+
+
 def show_broker_listener(
-    cmd, listener_name: str, broker_name: str, instance_name: str, resource_group_name: str
+    cmd, listener_name: str, instance_name: str, resource_group_name: str, broker_name: str = DEFAULT_BROKER
 ) -> dict:
     return Brokers(cmd).listeners.show(
         name=listener_name,
@@ -44,7 +64,9 @@ def show_broker_listener(
     )
 
 
-def list_broker_listeners(cmd, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+def list_broker_listeners(
+    cmd, instance_name: str, resource_group_name: str, broker_name: str = DEFAULT_BROKER
+) -> Iterable[dict]:
     return Brokers(cmd).listeners.list(
         broker_name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name
     )
@@ -53,9 +75,9 @@ def list_broker_listeners(cmd, broker_name: str, instance_name: str, resource_gr
 def delete_broker_listener(
     cmd,
     listener_name: str,
-    broker_name: str,
     instance_name: str,
     resource_group_name: str,
+    broker_name: str = DEFAULT_BROKER,
     confirm_yes: Optional[bool] = None,
     **kwargs
 ):

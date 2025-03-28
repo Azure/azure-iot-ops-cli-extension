@@ -7,6 +7,8 @@
 import re
 from typing import Optional
 
+import pytest
+
 from ....generators import generate_random_string, get_zeroed_subscription
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
@@ -103,3 +105,8 @@ def get_resource_id(
 
 def get_authz_endpoint_pattern() -> re.Pattern:
     return re.compile(r"https:\/\/.*\/providers\/Microsoft\.Authorization\/roleAssignments.*")
+
+
+@pytest.fixture
+def mocked_get_file_config(mocker):
+    yield mocker.patch("azext_edge.edge.providers.orchestration.resources.reskit.read_file_content")

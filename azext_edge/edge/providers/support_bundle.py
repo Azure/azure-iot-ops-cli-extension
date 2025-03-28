@@ -71,6 +71,7 @@ def build_bundle(
     from .support.secretstore import prepare_bundle as prepare_secretstore_bundle
     from .support.azuremonitor import prepare_bundle as prepare_azuremonitor_bundle
     from .support.certmanager import prepare_bundle as prepare_certmanager_bundle
+    from .support.meso import prepare_bundle as prepare_meso_bundle
 
     def collect_default_works(
         pending_work: dict,
@@ -131,6 +132,10 @@ def build_bundle(
             "apis": COMPAT_CERTMANAGER_APIS,
             "prepare_bundle": prepare_certmanager_bundle,
         },
+        OpsServiceType.meso.value: {
+            "apis": None,
+            "prepare_bundle": prepare_meso_bundle,
+        },
     }
 
     if not ops_services:
@@ -149,6 +154,7 @@ def build_bundle(
             OpsServiceType.schemaregistry.value,
             OpsServiceType.akri.value,
             OpsServiceType.connectors.value,
+            OpsServiceType.meso.value,
         ]:
             expected_api_version = api_info["apis"].as_str()
             logger.warning(
@@ -168,7 +174,8 @@ def build_bundle(
         elif service_moniker in [
             OpsServiceType.schemaregistry.value,
             OpsServiceType.akri.value,
-            OpsServiceType.connectors.value
+            OpsServiceType.connectors.value,
+            OpsServiceType.meso.value,
         ]:
             bundle = bundle_method(log_age_seconds)
         else:
