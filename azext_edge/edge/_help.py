@@ -1542,7 +1542,7 @@ def load_iotops_help():
             certificate if there is any.
             Note: Subject name and application uri will be auto derived from the provided
             certificate. However, if the subject name and application uri are provided using
-            flags, the values will be used to validate the existing certificate values.
+            parameters, the values will be used to validate the existing certificate content.
         examples:
         - name: Add a client certificate.
           text: >
@@ -1570,8 +1570,8 @@ def load_iotops_help():
             --private-key-file "newopc.pem"
             --public-key-secret-name public-secret-name
             --private-key-secret-name private-secret-name
-            --subject-name "Opcua"
-            --application-uri "urn:Opcua"
+            --subject-name "aio-opc-opcuabroker"
+            --application-uri "urn:microsoft.com:aio:opc:opcuabroker"
       """
 
     helps[
