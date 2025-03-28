@@ -1540,9 +1540,9 @@ def load_iotops_help():
             and secretsync 'aio-opc-ua-broker-client-certificate' will be created
             if not found. The newly added certificate will replace the existing
             certificate if there is any.
-            Note: Subject name and application uri will be auto derived from the provided
-            certificate. However, if the subject name and application uri are provided using
-            parameters, the values will be used to validate the existing certificate content.
+            Note: The subject name and application uri will be auto derived from the provided
+            certificate. Optional parameters may be used to validate the respective values
+            meet expectations before the operation proceeds.
         examples:
         - name: Add a client certificate.
           text: >
