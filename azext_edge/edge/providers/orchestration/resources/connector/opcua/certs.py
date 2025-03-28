@@ -224,6 +224,7 @@ class OpcUACerts(Queryable):
         private_key_secret_name: Optional[str] = None,
     ) -> dict:
         # inform user if the provided cert was issued by a CA, the CA cert must be added to the issuers list.
+        # TODO: only warn if the cert is not self-signed
         logger.warning(
             "If this certificate was issued by a CA, then please ensure that the CA certificate is "
             "added to issuer list."
@@ -828,6 +829,8 @@ class OpcUACerts(Queryable):
         from cryptography.x509.oid import NameOID, ExtensionOID
 
         der_data = read_file_content(file_path=public_key_file, read_as_binary=True)
+
+        # TODO: add cert expiry check
         certificate = decode_der_certificate(der_data)
 
         if not certificate:

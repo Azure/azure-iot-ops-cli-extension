@@ -1540,6 +1540,9 @@ def load_iotops_help():
             and secretsync 'aio-opc-ua-broker-client-certificate' will be created
             if not found. The newly added certificate will replace the existing
             certificate if there is any.
+            Note: Subject name and application uri will be auto derived from the provided
+            certificate. However, if the subject name and application uri are provided using
+            flags, the values will be used to validate the existing certificate values.
         examples:
         - name: Add a client certificate.
           text: >
@@ -1558,6 +1561,17 @@ def load_iotops_help():
             --private-key-file "newopc.pem"
             --public-key-secret-name public-secret-name
             --private-key-secret-name private-secret-name
+        - name: Add a client certificate with subject name and application uri specified. Values will be used to validate the existing certificate values.
+          text: >
+            az iot ops connector opcua client add
+            --instance instance
+            --resource-group instanceresourcegroup
+            --public-key-file "newopc.der"
+            --private-key-file "newopc.pem"
+            --public-key-secret-name public-secret-name
+            --private-key-secret-name private-secret-name
+            --subject-name "Opcua"
+            --application-uri "urn:Opcua"
       """
 
     helps[
