@@ -32,7 +32,7 @@ def test_check_opcua_by_resource_types(ops_service, mocker, mock_resource_types,
     try:
         assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
     except ArgumentUsageError as e:
-        assert "--resources is not supported for service akri." in str(e)
+        assert "--resources is not supported for service opcua." in str(e)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
@@ -82,7 +82,6 @@ def test_evaluate_core_service_runtime(
     pods,
     namespace_conditions,
     namespace_evaluations,
-    mock_generate_opcua_target_resources,
     detail_level,
     resource_name,
 ):
