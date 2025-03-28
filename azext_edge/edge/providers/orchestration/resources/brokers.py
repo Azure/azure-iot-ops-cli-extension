@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import TYPE_CHECKING, Iterable, Optional, Callable
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from knack.log import get_logger
 from rich.console import Console
@@ -12,8 +12,8 @@ from rich.console import Console
 from ....util.az_client import wait_for_terminal_state
 from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
-from .reskit import get_file_config
 from .instances import Instances
+from .reskit import GetInstanceExtLoc, get_file_config
 
 logger = get_logger(__name__)
 
@@ -37,8 +37,8 @@ class Brokers(Queryable):
 
         self.ops: "BrokerOperations" = self.iotops_mgmt_client.broker
         self.listeners = BrokerListeners(self.iotops_mgmt_client.broker_listener, self.instances.get_ext_loc)
-        self.authns = BrokerAuthn(self.iotops_mgmt_client.broker_authentication)
-        self.authzs = BrokerAuthz(self.iotops_mgmt_client.broker_authorization)
+        self.authns = BrokerAuthn(self.iotops_mgmt_client.broker_authentication, self.instances.get_ext_loc)
+        self.authzs = BrokerAuthz(self.iotops_mgmt_client.broker_authorization, self.instances.get_ext_loc)
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(resource_group_name=resource_group_name, instance_name=instance_name, broker_name=name)
@@ -63,7 +63,7 @@ class Brokers(Queryable):
 
 
 class BrokerListeners:
-    def __init__(self, ops: "BrokerListenerOperations", get_ext_loc: Callable[[str, str], str]):
+    def __init__(self, ops: "BrokerListenerOperations", get_ext_loc: GetInstanceExtLoc):
         self.ops = ops
         self.get_ext_loc = get_ext_loc
 
@@ -71,9 +71,8 @@ class BrokerListeners:
         self, name: str, broker_name: str, instance_name: str, resource_group_name: str, config_file: str, **kwargs
     ) -> dict:
         listener_config = get_file_config(config_file)
-        ext_loc = self.get_ext_loc(name=instance_name, resource_group_name=resource_group_name)
         resource = {}
-        resource["extendedLocation"] = ext_loc
+        resource["extendedLocation"] = self.get_ext_loc(name=instance_name, resource_group_name=resource_group_name)
         resource["properties"] = listener_config
 
         with console.status("Working..."):
@@ -123,8 +122,27 @@ class BrokerListeners:
 
 
 class BrokerAuthn:
-    def __init__(self, ops: "BrokerAuthenticationOperations"):
+    def __init__(self, ops: "BrokerAuthenticationOperations", get_ext_loc: GetInstanceExtLoc):
         self.ops = ops
+        self.get_ext_loc = get_ext_loc
+
+    def create(
+        self, name: str, broker_name: str, instance_name: str, resource_group_name: str, config_file: str, **kwargs
+    ):
+        authn_config = get_file_config(config_file)
+        resource = {}
+        resource["extendedLocation"] = self.get_ext_loc(name=instance_name, resource_group_name=resource_group_name)
+        resource["properties"] = authn_config
+
+        with console.status("Working..."):
+            poller = self.ops.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                broker_name=broker_name,
+                authentication_name=name,
+                resource=resource,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
 
     def show(self, name: str, broker_name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
@@ -163,8 +181,27 @@ class BrokerAuthn:
 
 
 class BrokerAuthz:
-    def __init__(self, ops: "BrokerAuthorizationOperations"):
+    def __init__(self, ops: "BrokerAuthorizationOperations", get_ext_loc: GetInstanceExtLoc):
         self.ops = ops
+        self.get_ext_loc = get_ext_loc
+
+    def create(
+        self, name: str, broker_name: str, instance_name: str, resource_group_name: str, config_file: str, **kwargs
+    ):
+        authz_config = get_file_config(config_file)
+        resource = {}
+        resource["extendedLocation"] = self.get_ext_loc(name=instance_name, resource_group_name=resource_group_name)
+        resource["properties"] = authz_config
+
+        with console.status("Working..."):
+            poller = self.ops.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                broker_name=broker_name,
+                authorization_name=name,
+                resource=resource,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
 
     def show(self, name: str, broker_name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
