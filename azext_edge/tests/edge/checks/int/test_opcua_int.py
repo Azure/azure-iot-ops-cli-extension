@@ -25,7 +25,7 @@ OPCUA_PREFIX = ["aio-opc-", "opcplc-"]
 @pytest.mark.parametrize("resource_match", [None, "*opc-supervisor*", generate_names()])
 def test_opcua_check(cluster_connection, detail_level, resource_match):
     pre_check_pods = get_pods(pod_prefix=OPCUA_PREFIX, resource_match=resource_match)
-    post_deployment, opcua_present = run_check_command(
+    post_deployment, _ = run_check_command(
         detail_level=detail_level,
         ops_service="opcua",
         resource_match=resource_match
