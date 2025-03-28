@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import IntEnum
-from typing import Dict, List, Optional, Set, Tuple, NamedTuple
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
@@ -22,6 +22,7 @@ from ..orchestration.common import (
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
 )
+from ..orchestration.resources.instances import parse_feature_kvp_nargs
 from .common import KubernetesDistroType
 from .template import (
     TEMPLATE_BLUEPRINT_ENABLEMENT,
@@ -61,6 +62,7 @@ class InitTargets:
         enable_rsync_rules: Optional[bool] = None,
         instance_name: Optional[str] = None,
         instance_description: Optional[str] = None,
+        instance_features: Optional[List[str]] = None,
         tags: Optional[dict] = None,
         enable_fault_tolerance: Optional[bool] = None,
         # Extension config
@@ -110,6 +112,7 @@ class InitTargets:
         self.deploy_resource_sync_rules = bool(enable_rsync_rules)
         self.instance_name = self._sanitize_k8s_name(instance_name)
         self.instance_description = instance_description
+        self.instance_features = parse_feature_kvp_nargs(instance_features, strict=True)
         self.tags = tags
         self.enable_fault_tolerance = enable_fault_tolerance
 
@@ -273,7 +276,9 @@ class InitTargets:
         dataflow_profile = template.get_resource_by_key("dataflow_profile")
         dataflow_endpoint = template.get_resource_by_key("dataflow_endpoint")
 
-        instance["properties"]["description"] = self.instance_description
+        instance["properties"] = get_default_instance_config(
+            description=self.instance_description, features=self.instance_features
+        )
 
         if self.instance_name:
             instance["name"] = self.instance_name
@@ -429,4 +434,12 @@ def get_default_ssc_config() -> Dict[str, str]:
     return {
         "rotationPollIntervalInSeconds": "120",
         "validatingAdmissionPolicies.applyPolicies": "false",
+    }
+
+
+def get_default_instance_config(description: Optional[str] = None, features: Optional[dict] = None) -> dict:
+    return {
+        "description": description,
+        "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},
+        "features": features,
     }

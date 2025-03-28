@@ -8,17 +8,12 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.providers.edge_api import META_API_V1
 from ....helpers import get_multi_kubectl_workload_items
-from .helpers import (
-    check_custom_resource_files,
-    check_workload_resource_files,
-    get_file_map,
-    run_bundle_command
-)
+from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
-META_PREFIXES = ["aio-operator", "aio-pre-install-job", "aio-post-install-job"]
+META_PREFIXES = ["aio-operator", "aio-pre-install", "aio-post-install", "aio-pre-upgrade", "aio-post-upgrade"]
 META_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service"]
 META_OPTIONAL_WORKLOAD_TYPES = ["job"]
 
@@ -46,5 +41,5 @@ def test_create_bundle_meta(cluster_connection, tracked_files):
         pre_bundle_items=pre_bundle_workload_items,
         prefixes=META_PREFIXES,
         bundle_path=bundle_path,
-        pre_bundle_optional_items=pre_bundle_optional_workload_items
+        pre_bundle_optional_items=pre_bundle_optional_workload_items,
     )

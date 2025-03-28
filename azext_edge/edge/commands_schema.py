@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Dict
 
 from knack.log import get_logger
 
@@ -23,7 +23,7 @@ def create_registry(
     location: Optional[str] = None,
     description: Optional[str] = None,
     display_name: Optional[str] = None,
-    tags: Optional[str] = None,
+    tags: Optional[Dict[str, str]] = None,
     custom_role_id: Optional[str] = None,
     **kwargs
 ) -> dict:

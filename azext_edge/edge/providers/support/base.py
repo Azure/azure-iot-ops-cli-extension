@@ -363,6 +363,64 @@ def process_config_maps(
     )
 
 
+def process_cluster_roles(
+    directory_path: str,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+) -> Dict[str, Union[dict, str]]:
+    from kubernetes.client.models import V1ClusterRoleList
+
+    processed = []
+    rbac_api = client.RbacAuthorizationV1Api()
+
+    cluster_roles: V1ClusterRoleList = rbac_api.list_cluster_role(
+        label_selector=label_selector, field_selector=field_selector
+    )
+    for role in cluster_roles.items:
+        namespace = getattr(role.metadata, "annotations", {}).get("meta.helm.sh/release-namespace")
+        name = role.metadata.name
+        resource_type = _get_resource_type_prefix(BundleResourceKind.clusterrole.value)
+
+        if namespace:
+            processed.append(
+                {
+                    "data": generic.sanitize_for_serialization(obj=role),
+                    "zinfo": f"{namespace}/{directory_path}/{resource_type}.{name}.yaml",
+                }
+            )
+
+    return processed
+
+
+def process_cluster_role_bindings(
+    directory_path: str,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+) -> Dict[str, Union[dict, str]]:
+    from kubernetes.client.models import V1ClusterRoleBindingList
+
+    processed = []
+    rbac_api = client.RbacAuthorizationV1Api()
+
+    cluster_role_bindings: V1ClusterRoleBindingList = rbac_api.list_cluster_role_binding(
+        label_selector=label_selector, field_selector=field_selector
+    )
+    for binding in cluster_role_bindings.items:
+        namespace = getattr(binding.metadata, "annotations", {}).get("meta.helm.sh/release-namespace")
+        name = binding.metadata.name
+        resource_type = _get_resource_type_prefix(BundleResourceKind.clusterrolebinding.value)
+
+        if namespace:
+            processed.append(
+                {
+                    "data": generic.sanitize_for_serialization(obj=binding),
+                    "zinfo": f"{namespace}/{directory_path}/{resource_type}.{name}.yaml",
+                }
+            )
+
+    return processed
+
+
 def process_nodes() -> Dict[str, Union[dict, str]]:
     return {
         "data": generic.sanitize_for_serialization(obj=client.CoreV1Api().list_node()),
@@ -587,11 +645,7 @@ def _process_kubernetes_resources(
             if not any(matched_prefix):
                 continue
 
-        if len(kind) > 12:
-            # get every first capital letter in the kind
-            resource_type = "".join([c for c in kind if c.isupper()]).lower()
-        else:
-            resource_type = kind.lower()
+        resource_type = _get_resource_type_prefix(kind)
 
         processed.append(
             {
@@ -601,6 +655,16 @@ def _process_kubernetes_resources(
         )
 
     return processed
+
+
+def _get_resource_type_prefix(kind: str) -> str:
+    if len(kind) > 12:
+        # get every first capital letter in the kind
+        resource_type = "".join([c for c in kind if c.isupper()]).lower()
+    else:
+        resource_type = kind.lower()
+
+    return resource_type
 
 
 def exclude_resources_with_prefix(resources: K8sRuntimeResources, exclude_prefixes: List[str]) -> K8sRuntimeResources:

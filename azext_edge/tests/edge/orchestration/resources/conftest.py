@@ -7,13 +7,15 @@
 import re
 from typing import Optional
 
+import pytest
+
 from ....generators import generate_random_string, get_zeroed_subscription
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 BASE_URL = "https://management.azure.com"
 RESOURCE_PROVIDER = "Microsoft.IoTOperations"
 QUALIFIED_INSTANCE_TYPE = f"{RESOURCE_PROVIDER}/instances"
-INSTANCES_API_VERSION = "2024-11-01"
+INSTANCES_API_VERSION = "2025-04-01"
 CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
 CONNECTED_CLUSTER_API_VERSION = "2024-07-15-preview"
 CLUSTER_EXTENSIONS_API_VERSION = "2023-05-01"
@@ -54,6 +56,7 @@ def get_mock_resource(
     custom_location_name: str = CUSTOM_LOCATION_NAME,
     identity: dict = {},
     qualified_type: Optional[str] = None,
+    tags: Optional[dict] = None,
 ) -> dict:
     if not location:
         location = "northeurope"
@@ -85,6 +88,8 @@ def get_mock_resource(
 
     if identity:
         resource["identity"] = identity
+    if tags is not None:
+        resource["tags"] = tags
     return resource
 
 
@@ -100,3 +105,8 @@ def get_resource_id(
 
 def get_authz_endpoint_pattern() -> re.Pattern:
     return re.compile(r"https:\/\/.*\/providers\/Microsoft\.Authorization\/roleAssignments.*")
+
+
+@pytest.fixture
+def mocked_get_file_config(mocker):
+    yield mocker.patch("azext_edge.edge.providers.orchestration.resources.reskit.read_file_content")
