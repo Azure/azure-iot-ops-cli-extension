@@ -26,7 +26,6 @@ pytestmark = pytest.mark.e2e
 def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
     # case = ops_service, mq_traces, bundle_dir
     service_list = OpsServiceType.list()
-    service_list.remove("openservicemesh")
     cases = [(service, False, "support_bundles") for service in service_list]
     cases.append((OpsServiceType.mq.value, True, None))
 
@@ -69,7 +68,6 @@ def test_create_bundle(cluster_connection, ops_service, bundle_dir, mq_traces, t
     ssc_namespace = namespaces.get("ssc")
     arc_namespace = namespaces.get("arc")
     certmanager_namespace = namespaces.get("certmanager")
-    osm_namespace = namespaces.get("osm")
 
     # Level 1
     if not aio_namespace:
@@ -97,7 +95,6 @@ def test_create_bundle(cluster_connection, ops_service, bundle_dir, mq_traces, t
         (acstor_namespace, "containerstorage"),
         (ssc_namespace, OpsServiceType.secretstore.value),
         (certmanager_namespace, OpsServiceType.certmanager.value),
-        (osm_namespace, OpsServiceType.openservicemesh.value),
     ]:
         if namespace:
             walk_result.pop(path.join(BASE_ZIP_PATH, namespace, service), {})
@@ -151,7 +148,6 @@ def _get_expected_services(
         ("arccontainerstorage", OpsServiceType.arccontainerstorage.value),
         (OpsServiceType.secretstore.value, OpsServiceType.secretstore.value),
         (OpsServiceType.azuremonitor.value, OpsServiceType.azuremonitor.value),
-        (OpsServiceType.openservicemesh.value, OpsServiceType.openservicemesh.value),
     ]:
         if not walk_result.get(path.join(BASE_ZIP_PATH, namespace, monikor)) and service in expected_services:
             expected_services.remove(service)
