@@ -23,7 +23,6 @@ from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
-    COMPAT_OPCUA_APIS,
     COMPAT_DATAFLOW_APIS,
 )
 
@@ -59,7 +58,6 @@ def load_iotops_help():
         long-summary: |
             {{Supported service APIs}}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
-            - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {CERTMANAGER_API_V1.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
@@ -121,7 +119,6 @@ def load_iotops_help():
             {{Supported service APIs}}
             - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
-            - {COMPAT_OPCUA_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
 
             For more information on cluster requirements, please check https://aka.ms/iot-ops-cluster-requirements

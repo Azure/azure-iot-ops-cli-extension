@@ -11,7 +11,7 @@ from rich.table import Table
 from rich.console import NewLine
 
 from ...common import OPCUA_SERVICE, CheckTaskStatus, OpsServiceType
-from ...providers.edge_api import DATAFLOW_API_V1, DEVICEREGISTRY_API_V1, MQ_ACTIVE_API, OPCUA_API_V1
+from ...providers.edge_api import DATAFLOW_API_V1, DEVICEREGISTRY_API_V1, MQ_ACTIVE_API
 from .akri import check_akri_deployment
 from .base import CheckManager
 from .base.display import colorize_string
@@ -58,7 +58,7 @@ def check_summary(
         ServiceCheck(
             svc=OPCUA_SERVICE,
             title="OPCUA",
-            target=OPCUA_API_V1.as_str(),
+            target="OPCUA",
             check_func=check_opcua_deployment,
         ),
         ServiceCheck(
