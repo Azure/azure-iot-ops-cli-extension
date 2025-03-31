@@ -130,39 +130,43 @@ def _process_pod_status(
         for condition in pod_conditions:
             type = condition["type"]
             condition_type = POD_CONDITION_TEXT_MAP.get(type)
+            condition_reason = condition.get("reason", "")
 
             if condition_type:
                 condition_status = condition.get("status").lower() == "true"
                 conditions_readiness = conditions_readiness and condition_status
                 status = CheckTaskStatus.success.value if condition_status else CheckTaskStatus.error.value
+
+                # When pod condition reason is completed, it is considered as success
+                if condition_reason.lower() == "completed":
+                    status = CheckTaskStatus.success.value
                 pod_condition_deco = colorize_string(value=condition_status, color=CheckTaskStatus(status).color)
                 pod_eval_status = status if status != CheckTaskStatus.success.value else pod_eval_status
             else:
                 condition_type = type
                 condition_status = condition.get("status")
 
-            formatted_reason = ""
-            condition_reason = condition.get("reason", "")
+            if status == CheckTaskStatus.error.value:
+                formatted_reason = ""
+                if condition_reason:
+                    formatted_reason = f"[red]Reason: {condition_reason}[/red]"
 
-            if condition_reason:
-                formatted_reason = f"[red]Reason: {condition_reason}[/red]"
-
-            if condition_type.replace(" ", "").lower() in known_condition_values:
-                conditions_display_list.append(
-                    PodStatusConditionResult(
-                        condition_string=f"{condition_type}: {pod_condition_deco}",
-                        failed_reason=formatted_reason,
-                        eval_status=status,
+                if condition_type.replace(" ", "").lower() in known_condition_values:
+                    conditions_display_list.append(
+                        PodStatusConditionResult(
+                            condition_string=f"{condition_type}: {pod_condition_deco}",
+                            failed_reason=formatted_reason,
+                            eval_status=status,
+                        )
                     )
-                )
-            else:
-                unknown_conditions_display_list.append(
-                    PodStatusConditionResult(
-                        condition_string=f"{condition_type}: {condition_status}",
-                        failed_reason=formatted_reason,
-                        eval_status=status,
+                else:
+                    unknown_conditions_display_list.append(
+                        PodStatusConditionResult(
+                            condition_string=f"{condition_type}: {condition_status}",
+                            failed_reason=formatted_reason,
+                            eval_status=status,
+                        )
                     )
-                )
 
             pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
 
