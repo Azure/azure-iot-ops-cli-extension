@@ -79,7 +79,7 @@ def delete_broker_listener(
     resource_group_name: str,
     broker_name: str = DEFAULT_BROKER,
     confirm_yes: Optional[bool] = None,
-    **kwargs
+    **kwargs,
 ):
     return Brokers(cmd).listeners.delete(
         name=listener_name,
@@ -91,7 +91,28 @@ def delete_broker_listener(
     )
 
 
-def show_broker_authn(cmd, authn_name: str, broker_name: str, instance_name: str, resource_group_name: str) -> dict:
+def create_broker_authn(
+    cmd,
+    authn_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    config_file: str,
+    broker_name: str = DEFAULT_BROKER,
+    **kwargs,
+) -> dict:
+    return Brokers(cmd).authns.create(
+        name=authn_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        config_file=config_file,
+        **kwargs,
+    )
+
+
+def show_broker_authn(
+    cmd, authn_name: str, instance_name: str, resource_group_name: str, broker_name: str = DEFAULT_BROKER
+) -> dict:
     return Brokers(cmd).authns.show(
         name=authn_name,
         broker_name=broker_name,
@@ -100,7 +121,9 @@ def show_broker_authn(cmd, authn_name: str, broker_name: str, instance_name: str
     )
 
 
-def list_broker_authns(cmd, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+def list_broker_authns(
+    cmd, instance_name: str, resource_group_name: str, broker_name: str = DEFAULT_BROKER
+) -> Iterable[dict]:
     return Brokers(cmd).authns.list(
         broker_name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name
     )
@@ -109,11 +132,11 @@ def list_broker_authns(cmd, broker_name: str, instance_name: str, resource_group
 def delete_broker_authn(
     cmd,
     authn_name: str,
-    broker_name: str,
     instance_name: str,
     resource_group_name: str,
+    broker_name: str = DEFAULT_BROKER,
     confirm_yes: Optional[bool] = None,
-    **kwargs
+    **kwargs,
 ):
     return Brokers(cmd).authns.delete(
         name=authn_name,
@@ -125,7 +148,28 @@ def delete_broker_authn(
     )
 
 
-def show_broker_authz(cmd, authz_name: str, broker_name: str, instance_name: str, resource_group_name: str) -> dict:
+def create_broker_authz(
+    cmd,
+    authz_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    config_file: str,
+    broker_name: str = DEFAULT_BROKER,
+    **kwargs,
+) -> dict:
+    return Brokers(cmd).authzs.create(
+        name=authz_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        config_file=config_file,
+        **kwargs,
+    )
+
+
+def show_broker_authz(
+    cmd, authz_name: str, instance_name: str, resource_group_name: str, broker_name: str = DEFAULT_BROKER
+) -> dict:
     return Brokers(cmd).authzs.show(
         name=authz_name,
         broker_name=broker_name,
@@ -134,7 +178,9 @@ def show_broker_authz(cmd, authz_name: str, broker_name: str, instance_name: str
     )
 
 
-def list_broker_authzs(cmd, broker_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+def list_broker_authzs(
+    cmd, instance_name: str, resource_group_name: str, broker_name: str = DEFAULT_BROKER
+) -> Iterable[dict]:
     return Brokers(cmd).authzs.list(
         broker_name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name
     )
@@ -143,11 +189,11 @@ def list_broker_authzs(cmd, broker_name: str, instance_name: str, resource_group
 def delete_broker_authz(
     cmd,
     authz_name: str,
-    broker_name: str,
     instance_name: str,
     resource_group_name: str,
+    broker_name: str = DEFAULT_BROKER,
     confirm_yes: Optional[bool] = None,
-    **kwargs
+    **kwargs,
 ):
     return Brokers(cmd).authzs.delete(
         name=authz_name,
