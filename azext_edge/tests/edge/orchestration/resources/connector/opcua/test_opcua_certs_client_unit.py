@@ -545,9 +545,7 @@ def test_client_remove(
             url=get_secretsync_endpoint(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name
             ),
-            json={},
             status=204,
-            content_type="application/json",
         )
 
     # set opcua spc
@@ -605,9 +603,7 @@ def test_client_remove(
                 secret_name="cert-der",
                 deleted=True,
             ),
-            json={},
             status=204,
-            content_type="application/json",
         )
 
     remove_connector_opcua_client(

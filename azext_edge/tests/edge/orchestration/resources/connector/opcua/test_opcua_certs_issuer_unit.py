@@ -578,9 +578,7 @@ def test_issuer_remove(
                 secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
                 resource_group_name=rg_name,
             ),
-            json={},
             status=204,
-            content_type="application/json",
         )
     else:
         # set opcua secretsync
@@ -651,9 +649,7 @@ def test_issuer_remove(
                     secret_name="cert-der",
                     deleted=True,
                 ),
-                json={},
                 status=204,
-                content_type="application/json",
             )
 
     result = remove_connector_opcua_issuer(
