@@ -932,14 +932,10 @@ def evaluate_core_service_runtime(
         check_desc=dataflow_runtime_check_desc,
     )
 
-    # operators = get_namespaced_pods_by_prefix(
-    #     prefix=DATAFLOW_OPERATOR_PREFIX,
-    #     namespace="",
-    #     label_selector=DATAFLOW_NAME_LABEL,
-    # )
     operators = get_namespaced_pods_by_prefix(
-        prefix="aio-dataflow-",
+        prefix=DATAFLOW_OPERATOR_PREFIX,
         namespace="",
+        label_selector=DATAFLOW_NAME_LABEL,
     )
     if resource_name:
         operators = filter_resources_by_name(

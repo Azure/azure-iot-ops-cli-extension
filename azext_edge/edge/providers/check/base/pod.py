@@ -127,17 +127,21 @@ def _process_pod_status(
 
     # When pod in obnormal state, sometimes the conditions are not available
     # When pod phase is succeeded, no need to check the conditions
-    if pod_conditions and not is_pod_succeeded:
+    if pod_conditions:
         known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
         for condition in pod_conditions:
             type = condition["type"]
             condition_type = POD_CONDITION_TEXT_MAP.get(type)
-            condition_reason = condition.get("reason", "")
+            condition_reason = condition.get("reason", "N/A")
 
             if condition_type:
                 condition_status = condition.get("status").lower() == "true"
-                conditions_readiness = conditions_readiness and condition_status
-                status = CheckTaskStatus.success.value if condition_status else CheckTaskStatus.error.value
+                condition_status_eval = condition_status
+                if is_pod_succeeded:
+                    status = CheckTaskStatus.success.value
+                    condition_status_eval = True
+                conditions_readiness = conditions_readiness and condition_status_eval
+                status = CheckTaskStatus.success.value if condition_status_eval else CheckTaskStatus.error.value
 
                 pod_condition_deco = colorize_string(value=condition_status, color=CheckTaskStatus(status).color)
                 pod_eval_status = status if status != CheckTaskStatus.success.value else pod_eval_status
@@ -145,27 +149,27 @@ def _process_pod_status(
                 condition_type = type
                 condition_status = condition.get("status")
 
-            if status == CheckTaskStatus.error.value:
-                formatted_reason = ""
-                if condition_reason:
-                    formatted_reason = f"[red]Reason: {condition_reason}[/red]"
+            formatted_reason = ""
 
-                if condition_type.replace(" ", "").lower() in known_condition_values:
-                    conditions_display_list.append(
-                        PodStatusConditionResult(
-                            condition_string=f"{condition_type}: {pod_condition_deco}",
-                            failed_reason=formatted_reason,
-                            eval_status=status,
-                        )
+            if condition_reason:
+                formatted_reason = f"[red]Reason: {condition_reason}[/red]" if status == CheckTaskStatus.error.value else f"Reason: {condition_reason}"
+
+            if condition_type.replace(" ", "").lower() in known_condition_values:
+                conditions_display_list.append(
+                    PodStatusConditionResult(
+                        condition_string=f"{condition_type}: {pod_condition_deco}",
+                        failed_reason=formatted_reason,
+                        eval_status=status,
                     )
-                else:
-                    unknown_conditions_display_list.append(
-                        PodStatusConditionResult(
-                            condition_string=f"{condition_type}: {condition_status}",
-                            failed_reason=formatted_reason,
-                            eval_status=status,
-                        )
+                )
+            else:
+                unknown_conditions_display_list.append(
+                    PodStatusConditionResult(
+                        condition_string=f"{condition_type}: {condition_status}",
+                        failed_reason=formatted_reason,
+                        eval_status=status,
                     )
+                )
 
             pod_eval_value[f"status.conditions.{type.lower()}"] = condition_status
 
@@ -195,10 +199,12 @@ def _process_pod_status(
     else:
         pod_conditions_text = "N/A"
 
-        if pod_conditions and not is_pod_succeeded:
+        if pod_conditions:
             pod_conditions_text = ""
             if detail_level == ResourceOutputDetailLevel.detail.value and conditions_readiness:
                 pod_conditions_text = "[green]Ready[/green]"
+                if is_pod_succeeded:
+                    pod_conditions_text = "[green]Completed[/green]"
 
             # Only display the condition if it is not ready when detail level is 1, or the detail level is 2
             for condition_result in conditions_display_list:
@@ -220,9 +226,6 @@ def _process_pod_status(
 
                     if condition_result.failed_reason and detail_level == ResourceOutputDetailLevel.verbose.value:
                         pod_conditions_text += f"{condition_result.failed_reason}\n"
-        
-        if is_pod_succeeded:
-            pod_conditions_text = "[green]Completed[/green]"
 
         return PodStatusResult(
             display_strings=[pod_name, pod_phase_deco, pod_conditions_text], eval_status=pod_eval_status
