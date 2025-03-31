@@ -19,7 +19,7 @@ from ..common import (
     PodStatusResult,
     ResourceOutputDetailLevel,
 )
-from ....common import CheckTaskStatus
+from ....common import CheckTaskStatus, PodState
 
 
 logger = get_logger(__name__)
@@ -115,6 +115,7 @@ def _process_pod_status(
     pod_phase = pod_dict.get("status", {}).get("phase")
     pod_conditions: list = pod_dict.get("status", {}).get("conditions", [])
     pod_phase_deco, status = decorate_pod_phase(pod_phase)
+    is_pod_succeeded = pod_phase.lower() == PodState.succeeded.value
 
     pod_eval_value = {}
     pod_eval_status = status
@@ -125,7 +126,8 @@ def _process_pod_status(
     unknown_conditions_display_list: List[PodStatusConditionResult] = []
 
     # When pod in obnormal state, sometimes the conditions are not available
-    if pod_conditions:
+    # When pod phase is succeeded, no need to check the conditions
+    if pod_conditions and not is_pod_succeeded:
         known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
         for condition in pod_conditions:
             type = condition["type"]
@@ -137,9 +139,6 @@ def _process_pod_status(
                 conditions_readiness = conditions_readiness and condition_status
                 status = CheckTaskStatus.success.value if condition_status else CheckTaskStatus.error.value
 
-                # When pod condition reason is completed, it is considered as success
-                if condition_reason.lower() == "completed":
-                    status = CheckTaskStatus.success.value
                 pod_condition_deco = colorize_string(value=condition_status, color=CheckTaskStatus(status).color)
                 pod_eval_status = status if status != CheckTaskStatus.success.value else pod_eval_status
             else:
@@ -196,7 +195,7 @@ def _process_pod_status(
     else:
         pod_conditions_text = "N/A"
 
-        if pod_conditions:
+        if pod_conditions and not is_pod_succeeded:
             pod_conditions_text = ""
             if detail_level == ResourceOutputDetailLevel.detail.value and conditions_readiness:
                 pod_conditions_text = "[green]Ready[/green]"
@@ -221,6 +220,9 @@ def _process_pod_status(
 
                     if condition_result.failed_reason and detail_level == ResourceOutputDetailLevel.verbose.value:
                         pod_conditions_text += f"{condition_result.failed_reason}\n"
+        
+        if is_pod_succeeded:
+            pod_conditions_text = "[green]Completed[/green]"
 
         return PodStatusResult(
             display_strings=[pod_name, pod_phase_deco, pod_conditions_text], eval_status=pod_eval_status
