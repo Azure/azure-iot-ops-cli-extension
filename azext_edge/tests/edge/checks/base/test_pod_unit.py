@@ -61,6 +61,16 @@ def test_decorate_pod_phase(phase, expected):
                 phase="Failed",
             ),
         ],
+        [
+            generate_pod_stub(
+                name="opcua-operator-1",
+                phase="Running",
+            ),
+            generate_pod_stub(
+                name="opcua-operator-3",
+                phase="Succeeded",
+            ),
+        ],
     ],
 )
 def test_evaluate_pod_health(
@@ -321,6 +331,45 @@ def test_evaluate_pod_health(
             "akri-operator-7",
             # expected_display_texts
             ["[red]:stop_sign:[/red]", "Pod {[bright_blue]akri-operator-7[/bright_blue]}"],
+        ),
+        (
+            # pod
+            generate_pod_stub(
+                name="akri-operator-8",
+                phase="Succeeded",
+                conditions=[
+                    {
+                        "type": "Ready",
+                        "status": "False",
+                    },
+                    {
+                        "type": "Initialized",
+                        "status": "True",
+                    },
+                    {
+                        "type": "ContainersReady",
+                        "status": "False",
+                    },
+                    {
+                        "type": "PodScheduled",
+                        "status": "True",
+                    },
+                ],
+            ),
+            # eval_status
+            CheckTaskStatus.success.value,
+            # eval_value
+            {
+                "status.conditions.ready": False,
+                "status.conditions.initialized": True,
+                "status.conditions.containersready": False,
+                "status.conditions.podscheduled": True,
+                "status.phase": "Succeeded",
+            },
+            # resource_name
+            "akri-operator-8",
+            # expected_display_texts
+            ["[green]:heavy_check_mark:[/green]", "Pod {[bright_blue]akri-operator-8[/bright_blue]}"],
         ),
     ],
 )
