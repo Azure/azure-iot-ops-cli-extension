@@ -126,7 +126,7 @@ def _process_pod_status(
     unknown_conditions_display_list: List[PodStatusConditionResult] = []
 
     # When pod in obnormal state, sometimes the conditions are not available
-    # When pod phase is succeeded, no need to check the conditions
+    # When pod phase is succeeded, conditions check should be success disregarding the value
     if pod_conditions:
         known_condition_values = [value.replace(" ", "").lower() for value in POD_CONDITION_TEXT_MAP.values()]
         for condition in pod_conditions:
