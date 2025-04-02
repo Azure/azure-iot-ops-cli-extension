@@ -700,7 +700,7 @@ class OpcUACerts(Queryable):
         properties = aio_extension["properties"]
 
         config_settings: dict = properties.get("configurationSettings", {})
-        
+
         desired_config_settings = config_settings.copy()
         desired_config_settings["connectors.values.securityPki.applicationCert"] = application_cert
         desired_config_settings["connectors.values.securityPki.subjectName"] = subject_name
@@ -896,7 +896,7 @@ class OpcUACerts(Queryable):
             )
 
         return cert_subject_name, cert_application_uri
-    
+
 
 def _get_config_delta(current_config: dict, desired_config: dict) -> dict:
     # get the delta of desired config and current config
