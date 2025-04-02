@@ -690,7 +690,7 @@ class OpcUACerts(Queryable):
         application_cert: str,
         subject_name: str,
         application_uri: str,
-    ):
+    ) -> dict:
         # get the opcua extension
         extensions = self.resource_map.connected_cluster.get_extensions_by_type(EXTENSION_TYPE_OPS)
         aio_extension = extensions.get(EXTENSION_TYPE_OPS)
@@ -700,26 +700,31 @@ class OpcUACerts(Queryable):
         properties = aio_extension["properties"]
 
         config_settings: dict = properties.get("configurationSettings", {})
-        if not config_settings:
-            properties["configurationSettings"] = {}
+        
+        desired_config_settings = config_settings.copy()
+        desired_config_settings["connectors.values.securityPki.applicationCert"] = application_cert
+        desired_config_settings["connectors.values.securityPki.subjectName"] = subject_name
+        desired_config_settings["connectors.values.securityPki.applicationUri"] = application_uri
 
-        config_settings["connectors.values.securityPki.applicationCert"] = application_cert
-        config_settings["connectors.values.securityPki.subjectName"] = subject_name
-        config_settings["connectors.values.securityPki.applicationUri"] = application_uri
+        delta = _get_config_delta(config_settings, desired_config_settings)
 
-        aio_extension["properties"]["configurationSettings"] = config_settings
-
-        status_text = (
-            f"Updating IoT Operations extension to use {application_cert}..."
-            if application_cert
-            else "Rollback client certificate from IoT Operations extension..."
-        )
-
-        with console.status(status_text):
-            return self.resource_map.connected_cluster.update_aio_extension(
-                extension_name=aio_extension["name"],
-                properties=properties,
+        if delta:
+            status_text = (
+                f"Updating IoT Operations extension to use {application_cert}..."
+                if application_cert
+                else "Rollback client certificate from IoT Operations extension..."
             )
+
+            with console.status(status_text):
+                return self.resource_map.connected_cluster.update_aio_extension(
+                    extension_name=aio_extension["name"],
+                    properties={
+                        "configurationSettings": delta,
+                    },
+                )
+        else:
+            logger.warning("No changes detected in IoT Operations extension. Skipping update...")
+            return {}
 
     def _remove_secrets_from_spc(self, secrets: List[str], spc: dict, resource_group: str) -> dict:
         spc_properties = spc.get("properties", {})
@@ -891,3 +896,20 @@ class OpcUACerts(Queryable):
             )
 
         return cert_subject_name, cert_application_uri
+    
+
+def _get_config_delta(current_config: dict, desired_config: dict) -> dict:
+    # get the delta of desired config and current config
+    delta = {}
+
+    for key in current_config:
+        if key in desired_config and current_config[key] != desired_config[key]:
+            delta[key] = desired_config[key]
+        elif key not in desired_config:
+            delta[key] = None
+
+    for key in desired_config:
+        if key not in current_config:
+            delta[key] = desired_config[key]
+
+    return delta
