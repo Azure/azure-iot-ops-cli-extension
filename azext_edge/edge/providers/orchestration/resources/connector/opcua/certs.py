@@ -237,7 +237,7 @@ class OpcUACerts(Queryable):
         self._validate_key_files(public_key_file, private_key_file)
 
         # extract certificate information and validate if optional parameters are provided
-        self._process_cert_content(public_key_file, subject_name, application_uri)
+        subject_name, application_uri = self._process_cert_content(public_key_file, subject_name, application_uri)
 
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
@@ -872,7 +872,7 @@ class OpcUACerts(Queryable):
         public_key_file: str,
         subject_name: Optional[str],
         application_uri: Optional[str],
-    ):
+    ) -> Tuple[str, str]:
         # extract subject name and application URI from public_key_file content
         cert_subject_name, cert_application_uri = self._extract_cert_content(public_key_file)
 
@@ -889,3 +889,5 @@ class OpcUACerts(Queryable):
                 f"{cert_application_uri}. Please provide the correct application URI via --application-uri "
                 "or correct certificate using --public-key-file."
             )
+
+        return cert_subject_name, cert_application_uri
