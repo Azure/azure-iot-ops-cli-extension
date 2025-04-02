@@ -1,4 +1,4 @@
-👋 Welcome to the Azure IoT Operations CLI Extension repo!
+👋 Welcome to the Azure IoT Operations CLI Extension codespace!
 
    It has everything you need to get started developing with python and the Azure CLI.
 
@@ -15,13 +15,17 @@
    - [connectedmachine](https://github.com/Azure/azure-cli-extensions/tree/main/src/connectedmachine)
    - [k8s-extension](https://github.com/Azure/azure-cli-extensions/tree/main/src/k8s-extension)
 
+   Included software:
+   - **Azure CLI** (and a locally installed copy of this extension)
+   - **k3d** for hosting a local k3s cluster
+   - **k9s** for browsing and editing cluster resources
+
 🖥️ To login to Azure CLI, you can:
 
     1. Login with `az login --use-device-code`
     2. Open this codespace in VS Code desktop: Ctrl/Cmd + Shift + P > Codespaces: Open in VS Code Desktop
 
-
-Get started with CLI development:
+## Get started with CLI development:
 - List all AIO instances
     - `az iot ops list -o table`
 - Run cluster pre-checks:
@@ -29,7 +33,7 @@ Get started with CLI development:
 - Create a schema registry:
     - `az iot ops schema registry create -n [name] -g $RESOURCE_GROUP --registry-namespace schemas --sa-resource-id $STORAGE_ACCOUNT_RESOURCE_ID`
 
-Get started with AIO:
+## Get started with AIO:
 - Initialize your cluster with AIO prerequisites
     - `az iot ops init --cluster $CODESPACE_NAME
 
