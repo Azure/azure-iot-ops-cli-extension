@@ -889,5 +889,5 @@ class OpcUACerts(Queryable):
                 f"{cert_application_uri}. Please provide the correct application URI via --application-uri "
                 "or correct certificate using --public-key-file."
             )
-        
+
         return cert_subject_name, cert_application_uri
