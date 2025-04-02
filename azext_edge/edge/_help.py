@@ -13,8 +13,6 @@ from azext_edge.edge.providers.edge_api import (
     ARCCONTAINERSTORAGE_API_V1,
     CERTMANAGER_API_V1,
     CONTAINERSTORAGE_API_V1,
-    OPENSERVICEMESH_CONFIG_API_V1,
-    OPENSERVICEMESH_POLICY_API_V1,
     SECRETSTORE_API_V1,
     SECRETSYNC_API_V1,
     TRUSTMANAGER_API_V1,
@@ -66,8 +64,6 @@ def load_iotops_help():
             - {COMPAT_DATAFLOW_APIS.as_str()}
             - {ARCCONTAINERSTORAGE_API_V1.as_str()}
             - {CONTAINERSTORAGE_API_V1.as_str()}
-            - {OPENSERVICEMESH_CONFIG_API_V1.as_str()}
-            - {OPENSERVICEMESH_POLICY_API_V1.as_str()}
             - {SECRETSYNC_API_V1.as_str()}
             - {SECRETSTORE_API_V1.as_str()}
             - {TRUSTMANAGER_API_V1.as_str()}

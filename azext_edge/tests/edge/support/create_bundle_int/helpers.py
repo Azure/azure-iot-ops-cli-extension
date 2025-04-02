@@ -275,7 +275,6 @@ def get_file_map(
     ssc_namespace = namespaces.get("ssc")
     c_namespace = namespaces.get("usage_system")
     certmanager_namespace = namespaces.get("certmanager")
-    osm_namespace = namespaces.get("osm")
     ops_path = None
 
     if aio_namespace:
@@ -342,19 +341,6 @@ def get_file_map(
 
         # no files for aio, skip the rest assertions
         return file_map
-    elif ops_service == OpsServiceType.openservicemesh.value:
-        # resources only in osm_namespace
-        if not osm_namespace:
-            assert len(walk_result) == expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
-            pytest.skip(f"No bundles created for {ops_service}.")
-
-        osm_path = path.join(BASE_ZIP_PATH, osm_namespace, "openservicemesh")
-        assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
-        file_map["osm"] = convert_file_names(walk_result[osm_path]["files"])
-        file_map["__namespaces__"]["osm"] = osm_namespace
-
-        # no files for aio, skip the rest assertions
-        return file_map
     elif ops_service == "certmanager":
         if acstor_namespace:
             expected_default_walk_result += 1
@@ -408,7 +394,6 @@ def process_top_levels(
     acstor_namespace = None
     ssc_namespace = None
     certmanager_namespace = None
-    osm_namespace = None
 
     def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
@@ -441,10 +426,6 @@ def process_top_levels(
             ssc_namespace = name
         elif _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="deployment"):
             certmanager_namespace = name
-        elif _get_namespace_determinating_files(
-            name=name, folder=path.join("openservicemesh"), file_prefix="configmap"
-        ):
-            osm_namespace = name
         elif _get_namespace_determinating_files(name=name, folder="meta", file_prefix="instance"):
             namespace = name
 
@@ -483,7 +464,6 @@ def process_top_levels(
         "ssc": ssc_namespace,
         "usage_system": clusterconfig_namespace,
         "certmanager": certmanager_namespace,
-        "osm": osm_namespace,
     }
 
     _clean_up_folders(
@@ -500,7 +480,6 @@ def process_top_levels(
     logger.debug(f"ACSTOR namespace: {acstor_namespace}")
     logger.debug(f"SSC namespace: {ssc_namespace}")
     logger.debug(f"Certmanager namespace: {certmanager_namespace}")
-    logger.debug(f"OSM namespace: {osm_namespace}")
 
     return namespaces
 
@@ -584,7 +563,6 @@ def _clean_up_folders(
     certmanager_namespace = namespaces.get("certmanager")
     clusterconfig_namespace = namespaces.get("usage_system")
     ssc_namespace = namespaces.get("ssc")
-    osm_namespace = namespaces.get("osm")
 
     monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
 
@@ -593,7 +571,6 @@ def _clean_up_folders(
         (clusterconfig_namespace, ["clusterconfig"]),
         (arc_namespace, services + ["arcagents"]),
         (certmanager_namespace, services),
-        (osm_namespace, ["openservicemesh"]),
     ]:
         if namespace_folder and path.join(BASE_ZIP_PATH, namespace_folder) in walk_result:
             # remove empty folders in level 1
