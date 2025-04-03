@@ -39,8 +39,8 @@ Validate local dev extension configuration
 - Ensure your development extension is added to the CLI:
 
   `az extension list -o table` should show your installed extensions.
-
-  Check for this extension only by adding ` | grep azure-iot-ops` to the command.
+  
+  Look for the extension `azure-iot-ops`, with `/workspaces/azure-iot-ops-cli-extension` as the `Path` and `dev` as the `ExtensionType`
 
 - Ensure you can lint and unit test your local code:
 
