@@ -17,13 +17,13 @@ echo "Install AZDEV"
 pip install azdev
 
 # Install CLI core (EDGE) and configure extension repo
-echo "azdev setup "
-azdev setup -c EDGE -r
+echo "azdev setup"
+azdev setup -c EDGE -r ./
 
 # install dev requirements (overrides setuptools)
 echo "Installing extension and dev requirements..."
 pip install -r dev_requirements.txt
-pip install -U --target ~/.azure/cliextensions/azure-iot-ops .
+# pip install -U --target ~/.azure/cliextensions/azure-iot-ops .
 
 # setup tox environment dependencies in parallel, but don't run tests
 echo "Creating local tox environments..."
