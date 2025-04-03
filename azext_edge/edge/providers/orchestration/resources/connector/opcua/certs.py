@@ -15,9 +15,6 @@ from knack.log import get_logger
 from rich.console import Console
 import yaml
 
-
-from ......util.x509 import decode_der_certificate
-
 from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS
 from ...instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from .....orchestration.upgrade2 import calculate_config_delta
@@ -29,6 +26,7 @@ from ......util.az_client import (
     wait_for_terminal_state,
 )
 from ......util.common import should_continue_prompt
+from ......util.x509 import decode_der_certificate
 
 logger = get_logger(__name__)
 
