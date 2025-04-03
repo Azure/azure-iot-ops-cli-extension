@@ -34,7 +34,8 @@ from azext_edge.tests.generators import generate_random_string
 # TODO: Resturcture parameters into dict
 @pytest.mark.parametrize(
     "expected_resources_map, client_app_spc, client_app_secretsync,"
-    "public_file_name, private_file_name, expected_secret_sync",
+    "public_file_name, private_file_name, expected_secret_sync,"
+    "expected_extension_properties",
     [
         (
             {
@@ -58,6 +59,49 @@ from azext_edge.tests.generators import generate_random_string
                 resource_group_name="mock-rg",
                 objects="new-secret",
             ),
+            {
+                "configurationSettings": {
+                    "connectors.values.securityPki.applicationCert": OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                    "connectors.values.securityPki.subjectName": "subjectname",
+                    "connectors.values.securityPki.applicationUri": "uri",
+                },
+            }
+        ),
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
+                "extension": {
+                    EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {
+                        "configurationSettings": {
+                            "connectors.values.securityPki.applicationCert": OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                            "connectors.values.securityPki.subjectName": "subjectname",
+                            "connectors.values.securityPki.applicationUri": "uriold",
+                        },
+                    }}
+                },
+            },
+            get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+            ),
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+            {
+                "configurationSettings": {
+                    "connectors.values.securityPki.applicationUri": "uri",
+                },
+            }
         ),
     ],
 )
@@ -74,6 +118,7 @@ def test_client_add(
     public_file_name: str,
     private_file_name: str,
     expected_secret_sync: dict,
+    expected_extension_properties: dict,
     mocked_get_resource_client: Mock,
     mocked_instance: Mock,
     mocked_responses: responses,
@@ -178,14 +223,11 @@ def test_client_add(
         mocked_instance.get_resource_map().connected_cluster.get_extensions_by_type.assert_called_once_with(
             "microsoft.iotoperations"
         )
+
         mocked_instance.get_resource_map().connected_cluster.update_aio_extension.assert_called_once_with(
             extension_name=expected_resources_map["extension"][EXTENSION_TYPE_OPS]["name"],
             properties={
-                "configurationSettings": {
-                    "connectors.values.securityPki.applicationCert": OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-                    "connectors.values.securityPki.subjectName": "subjectname",
-                    "connectors.values.securityPki.applicationUri": "uri",
-                }
+                "configurationSettings": expected_extension_properties["configurationSettings"],
             },
         )
 

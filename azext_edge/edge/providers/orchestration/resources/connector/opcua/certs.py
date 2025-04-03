@@ -709,8 +709,8 @@ class OpcUACerts(Queryable):
         desired_config_settings["connectors.values.securityPki.applicationUri"] = application_uri
 
         delta = calculate_config_delta(
-            config_settings=config_settings,
-            desired_config_settings=desired_config_settings,
+            current=config_settings,
+            target=desired_config_settings,
         )
 
         if delta:
