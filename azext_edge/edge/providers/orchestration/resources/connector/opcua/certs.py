@@ -15,10 +15,12 @@ from knack.log import get_logger
 from rich.console import Console
 import yaml
 
+
 from ......util.x509 import decode_der_certificate
 
 from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS
 from ...instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
+from .....orchestration.upgrade2 import calculate_config_delta
 from ......util.file_operations import read_file_content, validate_file_extension
 from ......util.queryable import Queryable
 from ......util.az_client import (
@@ -706,7 +708,10 @@ class OpcUACerts(Queryable):
         desired_config_settings["connectors.values.securityPki.subjectName"] = subject_name
         desired_config_settings["connectors.values.securityPki.applicationUri"] = application_uri
 
-        delta = _get_config_delta(config_settings, desired_config_settings)
+        delta = calculate_config_delta(
+            config_settings=config_settings,
+            desired_config_settings=desired_config_settings,
+        )
 
         if delta:
             status_text = (
@@ -896,20 +901,3 @@ class OpcUACerts(Queryable):
             )
 
         return cert_subject_name, cert_application_uri
-
-
-def _get_config_delta(current_config: dict, desired_config: dict) -> dict:
-    # get the delta of desired config and current config
-    delta = {}
-
-    for key in current_config:
-        if key in desired_config and current_config[key] != desired_config[key]:
-            delta[key] = desired_config[key]
-        elif key not in desired_config:
-            delta[key] = None
-
-    for key in desired_config:
-        if key not in current_config:
-            delta[key] = desired_config[key]
-
-    return delta
