@@ -82,9 +82,9 @@ class MqMemoryProfile(Enum):
 
 
 class MqServiceType(Enum):
-    cluster_ip = "ClusterIp"
-    load_balancer = "LoadBalancer"
-    node_port = "NodePort"
+    CLUSTERIP = "ClusterIp"
+    LOADBALANCER = "LoadBalancer"
+    NODEPORT = "NodePort"
 
 
 class KubernetesDistroType(Enum):
@@ -124,3 +124,26 @@ class ConfigSyncModeType(Enum):
     ADD = "add"
     FULL = "full"
     NONE = "none"
+
+
+class ListenerProtocol(Enum):
+    MQTT = "Mqtt"
+    WEBSOCKETS = "WebSockets"
+
+
+class TlsKeyAlgo(Enum):
+    EC256 = "Ec256"
+    EC384 = "Ec384"
+    EC521 = "Ec521"
+    ED25519 = "Ed25519"
+    RSA2048 = "Rsa2048"
+    RSA4096 = "Rsa4096"
+    RSA8192 = "Rsa8192"
+
+
+class TlsKeyRotation(Enum):
+    ALWAYS = "Always"
+    NEVER = "Never"
+
+
+X509_ISSUER_REF_KEYS = ["group", "kind", "name"]
