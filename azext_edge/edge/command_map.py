@@ -84,7 +84,6 @@ def load_iotops_commands(self, _):
         cmd_group.command("add", "add_broker_listener_port")
         cmd_group.command("remove", "remove_broker_listener_port")
 
-
     with self.command_group(
         "iot ops broker authn",
         command_type=mq_resource_ops,
