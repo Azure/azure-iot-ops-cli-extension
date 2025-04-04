@@ -209,6 +209,47 @@ def load_iotops_help():
         - name: Create a listener for the default broker using a config file.
           text: >
             az iot ops broker listener create -n listener --in myinstance -g myresourcegroup --config-file /path/to/listener/config.json
+
+    """
+
+    helps[
+        "iot ops broker listener port"
+    ] = """
+        type: group
+        short-summary: Mqtt broker listener port operations.
+    """
+
+    helps[
+        "iot ops broker listener port add"
+    ] = """
+        type: command
+        short-summary: Add a tcp port config to an mqtt broker listener service.
+        long-summary: This is an add or replace (port) operation. If the target listener resource does not exist, the command will create it.
+
+        examples:
+        - name: Add a port config to the default cluster Ip listener, using port 8883 and an authn resource.
+          text: >
+            az iot ops broker listener port add --port 8883 --authn authn --listener default --in myinstance -g mygroup
+        - name: Create a new listener with service type load balancer using a port config accepting tcp connections on port 1883 with no authz or authn.
+          text: >
+            az iot ops broker listener port add --port 1883 --listener newlistener --in myinstance -g mygroup
+        - name: Add a port config to an existing listener using basic auto tls settings on port 8883 with authn.
+          text: >
+            az iot ops broker listener port add --port 8883 --authn authn --tls-issuer-ref issuer=azure-iot-operations-aio-certificate-issuer kind=ClusterIssuer
+            --listener newlistener --in myinstance -g mygroup
+    """
+
+    helps[
+        "iot ops broker listener port remove"
+    ] = """
+        type: command
+        short-summary: Remove a tcp port config from an mqtt broker listener service.
+        long-summary: If no tcp ports will exist after removal, the command will delete the listener resource.
+
+        examples:
+        - name: Remove tcp port 1883 config from a listener. The listener will be deleted if no ports remain.
+          text: >
+            az iot ops broker listener port remove --port 1883 --listener listener --in myinstance -g mygroup
     """
 
     helps[

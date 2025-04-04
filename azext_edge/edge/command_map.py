@@ -72,16 +72,24 @@ def load_iotops_commands(self, _):
         "iot ops broker listener",
         command_type=mq_resource_ops,
     ) as cmd_group:
-        cmd_group.show_command("create", "create_broker_listener")
+        cmd_group.command("create", "create_broker_listener")
         cmd_group.show_command("show", "show_broker_listener")
         cmd_group.command("list", "list_broker_listeners")
         cmd_group.command("delete", "delete_broker_listener")
 
     with self.command_group(
+        "iot ops broker listener port",
+        command_type=mq_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_broker_listener_port")
+        cmd_group.command("remove", "remove_broker_listener_port")
+
+
+    with self.command_group(
         "iot ops broker authn",
         command_type=mq_resource_ops,
     ) as cmd_group:
-        cmd_group.show_command("create", "create_broker_authn")
+        cmd_group.command("create", "create_broker_authn")
         cmd_group.show_command("show", "show_broker_authn")
         cmd_group.command("list", "list_broker_authns")
         cmd_group.command("delete", "delete_broker_authn")
@@ -90,7 +98,7 @@ def load_iotops_commands(self, _):
         "iot ops broker authz",
         command_type=mq_resource_ops,
     ) as cmd_group:
-        cmd_group.show_command("create", "create_broker_authz")
+        cmd_group.command("create", "create_broker_authz")
         cmd_group.show_command("show", "show_broker_authz")
         cmd_group.command("list", "list_broker_authzs")
         cmd_group.command("delete", "delete_broker_authz")
