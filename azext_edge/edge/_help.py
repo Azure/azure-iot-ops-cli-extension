@@ -312,7 +312,14 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops broker authn add"
+        "iot ops broker authn method"
+    ] = """
+        type: group
+        short-summary: Mqtt broker authn method operations.
+    """
+
+    helps[
+        "iot ops broker authn method add"
     ] = """
         type: command
         short-summary: Add authentication methods to an mqtt broker authentication resource.
@@ -322,21 +329,21 @@ def load_iotops_help():
         examples:
         - name: Configure a SAT authn method and add it to the existing default authn resource.
           text: >
-            az iot ops broker authn add --authn default --in myinstance -g myresourcegroup --sat-aud my-audience1 my-audience2
+            az iot ops broker authn method add --authn default --in myinstance -g myresourcegroup --sat-aud my-audience1 my-audience2
         - name: Configure an x509 authn method and add it to a newly created authn resource.
           text: >
-            az iot ops broker authn add --authn myauthn --in myinstance -g myresourcegroup
+            az iot ops broker authn method add --authn myauthn --in myinstance -g myresourcegroup
             --x509-client-ca-ref client-ca
             --x509-attr root.subject='CN = Contoso Root CA Cert, OU = Engineering, C = US' root.attributes.organization=contoso
             --x509-attr intermediate.subject='CN = Contoso Intermediate CA' intermediate.attributes.city=seattle intermediate.attributes.foo=bar
             --x509-attr smartfan.subject='CN = smart-fan' smartfan.attributes.building=17
         - name: Configure a custom authentication service authn method and add it to a newly created authn resource.
           text: >
-            az iot ops broker authn add --authn myauthn --in myinstance -g myresourcegroup
+            az iot ops broker authn method add --authn myauthn --in myinstance -g myresourcegroup
             --custom-ep https://myauthserver --custom-ca-ref myconfigmap --custom-x509-secret-ref mysecret --custom-header a=b c=d
         - name: Configure and add two separate authn methods to an existing authn resource.
           text: >
-            az iot ops broker authn add --authn myexistingauthn --in myinstance -g myresourcegroup --sat-aud my-audience1 my-audience2
+            az iot ops broker authn method add --authn myexistingauthn --in myinstance -g myresourcegroup --sat-aud my-audience1 my-audience2
             --x509-client-ca-ref client-ca
     """
 
