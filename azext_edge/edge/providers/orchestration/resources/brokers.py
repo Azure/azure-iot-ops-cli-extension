@@ -13,7 +13,7 @@ from knack.log import get_logger
 from rich.console import Console
 
 from ....util.az_client import wait_for_terminal_state
-from ....util.common import parse_kvp_nargs, should_continue_prompt
+from ....util.common import parse_kvp_nargs, should_continue_prompt, parse_dot_notation, upsert_by_discriminator
 from ....util.queryable import Queryable
 from .instances import Instances
 from .reskit import GetInstanceExtLoc, get_file_config
@@ -173,31 +173,7 @@ class BrokerListeners:
         show_config: Optional[bool] = None,
         **kwargs,
     ) -> dict:
-        listener = {}
-        try:
-            listener = self.show(
-                name=listener_name,
-                broker_name=broker_name,
-                instance_name=instance_name,
-                resource_group_name=resource_group_name,
-            )
-        except ResourceNotFoundError:
-            pass
-
-        if not listener:
-            listener["name"] = listener_name
-            listener["extendedLocation"] = self.get_ext_loc(
-                name=instance_name, resource_group_name=resource_group_name
-            )
-            listener["properties"] = {"serviceType": str(service_type)}
-            if service_name:
-                listener["properties"]["serviceName"] = service_name
-
-        port_configs: List[dict] = listener["properties"].get("ports", [])
-        port_config = next(
-            (port_config for port_config in port_configs if port_config["port"] == port), {"port": port}
-        )
-
+        port_config = {"port": port}
         if authn_ref:
             port_config["authenticationRef"] = authn_ref
         if authz_ref:
@@ -220,9 +196,30 @@ class BrokerListeners:
         )
         port_config.update(tls_config)
 
-        if not any(port_config["port"] == port for port_config in port_configs):
-            port_configs.append(port_config)
-            listener["properties"]["ports"] = port_configs
+        listener = {}
+        try:
+            listener = self.show(
+                name=listener_name,
+                broker_name=broker_name,
+                instance_name=instance_name,
+                resource_group_name=resource_group_name,
+            )
+        except ResourceNotFoundError:
+            pass
+
+        if not listener:
+            listener["name"] = listener_name
+            listener["extendedLocation"] = self.get_ext_loc(
+                name=instance_name, resource_group_name=resource_group_name
+            )
+            listener["properties"] = {"serviceType": str(service_type)}
+            if service_name:
+                listener["properties"]["serviceName"] = service_name
+
+        port_configs: List[dict] = listener["properties"].get("ports", [])
+        listener["properties"]["ports"] = upsert_by_discriminator(
+            initial=port_configs, disc_key="port", config=port_config
+        )
 
         if show_config:
             return listener["properties"]
@@ -345,6 +342,107 @@ class BrokerAuthn:
                 broker_name=broker_name,
                 authentication_name=name,
                 resource=resource,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
+
+    def _build_authn_methods(
+        self,
+        sat_audiences: Optional[List[str]] = None,
+        x509_client_ca_cm: Optional[str] = None,
+        x509_attrs: Optional[List[str]] = None,
+        custom_endpoint: Optional[str] = None,
+        custom_ca_cm: Optional[str] = None,
+        custom_x509_secret_ref: Optional[str] = None,
+        custom_http_headers: Optional[List[str]] = None,
+    ) -> List[dict]:
+        methods = []
+
+        if sat_audiences:
+            sat_config = {"method": "ServiceAccountToken", "serviceAccountTokenSettings": {"audiences": sat_audiences}}
+            methods.append(sat_config)
+
+        x509_config = defaultdict(dict)
+        if x509_client_ca_cm:
+            x509_config["x509Settings"]["trustedClientCaCert"] = x509_client_ca_cm
+        if x509_attrs:
+            x509_config["x509Settings"]["authorizationAttributes"] = parse_dot_notation(x509_attrs)
+        if x509_config:
+            x509_config["method"] = "X509"
+            methods.append(dict(x509_config))
+
+        custom_config = defaultdict(dict)
+        if custom_endpoint:
+            custom_config["customSettings"]["endpoint"] = custom_endpoint
+        if custom_ca_cm:
+            custom_config["customSettings"]["caCertConfigMap"] = custom_ca_cm
+        if custom_x509_secret_ref:
+            custom_config["customSettings"]["auth"] = {"x509": {"secretRef": custom_x509_secret_ref}}
+        if custom_http_headers:
+            custom_config["customSettings"]["headers"] = parse_kvp_nargs(custom_http_headers)
+        if custom_config:
+            custom_config["method"] = "Custom"
+            methods.append(dict(custom_config))
+
+        if not methods:
+            raise InvalidArgumentValueError("At least one authn config is required.")
+        return methods
+
+    def add_method(
+        self,
+        name: str,
+        broker_name: str,
+        instance_name: str,
+        resource_group_name: str,
+        sat_audiences: Optional[List[str]] = None,
+        x509_client_ca_cm: Optional[str] = None,
+        x509_attrs: Optional[List[str]] = None,
+        custom_endpoint: Optional[str] = None,
+        custom_ca_cm: Optional[str] = None,
+        custom_x509_secret_ref: Optional[str] = None,
+        custom_http_headers: Optional[List[str]] = None,
+        show_config: Optional[bool] = None,
+        **kwargs,
+    ):
+        methods = self._build_authn_methods(
+            sat_audiences=sat_audiences,
+            x509_client_ca_cm=x509_client_ca_cm,
+            x509_attrs=x509_attrs,
+            custom_endpoint=custom_endpoint,
+            custom_ca_cm=custom_ca_cm,
+            custom_x509_secret_ref=custom_x509_secret_ref,
+            custom_http_headers=custom_http_headers,
+        )
+
+        authn = {}
+        try:
+            authn = self.show(
+                name=name,
+                broker_name=broker_name,
+                instance_name=instance_name,
+                resource_group_name=resource_group_name,
+            )
+        except ResourceNotFoundError:
+            pass
+
+        if not authn:
+            authn["name"] = name
+            authn["extendedLocation"] = self.get_ext_loc(name=instance_name, resource_group_name=resource_group_name)
+            authn["properties"] = {}
+
+        authn_methods: List[dict] = authn["properties"].get("authenticationMethods", [])
+        authn_methods.extend(methods)
+        authn["properties"]["authenticationMethods"] = authn_methods
+
+        if show_config:
+            return authn["properties"]
+
+        with console.status("Working..."):
+            poller = self.ops.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                broker_name=broker_name,
+                authentication_name=name,
+                resource=authn,
             )
             return wait_for_terminal_state(poller, **kwargs)
 

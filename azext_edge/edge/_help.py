@@ -224,7 +224,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Add a tcp port config to an mqtt broker listener service.
-        long-summary: This is an add or replace (port) operation. If the target listener resource does not exist, the command will create it.
+        long-summary: This is an add or replace (port) operation. If the target listener resource does not exist the command will create it.
 
         examples:
         - name: Add a port config to the default cluster Ip listener, using port 8883 and an authn resource.
@@ -244,12 +244,12 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Remove a tcp port config from an mqtt broker listener service.
-        long-summary: If no tcp ports will exist after removal, the command will delete the listener resource.
+        long-summary: If no tcp ports will exist after removal the command will delete the listener resource.
 
         examples:
         - name: Remove tcp port 1883 config from a listener. The listener will be deleted if no ports remain.
           text: >
-            az iot ops broker listener port remove --port 1883 --listener listener --in myinstance -g mygroup
+            az iot ops broker listener port remove --port 1883 --listener mylistener --in myinstance -g mygroup
     """
 
     helps[
@@ -309,6 +309,35 @@ def load_iotops_help():
         - name: Create an authentication resource for the default broker using a config file.
           text: >
             az iot ops broker authn create -n authn --in myinstance -g myresourcegroup --config-file /path/to/authn/config.json
+    """
+
+    helps[
+        "iot ops broker authn add"
+    ] = """
+        type: command
+        short-summary: Add authentication methods to an mqtt broker authentication resource.
+        long-summary: This is an add method(s) operation. If the target authentication resource
+          does not exist the command will create it.
+
+        examples:
+        - name: Configure a SAT authn method and add it to the existing default authn resource.
+          text: >
+            az iot ops broker authn add --authn default --in myinstance -g myresourcegroup --sat-aud my-audience1 my-audience2
+        - name: Configure an x509 authn method and add it to a newly created authn resource.
+          text: >
+            az iot ops broker authn add --authn myauthn --in myinstance -g myresourcegroup
+            --x509-client-ca-ref client-ca
+            --x509-attr root.subject='CN = Contoso Root CA Cert, OU = Engineering, C = US' root.attributes.organization=contoso
+            --x509-attr intermediate.subject='CN = Contoso Intermediate CA' intermediate.attributes.city=seattle intermediate.attributes.foo=bar
+            --x509-attr smartfan.subject='CN = smart-fan' smartfan.attributes.building=17
+        - name: Configure a custom authentication service authn method and add it to a newly created authn resource.
+          text: >
+            az iot ops broker authn add --authn myauthn --in myinstance -g myresourcegroup
+            --custom-ep https://myauthserver --custom-ca-ref myconfigmap --custom-x509-secret-ref mysecret --custom-header a=b c=d
+        - name: Configure and add two separate authn methods to an existing authn resource.
+          text: >
+            az iot ops broker authn add --authn myexistingauthn --in myinstance -g myresourcegroup --sat-aud my-audience1 my-audience2
+            --x509-client-ca-ref client-ca
     """
 
     helps[
