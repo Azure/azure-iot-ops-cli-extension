@@ -426,7 +426,7 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker name.",
         )
 
-    with self.argument_context("iot ops broker authn add") as context:
+    with self.argument_context("iot ops broker authn method add") as context:
         context.argument(
             "sat_audiences",
             options_list=["--sat-aud"],
