@@ -4,12 +4,13 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Iterable, Optional
+from typing import Iterable, Optional, List
 
 from knack.log import get_logger
 
 from .providers.orchestration.resources import Brokers
 from .common import DEFAULT_BROKER
+from .providers.orchestration.common import MqServiceType
 
 logger = get_logger(__name__)
 
@@ -49,6 +50,78 @@ def create_broker_listener(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         config_file=config_file,
+        **kwargs,
+    )
+
+
+def add_broker_listener_port(
+    cmd,
+    port: int,
+    listener_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    broker_name: str = DEFAULT_BROKER,
+    service_name: Optional[str] = None,
+    service_type: Optional[str] = MqServiceType.LOADBALANCER.value,
+    authn_ref: Optional[str] = None,
+    authz_ref: Optional[str] = None,
+    protocol: Optional[str] = None,
+    nodeport: Optional[int] = None,
+    tls_auto_issuer_ref: Optional[str] = None,
+    tls_auto_duration: Optional[str] = None,
+    tls_auto_key_algo: Optional[str] = None,
+    tls_auto_key_rotation_policy: Optional[str] = None,
+    tls_auto_renew_before: Optional[str] = None,
+    tls_auto_san_dns: Optional[List[str]] = None,
+    tls_auto_san_ip: Optional[List[str]] = None,
+    tls_auto_secret_name: Optional[str] = None,
+    tls_manual_secret_ref: Optional[str] = None,
+    show_config: Optional[bool] = None,
+    **kwargs,
+) -> dict:
+    return Brokers(cmd).listeners.add_port(
+        port=port,
+        listener_name=listener_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        service_name=service_name,
+        service_type=service_type,
+        authn_ref=authn_ref,
+        authz_ref=authz_ref,
+        protocol=protocol,
+        nodeport=nodeport,
+        tls_auto_issuer_ref=tls_auto_issuer_ref,
+        tls_auto_duration=tls_auto_duration,
+        tls_auto_key_algo=tls_auto_key_algo,
+        tls_auto_key_rotation_policy=tls_auto_key_rotation_policy,
+        tls_auto_renew_before=tls_auto_renew_before,
+        tls_auto_san_dns=tls_auto_san_dns,
+        tls_auto_san_ip=tls_auto_san_ip,
+        tls_auto_secret_name=tls_auto_secret_name,
+        tls_manual_secret_ref=tls_manual_secret_ref,
+        show_config=show_config,
+        **kwargs,
+    )
+
+
+def remove_broker_listener_port(
+    cmd,
+    port: int,
+    listener_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    broker_name: str = DEFAULT_BROKER,
+    confirm_yes: Optional[bool] = None,
+    **kwargs,
+):
+    return Brokers(cmd).listeners.remove_port(
+        port=port,
+        listener_name=listener_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
         **kwargs,
     )
 

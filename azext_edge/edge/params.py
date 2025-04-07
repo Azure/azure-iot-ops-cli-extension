@@ -30,13 +30,17 @@ from .providers.edge_api import (
 from .providers.orchestration.common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     TRUST_SETTING_KEYS,
+    X509_ISSUER_REF_KEYS,
     ConfigSyncModeType,
     IdentityUsageType,
     KubernetesDistroType,
+    ListenerProtocol,
     MqMemoryProfile,
     MqServiceType,
     SchemaFormat,
     SchemaType,
+    TlsKeyAlgo,
+    TlsKeyRotation,
 )
 
 
@@ -122,6 +126,12 @@ def load_iotops_arguments(self, _):
             "should contain an object with properties compatible with the ARM representation of the resource. "
             "The object correlates directly with 'properties:{}' of the ARM resource.",
             arg_group="Config",
+        )
+        context.argument(
+            "show_config",
+            options_list=["--show-config"],
+            arg_type=get_three_state_flag(),
+            help="Show the generated resource config instead of invoking the API with it.",
         )
 
     with self.argument_context("iot ops identity") as context:
@@ -295,6 +305,115 @@ def load_iotops_arguments(self, _):
             help="Broker name.",
         )
 
+    with self.argument_context("iot ops broker listener port") as context:
+        context.argument(
+            "listener_name",
+            options_list=["--listener", "-l"],
+            help="Listener name.",
+        )
+        context.argument(
+            "port",
+            type=int,
+            options_list=["--port"],
+            help="Listener service port.",
+        )
+        context.argument(
+            "nodeport",
+            type=int,
+            options_list=["--nodeport"],
+            help="The listener service will exposes a static port on each Node's IP address. "
+            "Only relevant when this port is associated with a NodePort listener.",
+            arg_group="Node Port",
+        )
+        context.argument(
+            "service_name",
+            options_list=["--service-name"],
+            help="Kubernetes service name of the listener. Used when a target listener does not exist.",
+        )
+        context.argument(
+            "service_type",
+            options_list=["--service-type"],
+            arg_type=get_enum_type(MqServiceType, default=None),
+            help="Kubernetes service type of the listener. Used when a target listener does not exist.",
+        )
+        context.argument(
+            "protocol",
+            options_list=["--protocol"],
+            arg_type=get_enum_type(ListenerProtocol, default=None),
+            help="Protocol to use for client connections.",
+        )
+        context.argument(
+            "authn_ref", options_list=["--authn-ref"], help="Authentication reference (name).", arg_group="Auth"
+        )
+        context.argument(
+            "authz_ref", options_list=["--authz-ref"], help="Authorization reference (name).", arg_group="Auth"
+        )
+        context.argument(
+            "tls_auto_issuer_ref",
+            options_list=["--tls-issuer-ref"],
+            nargs="+",
+            help="Cert-manager issuer reference. Format is space-separated "
+            f"key=value pairs. The following keys are supported: `{'`, `'.join(X509_ISSUER_REF_KEYS)}`. "
+            "`kind` and `name` are required, while `group` has a default value of 'cert-manager.io'.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_duration",
+            options_list=["--tls-duration"],
+            help="Lifetime of certificate. Must be specified using a time.Duration format (h|m|s). "
+            "E.g. 240h for 240 hours and 45m for 45 minutes.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_key_algo",
+            options_list=["--tls-key-algo"],
+            arg_type=get_enum_type(TlsKeyAlgo, default=None),
+            help="Algorithm for private key. ",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_key_rotation_policy",
+            options_list=["--tls-key-rotation"],
+            arg_type=get_enum_type(TlsKeyRotation, default=None),
+            help="Cert-manager private key rotation policy.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_renew_before",
+            options_list=["--tls-renew-before"],
+            help="When to begin renewing certificate. Must be specified using a Go time.Duration format (h|m|s). "
+            "E.g. 240h for 240 hours and 45m for 45 minutes.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_san_dns",
+            options_list=["--tls-san-dns"],
+            nargs="+",
+            help="DNS subject alternative names for the certificate. Use space-separated values.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_san_ip",
+            options_list=["--tls-san-ip"],
+            nargs="+",
+            help="IP subject alternative names for the certificate. Use space-separated values.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_secret_name",
+            options_list=["--tls-secret-name"],
+            help="Secret for storing server certificate. Any existing data will be overwritten. This is a reference to "
+            "the secret through an identifying name, not the secret itself.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_manual_secret_ref",
+            options_list=["--tls-man-secret-ref"],
+            help="Secret containing an X.509 client certificate. This is a "
+            "reference to the secret through an identifying name, not the secret itself.",
+            arg_group="TLS Manual",
+        )
+
     with self.argument_context("iot ops broker authn") as context:
         context.argument(
             "authn_name",
@@ -399,7 +518,7 @@ def load_iotops_arguments(self, _):
                 ],
                 arg_type=get_three_state_flag(),
                 help="When enabled the mqtt broker deployment will include a listener "
-                f"of service type {MqServiceType.load_balancer.value}, bound to port 1883 with no authN or authZ. "
+                f"of service type {MqServiceType.LOADBALANCER.value}, bound to port 1883 with no authN or authZ. "
                 "For non-production workloads only.",
                 arg_group="Broker",
             )
