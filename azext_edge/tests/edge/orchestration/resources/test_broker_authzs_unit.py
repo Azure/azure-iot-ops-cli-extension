@@ -15,7 +15,7 @@ from azext_edge.edge.commands_mq import (
     delete_broker_authz,
     list_broker_authzs,
     show_broker_authz,
-    create_broker_authz,
+    apply_broker_authz,
 )
 
 from ....generators import generate_random_string
@@ -174,7 +174,7 @@ def test_broker_authz_delete(mocked_cmd, mocked_responses: responses):
         },
     ],
 )
-def test_broker_authz_create(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
+def test_broker_authz_apply(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
     authz_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -212,7 +212,7 @@ def test_broker_authz_create(mocked_cmd, mocked_responses: responses, mocked_get
     kwargs = {}
     if broker_name:
         kwargs["broker_name"] = broker_name
-    create_result = create_broker_authz(
+    create_result = apply_broker_authz(
         cmd=mocked_cmd,
         authz_name=authz_name,
         instance_name=instance_name,

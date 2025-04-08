@@ -14,7 +14,7 @@ import responses
 
 from azext_edge.edge.commands_mq import (
     add_broker_authn_method,
-    create_broker_authn,
+    apply_broker_authn,
     delete_broker_authn,
     list_broker_authns,
     show_broker_authn,
@@ -173,7 +173,7 @@ def test_broker_authn_delete(mocked_cmd, mocked_responses: responses):
         },
     ],
 )
-def test_broker_authn_create(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
+def test_broker_authn_apply(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
     authn_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -211,7 +211,7 @@ def test_broker_authn_create(mocked_cmd, mocked_responses: responses, mocked_get
     kwargs = {}
     if broker_name:
         kwargs["broker_name"] = broker_name
-    create_result = create_broker_authn(
+    create_result = apply_broker_authn(
         cmd=mocked_cmd,
         authn_name=authn_name,
         instance_name=instance_name,

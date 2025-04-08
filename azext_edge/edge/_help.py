@@ -199,16 +199,15 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops broker listener create"
+        "iot ops broker listener apply"
     ] = """
         type: command
-        short-summary: Create an mqtt broker listener service.
-        long-summary: This is a create or replace operation.
+        short-summary: Create or replace an mqtt broker listener service.
 
         examples:
-        - name: Create a listener for the default broker using a config file.
+        - name: Create or replace a listener for the default broker using a config file.
           text: >
-            az iot ops broker listener create -n listener --in myinstance -g myresourcegroup --config-file /path/to/listener/config.json
+            az iot ops broker listener apply -n listener --in myinstance -g myresourcegroup --config-file /path/to/listener/config.json
 
     """
 
@@ -299,16 +298,15 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops broker authn create"
+        "iot ops broker authn apply"
     ] = """
         type: command
-        short-summary: Create an mqtt broker authentication resource.
-        long-summary: This is a create or replace operation.
+        short-summary: Create or replace an mqtt broker authentication resource.
 
         examples:
-        - name: Create an authentication resource for the default broker using a config file.
+        - name: Create or replace an authentication resource for the default broker using a config file.
           text: >
-            az iot ops broker authn create -n authn --in myinstance -g myresourcegroup --config-file /path/to/authn/config.json
+            az iot ops broker authn apply -n authn --in myinstance -g myresourcegroup --config-file /path/to/authn/config.json
     """
 
     helps[
@@ -394,16 +392,15 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops broker authz create"
+        "iot ops broker authz apply"
     ] = """
         type: command
-        short-summary: Create an mqtt broker authorization resource.
-        long-summary: This is a create or replace operation.
+        short-summary: Create or replace an mqtt broker authorization resource.
 
         examples:
-        - name: Create an authorization resource for the default broker using a config file.
+        - name: Create or replace an authorization resource for the default broker using a config file.
           text: >
-            az iot ops broker authz create -n authz --in myinstance -g myresourcegroup --config-file /path/to/authz/config.json
+            az iot ops broker authz apply -n authz --in myinstance -g myresourcegroup --config-file /path/to/authz/config.json
     """
 
     helps[

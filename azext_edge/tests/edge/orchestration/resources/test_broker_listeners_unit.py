@@ -15,7 +15,7 @@ from azure.core.exceptions import ResourceNotFoundError
 
 from azext_edge.edge.commands_mq import (
     add_broker_listener_port,
-    create_broker_listener,
+    apply_broker_listener,
     delete_broker_listener,
     list_broker_listeners,
     remove_broker_listener_port,
@@ -199,7 +199,7 @@ def test_broker_listener_delete(mocked_cmd, mocked_responses: responses):
         },
     ],
 )
-def test_broker_listener_create(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
+def test_broker_listener_apply(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
     listener_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -237,7 +237,7 @@ def test_broker_listener_create(mocked_cmd, mocked_responses: responses, mocked_
     kwargs = {}
     if broker_name:
         kwargs["broker_name"] = broker_name
-    create_result = create_broker_listener(
+    create_result = apply_broker_listener(
         cmd=mocked_cmd,
         listener_name=listener_name,
         instance_name=instance_name,
