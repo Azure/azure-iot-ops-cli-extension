@@ -42,6 +42,7 @@ from .providers.orchestration.common import (
     TlsKeyAlgo,
     TlsKeyRotation,
 )
+from .providers.orchestration.backup import SummaryMode, TemplateMode
 
 
 def load_iotops_arguments(self, _):
@@ -1026,4 +1027,74 @@ def load_iotops_arguments(self, _):
             options_list=["--content"],
             help="File path containing or inline content for the version.",
             arg_group=None,
+        )
+
+    with self.argument_context("iot ops clone") as context:
+        context.argument(
+            "summary_mode",
+            options_list=["--summary"],
+            arg_type=get_enum_type(SummaryMode, default=SummaryMode.SIMPLE.value),
+            help="Deployment summary option.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--name", "-n"],
+            help="The model instance to clone.",
+        )
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "-g"],
+            help="The resource group the model instance to clone resides in.",
+        )
+        context.argument(
+            "to_dir",
+            options_list=["--to-dir"],
+            help="The local directory the instance clone definitions will be stored in.",
+            arg_group="Local Target",
+        )
+        context.argument(
+            "template_mode",
+            options_list=["--mode"],
+            arg_type=get_enum_type(TemplateMode, default=TemplateMode.NESTED.value),
+            help="Applicable if --to-dir is selected.",
+            arg_group="Local Target",
+        )
+        context.argument(
+            "linked_base_uri",
+            options_list=["--base-uri"],
+            help="Base URI to use for template links. If not provided a relative path strategy will be used.",
+            arg_group="Local Target",
+        )
+        context.argument(
+            "to_instance_name",
+            options_list=["--to-instance"],
+            help="The instance name that will be used when applying the clone. If omitted the "
+            "clone instance name will be used.",
+            arg_group="Cluster Target",
+        )
+        context.argument(
+            "to_cluster_name",
+            options_list=["--to-cluster"],
+            help="The cluster the clone will be applied to.",
+            arg_group="Cluster Target",
+        )
+        context.argument(
+            "to_resource_group_name",
+            options_list=["--to-group"],
+            help="The cluster resource group the clone will be applied to.",
+            arg_group="Cluster Target",
+        )
+        context.argument(
+            "to_cluster_id",
+            options_list=["--to-cluster-id"],
+            help="The resource Id of the connected cluster the clone will be applied to.",
+            arg_group="Cluster Target",
+        )
+        context.argument(
+            "use_self_hosted_issuer",
+            options_list=["--self-hosted-issuer"],
+            arg_type=get_three_state_flag(),
+            help="Use the self-hosted oidc issuer for federation. Only applicable if "
+            "user-assigned managed identities are associated to the model instance.",
+            arg_group="Cluster Target",
         )
