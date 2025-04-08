@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+from copy import deepcopy
 from typing import Optional
 from unittest.mock import Mock
 
@@ -25,6 +26,7 @@ from azext_edge.edge.common import DEFAULT_BROKER
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
 from .test_instances_unit import get_instance_endpoint, get_mock_instance_record
+from azure.cli.core.azclierror import InvalidArgumentValueError
 
 
 @pytest.fixture
@@ -403,6 +405,16 @@ def test_broker_listener_create(mocked_cmd, mocked_responses: responses, mocked_
                 "serviceName": "myservice",
             },
         },
+        {
+            "input": {
+                "port": 8883,
+                "protocol": "Mqtt",
+                "tls_manual_secret_ref": "mySecretRef",
+                "tls_auto_issuer_ref": ["name=myissuer", "kind=Issuer", "group=mygroup.com"],
+            },
+            "expected_payload": {},
+            "error": (InvalidArgumentValueError, "TLS may be setup with an automatic or manual config, not both."),
+        },
     ],
 )
 def test_broker_listener_port_add(
@@ -418,9 +430,22 @@ def test_broker_listener_port_add(
     scenario_inputs: dict = scenario.get("input", {})
     broker_name = scenario_inputs.get("broker_name")
     expected_payload = scenario.get("expected_payload")
+    error_type, error_msg = scenario.get("error", (None, None))
+
+    if error_type:
+        with pytest.raises(error_type) as exc:
+            add_broker_listener_port(
+                cmd=mocked_cmd,
+                listener_name=listener_name,
+                instance_name=instance_name,
+                resource_group_name=resource_group_name,
+                **scenario_inputs,
+            )
+        exc_msg = str(exc.value)
+        assert exc_msg == error_msg
+        return
 
     expected_listener_request = {}
-
     get_listener_kwargs = {}
     if not existing_listener_config:
         mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
@@ -452,15 +477,11 @@ def test_broker_listener_port_add(
             listener_name=listener_name,
             properties=existing_listener_config,
         )
-        expected_listener_request = dict(mock_listener_record)
-        replaced = False
+        expected_listener_request = deepcopy(mock_listener_record)
         for i in range(len(expected_listener_request["properties"]["ports"])):
             if expected_listener_request["properties"]["ports"][i]["port"] == expected_payload["ports"][0]["port"]:
                 expected_listener_request["properties"]["ports"].pop(i)
-                expected_listener_request["properties"]["ports"].insert(i, expected_payload["ports"][0])
-                replaced = True
-        if not replaced:
-            expected_listener_request["properties"]["ports"].append(expected_payload["ports"][0])
+        expected_listener_request["properties"]["ports"].append(expected_payload["ports"][0])
         get_listener_kwargs["status"] = 200
         get_listener_kwargs["json"] = mock_listener_record
 
@@ -489,7 +510,7 @@ def test_broker_listener_port_add(
             status=200,
         )
 
-    create_result = add_broker_listener_port(
+    add_result = add_broker_listener_port(
         cmd=mocked_cmd,
         listener_name=listener_name,
         instance_name=instance_name,
@@ -498,10 +519,10 @@ def test_broker_listener_port_add(
         **scenario_inputs,
     )
     if show_config:
-        assert create_result == expected_listener_request["properties"]
+        assert add_result == expected_listener_request["properties"]
         return
 
-    assert create_result == expected_listener_request
+    assert add_result == expected_listener_request
     request_payload = json.loads(put_response.calls[0].request.body)
     assert request_payload == expected_listener_request
 
@@ -680,11 +701,11 @@ def test_broker_listener_port_remove(
     )
     if should_delete or no_op:
         if no_op:
-            mocked_logger.warning.assert_called_once_with(
-                'No port modification detected.')
+            mocked_logger.warning.assert_called_once_with("No port modification detected.")
         if should_delete:
             mocked_logger.warning.assert_called_once_with(
-                'Listener resource will be deleted as it will no longer have any ports configured.')
+                "Listener resource will be deleted as it will no longer have any ports configured."
+            )
         assert not remove_result
         return
 

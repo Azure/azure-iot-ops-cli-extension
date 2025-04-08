@@ -308,7 +308,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops broker listener port") as context:
         context.argument(
             "listener_name",
-            options_list=["--listener", "-l"],
+            options_list=["--listener", "-n"],
             help="Listener name.",
         )
         context.argument(
@@ -424,6 +424,65 @@ def load_iotops_arguments(self, _):
             "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
+        )
+
+    with self.argument_context("iot ops broker authn method add") as context:
+        context.argument(
+            "authn_name",
+            options_list=["--authn", "-n"],
+            help="Mqtt broker authentication resource name.",
+        )
+        context.argument(
+            "sat_audiences",
+            options_list=["--sat-aud"],
+            nargs="+",
+            help="Space-separated list of allowed audiences.",
+            arg_group="SAT",
+        )
+        context.argument(
+            "x509_client_ca_cm",
+            options_list=["--x509-client-ca-ref"],
+            help="Name of the configmap containing the trusted client ca cert resource. Default value is 'client-ca'.",
+            arg_group="x509",
+        )
+        context.argument(
+            "x509_attrs",
+            options_list=["--x509-attr"],
+            nargs="+",
+            action="extend",
+            help="Specify attributes in the authentication resource for authorizing clients based on their "
+            "certificate properties. You can apply authorization rules to clients by using x509 certificates "
+            "with these attributes. Format is space-separated key=value pairs where the key uses object dot notation "
+            "such as 'a.b.c=value'. Can be used one or more times.",
+            arg_group="x509",
+        )
+        context.argument(
+            "custom_endpoint",
+            options_list=["--custom-ep"],
+            help="Endpoint to use for the custom auth service. Format is 'https://.*'.",
+            arg_group="Custom",
+        )
+        context.argument(
+            "custom_ca_cm",
+            options_list=["--custom-ca-ref"],
+            help="Name of the configmap containing the CA certificate for validating the "
+            "custom authentication server's certificate.",
+            arg_group="Custom",
+        )
+        context.argument(
+            "custom_x509_secret_ref",
+            options_list=["--custom-x509-secret-ref"],
+            help="Reference to Kubernetes secret containing a client certificate.",
+            arg_group="Custom",
+        )
+        context.argument(
+            "custom_http_headers",
+            options_list=["--custom-header"],
+            nargs="+",
+            action="extend",
+            help="http headers to pass to the custom authentication server. Format is space-separated key=value pairs. "
+            "Can be used one or more times.",
+            arg_group="Custom",
         )
 
     with self.argument_context("iot ops broker authz") as context:
