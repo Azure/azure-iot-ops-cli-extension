@@ -35,7 +35,7 @@ def delete_broker(
     )
 
 
-def create_broker_listener(
+def apply_broker_listener(
     cmd,
     listener_name: str,
     instance_name: str,
@@ -44,7 +44,7 @@ def create_broker_listener(
     broker_name: str = DEFAULT_BROKER,
     **kwargs,
 ) -> dict:
-    return Brokers(cmd).listeners.create(
+    return Brokers(cmd).listeners.apply(
         name=listener_name,
         broker_name=broker_name,
         instance_name=instance_name,
@@ -164,7 +164,7 @@ def delete_broker_listener(
     )
 
 
-def create_broker_authn(
+def apply_broker_authn(
     cmd,
     authn_name: str,
     instance_name: str,
@@ -173,7 +173,7 @@ def create_broker_authn(
     broker_name: str = DEFAULT_BROKER,
     **kwargs,
 ) -> dict:
-    return Brokers(cmd).authns.create(
+    return Brokers(cmd).authns.apply(
         name=authn_name,
         broker_name=broker_name,
         instance_name=instance_name,
@@ -254,7 +254,7 @@ def delete_broker_authn(
     )
 
 
-def create_broker_authz(
+def apply_broker_authz(
     cmd,
     authz_name: str,
     instance_name: str,
@@ -263,7 +263,7 @@ def create_broker_authz(
     broker_name: str = DEFAULT_BROKER,
     **kwargs,
 ) -> dict:
-    return Brokers(cmd).authzs.create(
+    return Brokers(cmd).authzs.apply(
         name=authz_name,
         broker_name=broker_name,
         instance_name=instance_name,

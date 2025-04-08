@@ -70,7 +70,7 @@ class BrokerListeners:
         self.ops = ops
         self.get_ext_loc = get_ext_loc
 
-    def create(
+    def apply(
         self,
         name: str,
         broker_name: str,
@@ -327,7 +327,7 @@ class BrokerAuthn:
         self.ops = ops
         self.get_ext_loc = get_ext_loc
 
-    def create(
+    def apply(
         self, name: str, broker_name: str, instance_name: str, resource_group_name: str, config_file: str, **kwargs
     ):
         authn_config = get_file_config(config_file)
@@ -487,7 +487,7 @@ class BrokerAuthz:
         self.ops = ops
         self.get_ext_loc = get_ext_loc
 
-    def create(
+    def apply(
         self, name: str, broker_name: str, instance_name: str, resource_group_name: str, config_file: str, **kwargs
     ):
         authz_config = get_file_config(config_file)
