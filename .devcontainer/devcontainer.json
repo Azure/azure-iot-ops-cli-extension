@@ -56,6 +56,5 @@
 			}
 		}
 	},
-	"postStartCommand": "bash ./.devcontainer/post_start_commands.sh",
 	"onCreateCommand": "bash ./.devcontainer/on_create_commands.sh"
 }
