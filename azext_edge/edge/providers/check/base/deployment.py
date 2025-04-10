@@ -54,6 +54,7 @@ def check_post_deployment(
     excluded_resources: Optional[List[str]] = None,
 ) -> List[dict]:
     results = []
+    lowercase_api_resources = {}
 
     if api_info:
         resource_enumeration, api_resources = enumerate_ops_service_resources(

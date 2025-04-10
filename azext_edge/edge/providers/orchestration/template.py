@@ -48,12 +48,14 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="a983e704f6750e6fe9f2ee1e6bd42ee5c6da2aa1",
+    commit_id="170547981595d99509fdde585255b1c9b72bbad3",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.34.1.11899", "templateHash": "561125219338655039"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.34.44.8038", "templateHash": "14730289139762308894"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -354,13 +356,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="a983e704f6750e6fe9f2ee1e6bd42ee5c6da2aa1",
+    commit_id="2e703dcdbc6eabae49e9f5f9423c6621dc915aa7",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.34.1.11899", "templateHash": "14984277744413954706"}
+            "_generator": {"name": "bicep", "version": "0.34.44.8038", "templateHash": "17336302928471029456"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -577,7 +579,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "1.1.13"},
+            "VERSIONS": {"iotOperations": "1.1.19"},
             "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
@@ -863,7 +865,7 @@ def get_insecure_listener(instance_name: str, broker_name: str) -> dict:
             "type": "CustomLocation",
         },
         "properties": {
-            "serviceType": MqServiceType.load_balancer.value,
+            "serviceType": MqServiceType.LOADBALANCER.value,
             "serviceName": AIO_INSECURE_LISTENER_SERVICE_NAME,
             "ports": [
                 {

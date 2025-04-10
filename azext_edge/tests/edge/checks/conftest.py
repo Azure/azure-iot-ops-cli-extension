@@ -67,15 +67,6 @@ def mock_generate_deviceregistry_asset_target_resources(mocker):
 
 
 @pytest.fixture
-def mock_generate_opcua_target_resources(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.check.opcua.generate_target_resource_name",
-        return_value="assettypes.opcuabroker.iotoperations.azure.com",
-    )
-    yield patched
-
-
-@pytest.fixture
 def mock_opcua_get_namespaced_pods_by_prefix(mocker):
     patched = mocker.patch("azext_edge.edge.providers.check.opcua.get_namespaced_pods_by_prefix", return_value=[])
     yield patched
