@@ -47,6 +47,7 @@
 				"redhat.vscode-yaml"
 			],
 			"settings": {
+				"python.terminal.activateEnvironment": true,
 				"python.terminal.activateEnvInCurrentTerminal": true,
 				"python.defaultInterpreterPath": "./env/bin/python",
 				"[python]": {
