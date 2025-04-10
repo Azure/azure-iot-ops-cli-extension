@@ -32,6 +32,7 @@ from .providers.orchestration.common import (
     TRUST_SETTING_KEYS,
     X509_ISSUER_REF_KEYS,
     ConfigSyncModeType,
+    DataflowEndpointAuthenticationType,
     IdentityUsageType,
     KubernetesDistroType,
     ListenerProtocol,
@@ -279,6 +280,24 @@ def load_iotops_arguments(self, _):
             "endpoint_name",
             options_list=["--name", "-n"],
             help="Dataflow endpoint name.",
+        )
+        context.argument(
+            "authentication_method",
+            options_list=["--auth-method", "--am"],
+            help="Authentication method to use for the endpoint.",
+            arg_type=get_enum_type(DataflowEndpointAuthenticationType, default=None),
+        )
+    
+    with self.argument_context("iot ops dataflow endpoint create") as context:
+        context.argument(
+            "host",
+            options_list=["--host"],
+            help="Host of the endpoint.",
+        )
+        context.argument(
+            "client_id",
+            options_list=["--client-id"],
+            help="Client Id of the endpoint.",
         )
 
     with self.argument_context("iot ops broker") as context:

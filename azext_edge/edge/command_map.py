@@ -122,6 +122,17 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_dataflow_endpoint")
         cmd_group.command("list", "list_dataflow_endpoints")
+    
+    with self.command_group(
+        "iot ops dataflow endpoint create",
+        command_type=dataflow_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("adx", "create_dataflow_endpoint_adx")
+        cmd_group.command("adls", "create_dataflow_endpoint_adls")
+        cmd_group.command("fabric", "create_dataflow_endpoint_fabric")
+        cmd_group.command("kafka", "create_dataflow_endpoint_kafka")
+        cmd_group.command("localstorage", "create_dataflow_endpoint_localstorage")
+        cmd_group.command("mqtt", "create_dataflow_endpoint_mqtt")
 
     with self.command_group(
         "iot ops asset",
