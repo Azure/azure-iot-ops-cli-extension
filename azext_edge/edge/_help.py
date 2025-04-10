@@ -203,6 +203,36 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace an mqtt broker listener service.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          {
+            "serviceType": "LoadBalancer",
+            "ports": [
+                {
+                    "port": 1883,
+                    "protocol": "Mqtt"
+                },
+                {
+                    "authenticationRef": "default",
+                    "port": 8883,
+                    "protocol": "Mqtt",
+                    "tls": {
+                        "mode": "Automatic",
+                        "certManagerCertificateSpec": {
+                            "issuerRef": {
+                                "name": "azure-iot-operations-aio-certificate-issuer",
+                                "kind": "ClusterIssuer",
+                                "group": "cert-manager.io"
+                            }
+                        }
+                    }
+                }
+            ]
+          }
+
+          When used with apply the above content will create or replace a target listener
+          with a two port configuration.
 
         examples:
         - name: Create or replace a listener for the default broker using a config file.
@@ -302,6 +332,67 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace an mqtt broker authentication resource.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          {
+              "authenticationMethods": [
+                  {
+                      "method": "Custom",
+                      "customSettings": {
+                          "endpoint": "https://auth-server-template",
+                          "caCertConfigMap": "custom-auth-ca",
+                          "auth": {
+                              "x509": {
+                                  "secretRef": "custom-auth-client-cert"
+                              }
+                          },
+                          "headers": {
+                              "header_key": "header_value"
+                          }
+                      }
+                  },
+                  {
+                      "method": "ServiceAccountToken",
+                      "serviceAccountTokenSettings": {
+                          "audiences": [
+                              "aio-internal",
+                              "my-audience"
+                          ]
+                      }
+                  },
+                  {
+                      "method": "X509",
+                      "x509Settings": {
+                          "trustedClientCaCert": "client-ca",
+                          "authorizationAttributes": {
+                              "root": {
+                                  "attributes": {
+                                      "organization": "contoso"
+                                  },
+                                  "subject": "CN = Contoso Root CA Cert, OU = Engineering, C = US"
+                              },
+                              "intermediate": {
+                                  "attributes": {
+                                      "city": "seattle",
+                                      "foo": "bar"
+                                  },
+                                  "subject": "CN = Contoso Intermediate CA"
+                              },
+                              "smartfan": {
+                                  "attributes": {
+                                      "building": "17"
+                                  },
+                                  "subject": "CN = smart-fan"
+                              }
+                          }
+                      }
+                  }
+              ]
+          }
+
+          When used with apply the above content will create or replace a target authentication
+          resource configured with three authn methods.
 
         examples:
         - name: Create or replace an authentication resource for the default broker using a config file.
@@ -396,6 +487,51 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace an mqtt broker authorization resource.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          {
+              "authorizationPolicies": {
+                  "cache": "Enabled",
+                  "rules": [
+                      {
+                          "principals": {
+                              "clientIds": [
+                                  "temperature-sensor",
+                                  "humidity-sensor"
+                              ],
+                              "attributes": [
+                                  {
+                                      "city": "seattle",
+                                      "organization": "contoso"
+                                  }
+                              ]
+                          },
+                          "brokerResources": [
+                              {
+                                  "method": "Connect"
+                              },
+                              {
+                                  "method": "Publish",
+                                  "topics": [
+                                      "/telemetry/{principal.clientId}",
+                                      "/telemetry/{principal.attributes.organization}"
+                                  ]
+                              },
+                              {
+                                  "method": "Subscribe",
+                                  "topics": [
+                                      "/commands/{principal.attributes.organization}"
+                                  ]
+                              }
+                          ]
+                      }
+                  ]
+              }
+          }
+
+          When used with apply the above content will create or replace a target authorization
+          resource configured with a single authz rule.
 
         examples:
         - name: Create or replace an authorization resource for the default broker using a config file.
