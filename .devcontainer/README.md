@@ -44,7 +44,7 @@ Validate local dev extension configuration
 
 - Ensure you can lint and unit test your local code:
 
-  `tox` will run these checks. [TODO - add link to tox section]
+  `tox` will run these checks, more info in our [tox guide](../docs/tox-testing.md)
 
 </details>
 
@@ -109,24 +109,3 @@ Validate local cluster environment and tools
 ## Verify AIO deployment and cluster status
 
 - Run service summary checks on your cluster: `az iot ops check`
-
-
-## Creating new commands
-
-## Breakpoints and debugging
-
-## Testing
-
-### Tox
-
-### Unit tests
-
-### Integration tests
-
-## Conventional Commits
-
-## Repository logistics and best practices
-- Please fork this repository and create pull requests from your fork. If you need a feature branch on the main Azure repo (for automated integration testing, as an example) please create it under `feature/*`. Integration tests require a federated credential to be added to our testing service principal, ask a repository admin for help.
-- It never hurts to lint / unit test locally before churning commits in a PR to fix smaller issues (`tox`)
-- PRs can be open in draft for early feedback, but should only be marked 'ready for review' once the code is ready to be merged. Adding commits while others are reviewing can be confusing and cause churn.
-- PRs that do not pass checks (unit tests, style checks) should not be considered ready for review unless there is a noted reason why.
