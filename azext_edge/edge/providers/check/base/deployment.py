@@ -27,8 +27,8 @@ logger = get_logger(__name__)
 def check_pre_deployment(
     result: Dict[str, Any],
     as_list: bool = False,
-) -> None:
-    result["preDeployment"] = []
+) -> List[dict]:
+    result = []
     desired_checks = {}
     desired_checks.update(
         {
@@ -39,7 +39,8 @@ def check_pre_deployment(
 
     for c in desired_checks:
         output = desired_checks[c]()
-        result["preDeployment"].append(output)
+        result.append(output)
+    return result
 
 
 def check_post_deployment(

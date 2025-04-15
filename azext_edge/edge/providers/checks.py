@@ -54,7 +54,7 @@ def run_checks(
         result["title"] = f"Evaluation for {title_subject}" if ops_service else "IoT Operations Summary"
 
         if pre_deployment:
-            check_pre_deployment(result, as_list)
+            result["preDeployment"] = check_pre_deployment(result, as_list)
         if post_deployment:
             result["postDeployment"] = []
             service_check_dict = {
