@@ -1,6 +1,6 @@
 # Welcome to the Azure IoT Operations CLI Extension codespace!
 
-This codespace has everything you need to get started developing with python and the Azure CLI.
+This codespace has everything you need to get started developing with Python and the Azure CLI.
 
 Included VSCode Extensions:
 
@@ -30,7 +30,7 @@ Additional software:
 Validate local dev extension configuration
 </summary>
 
-- Ensure your local python virtual environment is active:
+- Ensure your local Python virtual environment is active:
 
   `az -v` should show you a local `Python location` path in your `env` folder:
 
