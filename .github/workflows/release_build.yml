@@ -2,10 +2,9 @@ name: "[auto] Build Wheel for Release"
 permissions: {}
 on:
   workflow_call:
-  workflow_dispatch:
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, 1ES.Pool=iotupx-github-hosted-pool, 1ES.ImageOverride=MMSUbuntu20.04]
     permissions:
       contents: read
       id-token: write
@@ -14,7 +13,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - uses: actions/checkout@v4
       - name: "Az CLI login"
         uses: azure/login@v2
