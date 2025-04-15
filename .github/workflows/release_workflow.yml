@@ -33,6 +33,7 @@ jobs:
       continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
   build:
     uses: ./.github/workflows/release_build.yml
+    secrets: inherit
   test:
     uses: ./.github/workflows/tox.yml
     with:
