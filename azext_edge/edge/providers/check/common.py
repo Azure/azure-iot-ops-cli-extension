@@ -185,7 +185,7 @@ AIO_OPCUA_PREFIX = "aio-opc-"
 
 # Pre-deployment KPIs
 
-MIN_K8S_VERSION = "1.20"
+MIN_K8S_VERSION = "1.29"
 
 # Node prerequisite constants
 
