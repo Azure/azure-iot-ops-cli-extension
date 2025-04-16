@@ -1,13 +1,19 @@
 version: 2
 updates:
-  # Enable version updates for pip
+  # Enable daily version updates for pip
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "daily"
 
-  # Enable version updates for docker
+  # Enable weekly version updates for docker
   - package-ecosystem: "docker"
     directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Enable weekly version updates for devcontainer
+  - package-ecosystem: "devcontainers"
+    directory: "/.devcontainer/"
     schedule:
       interval: "weekly"
