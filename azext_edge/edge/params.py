@@ -273,6 +273,19 @@ def load_iotops_arguments(self, _):
             options_list=["--name", "-n"],
             help="Dataflow profile name.",
         )
+        context.argument(
+            "profile_instances",
+            type=int,
+            options_list=["--profile-instances"],
+            help="The number of pods that run associated dataflows. Min value: 1, max value: 20."
+        )
+        context.argument(
+            "log_level",
+            options_list=["--log-level"],
+            help="The level of detail given in diagnostic logs. "
+            "Format is comma-separated module=level pairs and a default level. "
+            "Example: 'h2=trace,kube=debug,info'."
+        )
 
     with self.argument_context("iot ops dataflow endpoint") as context:
         context.argument(

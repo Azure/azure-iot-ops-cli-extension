@@ -472,6 +472,42 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow profile create"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow profile.
+
+        examples:
+        - name: Create a dataflow profile in the instance 'mycluster-ops-instance' with 2 profile instances.
+          text: >
+            az iot ops dataflow profile show -n myprofile --in mycluster-ops-instance -g myresourcegroup --profile-instances 2
+    """
+
+    helps[
+        "iot ops dataflow profile update"
+    ] = """
+        type: command
+        short-summary: Update a dataflow profile.
+
+        examples:
+        - name: Update the log level of the dataflow profile 'myprofile' to 'debug'.
+          text: >
+            az iot ops dataflow profile update -n myprofile --in mycluster-ops-instance -g myresourcegroup --log-level debug
+    """
+
+    helps[
+        "iot ops dataflow profile delete"
+    ] = """
+        type: command
+        short-summary: Delete a dataflow profile.
+
+        examples:
+        - name: Delete the dataflow profile 'myprofile' in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops dataflow profile list -n myprofile --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
         "iot ops dataflow endpoint"
     ] = """
         type: group
