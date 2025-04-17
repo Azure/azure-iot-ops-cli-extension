@@ -25,7 +25,6 @@ logger = get_logger(__name__)
 
 
 def check_pre_deployment(
-    result: Dict[str, Any],
     as_list: bool = False,
 ) -> List[dict]:
     result = []
