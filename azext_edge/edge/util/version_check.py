@@ -45,7 +45,7 @@ def check_latest(cli_ctx, force_refresh: Optional[bool] = False, throw_if_upgrad
     upgrade_semver = index.upgrade_available(force_refresh=force_refresh)
 
     if upgrade_semver:
-        update_text = "{}Update available{}. Install with '{}az extension --upgrade --name azure-iot-ops{}'."
+        update_text = "{}Update available{}. Install with '{}az extension add --upgrade --name azure-iot-ops{}'."
         update_text_no_markup = update_text.format("", "", "", "")
         logger.debug(update_text_no_markup)
         if throw_if_upgrade:
