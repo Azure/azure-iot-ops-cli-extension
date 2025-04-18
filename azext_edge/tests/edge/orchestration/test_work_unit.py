@@ -77,6 +77,7 @@ class CallKey(Enum):
     DEPLOY_CREATE_RESOURCES = "deployCreateResources"
     CREATE_CUSTOM_LOCATION = "createCustomLocation"
 
+
 # TODO - @digimaun - GT testing.
 CL_EXTENSION_TYPES = ["microsoft.azure.secretstore", "microsoft.iotoperations"]
 
@@ -573,44 +574,44 @@ def assert_init_deployment_body(body_str: str, target_scenario: dict):
             ),
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
-        # build_target_scenario(
-        #     extension_config_settings={
-        #         EXTENSION_TYPE_PLATFORM: {
-        #             "properties": {
-        #                 "extensionType": EXTENSION_TYPE_PLATFORM,
-        #                 "provisioningState": "Failed",
-        #             }
-        #         },
-        #         EXTENSION_TYPE_SSC: {
-        #             "properties": {
-        #                 "extensionType": EXTENSION_TYPE_SSC,
-        #                 "provisioningState": "Failed",
-        #             }
-        #         },
-        #     },
-        #     raises=ExceptionMeta(
-        #         exc_type=ValidationError,
-        #         exc_msg=[
-        #             "Foundational service(s) with non-successful provisioning state detected on the cluster:\n\n",
-        #             EXTENSION_TYPE_SSC,
-        #             EXTENSION_TYPE_PLATFORM,
-        #             "\n\nInstance deployment will not continue. Please run 'az iot ops init'.",
-        #         ],
-        #     ),
-        #     omit_http_methods=frozenset([responses.PUT, responses.POST]),
-        # ),
-        # build_target_scenario(
-        #     omit_extension_types=frozenset([EXTENSION_TYPE_PLATFORM]),
-        #     raises=ExceptionMeta(
-        #         exc_type=ValidationError,
-        #         exc_msg=(
-        #             "Foundational service(s) not detected on the cluster:\n\n"
-        #             f"{EXTENSION_TYPE_PLATFORM}"
-        #             "\n\nInstance deployment will not continue. Please run 'az iot ops init'."
-        #         ),
-        #     ),
-        #     omit_http_methods=frozenset([responses.PUT, responses.POST]),
-        # ),
+        build_target_scenario(
+            extension_config_settings={
+                EXTENSION_TYPE_ACS: {
+                    "properties": {
+                        "extensionType": EXTENSION_TYPE_ACS,
+                        "provisioningState": "Failed",
+                    }
+                },
+                EXTENSION_TYPE_SSC: {
+                    "properties": {
+                        "extensionType": EXTENSION_TYPE_SSC,
+                        "provisioningState": "Failed",
+                    }
+                },
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=[
+                    "Foundational service(s) with non-successful provisioning state detected on the cluster:\n\n",
+                    EXTENSION_TYPE_ACS,
+                    EXTENSION_TYPE_SSC,
+                    "\n\nInstance deployment will not continue. Please run 'az iot ops init'.",
+                ],
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
+        build_target_scenario(
+            omit_extension_types=frozenset([EXTENSION_TYPE_SSC]),
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg=(
+                    "Foundational service(s) not detected on the cluster:\n\n"
+                    f"{EXTENSION_TYPE_SSC}"
+                    "\n\nInstance deployment will not continue. Please run 'az iot ops init'."
+                ),
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
         # build_target_scenario(
         #     extension_config_settings={
         #         EXTENSION_TYPE_PLATFORM: {
