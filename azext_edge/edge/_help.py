@@ -478,9 +478,12 @@ def load_iotops_help():
         short-summary: Create or replace a dataflow profile.
 
         examples:
+        - name: Create a dataflow profile in the instance 'mycluster-ops-instance' with default properties.
+          text: >
+            az iot ops dataflow profile create -n myprofile --in mycluster-ops-instance -g myresourcegroup
         - name: Create a dataflow profile in the instance 'mycluster-ops-instance' with 2 profile instances.
           text: >
-            az iot ops dataflow profile show -n myprofile --in mycluster-ops-instance -g myresourcegroup --profile-instances 2
+            az iot ops dataflow profile create -n myprofile --in mycluster-ops-instance -g myresourcegroup --profile-instances 2
     """
 
     helps[
@@ -500,11 +503,12 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Delete a dataflow profile.
+        long-summary: Deleting a dataflow profile will also delete associated dataflows.
 
         examples:
         - name: Delete the dataflow profile 'myprofile' in the instance 'mycluster-ops-instance'.
           text: >
-            az iot ops dataflow profile list -n myprofile --in mycluster-ops-instance -g myresourcegroup
+            az iot ops dataflow profile delete -n myprofile --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
