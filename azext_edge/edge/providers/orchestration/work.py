@@ -30,9 +30,8 @@ from ...util.az_client import (
 from ...util.common import insert_newlines
 from .common import (
     EXTENSION_TYPE_OPS,
-    EXTENSION_TYPE_PLATFORM,
+    EXTENSION_TYPE_ACS,
     EXTENSION_TYPE_SSC,
-    OPS_EXTENSION_DEPS,
     ClusterConnectStatus,
 )
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
@@ -214,6 +213,8 @@ class WorkManager:
         missing_exts = []
         bad_provisioning_state = []
         dependencies = self.ops_extension_dependencies
+
+        # TODO - @digimaun - GT Testing.
         for ext in dependencies:
             ext_attr = dependencies.get(ext)
             if not ext_attr:
@@ -239,18 +240,18 @@ class WorkManager:
             )
 
         # validate trust config in platform extension matches trust settings in create
-        platform_extension_config = dependencies[EXTENSION_TYPE_PLATFORM]["properties"]["configurationSettings"]
-        is_user_trust = platform_extension_config.get("installCertManager", "").lower() != "true"
-        if is_user_trust and not self._targets.trust_settings:
-            raise ValidationError(
-                "Cluster was enabled with user-managed trust configuration, "
-                "--trust-settings arguments are required to create an instance on this cluster."
-            )
-        elif not is_user_trust and self._targets.trust_settings:
-            raise ValidationError(
-                "Cluster was enabled with system cert-manager, "
-                "trust settings (--trust-settings) are not applicable to this cluster."
-            )
+        # platform_extension_config = dependencies[EXTENSION_TYPE_PLATFORM]["properties"]["configurationSettings"]
+        # is_user_trust = platform_extension_config.get("installCertManager", "").lower() != "true"
+        # if is_user_trust and not self._targets.trust_settings:
+        #     raise ValidationError(
+        #         "Cluster was enabled with user-managed trust configuration, "
+        #         "--trust-settings arguments are required to create an instance on this cluster."
+        #     )
+        # elif not is_user_trust and self._targets.trust_settings:
+        #     raise ValidationError(
+        #         "Cluster was enabled with system cert-manager, "
+        #         "trust settings (--trust-settings) are not applicable to this cluster."
+        #     )
 
     def _apply_sr_role_assignment(self) -> Optional[str]:
         ops_ext = self.ops_extension
@@ -417,15 +418,11 @@ class WorkManager:
                     resource_id=self._targets.schema_registry_resource_id,
                     api_version=REGISTRY_PREVIEW_API_VERSION,
                 )
-                # TODO - @digimaun - Testing.
-                # self._process_extension_dependencies()
-                dependency_ext_ids = [
-                    self.ops_extension_dependencies[ext]["id"] for ext in [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
-                ]
+                self._process_extension_dependencies()
+                dependency_ext_ids = [self.ops_extension_dependencies[ext]["id"] for ext in [EXTENSION_TYPE_SSC]]
                 self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.DEPLOY_INSTANCE)
-                self._create_or_update_custom_location(
-                    extension_ids=[self.ops_extension_dependencies[EXTENSION_TYPE_PLATFORM]["id"]]
-                )
+                # TODO - @digimaun - GT test.
+                self._create_or_update_custom_location(extension_ids=dependency_ext_ids)
                 instance_content, instance_parameters = self._targets.get_ops_instance_template(
                     cl_extension_ids=dependency_ext_ids,
                     phase=InstancePhase.EXT,
@@ -591,8 +588,9 @@ class WorkManager:
     @property
     def ops_extension_dependencies(self) -> Dict[str, Optional[dict]]:
         if not self._ops_ext_dependencies:
+            # TODO - @digimaun - GT test.
             self._ops_ext_dependencies = self._resource_map.connected_cluster.get_extensions_by_type(
-                *OPS_EXTENSION_DEPS
+                EXTENSION_TYPE_SSC, EXTENSION_TYPE_ACS
             )
         return self._ops_ext_dependencies
 
