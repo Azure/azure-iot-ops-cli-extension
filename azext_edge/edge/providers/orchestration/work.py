@@ -417,7 +417,8 @@ class WorkManager:
                     resource_id=self._targets.schema_registry_resource_id,
                     api_version=REGISTRY_PREVIEW_API_VERSION,
                 )
-                self._process_extension_dependencies()
+                # TODO - @digimaun - Testing.
+                # self._process_extension_dependencies()
                 dependency_ext_ids = [
                     self.ops_extension_dependencies[ext]["id"] for ext in [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
                 ]
