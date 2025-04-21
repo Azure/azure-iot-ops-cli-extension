@@ -540,7 +540,7 @@ def load_iotops_arguments(self, _):
                 arg_type=get_three_state_flag(),
                 help="Enforce a check for minimum node requirements to deploy IoT Operations.",
             )
-            
+
             # Schema Registry
             context.argument(
                 "schema_registry_resource_id",

@@ -21,9 +21,9 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
-from azext_edge.edge.common import CheckTaskStatus
 from azext_edge.edge.providers.base import load_config_context
 from azext_edge.edge.providers.check.base.deployment import check_pre_deployment
+from azext_edge.edge.providers.check.common import NON_ERROR_STATUSES
 
 from ...util.az_client import (
     REGISTRY_PREVIEW_API_VERSION,
@@ -168,8 +168,10 @@ class WorkManager:
         self._display.add_step(
             WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
         )
-        if self._cluster_checks:
-            self._display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.CLUSTER_CHECKS, "Cluster readiness pre-checks")
+        if hasattr(self, "_cluster_checks") and self._cluster_checks:
+            self._display.add_step(
+                WorkCategoryKey.PRE_FLIGHT, WorkStepKey.CLUSTER_CHECKS, "Cluster readiness pre-checks"
+            )
 
         if self._apply_foundation:
             self._display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
@@ -349,7 +351,6 @@ class WorkManager:
             self._cluster_checks = True
             self._context_name = kwargs.get("context_name")
             load_config_context(context_name=self._context_name)
-            
 
         self._build_display()
 
@@ -363,8 +364,8 @@ class WorkManager:
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             self._render_display()
-            # verify_cli_client_connections()
-            # self._process_connected_cluster()
+            verify_cli_client_connections()
+            self._process_connected_cluster()
 
             # Pre-Flight workflow
             if self._pre_flight:
@@ -388,16 +389,30 @@ class WorkManager:
                     completed_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
                 )
                 # WorkStepKey.CLUSTER_CHECKS
-                if self._cluster_checks:
+                if hasattr(self, "_cluster_checks") and self._cluster_checks:
                     pre_checks = check_pre_deployment(as_list=False)
                     self._render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.CLUSTER_CHECKS)
                     errors = []
                     for check in pre_checks:
-                        # TODO - get actual check errors and values to display (node X failed a check for Y: expected W, actual Q)
-                        if check["status"] not in [CheckTaskStatus.success.value, CheckTaskStatus.skipped.value]:
-                            errors.append(f"Check '{check['description']}' encountered an error.")
+                        if check["status"] not in NON_ERROR_STATUSES:
+                            for target in check["targets"]:
+                                # for all prechecks, namespace is currently _all_
+                                for namespace in check["targets"][target]:
+                                    # this is a specific target (e.g. "cluster/nodes/k3d-k3s-default-server-0")
+                                    for idx, check_eval in enumerate(
+                                        check["targets"][target][namespace]["evaluations"]
+                                    ):
+                                        if check_eval["status"] not in NON_ERROR_STATUSES:
+                                            # TODO - relies on same order and count of conditions / evaluations
+                                            expected_condition = check['targets'][target][namespace]['conditions'][idx]
+                                            # TODO - formatting
+                                            errors.append(
+                                                f"Target '{target}' failed condition:\n"
+                                                f"\tExpected: '{expected_condition}', Actual: '{check_eval['value']}'"
+                                            )
+
                     if errors:
-                        raise ValidationError(insert_newlines("Pre-flight checks failed:\n\n" + "\n".join(errors)))
+                        raise ValidationError("Cluster readiness pre-checks failed:\n\n" + "\n".join(errors))
                     self._complete_step(
                         category=WorkCategoryKey.PRE_FLIGHT,
                         completed_step=WorkStepKey.CLUSTER_CHECKS,

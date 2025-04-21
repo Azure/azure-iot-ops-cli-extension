@@ -171,6 +171,12 @@ class PodStatusConditionResult(NamedTuple):
 # Akri runtime attributes
 AKRI_PREFIX = "aio-akri-"
 
+# Check common constants
+NON_ERROR_STATUSES = [
+    CheckTaskStatus.success.value,
+    CheckTaskStatus.skipped.value,
+]
+
 # MQ runtime attributes
 AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX = "aio-broker-diagnostics-probe"
 AIO_BROKER_FRONTEND_PREFIX = "aio-broker-frontend"
