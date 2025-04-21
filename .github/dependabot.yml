@@ -2,20 +2,27 @@ version: 2
 updates:
   # Enable daily version updates for pip
   - package-ecosystem: "pip"
-    # limit to security updates only
-    open-pull-requests-limit: 0
     directory: "/"
     schedule:
       interval: "daily"
+    # limit to security updates only
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(pip-deps)"
+      prefix-development: "chore(pip-dev-deps)"
 
   # Enable weekly version updates for docker
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "chore(docker-deps)"
 
   # Enable weekly version updates for devcontainer
   - package-ecosystem: "devcontainers"
     directory: "/.devcontainer/"
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "chore(devcontainer-deps)"
