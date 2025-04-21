@@ -100,7 +100,9 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
+    context_name: Optional[str] = None,
     enable_fault_tolerance: Optional[bool] = None,
+    enable_precheck: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     user_trust: Optional[bool] = None,
@@ -119,6 +121,9 @@ def init(
     )
 
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
+
+    if enable_precheck:
+        kwargs.update({"enable_precheck": enable_precheck, "context_name": context_name})
 
     work_manager = WorkManager(cmd)
     result_payload = work_manager.execute_ops_init(

@@ -533,6 +533,14 @@ def load_iotops_arguments(self, _):
                 arg_type=get_three_state_flag(),
                 help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
             )
+            # Cluster Precheck opt-in
+            context.argument(
+                "enable_precheck",
+                options_list=["--enable-precheck"],
+                arg_type=get_three_state_flag(),
+                help="Enforce a check for minimum node requirements to deploy IoT Operations.",
+            )
+            
             # Schema Registry
             context.argument(
                 "schema_registry_resource_id",

@@ -21,6 +21,10 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
+from azext_edge.edge.common import CheckTaskStatus
+from azext_edge.edge.providers.base import load_config_context
+from azext_edge.edge.providers.check.base.deployment import check_pre_deployment
+
 from ...util.az_client import (
     REGISTRY_PREVIEW_API_VERSION,
     get_resource_client,
@@ -55,10 +59,11 @@ class WorkCategoryKey(IntEnum):
 class WorkStepKey(IntEnum):
     REG_RP = 1
     ENUMERATE_PRE_FLIGHT = 2
-    WHAT_IF_ENABLEMENT = 3
-    DEPLOY_ENABLEMENT = 4
-    DEPLOY_INSTANCE = 5
-    DEPLOY_RESOURCES = 6
+    CLUSTER_CHECKS = 3
+    WHAT_IF_ENABLEMENT = 4
+    DEPLOY_ENABLEMENT = 5
+    DEPLOY_INSTANCE = 6
+    DEPLOY_RESOURCES = 7
 
 
 class WorkRecord:
@@ -163,12 +168,12 @@ class WorkManager:
         self._display.add_step(
             WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
         )
+        if self._cluster_checks:
+            self._display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.CLUSTER_CHECKS, "Cluster readiness pre-checks")
 
         if self._apply_foundation:
             self._display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
-            self._display.add_step(
-                WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation"
-            )
+            self._display.add_step(WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation")
             self._display.add_step(
                 WorkCategoryKey.ENABLE_IOT_OPS,
                 WorkStepKey.DEPLOY_ENABLEMENT,
@@ -338,6 +343,14 @@ class WorkManager:
         self._warnings: List[str] = []
         self._ops_ext_dependencies = None
         self._ops_ext = None
+
+        # cluster checks opt-in
+        if kwargs.get("enable_precheck", False):
+            self._cluster_checks = True
+            self._context_name = kwargs.get("context_name")
+            load_config_context(context_name=self._context_name)
+            
+
         self._build_display()
 
         return self._do_work()
@@ -350,8 +363,8 @@ class WorkManager:
         try:
             # Ensure connection to ARM if needed. Show remediation error message otherwise.
             self._render_display()
-            verify_cli_client_connections()
-            self._process_connected_cluster()
+            # verify_cli_client_connections()
+            # self._process_connected_cluster()
 
             # Pre-Flight workflow
             if self._pre_flight:
@@ -374,6 +387,21 @@ class WorkManager:
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
                 )
+                # WorkStepKey.CLUSTER_CHECKS
+                if self._cluster_checks:
+                    pre_checks = check_pre_deployment(as_list=False)
+                    self._render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.CLUSTER_CHECKS)
+                    errors = []
+                    for check in pre_checks:
+                        # TODO - get actual check errors and values to display (node X failed a check for Y: expected W, actual Q)
+                        if check["status"] not in [CheckTaskStatus.success.value, CheckTaskStatus.skipped.value]:
+                            errors.append(f"Check '{check['description']}' encountered an error.")
+                    if errors:
+                        raise ValidationError(insert_newlines("Pre-flight checks failed:\n\n" + "\n".join(errors)))
+                    self._complete_step(
+                        category=WorkCategoryKey.PRE_FLIGHT,
+                        completed_step=WorkStepKey.CLUSTER_CHECKS,
+                    )
 
             # Enable IoT Ops workflow
             if self._apply_foundation:
