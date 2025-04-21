@@ -18,6 +18,10 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore(docker-deps)"
+    # ignore all docker patch version updates
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
 
   # Enable weekly version updates for devcontainer
   - package-ecosystem: "devcontainers"
@@ -26,3 +30,7 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore(devcontainer-deps)"
+    # ignore all devcontainer patch version updates
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
