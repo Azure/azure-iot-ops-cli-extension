@@ -2,6 +2,8 @@ version: 2
 updates:
   # Enable daily version updates for pip
   - package-ecosystem: "pip"
+    # limit to security updates only
+    open-pull-requests-limit: 0
     directory: "/"
     schedule:
       interval: "daily"
