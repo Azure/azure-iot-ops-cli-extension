@@ -509,6 +509,9 @@ def load_iotops_help():
         - name: Delete the dataflow profile 'myprofile' in the instance 'mycluster-ops-instance'.
           text: >
             az iot ops dataflow profile delete -n myprofile --in mycluster-ops-instance -g myresourcegroup
+        - name: Skip the delete confirmation prompt while deleting the dataflow profile 'myprofile' in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops dataflow profile delete -n myprofile --in mycluster-ops-instance -g myresourcegroup -y true
     """
 
     helps[

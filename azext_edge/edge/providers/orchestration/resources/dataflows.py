@@ -40,8 +40,8 @@ class DataFlowProfiles(Queryable):
         name: str,
         instance_name: str,
         resource_group_name: str,
-        profile_instances: Optional[int] = 1,
-        log_level: Optional[str] = "info",
+        profile_instances: int = 1,
+        log_level: str = "info",
         **kwargs,
     ):
 
@@ -84,9 +84,13 @@ class DataFlowProfiles(Queryable):
 
         # update the properties
         if profile_instances:
-            original_profile["properties"]["instanceCount"] = profile_instances
+            properties = original_profile.setdefault("properties", {})
+            properties["instanceCount"] = profile_instances
         if log_level:
-            original_profile["properties"]["diagnostics"]["logs"]["level"] = log_level
+            properties = original_profile.setdefault("properties", {})
+            diagnostics = properties.setdefault("diagnostics", {})
+            logs = diagnostics.setdefault("logs", {})
+            logs["level"] = log_level
 
         with console.status(f"Updating {name}..."):
             poller = self.ops.begin_create_or_update(
@@ -113,14 +117,10 @@ class DataFlowProfiles(Queryable):
         dataflows = list(dataflows)
 
         if name == "default":
-            logger.warning(
-                "Deleting the 'default' dataflow profile may cause disruptions."
-            )
+            logger.warning("Deleting the 'default' dataflow profile may cause disruptions.")
 
         if dataflows:
-            console.print(
-                "Deleting this dataflow profile will also delete the associated dataflows:"
-            )
+            console.print("Deleting this dataflow profile will also delete the associated dataflows:")
             for dataflow in dataflows:
                 console.print(f"\t- {dataflow['name']}")
 
@@ -144,9 +144,7 @@ class DataFlowProfiles(Queryable):
         )
 
     def list(self, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_resource_group(
-            resource_group_name=resource_group_name, instance_name=instance_name
-        )
+        return self.ops.list_by_resource_group(resource_group_name=resource_group_name, instance_name=instance_name)
 
 
 class DataFlows:
@@ -167,9 +165,7 @@ class DataFlows:
             dataflow_name=name,
         )
 
-    def list(
-        self, dataflow_profile_name: str, instance_name: str, resource_group_name: str
-    ) -> Iterable[dict]:
+    def list(self, dataflow_profile_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
         return self.ops.list_by_profile_resource(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
@@ -183,9 +179,7 @@ class DataFlowEndpoints(Queryable):
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.default_subscription_id,
         )
-        self.ops: "DataflowEndpointOperations" = (
-            self.iotops_mgmt_client.dataflow_endpoint
-        )
+        self.ops: "DataflowEndpointOperations" = self.iotops_mgmt_client.dataflow_endpoint
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
@@ -195,6 +189,4 @@ class DataFlowEndpoints(Queryable):
         )
 
     def list(self, instance_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_resource_group(
-            resource_group_name=resource_group_name, instance_name=instance_name
-        )
+        return self.ops.list_by_resource_group(resource_group_name=resource_group_name, instance_name=instance_name)

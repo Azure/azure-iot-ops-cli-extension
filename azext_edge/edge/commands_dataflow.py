@@ -14,8 +14,8 @@ def create_dataflow_profile(
     profile_name: str,
     instance_name: str,
     resource_group_name: str,
-    profile_instances: Optional[int] = 1,
-    log_level: Optional[str] = "info",
+    profile_instances: int = 1,
+    log_level: str = "info",
     **kwargs,
 ) -> dict:
     return DataFlowProfiles(cmd).create(
@@ -64,9 +64,7 @@ def delete_dataflow_profile(
     )
 
 
-def show_dataflow_profile(
-    cmd, profile_name: str, instance_name: str, resource_group_name: str
-) -> dict:
+def show_dataflow_profile(cmd, profile_name: str, instance_name: str, resource_group_name: str) -> dict:
     return DataFlowProfiles(cmd).show(
         name=profile_name,
         instance_name=instance_name,
@@ -74,12 +72,8 @@ def show_dataflow_profile(
     )
 
 
-def list_dataflow_profiles(
-    cmd, instance_name: str, resource_group_name: str
-) -> Iterable[dict]:
-    return DataFlowProfiles(cmd).list(
-        instance_name=instance_name, resource_group_name=resource_group_name
-    )
+def list_dataflow_profiles(cmd, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+    return DataFlowProfiles(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
 
 
 def show_dataflow(
@@ -97,9 +91,7 @@ def show_dataflow(
     )
 
 
-def list_dataflows(
-    cmd, profile_name: str, instance_name: str, resource_group_name: str
-) -> Iterable[dict]:
+def list_dataflows(cmd, profile_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
     return DataFlowProfiles(cmd).dataflows.list(
         dataflow_profile_name=profile_name,
         instance_name=instance_name,
@@ -107,9 +99,7 @@ def list_dataflows(
     )
 
 
-def show_dataflow_endpoint(
-    cmd, endpoint_name: str, instance_name: str, resource_group_name: str
-) -> dict:
+def show_dataflow_endpoint(cmd, endpoint_name: str, instance_name: str, resource_group_name: str) -> dict:
     return DataFlowEndpoints(cmd).show(
         name=endpoint_name,
         instance_name=instance_name,
@@ -117,9 +107,5 @@ def show_dataflow_endpoint(
     )
 
 
-def list_dataflow_endpoints(
-    cmd, instance_name: str, resource_group_name: str
-) -> Iterable[dict]:
-    return DataFlowEndpoints(cmd).list(
-        instance_name=instance_name, resource_group_name=resource_group_name
-    )
+def list_dataflow_endpoints(cmd, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+    return DataFlowEndpoints(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
