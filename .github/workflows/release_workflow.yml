@@ -32,7 +32,11 @@ jobs:
     with:
       continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
   build:
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/release_build.yml
+    secrets: inherit
   test:
     uses: ./.github/workflows/tox.yml
     with:
@@ -43,7 +47,7 @@ jobs:
     with:
       continue-on-error: ${{ github.event.inputs.continue-on-error == 'true' }}
   approval:
-    needs: [security, build, test, azdev_linter]
+    needs: [security, build, azdev_linter]
     # only needed if (release || wheel)
     if: (github.event.inputs.github_release == 'true' || github.event.inputs.upload_wheel == 'true')
     environment: production

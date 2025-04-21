@@ -25,7 +25,9 @@ from ....helpers import (
 logger = get_logger(__name__)
 BASE_ZIP_PATH = "__root__"
 WORKLOAD_TYPES = [
+    "clusterrole",
     "configmap",
+    "crb",
     "cronjob",
     "daemonset",
     "deployment",
@@ -211,16 +213,19 @@ def check_workload_resource_files(
 
     # other
     def _check_non_pod_files(
-        pre_bundle_items: Dict[str, List[str]],
-        required: bool = False,
-        expected_label: Optional[str] = None
+        pre_bundle_items: Dict[str, List[str]], required: bool = False, expected_label: Optional[str] = None
     ):
         for key, names in pre_bundle_items.items():
             try:
                 post_bundle_items = get_kubectl_workload_items(prefixes, service_type=key, label_match=expected_label)
                 for file in file_objs.get(key, []):
                     assert file["extension"] == "yaml"
-                present_names = [file["name"] for file in file_objs.get(key, [])]
+
+                file_prefix = key
+                if key == "clusterrolebinding":
+                    # file prefix would be crb
+                    file_prefix = "crb"
+                present_names = [file["name"] for file in file_objs.get(file_prefix, [])]
                 # kube-root-ca.crt gets split configmap.kube-root-ca.crt.yaml
                 # maybe add in a way to compare full names? or limit splitting for certain types?
                 _compare_support_bundle_names(
@@ -228,7 +233,7 @@ def check_workload_resource_files(
                     resource_type=key,
                     bundle_names=present_names,
                     pre_bundle_resources=names,
-                    post_bundle_resources=post_bundle_items
+                    post_bundle_resources=post_bundle_items,
                 )
             except CLIInternalError as e:
                 if required:
@@ -270,7 +275,6 @@ def get_file_map(
     ssc_namespace = namespaces.get("ssc")
     c_namespace = namespaces.get("usage_system")
     certmanager_namespace = namespaces.get("certmanager")
-    osm_namespace = namespaces.get("osm")
     ops_path = None
 
     if aio_namespace:
@@ -337,29 +341,19 @@ def get_file_map(
 
         # no files for aio, skip the rest assertions
         return file_map
-    elif ops_service == OpsServiceType.openservicemesh.value:
-        # resources only in osm_namespace
-        if not osm_namespace:
-            assert len(walk_result) == expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
-            pytest.skip(f"No bundles created for {ops_service}.")
-
-        osm_path = path.join(BASE_ZIP_PATH, osm_namespace, "openservicemesh")
-        assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
-        file_map["osm"] = convert_file_names(walk_result[osm_path]["files"])
-        file_map["__namespaces__"]["osm"] = osm_namespace
-
-        # no files for aio, skip the rest assertions
-        return file_map
     elif ops_service == "certmanager":
-        if not acstor_namespace:
-            # certmanager resources are in arc namespace, aio namespace, and certmanager namespace
-            assert len(walk_result) == 3 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
-        else:
-            # certmanager resources are in arc namespace, aio namespace, acstor namespace, and certmanager namespace
-            assert len(walk_result) == 4 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        if acstor_namespace:
+            expected_default_walk_result += 1
             certmanager_acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "certmanager")
             file_map["certmanager_acstor"] = convert_file_names(walk_result[certmanager_acstor_path]["files"])
             file_map["__namespaces__"]["acstor"] = acstor_namespace
+
+        if ssc_namespace:
+            expected_default_walk_result += 1
+            certmanager_ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, "certmanager")
+            file_map["certmanager_ssc"] = convert_file_names(walk_result[certmanager_ssc_path]["files"])
+            file_map["__namespaces__"]["ssc"] = ssc_namespace
+
         certmanager_path = path.join(BASE_ZIP_PATH, certmanager_namespace, "certmanager")
         file_map["certmanager"] = convert_file_names(walk_result[certmanager_path]["files"])
         certmanager_aio_path = path.join(BASE_ZIP_PATH, aio_namespace, "certmanager")
@@ -367,6 +361,7 @@ def get_file_map(
         certmanager_arc_path = path.join(BASE_ZIP_PATH, arc_namespace, "certmanager")
         file_map["certmanager_arc"] = convert_file_names(walk_result[certmanager_arc_path]["files"])
         file_map["__namespaces__"]["certmanager"] = certmanager_namespace
+        assert len(walk_result) == 3 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
             assert len(walk_result) == expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
@@ -399,7 +394,6 @@ def process_top_levels(
     acstor_namespace = None
     ssc_namespace = None
     certmanager_namespace = None
-    osm_namespace = None
 
     def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
@@ -430,16 +424,12 @@ def process_top_levels(
             name=name, folder=OpsServiceType.secretstore.value, file_prefix="deployment"
         ):
             ssc_namespace = name
-        elif _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="configmap"):
+        elif _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="deployment"):
             certmanager_namespace = name
-        elif _get_namespace_determinating_files(
-            name=name, folder=path.join("openservicemesh"), file_prefix="configmap"
-        ):
-            osm_namespace = name
         elif _get_namespace_determinating_files(name=name, folder="meta", file_prefix="instance"):
             namespace = name
 
-        if _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="certificate"):
+        if _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="configmap"):
             cert_resource_namespaces.append(name)
 
     # find the acstor namespace if fault tolerance is enabled,
@@ -450,7 +440,18 @@ def process_top_levels(
             (
                 name
                 for name in cert_resource_namespaces
-                if name not in [certmanager_namespace, arc_namespace, namespace]
+                if name not in [certmanager_namespace, arc_namespace, namespace, ssc_namespace]
+            ),
+            None,
+        )
+
+    if not ssc_namespace:
+        # ssc_namespace should be the namespace besides certmanager, arc, and aio namespace
+        ssc_namespace = next(
+            (
+                name
+                for name in cert_resource_namespaces
+                if name not in [certmanager_namespace, arc_namespace, namespace, acstor_namespace]
             ),
             None,
         )
@@ -463,7 +464,6 @@ def process_top_levels(
         "ssc": ssc_namespace,
         "usage_system": clusterconfig_namespace,
         "certmanager": certmanager_namespace,
-        "osm": osm_namespace,
     }
 
     _clean_up_folders(
@@ -480,7 +480,6 @@ def process_top_levels(
     logger.debug(f"ACSTOR namespace: {acstor_namespace}")
     logger.debug(f"SSC namespace: {ssc_namespace}")
     logger.debug(f"Certmanager namespace: {certmanager_namespace}")
-    logger.debug(f"OSM namespace: {osm_namespace}")
 
     return namespaces
 
@@ -541,10 +540,7 @@ def split_name(name: str) -> List[str]:
     for i in range(len(first_pass)):
         # we should not need to worry about trying to access too early
         # since the first part should be the workload type (ex: pod)
-        if all([
-            i != (len(first_pass) - 1),
-            first_pass[i].isnumeric() or first_pass[i - 1].isnumeric()
-        ]):
+        if all([i != (len(first_pass) - 1), first_pass[i].isnumeric() or first_pass[i - 1].isnumeric()]):
             second_pass[-1] = f"{second_pass[-1]}.{first_pass[i]}"
         else:
             second_pass.append(first_pass[i])
@@ -567,36 +563,63 @@ def _clean_up_folders(
     certmanager_namespace = namespaces.get("certmanager")
     clusterconfig_namespace = namespaces.get("usage_system")
     ssc_namespace = namespaces.get("ssc")
-    osm_namespace = namespaces.get("osm")
 
     monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
+
     services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
     for namespace_folder, monikers in [
         (clusterconfig_namespace, ["clusterconfig"]),
         (arc_namespace, services + ["arcagents"]),
-        (ssc_namespace, [OpsServiceType.secretstore.value]),
         (certmanager_namespace, services),
-        (osm_namespace, ["openservicemesh"]),
     ]:
-        if namespace_folder:
+        if namespace_folder and path.join(BASE_ZIP_PATH, namespace_folder) in walk_result:
             # remove empty folders in level 1
             level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace_folder))
 
             if namespace_folder == arc_namespace and monitor_path in walk_result:
                 monikers.append(OpsServiceType.azuremonitor.value)
-            assert set(level_1["folders"]) == set(monikers), f"Mismatch; folders: [{level_1['folders']}], "\
+            assert set(level_1["folders"]) == set(monikers), (
+                f"Mismatch; folders: [{level_1['folders']}],"
                 f"monikers: [{monikers}]"
+            )
             assert not level_1["files"]
 
+    if ssc_namespace:
+        services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
+        if path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretstore.value) in walk_result:
+            services += [OpsServiceType.secretstore.value]
+        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, ssc_namespace))
+
+        if certmanager_namespace:
+            assert set(level_1["folders"]) == set(services), (
+                f"Mismatch; folders: [{level_1['folders']}], "
+                f"monikers: [{services}]"
+            )
+        else:
+            assert level_1["folders"] == [OpsServiceType.secretstore.value], (
+                f"Mismatch; folders: [{level_1['folders']}], "
+                f"monikers: [{OpsServiceType.secretstore.value}]"
+            )
+
     # note that the acstor and acs namespace should be the same value
-    if acstor_namespace or acs_namespace:
+    if (
+        acstor_namespace
+        or acs_namespace
+        and path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace) in walk_result
+    ):
+        services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace))
         if acs_namespace:
             services.append("arccontainerstorage")
-        if acstor_namespace and containerstorage_service:
+        if (
+            containerstorage_service
+            and path.join(BASE_ZIP_PATH, acstor_namespace, containerstorage_service) in walk_result
+        ):
             services.append(containerstorage_service)
-        assert set(level_1["folders"]) == set(services), f"Mismatch; folders: [{level_1['folders']}], "\
+        assert set(level_1["folders"]) == set(services), (
+            f"Mismatch; folders: [{level_1['folders']}], "
             f"services [{services}]"
+        )
         assert not level_1["files"]
 
     # remove empty folders in level 2
@@ -615,7 +638,7 @@ def _compare_support_bundle_names(
     resource_type: str,
     bundle_names: str,
     pre_bundle_resources: dict,
-    post_bundle_resources: dict
+    post_bundle_resources: dict,
 ):
     """
     Do the name comparison with some extra debug information.
@@ -665,9 +688,7 @@ def _compare_support_bundle_names(
                 bundle_to_use = post_bundle_resources
             labels = bundle_to_use[name]["metadata"]["labels"]
             label_txt = " \n\t".join([f"{ln}: {labels[ln]}" for ln in labels])
-            error_msg.append(
-                f"{name} has the following labels:\n\t{label_txt}"
-            )
+            error_msg.append(f"{name} has the following labels:\n\t{label_txt}")
 
     if error_msg:
         raise AssertionError("\n".join(error_msg))

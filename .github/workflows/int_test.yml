@@ -152,7 +152,7 @@ jobs:
         run: |
           echo "NO_PREFLIGHT=false" >> $GITHUB_OUTPUT
           if [[ ${{ matrix.feature }} == "insecure-listener" ]]; then
-            echo "CREATE_ARG=--add-insecure-listener --broker-listener-type NodePort" >> $GITHUB_OUTPUT
+            echo "CREATE_ARG=--add-insecure-listener" >> $GITHUB_OUTPUT
             echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "syncrules" ]]; then
             echo "CREATE_ARG=--enable-rsync" >> $GITHUB_OUTPUT

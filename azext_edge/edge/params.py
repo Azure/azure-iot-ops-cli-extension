@@ -17,24 +17,30 @@ from knack.arguments import CaseInsensitiveList
 
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
-from ._validators import validate_namespace, validate_resource_name
+from ._validators import (
+    validate_namespace,
+    validate_resource_name,
+)
 from .common import OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
     DeviceRegistryResourceKinds,
     MqResourceKinds,
-    OpcuaResourceKinds,
 )
 from .providers.orchestration.common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     TRUST_SETTING_KEYS,
+    X509_ISSUER_REF_KEYS,
+    ConfigSyncModeType,
     IdentityUsageType,
     KubernetesDistroType,
+    ListenerProtocol,
     MqMemoryProfile,
     MqServiceType,
     SchemaFormat,
     SchemaType,
-    ConfigSyncModeType,
+    TlsKeyAlgo,
+    TlsKeyRotation,
 )
 
 
@@ -81,8 +87,6 @@ def load_iotops_arguments(self, _):
             "tags",
             options_list=["--tags"],
             arg_type=tags_type,
-            help="Instance tags. Property bag in key-value pairs with the following format: a=b c=d. "
-            'Use --tags "" to remove all tags.',
         )
         context.argument(
             "instance_name",
@@ -114,6 +118,20 @@ def load_iotops_arguments(self, _):
             options_list=["--self-hosted-issuer"],
             arg_type=get_three_state_flag(),
             help="Use the self-hosted oidc issuer for federation.",
+        )
+        context.argument(
+            "config_file",
+            options_list=["--config-file"],
+            help="Path to a config file containing resource properties in json format. The config file "
+            "should contain an object with properties compatible with the ARM representation of the resource. "
+            "The object correlates directly with 'properties:{}' of the ARM resource.",
+            arg_group="Config",
+        )
+        context.argument(
+            "show_config",
+            options_list=["--show-config"],
+            arg_type=get_three_state_flag(),
+            help="Show the generated resource config instead of invoking the API with it.",
         )
 
     with self.argument_context("iot ops identity") as context:
@@ -203,7 +221,6 @@ def load_iotops_arguments(self, _):
                         MqResourceKinds.BROKER_LISTENER.value,
                         MqResourceKinds.BROKER_AUTHENTICATION.value,
                         MqResourceKinds.BROKER_AUTHORIZATION.value,
-                        OpcuaResourceKinds.ASSET_TYPE.value,
                         DataflowResourceKinds.DATAFLOW.value,
                         DataflowResourceKinds.DATAFLOWENDPOINT.value,
                         DataflowResourceKinds.DATAFLOWPROFILE.value,
@@ -273,19 +290,128 @@ def load_iotops_arguments(self, _):
         context.argument(
             "broker_name",
             options_list=["--name", "-n"],
-            help="Mqtt broker name.",
+            help="Broker name.",
         )
 
     with self.argument_context("iot ops broker listener") as context:
         context.argument(
             "listener_name",
             options_list=["--name", "-n"],
-            help="Mqtt broker listener name.",
+            help="Listener name.",
         )
         context.argument(
             "broker_name",
             options_list=["--broker", "-b"],
-            help="Mqtt broker name.",
+            help="Broker name.",
+        )
+
+    with self.argument_context("iot ops broker listener port") as context:
+        context.argument(
+            "listener_name",
+            options_list=["--listener", "-n"],
+            help="Listener name.",
+        )
+        context.argument(
+            "port",
+            type=int,
+            options_list=["--port"],
+            help="Listener service port.",
+        )
+        context.argument(
+            "nodeport",
+            type=int,
+            options_list=["--nodeport"],
+            help="The listener service will exposes a static port on each Node's IP address. "
+            "Only relevant when this port is associated with a NodePort listener.",
+            arg_group="Node Port",
+        )
+        context.argument(
+            "service_name",
+            options_list=["--service-name"],
+            help="Kubernetes service name of the listener. Used when a target listener does not exist.",
+        )
+        context.argument(
+            "service_type",
+            options_list=["--service-type"],
+            arg_type=get_enum_type(MqServiceType, default=None),
+            help="Kubernetes service type of the listener. Used when a target listener does not exist.",
+        )
+        context.argument(
+            "protocol",
+            options_list=["--protocol"],
+            arg_type=get_enum_type(ListenerProtocol, default=None),
+            help="Protocol to use for client connections.",
+        )
+        context.argument(
+            "authn_ref", options_list=["--authn-ref"], help="Authentication reference (name).", arg_group="Auth"
+        )
+        context.argument(
+            "authz_ref", options_list=["--authz-ref"], help="Authorization reference (name).", arg_group="Auth"
+        )
+        context.argument(
+            "tls_auto_issuer_ref",
+            options_list=["--tls-issuer-ref"],
+            nargs="+",
+            help="Cert-manager issuer reference. Format is space-separated "
+            f"key=value pairs. The following keys are supported: `{'`, `'.join(X509_ISSUER_REF_KEYS)}`. "
+            "`kind` and `name` are required, while `group` has a default value of 'cert-manager.io'.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_duration",
+            options_list=["--tls-duration"],
+            help="Lifetime of certificate. Must be specified using a time.Duration format (h|m|s). "
+            "E.g. 240h for 240 hours and 45m for 45 minutes.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_key_algo",
+            options_list=["--tls-key-algo"],
+            arg_type=get_enum_type(TlsKeyAlgo, default=None),
+            help="Algorithm for private key. ",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_key_rotation_policy",
+            options_list=["--tls-key-rotation"],
+            arg_type=get_enum_type(TlsKeyRotation, default=None),
+            help="Cert-manager private key rotation policy.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_renew_before",
+            options_list=["--tls-renew-before"],
+            help="When to begin renewing certificate. Must be specified using a Go time.Duration format (h|m|s). "
+            "E.g. 240h for 240 hours and 45m for 45 minutes.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_san_dns",
+            options_list=["--tls-san-dns"],
+            nargs="+",
+            help="DNS subject alternative names for the certificate. Use space-separated values.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_san_ip",
+            options_list=["--tls-san-ip"],
+            nargs="+",
+            help="IP subject alternative names for the certificate. Use space-separated values.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_auto_secret_name",
+            options_list=["--tls-secret-name"],
+            help="Secret for storing server certificate. Any existing data will be overwritten. This is a reference to "
+            "the secret through an identifying name, not the secret itself.",
+            arg_group="TLS Auto",
+        )
+        context.argument(
+            "tls_manual_secret_ref",
+            options_list=["--tls-man-secret-ref"],
+            help="Secret containing an X.509 client certificate. This is a "
+            "reference to the secret through an identifying name, not the secret itself.",
+            arg_group="TLS Manual",
         )
 
     with self.argument_context("iot ops broker authn") as context:
@@ -298,6 +424,65 @@ def load_iotops_arguments(self, _):
             "broker_name",
             options_list=["--broker", "-b"],
             help="Mqtt broker name.",
+        )
+
+    with self.argument_context("iot ops broker authn method add") as context:
+        context.argument(
+            "authn_name",
+            options_list=["--authn", "-n"],
+            help="Mqtt broker authentication resource name.",
+        )
+        context.argument(
+            "sat_audiences",
+            options_list=["--sat-aud"],
+            nargs="+",
+            help="Space-separated list of allowed audiences.",
+            arg_group="SAT",
+        )
+        context.argument(
+            "x509_client_ca_cm",
+            options_list=["--x509-client-ca-ref"],
+            help="Name of the configmap containing the trusted client ca cert resource. Default value is 'client-ca'.",
+            arg_group="x509",
+        )
+        context.argument(
+            "x509_attrs",
+            options_list=["--x509-attr"],
+            nargs="+",
+            action="extend",
+            help="Specify attributes in the authentication resource for authorizing clients based on their "
+            "certificate properties. You can apply authorization rules to clients by using x509 certificates "
+            "with these attributes. Format is space-separated key=value pairs where the key uses object dot notation "
+            "such as 'a.b.c=value'. Can be used one or more times.",
+            arg_group="x509",
+        )
+        context.argument(
+            "custom_endpoint",
+            options_list=["--custom-ep"],
+            help="Endpoint to use for the custom auth service. Format is 'https://.*'.",
+            arg_group="Custom",
+        )
+        context.argument(
+            "custom_ca_cm",
+            options_list=["--custom-ca-ref"],
+            help="Name of the configmap containing the CA certificate for validating the "
+            "custom authentication server's certificate.",
+            arg_group="Custom",
+        )
+        context.argument(
+            "custom_x509_secret_ref",
+            options_list=["--custom-x509-secret-ref"],
+            help="Reference to Kubernetes secret containing a client certificate.",
+            arg_group="Custom",
+        )
+        context.argument(
+            "custom_http_headers",
+            options_list=["--custom-header"],
+            nargs="+",
+            action="extend",
+            help="http headers to pass to the custom authentication server. Format is space-separated key=value pairs. "
+            "Can be used one or more times.",
+            arg_group="Custom",
         )
 
     with self.argument_context("iot ops broker authz") as context:
@@ -392,7 +577,7 @@ def load_iotops_arguments(self, _):
                 ],
                 arg_type=get_three_state_flag(),
                 help="When enabled the mqtt broker deployment will include a listener "
-                f"of service type {MqServiceType.load_balancer.value}, bound to port 1883 with no authN or authZ. "
+                f"of service type {MqServiceType.LOADBALANCER.value}, bound to port 1883 with no authN or authZ. "
                 "For non-production workloads only.",
                 arg_group="Broker",
             )
@@ -445,6 +630,7 @@ def load_iotops_arguments(self, _):
                 options_list=["--broker-listener-type", "--lt"],
                 help="Service type associated with the default mqtt broker listener.",
                 arg_group="Broker",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 "enable_fault_tolerance",
@@ -505,6 +691,20 @@ def load_iotops_arguments(self, _):
                         arg_group="Extension Config",
                         deprecate_info=context.deprecate(hide=True),
                     )
+
+    for cmd_space in ["iot ops create", "iot ops update"]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "instance_features",
+                options_list=["--feature"],
+                nargs="+",
+                action="extend",
+                help="Instance feature config. The settings of a component and/or it's mode can be configured. "
+                "Component mode syntax is `{component}.mode={mode}` where known mode values are: "
+                "`Stable`, `Preview` and `Disabled`. Component setting syntax is "
+                "`{component}.settings.{setting}={value}` where known setting values are `Enabled` or `Disabled`. "
+                "This option can be used one or more times.",
+            )
 
     with self.argument_context("iot ops upgrade") as context:
         for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
@@ -671,8 +871,6 @@ def load_iotops_arguments(self, _):
             "tags",
             options_list=["--tags"],
             arg_type=tags_type,
-            help="Schema registry tags. Property bag in key-value pairs with the following format: a=b c=d. "
-            'Use --tags "" to remove all tags.',
         )
         context.argument(
             "description",
@@ -787,14 +985,16 @@ def load_iotops_arguments(self, _):
         context.argument(
             "subject_name",
             options_list=["--subject-name", "--sn"],
-            help="The subject name string embedded in the application instance certificate."
-            "Can be found under public key certificate.",
+            help="The subject name string embedded in the application instance certificate. "
+            "Can be found under public key certificate. When provided, the value will be used to "
+            "validate the certificate's subject name.",
         )
         context.argument(
             "application_uri",
             options_list=["--application-uri", "--au"],
-            help="The application instance URI embedded in the application instance."
-            "Can be found under public key certificate.",
+            help="The application instance URI embedded in the application instance. "
+            "Can be found under public key certificate. When provided, the value will be used to "
+            "validate the certificate's application URI.",
         )
         context.argument(
             "public_key_secret_name",

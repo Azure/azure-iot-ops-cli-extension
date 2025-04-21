@@ -132,7 +132,6 @@ class OpsServiceType(ListableEnum):
     """
 
     mq = "broker"
-    openservicemesh = "openservicemesh"
     connectors = "connectors"
     akri = "akri"
     deviceregistry = "deviceregistry"
@@ -143,6 +142,7 @@ class OpsServiceType(ListableEnum):
     secretstore = "secretstore"
     azuremonitor = "azuremonitor"
     certmanager = "certmanager"
+    meso = "meso"
 
     @classmethod
     def list_check_services(cls):
@@ -258,6 +258,8 @@ class FileType(ListableEnum):
 
 
 class BundleResourceKind(Enum):
+    clusterrole = "ClusterRole"
+    clusterrolebinding = "ClusterRoleBinding"
     deployment = "Deployment"
     statefulset = "Statefulset"
     service = "Service"

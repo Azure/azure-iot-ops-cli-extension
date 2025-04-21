@@ -11,6 +11,7 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.certmanager import (
     CERT_DIRECTORY_PATH,
     CERT_MANAGER_NAMESPACE,
+    TRUST_BUNDLE_LABEL,
 )
 from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_config_maps,
@@ -82,6 +83,12 @@ def test_create_bundle_certmanager(
         label_selector=None,
         directory_path=CERT_DIRECTORY_PATH,
         namespace=CERT_MANAGER_NAMESPACE,
+    )
+    assert_list_config_maps(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=TRUST_BUNDLE_LABEL,
+        directory_path=CERT_DIRECTORY_PATH,
     )
     assert_list_config_maps(
         mocked_client,

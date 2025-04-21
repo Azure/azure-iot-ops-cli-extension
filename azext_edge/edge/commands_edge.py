@@ -152,6 +152,7 @@ def create_instance(
     custom_location_name: Optional[str] = None,
     enable_rsync_rules: Optional[bool] = None,
     instance_description: Optional[str] = None,
+    instance_features: Optional[List[str]] = None,
     dataflow_profile_instances: int = 1,
     trust_settings: Optional[List[str]] = None,
     # Akri
@@ -164,7 +165,7 @@ def create_instance(
     # Broker
     custom_broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
-    broker_service_type: str = MqServiceType.cluster_ip.value,
+    broker_service_type: str = MqServiceType.CLUSTERIP.value,
     broker_backend_partitions: int = 2,
     broker_backend_workers: int = 2,
     broker_backend_redundancy_factor: int = 2,
@@ -191,9 +192,9 @@ def create_instance(
     if custom_broker_config_file:
         custom_broker_config = json.loads(read_file_content(file_path=custom_broker_config_file))
 
-    if broker_service_type == MqServiceType.load_balancer.value and add_insecure_listener:
+    if broker_service_type == MqServiceType.LOADBALANCER.value and add_insecure_listener:
         raise ArgumentUsageError(
-            f"--add-insecure-listener cannot be used when --broker-service-type is {MqServiceType.load_balancer.value}."
+            f"--add-insecure-listener cannot be used when --broker-service-type is {MqServiceType.LOADBALANCER.value}."
         )
 
     # TODO - @digimaun, should [temp] user confirms be moved to InitTargets?
@@ -220,6 +221,7 @@ def create_instance(
         enable_rsync_rules=enable_rsync_rules,
         instance_name=instance_name,
         instance_description=instance_description,
+        instance_features=instance_features,
         add_insecure_listener=add_insecure_listener,
         dataflow_profile_instances=dataflow_profile_instances,
         trust_settings=trust_settings,
@@ -348,6 +350,7 @@ def update_instance(
     resource_group_name: str,
     tags: Optional[str] = None,
     instance_description: Optional[str] = None,
+    instance_features: Optional[List[str]] = None,
     **kwargs,
 ) -> dict:
     return Instances(cmd).update(
@@ -355,6 +358,7 @@ def update_instance(
         resource_group_name=resource_group_name,
         tags=tags,
         description=instance_description,
+        features=instance_features,
         **kwargs,
     )
 

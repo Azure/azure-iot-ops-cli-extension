@@ -4,9 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Iterable, List, Optional
+import re
+from typing import Dict, Iterable, List, Optional
 
-from azure.cli.core.azclierror import ValidationError
+from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
 from azure.core.exceptions import ResourceNotFoundError
 from knack.log import get_logger
 from rich import print
@@ -21,7 +22,11 @@ from ....util.az_client import (
     parse_resource_id,
     wait_for_terminal_state,
 )
-from ....util.common import should_continue_prompt, url_safe_hash_phrase
+from ....util.common import (
+    parse_kvp_nargs,
+    should_continue_prompt,
+    url_safe_hash_phrase,
+)
 from ....util.queryable import Queryable
 from ..common import CUSTOM_LOCATIONS_API_VERSION, KEYVAULT_CLOUD_API_VERSION
 from ..permissions import ROLE_DEF_FORMAT_STR, PermissionManager
@@ -38,6 +43,8 @@ SERVICE_ACCOUNT_DATAFLOW = "aio-dataflow"
 SERVICE_ACCOUNT_SECRETSYNC = "aio-ssc-sa"
 KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
+
+COMPAT_FEAT_KEY_SET = {"connectors.settings.preview"}
 
 
 def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str) -> str:
@@ -94,6 +101,13 @@ class Instances(Queryable):
 
         return result
 
+    def get_ext_loc(
+        self,
+        name: str,
+        resource_group_name: str,
+    ) -> Dict[str, str]:
+        return self.show(name=name, resource_group_name=resource_group_name)["extendedLocation"]
+
     def list(self, resource_group_name: Optional[str] = None) -> Iterable[dict]:
         if resource_group_name:
             return self.iotops_mgmt_client.instance.list_by_resource_group(resource_group_name=resource_group_name)
@@ -127,14 +141,21 @@ class Instances(Queryable):
         self,
         name: str,
         resource_group_name: str,
-        tags: Optional[dict] = None,
+        tags: Optional[Dict[str, str]] = None,
         description: Optional[str] = None,
+        features: Optional[List[str]] = None,
         **kwargs: dict,
     ) -> dict:
         instance = kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
 
         if description:
             instance["properties"]["description"] = description
+
+        if features:
+            desired_features = parse_feature_kvp_nargs(features, strict=True)
+            current_features: dict = instance["properties"].get("features", {})
+            current_features.update(desired_features)
+            instance["properties"]["features"] = current_features
 
         if tags or tags == {}:
             instance["tags"] = tags
@@ -543,3 +564,54 @@ class Instances(Queryable):
             cred_props: dict = cred["properties"]
             if cred_props.get("issuer") == issuer_url and cred_props.get("subject") == subject:
                 return cred
+
+
+def ensure_feature_key_compat(features: Dict[str, str]):
+    for feat in features:
+        if feat not in COMPAT_FEAT_KEY_SET:
+            raise InvalidArgumentValueError(f"Supported feature keys: {', '.join(COMPAT_FEAT_KEY_SET)}")
+
+
+def parse_feature_kvp_nargs(features: Optional[List[str]] = None, strict: bool = False) -> Optional[Dict[str, dict]]:
+    features: Dict[str, str] = parse_kvp_nargs(features)
+    if not features:
+        return features
+
+    if strict:
+        ensure_feature_key_compat(features)
+
+    features_payload = {}
+    errors = []
+    mode_pattern = re.compile(r"^\w+\.mode$")
+    setting_pattern = re.compile(r"^\w+\.settings\.[^.\s]+$")
+
+    for key in features:
+        if not (mode_pattern.match(key) or setting_pattern.match(key)):
+            errors.append(
+                f"{key} is invalid. Feature keys must be in the form "
+                f"'{{component}}.mode' or '{{component}}.settings.{{setting}}'."
+            )
+            continue
+
+        split_key = key.split(".")
+        split_key_len = len(split_key)
+        nested_key = "settings" if split_key_len >= 3 else "mode"
+        if split_key[0] not in features_payload:
+            features_payload[split_key[0]] = {}
+        if nested_key == "settings":
+            if "settings" not in features_payload[split_key[0]]:
+                features_payload[split_key[0]][nested_key] = {}
+            if features[key] not in ["Enabled", "Disabled"]:
+                errors.append(f"{key} has an invalid value. Known setting values are: 'Enabled' or 'Disabled'.")
+                continue
+            features_payload[split_key[0]][nested_key][split_key[2]] = features[key]
+        if nested_key == "mode":
+            if features[key] not in ["Stable", "Preview", "Disabled"]:
+                errors.append(f"{key} has an invalid value. Known mode values are: 'Stable', 'Preview' or 'Disabled'.")
+                continue
+            features_payload[split_key[0]][nested_key] = features[key]
+
+    if errors:
+        raise InvalidArgumentValueError("\n".join(errors))
+
+    return features_payload

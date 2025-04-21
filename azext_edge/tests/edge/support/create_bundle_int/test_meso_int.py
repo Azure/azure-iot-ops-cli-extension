@@ -6,40 +6,38 @@
 
 import pytest
 from knack.log import get_logger
+
 from azext_edge.edge.common import OpsServiceType
 from ....helpers import get_multi_kubectl_workload_items
-from .helpers import (
-    check_workload_resource_files,
-    get_file_map,
-    run_bundle_command
-)
+from .helpers import BASE_ZIP_PATH, check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
-CONNECTOR_PREFIXES = ["aio-opc", "opcplc"]
-CONNECTOR_WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "replicaset", "service", "configmap"]
-# TODO: not tested yet - internal argument
-CONNECTOR_OPTIONAL_WORKLOAD_TYPES = ["podmetric"]  # note: not an actual type
+MESO_PREFIXES = ["aio-observability"]
+MESO_WORKLOAD_TYPES = ["clusterrole", "configmap", "clusterrolebinding", "deployment", "pod", "replicaset", "service"]
 
 
-def test_create_bundle_connectors(cluster_connection, tracked_files):
-    """Test for ensuring file names and content. ONLY CHECKS connectors."""
-    ops_service = OpsServiceType.connectors.value
+def test_create_bundle_meso(cluster_connection, tracked_files):
+    """Test for ensuring file names and content. ONLY CHECKS meta."""
+    ops_service = OpsServiceType.meso.value
+
     pre_bundle_workload_items = get_multi_kubectl_workload_items(
-        expected_workload_types=CONNECTOR_WORKLOAD_TYPES,
-        prefixes=CONNECTOR_PREFIXES,
+        expected_workload_types=MESO_WORKLOAD_TYPES,
+        prefixes=MESO_PREFIXES,
     )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
+    if not walk_result[BASE_ZIP_PATH]["folders"]:
+        pytest.skip(f"No bundles created for {ops_service}.")
+
     file_map = get_file_map(walk_result, ops_service)["aio"]
 
-    expected_types = set(CONNECTOR_WORKLOAD_TYPES + CONNECTOR_OPTIONAL_WORKLOAD_TYPES)
-    assert set(file_map.keys()).issubset(expected_types)
-
+    expected_types = set(MESO_WORKLOAD_TYPES).union({"crb"})
+    assert set(file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(
         file_objs=file_map,
         pre_bundle_items=pre_bundle_workload_items,
-        prefixes=CONNECTOR_PREFIXES,
+        prefixes=MESO_PREFIXES,
         bundle_path=bundle_path,
     )

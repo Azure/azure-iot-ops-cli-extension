@@ -80,7 +80,6 @@ def mocked_cluster_resources(request, mocker):
         EdgeResourceApi,
         MQ_ACTIVE_API,
         MQTT_BROKER_API_V1,
-        OPCUA_API_V1,
         DEVICEREGISTRY_API_V1,
         CLUSTER_CONFIG_API_V1,
     )
@@ -111,8 +110,6 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("DiagnosticService"))
             v1_resources.append(_get_api_resource("BrokerAuthentication"))
             v1_resources.append(_get_api_resource("BrokerAuthorization"))
-        if r == OPCUA_API_V1:
-            v1_resources.append(_get_api_resource("AssetType"))
 
         if r == DEVICEREGISTRY_API_V1:
             v1_resources.append(_get_api_resource("Asset"))
@@ -457,6 +454,53 @@ def mocked_list_config_maps(mocked_client):
 
     mocked_client.CoreV1Api().list_config_map_for_all_namespaces.side_effect = _handle_list_config_maps
     mocked_client.CoreV1Api().list_namespaced_config_map.side_effect = _handle_list_config_maps
+
+    yield mocked_client
+
+
+@pytest.fixture
+def mocked_list_cluster_roles(mocked_client):
+    from kubernetes.client.models import V1ClusterRoleList, V1ClusterRole, V1ObjectMeta
+
+    def _handle_list_cluster_roles(*args, **kwargs):
+        names = ["mock_cluster_role"]
+
+        cluster_role_list = []
+        for name in names:
+            cluster_role_list.append(
+                V1ClusterRole(
+                    metadata=V1ObjectMeta(name=name, annotations={"meta.helm.sh/release-namespace": "mock_namespace"})
+                )
+            )
+        cluster_role_list = V1ClusterRoleList(items=cluster_role_list)
+
+        return cluster_role_list
+
+    mocked_client.RbacAuthorizationV1Api().list_cluster_role.side_effect = _handle_list_cluster_roles
+
+    yield mocked_client
+
+
+@pytest.fixture
+def mocked_list_cluster_role_bindings(mocked_client):
+    from kubernetes.client.models import V1ClusterRoleBindingList, V1ClusterRoleBinding, V1ObjectMeta
+
+    def _handle_list_cluster_role_bindings(*args, **kwargs):
+        names = ["mock_cluster_role_binding"]
+
+        cluster_role_binding_list = []
+        for name in names:
+            cluster_role_binding_list.append(
+                V1ClusterRoleBinding(
+                    metadata=V1ObjectMeta(name=name, annotations={"meta.helm.sh/release-namespace": "mock_namespace"}),
+                    role_ref={"kind": "ClusterRole"},
+                )
+            )
+        cluster_role_binding_list = V1ClusterRoleBindingList(items=cluster_role_binding_list)
+
+        return cluster_role_binding_list
+
+    mocked_client.RbacAuthorizationV1Api().list_cluster_role_binding.side_effect = _handle_list_cluster_role_bindings
 
     yield mocked_client
 

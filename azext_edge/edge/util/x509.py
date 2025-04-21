@@ -9,17 +9,20 @@ x509: certificate utilities.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Tuple
+from typing import Optional, Tuple
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
+from knack.log import get_logger
 
 # aka prime256v1
 DEFAULT_EC_ALGO = ec.SECP256R1()
 DEFAULT_VALID_DAYS = 365
+
+logger = get_logger(__name__)
 
 
 def generate_self_signed_cert(valid_days: int = DEFAULT_VALID_DAYS) -> Tuple[bytes, bytes]:
@@ -73,3 +76,13 @@ def generate_self_signed_cert(valid_days: int = DEFAULT_VALID_DAYS) -> Tuple[byt
     )
 
     return (cert.public_bytes(serialization.Encoding.PEM), key_bytes)
+
+
+def decode_der_certificate(der_data: bytes) -> Optional[x509.Certificate]:
+    # Decodes a DER-encoded X.509 certificate.
+    try:
+        cert = x509.load_der_x509_certificate(der_data, default_backend())
+        return cert
+    except Exception as e:
+        logger.debug(f"Error decoding DER certificate: {e}")
+        return

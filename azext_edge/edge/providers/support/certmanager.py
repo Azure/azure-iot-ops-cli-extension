@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 CERT_DIRECTORY_PATH = CERTMANAGER_API_V1.moniker
 # No common label for azuremonitor
 CERT_MANAGER_NAMESPACE = "cert-manager"
+TRUST_BUNDLE_LABEL = "trust.cert-manager.io/bundle"
 
 
 def fetch_deployments():
@@ -57,10 +58,19 @@ def fetch_services():
 
 
 def fetch_configmaps():
-    return process_config_maps(
+    processed = process_config_maps(
         directory_path=CERT_DIRECTORY_PATH,
-        namespace=CERT_MANAGER_NAMESPACE,
+        label_selector=TRUST_BUNDLE_LABEL,
     )
+
+    processed.extend(
+        process_config_maps(
+            directory_path=CERT_DIRECTORY_PATH,
+            namespace=CERT_MANAGER_NAMESPACE,
+        )
+    )
+
+    return processed
 
 
 support_runtime_elements = {
