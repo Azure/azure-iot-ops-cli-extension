@@ -127,6 +127,60 @@ class DataFlowEndpoints(Queryable):
             resource=resource,
         )
     
+    def update(
+        self,
+        name: str,
+        instance_name: str,
+        resource_group_name: str,
+        endpoint_type: DataflowEndpointType,
+        **kwargs
+    ) -> dict:
+        self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group_name)
+        extended_location = self.instance["extendedLocation"]
+
+        # get the original endpoint
+        original_endpoint = self.ops.get(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_endpoint_name=name,
+        )
+        # settings = {}
+
+        self._update_properties(
+            properties=original_endpoint["properties"],
+            endpoint_type=endpoint_type,
+            **kwargs
+        )
+
+
+        # self._process_authentication_type(
+        #     endpoint_type=endpoint_type,
+        #     settings=settings,
+        #     **kwargs
+        # )
+
+        # self._process_endpoint_properties(
+        #     endpoint_type=endpoint_type,
+        #     settings=settings,
+        #     host=host,
+        #     **kwargs
+        # )
+
+        resource = {
+            "extendedLocation": extended_location,
+            "properties": original_endpoint["properties"],
+        }
+
+        with console.status("Working..."):
+            poller = self.ops.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_endpoint_name=name,
+                resource=resource,
+            )
+            return wait_for_terminal_state(poller)
+
+    
     def import_endpoint(
         self,
         name: str,
@@ -347,3 +401,44 @@ class DataFlowEndpoints(Queryable):
             settings["sessionExpirySeconds"] = kwargs["session_expiry"]
         
         return
+    
+    def _update_properties(
+        self,
+        properties: dict,
+        endpoint_type: DataflowEndpointType,
+        **kwargs
+    ):
+        if any(
+            kwargs["host"],
+            kwargs['storage_account_name'],
+            kwargs['eventhub_namespace'],
+            kwargs["port"]
+        ):
+            host = self._get_endpoint_host(
+                endpoint_type=endpoint_type,
+                **kwargs
+            )
+
+            if host and host is not properties["host"]:
+                properties["host"] = host
+
+        if any(
+            kwargs["client_id"],
+            kwargs["tenant_id"],
+            kwargs["sat_audience"],
+            kwargs["x509_secret_name"],
+            kwargs["sasl_type"],
+            kwargs["at_secret_name"],
+            kwargs["no_auth"],
+        ):
+            self._process_authentication_type(
+                endpoint_type=endpoint_type,
+                settings=properties,
+                **kwargs
+            )
+        
+        self._process_endpoint_properties(
+            settings=properties,
+            host=properties["host"],
+            **kwargs
+        )
