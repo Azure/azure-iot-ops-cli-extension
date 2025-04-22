@@ -8,6 +8,8 @@ from unittest.mock import Mock
 import pytest
 
 import responses
+from azure.core.exceptions import ResourceNotFoundError
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.commands_connector import (
     add_connector_opcua_client,
     remove_connector_opcua_client,
@@ -192,7 +194,8 @@ def test_client_add(
 
 @pytest.mark.parametrize(
     "expected_resources_map, client_app_spc, client_app_secretsync,"
-    "public_file_name, private_file_name, subject_name, uri, cert_subject_name, cert_uri, expected_error",
+    "public_file_name, private_file_name, subject_name, uri, cert_subject_name,"
+    "cert_uri, expected_error_type, expected_error_text",
     [
         # no default spc
         (
@@ -208,6 +211,7 @@ def test_client_add(
             "uri",
             "subjectname",
             "uri",
+            ResourceNotFoundError,
             "Please enable secret sync before adding certificate.",
         ),
         # no aio extension
@@ -232,6 +236,7 @@ def test_client_add(
             "uri",
             "subjectname",
             "uri",
+            ResourceNotFoundError,
             "IoT Operations extension not found.",
         ),
         # file names not matching
@@ -248,6 +253,7 @@ def test_client_add(
             "uri",
             "subjectname",
             "uri",
+            InvalidArgumentValueError,
             "Public key file name pubkey and private key file name prikey must match.",
         ),
         # subject name not found
@@ -264,6 +270,7 @@ def test_client_add(
             "uri",
             " ",
             "uri",
+            InvalidArgumentValueError,
             "Not able to extract subject name from the certificate. "
             "Please provide the correct subject name in certificate via --public-key-file.",
         ),
@@ -281,6 +288,7 @@ def test_client_add(
             " ",
             "subjectname",
             " ",
+            InvalidArgumentValueError,
             "Not able to extract application URI from the certificate. "
             "Please provide the correct application URI in certificate via --public-key-file.",
         ),
@@ -298,6 +306,7 @@ def test_client_add(
             "uri",
             "subjectname",
             "uri",
+            InvalidArgumentValueError,
             "Given --subject-name subjectnamenotmatch does not match certificate subject name subjectname. "
             "Please provide the correct subject name via --subject-name or correct certificate using --public-key-file."
         ),
@@ -315,6 +324,7 @@ def test_client_add(
             "urinotmatch",
             "subjectname",
             "uri",
+            InvalidArgumentValueError,
             "Given --application-uri urinotmatch does not match certificate application URI uri. "
             "Please provide the correct application URI via --application-uri or correct certificate "
             "using --public-key-file."
@@ -336,7 +346,8 @@ def test_client_add_errors(
     uri: str,
     cert_subject_name: str,
     cert_uri: str,
-    expected_error: str,
+    expected_error_text: str,
+    expected_error_type: Exception,
     mocked_get_resource_client: Mock,
     mocked_instance: Mock,
     mocked_responses: responses,
@@ -409,7 +420,7 @@ def test_client_add_errors(
             content_type="application/json",
         )
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(expected_error_type) as e:
         add_connector_opcua_client(
             cmd=mocked_cmd,
             instance_name=instance_name,
@@ -421,7 +432,7 @@ def test_client_add_errors(
             overwrite_secret=True,
         )
 
-    assert expected_error in e.value.args[0]
+    assert expected_error_text in e.value.args[0]
 
 
 @pytest.mark.parametrize("include_secrets", [False, True])
@@ -634,7 +645,7 @@ def test_client_remove(
 
 @pytest.mark.parametrize(
     "expected_resources_map, client_list_spc, client_list_secretsync,"
-    "certificate_names, include_secrets, expected_error",
+    "certificate_names, include_secrets, expected_error_type, expected_error_text",
     [
         # target secretsync resource not found
         (
@@ -648,6 +659,7 @@ def test_client_remove(
             [],
             ["cert.der"],
             False,
+            ResourceNotFoundError,
             "Secretsync resource aio-opc-ua-broker-client-certificate not found.",
         ),
         # no valid certificate names
@@ -677,6 +689,7 @@ def test_client_remove(
             ],
             ["thiswontwork"],
             False,
+            InvalidArgumentValueError,
             "Please provide valid certificate name(s) to remove.",
         ),
         # no target spc resource found
@@ -705,6 +718,7 @@ def test_client_remove(
             ],
             ["cert.der"],
             False,
+            ResourceNotFoundError,
             "Secret Provider Class resource opc-ua-connector not found.",
         ),
     ],
@@ -720,7 +734,8 @@ def test_client_remove_error(
     include_secrets: bool,
     mocked_get_resource_client: Mock,
     mocked_instance: Mock,
-    expected_error: str,
+    expected_error_type: Exception,
+    expected_error_text: str,
 ):
     instance_name = "mock-instance"
     rg_name = "mock-rg"
@@ -736,7 +751,7 @@ def test_client_remove_error(
     ]
     mocked_get_resource_client().resources.get_by_id.return_value = {"id": "mock-id"}
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(expected_error_type) as e:
         remove_connector_opcua_client(
             cmd=mocked_cmd,
             instance_name=instance_name,
@@ -747,7 +762,7 @@ def test_client_remove_error(
             include_secrets=include_secrets,
         )
 
-    assert expected_error in e.value.args[0]
+    assert expected_error_text in e.value.args[0]
 
 
 @pytest.mark.parametrize(
