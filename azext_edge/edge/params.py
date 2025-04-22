@@ -31,13 +31,20 @@ from .providers.orchestration.common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     TRUST_SETTING_KEYS,
     X509_ISSUER_REF_KEYS,
+    AuthenticationSaslType,
     ConfigSyncModeType,
     DataflowEndpointAuthenticationType,
+    DataflowEndpointFabricPathType,
+    DataflowEndpointKafkaAcksType,
     IdentityUsageType,
+    KafkaCloudEventAttributeType,
+    KafkaCompressionType,
+    KafkaPartitionStrategyType,
     KubernetesDistroType,
     ListenerProtocol,
     MqMemoryProfile,
     MqServiceType,
+    MqttRetainType,
     SchemaFormat,
     SchemaType,
     TlsKeyAlgo,
@@ -281,23 +288,388 @@ def load_iotops_arguments(self, _):
             options_list=["--name", "-n"],
             help="Dataflow endpoint name.",
         )
+    
+    with self.argument_context("iot ops dataflow endpoint import") as context:
         context.argument(
-            "authentication_method",
-            options_list=["--auth-method", "--am"],
-            help="Authentication method to use for the endpoint.",
-            arg_type=get_enum_type(DataflowEndpointAuthenticationType, default=None),
+            "file_path",
+            options_list=["--input-file", "--if"],
+            help="File path for the dataflow endpoint resource. Only JSON format is supported.",
         )
     
     with self.argument_context("iot ops dataflow endpoint create") as context:
         context.argument(
-            "host",
-            options_list=["--host"],
-            help="Host of the endpoint.",
+            "client_id",
+            options_list=["--client-id", "--cid"],
+            help="The client ID of the user assigned identity",
+            arg_group="User Assigned Identity Managed",
         )
         context.argument(
-            "client_id",
-            options_list=["--client-id"],
-            help="Client Id of the endpoint.",
+            "scope",
+            options_list=["--scope"],
+            help="Resource identifier (application ID URI) of the resource, affixed with the .default suffix.",
+            arg_group="User Assigned Identity Managed",
+        )
+        context.argument(
+            "tenant_id",
+            options_list=["--tenant-id", "--tid"],
+            help="The tenant ID of the user assigned identity.",
+            arg_group="User Assigned Identity Managed",
+        )
+        context.argument(
+            "no_auth",
+            options_list=["--no-auth"],
+            arg_type=get_three_state_flag(),
+            help="No authentication for the endpoint.",
+        )
+        context.argument(
+            "latency",
+            options_list=["--latency", "-l"],
+            help="The batching latency in seconds.",
+            type=int,
+            arg_group="Batching Configuration",
+        )
+        context.argument(
+            "message_count",
+            options_list=["--message-count", "--mc"],
+            help="Maximum number of messages in a batch.",
+            type=int,
+            arg_group="Batching Configuration",
+        )
+        context.argument(
+            "audience",
+            options_list=["--audience", "--aud"],
+            help="Audience of the service to authenticate against.",
+            arg_group="System Assigned Identity Managed",
+        )
+        context.argument(
+            "acks",
+            options_list=["--acks"],
+            arg_type=get_enum_type(
+                DataflowEndpointKafkaAcksType,
+                default=DataflowEndpointKafkaAcksType.ALL.value
+            ),
+            help="Level of acknowledgment from the Kafka broker to "
+            "ensure that the message sent by producer is successfully "
+            "written to the topic and replicated across the Kafka cluster.",
+        )
+        context.argument(
+            "batching_disabled",
+            options_list=["--batching-disabled", "--bd"],
+            arg_type=get_three_state_flag(),
+            help="Disable batching.",
+            arg_group="Batching Configuration",
+        )
+        context.argument(
+            "max_byte",
+            options_list=["--max-byte", "--mb"],
+            help="Maximum number of bytes in a batch.",
+            type=int,
+            arg_group="Batching Configuration",
+        )
+        context.argument(
+            "cloud_event_attribute",
+            options_list=["--cloud-event-attribute", "--cea"],
+            arg_type=get_enum_type(KafkaCloudEventAttributeType, default=None),
+            help="CloudEvent settings type to map events to cloud. "
+            "Different message format are required by different setting.",
+            arg_group="Cloud Event",
+        )
+        context.argument(
+            "compression",
+            options_list=["--compression"],
+            arg_type=get_enum_type(
+                KafkaCompressionType,
+                default=KafkaCompressionType.NONE.value
+            ),
+            help="Compression type for the messages sent to Kafka topics.",
+        )
+        context.argument(
+            "config_map_reference",
+            options_list=["--config-map-ref", "--cm"],
+            help="Config map reference for Trusted CA certificate for Kafka/MQTT endpoint. "
+            "Note: This ConfigMap should contain the CA certificate in PEM format. "
+            "The ConfigMap must be in the same namespace as the Kafka/MQTT data flow resource.",
+            arg_group="Transport Layer Security(TLS)",
+        )
+        context.argument(
+            "copy_broker_props_disabled",
+            options_list=["--copy-broker-props-disabled", "--cpbd"],
+            arg_type=get_three_state_flag(),
+            help="Disable copy broker properties.",
+        )
+        context.argument(
+            "group_id",
+            options_list=["--group-id", "--gid"],
+            help="ID of consumer group that the data flow uses to read messages "
+            "from the Kafka topic."
+        )
+        context.argument(
+            "partition_strategy",
+            options_list=["--partition-strategy", "--ps"],
+            arg_type=get_enum_type(
+                KafkaPartitionStrategyType,
+                default=KafkaPartitionStrategyType.DEFAULT.value
+            ),
+            help="The partition handling strategy controls how messages are "
+            "assigned to Kafka partitions when sending them to Kafka topics.",
+        )
+        context.argument(
+            "sasl_type",
+            options_list=["--sasl-type"],
+            arg_type=get_enum_type(AuthenticationSaslType, default=None),
+            help="The type of SASL authentication.",
+            arg_group="SASL Authentication",
+        )
+        context.argument(
+            "tls_disabled",
+            options_list=["--tls-disabled"],
+            arg_type=get_three_state_flag(),
+            help="The data flow uses an insecure connection to the Kafka/MQTT broker.",
+            arg_group="Transport Layer Security(TLS)",
+        )
+        context.argument(
+            "client_id_prefix",
+            options_list=["--client-id-pre"],
+            help="The client id prefix for MQTT client. "
+            "Note: Changing the client ID prefix after IoT "
+            "Operations deployment might result in data loss.",
+        )
+        context.argument(
+            "keep_alive",
+            options_list=["--keep-alive", "--ka"],
+            help="The maximum time in seconds that the data flow client can "
+            "be idle before sending a PINGREQ message to the broker.",
+            type=int,
+        )
+        context.argument(
+            "max_inflight_messages",
+            options_list=["--max-inflight-messages", "--mim"],
+            help="the maximum number of inflight messages that the data "
+            "flow MQTT client can have.",
+            type=int,
+        )
+        context.argument(
+            "protocol",
+            options_list=["--protocol"],
+            arg_type=get_enum_type(ListenerProtocol, default=ListenerProtocol.MQTT.value),
+            help="Enable or disable websockets.",
+        )
+        context.argument(
+            "qos",
+            options_list=["--qos"],
+            help="Quality of Service (QoS) level for the MQTT messages.",
+            type=int,
+        )
+        context.argument(
+            "retain",
+            options_list=["--retain"],
+            arg_type=get_enum_type(MqttRetainType, default=MqttRetainType.KEEP.value),
+            help="Retain setting to specify whether the data flow should keep the retain "
+            "flag on MQTT messages. Setting this ensures whether or not the remote broker "
+            "has the same messages retained as the local broker.",
+        )
+        context.argument(
+            "session_expiry",
+            options_list=["--session-expiry"],
+            help="The session expiry interval in seconds for the data flow MQTT client.",
+            type=int,
+        )
+    
+    with self.argument_context("iot ops dataflow endpoint create adx") as context:
+        context.argument(
+            "database_name",
+            options_list=["--database-name", "--db"],
+            help="The name of the Azure Data Explorer database.",
+        )
+        context.argument(
+            "host",
+            options_list=["--host"],
+            help="Host of the Azure Data Explorer is"
+            "Azure Data Explorer cluster URI. In the form "
+            "of https://<cluster>.<region>.kusto.windows.net",
+        )
+    
+    with self.argument_context("iot ops dataflow endpoint create adls") as context:
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "--sn"],
+            help="The name for the kubernetes secret that contains SAS token.",
+            arg_group="Access Token",
+        )
+        context.argument(
+            "storage_account_name",
+            options_list=["--storage-account-name", "--san"],
+            help="The name of Azure Data Lake Storage Gen2 account.",
+        )
+
+    with self.argument_context("iot ops dataflow endpoint create fabric-onelake") as context:
+        context.argument(
+            "workspace_name",
+            options_list=["--workspace-name", "--wn"],
+            help="The Microsoft Fabric workspace name. Note: The default 'my workspace' isn't supported.",
+        )
+        context.argument(
+            "lakehouse_name",
+            options_list=["--lakehouse-name", "--ln"],
+            help="The Microsoft Fabric lakehouse name under provided workspace.",
+        )
+        context.argument(
+            "path_type",
+            options_list=["--path-type", "--pt"],
+            arg_type=get_enum_type(DataflowEndpointFabricPathType, default=None),
+            help="The type of path used in OneLake.",
+        )
+
+    with self.argument_context("iot ops dataflow endpoint create eventhub") as context:
+        context.argument(
+            "latency",
+            options_list=["--latency", "-l"],
+            help="The batching latency in milliseconds.",
+            type=int,
+            arg_group="Batching Configuration",
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "--sn"],
+            help="The name for the kubernetes secret that contains event hub connection string. "
+            "Note: The secret must be in the same namespace as the Kafka data flow endpoint. "
+            "The secret must have both the username and password as key-value pairs.",
+            arg_group="SASL Authentication",
+        )
+    
+    with self.argument_context("iot ops dataflow endpoint create fabric-realtime") as context:
+        context.argument(
+            "host",
+            options_list=["--host"],
+            help="Host of the Fabric real-time is the "
+            "'Bootstrap server' value. Can be found in event stream destination -- 'SAS Key Authentication' section. In the form "
+            "of <hostname>.servicebus.windows.net:9093",
+        )
+        context.argument(
+            "latency",
+            options_list=["--latency", "-l"],
+            help="The batching latency in milliseconds.",
+            type=int,
+            arg_group="Batching Configuration",
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "--sn"],
+            help="The name for the kubernetes secret that contains 'Connection string-primary key' Value. "
+            "Can be found in event stream destination -- 'SAS Key Authentication' section. "
+            "Note: The secret must be in the same namespace as the Kafka data flow endpoint.",
+            arg_group="SASL Authentication",
+        )
+
+    with self.argument_context("iot ops dataflow endpoint create custom-kafka") as context:
+        context.argument(
+            "host",
+            options_list=["--host"],
+            help="The hostname of the Kafka broker host setting.",
+        )
+        context.argument(
+            "port",
+            options_list=["--port"],
+            help="The port number of the Kafka broker host setting.",
+            type=int,
+        )
+        context.argument(
+            "latency",
+            options_list=["--latency", "-l"],
+            help="The batching latency in milliseconds.",
+            type=int,
+            arg_group="Batching Configuration",
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "--sn"],
+            help="The name of the Kubernetes secret that contains the SASL token.",
+            arg_group="SASL Authentication",
+        )
+
+    with self.argument_context("iot ops dataflow endpoint create localstorage") as context:
+        context.argument(
+            "pvc_reference",
+            options_list=["--pvc-ref"],
+            help="The name of the PersistentVolumeClaim (PVC) to use for local storage. "
+            "Note: The PVC must be in the same namespace as the data flow endpoint.",
+        )
+
+    with self.argument_context("iot ops dataflow endpoint create local-mqtt") as context:
+        context.argument(
+            "host",
+            options_list=["--host"],
+            help="The hostname of the local MQTT broker.",
+        )
+        context.argument(
+            "port",
+            options_list=["--port"],
+            help="The port number of the local MQTT broker.",
+            type=int,
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "--sn"],
+            help="The name for the kubernetes secret that contains the certificate and private key "
+            "for X.509 authentication. "
+            "Note: The certificate and private key must be in PEM format and not password protected.",
+            arg_group="X509 Authentication",
+        )
+
+    with self.argument_context("iot ops dataflow endpoint create eventgrid") as context:
+        context.argument(
+            "host",
+            options_list=["--host"],
+            help="The hostname of the event grid namespace. Can"
+            " be found in 'Http hostname' property. In the form "
+            "of <NAMESPACE>.<REGION>-1.ts.eventgrid.azure.net",
+        )
+        context.argument(
+            "port",
+            options_list=["--port"],
+            help="The port number of the event grid namespace.",
+            type=int,
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "--sn"],
+            help="The name for the kubernetes secret that contains the certificate and private key "
+            "for X.509 authentication. "
+            "Note: The certificate and private key must be in PEM format and not password protected.",
+            arg_group="X509 Authentication",
+        )
+    
+    with self.argument_context("iot ops dataflow endpoint create custom-mqtt") as context:
+        context.argument(
+            "host",
+            options_list=["--host"],
+            help="The hostname of the custom MQTT broker host setting.",
+        )
+        context.argument(
+            "port",
+            options_list=["--port"],
+            help="The port number of the custom MQTT broker host setting.",
+            type=int,
+        )
+        context.argument(
+            "secret_name",
+            options_list=["--secret-name", "--sn"],
+            help="The name for the kubernetes secret that contains the certificate and private key "
+            "for X.509 authentication. "
+            "Note: The certificate and private key must be in PEM format and not password protected.",
+            arg_group="X509 Authentication",
+        )
+        context.argument(
+            "sami_audience",
+            options_list=["--sami-audience", "--sami-aud"],
+            help="The audience of the system assigned managed identity.",
+            arg_group="System Assigned Identity Managed",
+        )
+        context.argument(
+            "sat_audience",
+            options_list=["--sat-audience", "--sat-aud"],
+            help="The audience of the Kubernetes service account token (SAT).",
+            arg_group="Service Account Token",
         )
 
     with self.argument_context("iot ops broker") as context:

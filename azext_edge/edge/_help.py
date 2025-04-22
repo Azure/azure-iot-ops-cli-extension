@@ -479,6 +479,90 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow endpoint create"
+    ] = """
+        type: group
+        short-summary: Create or replace a dataflow endpoint resource.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create adls"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for Azure Data Lake Storage Gen2.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create adx"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for Azure Data Explorer.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create custom-kafka"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for custom kafka broker.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create custom-mqtt"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for custom MQTT broker.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create eventgrid"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for Azure Event Grid.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create eventhub"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for kafka-enabled Azure Event Hubs namespace.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create fabric-onelake"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for Microsoft Fabric OneLake.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create fabric-realtime"
+    ] = """
+        type: command
+        short-summary: Create or replace a Microsoft Fabric Real-Time Intelligence data flow endpoint.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create local-mqtt"
+    ] = """
+        type: command
+        short-summary: Create or replace a Azure IoT Operations Local MQTT data flow endpoint.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create localstorage"
+    ] = """
+        type: command
+        short-summary: Create or replace a local storage data flow endpoint.
+    """
+
+    helps[
+        "iot ops dataflow endpoint import"
+    ] = """
+        type: group
+        short-summary: Import a dataflow endpoint resource.
+    """
+
+    helps[
         "iot ops dataflow endpoint show"
     ] = """
         type: command

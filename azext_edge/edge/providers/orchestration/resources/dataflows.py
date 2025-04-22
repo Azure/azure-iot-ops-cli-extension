@@ -4,18 +4,25 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import os
 from typing import TYPE_CHECKING, Iterable
 
 from knack.log import get_logger
+from rich.console import Console
 
-from azext_edge.edge.providers.orchestration.common import AUTHENTICATION_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP, DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_TYPE_SETTINGS, DataflowEndpointType, DataflowEndpointAuthenticationType
+from azure.cli.core.azclierror import InvalidArgumentValueError
+from azext_edge.edge.providers.orchestration.common import AUTHENTICATION_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP, DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_TYPE_SETTINGS, DataflowEndpointModeType, DataflowEndpointType, DataflowEndpointAuthenticationType
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
+from azext_edge.edge.providers.orchestration.resources.reskit import GetInstanceExtLoc, get_file_config
+from azext_edge.edge.util.common import should_continue_prompt
+from azext_edge.edge.util.file_operations import deserialize_file_content
 
-from ....util.az_client import get_iotops_mgmt_client
+from ....util.az_client import get_iotops_mgmt_client, wait_for_terminal_state
 from ....util.queryable import Queryable
 
 logger = get_logger(__name__)
 
+console = Console()
 
 if TYPE_CHECKING:
     from ....vendor.clients.iotopsmgmt.operations import (
@@ -32,7 +39,8 @@ class DataFlowProfiles(Queryable):
             subscription_id=self.default_subscription_id,
         )
         self.ops: "DataflowProfileOperations" = self.iotops_mgmt_client.dataflow_profile
-        self.dataflows = DataFlows(self.iotops_mgmt_client.dataflow)
+        self.instances = Instances(cmd=cmd)
+        self.dataflows = DataFlows(self.iotops_mgmt_client.dataflow, self.instances.get_ext_loc)
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
@@ -44,8 +52,9 @@ class DataFlowProfiles(Queryable):
 
 
 class DataFlows:
-    def __init__(self, ops: "DataflowOperations"):
+    def __init__(self, ops: "DataflowOperations", get_ext_loc: GetInstanceExtLoc):
         self.ops = ops
+        self.get_ext_loc = get_ext_loc
 
     def show(self, name: str, dataflow_profile_name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
@@ -84,9 +93,14 @@ class DataFlowEndpoints(Queryable):
         extended_location = self.instance["extendedLocation"]
         settings = {}
 
+        # format the endpoint host
+        host = self._get_endpoint_host(
+            endpoint_type=endpoint_type,
+            **kwargs
+        )
+
         self._process_authentication_type(
             endpoint_type=endpoint_type,
-            authentication_method=kwargs.get("authentication_method"),
             settings=settings,
             **kwargs
         )
@@ -94,6 +108,7 @@ class DataFlowEndpoints(Queryable):
         self._process_endpoint_properties(
             endpoint_type=endpoint_type,
             settings=settings,
+            host=host,
             **kwargs
         )
 
@@ -111,6 +126,50 @@ class DataFlowEndpoints(Queryable):
             dataflow_endpoint_name=name,
             resource=resource,
         )
+    
+    def import_endpoint(
+        self,
+        name: str,
+        instance_name: str,
+        resource_group_name: str,
+        file_path: str,
+        **kwargs
+    ) -> dict:
+        resource = {}
+        endpoint_config = get_file_config(file_path)
+        self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group_name)
+        resource["extendedLocation"] = self.instance["extendedLocation"]
+        resource["properties"] = endpoint_config
+        
+        with console.status("Working..."):
+            poller = self.ops.begin_create_or_update(
+                dataflow_endpoint_name=name,
+                instance_name=instance_name,
+                resource_group_name=resource_group_name,
+                resource=resource,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
+    
+
+    def delete(
+        self,
+        name: str,
+        instance_name: str,
+        resource_group_name: str,
+        confirm_yes: bool = False,
+        **kwargs
+    ) -> dict:
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
+        if should_bail:
+            return
+
+        with console.status("Working..."):
+            poller = self.ops.begin_delete(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_endpoint_name=name,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
@@ -123,16 +182,43 @@ class DataFlowEndpoints(Queryable):
         return self.ops.list_by_resource_group(resource_group_name=resource_group_name, instance_name=instance_name)
 
 
+    def _get_endpoint_host(self, endpoint_type: DataflowEndpointType, **kwargs) -> str:
+        host = ""
+        if endpoint_type in [
+            DataflowEndpointType.DATAEXPLORER.value,
+            DataflowEndpointType.FABRICREALTIME.value,
+        ]:
+            host = kwargs["host"]
+        elif endpoint_type == DataflowEndpointType.DATALAKESTORAGE.value:
+            host = f"https://{kwargs['storage_account_name']}.blob.core.windows.net"
+        elif endpoint_type == DataflowEndpointType.FABRICONELAKE.value:
+            host = "https://onelake.dfs.fabric.microsoft.com"
+        elif endpoint_type == DataflowEndpointType.EVENTHUB.value:
+            host = f"{kwargs['eventhub_namespace']}.servicebus.windows.net:9093"
+        elif endpoint_type in [
+            DataflowEndpointType.CUSTOMKAFKA.value,
+            DataflowEndpointType.AIOLOCALMQTT.value,
+            DataflowEndpointType.EVENTGRID.value,
+            DataflowEndpointType.CUSTOMMQTT.value,
+        ]:
+            host = f"{kwargs["host"]}:{kwargs["port"]}"
+        
+        return host
+
     def _process_authentication_type(
         self,
         endpoint_type: DataflowEndpointType,
-        authentication_method: DataflowEndpointAuthenticationType,
         settings: dict,
         **kwargs
     ):
         # No authentication method required for local storage
         if endpoint_type == DataflowEndpointType.LOCALSTORAGE.value:
             return
+        
+        # Identify authentication method using the provided kwargs
+        authentication_method = self._identify_authentication_method(
+            **kwargs
+        )
         
         # Check if authentication method is allowed for the given endpoint type
         if authentication_method not in DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type.value]:
@@ -174,31 +260,49 @@ class DataFlowEndpoints(Queryable):
         return
     
 
+    def _identify_authentication_method(
+        self,
+        **kwargs
+    ) -> str:
+        # Check for the presence of authentication-related parameters in kwargs
+        if kwargs.get("no_auth"):
+            return DataflowEndpointAuthenticationType.ANONYMOUS.value
+        elif kwargs.get("client_id") and kwargs.get("tenant_id"):
+            return DataflowEndpointAuthenticationType.USERASSIGNED.value
+        elif kwargs.get("sat_audience"):
+            return DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value
+        elif kwargs.get("x509_secret_name"):
+            return DataflowEndpointAuthenticationType.X509.value
+        elif kwargs.get("sasl_type"):
+            return DataflowEndpointAuthenticationType.SASL.value
+        elif kwargs.get("at_secret_name"):
+            return DataflowEndpointAuthenticationType.ACCESSTOKEN.value
+        else:
+            return DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value
+    
+
     def _process_endpoint_properties(
         self,
-        endpoint_type: DataflowEndpointType,
         settings: dict,
+        host: str,
         **kwargs
     ):
-        # # Check required properties for endpoint type
-        # required_params = DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS.get(endpoint_type.value, [])
-        # missing_params = [param for param in required_params if param not in kwargs]
-
-        # if missing_params:
-        #     raise ValueError(
-        #         f"Missing required parameters for endpoint type '{endpoint_type}': {', '.join(missing_params)}"
-        #     )
-        
+        if host:
+            settings["host"] = host
         if kwargs.get("database_name"):
             settings["database"] = kwargs["database_name"]
-        if kwargs.get("host"):
-            settings["host"] = kwargs["host"]
-        if kwargs.get("batching_latency") or kwargs.get("message_count"):
+        if kwargs.get("latency") or kwargs.get("message_count") or kwargs.get("batching_disabled") or kwargs.get("max_byte") or kwargs.get("latency_ms"):
             settings["batching"] = {}
-            if kwargs.get("batching_latency"):
-                settings["batching"]["latencySeconds"] = kwargs["batching_latency"]
+            if kwargs.get("latency"):
+                settings["batching"]["latencySeconds"] = kwargs["latency"]
+            if kwargs.get("latency_ms"):
+                settings["batching"]["latencyMs"] = kwargs["latency_ms"]
             if kwargs.get("message_count"):
                 settings["batching"]["maxMessages"] = kwargs["message_count"]
+            if kwargs.get("batching_disabled"):
+                settings["batching"]["mode"] = DataflowEndpointModeType.DISABLED.value if kwargs["batching_disabled"] else DataflowEndpointModeType.ENABLED.value
+            if kwargs.get("max_byte"):
+                settings["batching"]["maxBytes"] = kwargs["max_byte"]
         if kwargs.get("lakehouse_name") or kwargs.get("workspace_name"):
             settings["names"] = {}
             if kwargs.get("lakehouse_name"):
@@ -210,7 +314,7 @@ class DataFlowEndpoints(Queryable):
         if kwargs.get("group_id"):
             settings["consumerGroupId"] = kwargs["group_id"]
         if kwargs.get("copy_broker_props_disabled"):
-            settings["copyMqttProperties"] = not kwargs["copy_broker_props_disabled"]
+            settings["copyMqttProperties"] = DataflowEndpointModeType.DISABLED.value if kwargs["copy_broker_props_disabled"] else DataflowEndpointModeType.ENABLED.value
         if kwargs.get("compression"):
             settings["compression"] = kwargs["compression"]
         if kwargs.get("aks"):
@@ -220,9 +324,9 @@ class DataFlowEndpoints(Queryable):
         if kwargs.get("tls_disabled") or kwargs.get("tls_config_map_reference"):
             settings["tls"] = {}
             if kwargs.get("tls_disabled"):
-                settings["tls"]["mode"] = not kwargs["tls_disabled"]
+                settings["tls"]["mode"] = DataflowEndpointModeType.DISABLED.value if kwargs["tls_disabled"] else DataflowEndpointModeType.ENABLED.value
             if kwargs.get("tls_config_map_reference"):
-                settings["tls"]["configMapRef"] = kwargs["tls_config_map_reference"]
+                settings["tls"]["trustedCaCertificateConfigMapRef"] = kwargs["tls_config_map_reference"]
         if kwargs.get("cloud_event_attribute"):
             settings["cloudEventAttributes"] = kwargs["cloud_event_attribute"]
         if kwargs.get("pvc_reference"):

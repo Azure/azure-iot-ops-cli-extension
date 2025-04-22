@@ -150,9 +150,13 @@ class DataflowEndpointType(Enum):
     DATAEXPLORER = "DataExplorer"
     DATALAKESTORAGE = "DataLakeStorage"
     FABRICONELAKE = "FabricOneLake"
-    KAFKA = "Kafka"
     LOCALSTORAGE = "LocalStorage"
-    MQTT = "Mqtt"
+    AIOLOCALMQTT = "AIOLocalMqtt"
+    EVENTGRID = "EventGrid"
+    CUSTOMMQTT = "CustomMqtt"
+    EVENTHUB = "EventHub"
+    FABRICREALTIME = "FabricRealTime"
+    CUSTOMKAFKA = "CustomKafka"
 
 
 class DataflowEndpointAuthenticationType(Enum):
@@ -164,9 +168,43 @@ class DataflowEndpointAuthenticationType(Enum):
     USERASSIGNED = "UserAssignedManagedIdentity"
     X509 = "X509Certificate"
 
+class DataflowEndpointModeType(Enum):
+    ENABLED = "Enabled"
+    DISABLED = "Disabled"
+
 class DataflowEndpointFabricPathType(Enum):
     FILES = "Files"
     TABLES = "Tables"
+
+class DataflowEndpointKafkaAcksType(Enum):
+    ZERO = "Zero"
+    ONE = "One"
+    ALL = "All"
+
+class KafkaCloudEventAttributeType(Enum):
+    PROPAGATE = "Propagate"
+    CREATEORREMAP = "CreateOrRemap"
+
+class KafkaCompressionType(Enum):
+    NONE = "None"
+    GZIP = "Gzip"
+    LZ4 = "Lz4"
+    SNAPPY = "Snappy"
+
+class KafkaPartitionStrategyType(Enum):
+    DEFAULT = "Default"
+    STATIC = "Static"
+    TOPIC = "Topic"
+    PROPERTY = "Property"
+
+class AuthenticationSaslType(Enum):
+    PLAIN = "Plain"
+    SCRAMSHA256 = "ScramSha256"
+    SCRAMSHA512 = "ScramSha512"
+
+class MqttRetainType(Enum):
+    KEEP = "Keep"
+    NEVER = "Never"
 
 DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
     DataflowEndpointType.DATAEXPLORER.value: [
@@ -182,17 +220,34 @@ DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
     ],
-    DataflowEndpointType.KAFKA.value: [
+    DataflowEndpointType.AIOLOCALMQTT.value: [
+        DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
+        DataflowEndpointAuthenticationType.X509.value,
+    ],
+    DataflowEndpointType.EVENTGRID.value: [
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
-        DataflowEndpointAuthenticationType.SASL.value,
         DataflowEndpointAuthenticationType.X509.value,
-        DataflowEndpointAuthenticationType.ANONYMOUS.value,
     ],
-    DataflowEndpointType.MQTT.value: [
+    DataflowEndpointType.CUSTOMMQTT.value: [
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
+        DataflowEndpointAuthenticationType.X509.value,
+        DataflowEndpointAuthenticationType.ANONYMOUS.value,
+    ],
+    DataflowEndpointType.EVENTHUB.value: [
+        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+        DataflowEndpointAuthenticationType.SASL.value,
+    ],
+    DataflowEndpointType.FABRICREALTIME.value: [
+        DataflowEndpointAuthenticationType.SASL.value,
+    ],
+    DataflowEndpointType.CUSTOMKAFKA.value: [
+        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+        DataflowEndpointAuthenticationType.SASL.value,
         DataflowEndpointAuthenticationType.X509.value,
         DataflowEndpointAuthenticationType.ANONYMOUS.value,
     ],
@@ -202,18 +257,26 @@ DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS = {
     DataflowEndpointType.DATAEXPLORER.value: ["database_name", "host"],
     DataflowEndpointType.DATALAKESTORAGE.value: ["host"],
     DataflowEndpointType.FABRICONELAKE.value: ["lakehouse_name", "workspace_name", "path_type", "host"],
-    DataflowEndpointType.KAFKA.value: ["host"],
+    DataflowEndpointType.EVENTGRID.value: ["host"],
+    DataflowEndpointType.FABRICREALTIME.value: ["host"],
+    DataflowEndpointType.CUSTOMKAFKA.value: ["host"],
     DataflowEndpointType.LOCALSTORAGE.value: ["pvc_reference"],
-    DataflowEndpointType.MQTT.value: ["host"],
+    DataflowEndpointType.AIOLOCALMQTT.value: ["host"],
+    DataflowEndpointType.EVENTGRID.value: ["host"],
+    DataflowEndpointType.CUSTOMMQTT.value: ["host"],
 }
 
 DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
     DataflowEndpointType.DATAEXPLORER.value: "dataExplorerSettings",
     DataflowEndpointType.DATALAKESTORAGE.value: "dataLakeStorageSettings",
     DataflowEndpointType.FABRICONELAKE.value: "fabricOneLakeSettings",
-    DataflowEndpointType.KAFKA.value: "kafkaSettings",
+    DataflowEndpointType.EVENTGRID.value: "kafkaSettings",
+    DataflowEndpointType.FABRICREALTIME.value: "kafkaSettings",
+    DataflowEndpointType.CUSTOMKAFKA.value: "kafkaSettings",
     DataflowEndpointType.LOCALSTORAGE.value: "localStorageSettings",
-    DataflowEndpointType.MQTT.value: "mqttSettings",
+    DataflowEndpointType.AIOLOCALMQTT.value: "mqttSettings",
+    DataflowEndpointType.EVENTGRID.value: "mqttSettings",
+    DataflowEndpointType.CUSTOMMQTT.value: "mqttSettings",
 }
 
 AUTHENTICATION_TYPE_REQUIRED_PARAMS = {
