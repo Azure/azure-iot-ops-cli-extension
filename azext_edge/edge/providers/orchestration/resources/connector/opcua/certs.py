@@ -834,7 +834,9 @@ class OpcUACerts(Queryable):
         certificate = decode_der_certificate(der_data)
 
         if not certificate:
-            raise InvalidArgumentValueError("Error decoding DER certificate. Please make sure the certificate is valid.")
+            raise InvalidArgumentValueError(
+                "Error decoding DER certificate. Please make sure the certificate is valid."
+            )
 
         # Get the subject name and application uri from the certificate
         # and validate it with the provided values
