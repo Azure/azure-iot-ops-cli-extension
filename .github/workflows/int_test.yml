@@ -290,12 +290,6 @@ jobs:
           resource-group: ${{ env.RESOURCE_GROUP }}
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
           enable-workload-identity: ${{ matrix.feature == 'trustbundle' }}
-      - name: "Enable secure settings for k3s cluster"
-        if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
-        run:
-          TOKEN=$(az connectedk8s show -g ${{ env.RESOURCE_GROUP }} -n ${{ env.CLUSTER_NAME }} --query oidcIssuerProfile.issuerUrl --output tsv)
-          sudo cat /etc/rancher/k3s/config.yaml
-          exit 2
       - name: "Az CLI login"
         uses: azure/login@v2
         with:
