@@ -195,6 +195,7 @@ MIN_K8S_VERSION = "1.29"
 
 # Node prerequisite constants
 
+DEFAULT_STORAGE_CLASSES = "default,local-path"
 MIN_NODE_MEMORY = "16G"
 MIN_NODE_STORAGE = "30G"
 MIN_NODE_VCPU = "4"

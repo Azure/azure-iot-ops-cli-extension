@@ -5,13 +5,16 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-
 from kubernetes.client.models import V1Node, V1NodeList, V1NodeStatus, V1ObjectMeta
 from kubernetes.utils import parse_quantity
 
 from azext_edge.edge.providers.check.common import (
-    AIO_SUPPORTED_ARCHITECTURES, DISPLAY_BYTES_PER_GIGABYTE, MIN_NODE_MEMORY, MIN_NODE_STORAGE, MIN_NODE_VCPU
+    AIO_SUPPORTED_ARCHITECTURES,
+    DISPLAY_BYTES_PER_GIGABYTE,
+    MIN_NODE_MEMORY,
+    MIN_NODE_VCPU,
 )
+
 from ....generators import generate_random_string
 
 
@@ -26,10 +29,7 @@ def mocked_node_client(mocked_client, mocker, request):
         node_info = mocker.Mock(architecture=arch)
         node = V1Node(
             metadata=V1ObjectMeta(name=generate_random_string()),
-            status=V1NodeStatus(
-                capacity=node_params,
-                node_info=node_info
-            )
+            status=V1NodeStatus(capacity=node_params, node_info=node_info),
         )
         nodes.append(node)
 
@@ -38,60 +38,52 @@ def mocked_node_client(mocked_client, mocker, request):
     yield mocked_client
 
 
-@pytest.mark.parametrize("mocked_node_client", [
-    [],
+@pytest.mark.parametrize(
+    "mocked_node_client",
     [
-        {
-            "architecture": "amd64",
-            "cpu": 4,
-            "memory": "16G",
-            "ephemeral-storage": "30G"
-        }
+        [],
+        [
+            {
+                "architecture": "amd64",
+                "cpu": 4,
+                "memory": "16G",
+            }
+        ],
+        [
+            {
+                "architecture": "arm64",
+                "cpu": 6,
+                "memory": "20G",
+            }
+        ],
+        [
+            {
+                "architecture": "amd64",
+                "cpu": 3,
+                "memory": "20G",
+            }
+        ],
+        [
+            {
+                "architecture": "x86",
+                "cpu": 3,
+                "memory": "20G",
+            }
+        ],
+        [
+            {
+                "architecture": "amd64",
+                "cpu": 5,
+                "memory": "10G",
+            },
+            {
+                "architecture": "arm64",
+            },
+        ],
     ],
-    [
-        {
-            "architecture": "arm64",
-            "cpu": 6,
-            "memory": "20G",
-            "ephemeral-storage": "4G"
-        }
-    ],
-    [
-        {
-            "architecture": "amd64",
-            "cpu": 5,
-            "memory": "10G",
-            "ephemeral-storage": "30G"
-        },
-    ],
-    [
-        {
-            "architecture": "amd64",
-            "cpu": 3,
-            "memory": "20G",
-            "ephemeral-storage": "30G"
-        }
-    ],
-    [
-        {
-            "architecture": "x86",
-            "cpu": 3,
-            "memory": "20G",
-            "ephemeral-storage": "30G"
-        }
-    ],
-    [
-        {
-            "architecture": "amd64",
-            "cpu": 5,
-            "memory": "10G",
-            "ephemeral-storage": "30G"
-        },
-        {
-            "architecture": "arm64",
-        }
-    ],
-], ids=["none", "min reqs", "storage", "memory", "cpu", "architecture", "multi-node"], indirect=True)
+    ids=["none", "min reqs", "memory", "cpu", "architecture", "multi-node"],
+    indirect=True,
+)
 def test_check_nodes(mocked_node_client):
     from azext_edge.edge.providers.check.base.node import check_nodes
     # no point in checking as_list is false since it just affects check manager
@@ -111,7 +103,7 @@ def test_check_nodes(mocked_node_client):
     assert len(result["targets"]) == (len(nodes) + 1)
     table = result["targets"]["cluster/nodes"]["_all_"]["displays"][-1].renderable
     headers = [col.header for col in table.columns]
-    assert headers == ["Name", "Architecture", "CPU (vCPU)", "Memory (GB)", "Storage (GB)"]
+    assert headers == ["Name", "Architecture", "CPU (vCPU)", "Memory (GB)"]
 
     # the generator is weird
     unpacked_cols = [list(col.cells) for col in table.columns]
@@ -121,7 +113,6 @@ def test_check_nodes(mocked_node_client):
     assert ", ".join(AIO_SUPPORTED_ARCHITECTURES) in unpacked_cols[1][0]
     assert MIN_NODE_VCPU in unpacked_cols[2][0]
     assert MIN_NODE_MEMORY[:-1] in unpacked_cols[3][0]
-    assert MIN_NODE_STORAGE[:-1] in unpacked_cols[4][0]
 
     for i in range(len(nodes)):
         node = nodes[i]
@@ -135,8 +126,6 @@ def test_check_nodes(mocked_node_client):
         assert str(cpu) in unpacked_cols[2][i]
         memory = node.status.capacity.get("memory", 0)
         assert "%.2f" % (parse_quantity(memory) / DISPLAY_BYTES_PER_GIGABYTE) in unpacked_cols[3][i]
-        storage = node.status.capacity.get("ephemeral-storage", 0)
-        assert "%.2f" % (parse_quantity(storage) / DISPLAY_BYTES_PER_GIGABYTE) in unpacked_cols[4][i]
 
         assert f"cluster/nodes/{name}" in result["targets"]
         result_node = result["targets"][f"cluster/nodes/{name}"]["_all_"]
@@ -156,12 +145,7 @@ def test_check_nodes(mocked_node_client):
         assert result_node["evaluations"][2]["status"] == bool_to_status(memory_status)
         assert result_node["evaluations"][2]["value"]["condition.memory"] == parse_quantity(memory)
 
-        storage_status = parse_quantity(storage) >= parse_quantity(MIN_NODE_STORAGE)
-        assert result_node["conditions"][3] == f"condition.ephemeral-storage>={MIN_NODE_STORAGE}"
-        assert result_node["evaluations"][3]["status"] == bool_to_status(storage_status)
-        assert result_node["evaluations"][3]["value"]["condition.ephemeral-storage"] == parse_quantity(storage)
-
-        overall_status = all([arch_status, cpu_status, storage_status, memory_status])
+        overall_status = all([arch_status, cpu_status, memory_status])
         assert result_node["status"] == bool_to_status(overall_status)
 
 

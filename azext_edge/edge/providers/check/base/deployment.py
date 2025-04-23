@@ -16,7 +16,7 @@ from ....providers.edge_api import EdgeResourceApi
 from ...base import client
 from ..common import CoreServiceResourceKinds, ResourceOutputDetailLevel
 from .check_manager import CheckManager
-from .node import check_nodes
+from .node import check_nodes, check_storage_classes
 from .resource import enumerate_ops_service_resources
 from .user_strings import UNABLE_TO_DETERMINE_VERSION_MSG
 
@@ -32,6 +32,7 @@ def check_pre_deployment(
     desired_checks.update(
         {
             "checkK8sVersion": partial(_check_k8s_version, as_list=as_list),
+            "checkStorageClasses": partial(check_storage_classes, as_list=as_list),
             "checkNodes": partial(check_nodes, as_list=as_list),
         }
     )
