@@ -15,10 +15,9 @@ from knack.log import get_logger
 from rich.console import Console
 import yaml
 
-from ......util.x509 import decode_der_certificate
-
 from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS
 from ...instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
+from .....orchestration.upgrade2 import calculate_config_delta
 from ......util.file_operations import read_file_content, validate_file_extension
 from ......util.queryable import Queryable
 from ......util.az_client import (
@@ -27,6 +26,7 @@ from ......util.az_client import (
     wait_for_terminal_state,
 )
 from ......util.common import should_continue_prompt
+from ......util.x509 import decode_der_certificate
 
 logger = get_logger(__name__)
 
@@ -690,7 +690,7 @@ class OpcUACerts(Queryable):
         application_cert: str,
         subject_name: str,
         application_uri: str,
-    ):
+    ) -> dict:
         # get the opcua extension
         extensions = self.resource_map.connected_cluster.get_extensions_by_type(EXTENSION_TYPE_OPS)
         aio_extension = extensions.get(EXTENSION_TYPE_OPS)
@@ -700,26 +700,34 @@ class OpcUACerts(Queryable):
         properties = aio_extension["properties"]
 
         config_settings: dict = properties.get("configurationSettings", {})
-        if not config_settings:
-            properties["configurationSettings"] = {}
 
-        config_settings["connectors.values.securityPki.applicationCert"] = application_cert
-        config_settings["connectors.values.securityPki.subjectName"] = subject_name
-        config_settings["connectors.values.securityPki.applicationUri"] = application_uri
+        desired_config_settings = config_settings.copy()
+        desired_config_settings["connectors.values.securityPki.applicationCert"] = application_cert
+        desired_config_settings["connectors.values.securityPki.subjectName"] = subject_name
+        desired_config_settings["connectors.values.securityPki.applicationUri"] = application_uri
 
-        aio_extension["properties"]["configurationSettings"] = config_settings
-
-        status_text = (
-            f"Updating IoT Operations extension to use {application_cert}..."
-            if application_cert
-            else "Rollback client certificate from IoT Operations extension..."
+        delta = calculate_config_delta(
+            current=config_settings,
+            target=desired_config_settings,
         )
 
-        with console.status(status_text):
-            return self.resource_map.connected_cluster.update_aio_extension(
-                extension_name=aio_extension["name"],
-                properties=properties,
+        if delta:
+            status_text = (
+                f"Updating IoT Operations extension to use {application_cert}..."
+                if application_cert
+                else "Rollback client certificate from IoT Operations extension..."
             )
+
+            with console.status(status_text):
+                return self.resource_map.connected_cluster.update_aio_extension(
+                    extension_name=aio_extension["name"],
+                    properties={
+                        "configurationSettings": delta,
+                    },
+                )
+        else:
+            logger.warning("No changes detected in IoT Operations extension. Skipping update...")
+            return {}
 
     def _remove_secrets_from_spc(self, secrets: List[str], spc: dict, resource_group: str) -> dict:
         spc_properties = spc.get("properties", {})
