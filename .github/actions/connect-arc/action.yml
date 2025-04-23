@@ -101,6 +101,6 @@ runs:
         resource-group: "${{ inputs.resource-group }}"
       run: |
         account_issuer=$(az connectedk8s show -n ${{ env.cluster-name }} -g ${{ env.resource-group }} --query oidcIssuerProfile.issuerUrl --output tsv)
-        sudo echo "kube-apiserver-arg:\n- service-account-issuer=$(( account_issuer ))\n- service-account-max-token-expiration=24h" >> /var/lib/rancher/k3s/agent/config.yaml
+        sudo echo "kube-apiserver-arg:\n- service-account-issuer=${{ account_issuer }}\n- service-account-max-token-expiration=24h" >> /var/lib/rancher/k3s/agent/config.yaml
         sudo systemctl restart k3s
       shell: bash
