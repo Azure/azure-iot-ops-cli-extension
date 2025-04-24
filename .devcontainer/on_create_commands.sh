@@ -1,11 +1,20 @@
-# wait for docker
+#!/bin/sh
+
+set -o errexit
+set -o nounset
+set -o pipefail
+set -o xtrace
+
+echo "Starting On Create Command"
+
+# Wait for docker
 until docker version > /dev/null 2>&1
 do
   echo "Checking if docker daemon has started..."
   sleep 10s
 done
 
-# create local k3s cluster
+# Create local k3s cluster
 echo "Creating k3d cluster"
 k3d cluster delete
 k3d cluster create \
@@ -15,32 +24,34 @@ k3d cluster create \
 # write kubeconfig
 k3d kubeconfig get k3s-default > ~/.kube/config
 
-# install connectedk8s extension
-az extension add -n connectedk8s -y
+# Set cluster name
+echo 'export CLUSTER_NAME=${CODESPACE_NAME}' >> ~/.bashrc
+echo 'export KUBECONFIG=~/.kube/config' >> ~/.bashrc
+source ~/.bashrc
 
-# local extension install
 echo "Setting up CLI dev environment"
+
+# Install virtualenv
 python -m venv env
 source env/bin/activate
 
+# Install azdev
 echo "Install AZDEV"
 pip install azdev
 
-echo "Install AZ CLI EDGE"
+# Install CLI core (EDGE) and configure extension repo
+echo "azdev setup"
 azdev setup -c EDGE
 
-echo "Installing local dev extension"
 # install dev requirements (overrides setuptools)
+echo "Installing extension and dev requirements..."
 pip install -r dev_requirements.txt
 pip install -U --target ~/.azure/cliextensions/azure-iot-ops .
 
 # setup tox environment dependencies in parallel, but don't run tests
-echo "Creating local tox environments"
+echo "Creating local tox environments..."
 python -m pip install tox
 tox -np -e lint,python,coverage
-
-echo "Install complete, please activate your environment with 'source env/bin/activate'"
-echo "This should automatically occur the next time you connect to the codespace"
 
 # Run the following to connect your cluster to ARC
 # RESOURCE_GROUP=[your_cluster_resource_group]

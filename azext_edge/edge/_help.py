@@ -199,16 +199,45 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops broker listener create"
+        "iot ops broker listener apply"
     ] = """
         type: command
-        short-summary: Create an mqtt broker listener service.
-        long-summary: This is a create or replace operation.
+        short-summary: Create or replace an mqtt broker listener service.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          {
+            "serviceType": "LoadBalancer",
+            "ports": [
+                {
+                    "port": 1883,
+                    "protocol": "Mqtt"
+                },
+                {
+                    "authenticationRef": "default",
+                    "port": 8883,
+                    "protocol": "Mqtt",
+                    "tls": {
+                        "mode": "Automatic",
+                        "certManagerCertificateSpec": {
+                            "issuerRef": {
+                                "name": "azure-iot-operations-aio-certificate-issuer",
+                                "kind": "ClusterIssuer",
+                                "group": "cert-manager.io"
+                            }
+                        }
+                    }
+                }
+            ]
+          }
+
+          When used with apply the above content will create or replace a target listener
+          with a two port configuration.
 
         examples:
-        - name: Create a listener for the default broker using a config file.
+        - name: Create or replace a listener for the default broker using a config file.
           text: >
-            az iot ops broker listener create -n listener --in myinstance -g myresourcegroup --config-file /path/to/listener/config.json
+            az iot ops broker listener apply -n listener --in myinstance -g myresourcegroup --config-file /path/to/listener/config.json
 
     """
 
@@ -224,7 +253,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Add a tcp port config to an mqtt broker listener service.
-        long-summary: This is an add or replace (port) operation. If the target listener resource does not exist, the command will create it.
+        long-summary: This is an add or replace (port) operation. If the target listener resource does not exist the command will create it.
 
         examples:
         - name: Add a port config to the default cluster Ip listener, using port 8883 and an authn resource.
@@ -244,12 +273,12 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Remove a tcp port config from an mqtt broker listener service.
-        long-summary: If no tcp ports will exist after removal, the command will delete the listener resource.
+        long-summary: If no tcp ports will exist after removal the command will delete the listener resource.
 
         examples:
         - name: Remove tcp port 1883 config from a listener. The listener will be deleted if no ports remain.
           text: >
-            az iot ops broker listener port remove --port 1883 --listener listener --in myinstance -g mygroup
+            az iot ops broker listener port remove --port 1883 --listener mylistener --in myinstance -g mygroup
     """
 
     helps[
@@ -299,16 +328,112 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops broker authn create"
+        "iot ops broker authn apply"
     ] = """
         type: command
-        short-summary: Create an mqtt broker authentication resource.
-        long-summary: This is a create or replace operation.
+        short-summary: Create or replace an mqtt broker authentication resource.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          {
+              "authenticationMethods": [
+                  {
+                      "method": "Custom",
+                      "customSettings": {
+                          "endpoint": "https://auth-server-template",
+                          "caCertConfigMap": "custom-auth-ca",
+                          "auth": {
+                              "x509": {
+                                  "secretRef": "custom-auth-client-cert"
+                              }
+                          },
+                          "headers": {
+                              "header_key": "header_value"
+                          }
+                      }
+                  },
+                  {
+                      "method": "ServiceAccountToken",
+                      "serviceAccountTokenSettings": {
+                          "audiences": [
+                              "aio-internal",
+                              "my-audience"
+                          ]
+                      }
+                  },
+                  {
+                      "method": "X509",
+                      "x509Settings": {
+                          "trustedClientCaCert": "client-ca",
+                          "authorizationAttributes": {
+                              "root": {
+                                  "attributes": {
+                                      "organization": "contoso"
+                                  },
+                                  "subject": "CN = Contoso Root CA Cert, OU = Engineering, C = US"
+                              },
+                              "intermediate": {
+                                  "attributes": {
+                                      "city": "seattle",
+                                      "foo": "bar"
+                                  },
+                                  "subject": "CN = Contoso Intermediate CA"
+                              },
+                              "smartfan": {
+                                  "attributes": {
+                                      "building": "17"
+                                  },
+                                  "subject": "CN = smart-fan"
+                              }
+                          }
+                      }
+                  }
+              ]
+          }
+
+          When used with apply the above content will create or replace a target authentication
+          resource configured with three authn methods.
 
         examples:
-        - name: Create an authentication resource for the default broker using a config file.
+        - name: Create or replace an authentication resource for the default broker using a config file.
           text: >
-            az iot ops broker authn create -n authn --in myinstance -g myresourcegroup --config-file /path/to/authn/config.json
+            az iot ops broker authn apply -n authn --in myinstance -g myresourcegroup --config-file /path/to/authn/config.json
+    """
+
+    helps[
+        "iot ops broker authn method"
+    ] = """
+        type: group
+        short-summary: Mqtt broker authn method operations.
+    """
+
+    helps[
+        "iot ops broker authn method add"
+    ] = """
+        type: command
+        short-summary: Add authentication methods to an mqtt broker authentication resource.
+        long-summary: This is an add method(s) operation. If the target authentication resource
+          does not exist the command will create it.
+
+        examples:
+        - name: Configure a SAT authn method and add it to the existing default authn resource.
+          text: >
+            az iot ops broker authn method add --authn default --in myinstance -g myresourcegroup --sat-aud my-audience1 my-audience2
+        - name: Configure an x509 authn method and add it to a newly created authn resource.
+          text: >
+            az iot ops broker authn method add --authn myauthn --in myinstance -g myresourcegroup
+            --x509-client-ca-ref client-ca
+            --x509-attr root.subject='CN = Contoso Root CA Cert, OU = Engineering, C = US' root.attributes.organization=contoso
+            --x509-attr intermediate.subject='CN = Contoso Intermediate CA' intermediate.attributes.city=seattle intermediate.attributes.foo=bar
+            --x509-attr smartfan.subject='CN = smart-fan' smartfan.attributes.building=17
+        - name: Configure a custom authentication service authn method and add it to a newly created authn resource.
+          text: >
+            az iot ops broker authn method add --authn myauthn --in myinstance -g myresourcegroup
+            --custom-ep https://myauthserver --custom-ca-ref myconfigmap --custom-x509-secret-ref mysecret --custom-header a=b c=d
+        - name: Configure and add two separate authn methods to an existing authn resource.
+          text: >
+            az iot ops broker authn method add --authn myexistingauthn --in myinstance -g myresourcegroup --sat-aud my-audience1 my-audience2
+            --x509-client-ca-ref client-ca
     """
 
     helps[
@@ -358,16 +483,60 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops broker authz create"
+        "iot ops broker authz apply"
     ] = """
         type: command
-        short-summary: Create an mqtt broker authorization resource.
-        long-summary: This is a create or replace operation.
+        short-summary: Create or replace an mqtt broker authorization resource.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          {
+              "authorizationPolicies": {
+                  "cache": "Enabled",
+                  "rules": [
+                      {
+                          "principals": {
+                              "clientIds": [
+                                  "temperature-sensor",
+                                  "humidity-sensor"
+                              ],
+                              "attributes": [
+                                  {
+                                      "city": "seattle",
+                                      "organization": "contoso"
+                                  }
+                              ]
+                          },
+                          "brokerResources": [
+                              {
+                                  "method": "Connect"
+                              },
+                              {
+                                  "method": "Publish",
+                                  "topics": [
+                                      "/telemetry/{principal.clientId}",
+                                      "/telemetry/{principal.attributes.organization}"
+                                  ]
+                              },
+                              {
+                                  "method": "Subscribe",
+                                  "topics": [
+                                      "/commands/{principal.attributes.organization}"
+                                  ]
+                              }
+                          ]
+                      }
+                  ]
+              }
+          }
+
+          When used with apply the above content will create or replace a target authorization
+          resource configured with a single authz rule.
 
         examples:
-        - name: Create an authorization resource for the default broker using a config file.
+        - name: Create or replace an authorization resource for the default broker using a config file.
           text: >
-            az iot ops broker authz create -n authz --in myinstance -g myresourcegroup --config-file /path/to/authz/config.json
+            az iot ops broker authz apply -n authz --in myinstance -g myresourcegroup --config-file /path/to/authz/config.json
     """
 
     helps[
