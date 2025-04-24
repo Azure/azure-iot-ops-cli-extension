@@ -288,6 +288,22 @@ def load_iotops_arguments(self, _):
             options_list=["--name", "-n"],
             help="Dataflow endpoint name.",
         )
+        context.argument(
+            "authentication_type",
+            options_list=["--auth-type"],
+            choices=CaseInsensitiveList(
+                [
+                    DataflowEndpointAuthenticationType.ACCESSTOKEN.value,
+                    DataflowEndpointAuthenticationType.SASL.value,
+                    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
+                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
+                    DataflowEndpointAuthenticationType.X509.value,
+                ]
+            ),
+            help="The authentication type for the dataflow endpoint. "
+            "Note: When not specified, the authentication type is determinded by other authentication parameters.",
+        )
     
     with self.argument_context("iot ops dataflow endpoint import") as context:
         context.argument(
@@ -369,7 +385,10 @@ def load_iotops_arguments(self, _):
         context.argument(
             "cloud_event_attribute",
             options_list=["--cloud-event-attribute", "--cea"],
-            arg_type=get_enum_type(KafkaCloudEventAttributeType, default=None),
+            arg_type=get_enum_type(
+                KafkaCloudEventAttributeType,
+                default=KafkaCloudEventAttributeType.PROPAGATE.value,
+            ),
             help="CloudEvent settings type to map events to cloud. "
             "Different message format are required by different setting.",
             arg_group="Cloud Event",
@@ -522,6 +541,11 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops dataflow endpoint create eventhub") as context:
         context.argument(
+            "eventhub_namespace",
+            options_list=["--eventhub-namespace", "--ehns"],
+            help="The name of the Event Hubs namespace.",
+        )
+        context.argument(
             "latency",
             options_list=["--latency", "-l"],
             help="The batching latency in milliseconds.",
@@ -564,7 +588,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops dataflow endpoint create custom-kafka") as context:
         context.argument(
             "host",
-            options_list=["--host"],
+            options_list=["--hostname"],
             help="The hostname of the Kafka broker host setting.",
         )
         context.argument(
@@ -598,7 +622,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops dataflow endpoint create local-mqtt") as context:
         context.argument(
             "host",
-            options_list=["--host"],
+            options_list=["--hostname"],
             help="The hostname of the local MQTT broker.",
         )
         context.argument(
@@ -608,10 +632,17 @@ def load_iotops_arguments(self, _):
             type=int,
         )
         context.argument(
+            "audience",
+            options_list=["--audience", "--aud"],
+            help="The audience of the Kubernetes service account token (SAT).",
+            arg_group="Kubernetes Service Account Token",
+        )
+        context.argument(
             "secret_name",
             options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains the certificate and private key "
-            "for X.509 authentication. "
+            help="The name for the kubernetes secret that contains the X509 client certificate, private key "
+            "corresponding to the client certificate, and intermediate certificates for the client certificate "
+            "chain. "
             "Note: The certificate and private key must be in PEM format and not password protected.",
             arg_group="X509 Authentication",
         )
@@ -619,7 +650,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops dataflow endpoint create eventgrid") as context:
         context.argument(
             "host",
-            options_list=["--host"],
+            options_list=["--hostname"],
             help="The hostname of the event grid namespace. Can"
             " be found in 'Http hostname' property. In the form "
             "of <NAMESPACE>.<REGION>-1.ts.eventgrid.azure.net",
@@ -633,8 +664,9 @@ def load_iotops_arguments(self, _):
         context.argument(
             "secret_name",
             options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains the certificate and private key "
-            "for X.509 authentication. "
+            help="The name for the kubernetes secret that contains the X509 client certificate, private key "
+            "corresponding to the client certificate, and intermediate certificates for the client certificate "
+            "chain. "
             "Note: The certificate and private key must be in PEM format and not password protected.",
             arg_group="X509 Authentication",
         )
@@ -642,7 +674,7 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops dataflow endpoint create custom-mqtt") as context:
         context.argument(
             "host",
-            options_list=["--host"],
+            options_list=["--hostname"],
             help="The hostname of the custom MQTT broker host setting.",
         )
         context.argument(
@@ -654,8 +686,9 @@ def load_iotops_arguments(self, _):
         context.argument(
             "secret_name",
             options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains the certificate and private key "
-            "for X.509 authentication. "
+            help="The name for the kubernetes secret that contains the X509 client certificate, private key "
+            "corresponding to the client certificate, and intermediate certificates for the client certificate "
+            "chain. "
             "Note: The certificate and private key must be in PEM format and not password protected.",
             arg_group="X509 Authentication",
         )
@@ -669,7 +702,7 @@ def load_iotops_arguments(self, _):
             "sat_audience",
             options_list=["--sat-audience", "--sat-aud"],
             help="The audience of the Kubernetes service account token (SAT).",
-            arg_group="Service Account Token",
+            arg_group="Kubernetes Service Account Token",
         )
 
     with self.argument_context("iot ops broker") as context:

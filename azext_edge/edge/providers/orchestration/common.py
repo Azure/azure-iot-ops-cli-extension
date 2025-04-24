@@ -19,6 +19,8 @@ EXTENDED_LOCATION_ROLE_BINDING = "AzureArc-Microsoft.ExtendedLocation-RP-RoleBin
 ARC_CONFIG_MAP = "azure-clusterconfig"
 ARC_NAMESPACE = "azure-arc"
 
+AIO_MQTT_DEFAULT_CONFIG_MAP = "azure-iot-operations-aio-ca-trust-bundle"
+
 # Key Vault KPIs
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
 
@@ -223,6 +225,7 @@ DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
     DataflowEndpointType.AIOLOCALMQTT.value: [
         DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
         DataflowEndpointAuthenticationType.X509.value,
+        DataflowEndpointAuthenticationType.ANONYMOUS.value,
     ],
     DataflowEndpointType.EVENTGRID.value: [
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
@@ -253,24 +256,24 @@ DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
     ],
 }
 
-DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS = {
-    DataflowEndpointType.DATAEXPLORER.value: ["database_name", "host"],
-    DataflowEndpointType.DATALAKESTORAGE.value: ["host"],
-    DataflowEndpointType.FABRICONELAKE.value: ["lakehouse_name", "workspace_name", "path_type", "host"],
-    DataflowEndpointType.EVENTGRID.value: ["host"],
-    DataflowEndpointType.FABRICREALTIME.value: ["host"],
-    DataflowEndpointType.CUSTOMKAFKA.value: ["host"],
-    DataflowEndpointType.LOCALSTORAGE.value: ["pvc_reference"],
-    DataflowEndpointType.AIOLOCALMQTT.value: ["host"],
-    DataflowEndpointType.EVENTGRID.value: ["host"],
-    DataflowEndpointType.CUSTOMMQTT.value: ["host"],
-}
+# DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS = {
+#     DataflowEndpointType.DATAEXPLORER.value: ["database_name", "host"],
+#     DataflowEndpointType.DATALAKESTORAGE.value: ["host"],
+#     DataflowEndpointType.FABRICONELAKE.value: ["lakehouse_name", "workspace_name", "path_type", "host"],
+#     DataflowEndpointType.EVENTGRID.value: ["host"],
+#     DataflowEndpointType.FABRICREALTIME.value: ["host"],
+#     DataflowEndpointType.CUSTOMKAFKA.value: ["host"],
+#     DataflowEndpointType.LOCALSTORAGE.value: ["pvc_reference"],
+#     DataflowEndpointType.AIOLOCALMQTT.value: ["host"],
+#     DataflowEndpointType.EVENTGRID.value: ["host"],
+#     DataflowEndpointType.CUSTOMMQTT.value: ["host"],
+# }
 
 DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
     DataflowEndpointType.DATAEXPLORER.value: "dataExplorerSettings",
     DataflowEndpointType.DATALAKESTORAGE.value: "dataLakeStorageSettings",
     DataflowEndpointType.FABRICONELAKE.value: "fabricOneLakeSettings",
-    DataflowEndpointType.EVENTGRID.value: "kafkaSettings",
+    DataflowEndpointType.EVENTHUB.value: "kafkaSettings",
     DataflowEndpointType.FABRICREALTIME.value: "kafkaSettings",
     DataflowEndpointType.CUSTOMKAFKA.value: "kafkaSettings",
     DataflowEndpointType.LOCALSTORAGE.value: "localStorageSettings",

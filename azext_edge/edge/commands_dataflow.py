@@ -6,7 +6,7 @@
 
 from typing import Iterable, Optional
 
-from azext_edge.edge.providers.orchestration.common import DataflowEndpointType
+from azext_edge.edge.providers.orchestration.common import AIO_MQTT_DEFAULT_CONFIG_MAP, DataflowEndpointType
 
 from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles
 
@@ -51,7 +51,9 @@ def create_dataflow_endpoint_adx(
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
     audience: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
+    #TODO: Put kwargs directly in the function call
     kwargs = {
         "database_name": database_name,
         "host": host,
@@ -61,6 +63,7 @@ def create_dataflow_endpoint_adx(
         "sami_audience": audience,
         "latency": latency,
         "message_count": message_count,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).create(
@@ -85,6 +88,7 @@ def create_dataflow_endpoint_adls(
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
     audience: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "storage_account_name": storage_account_name,
@@ -95,6 +99,7 @@ def create_dataflow_endpoint_adls(
         "sami_audience": audience,
         "latency": latency,
         "message_count": message_count,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).create(
@@ -119,6 +124,7 @@ def create_dataflow_endpoint_fabric_onelake(
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
     audience: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     
     kwargs = {
@@ -131,6 +137,7 @@ def create_dataflow_endpoint_fabric_onelake(
         "sami_audience": audience,
         "latency": latency,
         "message_count": message_count,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).create(
@@ -151,7 +158,6 @@ def create_dataflow_endpoint_eventhub(
     latency: int = 5,
     max_byte: int = 1000000,
     message_count: int = 100000,
-    tls_disabled: bool = False,
     batching_disabled: bool = False,
     copy_broker_props_disabled: bool = False,
     acks: Optional[str] = None,
@@ -166,6 +172,7 @@ def create_dataflow_endpoint_eventhub(
     group_id: Optional[str] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "eventhub_namespace": eventhub_namespace,
@@ -184,9 +191,9 @@ def create_dataflow_endpoint_eventhub(
         "compression": compression,
         "acks": acks,
         "partition_strategy": partition_strategy,
-        "tls_disabled": tls_disabled,
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).create(
@@ -213,11 +220,17 @@ def create_dataflow_endpoint_fabric_realtime(
     acks: Optional[str] = None,
     compression: Optional[str] = None,
     partition_strategy: Optional[str] = None,
+    # TODO: might support MI, waiting for service confirmation
+    # client_id: Optional[str] = None,
+    # tenant_id: Optional[str] = None,
     sasl_type: Optional[str] = None,
+    # scope: Optional[str] = None,
     secret_name: Optional[str] = None,
+    # audience: Optional[str] = None,
     group_id: Optional[str] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "host_name": host,
@@ -235,6 +248,7 @@ def create_dataflow_endpoint_fabric_realtime(
         "tls_disabled": tls_disabled,
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).create(
@@ -272,6 +286,7 @@ def create_dataflow_endpoint_custom_kafka(
     group_id: Optional[str] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "host": host,
@@ -295,6 +310,7 @@ def create_dataflow_endpoint_custom_kafka(
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
         "no_auth": no_auth,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).create(
@@ -336,15 +352,17 @@ def create_dataflow_endpoint_aio(
     keep_alive: int = 60,
     max_inflight_messages: int = 100,
     qos: int = 1,
+    session_expiry: int = 3600,
     tls_disabled: bool = False,
+    no_auth: bool = False,
+    config_map_reference: str = AIO_MQTT_DEFAULT_CONFIG_MAP,
     secret_name: Optional[str] = None,
     audience: Optional[str] = None,
     client_id_prefix: Optional[str] = None,
     protocol: Optional[str] = None,
     retain: Optional[str] = None,
-    session_expiry: Optional[int] = None,
-    config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "x509_secret_name": secret_name,
@@ -361,6 +379,8 @@ def create_dataflow_endpoint_aio(
         "tls_disabled": tls_disabled,
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
+        "no_auth": no_auth,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).create(
@@ -382,7 +402,7 @@ def create_dataflow_endpoint_eventgrid(
     keep_alive: int = 60,
     max_inflight_messages: int = 100,
     qos: int = 1,
-    tls_disabled: bool = False,
+    session_expiry: int = 3600,
     client_id: Optional[str] = None,
     tenant_id: Optional[str] = None,
     audience: Optional[str] = None,
@@ -391,9 +411,9 @@ def create_dataflow_endpoint_eventgrid(
     client_id_prefix: Optional[str] = None,
     protocol: Optional[str] = None,
     retain: Optional[str] = None,
-    session_expiry: Optional[int] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "client_id": client_id,
@@ -410,9 +430,9 @@ def create_dataflow_endpoint_eventgrid(
         "max_inflight_messages": max_inflight_messages,
         "qos": qos,
         "session_expiry": session_expiry,
-        "tls_disabled": tls_disabled,
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).create(
@@ -434,6 +454,7 @@ def create_dataflow_endpoint_custom_mqtt(
     keep_alive: int = 60,
     max_inflight_messages: int = 100,
     qos: int = 1,
+    session_expiry: int = 3600,
     tls_disabled: bool = False,
     no_auth: bool = False,
     client_id: Optional[str] = None,
@@ -445,9 +466,9 @@ def create_dataflow_endpoint_custom_mqtt(
     client_id_prefix: Optional[str] = None,
     protocol: Optional[str] = None,
     retain: Optional[str] = None,
-    session_expiry: Optional[int] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "client_id": client_id,
@@ -469,6 +490,7 @@ def create_dataflow_endpoint_custom_mqtt(
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
         "no_auth": no_auth,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).create(

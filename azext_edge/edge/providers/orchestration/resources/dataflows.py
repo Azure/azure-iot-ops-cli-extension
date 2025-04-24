@@ -11,7 +11,7 @@ from knack.log import get_logger
 from rich.console import Console
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
-from azext_edge.edge.providers.orchestration.common import AUTHENTICATION_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP, DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_TYPE_SETTINGS, DataflowEndpointModeType, DataflowEndpointType, DataflowEndpointAuthenticationType
+from azext_edge.edge.providers.orchestration.common import AUTHENTICATION_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP, DATAFLOW_ENDPOINT_TYPE_SETTINGS, DataflowEndpointModeType, DataflowEndpointType, DataflowEndpointAuthenticationType
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
 from azext_edge.edge.providers.orchestration.resources.reskit import GetInstanceExtLoc, get_file_config
 from azext_edge.edge.util.common import should_continue_prompt
@@ -112,20 +112,37 @@ class DataFlowEndpoints(Queryable):
             **kwargs
         )
 
+        actual_endpoint_type = endpoint_type
+        
+        if endpoint_type in [
+            DataflowEndpointType.FABRICREALTIME.value,
+            DataflowEndpointType.EVENTHUB.value,
+            DataflowEndpointType.CUSTOMKAFKA.value,
+        ]:
+            actual_endpoint_type = "Kafka"
+        elif endpoint_type in [
+            DataflowEndpointType.AIOLOCALMQTT.value,
+            DataflowEndpointType.EVENTGRID.value,
+            DataflowEndpointType.CUSTOMMQTT.value,
+        ]:
+            actual_endpoint_type = "Mqtt"
+
         resource = {
             "extendedLocation": extended_location,
             "properties": {
-                "endpointType": endpoint_type.value,
-                DATAFLOW_ENDPOINT_TYPE_SETTINGS[endpoint_type.value]: settings,
+                "endpointType": actual_endpoint_type,
+                DATAFLOW_ENDPOINT_TYPE_SETTINGS[endpoint_type]: settings,
             }
         }
 
-        return self.ops.begin_create_or_update(
-            resource_group_name=resource_group_name,
-            instance_name=instance_name,
-            dataflow_endpoint_name=name,
-            resource=resource,
-        )
+        with console.status("Working..."):
+            poller = self.ops.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_endpoint_name=name,
+                resource=resource,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
     
     def update(
         self,
@@ -269,16 +286,19 @@ class DataFlowEndpoints(Queryable):
         if endpoint_type == DataflowEndpointType.LOCALSTORAGE.value:
             return
         
-        # Identify authentication method using the provided kwargs
-        authentication_method = self._identify_authentication_method(
-            **kwargs
-        )
+        if kwargs.get("authentication_type"):
+            authentication_method = kwargs["authentication_type"]
+        else:
+            # Identify authentication method using the provided kwargs
+            authentication_method = self._identify_authentication_method(
+                **kwargs
+            )
         
         # Check if authentication method is allowed for the given endpoint type
-        if authentication_method not in DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type.value]:
+        if authentication_method not in DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]:
             raise ValueError(
                 f"Authentication method '{authentication_method}' is not allowed for endpoint type '{endpoint_type}'. "
-                f"Allowed methods are: {DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type.value]}"
+                f"Allowed methods are: {DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]}"
             )
         
         # Check required properties for authentication method
@@ -309,7 +329,9 @@ class DataFlowEndpoints(Queryable):
             if kwargs.get(param_name):
                 auth_settings[property_name] = kwargs[param_name]
 
-        settings["authentication"][DataflowEndpointAuthenticationType.ANONYMOUS.value+"Settings"] = auth_settings
+        # lower the first letter of the authentication method
+        auth_setting_name = authentication_method[0].lower() + authentication_method[1:] + "Settings"
+        settings["authentication"][auth_setting_name] = auth_settings
         
         return
     
@@ -337,6 +359,7 @@ class DataFlowEndpoints(Queryable):
 
     def _process_endpoint_properties(
         self,
+        endpoint_type: DataflowEndpointType,
         settings: dict,
         host: str,
         **kwargs
@@ -400,6 +423,16 @@ class DataFlowEndpoints(Queryable):
         if kwargs.get("session_expiry"):
             settings["sessionExpirySeconds"] = kwargs["session_expiry"]
         
+        # for eventhub and eventgrid, tls mode is always enabled
+        if endpoint_type in [
+            DataflowEndpointType.EVENTHUB.value,
+            DataflowEndpointType.EVENTGRID.value,
+        ]:
+            if settings.get("tls"):
+                settings["tls"]["mode"] = DataflowEndpointModeType.ENABLED.value
+            else:
+                settings["tls"] = {"mode": DataflowEndpointModeType.ENABLED.value}
+
         return
     
     def _update_properties(
