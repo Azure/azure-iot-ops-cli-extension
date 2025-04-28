@@ -12,6 +12,7 @@ common: Defines common utility functions and components.
 import base64
 import json
 import logging
+import re
 from typing import Dict, List, Optional
 
 from knack.log import get_logger
@@ -279,6 +280,4 @@ def chunk_list(data: list, chunk_len: int, data_size: int = 1024, size_unit: str
 
 
 def to_safe_filename(name: str) -> str:
-    import re
-
     return re.sub(r"[^\w\-.]", "_", name).strip(".")

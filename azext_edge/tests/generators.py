@@ -7,6 +7,7 @@
 import secrets
 import string
 from typing import List, Optional, Union
+from uuid import uuid4
 
 BASE_URL = "https://management.azure.com"
 
@@ -79,6 +80,4 @@ def generate_base_endpoint(
 
 
 def generate_uuid() -> str:
-    from uuid import uuid4
-
     return str(uuid4())
