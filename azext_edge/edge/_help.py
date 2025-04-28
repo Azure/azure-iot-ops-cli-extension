@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 """
-Help definitions for Digital Twins commands.
+Help content for Azure IoT Operations commands.
 """
 
 from knack.help_files import helps
@@ -18,12 +18,15 @@ from azext_edge.edge.providers.edge_api import (
     TRUSTMANAGER_API_V1,
 )
 
-
+from .providers.orchestration.clone import (
+    COMPAT_INSTANCE_VERS_MAX,
+    COMPAT_INSTANCE_VERS_MIN,
+)
 from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
+    COMPAT_DATAFLOW_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
-    COMPAT_DATAFLOW_APIS,
 )
 
 
@@ -1956,14 +1959,30 @@ def load_iotops_help():
 
     helps[
         "iot ops clone"
-    ] = """
+    ] = f"""
         type: command
         short-summary: Clone an instance.
+        long-summary: |
+          Clone analyzes an instance then reproduces it in an infrastructure-as-code
+          manner via ARM templates. The output of clone may be applied directly to another connected cluster
+          or, be saved locally to use at another time (potentially with modification).
+
+          Clone is compatible with the following instance version range: {COMPAT_INSTANCE_VERS_MIN}>=,<{COMPAT_INSTANCE_VERS_MAX}
+
         examples:
         - name: Clone an instance to a desired connected cluster.
           text: >
-            az iot ops clone --from-instance-id $INSTANCE_RESOURCE_ID --to-cluster-id $CLUSTER_RESOURCE_ID
+            az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID
+        - name: Similar to the prior example, but splitting and serially applying asset related sub-deployments.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --mode linked
         - name: Clone an instance to a local directory.
           text: >
-            az iot ops clone --from-instance-id $INSTANCE_RESOURCE_ID --from-group mygroup --to-dir .
+            az iot ops clone -n myinstance -g myresourcegroup --to-dir .
+        - name: Similar to the prior example, but storing and linking to asset related sub-deployments.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-dir /my/content --mode linked
+        - name: Hide progress displays and skip prompts.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-dir . --no-progress -y
     """

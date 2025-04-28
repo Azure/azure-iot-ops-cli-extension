@@ -255,7 +255,7 @@ def upsert_by_discriminator(initial: List[dict], disc_key: str, config: dict) ->
     return initial
 
 
-def chunk_list(data: list, chunk_size: int, data_size: int, size_unit: str = "kb") -> List[list]:
+def chunk_list(data: list, chunk_len: int, data_size: int = 1024, size_unit: str = "kb") -> List[list]:
     if size_unit.lower() == "mb":
         data_size *= 1024
 
@@ -267,7 +267,7 @@ def chunk_list(data: list, chunk_size: int, data_size: int, size_unit: str = "kb
 
         serialized_size = len(json.dumps(current_chunk).encode("utf-8")) / 1024  # convert bytes to kb
 
-        if len(current_chunk) > chunk_size or serialized_size > data_size:
+        if len(current_chunk) > chunk_len or serialized_size > data_size:
             current_chunk.pop()
             result.append(current_chunk)
             current_chunk = [item]

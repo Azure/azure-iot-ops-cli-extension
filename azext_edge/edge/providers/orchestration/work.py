@@ -34,6 +34,7 @@ from .common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
+    PROVISIONING_STATE_SUCCESS,
     ClusterConnectStatus,
 )
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
@@ -67,8 +68,6 @@ class WorkRecord:
         self.title = title
         self.description = description
 
-
-PROVISIONING_STATE_SUCCESS = "Succeeded"
 
 # Baked-in time for CL service to catch up.
 CATCH_UP_SEC = 7

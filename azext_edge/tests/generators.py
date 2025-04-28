@@ -30,6 +30,7 @@ def insecure_random_string(size: int = 36, force_lower: bool = False) -> str:
     Suitable for generating randomized resource names, etc.
     """
     from random import choice
+
     valid_sequence = string.ascii_lowercase + string.digits
     if not force_lower:
         valid_sequence += string.ascii_uppercase
@@ -50,7 +51,7 @@ def generate_resource_id(
     resource_group_name: Optional[str] = None,
     resource_provider: Optional[str] = None,
     resource_path: Optional[str] = None,
-    resource_subscription: Optional[str] = None
+    resource_subscription: Optional[str] = None,
 ) -> str:
     resource_id = f"/subscriptions/{resource_subscription or get_zeroed_subscription()}"
     if resource_group_name:
@@ -69,11 +70,15 @@ def generate_base_endpoint(
     api_version: Optional[str] = None,
 ) -> str:
     resource_id = generate_resource_id(
-        resource_group_name=resource_group_name,
-        resource_provider=resource_provider,
-        resource_path=resource_path
+        resource_group_name=resource_group_name, resource_provider=resource_provider, resource_path=resource_path
     )
     expected_endpoint = f"{BASE_URL}{resource_id}"
     if api_version:
         expected_endpoint += f"?api-version={api_version}"
     return expected_endpoint
+
+
+def generate_uuid() -> str:
+    from uuid import uuid4
+
+    return str(uuid4())

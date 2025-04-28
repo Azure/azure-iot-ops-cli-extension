@@ -6,6 +6,7 @@
 
 
 import re
+from typing import Dict, Optional
 
 _ARMID_RE = re.compile(
     "(?i)/subscriptions/(?P<subscription>[^/]*)(/resourceGroups/(?P<resource_group>[^/]*))?"
@@ -19,7 +20,7 @@ _CHILDREN_RE = re.compile(
 _ARMNAME_RE = re.compile("^[^<>%&:\\?/]{1,260}$")
 
 
-def parse_resource_id(rid):
+def parse_resource_id(rid: str) -> Dict[str, str]:
     """Parses a resource_id into its various parts.
 
     Returns a dictionary with a single key-value pair, 'name': rid, if invalid resource id.
@@ -58,11 +59,11 @@ def parse_resource_id(rid):
         result["last_child_num"] = count + 1 if isinstance(count, int) else None
         result = _populate_alternate_kwargs(result)
     else:
-        result = dict(name=rid)
+        result = {"name": rid}
     return {key: value for key, value in result.items() if value is not None}
 
 
-def _populate_alternate_kwargs(kwargs):
+def _populate_alternate_kwargs(kwargs) -> Dict[str, str]:
     """Translates the parsed arguments into a format used by generic ARM commands
     such as the resource and lock commands.
     """
@@ -78,7 +79,7 @@ def _populate_alternate_kwargs(kwargs):
     return kwargs
 
 
-def _get_parents_from_parts(kwargs):
+def _get_parents_from_parts(kwargs) -> Dict[str, str]:
     """Get the parents given all the children parameters."""
     parent_builder = []
     if kwargs["last_child_num"] is not None:
@@ -97,7 +98,7 @@ def _get_parents_from_parts(kwargs):
     return kwargs
 
 
-def resource_id(**kwargs):
+def resource_id(**kwargs) -> str:
     """Create a valid resource id string from the given parts.
 
     This method builds the resource id from the left until the next required id parameter
@@ -141,16 +142,9 @@ def resource_id(**kwargs):
     return "/".join(rid_builder)
 
 
-def is_valid_resource_id(rid, exception_type=None):
-    """Validates the given resource id.
+def is_valid_resource_id(rid: str, exception_type: Optional[Exception] = None) -> bool:
+    """Validates the given resource id."""
 
-    :param rid: The resource id being validated.
-    :type rid: str
-    :param exception_type: Raises this Exception if invalid.
-    :type exception_type: :class:`Exception`
-    :returns: A boolean describing whether the id is valid.
-    :rtype: bool
-    """
     is_valid = False
     try:
         is_valid = rid and resource_id(**parse_resource_id(rid)).lower() == rid.lower()
@@ -161,16 +155,8 @@ def is_valid_resource_id(rid, exception_type=None):
     return is_valid
 
 
-def is_valid_resource_name(rname, exception_type=None):
-    """Validates the given resource name to ARM guidelines, individual services may be more restrictive.
-
-    :param rname: The resource name being validated.
-    :type rname: str
-    :param exception_type: Raises this Exception if invalid.
-    :type exception_type: :class:`Exception`
-    :returns: A boolean describing whether the name is valid.
-    :rtype: bool
-    """
+def is_valid_resource_name(rname: str, exception_type: Optional[Exception] = None) -> bool:
+    """Validates the given resource name to ARM guidelines, individual services may be more restrictive."""
 
     match = _ARMNAME_RE.match(rname)
 

@@ -4,21 +4,21 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from copy import deepcopy
 from enum import Enum
 from json import dumps
-from pathlib import PurePath, Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from pathlib import Path, PurePath
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union
 from uuid import uuid4
 
-from azure.cli.core.azclierror import AzureResponseError, ValidationError
+from azure.cli.core.azclierror import ValidationError
+from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
-from packaging import version
+from packaging.version import parse as parse_version
 from rich.console import Console
 from rich.progress import (
-    BarColumn,
     Progress,
     SpinnerColumn,
-    TextColumn,
     TimeElapsedColumn,
 )
 from rich.table import Table, box
@@ -26,37 +26,48 @@ from rich.table import Table, box
 from ....constants import VERSION as CLI_VERSION
 from ...util import (
     chunk_list,
-    get_timestamp_now_utc,
     should_continue_prompt,
     to_safe_filename,
 )
 from ...util.az_client import (
     REGISTRY_API_VERSION,
-    wait_for_terminal_state,
-    get_resource_client,
     get_msi_mgmt_client,
+    get_resource_client,
+    wait_for_terminal_state,
 )
-from ...util.id_tools import parse_resource_id
+from ...util.id_tools import is_valid_resource_id, parse_resource_id
 from .common import (
     CONTRIBUTOR_ROLE_ID,
     CUSTOM_LOCATIONS_API_VERSION,
     EXTENSION_TYPE_ACS,
     EXTENSION_TYPE_OPS,
-    EXTENSION_TYPE_OSM,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
-    OPS_EXTENSION_DEPS,
-    PROVISIONING_STATE_SUCCESS,
 )
-from .resources import Instances
-from .resources.instances import get_fc_name
 from .connected_cluster import ConnectedCluster
-
-DEFAULT_CONSOLE = Console()
+from .resources import Instances
+from .resources.instances import (
+    SERVICE_ACCOUNT_DATAFLOW,
+    SERVICE_ACCOUNT_SECRETSYNC,
+    get_fc_name,
+)
 
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
+
+
+logger = get_logger(__name__)
+
+
+DEFAULT_CONSOLE = Console()
+
+COMPAT_INSTANCE_VERS_MIN = "1.0.34"
+COMPAT_INSTANCE_VERS_MAX = "1.2.0"
+
+
+DEPLOYMENT_CHUNK_LEN = 800
+DEPLOYMENT_DATA_SIZE_KB = 1024
 
 
 class SummaryMode(Enum):
@@ -90,7 +101,9 @@ class StateResourceKey(Enum):
 class TemplateParams(Enum):
     INSTANCE_NAME = "instanceName"
     CLUSTER_NAME = "clusterName"
+    CLUSTER_NAMESPACE = "clusterNamespace"
     CUSTOM_LOCATION_NAME = "customLocationName"
+    OPS_EXTENSION_NAME = "opsExtensionName"
     SUBSCRIPTION = "subscription"
     RESOURCEGROUP = "resourceGroup"
     SCHEMA_REGISTRY_ID = "schemaRegistryId"
@@ -102,6 +115,7 @@ TEMPLATE_EXPRESSION_MAP = {
     "instanceName": f"[parameters('{TemplateParams.INSTANCE_NAME.value}')]",
     "instanceNestedName": (f"[concat(parameters('{TemplateParams.INSTANCE_NAME.value}'), " "'{}')]"),
     "clusterName": f"[parameters('{TemplateParams.CLUSTER_NAME.value}')]",
+    "clusterNamespace": f"[parameters('{TemplateParams.CLUSTER_NAMESPACE.value}')]",
     "clusterId": (
         "[resourceId('Microsoft.Kubernetes/connectedClusters', " f"parameters('{TemplateParams.CLUSTER_NAME.value}'))]"
     ),
@@ -115,6 +129,7 @@ TEMPLATE_EXPRESSION_MAP = {
         f"parameters('{TemplateParams.CLUSTER_NAME.value}')), "
         "'/providers/Microsoft.KubernetesConfiguration/extensions/{})]"
     ),
+    "opsExtensionName": f"[parameters('{TemplateParams.OPS_EXTENSION_NAME.value}')]",
     "schemaRegistryId": f"[parameters('{TemplateParams.SCHEMA_REGISTRY_ID.value}')]",
 }
 
@@ -152,6 +167,13 @@ def get_resource_id_by_parts(rtype: str, *args) -> str:
 
 def get_resource_id_by_param(rtype: str, param: TemplateParams) -> str:
     return f"[resourceId('{rtype}', parameters('{param.value}'))]"
+
+
+def get_ops_extension_name(extension_names: List[str]) -> Optional[str]:
+    for name in extension_names:
+        part = name.rsplit("/", 1)[-1]
+        if part.startswith("azure-iot-operations-") and not part.endswith("platform"):
+            return part
 
 
 class DeploymentContainer:
@@ -335,18 +357,22 @@ class InstanceRestore:
         self,
         cmd,
         instances: Instances,
-        from_instance_name: str,
-        cluster_resource_id: str,
+        instance_record: dict,
+        namespace: str,
+        parsed_cluster_id: Dict[str, str],
         template_content: "TemplateContent",
         user_assigned_mis: Optional[List[str]] = None,
+        # TODO eliminate mode, only use split_content
         template_mode: Optional[str] = None,
         no_progress: Optional[bool] = None,
     ):
         self.cmd = cmd
         self.instances = instances
+        self.instance_record = instance_record
+        self.namespace = namespace
         self.template_content = template_content
-        self.from_instance_name = from_instance_name
-        self.parsed_cluster_id = parse_resource_id(cluster_resource_id)
+
+        self.parsed_cluster_id = parsed_cluster_id
         self.cluster_name = self.parsed_cluster_id["name"]
         self.resource_group_name = self.parsed_cluster_id["resource_group"]
         self.subscription_id = self.parsed_cluster_id["subscription"]
@@ -357,7 +383,6 @@ class InstanceRestore:
             resource_group_name=self.resource_group_name,
         )
         self.resource_client = get_resource_client(subscription_id=self.subscription_id)
-        self.msi_client = get_msi_mgmt_client(subscription_id=self.subscription_id)
         self.template_mode = template_mode
         self.user_assigned_mis = user_assigned_mis
         self.no_progress = no_progress
@@ -367,82 +392,80 @@ class InstanceRestore:
         content: dict,
         parameters: dict,
         deployment_name: str,
-        what_if: bool = False,
     ) -> Optional["LROPoller"]:
         deployment_params = {"properties": {"mode": "Incremental", "template": content, "parameters": parameters}}
-        if what_if:
-            what_if_poller = self.resource_client.deployments.begin_what_if(
-                resource_group_name=self.resource_group_name,
-                deployment_name=deployment_name,
-                parameters=deployment_params,
-            )
-            terminal_what_if_deployment = wait_for_terminal_state(what_if_poller)
-            if (
-                "status" in terminal_what_if_deployment
-                and terminal_what_if_deployment["status"].lower() != PROVISIONING_STATE_SUCCESS.lower()
-            ):
-                raise AzureResponseError(dumps(terminal_what_if_deployment, indent=2))
-            return
 
+        headers = {"x-ms-correlation-request-id": str(uuid4()), "CommandName": "iot ops clone"}
         return self.resource_client.deployments.begin_create_or_update(
             resource_group_name=self.resource_group_name,
             deployment_name=deployment_name,
             parameters=deployment_params,
+            headers=headers,
         )
 
     def _handle_federation(self, use_self_hosted_issuer: Optional[bool] = None):
         if not self.user_assigned_mis:
             return
+
         cluster_resource = self.connected_cluster.resource
         oidc_issuer = self.instances._ensure_oidc_issuer(
             cluster_resource, use_self_hosted_issuer=use_self_hosted_issuer
         )
 
-        for i in range(len(self.user_assigned_mis)):
-            resource_id = parse_resource_id(self.user_assigned_mis[i])
+        for mid in self.user_assigned_mis:
+            parsed_uami_id = parse_resource_id(mid)
+            msi_client = get_msi_mgmt_client(subscription_id=parsed_uami_id["subscription"])
             credentials = list(
-                self.msi_client.federated_identity_credentials.list(
-                    resource_group_name=resource_id["resource_group"], resource_name=resource_id["name"]
+                msi_client.federated_identity_credentials.list(
+                    resource_group_name=parsed_uami_id["resource_group"], resource_name=parsed_uami_id["name"]
                 )
             )
-            filtered_creds = []
+            cred_map = {}
+            cluster_svc_acct_map = {}
+            expected_creds = [(oidc_issuer, SERVICE_ACCOUNT_SECRETSYNC), (oidc_issuer, SERVICE_ACCOUNT_DATAFLOW)]
             for cred in credentials:
-                if cred["properties"]["issuer"] != oidc_issuer:
-                    filtered_creds.append(cred)
+                svc_acct = cred["properties"]["subject"].split(":")[-1]
+                cred_map[(cred["properties"]["issuer"], svc_acct)] = 1
+                cluster_svc_acct_map[svc_acct] = 1
 
-            for cred in filtered_creds:
-                if ":aio-" not in cred["properties"]["subject"]:
-                    continue
-
-                # TODO: Handle repeats if subject not already handled
-                self.msi_client.federated_identity_credentials.create_or_update(
-                    resource_group_name=resource_id["resource_group"],
-                    resource_name=resource_id["name"],
-                    federated_identity_credential_resource_name=get_fc_name(
-                        cluster_name=self.cluster_name,
-                        oidc_issuer=oidc_issuer,
-                        subject=cred["properties"]["subject"],
-                    ),
-                    parameters={
-                        "properties": {
-                            "subject": cred["properties"]["subject"],
-                            "audiences": cred["properties"]["audiences"],
-                            "issuer": oidc_issuer,
-                        }
-                    },
-                )
+            for exp_cred in expected_creds:
+                if exp_cred not in cred_map and exp_cred[1] in cluster_svc_acct_map:
+                    subject = f"system:serviceaccount:{self.namespace}:{exp_cred[1]}"
+                    try:
+                        # Federate with best attempt.
+                        msi_client.federated_identity_credentials.create_or_update(
+                            resource_group_name=parsed_uami_id["resource_group"],
+                            resource_name=parsed_uami_id["name"],
+                            federated_identity_credential_resource_name=get_fc_name(
+                                cluster_name=self.cluster_name,
+                                oidc_issuer=oidc_issuer,
+                                subject=subject,
+                            ),
+                            parameters={
+                                "properties": {
+                                    "subject": subject,
+                                    "audiences": ["api://AzureADTokenExchange"],
+                                    "issuer": oidc_issuer,
+                                }
+                            },
+                        )
+                    except HttpResponseError as e:
+                        logger.debug(e)
 
     def deploy(
         self,
         instance_name: Optional[str] = None,
         use_self_hosted_issuer: Optional[bool] = None,
     ):
+        if not self.connected_cluster.connected:
+            raise ValidationError(f"Cluster {self.connected_cluster.cluster_name} is not connected to Azure.")
+
         parameters = {
             "clusterName": {"value": self.cluster_name},
         }
         if instance_name:
             parameters["instanceName"] = {"value": instance_name}
-        deployment_name = default_bundle_name(self.from_instance_name)
+        deployment_name = default_bundle_name(self.instance_record["name"])
 
         DEFAULT_CONSOLE.print()
 
@@ -453,25 +476,19 @@ class InstanceRestore:
             deployment_work.append(self.template_content.content)
         total_pages = len(deployment_work)
 
-        with DEFAULT_CONSOLE.status("Pre-flight...") as console:
-            self._deploy_template(
-                content=deployment_work[0],
-                parameters=parameters,
-                deployment_name=deployment_name,
-                what_if=True,
-            )
-            # TODO
+        with DEFAULT_CONSOLE.status("Preparing replication...") as console:
             self._handle_federation(use_self_hosted_issuer)
 
             for i in range(total_pages):
-                status = f"Initiating {deployment_name} {i+1}/{total_pages}"
+                status = f"Replicating {deployment_name} {i+1}/{total_pages}"
                 console.update(status=status)
+                page = f"_{i+1}" if total_pages > 1 else ""
                 poller = self._deploy_template(
                     content=deployment_work[i],
                     parameters=parameters,
-                    deployment_name=f"{deployment_name}_{i+1}",
+                    deployment_name=f"{deployment_name}{page}",
                 )
-                deployment_link = self._get_deployment_link(deployment_name=f"{deployment_name}_{i+1}")
+                deployment_link = self._get_deployment_link(deployment_name=f"{deployment_name}{page}")
                 DEFAULT_CONSOLE.print(
                     f"->[link={deployment_link}]Link to {self.cluster_name} deployment {i+1}/{total_pages}[/link]",
                     highlight=False,
@@ -489,7 +506,7 @@ class InstanceRestore:
         )
 
 
-def backup_ops_instance(
+def clone_instance(
     cmd,
     instance_name: str,
     resource_group_name: str,
@@ -502,9 +519,16 @@ def backup_ops_instance(
     linked_base_uri: Optional[str] = None,
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
-    **kwargs,
+    force: Optional[bool] = None,
+    **_,
 ):
-    backup_manager = BackupManager(
+    parsed_cluster_id = {}
+    if to_cluster_id:
+        if not is_valid_resource_id(to_cluster_id):
+            raise ValidationError(f"Invalid resource Id: {to_cluster_id}")
+        parsed_cluster_id = parse_resource_id(to_cluster_id)
+
+    clone_manager = CloneManager(
         cmd=cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
@@ -512,60 +536,66 @@ def backup_ops_instance(
     )
     bundle_path = get_bundle_path(instance_name, bundle_dir=to_dir)
 
-    backup_state = backup_manager.analyze_cluster()
+    clone_state = clone_manager.analyze_cluster(force)
 
     if not no_progress:
         render_upgrade_table(
-            backup_state, bundle_path, to_cluster_id, detailed=summary_mode == SummaryMode.DETAILED.value
+            clone_state=clone_state,
+            bundle_path=bundle_path,
+            parsed_cluster_id=parsed_cluster_id,
+            detailed=summary_mode == SummaryMode.DETAILED.value,
         )
 
-    if all([not to_dir, not to_cluster_id]):
+    if all([not to_dir, not parsed_cluster_id]):
         return
 
     should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Clone")
     if should_bail:
         return
 
-    template_content = backup_state.get_content()
+    template_content = clone_state.get_content()
     template_content.write(bundle_path, template_mode=template_mode, linked_base_uri=linked_base_uri)
 
-    if to_cluster_id:
-        restore_client = backup_state.get_restore_client(
-            to_cluster_id=to_cluster_id, template_mode=template_mode, no_progress=no_progress
+    if parsed_cluster_id:
+        restore_client = clone_state.get_restore_client(
+            parsed_cluster_id=parsed_cluster_id, template_mode=template_mode, no_progress=no_progress
         )
         restore_client.deploy(instance_name=to_instance_name, use_self_hosted_issuer=use_self_hosted_issuer)
 
 
 def render_upgrade_table(
-    backup_state: "BackupState",
+    clone_state: "CloneState",
     bundle_path: Optional[PurePath] = None,
-    to_cluster_id: Optional[str] = None,
+    parsed_cluster_id: Optional[Dict[str, str]] = None,
     detailed: bool = False,
 ):
     table = get_default_table(include_name=detailed)
     total = 0
-    for rtype in backup_state.resources:
-        rtype_len = len(backup_state.resources[rtype])
+    for rtype in clone_state.resources:
+        rtype_len = len(clone_state.resources[rtype])
         total += rtype_len
         row_content = [f"{rtype}", f"{rtype_len}"]
         if detailed:
-            row_content.append("\n".join([r["resource_name"] for r in backup_state.resources[rtype]]))
+            row_content.append("\n".join([r["resource_name"] for r in clone_state.resources[rtype]]))
         table.add_row(*row_content)
 
-    table.title += f" of {backup_state.instance_name}\nTotal resources {total}"
+    table.title += f" of {clone_state.instance_record['name']}\nTotal resources {total}"
     DEFAULT_CONSOLE.print(table)
-    # DEFAULT_CONSOLE.print(f"Total resources: {total}\n", highlight=True)
 
     if bundle_path:
         DEFAULT_CONSOLE.print(f"State will be saved to:\n-> {bundle_path}\n")
+        if clone_state.user_assigned_mis and not parsed_cluster_id:
+            DEFAULT_CONSOLE.print(
+                ":exclamation: Credential federation of user-assigned managed "
+                "identity is currently only supported using --to-cluster-id."
+            )
 
-    if to_cluster_id:
-        parsed_to_cluster_id = parse_resource_id(to_cluster_id)
+    if parsed_cluster_id:
         DEFAULT_CONSOLE.print(
-            f"State will be cloned to connected cluster:\n"
-            f"* Name: {parsed_to_cluster_id['name']}\n"
-            f"* Resource Group: {parsed_to_cluster_id['resource_group']}\n"
-            f"* Subscription: {parsed_to_cluster_id['subscription']}\n",
+            f"Clone will be replicated to connected cluster:\n"
+            f"* Name: {parsed_cluster_id['name']}\n"
+            f"* Resource Group: {parsed_cluster_id['resource_group']}\n"
+            f"* Subscription: {parsed_cluster_id['subscription']}\n",
             highlight=False,
         )
 
@@ -586,19 +616,21 @@ def get_default_table(include_name: bool = False) -> Table:
     return table
 
 
-class BackupState:
+class CloneState:
     def __init__(
         self,
         cmd,
-        instance_name: str,
+        instance_record: str,
         instances: Instances,
+        namespace: str,
         resources: dict,
         template_gen: "TemplateGen",
         user_assigned_mis: Optional[List[str]] = None,
     ):
         self.cmd = cmd
-        self.instance_name = instance_name
+        self.instance_record = instance_record
         self.instances = instances
+        self.namespace = namespace
         self.resources = resources
         self.template_gen = template_gen
         self.content = self.template_gen.get_content()
@@ -608,13 +640,17 @@ class BackupState:
         return self.content
 
     def get_restore_client(
-        self, to_cluster_id: str, template_mode: str, no_progress: Optional[bool] = None
+        self,
+        parsed_cluster_id: Dict[str, str],
+        template_mode: Optional[str] = None,
+        no_progress: Optional[bool] = None,
     ) -> "InstanceRestore":
         return InstanceRestore(
             cmd=self.cmd,
             instances=self.instances,
-            from_instance_name=self.instance_name,
-            cluster_resource_id=to_cluster_id,
+            instance_record=self.instance_record,
+            namespace=self.namespace,
+            parsed_cluster_id=parsed_cluster_id,
             template_content=self.content,
             user_assigned_mis=self.user_assigned_mis,
             template_mode=template_mode,
@@ -622,7 +658,7 @@ class BackupState:
         )
 
 
-class BackupManager:
+class CloneManager:
     def __init__(
         self,
         cmd,
@@ -638,6 +674,8 @@ class BackupManager:
         self.instance_record = self.instances.show(
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
+        self.version_guru = VersionGuru(self.instance_record)
+        self.custom_location = self.instances._get_associated_cl(self.instance_record)
 
         self.resource_map = self.instances.get_resource_map(self.instance_record)
         self.resouce_graph = self.resource_map.connected_cluster.resource_graph
@@ -647,9 +685,8 @@ class BackupManager:
         self.metadata_map: dict = {}
         self.instance_identities: List[str] = []
         self.active_deployment: Dict[StateResourceKey, List[str]] = {}
-        self.chunk_size = 800
 
-    def analyze_cluster(self) -> "BackupState":
+    def analyze_cluster(self, force: Optional[bool] = None) -> "CloneState":
         with Progress(
             SpinnerColumn("star"),
             *Progress.get_default_columns(),
@@ -657,10 +694,11 @@ class BackupManager:
             TimeElapsedColumn(),
             transient=True,
             disable=bool(self.no_progress),
-            # disable=True,
         ) as progress:
             _ = progress.add_task(f"Analyzing {self.instance_name}...", total=None)
-            self._build_parameters(self.instance_record)
+            self.version_guru.ensure_compat(force)
+
+            self._build_parameters()
             self._build_variables()
             self._build_metadata()
 
@@ -671,10 +709,11 @@ class BackupManager:
             self._analyze_secretsync()
             self._analyze_assets()
 
-            return BackupState(
+            return CloneState(
                 cmd=self.cmd,
-                instance_name=self.instance_name,
+                instance_record=self.instance_record,
                 instances=self.instances,
+                namespace=self.custom_location["properties"]["namespace"],
                 resources=self._enumerate_resources(),
                 template_gen=TemplateGen(
                     self.rcontainer_map, self.parameter_map, self.variable_map, self.metadata_map
@@ -705,29 +744,44 @@ class BackupManager:
         __enumerator(self.rcontainer_map)
         return enumerated_map
 
-    def _build_parameters(self, instance: dict):
+    def _build_parameters(self):
         self.parameter_map.update(build_parameter(name=TemplateParams.CLUSTER_NAME.value))
         self.parameter_map.update(
-            build_parameter(name=TemplateParams.INSTANCE_NAME.value, default=self.instance_record["name"])
-        )
-        self.parameter_map.update(
             build_parameter(
-                name=TemplateParams.RESOURCE_SLUG.value,
-                default=(
-                    "[take(uniqueString(resourceGroup().id, "
-                    "parameters('clusterName'), parameters('instanceName')), 5)]"
-                ),
+                name=TemplateParams.CLUSTER_NAMESPACE.value, default=self.custom_location["properties"]["namespace"]
             )
         )
         self.parameter_map.update(
             build_parameter(
                 name=TemplateParams.CUSTOM_LOCATION_NAME.value,
-                default="[format('location-{0}', parameters('resourceSlug'))]",
+                default=self.custom_location["name"],
+            )
+        )
+        self.parameter_map.update(
+            build_parameter(name=TemplateParams.INSTANCE_NAME.value, default=self.instance_record["name"])
+        )
+        self.parameter_map.update(
+            build_parameter(
+                name=TemplateParams.OPS_EXTENSION_NAME.value,
+                default=(
+                    get_ops_extension_name(self.custom_location["properties"].get("clusterExtensionIds", []))
+                    or "[format('azure-iot-operations-{0}', parameters('resourceSlug'))]"
+                ),
+            )
+        )
+
+        self.parameter_map.update(
+            build_parameter(
+                name=TemplateParams.RESOURCE_SLUG.value,
+                default=(
+                    "[take(uniqueString(resourceGroup().id, "
+                    "parameters('clusterName'), parameters('clusterNamespace')), 5)]"
+                ),
             )
         )
 
     def _build_variables(self):
-        self.variable_map["aioExtName"] = "[format('azure-iot-operations-{0}', parameters('resourceSlug'))]"
+        pass
 
     def _build_metadata(self):
         self.metadata_map["opsCliVersion"] = CLI_VERSION
@@ -758,22 +812,25 @@ class BackupManager:
             EXTENSION_TYPE_SSC: [EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_PLATFORM]],
             EXTENSION_TYPE_ACS: [
                 EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_PLATFORM],
-                EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OSM],
             ],
-            EXTENSION_TYPE_OPS: [EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] for ext_type in list(OPS_EXTENSION_DEPS)],
+            EXTENSION_TYPE_OPS: [
+                EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_PLATFORM],
+                EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_ACS],
+                EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_SSC],
+            ],
         }
         api_version = (
             self.resource_map.connected_cluster.clusters.extensions.clusterconfig_mgmt_client._config.api_version
         )
         extension_map = self.resource_map.connected_cluster.get_extensions_by_type(
-            *list(EXTENSION_TYPE_TO_MONIKER_MAP.keys())
+            EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_ACS, EXTENSION_TYPE_SSC, EXTENSION_TYPE_OPS
         )
         for extension_type in extension_map:
             extension_moniker = EXTENSION_TYPE_TO_MONIKER_MAP[extension_type]
             depends_on = depends_on_map.get(extension_type)
             extension_map[extension_type]["scope"] = TEMPLATE_EXPRESSION_MAP["clusterId"]
             if extension_moniker == EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS]:
-                extension_map[extension_type]["name"] = "[variables('aioExtName')]"
+                extension_map[extension_type]["name"] = TEMPLATE_EXPRESSION_MAP["opsExtensionName"]
 
             self._add_resource(
                 key=extension_moniker,
@@ -784,11 +841,10 @@ class BackupManager:
             )
 
     def _analyze_instance(self):
-        api_version = self.instances.iotops_mgmt_client._config.api_version
-        # TODO - @digimaun, not efficient.
-        custom_location = self.instances._get_associated_cl(self.instance_record)
+        api_version = self.version_guru.get_instance_api()
+        custom_location = deepcopy(self.custom_location)
         custom_location["properties"]["hostResourceId"] = TEMPLATE_EXPRESSION_MAP["clusterId"]
-        # TODO
+        custom_location["properties"]["namespace"] = TEMPLATE_EXPRESSION_MAP["clusterNamespace"]
         custom_location["name"] = TEMPLATE_EXPRESSION_MAP["customLocationName"]
 
         cl_extension_ids = []
@@ -799,15 +855,19 @@ class BackupManager:
         ]
         for moniker in cl_monikers:
             ext_resource = self.rcontainer_map.get(moniker)
+            if not ext_resource:
+                continue
             if moniker == EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS]:
-                cl_extension_ids.append(TEMPLATE_EXPRESSION_MAP["extensionId"].format("', variables('aioExtName')"))
+                cl_extension_ids.append(
+                    TEMPLATE_EXPRESSION_MAP["extensionId"].format("', parameters('opsExtensionName')")
+                )
             else:
                 cl_extension_ids.append(
                     TEMPLATE_EXPRESSION_MAP["extensionId"].format(f"{ext_resource.resource_state['name']}'")
                 )
 
         custom_location["properties"]["clusterExtensionIds"] = cl_extension_ids
-        custom_location["properties"]["displayName"] = "[parameters('customLocationName')]"
+        custom_location["properties"]["displayName"] = TEMPLATE_EXPRESSION_MAP["customLocationName"]
 
         self._add_resource(
             key=StateResourceKey.CL,
@@ -816,22 +876,12 @@ class BackupManager:
             config={"apply_nested_name": False},
             depends_on=cl_monikers,
         )
-        # self.instance_record["properties"]["schemaRegistryRef"]["resourceId"] = TEMPLATE_EXPRESSION_MAP[
-        #     "schemaRegistryId"
-        # ]
         self._add_resource(
             key=StateResourceKey.INSTANCE,
             api_version=api_version,
-            data=self.instance_record,
+            data=deepcopy(self.instance_record),
             depends_on=StateResourceKey.CL,
         )
-        # self._add_resource(
-        #     key=StateResourceKey.ROLE_ASSIGNMENT,
-        #     api_version="2022-04-01",
-        #     data=get_role_assignment(),
-        #     depends_on=EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS],
-        #     config={"apply_nested_name": False},
-        # )
         nested_params = {
             **build_parameter(name=TemplateParams.CLUSTER_NAME.value),
             **build_parameter(name=TemplateParams.INSTANCE_NAME.value),
@@ -856,7 +906,7 @@ class BackupManager:
         )
 
     def _analyze_instance_resources(self):
-        api_version = self.instances.iotops_mgmt_client._config.api_version
+        api_version = self.version_guru.get_instance_api()
         brokers_iter = self.instances.iotops_mgmt_client.broker.list_by_resource_group(
             resource_group_name=self.resource_group_name, instance_name=self.instance_name
         )
@@ -1032,7 +1082,8 @@ class BackupManager:
 
         ssc_spcs = [spc for spc in ssc_spcs if spc["extendedLocation"]["name"].lower() == ext_loc_id]
         client_ids = [spc["properties"]["clientId"] for spc in ssc_spcs if "clientId" in spc["properties"]]
-        self.instance_identities.extend([mid["id"] for mid in self.get_identities_by_client_id(client_ids)])
+        if client_ids:
+            self.instance_identities.extend([mid["id"] for mid in self.get_identities_by_client_id(client_ids)])
 
         self._add_deployment(
             key=StateResourceKey.SSC_SPC,
@@ -1062,7 +1113,9 @@ class BackupManager:
             )
 
     def _analyze_instance_identity(self):
-        identity: dict = self.instance_record.get("identity", {}).get("userAssignedIdentities", {})
+        target_instance = getattr(self.rcontainer_map[StateResourceKey.INSTANCE.value], "resource_state", {})
+        identity: dict = target_instance.get("identity", {}).get("userAssignedIdentities", {})
+
         for rid in identity:
             identity[rid] = {}
             self.instance_identities.append(rid)
@@ -1087,13 +1140,12 @@ class BackupManager:
     ):
         data_iter = list(data_iter)
         if data_iter:
-            chunked_list_data = chunk_list(data_iter, self.chunk_size, 750)
+            chunked_list_data = chunk_list(
+                data=data_iter, chunk_len=DEPLOYMENT_CHUNK_LEN, data_size=DEPLOYMENT_DATA_SIZE_KB
+            )
 
             for chunk in chunked_list_data:
                 symbolic_name, deployment_name = self.add_deployment_by_key(key)
-                # TODO Debug
-                # with open(f"./{symbolic_name}.json", mode="w") as myfile:
-                #     myfile.write(dumps(chunk))
 
                 deployment_container = DeploymentContainer(
                     name=f"[{deployment_name}]",
@@ -1190,7 +1242,7 @@ class TemplateContent:
 
     def write(
         self,
-        bundle_path: PurePath,
+        bundle_path: Optional[PurePath] = None,
         template_mode: Optional[str] = None,
         linked_base_uri: Optional[str] = None,
         file_ext: str = "json",
@@ -1203,13 +1255,15 @@ class TemplateContent:
             deployments = self._get_deployments(bundle_path.name, linked_base_uri)
 
         template_str = dumps(self.content, indent=2)
-        with open(file=f"{bundle_path}.{file_ext}", mode="w") as template_file:
+        with open(file=f"{bundle_path}.{file_ext}", mode="w", encoding="utf8") as template_file:
             template_file.write(template_str)
 
         if deployments:
             Path(bundle_path).mkdir(exist_ok=True)
             for deployment in deployments:
-                with open(file=f"{bundle_path.joinpath(deployment[0])}.{file_ext}", mode="w") as template_file:
+                with open(
+                    file=f"{bundle_path.joinpath(deployment[0])}.{file_ext}", mode="w", encoding="utf8"
+                ) as template_file:
                     template_file.write(dumps(deployment[1], indent=2))
 
 
@@ -1279,6 +1333,7 @@ def process_depends_on(
     return result
 
 
+# TODO: Re-use?
 def get_bundle_path(instance_name: str, bundle_dir: Optional[str] = None) -> Optional[PurePath]:
     from ...util import normalize_dir
 
@@ -1291,8 +1346,7 @@ def get_bundle_path(instance_name: str, bundle_dir: Optional[str] = None) -> Opt
 
 
 def default_bundle_name(instance_name: str) -> str:
-    timestamp = get_timestamp_now_utc(format="%Y%m%dT%H%M%S")
-    name = f"clone_{to_safe_filename(instance_name)}_{timestamp}_aio"
+    name = f"clone_{to_safe_filename(instance_name)}_aio"
     return name
 
 
@@ -1322,7 +1376,7 @@ def get_role_assignment():
         "type": "Microsoft.Authorization/roleAssignments",
         "name": (
             f"[guid(parameters('{TemplateParams.INSTANCE_NAME.value}'), "
-            f"parameters('{TemplateParams.CLUSTER_NAME.value}'), resourceGroup().id)]"
+            f"parameters('{TemplateParams.CLUSTER_NAME.value}'), parameters('principalId'), resourceGroup().id)]"
         ),
         "scope": f"[parameters('{TemplateParams.SCHEMA_REGISTRY_ID.value}')]",
         "properties": {
@@ -1333,3 +1387,33 @@ def get_role_assignment():
             "principalType": "ServicePrincipal",
         },
     }
+
+
+# TODO: Work out goals, placement and version library
+class VersionGuru:
+    def __init__(self, instance: dict):
+        self.instance = instance
+        self.version: str = self.instance["properties"].get("version")
+        if not self.version:
+            raise ValidationError("Unable to determine version of the instance.")
+        self.parsed_version = parse_version(self.version)
+
+    def ensure_compat(self, force: Optional[bool] = None):
+        if force:
+            return
+
+        if self.parsed_version >= parse_version(COMPAT_INSTANCE_VERS_MIN) and self.parsed_version < parse_version(
+            COMPAT_INSTANCE_VERS_MAX
+        ):
+            return
+
+        raise ValidationError(
+            f"This clone client is not compatible with the target instance version {self.version}.\n"
+            f"The instance must be >={COMPAT_INSTANCE_VERS_MIN},<{COMPAT_INSTANCE_VERS_MAX}.\n"
+            "While not recommended, you can use --force flag to continue anyway."
+        )
+
+    def get_instance_api(self) -> str:
+        if self.parsed_version < parse_version("1.1.0"):
+            return "2024-11-01"
+        return "2025-04-01"
