@@ -1056,8 +1056,8 @@ def load_iotops_arguments(self, _):
             "template_mode",
             options_list=["--mode"],
             arg_type=get_enum_type(TemplateMode, default=TemplateMode.NESTED.value),
-            help="When mode 'nested' is used sub-deployments will be self-contained in the root deployment. "
-            "When mode 'linked' is used asset related sub-deployments will be split and stored as separate files "
+            help="When mode 'nested' is used, sub-deployments will be self-contained in the root deployment. "
+            "When mode 'linked' is used, asset related sub-deployments will be split and stored as separate files "
             "linked by the root deployment.",
         )
         context.argument(
