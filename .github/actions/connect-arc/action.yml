@@ -101,5 +101,7 @@ runs:
         resource-group: "${{ inputs.resource-group }}"
       run: |
         account_issuer=$(az connectedk8s show -n ${{ env.cluster-name }} -g ${{ env.resource-group }} --query oidcIssuerProfile.issuerUrl --output tsv)
-        sudo k3s server --kube-apiserver-arg service-account-max-token-expiration=24h --kube-apiserver-arg service-account-issuer=$account_issuer
+        sudo k3s server --cluster-restart --kube-apiserver-arg service-account-max-token-expiration=24h --kube-apiserver-arg service-account-issuer=$account_issuer
+
+        sleep 15s
       shell: bash
