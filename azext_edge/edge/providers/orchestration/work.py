@@ -24,6 +24,7 @@ from rich.table import Table
 from azext_edge.edge.providers.base import load_config_context
 from azext_edge.edge.providers.check.base.deployment import check_pre_deployment
 from azext_edge.edge.providers.check.common import NON_ERROR_STATUSES
+from azext_edge.edge.providers.orchestration.deployment_checks import validate_cluster_prechecks
 
 from ...util.az_client import (
     REGISTRY_PREVIEW_API_VERSION,
@@ -165,13 +166,13 @@ class WorkManager:
         pre_check_cat_desc = "Pre-Flight"
         self._display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
         self._display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers")
+
         self._display.add_step(
-            WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
+            WorkCategoryKey.PRE_FLIGHT,
+            WorkStepKey.ENUMERATE_PRE_FLIGHT,
+            title="Enumerate pre-flight checks",
+            description=f"[bright_yellow]•[/bright_yellow] Cluster readiness" if self._cluster_checks else None,
         )
-        if hasattr(self, "_cluster_checks") and self._cluster_checks:
-            self._display.add_step(
-                WorkCategoryKey.PRE_FLIGHT, WorkStepKey.CLUSTER_CHECKS, "Cluster readiness pre-checks"
-            )
 
         if self._apply_foundation:
             self._display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
@@ -347,10 +348,8 @@ class WorkManager:
         self._ops_ext = None
 
         # cluster checks opt-in
-        if kwargs.get("enable_precheck", False):
-            self._cluster_checks = True
-            self._context_name = kwargs.get("context_name")
-            load_config_context(context_name=self._context_name)
+        self._cluster_checks = kwargs.get("enable_precheck", False)
+        self._context_name = kwargs.get("context_name", None)
 
         self._build_display()
 
@@ -368,6 +367,7 @@ class WorkManager:
             self._process_connected_cluster()
 
             # Pre-Flight workflow
+            enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
             if self._pre_flight:
                 # WorkStepKey.REG_RP
                 self._render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
@@ -384,39 +384,24 @@ class WorkManager:
                     verify_write_permission_against_rg(
                         subscription_id=self.subscription_id, resource_group_name=self._targets.resource_group_name
                     )
+                if self._cluster_checks:
+                    load_config_context(context_name=self._context_name)
+                    # TODO - sync with digimaun re:enablement_parameters
+                    # Only pass acs_config if not enable_fault_tolerance
+                    validate_cluster_prechecks(
+                        # TODO - parse content inside validate_cluster_prechecks?
+                        acs_config=(
+                            enablement_content["resources"]["container_storage_extension"]["properties"][
+                                "configurationSettings"
+                            ]
+                            if not self._targets.enable_fault_tolerance
+                            else None
+                        )
+                    )
                 self._complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
                 )
-                # WorkStepKey.CLUSTER_CHECKS
-                if hasattr(self, "_cluster_checks") and self._cluster_checks:
-                    pre_checks = check_pre_deployment(as_list=False)
-                    self._render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.CLUSTER_CHECKS)
-                    errors = []
-                    for check in pre_checks:
-                        if check["status"] not in NON_ERROR_STATUSES:
-                            for target in check["targets"]:
-                                # for all prechecks, namespace is currently _all_
-                                for namespace in check["targets"][target]:
-                                    # this is a specific target (e.g. "cluster/nodes/k3d-k3s-default-server-0")
-                                    for idx, check_eval in enumerate(
-                                        check["targets"][target][namespace]["evaluations"]
-                                    ):
-                                        if check_eval["status"] not in NON_ERROR_STATUSES:
-                                            # TODO - relies on same order and count of conditions / evaluations
-                                            expected_condition = check['targets'][target][namespace]['conditions'][idx]
-                                            # TODO - formatting
-                                            errors.append(
-                                                f"Target '{target}' failed condition:\n"
-                                                f"\tExpected: '{expected_condition}', Actual: '{check_eval['value']}'"
-                                            )
-
-                    if errors:
-                        raise ValidationError("Cluster readiness pre-checks failed:\n\n" + "\n".join(errors))
-                    self._complete_step(
-                        category=WorkCategoryKey.PRE_FLIGHT,
-                        completed_step=WorkStepKey.CLUSTER_CHECKS,
-                    )
 
             # Enable IoT Ops workflow
             if self._apply_foundation:
@@ -424,7 +409,8 @@ class WorkManager:
                 self._render_display(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
                 )
-                enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
+                # TODO sync with digimaun re:enablement_parameters
+                # enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
                 self._deploy_template(
                     content=enablement_content,
                     parameters=enablement_parameters,

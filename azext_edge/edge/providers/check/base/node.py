@@ -18,7 +18,6 @@ from ....common import CheckTaskStatus
 from ..common import (
     AIO_SUPPORTED_ARCHITECTURES,
     COLOR_STR_FORMAT,
-    DEFAULT_STORAGE_CLASSES,
     DISPLAY_BYTES_PER_GIGABYTE,
     MIN_NODE_MEMORY,
     MIN_NODE_VCPU,
@@ -29,11 +28,12 @@ from .user_strings import NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
 logger = get_logger(__name__)
 
 
-def check_storage_classes(expected_classes: str = DEFAULT_STORAGE_CLASSES, as_list: bool = False) -> Dict[str, Any]:
+def check_storage_classes(acs_config: dict, as_list: bool = False) -> Dict[str, Any]:
     from ...base import client
 
+    expected_classes = acs_config.get("feature.diskStorageClass", [])
     check_manager = CheckManager(check_name="evalStorageClasses", check_desc="Evaluate storage classes")
-    padding = (0, 0, 0, 8)
+    # padding = (0, 0, 0, 8)
     target = "cluster/storage-classes"
     check_manager.add_target(
         target_name=target,
@@ -51,17 +51,17 @@ def check_storage_classes(expected_classes: str = DEFAULT_STORAGE_CLASSES, as_li
             status=CheckTaskStatus.error.value,
             value=api_error_text,
         )
-        check_manager.add_display(
-            target_name=target,
-            display=Padding(api_error_text, (0, 0, 0, 8)),
-        )
+        # check_manager.add_display(
+        #     target_name=target,
+        #     display=Padding(api_error_text, (0, 0, 0, 8)),
+        # )
     else:
         if not storage_classes or not storage_classes.items:
-            target_display = Padding("No storage classes available", padding)
+            # target_display = Padding("No storage classes available", padding)
             check_manager.add_target_eval(
                 target_name=target, status=CheckTaskStatus.error.value, value="No storage classes available"
             )
-            check_manager.add_display(target_name=target, display=target_display)
+            # check_manager.add_display(target_name=target, display=target_display)
             return check_manager.as_dict()
 
         check_manager.add_target_eval(
@@ -75,13 +75,13 @@ def check_storage_classes(expected_classes: str = DEFAULT_STORAGE_CLASSES, as_li
         matches = [sc for sc in storage_class_names if sc in expected_class_names]
         storage_status = CheckTaskStatus.success if len(matches) else CheckTaskStatus.error
 
-        check_manager.add_display(
-            target_name=target,
-            display=Padding(
-                f"Expected classes: {colorize_string(expected_class_names)}, configured: {colorize_string(matches, storage_status.color)}",
-                padding,
-            ),
-        )
+        # check_manager.add_display(
+        #     target_name=target,
+        #     display=Padding(
+        #         f"Expected classes: {colorize_string(expected_class_names)}, configured: {colorize_string(storage_class_names, storage_status.color)}",
+        #         padding,
+        #     ),
+        # )
 
         check_manager.add_target_eval(
             target_name=target,

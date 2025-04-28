@@ -11,8 +11,10 @@ shared: Define shared data types(enums) and constant strings for IoT Operations 
 
 from enum import Enum
 from typing import List, NamedTuple
-from ...common import CheckTaskStatus, ListableEnum
+
 from rich.padding import Padding
+
+from ...common import CheckTaskStatus, ListableEnum
 
 
 class ResourceOutputDetailLevel(ListableEnum):
@@ -192,10 +194,6 @@ AIO_OPCUA_PREFIX = "aio-opc-"
 # Pre-deployment KPIs
 
 MIN_K8S_VERSION = "1.29"
-
-# Node prerequisite constants
-
-DEFAULT_STORAGE_CLASSES = "default,local-path"
 MIN_NODE_MEMORY = "16G"
 MIN_NODE_VCPU = "4"
 AIO_SUPPORTED_ARCHITECTURES = ["amd64"]  # someday arm64

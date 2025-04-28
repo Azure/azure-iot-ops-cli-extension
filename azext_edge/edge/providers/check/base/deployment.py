@@ -24,19 +24,21 @@ logger = get_logger(__name__)
 # TODO: unit test
 
 
-def check_pre_deployment(
-    as_list: bool = False,
-) -> List[dict]:
+def check_pre_deployment(as_list: bool = False, **kwargs) -> List[dict]:
     result = []
     desired_checks = {}
     desired_checks.update(
         {
             "checkK8sVersion": partial(_check_k8s_version, as_list=as_list),
-            "checkStorageClasses": partial(check_storage_classes, as_list=as_list),
             "checkNodes": partial(check_nodes, as_list=as_list),
         }
     )
-
+    if kwargs.get("acs_config"):
+        desired_checks.update(
+            {
+                "checkStorageClasses": partial(check_storage_classes, as_list=as_list, **kwargs),
+            }
+        )
     for c in desired_checks:
         output = desired_checks[c]()
         result.append(output)
