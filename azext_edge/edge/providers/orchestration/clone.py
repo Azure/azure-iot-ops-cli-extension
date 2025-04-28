@@ -539,7 +539,7 @@ def clone_instance(
     clone_state = clone_manager.analyze_cluster(force)
 
     if not no_progress:
-        render_upgrade_table(
+        render_clone_table(
             clone_state=clone_state,
             bundle_path=bundle_path,
             parsed_cluster_id=parsed_cluster_id,
@@ -563,7 +563,7 @@ def clone_instance(
         restore_client.deploy(instance_name=to_instance_name, use_self_hosted_issuer=use_self_hosted_issuer)
 
 
-def render_upgrade_table(
+def render_clone_table(
     clone_state: "CloneState",
     bundle_path: Optional[PurePath] = None,
     parsed_cluster_id: Optional[Dict[str, str]] = None,
