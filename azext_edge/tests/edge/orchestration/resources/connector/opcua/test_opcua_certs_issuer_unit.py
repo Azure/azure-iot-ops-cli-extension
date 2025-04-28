@@ -9,6 +9,8 @@ from unittest.mock import Mock
 import pytest
 
 import responses
+from azure.core.exceptions import ResourceNotFoundError
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.commands_connector import (
     add_connector_opcua_issuer,
     remove_connector_opcua_issuer,
@@ -224,7 +226,8 @@ def test_issuer_add(
 
 
 @pytest.mark.parametrize(
-    "expected_resources_map, issuer_list_spc, issuer_list_secretsync, file_name, secret_name, expected_error",
+    "expected_resources_map, issuer_list_spc, issuer_list_secretsync,"
+    "file_name, secret_name, expected_error_type, expected_error_text",
     [
         (
             {
@@ -235,6 +238,7 @@ def test_issuer_add(
             {},
             "/fake/path/certificate1.crt",
             None,
+            ResourceNotFoundError,
             "Please enable secret sync before adding certificate.",
         ),
         # adding .crl without corresponding .der or crt
@@ -254,6 +258,7 @@ def test_issuer_add(
             ),
             "/fake/path/certificate2.crl",
             "new-secret",
+            InvalidArgumentValueError,
             "Cannot add .crl certificate2.crl without corresponding .crt or .der file.",
         ),
         # invalid secret name
@@ -274,6 +279,7 @@ def test_issuer_add(
             ),
             "/fake/path/certificate.der",
             "mock_secret",
+            InvalidArgumentValueError,
             "Secret name mock_secret is invalid. Secret name must be alphanumeric and can contain hyphens. "
             "Please provide a valid secret name via --secret-name.",
         ),
@@ -290,7 +296,8 @@ def test_issuer_add_errors(
     issuer_list_secretsync: dict,
     file_name: str,
     secret_name: str,
-    expected_error: str,
+    expected_error_type: Exception,
+    expected_error_text: str,
     mocked_responses: responses,
 ):
     file_content = b"\x00\x01\x02\x03"
@@ -376,7 +383,7 @@ def test_issuer_add_errors(
                         content_type="application/json",
                     )
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(expected_error_type) as e:
         add_connector_opcua_issuer(
             cmd=mocked_cmd,
             instance_name=instance_name,
@@ -385,8 +392,7 @@ def test_issuer_add_errors(
             secret_name=secret_name,
             overwrite_secret=True,
         )
-
-    assert expected_error in e.value.args[0]
+    assert expected_error_text in e.value.args[0]
 
 
 @pytest.mark.parametrize("include_secrets", [False, True])
@@ -673,7 +679,7 @@ def test_issuer_remove(
 
 @pytest.mark.parametrize(
     "expected_resources_map, issuer_list_spc, issuer_list_secretsync,"
-    "certificate_names, include_secrets, expected_error",
+    "certificate_names, include_secrets, expected_error_type, expected_error_text",
     [
         # no cl resources
         (
@@ -684,6 +690,7 @@ def test_issuer_remove(
             {},
             [],
             False,
+            ResourceNotFoundError,
             "No custom location resources found associated with the IoT Operations deployment.",
         ),
         # target secretsync resource not found
@@ -697,6 +704,7 @@ def test_issuer_remove(
             {},
             [],
             False,
+            ResourceNotFoundError,
             "Secretsync resource aio-opc-ua-broker-issuer-list not found.",
         ),
         # no available certificate names
@@ -714,6 +722,7 @@ def test_issuer_remove(
             ),
             ["thisshouldnotwork"],
             False,
+            InvalidArgumentValueError,
             "Please provide valid certificate name(s) to remove.",
         ),
         # no target spc resource found
@@ -737,6 +746,7 @@ def test_issuer_remove(
             ),
             ["cert.der"],
             False,
+            ResourceNotFoundError,
             "Secret Provider Class resource opc-ua-connector not found.",
         ),
     ],
@@ -751,7 +761,8 @@ def test_issuer_remove_error(
     issuer_list_secretsync: dict,
     certificate_names: list,
     include_secrets: bool,
-    expected_error: str,
+    expected_error_type: Exception,
+    expected_error_text: str,
     mocked_responses: responses,
 ):
     instance_name = generate_random_string()
@@ -781,7 +792,7 @@ def test_issuer_remove_error(
             content_type="application/json",
         )
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(expected_error_type) as e:
         remove_connector_opcua_issuer(
             cmd=mocked_cmd,
             instance_name=instance_name,
@@ -791,7 +802,7 @@ def test_issuer_remove_error(
             force=True,
             include_secrets=include_secrets,
         )
-    assert expected_error in e.value.args[0]
+    assert expected_error_text in e.value.args[0]
 
 
 @pytest.mark.parametrize(

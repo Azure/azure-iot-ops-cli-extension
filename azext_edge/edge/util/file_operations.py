@@ -10,7 +10,7 @@ import yaml
 import os
 from pathlib import PurePath
 from typing import Any, Callable, List, Optional, Union
-from azure.cli.core.azclierror import FileOperationError
+from azure.cli.core.azclierror import FileOperationError, InvalidArgumentValueError
 from knack.log import get_logger
 
 logger = get_logger(__name__)
@@ -121,7 +121,7 @@ def validate_file_extension(file_name: str, expected_exts: List[str]) -> str:
     lowercased_exts = [ext.lower() for ext in expected_exts]
     if ext.lower() not in lowercased_exts:
         exts_text = ", ".join(expected_exts)
-        raise ValueError(
+        raise InvalidArgumentValueError(
             f"Invalid file extension found for {file_name}, only {exts_text} file extensions are supported."
         )
 
