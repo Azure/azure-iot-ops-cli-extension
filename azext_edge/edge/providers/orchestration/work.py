@@ -22,8 +22,6 @@ from rich.style import Style
 from rich.table import Table
 
 from azext_edge.edge.providers.base import load_config_context
-from azext_edge.edge.providers.check.base.deployment import check_pre_deployment
-from azext_edge.edge.providers.check.common import NON_ERROR_STATUSES
 from azext_edge.edge.providers.orchestration.deployment_checks import validate_cluster_prechecks
 
 from ...util.az_client import (
@@ -171,7 +169,7 @@ class WorkManager:
             WorkCategoryKey.PRE_FLIGHT,
             WorkStepKey.ENUMERATE_PRE_FLIGHT,
             title="Enumerate pre-flight checks",
-            description=f"[bright_yellow]•[/bright_yellow] Cluster readiness" if self._cluster_checks else None,
+            description="[bright_yellow]•[/bright_yellow] Cluster readiness" if self._cluster_checks else None,
         )
 
         if self._apply_foundation:

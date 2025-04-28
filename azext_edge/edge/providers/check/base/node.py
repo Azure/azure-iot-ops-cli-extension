@@ -12,8 +12,6 @@ from kubernetes.client.models import V1Node, V1NodeList, V1StorageClassList
 from rich.padding import Padding
 from rich.table import Table
 
-from azext_edge.edge.providers.check.base.display import colorize_string
-
 from ....common import CheckTaskStatus
 from ..common import (
     AIO_SUPPORTED_ARCHITECTURES,
