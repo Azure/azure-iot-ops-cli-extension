@@ -188,6 +188,8 @@ class DataFlowEndpoints(Queryable):
             "properties": original_endpoint["properties"],
         }
 
+        import pdb; pdb.set_trace()
+
         with console.status("Working..."):
             poller = self.ops.begin_create_or_update(
                 resource_group_name=resource_group_name,
@@ -198,7 +200,7 @@ class DataFlowEndpoints(Queryable):
             return wait_for_terminal_state(poller)
 
     
-    def import_endpoint(
+    def apply(
         self,
         name: str,
         instance_name: str,
@@ -428,6 +430,7 @@ class DataFlowEndpoints(Queryable):
             DataflowEndpointType.EVENTHUB.value,
             DataflowEndpointType.EVENTGRID.value,
         ]:
+            import pdb; pdb.set_trace()
             if settings.get("tls"):
                 settings["tls"]["mode"] = DataflowEndpointModeType.ENABLED.value
             else:
@@ -441,37 +444,39 @@ class DataFlowEndpoints(Queryable):
         endpoint_type: DataflowEndpointType,
         **kwargs
     ):
-        if any(
-            kwargs["host"],
-            kwargs['storage_account_name'],
-            kwargs['eventhub_namespace'],
-            kwargs["port"]
-        ):
+        settings = properties.get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[endpoint_type], {})
+        if any([
+            kwargs.get("host"),
+            kwargs.get('storage_account_name'),
+            kwargs.get('eventhub_namespace'),
+            kwargs.get("port")
+        ]):
             host = self._get_endpoint_host(
                 endpoint_type=endpoint_type,
                 **kwargs
             )
 
-            if host and host is not properties["host"]:
-                properties["host"] = host
+            if host and host is not settings["host"]:
+                settings["host"] = host
 
-        if any(
-            kwargs["client_id"],
-            kwargs["tenant_id"],
-            kwargs["sat_audience"],
-            kwargs["x509_secret_name"],
-            kwargs["sasl_type"],
-            kwargs["at_secret_name"],
-            kwargs["no_auth"],
-        ):
+        if any([
+            kwargs.get("client_id"),
+            kwargs.get("tenant_id"),
+            kwargs.get("sat_audience"),
+            kwargs.get("x509_secret_name"),
+            kwargs.get("sasl_type"),
+            kwargs.get("at_secret_name"),
+            kwargs.get("no_auth"),
+        ]):
             self._process_authentication_type(
                 endpoint_type=endpoint_type,
-                settings=properties,
+                settings=settings,
                 **kwargs
             )
         
         self._process_endpoint_properties(
-            settings=properties,
-            host=properties["host"],
+            endpoint_type=endpoint_type,
+            settings=settings,
+            host=settings.get("host"),
             **kwargs
         )

@@ -308,8 +308,11 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops dataflow endpoint import") as context:
         context.argument(
             "file_path",
-            options_list=["--input-file", "--if"],
-            help="File path for the dataflow endpoint resource. Only JSON format is supported.",
+            options_list=["--config-file"],
+            help="Path to a config file containing resource properties in json format. The config file "
+            "should contain an object with properties compatible with the ARM representation of the resource. "
+            "The object correlates directly with 'properties:{}' of the ARM resource.",
+            arg_group="Config",
         )
     
     with self.argument_context("iot ops dataflow endpoint create") as context:
@@ -317,19 +320,19 @@ def load_iotops_arguments(self, _):
             "client_id",
             options_list=["--client-id", "--cid"],
             help="The client ID of the user assigned identity",
-            arg_group="User Assigned Identity Managed",
+            arg_group="User Assigned Managed Identity",
         )
         context.argument(
             "scope",
             options_list=["--scope"],
             help="Resource identifier (application ID URI) of the resource, affixed with the .default suffix.",
-            arg_group="User Assigned Identity Managed",
+            arg_group="User Assigned Managed Identity",
         )
         context.argument(
             "tenant_id",
             options_list=["--tenant-id", "--tid"],
             help="The tenant ID of the user assigned identity.",
-            arg_group="User Assigned Identity Managed",
+            arg_group="User Assigned Managed Identity",
         )
         context.argument(
             "no_auth",
@@ -355,7 +358,7 @@ def load_iotops_arguments(self, _):
             "audience",
             options_list=["--audience", "--aud"],
             help="Audience of the service to authenticate against.",
-            arg_group="System Assigned Identity Managed",
+            arg_group="System Assigned Managed Identity",
         )
         context.argument(
             "acks",
@@ -462,7 +465,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "max_inflight_messages",
-            options_list=["--max-inflight-messages", "--mim"],
+            options_list=["--max-inflight-msg", "--mim"],
             help="the maximum number of inflight messages that the data "
             "flow MQTT client can have.",
             type=int,
@@ -567,7 +570,7 @@ def load_iotops_arguments(self, _):
             options_list=["--host"],
             help="Host of the Fabric real-time is the "
             "'Bootstrap server' value. Can be found in event stream destination -- 'SAS Key Authentication' section. In the form "
-            "of <hostname>.servicebus.windows.net:9093",
+            "of *.servicebus.windows.net:9093",
         )
         context.argument(
             "latency",
@@ -696,7 +699,7 @@ def load_iotops_arguments(self, _):
             "sami_audience",
             options_list=["--sami-audience", "--sami-aud"],
             help="The audience of the system assigned managed identity.",
-            arg_group="System Assigned Identity Managed",
+            arg_group="System Assigned Managed Identity",
         )
         context.argument(
             "sat_audience",

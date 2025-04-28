@@ -221,12 +221,12 @@ def create_dataflow_endpoint_fabric_realtime(
     compression: Optional[str] = None,
     partition_strategy: Optional[str] = None,
     # TODO: might support MI, waiting for service confirmation
-    # client_id: Optional[str] = None,
-    # tenant_id: Optional[str] = None,
+    client_id: Optional[str] = None,
+    tenant_id: Optional[str] = None,
     sasl_type: Optional[str] = None,
-    # scope: Optional[str] = None,
+    scope: Optional[str] = None,
     secret_name: Optional[str] = None,
-    # audience: Optional[str] = None,
+    audience: Optional[str] = None,
     group_id: Optional[str] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
@@ -249,6 +249,10 @@ def create_dataflow_endpoint_fabric_realtime(
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
         "authentication_type": authentication_type,
+        "client_id": client_id,
+        "tenant_id": tenant_id,
+        "scope": scope,
+        "sami_audience": audience,
     }
 
     return DataFlowEndpoints(cmd).create(
@@ -515,6 +519,7 @@ def update_dataflow_endpoint_adx(
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
     audience: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "database_name": database_name,
@@ -525,6 +530,7 @@ def update_dataflow_endpoint_adx(
         "sami_audience": audience,
         "latency": latency,
         "message_count": message_count,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).update(
@@ -549,6 +555,7 @@ def update_dataflow_endpoint_adls(
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
     audience: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "storage_account_name": storage_account_name,
@@ -559,6 +566,7 @@ def update_dataflow_endpoint_adls(
         "sami_audience": audience,
         "latency": latency,
         "message_count": message_count,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).update(
@@ -584,6 +592,7 @@ def update_dataflow_endpoint_fabric_onelake(
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
     audience: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     
     kwargs = {
@@ -596,6 +605,7 @@ def update_dataflow_endpoint_fabric_onelake(
         "sami_audience": audience,
         "latency": latency,
         "message_count": message_count,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).update(
@@ -631,6 +641,7 @@ def update_dataflow_endpoint_eventhub(
     group_id: Optional[str] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "eventhub_namespace": eventhub_namespace,
@@ -652,6 +663,7 @@ def update_dataflow_endpoint_eventhub(
         "tls_disabled": tls_disabled,
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).update(
@@ -675,6 +687,10 @@ def update_dataflow_endpoint_fabric_realtime(
     tls_disabled: Optional[bool] = None,
     batching_disabled: Optional[bool] = None,
     copy_broker_props_disabled: Optional[bool] = None,
+    client_id: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    scope: Optional[str] = None,
+    audience: Optional[str] = None,
     acks: Optional[str] = None,
     compression: Optional[str] = None,
     partition_strategy: Optional[str] = None,
@@ -683,6 +699,7 @@ def update_dataflow_endpoint_fabric_realtime(
     group_id: Optional[str] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "host_name": host,
@@ -700,6 +717,11 @@ def update_dataflow_endpoint_fabric_realtime(
         "tls_disabled": tls_disabled,
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
+        "authentication_type": authentication_type,
+        "client_id": client_id,
+        "tenant_id": tenant_id,
+        "scope": scope,
+        "sami_audience": audience,
     }
 
     return DataFlowEndpoints(cmd).update(
@@ -737,6 +759,7 @@ def update_dataflow_endpoint_custom_kafka(
     group_id: Optional[str] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "host": host,
@@ -760,6 +783,7 @@ def update_dataflow_endpoint_custom_kafka(
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
         "no_auth": no_auth,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).update(
@@ -810,6 +834,8 @@ def update_dataflow_endpoint_aio(
     session_expiry: Optional[int] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    no_auth: Optional[bool] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "x509_secret_name": secret_name,
@@ -826,6 +852,8 @@ def update_dataflow_endpoint_aio(
         "tls_disabled": tls_disabled,
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
+        "no_auth": no_auth,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).update(
@@ -859,6 +887,7 @@ def update_dataflow_endpoint_eventgrid(
     session_expiry: Optional[int] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "client_id": client_id,
@@ -878,6 +907,7 @@ def update_dataflow_endpoint_eventgrid(
         "tls_disabled": tls_disabled,
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).update(
@@ -913,6 +943,7 @@ def update_dataflow_endpoint_custom_mqtt(
     session_expiry: Optional[int] = None,
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
+    authentication_type: Optional[str] = None,
 ) -> dict:
     kwargs = {
         "client_id": client_id,
@@ -934,6 +965,7 @@ def update_dataflow_endpoint_custom_mqtt(
         "config_map_reference": config_map_reference,
         "cloud_event_attribute": cloud_event_attribute,
         "no_auth": no_auth,
+        "authentication_type": authentication_type,
     }
 
     return DataFlowEndpoints(cmd).update(
@@ -945,14 +977,14 @@ def update_dataflow_endpoint_custom_mqtt(
     )
 
 
-def import_dataflow_endpoint(
+def apply_dataflow_endpoint(
     cmd,
     endpoint_name: str,
     instance_name: str,
     resource_group_name: str,
     file_path: str,
 ) -> dict:
-    return DataFlowEndpoints(cmd).import_endpoint(
+    return DataFlowEndpoints(cmd).apply(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
@@ -964,12 +996,14 @@ def delete_dataflow_endpoint(
     cmd,
     endpoint_name: str,
     instance_name: str,
-    resource_group_name: str
+    resource_group_name: str,
+    confirm_yes: bool = False,
 ) -> None:
     DataFlowEndpoints(cmd).delete(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
     )
 
 

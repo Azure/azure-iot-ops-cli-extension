@@ -246,6 +246,8 @@ DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
     ],
     DataflowEndpointType.FABRICREALTIME.value: [
         DataflowEndpointAuthenticationType.SASL.value,
+        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+        DataflowEndpointAuthenticationType.USERASSIGNED.value,
     ],
     DataflowEndpointType.CUSTOMKAFKA.value: [
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
@@ -284,7 +286,7 @@ DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
 
 AUTHENTICATION_TYPE_REQUIRED_PARAMS = {
     DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value: [],
-    DataflowEndpointAuthenticationType.USERASSIGNED.value: ["client_Id", "tenant_id"],
+    DataflowEndpointAuthenticationType.USERASSIGNED.value: ["client_id", "tenant_id"],
     DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value: ["audience"],
     DataflowEndpointAuthenticationType.X509.value: ["secret_name"],
     DataflowEndpointAuthenticationType.ANONYMOUS.value: [],
