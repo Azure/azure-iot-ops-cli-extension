@@ -13,7 +13,6 @@ from .helpers import combine_statuses, get_expected_status
 from azext_edge.edge.providers.check.common import (
     AIO_SUPPORTED_ARCHITECTURES,
     MIN_NODE_MEMORY,
-    MIN_NODE_STORAGE,
     MIN_NODE_VCPU,
 )
 
@@ -99,8 +98,7 @@ def test_check_pre_post(cluster_connection, post, pre):
         assert node_target["conditions"] == [
             f"info.architecture in ({','.join(AIO_SUPPORTED_ARCHITECTURES)})",
             f"condition.cpu>={MIN_NODE_VCPU}",
-            f"condition.memory>={MIN_NODE_MEMORY}",
-            f"condition.ephemeral-storage>={MIN_NODE_STORAGE}",
+            f"condition.memory>={MIN_NODE_MEMORY}"
         ]
 
         node_arch = node_target["evaluations"][0]["value"]["info.architecture"]
@@ -116,12 +114,6 @@ def test_check_pre_post(cluster_connection, post, pre):
         assert node_memory == int(parse_quantity(node_capacity["memory"]))
         assert node_target["evaluations"][2]["status"] == get_expected_status(
             node_memory >= parse_quantity(MIN_NODE_MEMORY)
-        )
-
-        node_storage = node_target["evaluations"][3]["value"]["condition.ephemeral-storage"]
-        assert node_storage == int(parse_quantity(node_capacity["ephemeral-storage"]))
-        assert node_target["evaluations"][3]["status"] == get_expected_status(
-            node_storage >= parse_quantity(MIN_NODE_STORAGE)
         )
 
         node_status = combine_statuses([cond["status"] for cond in node_target["evaluations"]])
