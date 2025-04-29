@@ -1,0 +1,67 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+
+trigger:
+  branches:
+    include:
+      - '*'
+  paths:
+    exclude:
+    - '**/*.md'
+
+pr:
+  branches:
+    include:
+      - '*'
+  paths:
+    exclude:
+    - '**/*.md'
+
+jobs:
+
+- job: 'Build'
+  displayName: 'Build wheel and sdist'
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+  - checkout: self
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.12'
+  - task: PipAuthenticate@1
+    inputs:
+      artifactFeeds: '$(ARTIFACT_FEED)'
+  - script: |
+      python -m pip install -r dev_requirements.txt
+    displayName: 'Install dev_requirements.txt'
+  - script: |
+      python setup.py sdist bdist_wheel
+    displayName: 'Build package'
+  
+
+- job: CredScan
+  displayName: 'Credential Scan'
+  pool:
+    vmImage: 'windows-latest'
+  steps:
+  - task: CredScan@3
+    inputs:
+      outputFormat: 'pre'
+      scanFolder: '$(Build.SourcesDirectory)'
+      suppressionsFile: '$(Build.SourcesDirectory)/CredScanSuppressions.json'
+
+  - task: PostAnalysis@1
+    inputs:
+      AllTools: false
+      APIScan: false
+      BinSkim: false
+      CodesignValidation: false
+      CredScan: true
+      FortifySCA: false
+      FxCop: false
+      ModernCop: false
+      PoliCheck: false
+      RoslynAnalyzers: false
+      SDLNativeRules: false
+      Semmle: false
+      TSLint: false
+      ToolLogsNotFoundAction: 'Standard'

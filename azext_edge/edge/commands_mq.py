@@ -35,7 +35,7 @@ def delete_broker(
     )
 
 
-def create_broker_listener(
+def apply_broker_listener(
     cmd,
     listener_name: str,
     instance_name: str,
@@ -44,7 +44,7 @@ def create_broker_listener(
     broker_name: str = DEFAULT_BROKER,
     **kwargs,
 ) -> dict:
-    return Brokers(cmd).listeners.create(
+    return Brokers(cmd).listeners.apply(
         name=listener_name,
         broker_name=broker_name,
         instance_name=instance_name,
@@ -164,7 +164,7 @@ def delete_broker_listener(
     )
 
 
-def create_broker_authn(
+def apply_broker_authn(
     cmd,
     authn_name: str,
     instance_name: str,
@@ -173,12 +173,45 @@ def create_broker_authn(
     broker_name: str = DEFAULT_BROKER,
     **kwargs,
 ) -> dict:
-    return Brokers(cmd).authns.create(
+    return Brokers(cmd).authns.apply(
         name=authn_name,
         broker_name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         config_file=config_file,
+        **kwargs,
+    )
+
+
+def add_broker_authn_method(
+    cmd,
+    authn_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    sat_audiences: Optional[List[str]] = None,
+    x509_client_ca_cm: Optional[str] = None,
+    x509_attrs: Optional[List[str]] = None,
+    custom_endpoint: Optional[str] = None,
+    custom_ca_cm: Optional[str] = None,
+    custom_x509_secret_ref: Optional[str] = None,
+    custom_http_headers: Optional[List[str]] = None,
+    broker_name: str = DEFAULT_BROKER,
+    show_config: Optional[bool] = None,
+    **kwargs,
+) -> dict:
+    return Brokers(cmd).authns.add_method(
+        name=authn_name,
+        broker_name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        sat_audiences=sat_audiences,
+        x509_client_ca_cm=x509_client_ca_cm,
+        x509_attrs=x509_attrs,
+        custom_endpoint=custom_endpoint,
+        custom_ca_cm=custom_ca_cm,
+        custom_x509_secret_ref=custom_x509_secret_ref,
+        custom_http_headers=custom_http_headers,
+        show_config=show_config,
         **kwargs,
     )
 
@@ -221,7 +254,7 @@ def delete_broker_authn(
     )
 
 
-def create_broker_authz(
+def apply_broker_authz(
     cmd,
     authz_name: str,
     instance_name: str,
@@ -230,7 +263,7 @@ def create_broker_authz(
     broker_name: str = DEFAULT_BROKER,
     **kwargs,
 ) -> dict:
-    return Brokers(cmd).authzs.create(
+    return Brokers(cmd).authzs.apply(
         name=authz_name,
         broker_name=broker_name,
         instance_name=instance_name,

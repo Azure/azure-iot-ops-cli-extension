@@ -9,6 +9,8 @@ from unittest.mock import Mock
 import pytest
 
 import responses
+from azure.core.exceptions import ResourceNotFoundError
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.commands_connector import (
     add_connector_opcua_trust,
     remove_connector_opcua_trust,
@@ -145,7 +147,8 @@ def test_trust_add(
 
 
 @pytest.mark.parametrize(
-    "expected_resources_map, trust_list_spc, trust_list_secretsync, file_name, secret_name, expected_error",
+    "expected_resources_map, trust_list_spc, trust_list_secretsync,"
+    "file_name, secret_name, expected_error_type, expected_error_text",
     [
         (
             {
@@ -156,6 +159,7 @@ def test_trust_add(
             {},
             "/fake/path/certificate1.crt",
             None,
+            ResourceNotFoundError,
             "Please enable secret sync before adding certificate.",
         ),
         # invalid secret name
@@ -176,6 +180,7 @@ def test_trust_add(
             ),
             "/fake/path/certificate.der",
             "mock_secret",
+            InvalidArgumentValueError,
             "Secret name mock_secret is invalid. Secret name must be alphanumeric and can contain hyphens. "
             "Please provide a valid secret name via --secret-name.",
         ),
@@ -192,7 +197,8 @@ def test_trust_add_error(
     trust_list_secretsync: dict,
     file_name: str,
     secret_name: str,
-    expected_error: str,
+    expected_error_type: Exception,
+    expected_error_text: str,
     mocked_responses: responses,
 ):
     file_content = b"\x00\x01\x02\x03"
@@ -222,7 +228,7 @@ def test_trust_add_error(
             secret_name=secret_name,
         )
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(expected_error_type) as e:
         add_connector_opcua_trust(
             cmd=mocked_cmd,
             instance_name=instance_name,
@@ -231,7 +237,7 @@ def test_trust_add_error(
             secret_name=secret_name,
             overwrite_secret=True,
         )
-    assert expected_error in e.value.args[0]
+    assert expected_error_text in e.value.args[0]
 
 
 @pytest.mark.parametrize("include_secrets", [False, True])
@@ -518,7 +524,7 @@ def test_trust_remove(
 
 @pytest.mark.parametrize(
     "expected_resources_map, trust_list_spc, trust_list_secretsync,"
-    "certificate_names, include_secrets, expected_error",
+    "certificate_names, include_secrets, expected_error_type, expected_error_text",
     [
         # no cl resources
         (
@@ -529,6 +535,7 @@ def test_trust_remove(
             {},
             [],
             False,
+            ResourceNotFoundError,
             "No custom location resources found associated with the IoT Operations deployment.",
         ),
         # target secretsync resource not found
@@ -542,6 +549,7 @@ def test_trust_remove(
             {},
             [],
             False,
+            ResourceNotFoundError,
             "Secretsync resource aio-opc-ua-broker-trust-list not found.",
         ),
         # no available certificate names
@@ -559,6 +567,7 @@ def test_trust_remove(
             ),
             ["thisshouldnotwork"],
             False,
+            InvalidArgumentValueError,
             "Please provide valid certificate name(s) to remove.",
         ),
         # no target spc resource found
@@ -582,6 +591,7 @@ def test_trust_remove(
             ),
             ["cert.der"],
             False,
+            ResourceNotFoundError,
             "Secret Provider Class resource opc-ua-connector not found.",
         ),
     ],
@@ -596,7 +606,8 @@ def test_trust_remove_error(
     trust_list_secretsync: dict,
     certificate_names: list,
     include_secrets: bool,
-    expected_error: str,
+    expected_error_type: Exception,
+    expected_error_text: str,
     mocked_responses: responses,
 ):
     instance_name = generate_random_string()
@@ -626,7 +637,7 @@ def test_trust_remove_error(
             content_type="application/json",
         )
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(expected_error_type) as e:
         remove_connector_opcua_trust(
             cmd=mocked_cmd,
             instance_name=instance_name,
@@ -636,7 +647,7 @@ def test_trust_remove_error(
             force=True,
             include_secrets=include_secrets,
         )
-    assert expected_error in e.value.args[0]
+    assert expected_error_text in e.value.args[0]
 
 
 @pytest.mark.parametrize(
