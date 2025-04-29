@@ -9,13 +9,13 @@ import json
 import re
 from enum import Enum
 from random import randint
-from typing import Callable, Dict, FrozenSet, List, NamedTuple, Optional, Tuple, Type, Union, Set
+from typing import Callable, Dict, FrozenSet, List, NamedTuple, Optional, Set, Tuple, Type, Union
 from unittest.mock import Mock
 
 import pytest
 import requests
 import responses
-from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError, AzureResponseError
+from azure.cli.core.azclierror import AzureResponseError, InvalidArgumentValueError, ValidationError
 
 from azext_edge.edge.common import (
     DEFAULT_BROKER,
@@ -34,16 +34,12 @@ from azext_edge.edge.providers.orchestration.common import (
     KubernetesDistroType,
 )
 from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET
-from azext_edge.edge.providers.orchestration.work import (
-    ClusterConnectStatus,
-    PROVISIONING_STATE_SUCCESS,
-)
-from azext_edge.edge.providers.orchestration.targets import get_default_cl_name, InstancePhase
+from azext_edge.edge.providers.orchestration.targets import InstancePhase, get_default_cl_name
+from azext_edge.edge.providers.orchestration.work import PROVISIONING_STATE_SUCCESS, ClusterConnectStatus
 from azext_edge.edge.util import assemble_nargs_to_dict
 
 from ...generators import generate_random_string, get_zeroed_subscription
 from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS
-
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 
@@ -115,9 +111,7 @@ class ServiceGenerator:
             responses.PUT,
         ]:
             if method not in omit_methods:
-                self.mocked_responses.add_callback(
-                    method=method, url=re.compile(r".*"), callback=self._handle_requests
-                )
+                self.mocked_responses.add_callback(method=method, url=re.compile(r".*"), callback=self._handle_requests)
         self._reset_call_map()
 
     def _reset_call_map(self):
@@ -368,6 +362,7 @@ def build_target_scenario(
         },
         "trust": {"userTrust": None, "settings": None},
         "enableFaultTolerance": None,
+        "enablePreCheck": None,
         "ensureLatest": None,
         "schemaRegistry": {
             "id": (
@@ -443,6 +438,7 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
             cluster_properties={"totalNodeCount": 3},
             enableFaultTolerance=True,
             trust={"userTrust": True},
+            enablePreCheck=True,
         ),
         build_target_scenario(
             cluster_properties={"connectivityStatus": "Disconnected"},
@@ -469,6 +465,9 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
             ),
             omit_http_methods=frozenset([responses.PUT]),
         ),
+        build_target_scenario(
+            enablePreCheck=True,
+        ),
     ],
 )
 def test_iot_ops_init(
@@ -476,6 +475,7 @@ def test_iot_ops_init(
     mocked_responses: responses,
     mocked_sleep: Mock,
     spy_work_displays: Dict[str, Mock],
+    mock_prechecks: Dict[str, Mock],
     target_scenario: dict,
 ):
     servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses)
@@ -496,6 +496,9 @@ def test_iot_ops_init(
     if target_scenario["ensureLatest"]:
         init_call_kwargs["ensure_latest"] = target_scenario["ensureLatest"]
 
+    if target_scenario["enablePreCheck"]:
+        init_call_kwargs["enable_precheck"] = target_scenario["enablePreCheck"]
+
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
     if exc_meta:
         exc_meta: ExceptionMeta
@@ -512,6 +515,7 @@ def test_iot_ops_init(
     }
     assert_call_map(expected_call_count_map, servgen.call_map)
     assert_init_displays(spy_work_displays, target_scenario)
+    assert_cluster_prechecks(mock_prechecks, target_scenario)
 
     # TODO - @digimaun
     if target_scenario["noProgress"]:
@@ -547,6 +551,21 @@ def assert_init_deployment_body(body_str: str, target_scenario: dict):
     if target_scenario["enableFaultTolerance"]:
         expected_advanced_config["edgeStorageAccelerator"] = {"faultToleranceEnabled": True}
     assert parameters["advancedConfig"]["value"] == expected_advanced_config
+
+
+def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: dict):
+    enable_precheck = target_scenario.get("enablePreCheck")
+    enable_fault_tolerance = target_scenario.get("enableFaultTolerance")
+
+    mock_validate_prechecks = mock_prechecks["validate_cluster_prechecks"]
+    mock_check_k8s_version = mock_prechecks["check_k8s_version"]
+    mock_check_nodes = mock_prechecks["check_nodes"]
+    mock_check_storage_classes = mock_prechecks["check_storage_classes"]
+
+    assert mock_validate_prechecks.call_count == (1 if enable_precheck else 0)
+    assert mock_check_k8s_version.call_count == (1 if enable_precheck else 0)
+    assert mock_check_nodes.call_count == (1 if enable_precheck else 0)
+    assert mock_check_storage_classes.call_count == (1 if enable_precheck and not enable_fault_tolerance else 0)
 
 
 @pytest.mark.parametrize(

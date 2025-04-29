@@ -82,7 +82,7 @@ def mock_broker_config():
 def mocked_sleep(mocker):
     patched = {
         "az_client.sleep": mocker.patch("azext_edge.edge.util.az_client.sleep", autospec=True),
-        "work.sleep": mocker.patch("azext_edge.edge.providers.orchestration.work.sleep", autospec=True)
+        "work.sleep": mocker.patch("azext_edge.edge.providers.orchestration.work.sleep", autospec=True),
     }
     yield patched
 
@@ -94,6 +94,22 @@ def spy_work_displays(mocker):
     yield {
         "render_display": mocker.spy(WorkManager, "_render_display"),
         "complete_step": mocker.spy(WorkManager, "_complete_step"),
+    }
+
+
+@pytest.fixture
+def mock_prechecks(mocker):
+    from azext_edge.edge.providers.check.base import deployment
+
+    yield {
+        "validate_cluster_prechecks": mocker.spy(deployment, "check_pre_deployment"),
+        "check_k8s_version": mocker.patch(
+            "azext_edge.edge.providers.check.base.deployment._check_k8s_version", autospec=True
+        ),
+        "check_storage_classes": mocker.patch(
+            "azext_edge.edge.providers.check.base.deployment._check_storage_classes", autospec=True
+        ),
+        "check_nodes": mocker.patch("azext_edge.edge.providers.check.base.deployment.check_nodes", autospec=True),
     }
 
 
