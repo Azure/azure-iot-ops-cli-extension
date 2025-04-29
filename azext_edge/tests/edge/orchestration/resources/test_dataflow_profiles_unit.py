@@ -216,7 +216,14 @@ def test_dataflow_profile_create(mocked_cmd, mocked_responses: responses):
     assert len(mocked_responses.calls) == 2
 
 
-def test_dataflow_profile_update(mocked_cmd, mocked_responses: responses):
+@pytest.mark.parametrize(
+    "propertiesExist",
+    [
+        True,
+        False,
+    ],
+)
+def test_dataflow_profile_update(mocked_cmd, mocked_responses: responses, propertiesExist: bool):
     profile_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -228,6 +235,8 @@ def test_dataflow_profile_update(mocked_cmd, mocked_responses: responses):
         resource_group_name=resource_group_name,
         profile_name=profile_name,
     )
+    if not propertiesExist:
+        original_profile["properties"] = {}
     mocked_responses.add(
         method=responses.GET,
         url=get_dataflow_profile_endpoint(

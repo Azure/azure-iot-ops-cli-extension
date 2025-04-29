@@ -120,7 +120,7 @@ class DataFlowProfiles(Queryable):
             logger.warning("Deleting the 'default' dataflow profile may cause disruptions.")
 
         if dataflows:
-            console.print("Deleting this dataflow profile will also delete the associated dataflows:")
+            console.print("Deleting this dataflow profile will also affect the associated dataflows:")
             for dataflow in dataflows:
                 console.print(f"\t- {dataflow['name']}")
 
