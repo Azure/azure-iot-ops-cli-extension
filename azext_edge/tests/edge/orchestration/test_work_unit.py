@@ -362,7 +362,7 @@ def build_target_scenario(
         },
         "trust": {"userTrust": None, "settings": None},
         "enableFaultTolerance": None,
-        "enablePreCheck": None,
+        "cluster_checks": None,
         "ensureLatest": None,
         "schemaRegistry": {
             "id": (
@@ -438,7 +438,7 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
             cluster_properties={"totalNodeCount": 3},
             enableFaultTolerance=True,
             trust={"userTrust": True},
-            enablePreCheck=True,
+            cluster_checks=True,
         ),
         build_target_scenario(
             cluster_properties={"connectivityStatus": "Disconnected"},
@@ -466,7 +466,7 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
             omit_http_methods=frozenset([responses.PUT]),
         ),
         build_target_scenario(
-            enablePreCheck=True,
+            cluster_checks=True,
         ),
     ],
 )
@@ -496,8 +496,8 @@ def test_iot_ops_init(
     if target_scenario["ensureLatest"]:
         init_call_kwargs["ensure_latest"] = target_scenario["ensureLatest"]
 
-    if target_scenario["enablePreCheck"]:
-        init_call_kwargs["enable_precheck"] = target_scenario["enablePreCheck"]
+    if target_scenario["cluster_checks"]:
+        init_call_kwargs["cluster_checks"] = target_scenario["cluster_checks"]
 
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
     if exc_meta:
@@ -554,7 +554,7 @@ def assert_init_deployment_body(body_str: str, target_scenario: dict):
 
 
 def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: dict):
-    enable_precheck = target_scenario.get("enablePreCheck")
+    cluster_checks = target_scenario.get("cluster_checks")
     enable_fault_tolerance = target_scenario.get("enableFaultTolerance")
 
     mock_validate_prechecks = mock_prechecks["validate_cluster_prechecks"]
@@ -562,10 +562,10 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
     mock_check_nodes = mock_prechecks["check_nodes"]
     mock_check_storage_classes = mock_prechecks["check_storage_classes"]
 
-    assert mock_validate_prechecks.call_count == (1 if enable_precheck else 0)
-    assert mock_check_k8s_version.call_count == (1 if enable_precheck else 0)
-    assert mock_check_nodes.call_count == (1 if enable_precheck else 0)
-    assert mock_check_storage_classes.call_count == (1 if enable_precheck and not enable_fault_tolerance else 0)
+    assert mock_validate_prechecks.call_count == (1 if cluster_checks else 0)
+    assert mock_check_k8s_version.call_count == (1 if cluster_checks else 0)
+    assert mock_check_nodes.call_count == (1 if cluster_checks else 0)
+    assert mock_check_storage_classes.call_count == (1 if cluster_checks and not enable_fault_tolerance else 0)
 
 
 @pytest.mark.parametrize(

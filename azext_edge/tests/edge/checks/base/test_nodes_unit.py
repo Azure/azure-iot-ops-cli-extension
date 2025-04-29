@@ -86,6 +86,7 @@ def mocked_node_client(mocked_client, mocker, request):
 )
 def test_check_nodes(mocked_node_client):
     from azext_edge.edge.providers.check.base.node import check_nodes
+
     # no point in checking as_list is false since it just affects check manager
     result = check_nodes(as_list=True)
     assert result
@@ -143,7 +144,10 @@ def test_check_nodes(mocked_node_client):
         memory_status = parse_quantity(memory) >= parse_quantity(MIN_NODE_MEMORY)
         assert result_node["conditions"][2] == f"condition.memory>={MIN_NODE_MEMORY}"
         assert result_node["evaluations"][2]["status"] == bool_to_status(memory_status)
-        assert result_node["evaluations"][2]["value"]["condition.memory"] == parse_quantity(memory)
+        assert (
+            result_node["evaluations"][2]["value"]["condition.memory"]
+            == f"{int(parse_quantity(memory) / DISPLAY_BYTES_PER_GIGABYTE)}G"
+        )
 
         overall_status = all([arch_status, cpu_status, memory_status])
         assert result_node["status"] == bool_to_status(overall_status)
