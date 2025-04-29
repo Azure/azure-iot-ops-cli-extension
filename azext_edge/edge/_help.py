@@ -1973,16 +1973,19 @@ def load_iotops_help():
         - name: Clone an instance to a desired connected cluster.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID
-        - name: Similar to the prior example, but splitting and serially applying asset related sub-deployments.
+        - name: Clone an instance to a desired connected cluster, but split and serially apply asset related sub-deployments.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --mode linked
         - name: Clone an instance to a local directory.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-dir .
-        - name: Similar to the prior example, but storing and linking to asset related sub-deployments.
+        - name: Clone an instance to a local directory, but split and link to asset related sub-deployments.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-dir /my/content --mode linked
         - name: Hide progress displays and skip prompts.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-dir . --no-progress -y
+        - name: Clone an instance to a desired connected cluster and store the definition to a local directory in the same operation.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --to-dir .
     """

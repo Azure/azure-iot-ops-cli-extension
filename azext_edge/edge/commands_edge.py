@@ -423,7 +423,6 @@ def clone_instance(
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
     force: Optional[bool] = None,
-    **kwargs,
 ) -> dict:
     from .providers.orchestration.clone import clone_instance
 
