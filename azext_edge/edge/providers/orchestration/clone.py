@@ -411,6 +411,12 @@ class InstanceRestore:
                     resource_group_name=parsed_uami_id["resource_group"], resource_name=parsed_uami_id["name"]
                 )
             )
+            # We need an efficient way to federate credentials that are in scope.
+            # First we need to build context of prior federation. We enumerate existing credentials
+            # for every uami that is associated with the instance to build a dict of issuer to service account pairs
+            # and separately a map of service accounts in play. We then iterate through desired/target issuer
+            # to service account pairs to see if they are already present, where if not AND the service account
+            # is in play we federate with best attempt.
             cred_map = {}
             cluster_svc_acct_map = {}
             expected_creds = [(oidc_issuer, SERVICE_ACCOUNT_SECRETSYNC), (oidc_issuer, SERVICE_ACCOUNT_DATAFLOW)]
