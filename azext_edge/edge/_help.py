@@ -1964,8 +1964,8 @@ def load_iotops_help():
         short-summary: Clone an instance.
         long-summary: |
           Clone analyzes an instance then reproduces it in an infrastructure-as-code
-          manner via ARM templates. The output of clone may be applied directly to another connected cluster
-          or, be saved locally to use at another time (potentially with modification).
+          manner via ARM templates. The output of clone may be applied directly to another connected cluster,
+          and/or be saved locally to use at another time (potentially with modification).
 
           The clone definition being a generic ARM template, can be deployed via existing tools.
           See https://aka.ms/aio-clone-deploy for details.
@@ -1976,19 +1976,16 @@ def load_iotops_help():
         - name: Clone an instance to a desired connected cluster.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID
-        - name: Clone an instance to a desired connected cluster, but split and serially apply asset related sub-deployments.
+        - name: Clone an instance to a desired connected cluster, but splitting and serially applying asset related sub-deployments.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --mode linked
         - name: Clone an instance to a local directory.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-dir .
-        - name: Clone an instance to a local directory, but split and link to asset related sub-deployments.
+        - name: Clone an instance to a local directory, but splitting and linking to asset related sub-deployments.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-dir /my/content --mode linked
         - name: Hide progress displays and skip prompts.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-dir . --no-progress -y
-        - name: Clone an instance to a desired connected cluster and store the definition to a local directory in the same operation.
-          text: >
-            az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --to-dir .
     """

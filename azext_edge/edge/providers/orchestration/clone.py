@@ -720,7 +720,7 @@ class CloneManager:
     def _enumerate_resources(self):
         enumerated_map: dict = {}
 
-        def __enumerator(rcontainer_map: Dict[str, ResourceContainer]):
+        def _enumerator(rcontainer_map: Dict[str, ResourceContainer]):
             for resource in rcontainer_map:
                 target_rcontainer = rcontainer_map[resource]
                 if isinstance(target_rcontainer, ResourceContainer):
@@ -735,9 +735,9 @@ class CloneManager:
                     items.append(parsed_id)
                     enumerated_map[key] = items
                 if isinstance(target_rcontainer, DeploymentContainer):
-                    __enumerator(target_rcontainer.rcontainer_map)
+                    _enumerator(target_rcontainer.rcontainer_map)
 
-        __enumerator(self.rcontainer_map)
+        _enumerator(self.rcontainer_map)
         return enumerated_map
 
     def _build_parameters(self):
@@ -1176,17 +1176,22 @@ class CloneManager:
 
 class TemplateContent:
     def __init__(self, content: dict):
-        self.content = content
+        self._content = content
         self.linked_type_map = {
             "microsoft.deviceregistry/assets": 0,
             "microsoft.deviceregistry/assetendpointprofiles": 0,
         }
         self.copy_params = {"clusterName", "customLocationName", "resourceSlug", "instanceName"}
 
+    @property
+    def content(self) -> dict:
+        return deepcopy(self._content)
+
     def get_split_content(self) -> List[dict]:
-        result = [self.content]
-        parameters = self.content.get("parameters", {})
-        resources: Dict[str, Dict[str, dict]] = self.content.get("resources", {})
+        content = self.content
+        result = [content]
+        parameters = content.get("parameters", {})
+        resources: Dict[str, Dict[str, dict]] = content.get("resources", {})
         for key in list(resources.keys()):
             if resources[key].get("type", "").lower() != "microsoft.resources/deployments":
                 continue
@@ -1204,9 +1209,10 @@ class TemplateContent:
             del resources[key]
         return result
 
-    def _get_deployments(self, root_dir: str, linked_base_uri: Optional[str] = None) -> List[Tuple[str, dict]]:
+    def _get_deployments(self, root_dir: str, linked_base_uri: Optional[str] = None) -> Tuple[dict, List[Tuple[str, dict]]]:
+        content = self.content
         result = []
-        resources: Dict[str, Dict[str, dict]] = self.content.get("resources", {})
+        resources: Dict[str, Dict[str, dict]] = content.get("resources", {})
         if linked_base_uri and root_dir:
             sep = "" if linked_base_uri.endswith("/") else "/"
             root_dir = f"{linked_base_uri}{sep}{root_dir}"
@@ -1231,7 +1237,7 @@ class TemplateContent:
             result.append((linked_name, resources[key]["properties"]["template"]))
             del resources[key]["properties"]["template"]
 
-        return result
+        return content, result
 
     def write(
         self,
@@ -1243,11 +1249,13 @@ class TemplateContent:
         if not bundle_path:
             return
 
+        content = None
         deployments = None
         if template_mode == TemplateMode.LINKED.value:
-            deployments = self._get_deployments(bundle_path.name, linked_base_uri)
+            content, deployments = self._get_deployments(bundle_path.name, linked_base_uri)
 
-        template_str = dumps(self.content, indent=2)
+        content = content or self.content
+        template_str = dumps(content, indent=2)
         with open(file=f"{bundle_path}.{file_ext}", mode="w", encoding="utf8") as template_file:
             template_file.write(template_str)
 
