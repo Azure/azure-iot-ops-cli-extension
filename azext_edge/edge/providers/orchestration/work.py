@@ -41,7 +41,7 @@ from .common import (
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from .resource_map import IoTOperationsResourceMap
 from .resources.custom_locations import CustomLocations
-from .targets import InitTargets, InstancePhase
+from .targets import InitTargets, InstancePhase, get_merged_acs_config
 
 logger = get_logger(__name__)
 
@@ -58,7 +58,6 @@ class WorkCategoryKey(IntEnum):
 class WorkStepKey(IntEnum):
     REG_RP = 1
     ENUMERATE_PRE_FLIGHT = 2
-    CLUSTER_CHECKS = 3
     WHAT_IF_ENABLEMENT = 4
     DEPLOY_ENABLEMENT = 5
     DEPLOY_INSTANCE = 6
@@ -321,6 +320,8 @@ class WorkManager:
     def execute_ops_init(
         self,
         apply_foundation: bool = True,
+        cluster_checks: bool = False,
+        context_name: Optional[str] = None,
         show_progress: bool = True,
         pre_flight: bool = True,
         **kwargs,
@@ -329,6 +330,8 @@ class WorkManager:
         self._work_id = uuid4().hex
         self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
         self._apply_foundation = apply_foundation
+        self._cluster_checks = cluster_checks
+        self._context_name = context_name
         self._pre_flight = pre_flight
 
         self._completed_steps: Dict[int, int] = {}
@@ -344,10 +347,6 @@ class WorkManager:
         self._warnings: List[str] = []
         self._ops_ext_dependencies = None
         self._ops_ext = None
-
-        # cluster checks opt-in
-        self._cluster_checks = kwargs.get("enable_precheck", False)
-        self._context_name = kwargs.get("context_name", None)
 
         self._build_display()
 
@@ -365,7 +364,6 @@ class WorkManager:
             self._process_connected_cluster()
 
             # Pre-Flight workflow
-            enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
             if self._pre_flight:
                 # WorkStepKey.REG_RP
                 self._render_display(category=WorkCategoryKey.PRE_FLIGHT, active_step=WorkStepKey.REG_RP)
@@ -384,14 +382,13 @@ class WorkManager:
                     )
                 if self._cluster_checks:
                     load_config_context(context_name=self._context_name)
-                    # TODO - sync with digimaun re:enablement_parameters
-                    # Only pass acs_config if not enable_fault_tolerance
                     validate_cluster_prechecks(
-                        # TODO - parse entire enablement content inside validate_cluster_prechecks?
                         acs_config=(
-                            enablement_content["resources"]["container_storage_extension"]["properties"][
-                                "configurationSettings"
-                            ]
+                            get_merged_acs_config(
+                                enable_fault_tolerance=self._targets.enable_fault_tolerance,
+                                acs_config=self._targets.acs_config,
+                            )
+                            # Only pass acs_config if not enable_fault_tolerance
                             if not self._targets.enable_fault_tolerance
                             else None
                         )
@@ -407,8 +404,7 @@ class WorkManager:
                 self._render_display(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
                 )
-                # TODO sync with digimaun re:enablement_parameters
-                # enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
+                enablement_content, enablement_parameters = self._targets.get_ops_enablement_template()
                 self._deploy_template(
                     content=enablement_content,
                     parameters=enablement_parameters,

@@ -206,19 +206,16 @@ class InitTargets:
             template_blueprint=TEMPLATE_BLUEPRINT_ENABLEMENT,
         )
 
-        base_acs_config = get_default_acs_config(enable_fault_tolerance=self.enable_fault_tolerance)
-        if self.acs_config:
-            base_acs_config.update(self.acs_config)
-        template.content["resources"]["container_storage_extension"]["properties"][
-            "configurationSettings"
-        ] = base_acs_config
+        acs_config = get_merged_acs_config(
+            enable_fault_tolerance=self.enable_fault_tolerance,
+            acs_config=self.acs_config,
+        )
+        template.content["resources"]["container_storage_extension"]["properties"]["configurationSettings"] = acs_config
 
         base_ssc_config = get_default_ssc_config()
         if self.ssc_config:
             base_ssc_config.update(self.ssc_config)
-        template.content["resources"]["secret_store_extension"]["properties"][
-            "configurationSettings"
-        ] = base_ssc_config
+        template.content["resources"]["secret_store_extension"]["properties"]["configurationSettings"] = base_ssc_config
 
         for var_attr in [
             VarAttr(value=self.acs_version, template_key="VERSIONS", moniker="containerStorage"),
@@ -383,9 +380,7 @@ class InitTargets:
         result = {"source": source}
         if self.trust_settings:
             target_settings: Dict[str, str] = {}
-            trust_bundle_def = TEMPLATE_BLUEPRINT_ENABLEMENT.get_type_definition("_1.TrustBundleSettings")[
-                "properties"
-            ]
+            trust_bundle_def = TEMPLATE_BLUEPRINT_ENABLEMENT.get_type_definition("_1.TrustBundleSettings")["properties"]
             allowed_issuer_kinds: Optional[List[str]] = trust_bundle_def.get(TRUST_ISSUER_KIND_KEY, {}).get(
                 "allowedValues"
             )
@@ -428,6 +423,15 @@ def get_default_acs_config(enable_fault_tolerance: bool = False) -> Dict[str, st
         config["acstorConfiguration.properties.diskMountPoint"] = "/mnt"
 
     return config
+
+
+def get_merged_acs_config(
+    enable_fault_tolerance: bool = False, acs_config: Optional[Dict[str, str]] = None
+) -> Dict[str, str]:
+    merged_acs_config = get_default_acs_config(enable_fault_tolerance=enable_fault_tolerance)
+    if acs_config:
+        merged_acs_config.update(acs_config)
+    return merged_acs_config
 
 
 def get_default_ssc_config() -> Dict[str, str]:

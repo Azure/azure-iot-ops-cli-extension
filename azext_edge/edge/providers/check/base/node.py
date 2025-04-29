@@ -77,7 +77,6 @@ def _generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Tabl
         ("Architecture", "right"),
         ("CPU (vCPU)", "right"),
         ("Memory (GB)", "right"),
-        # ("Storage (GB)", "right"),
     ]:
         table.add_column(column_name, justify=f"{justify}")
     table.add_row(
@@ -136,6 +135,8 @@ def _generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Tabl
                     row_status = CheckTaskStatus.error
                     cell_status = CheckTaskStatus.error
                 actual = int(actual)
+                if condition == "condition.memory":
+                    actual = f"{int(actual / DISPLAY_BYTES_PER_GIGABYTE)}G"
 
             check_manager.add_target_conditions(target_name=node_target, conditions=[condition_str])
             check_manager.add_target_eval(target_name=node_target, status=cell_status.value, value={condition: actual})

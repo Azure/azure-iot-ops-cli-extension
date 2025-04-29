@@ -102,7 +102,7 @@ def init(
     resource_group_name: str,
     context_name: Optional[str] = None,
     enable_fault_tolerance: Optional[bool] = None,
-    enable_precheck: Optional[bool] = None,
+    cluster_checks: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     user_trust: Optional[bool] = None,
@@ -122,16 +122,15 @@ def init(
 
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
-    if enable_precheck:
-        kwargs.update({"enable_precheck": enable_precheck, "context_name": context_name})
-
     work_manager = WorkManager(cmd)
     result_payload = work_manager.execute_ops_init(
         show_progress=not no_progress,
         pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
+        context_name=context_name,
         resource_group_name=resource_group_name,
         enable_fault_tolerance=enable_fault_tolerance,
+        cluster_checks=cluster_checks,
         user_trust=user_trust,
         acs_config=acs_config,
         acs_version=acs_version,

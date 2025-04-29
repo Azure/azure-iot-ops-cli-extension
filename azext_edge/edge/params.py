@@ -535,10 +535,10 @@ def load_iotops_arguments(self, _):
             )
             # Cluster Precheck opt-in
             context.argument(
-                "enable_precheck",
-                options_list=["--enable-precheck"],
+                "cluster_checks",
+                options_list=["--cluster-checks"],
                 arg_type=get_three_state_flag(),
-                help="Enforce a check for minimum node requirements to deploy IoT Operations.",
+                help="Enforce a check for minimum cluster requirements before bootstrapping.",
             )
 
             # Schema Registry

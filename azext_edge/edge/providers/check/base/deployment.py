@@ -27,25 +27,29 @@ logger = get_logger(__name__)
 
 def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
     pre_checks = check_pre_deployment(acs_config=acs_config)
-    errors = []
+    errors = {}
     for check in pre_checks:
-        if check["status"] not in NON_ERROR_STATUSES:
-            for target in check["targets"]:
-                # for all prechecks, namespace is currently _all_
-                for namespace in check["targets"][target]:
-                    # this is a specific target (e.g. "cluster/nodes/k3d-k3s-default-server-0")
-                    for idx, check_eval in enumerate(check["targets"][target][namespace]["evaluations"]):
-                        if check_eval["status"] not in NON_ERROR_STATUSES:
-                            # TODO - relies on same order and count of conditions / evaluations
-                            expected_condition = check["targets"][target][namespace]["conditions"][idx]
-                            # TODO - formatting
-                            errors.append(
-                                f"Target '{target}' failed condition:\n"
-                                f"\tExpected: '{expected_condition}', Actual: '{check_eval['value']}'"
-                            )
+        for target in check["targets"]:
+            # for all prechecks, namespace is currently _all_
+            for namespace in check["targets"][target]:
+                # this is a specific target (e.g. "cluster/nodes/k3d-k3s-default-server-0")
+                for idx, check_eval in enumerate(check["targets"][target][namespace]["evaluations"]):
+                    if check_eval["status"] not in NON_ERROR_STATUSES:
+                        # TODO - relies on same order and count of conditions / evaluations
+                        expected_condition = check["targets"][target][namespace]["conditions"][idx]
+                        if not errors.get(target):
+                            errors[target] = []
+                        errors[target].append(f"Expected: '{expected_condition}', Actual: '{check_eval['value']}'")
 
     if errors:
-        raise ValidationError("Cluster readiness pre-checks failed:\n\n" + "\n".join(errors))
+        error_str = ""
+        for target in errors:
+            if errors[target]:
+                error_str += f"\tTarget '{target}':\n"
+                for error in errors[target]:
+                    error_str += f"\t\t{error}\n"
+
+        raise ValidationError("Cluster readiness pre-checks failed:\n" + error_str)
 
 
 def check_pre_deployment(as_list: bool = False, **kwargs) -> List[dict]:
@@ -165,7 +169,6 @@ def _check_storage_classes(acs_config: dict, as_list: bool = False) -> Dict[str,
 
     expected_classes = acs_config.get("feature.diskStorageClass", [])
     check_manager = CheckManager(check_name="evalStorageClasses", check_desc="Evaluate storage classes")
-    # padding = (0, 0, 0, 8)
     target = "cluster/storage-classes"
     check_manager.add_target(
         target_name=target,
@@ -183,17 +186,11 @@ def _check_storage_classes(acs_config: dict, as_list: bool = False) -> Dict[str,
             status=CheckTaskStatus.error.value,
             value=api_error_text,
         )
-        # check_manager.add_display(
-        #     target_name=target,
-        #     display=Padding(api_error_text, (0, 0, 0, 8)),
-        # )
     else:
         if not storage_classes or not storage_classes.items:
-            # target_display = Padding("No storage classes available", padding)
             check_manager.add_target_eval(
                 target_name=target, status=CheckTaskStatus.error.value, value="No storage classes available"
             )
-            # check_manager.add_display(target_name=target, display=target_display)
             return check_manager.as_dict()
 
         check_manager.add_target_eval(
@@ -206,15 +203,6 @@ def _check_storage_classes(acs_config: dict, as_list: bool = False) -> Dict[str,
         storage_class_names = [sc.metadata.name for sc in storage_classes.items]
         matches = [sc for sc in storage_class_names if sc in expected_class_names]
         storage_status = CheckTaskStatus.success if len(matches) else CheckTaskStatus.error
-
-        # check_manager.add_display(
-        #     target_name=target,
-        #     display=Padding(
-        #         f"Expected classes: {colorize_string(expected_class_names)}, configured: {colorize_string(storage_class_names, storage_status.color)}",
-        #         padding,
-        #     ),
-        # )
-
         check_manager.add_target_eval(
             target_name=target,
             status=storage_status.value,
