@@ -1209,7 +1209,9 @@ class TemplateContent:
             del resources[key]
         return result
 
-    def _get_deployments(self, root_dir: str, linked_base_uri: Optional[str] = None) -> Tuple[dict, List[Tuple[str, dict]]]:
+    def _get_deployments(
+        self, root_dir: str, linked_base_uri: Optional[str] = None
+    ) -> Tuple[dict, List[Tuple[str, dict]]]:
         content = self.content
         result = []
         resources: Dict[str, Dict[str, dict]] = content.get("resources", {})
