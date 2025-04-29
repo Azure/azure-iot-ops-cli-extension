@@ -1965,7 +1965,7 @@ def load_iotops_help():
         long-summary: |
           Clone analyzes an instance then reproduces it in an infrastructure-as-code
           manner via ARM templates. The output of clone may be applied directly to another connected cluster,
-          and/or be saved locally to use at another time (potentially with modification).
+          and/or saved locally to use at another time (potentially with modification).
 
           The clone definition being a generic ARM template, can be deployed via existing tools.
           See https://aka.ms/aio-clone-deploy for details.

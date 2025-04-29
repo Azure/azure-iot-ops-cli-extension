@@ -4,6 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+# TODO: @digimaun - Re-organize this test file to be more modular.
+
 import json
 import math
 import re
@@ -1321,6 +1323,9 @@ EXPECTED_ORD_MIN_RESOURCE_MAP = {
 
 
 class CloneAssertor:
+    """
+    Assert content correctness.
+    """
     def __init__(self, clone_scenario: CloneScenario):
         self.clone_scenario = clone_scenario
         self.resource_configs = clone_scenario.resource_configs
@@ -1416,6 +1421,10 @@ class CloneAssertor:
             assert component_config == resources[key], f"Root resource mismatch for {key}"
 
     def _handle_component_conversion(self, component_config: dict, conversion_map_key: str) -> dict:
+        """
+        This method is responsible for taking resources returned from APIs and converting them to the expected format.
+        It does generally via callback strategy, where are arranged in the EXPECTED_ORD_MIN_RESOURCE_MAP.
+        """
         component_meta: dict = EXPECTED_ORD_MIN_RESOURCE_MAP[conversion_map_key]
         component_replacements = component_meta.get("replacements")
         if component_replacements:

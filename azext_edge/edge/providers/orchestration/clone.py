@@ -37,6 +37,8 @@ from ...util.az_client import (
 )
 from ...util.id_tools import is_valid_resource_id, parse_resource_id
 from .common import (
+    CLONE_INSTANCE_VERS_MAX,
+    CLONE_INSTANCE_VERS_MIN,
     CONTRIBUTOR_ROLE_ID,
     CUSTOM_LOCATIONS_API_VERSION,
     EXTENSION_TYPE_ACS,
@@ -44,9 +46,11 @@ from .common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
-    CLONE_INSTANCE_VERS_MIN,
-    CLONE_INSTANCE_VERS_MAX,
+)
+from .common import (
     CloneSummaryMode as SummaryMode,
+)
+from .common import (
     CloneTemplateMode as TemplateMode,
 )
 from .connected_cluster import ConnectedCluster
@@ -168,6 +172,10 @@ def get_ops_extension_name(extension_names: List[str]) -> Optional[str]:
 
 
 class DeploymentContainer:
+    """
+    An abstraction for an ARM deployment resource, which deploys a set of resources.
+    """
+
     def __init__(
         self,
         name: str,
@@ -344,6 +352,11 @@ class ResourceContainer:
 
 
 class InstanceRestore:
+    """
+    Responsible for deploying the cloned instance template to a target cluster.
+    This class handles federation of credentials if they exist on the model instance.
+    """
+
     def __init__(
         self,
         cmd,
@@ -475,6 +488,7 @@ class InstanceRestore:
 
         with DEFAULT_CONSOLE.status("Preparing replication...") as console:
             self._handle_federation(use_self_hosted_issuer)
+            # TODO: Show warnings if they exist from federation
 
             for i in range(total_pages):
                 status = f"Replicating {deployment_name} {i+1}/{total_pages}"
@@ -495,6 +509,7 @@ class InstanceRestore:
 
         DEFAULT_CONSOLE.print()
 
+    # TODO: re-use with work module
     def _get_deployment_link(self, deployment_name: str) -> str:
         return (
             "https://portal.azure.com/#blade/HubsExtension/DeploymentDetailsBlade/id/"
@@ -656,6 +671,9 @@ class CloneState:
 
 
 class CloneManager:
+    """
+    Encompasses the components for analyzing an instance and preparing it for cloning.
+    """
     def __init__(
         self,
         cmd,
@@ -684,6 +702,10 @@ class CloneManager:
         self.active_deployment: Dict[StateResourceKey, List[str]] = {}
 
     def analyze_cluster(self, force: Optional[bool] = None) -> "CloneState":
+        """
+        This method analyzes the connected cluster and prepares the resources for cloning.
+        Ensure compatibility with the instance version and build the necessary parameters and metadata.
+        """
         with Progress(
             SpinnerColumn("star"),
             *Progress.get_default_columns(),
@@ -862,6 +884,7 @@ class CloneManager:
         custom_location["properties"]["clusterExtensionIds"] = cl_extension_ids
         custom_location["properties"]["displayName"] = TEMPLATE_EXPRESSION_MAP["customLocationName"]
 
+        # Custom location needs to be treated as a root resource.
         self._add_resource(
             key=StateResourceKey.CL,
             api_version=CUSTOM_LOCATIONS_API_VERSION,
@@ -888,6 +911,7 @@ class CloneManager:
             ),
         }
         parsed_sr_id = parse_resource_id(self.instance_record["properties"]["schemaRegistryRef"]["resourceId"])
+        # Providing resource_group means a separate deployment to that resource group.
         self._add_deployment(
             key=StateResourceKey.ROLE_ASSIGNMENT,
             api_version="2022-04-01",
@@ -1044,6 +1068,7 @@ class CloneManager:
             parameters=nested_params,
         )
 
+        # TODO: Should this not wait on AEP?
         assets = self.get_resources_of_type(resource_type="microsoft.deviceregistry/assets")
         if assets and asset_endpoints:
             self._add_deployment(
@@ -1113,7 +1138,7 @@ class CloneManager:
             identity[rid] = {}
             self.instance_identities.append(rid)
 
-    def add_deployment_by_key(self, key: StateResourceKey) -> Tuple[str, str]:
+    def _add_deployment_by_key(self, key: StateResourceKey) -> Tuple[str, str]:
         deployments_by_key = self.active_deployment.get(key, [])
         symbolic_name = f"{key.value}s_{len(deployments_by_key)+1}"
         deployment_name = f"concat(parameters('resourceSlug'), '_{symbolic_name}')"
@@ -1138,7 +1163,7 @@ class CloneManager:
             )
 
             for chunk in chunked_list_data:
-                symbolic_name, deployment_name = self.add_deployment_by_key(key)
+                symbolic_name, deployment_name = self._add_deployment_by_key(key)
 
                 deployment_container = DeploymentContainer(
                     name=f"[{deployment_name}]",
@@ -1152,6 +1177,7 @@ class CloneManager:
                     api_version=api_version,
                     data_iter=chunk,
                 )
+                # Root deployments have root resources, which may be deployments, which in turn deploy resources
                 self.rcontainer_map[symbolic_name] = deployment_container
 
     def _add_resource(
@@ -1175,6 +1201,10 @@ class CloneManager:
 
 
 class TemplateContent:
+    """
+    Manages application of template content.
+    """
+
     def __init__(self, content: dict):
         self._content = content
         self.linked_type_map = {
@@ -1188,6 +1218,10 @@ class TemplateContent:
         return deepcopy(self._content)
 
     def get_split_content(self) -> List[dict]:
+        """
+        Used with the instance restore client. The root template and template for each
+        nested deployment (in consideration) gets separated and added to a queue to be deployed serially.
+        """
         content = self.content
         result = [content]
         parameters = content.get("parameters", {})
@@ -1212,6 +1246,11 @@ class TemplateContent:
     def _get_deployments(
         self, root_dir: str, linked_base_uri: Optional[str] = None
     ) -> Tuple[dict, List[Tuple[str, dict]]]:
+        """
+        Used when writing to disk in linked mode. The template for each nested deployment (in consideration) gets
+        separated and the nested deployment template reference is updated to templateLink using either relativePath
+        or uri when linked_base_uri is provided.
+        """
         content = self.content
         result = []
         resources: Dict[str, Dict[str, dict]] = content.get("resources", {})
@@ -1261,6 +1300,7 @@ class TemplateContent:
         with open(file=f"{bundle_path}.{file_ext}", mode="w", encoding="utf8") as template_file:
             template_file.write(template_str)
 
+        # This is where assets_1.json, assetendpointprofiles_1.json, etc will be written.
         if deployments:
             Path(bundle_path).mkdir(exist_ok=True)
             for deployment in deployments:
