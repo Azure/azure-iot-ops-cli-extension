@@ -812,7 +812,7 @@ def test_clone_manager(
         "clusterName": {"value": parsed_cluster_id["name"]},
         "instanceName": {"value": to_instance_name},
     }
-    assert deploy_body_payload["properties"]["template"] == deploy_body_payload["properties"]["template"]
+    assert deploy_body_payload["properties"]["template"] == content
 
     write_to = ["my", "clone", "path"]
     target_path = PurePath(*write_to)
@@ -956,7 +956,7 @@ def test_clone_scale(
         "clusterName": {"value": parsed_cluster_id["name"]},
         "instanceName": {"value": to_instance_name},
     }
-    assert deploy_body_payload["properties"]["template"] == deploy_body_payload["properties"]["template"]
+    assert deploy_body_payload["properties"]["template"] == content
 
     write_to = ["my", "clone", "path"]
     target_path = PurePath(*write_to)
@@ -1045,7 +1045,7 @@ def test_clone_deploy(
     if to_instance_name:
         expected_deploy_params["instanceName"] = {"value": to_instance_name}
     assert deploy_body_payload["properties"]["parameters"] == expected_deploy_params
-    assert deploy_body_payload["properties"]["template"] == deploy_body_payload["properties"]["template"]
+    assert deploy_body_payload["properties"]["template"]
 
 
 @pytest.mark.parametrize("linked_base_uri", [None, f"https://{generate_uuid()}.test"])
