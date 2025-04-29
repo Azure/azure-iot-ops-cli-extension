@@ -7,6 +7,7 @@
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional
 
+from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from rich.padding import Padding
@@ -14,14 +15,37 @@ from rich.padding import Padding
 from ....common import CheckTaskStatus, ListableEnum
 from ....providers.edge_api import EdgeResourceApi
 from ...base import client
-from ..common import CoreServiceResourceKinds, ResourceOutputDetailLevel
+from ..common import NON_ERROR_STATUSES, CoreServiceResourceKinds, ResourceOutputDetailLevel
 from .check_manager import CheckManager
-from .node import check_nodes, check_storage_classes
+from .node import check_nodes
 from .resource import enumerate_ops_service_resources
 from .user_strings import UNABLE_TO_DETERMINE_VERSION_MSG
 
 logger = get_logger(__name__)
 # TODO: unit test
+
+
+def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
+    pre_checks = check_pre_deployment(acs_config=acs_config)
+    errors = []
+    for check in pre_checks:
+        if check["status"] not in NON_ERROR_STATUSES:
+            for target in check["targets"]:
+                # for all prechecks, namespace is currently _all_
+                for namespace in check["targets"][target]:
+                    # this is a specific target (e.g. "cluster/nodes/k3d-k3s-default-server-0")
+                    for idx, check_eval in enumerate(check["targets"][target][namespace]["evaluations"]):
+                        if check_eval["status"] not in NON_ERROR_STATUSES:
+                            # TODO - relies on same order and count of conditions / evaluations
+                            expected_condition = check["targets"][target][namespace]["conditions"][idx]
+                            # TODO - formatting
+                            errors.append(
+                                f"Target '{target}' failed condition:\n"
+                                f"\tExpected: '{expected_condition}', Actual: '{check_eval['value']}'"
+                            )
+
+    if errors:
+        raise ValidationError("Cluster readiness pre-checks failed:\n\n" + "\n".join(errors))
 
 
 def check_pre_deployment(as_list: bool = False, **kwargs) -> List[dict]:
@@ -36,7 +60,7 @@ def check_pre_deployment(as_list: bool = False, **kwargs) -> List[dict]:
     if kwargs.get("acs_config"):
         desired_checks.update(
             {
-                "checkStorageClasses": partial(check_storage_classes, as_list=as_list, **kwargs),
+                "checkStorageClasses": partial(_check_storage_classes, as_list=as_list, **kwargs),
             }
         )
     for c in desired_checks:
@@ -73,10 +97,7 @@ def check_post_deployment(
         if resource == CoreServiceResourceKinds.RUNTIME_RESOURCE and not resource_kinds:
             append_resource = True
         elif (
-            resource
-            and lowercase_api_resources
-            and resource.value in lowercase_api_resources
-            and should_check_resource
+            resource and lowercase_api_resources and resource.value in lowercase_api_resources and should_check_resource
         ):
             append_resource = True
 
@@ -134,6 +155,70 @@ def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
         check_manager.add_display(
             target_name=target_k8s_version,
             display=Padding(k8s_semver_text, (0, 0, 0, 8)),
+        )
+
+    return check_manager.as_dict(as_list)
+
+
+def _check_storage_classes(acs_config: dict, as_list: bool = False) -> Dict[str, Any]:
+    from kubernetes.client.models import V1StorageClassList
+
+    expected_classes = acs_config.get("feature.diskStorageClass", [])
+    check_manager = CheckManager(check_name="evalStorageClasses", check_desc="Evaluate storage classes")
+    # padding = (0, 0, 0, 8)
+    target = "cluster/storage-classes"
+    check_manager.add_target(
+        target_name=target,
+        conditions=["len(cluster/storage-classes)>=1", f"contains(cluster/storage-classes, any({expected_classes}))"],
+    )
+
+    try:
+        storage_client = client.StorageV1Api()
+        storage_classes: V1StorageClassList = storage_client.list_storage_class()
+    except ApiException as ae:
+        logger.debug(str(ae))
+        api_error_text = "Unable to fetch storage classes"
+        check_manager.add_target_eval(
+            target_name=target,
+            status=CheckTaskStatus.error.value,
+            value=api_error_text,
+        )
+        # check_manager.add_display(
+        #     target_name=target,
+        #     display=Padding(api_error_text, (0, 0, 0, 8)),
+        # )
+    else:
+        if not storage_classes or not storage_classes.items:
+            # target_display = Padding("No storage classes available", padding)
+            check_manager.add_target_eval(
+                target_name=target, status=CheckTaskStatus.error.value, value="No storage classes available"
+            )
+            # check_manager.add_display(target_name=target, display=target_display)
+            return check_manager.as_dict()
+
+        check_manager.add_target_eval(
+            target_name=target,
+            status=CheckTaskStatus.success.value,
+            value={"len(cluster/storage-classes)": len(storage_classes.items)},
+        )
+
+        expected_class_names = expected_classes.split(",")
+        storage_class_names = [sc.metadata.name for sc in storage_classes.items]
+        matches = [sc for sc in storage_class_names if sc in expected_class_names]
+        storage_status = CheckTaskStatus.success if len(matches) else CheckTaskStatus.error
+
+        # check_manager.add_display(
+        #     target_name=target,
+        #     display=Padding(
+        #         f"Expected classes: {colorize_string(expected_class_names)}, configured: {colorize_string(storage_class_names, storage_status.color)}",
+        #         padding,
+        #     ),
+        # )
+
+        check_manager.add_target_eval(
+            target_name=target,
+            status=storage_status.value,
+            value=",".join(storage_class_names),
         )
 
     return check_manager.as_dict(as_list)

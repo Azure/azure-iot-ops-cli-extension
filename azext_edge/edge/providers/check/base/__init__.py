@@ -7,7 +7,7 @@
 from .check_manager import CheckManager
 from .deployment import check_pre_deployment, check_post_deployment
 from .display import add_display_and_eval, display_as_list
-from .node import check_nodes, check_storage_classes
+from .node import check_nodes
 from .pod import evaluate_pod_health
 from .resource import (
     enumerate_ops_service_resources,
@@ -30,7 +30,6 @@ __all__ = [
     "add_display_and_eval",
     "CheckManager",
     "check_nodes",
-    "check_storage_classes",
     "check_post_deployment",
     "check_pre_deployment",
     "display_as_list",

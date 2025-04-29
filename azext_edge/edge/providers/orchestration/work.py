@@ -22,7 +22,7 @@ from rich.style import Style
 from rich.table import Table
 
 from azext_edge.edge.providers.base import load_config_context
-from azext_edge.edge.providers.orchestration.deployment_checks import validate_cluster_prechecks
+from azext_edge.edge.providers.check.base.deployment import validate_cluster_prechecks
 
 from ...util.az_client import (
     REGISTRY_PREVIEW_API_VERSION,
@@ -387,7 +387,7 @@ class WorkManager:
                     # TODO - sync with digimaun re:enablement_parameters
                     # Only pass acs_config if not enable_fault_tolerance
                     validate_cluster_prechecks(
-                        # TODO - parse content inside validate_cluster_prechecks?
+                        # TODO - parse entire enablement content inside validate_cluster_prechecks?
                         acs_config=(
                             enablement_content["resources"]["container_storage_extension"]["properties"][
                                 "configurationSettings"

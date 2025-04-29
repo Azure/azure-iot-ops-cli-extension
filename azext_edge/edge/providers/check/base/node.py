@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
-from kubernetes.client.models import V1Node, V1NodeList, V1StorageClassList
+from kubernetes.client.models import V1Node, V1NodeList
 from rich.padding import Padding
 from rich.table import Table
 
@@ -24,70 +24,6 @@ from .check_manager import CheckManager
 from .user_strings import NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
 
 logger = get_logger(__name__)
-
-
-def check_storage_classes(acs_config: dict, as_list: bool = False) -> Dict[str, Any]:
-    from ...base import client
-
-    expected_classes = acs_config.get("feature.diskStorageClass", [])
-    check_manager = CheckManager(check_name="evalStorageClasses", check_desc="Evaluate storage classes")
-    # padding = (0, 0, 0, 8)
-    target = "cluster/storage-classes"
-    check_manager.add_target(
-        target_name=target,
-        conditions=["len(cluster/storage-classes)>=1", f"contains(cluster/storage-classes, any({expected_classes}))"],
-    )
-
-    try:
-        storage_client = client.StorageV1Api()
-        storage_classes: V1StorageClassList = storage_client.list_storage_class()
-    except ApiException as ae:
-        logger.debug(str(ae))
-        api_error_text = "Unable to fetch storage classes"
-        check_manager.add_target_eval(
-            target_name=target,
-            status=CheckTaskStatus.error.value,
-            value=api_error_text,
-        )
-        # check_manager.add_display(
-        #     target_name=target,
-        #     display=Padding(api_error_text, (0, 0, 0, 8)),
-        # )
-    else:
-        if not storage_classes or not storage_classes.items:
-            # target_display = Padding("No storage classes available", padding)
-            check_manager.add_target_eval(
-                target_name=target, status=CheckTaskStatus.error.value, value="No storage classes available"
-            )
-            # check_manager.add_display(target_name=target, display=target_display)
-            return check_manager.as_dict()
-
-        check_manager.add_target_eval(
-            target_name=target,
-            status=CheckTaskStatus.success.value,
-            value={"len(cluster/storage-classes)": len(storage_classes.items)},
-        )
-
-        expected_class_names = expected_classes.split(",")
-        storage_class_names = [sc.metadata.name for sc in storage_classes.items]
-        matches = [sc for sc in storage_class_names if sc in expected_class_names]
-        storage_status = CheckTaskStatus.success if len(matches) else CheckTaskStatus.error
-
-        # check_manager.add_display(
-        #     target_name=target,
-        #     display=Padding(
-        #         f"Expected classes: {colorize_string(expected_class_names)}, configured: {colorize_string(storage_class_names, storage_status.color)}",
-        #         padding,
-        #     ),
-        # )
-
-        check_manager.add_target_eval(
-            target_name=target,
-            status=storage_status.value,
-            value=",".join(storage_class_names),
-        )
-
-    return check_manager.as_dict(as_list)
 
 
 def check_nodes(as_list: bool = False) -> Dict[str, Any]:
