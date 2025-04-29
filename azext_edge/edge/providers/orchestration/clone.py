@@ -44,6 +44,10 @@ from .common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
+    CLONE_INSTANCE_VERS_MIN,
+    CLONE_INSTANCE_VERS_MAX,
+    CloneSummaryMode as SummaryMode,
+    CloneTemplateMode as TemplateMode,
 )
 from .connected_cluster import ConnectedCluster
 from .resources import Instances
@@ -62,22 +66,9 @@ logger = get_logger(__name__)
 
 DEFAULT_CONSOLE = Console()
 
-COMPAT_INSTANCE_VERS_MIN = "1.0.34"
-COMPAT_INSTANCE_VERS_MAX = "1.2.0"
-
 
 DEPLOYMENT_CHUNK_LEN = 800
 DEPLOYMENT_DATA_SIZE_KB = 1024
-
-
-class SummaryMode(Enum):
-    SIMPLE = "simple"
-    DETAILED = "detailed"
-
-
-class TemplateMode(Enum):
-    NESTED = "nested"
-    LINKED = "linked"
 
 
 class StateResourceKey(Enum):
@@ -316,7 +307,7 @@ class ResourceContainer:
             self.resource_state["extendedLocation"]["name"] = TEMPLATE_EXPRESSION_MAP["customLocationId"]
 
     def _apply_nested_name(self):
-        def __extract_suffix(path: str) -> str:
+        def _extract_suffix(path: str) -> str:
             return "/" + path.partition("/")[2]
 
         if "id" in self.resource_state:
@@ -328,7 +319,7 @@ class ResourceContainer:
                     target_name += f"/{test[f'child_name_{i}']}"
             self.resource_state["name"] = target_name
             if test["type"].lower() == "instances":
-                suffix = __extract_suffix(target_name)
+                suffix = _extract_suffix(target_name)
                 if suffix == "/":
                     self.resource_state["name"] = TEMPLATE_EXPRESSION_MAP["instanceName"]
                 else:
@@ -699,7 +690,6 @@ class CloneManager:
             self.version_guru.ensure_compat(force)
 
             self._build_parameters()
-            self._build_variables()
             self._build_metadata()
 
             self._analyze_extensions()
@@ -779,9 +769,6 @@ class CloneManager:
                 ),
             )
         )
-
-    def _build_variables(self):
-        pass
 
     def _build_metadata(self):
         self.metadata_map["opsCliVersion"] = CLI_VERSION
@@ -1402,14 +1389,14 @@ class VersionGuru:
         if force:
             return
 
-        if self.parsed_version >= parse_version(COMPAT_INSTANCE_VERS_MIN) and self.parsed_version < parse_version(
-            COMPAT_INSTANCE_VERS_MAX
+        if self.parsed_version >= parse_version(CLONE_INSTANCE_VERS_MIN) and self.parsed_version < parse_version(
+            CLONE_INSTANCE_VERS_MAX
         ):
             return
 
         raise ValidationError(
             f"This clone client is not compatible with the target instance version {self.version}.\n"
-            f"The instance must be >={COMPAT_INSTANCE_VERS_MIN},<{COMPAT_INSTANCE_VERS_MAX}.\n"
+            f"The instance must be >={CLONE_INSTANCE_VERS_MIN},<{CLONE_INSTANCE_VERS_MAX}.\n"
             "While not recommended, you can use --force flag to continue anyway."
         )
 

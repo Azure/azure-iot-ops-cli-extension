@@ -27,11 +27,12 @@ from .providers.edge_api import (
     DeviceRegistryResourceKinds,
     MqResourceKinds,
 )
-from .providers.orchestration.clone import SummaryMode, TemplateMode
 from .providers.orchestration.common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     TRUST_SETTING_KEYS,
     X509_ISSUER_REF_KEYS,
+    CloneSummaryMode,
+    CloneTemplateMode,
     ConfigSyncModeType,
     IdentityUsageType,
     KubernetesDistroType,
@@ -1033,7 +1034,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "summary_mode",
             options_list=["--summary"],
-            arg_type=get_enum_type(SummaryMode, default=SummaryMode.SIMPLE.value),
+            arg_type=get_enum_type(CloneSummaryMode, default=CloneSummaryMode.SIMPLE.value),
             help="Deployment summary option.",
         )
         context.argument(
@@ -1055,7 +1056,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "template_mode",
             options_list=["--mode"],
-            arg_type=get_enum_type(TemplateMode, default=TemplateMode.NESTED.value),
+            arg_type=get_enum_type(CloneTemplateMode, default=CloneTemplateMode.NESTED.value),
             help="When mode 'nested' is used, sub-deployments will be self-contained in the root deployment. "
             "When mode 'linked' is used, asset related sub-deployments will be split and stored as separate files "
             "linked by the root deployment.",
@@ -1064,7 +1065,8 @@ def load_iotops_arguments(self, _):
             "linked_base_uri",
             options_list=["--base-uri"],
             help="Base URI to use for template links. If not provided a relative path strategy will be used. "
-            "Relevant when --mode is set to 'linked'.",
+            "Relevant when --mode is set to 'linked'. "
+            "Example: 'https://raw.githubusercontent.com/myorg/myproject/main/myclones/'.",
             arg_group="Local Target",
         )
         context.argument(

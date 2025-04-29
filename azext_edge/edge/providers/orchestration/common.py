@@ -151,3 +151,18 @@ class TlsKeyRotation(Enum):
 
 
 X509_ISSUER_REF_KEYS = ["group", "kind", "name"]
+
+
+# Clone
+CLONE_INSTANCE_VERS_MAX = "1.2.0"
+CLONE_INSTANCE_VERS_MIN = "1.0.34"
+
+
+class CloneSummaryMode(Enum):
+    SIMPLE = "simple"
+    DETAILED = "detailed"
+
+
+class CloneTemplateMode(Enum):
+    NESTED = "nested"
+    LINKED = "linked"

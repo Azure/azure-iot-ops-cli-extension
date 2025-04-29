@@ -18,9 +18,9 @@ from azext_edge.edge.providers.edge_api import (
     TRUSTMANAGER_API_V1,
 )
 
-from .providers.orchestration.clone import (
-    COMPAT_INSTANCE_VERS_MAX,
-    COMPAT_INSTANCE_VERS_MIN,
+from .providers.orchestration.common import (
+    CLONE_INSTANCE_VERS_MAX,
+    CLONE_INSTANCE_VERS_MIN,
 )
 from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
@@ -1967,7 +1967,10 @@ def load_iotops_help():
           manner via ARM templates. The output of clone may be applied directly to another connected cluster
           or, be saved locally to use at another time (potentially with modification).
 
-          Clone is compatible with the following instance version range: {COMPAT_INSTANCE_VERS_MIN}>=,<{COMPAT_INSTANCE_VERS_MAX}
+          The clone definition being a generic ARM template, can be deployed via existing tools.
+          See https://aka.ms/aio-clone-deploy for details.
+
+          Clone is compatible with the following instance version range: {CLONE_INSTANCE_VERS_MIN}>=,<{CLONE_INSTANCE_VERS_MAX}
 
         examples:
         - name: Clone an instance to a desired connected cluster.
