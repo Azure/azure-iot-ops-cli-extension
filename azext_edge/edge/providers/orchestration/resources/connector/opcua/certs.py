@@ -15,10 +15,9 @@ from knack.log import get_logger
 from rich.console import Console
 import yaml
 
-from ......util.x509 import decode_der_certificate
-
 from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS
 from ...instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
+from .....orchestration.upgrade2 import calculate_config_delta
 from ......util.file_operations import read_file_content, validate_file_extension
 from ......util.queryable import Queryable
 from ......util.az_client import (
@@ -27,6 +26,7 @@ from ......util.az_client import (
     wait_for_terminal_state,
 )
 from ......util.common import should_continue_prompt
+from ......util.x509 import decode_der_certificate
 
 logger = get_logger(__name__)
 
@@ -456,7 +456,7 @@ class OpcUACerts(Queryable):
         private_key_name = os.path.splitext(private_key_name)[0]
 
         if public_key_name != private_key_name:
-            raise ValueError(
+            raise InvalidArgumentValueError(
                 f"Public key file name {public_key_name} and private key file name {private_key_name} must match."
             )
 
@@ -690,7 +690,7 @@ class OpcUACerts(Queryable):
         application_cert: str,
         subject_name: str,
         application_uri: str,
-    ):
+    ) -> dict:
         # get the opcua extension
         extensions = self.resource_map.connected_cluster.get_extensions_by_type(EXTENSION_TYPE_OPS)
         aio_extension = extensions.get(EXTENSION_TYPE_OPS)
@@ -700,26 +700,34 @@ class OpcUACerts(Queryable):
         properties = aio_extension["properties"]
 
         config_settings: dict = properties.get("configurationSettings", {})
-        if not config_settings:
-            properties["configurationSettings"] = {}
 
-        config_settings["connectors.values.securityPki.applicationCert"] = application_cert
-        config_settings["connectors.values.securityPki.subjectName"] = subject_name
-        config_settings["connectors.values.securityPki.applicationUri"] = application_uri
+        desired_config_settings = config_settings.copy()
+        desired_config_settings["connectors.values.securityPki.applicationCert"] = application_cert
+        desired_config_settings["connectors.values.securityPki.subjectName"] = subject_name
+        desired_config_settings["connectors.values.securityPki.applicationUri"] = application_uri
 
-        aio_extension["properties"]["configurationSettings"] = config_settings
-
-        status_text = (
-            f"Updating IoT Operations extension to use {application_cert}..."
-            if application_cert
-            else "Rollback client certificate from IoT Operations extension..."
+        delta = calculate_config_delta(
+            current=config_settings,
+            target=desired_config_settings,
         )
 
-        with console.status(status_text):
-            return self.resource_map.connected_cluster.update_aio_extension(
-                extension_name=aio_extension["name"],
-                properties=properties,
+        if delta:
+            status_text = (
+                f"Updating IoT Operations extension to use {application_cert}..."
+                if application_cert
+                else "Rollback client certificate from IoT Operations extension..."
             )
+
+            with console.status(status_text):
+                return self.resource_map.connected_cluster.update_aio_extension(
+                    extension_name=aio_extension["name"],
+                    properties={
+                        "configurationSettings": delta,
+                    },
+                )
+        else:
+            logger.warning("No changes detected in IoT Operations extension. Skipping update...")
+            return {}
 
     def _remove_secrets_from_spc(self, secrets: List[str], spc: dict, resource_group: str) -> dict:
         spc_properties = spc.get("properties", {})
@@ -834,7 +842,9 @@ class OpcUACerts(Queryable):
         certificate = decode_der_certificate(der_data)
 
         if not certificate:
-            raise ValueError("Error decoding DER certificate. Please make sure the certificate is valid.")
+            raise InvalidArgumentValueError(
+                "Error decoding DER certificate. Please make sure the certificate is valid."
+            )
 
         # Get the subject name and application uri from the certificate
         # and validate it with the provided values
@@ -860,7 +870,7 @@ class OpcUACerts(Queryable):
         for value, name in [(cert_subject_name, "subject name"), (cert_application_uri, "application URI")]:
             # if value is empty or space, raise error
             if not value or value.isspace():
-                raise ValueError(
+                raise InvalidArgumentValueError(
                     f"Not able to extract {name} from the certificate. "
                     f"Please provide the correct {name} in certificate via --public-key-file."
                 )
@@ -877,14 +887,14 @@ class OpcUACerts(Queryable):
         cert_subject_name, cert_application_uri = self._extract_cert_content(public_key_file)
 
         if subject_name and subject_name != cert_subject_name:
-            raise ValueError(
+            raise InvalidArgumentValueError(
                 f"Given --subject-name {subject_name} does not match certificate subject name {cert_subject_name}. "
                 "Please provide the correct subject name via --subject-name or correct certificate using "
                 "--public-key-file."
             )
 
         if application_uri and application_uri != cert_application_uri:
-            raise ValueError(
+            raise InvalidArgumentValueError(
                 f"Given --application-uri {application_uri} does not match certificate application URI "
                 f"{cert_application_uri}. Please provide the correct application URI via --application-uri "
                 "or correct certificate using --public-key-file."

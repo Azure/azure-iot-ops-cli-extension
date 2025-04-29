@@ -113,10 +113,10 @@ def test_check_latest_flow(mocker, spy_version_check_helpers, reset_state):
     spy_check_conn.reset_mock()
     spy_get_latest.reset_mock()
     patch_requests_get(mocker, "999.999.999")
-    expected_base_text = "Update available. Install with 'az extension --upgrade --name azure-iot-ops'."
+    expected_base_text = "Update available. Install with 'az extension add --upgrade --name azure-iot-ops'."
     expected_decorated_text = (
         ":dim_button: [italic][yellow]Update available[/yellow]. "
-        "Install with '[green]az extension --upgrade --name azure-iot-ops[/green]'."
+        "Install with '[green]az extension add --upgrade --name azure-iot-ops[/green]'."
     )
     reset_version_config()
     check_latest(cli_ctx=cli_ctx)
