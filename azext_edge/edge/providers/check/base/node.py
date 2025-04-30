@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
@@ -14,6 +14,7 @@ from rich.table import Table
 
 from ....common import CheckTaskStatus
 from ..common import (
+    ACSA_MIN_NODE_KERNEL_VERSION,
     AIO_SUPPORTED_ARCHITECTURES,
     COLOR_STR_FORMAT,
     DISPLAY_BYTES_PER_GIGABYTE,
@@ -26,7 +27,7 @@ from .user_strings import NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
 logger = get_logger(__name__)
 
 
-def check_nodes(as_list: bool = False) -> Dict[str, Any]:
+def check_nodes(as_list: bool = False, check_acsa_node_version: Optional[bool] = False) -> Dict[str, Any]:
     from ...base import client
 
     check_manager = CheckManager(check_name="evalClusterNodes", check_desc="Evaluate cluster nodes")
@@ -59,7 +60,9 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
         check_manager.add_target_eval(
             target_name=target, status=CheckTaskStatus.success.value, value={"len(cluster/nodes)": len(nodes.items)}
         )
-        table = _generate_node_table(check_manager, nodes)
+        table = _generate_node_table(
+            check_manager=check_manager, nodes=nodes, check_acsa_node_version=check_acsa_node_version
+        )
 
         check_manager.add_display(target_name=target, display=Padding("Node Resources", padding))
         check_manager.add_display(target_name=target, display=Padding(table, padding))
@@ -67,14 +70,18 @@ def check_nodes(as_list: bool = False) -> Dict[str, Any]:
     return check_manager.as_dict(as_list)
 
 
-def _generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Table:
+def _generate_node_table(
+    check_manager: CheckManager, nodes: V1NodeList, check_acsa_node_version: Optional[bool] = False
+) -> Table:
     from kubernetes.utils import parse_quantity
+    from packaging import version
 
     # prep table
     table = Table(show_header=True, header_style="bold", show_lines=True, caption_justify="left")
     for column_name, justify in [
         ("Name", "left"),
         ("Architecture", "right"),
+        *([("Kernel version", "right")] if check_acsa_node_version else []),
         ("CPU (vCPU)", "right"),
         ("Memory (GB)", "right"),
     ]:
@@ -85,6 +92,7 @@ def _generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Tabl
             for value in [
                 "Minimum requirements",
                 ", ".join(AIO_SUPPORTED_ARCHITECTURES),
+                *([ACSA_MIN_NODE_KERNEL_VERSION] if check_acsa_node_version else []),
                 MIN_NODE_VCPU,
                 MIN_NODE_MEMORY[:-1],
             ]
@@ -102,11 +110,23 @@ def _generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Tabl
         # build node table row
         row_status = CheckTaskStatus.success
         row_cells = []
-        for condition, expected, actual in [
+        table_tuples = [
             (
                 "info.architecture",
                 AIO_SUPPORTED_ARCHITECTURES,
                 node.status.node_info.architecture,
+            ),
+            # Only check kernel version for ACS
+            *(
+                [
+                    (
+                        "info.kernel_version",
+                        ACSA_MIN_NODE_KERNEL_VERSION,
+                        node.status.node_info.kernel_version,
+                    )
+                ]
+                if check_acsa_node_version
+                else []
             ),
             (
                 "condition.cpu",
@@ -118,22 +138,26 @@ def _generate_node_table(check_manager: CheckManager, nodes: V1NodeList) -> Tabl
                 MIN_NODE_MEMORY,
                 parse_quantity(node.status.capacity.get("memory", 0)),
             ),
-        ]:
+        ]
+        for condition, expected, actual in table_tuples:
             # determine strings, expected, status
             condition_str = f"{condition}>={expected}"
             displayed = actual
             cell_status = CheckTaskStatus.success
-            if isinstance(expected, list):
+            if condition == "info.architecture":
                 condition_str = f"{condition} in ({','.join(expected)})"
                 if actual not in expected:
-                    row_status = CheckTaskStatus.error
-                    cell_status = CheckTaskStatus.error
+                    row_status = cell_status = CheckTaskStatus.error
+            elif condition == "info.kernel_version":
+                # ACSA node version does not fit semver - 6.8.0-1026-azure
+                if version.parse(actual.split("-")[0]) < version.parse(expected):
+                    row_status = cell_status = CheckTaskStatus.error
+
             else:
                 displayed = _get_display_number(displayed, expected)
                 expected = parse_quantity(expected)
                 if actual < expected:
-                    row_status = CheckTaskStatus.error
-                    cell_status = CheckTaskStatus.error
+                    row_status = cell_status = CheckTaskStatus.error
                 actual = int(actual)
                 if condition == "condition.memory":
                     actual = f"{int(actual / DISPLAY_BYTES_PER_GIGABYTE)}G"

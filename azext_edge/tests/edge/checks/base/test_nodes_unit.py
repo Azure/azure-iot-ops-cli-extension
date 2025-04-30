@@ -9,6 +9,7 @@ from kubernetes.client.models import V1Node, V1NodeList, V1NodeStatus, V1ObjectM
 from kubernetes.utils import parse_quantity
 
 from azext_edge.edge.providers.check.common import (
+    ACSA_MIN_NODE_KERNEL_VERSION,
     AIO_SUPPORTED_ARCHITECTURES,
     DISPLAY_BYTES_PER_GIGABYTE,
     MIN_NODE_MEMORY,
@@ -26,7 +27,7 @@ def mocked_node_client(mocked_client, mocker, request):
     for node_params in params:
         arch = node_params.pop("architecture", generate_random_string(size=5))
         # Too annoying to make a valid one
-        node_info = mocker.Mock(architecture=arch)
+        node_info = mocker.Mock(architecture=arch, kernel_version=node_params.pop("kernel_version", "0.0.0"))
         node = V1Node(
             metadata=V1ObjectMeta(name=generate_random_string()),
             status=V1NodeStatus(capacity=node_params, node_info=node_info),
@@ -84,11 +85,19 @@ def mocked_node_client(mocked_client, mocker, request):
     ids=["none", "min reqs", "memory", "cpu", "architecture", "multi-node"],
     indirect=True,
 )
-def test_check_nodes(mocked_node_client):
+@pytest.mark.parametrize(
+    "check_acsa_node_version",
+    [
+        True,
+        False,
+    ],
+    ids=["acs", "non-acs"],
+)
+def test_check_nodes(mocked_node_client, check_acsa_node_version):
     from azext_edge.edge.providers.check.base.node import check_nodes
 
     # no point in checking as_list is false since it just affects check manager
-    result = check_nodes(as_list=True)
+    result = check_nodes(as_list=True, check_acsa_node_version=check_acsa_node_version)
     assert result
     assert result["name"] == "evalClusterNodes"
 
@@ -104,16 +113,28 @@ def test_check_nodes(mocked_node_client):
     assert len(result["targets"]) == (len(nodes) + 1)
     table = result["targets"]["cluster/nodes"]["_all_"]["displays"][-1].renderable
     headers = [col.header for col in table.columns]
-    assert headers == ["Name", "Architecture", "CPU (vCPU)", "Memory (GB)"]
+    expected_headers = ["Name", "Architecture"]
+    if check_acsa_node_version:
+        expected_headers.append("Kernel version")
+    expected_headers.extend(["CPU (vCPU)", "Memory (GB)"])
+    assert headers == expected_headers
 
     # the generator is weird
     unpacked_cols = [list(col.cells) for col in table.columns]
 
+    min_req_row = 0
+    arch_row = 1
+    kernel_row = 2
+    cpu_row = 3 if check_acsa_node_version else 2
+    memory_row = 4 if check_acsa_node_version else 3
+
     # expected row
-    assert "Minimum requirements" in unpacked_cols[0][0]
-    assert ", ".join(AIO_SUPPORTED_ARCHITECTURES) in unpacked_cols[1][0]
-    assert MIN_NODE_VCPU in unpacked_cols[2][0]
-    assert MIN_NODE_MEMORY[:-1] in unpacked_cols[3][0]
+    assert "Minimum requirements" in unpacked_cols[min_req_row][0]
+    assert ", ".join(AIO_SUPPORTED_ARCHITECTURES) in unpacked_cols[arch_row][0]
+    if check_acsa_node_version:
+        assert ACSA_MIN_NODE_KERNEL_VERSION in unpacked_cols[kernel_row][0]
+    assert MIN_NODE_VCPU in unpacked_cols[cpu_row][0]
+    assert MIN_NODE_MEMORY[:-1] in unpacked_cols[memory_row][0]
 
     for i in range(len(nodes)):
         node = nodes[i]
@@ -123,33 +144,55 @@ def test_check_nodes(mocked_node_client):
         assert name in unpacked_cols[0][i]
         arch = node.status.node_info.architecture
         assert arch in unpacked_cols[1][i]
+        if check_acsa_node_version:
+            kernel_version = node.status.node_info.kernel_version
+            assert kernel_version in unpacked_cols[2][i]
         cpu = node.status.capacity.get("cpu", 0)
-        assert str(cpu) in unpacked_cols[2][i]
+        assert str(cpu) in unpacked_cols[-2][i]
         memory = node.status.capacity.get("memory", 0)
-        assert "%.2f" % (parse_quantity(memory) / DISPLAY_BYTES_PER_GIGABYTE) in unpacked_cols[3][i]
+        assert "%.2f" % (parse_quantity(memory) / DISPLAY_BYTES_PER_GIGABYTE) in unpacked_cols[-1][i]
 
         assert f"cluster/nodes/{name}" in result["targets"]
         result_node = result["targets"][f"cluster/nodes/{name}"]["_all_"]
 
+        # expected columns
+        arch_col = 0
+        acsa_col = 1
+        cpu_col = 2 if check_acsa_node_version else 1
+        memory_col = 3 if check_acsa_node_version else 2
+
         arch_status = arch in AIO_SUPPORTED_ARCHITECTURES
-        assert result_node["conditions"][0] == f"info.architecture in ({','.join(AIO_SUPPORTED_ARCHITECTURES)})"
-        assert result_node["evaluations"][0]["status"] == bool_to_status(arch_status)
-        assert result_node["evaluations"][0]["value"]["info.architecture"] == arch
+        assert result_node["conditions"][arch_col] == f"info.architecture in ({','.join(AIO_SUPPORTED_ARCHITECTURES)})"
+        assert result_node["evaluations"][arch_col]["status"] == bool_to_status(arch_status)
+        assert result_node["evaluations"][arch_col]["value"]["info.architecture"] == arch
 
         cpu_status = cpu >= int(MIN_NODE_VCPU)
-        assert result_node["conditions"][1] == f"condition.cpu>={MIN_NODE_VCPU}"
-        assert result_node["evaluations"][1]["status"] == bool_to_status(cpu_status)
-        assert result_node["evaluations"][1]["value"]["condition.cpu"] == cpu
+        assert result_node["conditions"][cpu_col] == f"condition.cpu>={MIN_NODE_VCPU}"
+        assert result_node["evaluations"][cpu_col]["status"] == bool_to_status(cpu_status)
+        assert result_node["evaluations"][cpu_col]["value"]["condition.cpu"] == cpu
+
+        kernel_status = False
+        if check_acsa_node_version:
+            kernel_status = node.status.node_info.kernel_version >= ACSA_MIN_NODE_KERNEL_VERSION
+            assert result_node["conditions"][acsa_col] == f"info.kernel_version>={ACSA_MIN_NODE_KERNEL_VERSION}"
+            assert result_node["evaluations"][acsa_col]["status"] == bool_to_status(kernel_status)
+            assert (
+                result_node["evaluations"][acsa_col]["value"]["info.kernel_version"]
+                == node.status.node_info.kernel_version
+            )
 
         memory_status = parse_quantity(memory) >= parse_quantity(MIN_NODE_MEMORY)
-        assert result_node["conditions"][2] == f"condition.memory>={MIN_NODE_MEMORY}"
-        assert result_node["evaluations"][2]["status"] == bool_to_status(memory_status)
+        memory_col = 3 if check_acsa_node_version else 2
+        assert result_node["conditions"][memory_col] == f"condition.memory>={MIN_NODE_MEMORY}"
+        assert result_node["evaluations"][memory_col]["status"] == bool_to_status(memory_status)
         assert (
-            result_node["evaluations"][2]["value"]["condition.memory"]
+            result_node["evaluations"][memory_col]["value"]["condition.memory"]
             == f"{int(parse_quantity(memory) / DISPLAY_BYTES_PER_GIGABYTE)}G"
         )
 
-        overall_status = all([arch_status, cpu_status, memory_status])
+        overall_status = all(
+            [arch_status, cpu_status, *([kernel_status] if check_acsa_node_version else []), memory_status]
+        )
         assert result_node["status"] == bool_to_status(overall_status)
 
 

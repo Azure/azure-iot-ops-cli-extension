@@ -30,9 +30,7 @@ def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
     errors = {}
     for check in pre_checks:
         for target in check["targets"]:
-            # for all prechecks, namespace is currently _all_
-            for namespace in check["targets"][target]:
-                # this is a specific target (e.g. "cluster/nodes/k3d-k3s-default-server-0")
+            for namespace in check["targets"][target]:  # for all prechecks, namespace is currently _all_
                 for idx, check_eval in enumerate(check["targets"][target][namespace]["evaluations"]):
                     if check_eval["status"] not in NON_ERROR_STATUSES:
                         # TODO - relies on same order and count of conditions / evaluations
@@ -44,10 +42,9 @@ def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
     if errors:
         error_str = ""
         for target in errors:
-            if errors[target]:
-                error_str += f"\tTarget '{target}':\n"
-                for error in errors[target]:
-                    error_str += f"\t\t{error}\n"
+            error_str += f"\tTarget '{target}':\n"
+            for error in errors[target]:
+                error_str += f"\t\t{error}\n"
 
         raise ValidationError("Cluster readiness pre-checks failed:\n" + error_str)
 
@@ -55,16 +52,17 @@ def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
 def check_pre_deployment(as_list: bool = False, **kwargs) -> List[dict]:
     result = []
     desired_checks = {}
+    acs_config = kwargs.get("acs_config")
     desired_checks.update(
         {
             "checkK8sVersion": partial(_check_k8s_version, as_list=as_list),
-            "checkNodes": partial(check_nodes, as_list=as_list),
+            "checkNodes": partial(check_nodes, as_list=as_list, check_acsa_node_version=bool(acs_config)),
         }
     )
-    if kwargs.get("acs_config"):
+    if acs_config:
         desired_checks.update(
             {
-                "checkStorageClasses": partial(_check_storage_classes, as_list=as_list, **kwargs),
+                "checkStorageClasses": partial(_check_storage_classes, acs_config=acs_config, as_list=as_list),
             }
         )
     for c in desired_checks:
