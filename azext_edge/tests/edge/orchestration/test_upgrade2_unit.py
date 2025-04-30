@@ -336,6 +336,16 @@ class UpgradeScenario:
             {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "1.2.3"}}},
         ),
         (
+            UpgradeScenario("Patch ops extension due to ops_version override dev version string variant.")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
+            .set_user_kwargs(ops_version="1.1.0-main.20250425.8"),
+            {
+                EXTENSION_TYPE_OPS: {
+                    "properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "1.1.0-main.20250425.8"}
+                }
+            },
+        ),
+        (
             UpgradeScenario("Patch ops extension due to ops_train override.").set_user_kwargs(ops_train="stablez"),
             {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "releaseTrain": "stablez"}}},
         ),
