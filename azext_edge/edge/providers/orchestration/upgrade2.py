@@ -22,6 +22,7 @@ from rich.progress import (
 from rich.table import Table, box
 
 from ...util import parse_kvp_nargs, should_continue_prompt
+from ...util.machinery import scoped_semver_import
 from .common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     EXTENSION_TYPE_OPS,
@@ -34,12 +35,6 @@ from .targets import InitTargets
 logger = get_logger(__name__)
 
 DEFAULT_CONSOLE = Console()
-
-
-def scoped_semver_import():
-    from semver.version import Version
-
-    return Version
 
 
 def upgrade_ops_instance(
