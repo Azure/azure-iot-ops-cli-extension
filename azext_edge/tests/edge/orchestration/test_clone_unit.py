@@ -1194,7 +1194,7 @@ EXPECTED_ORD_EXT_RESOURCE_MAP = {
 }
 
 
-def __replace_cl(context: dict) -> dict:
+def _replace_cl(context: dict) -> dict:
     resource_configs = context["resource_configs"]
 
     extension_ids = []
@@ -1231,7 +1231,7 @@ def __replace_cl(context: dict) -> dict:
     }
 
 
-def __replace_instance_resource(context: dict) -> dict:
+def _replace_instance_resource(context: dict) -> dict:
     config = context["config"]
     config_type: str = config["type"]
     config_name: str = config["name"]
@@ -1255,7 +1255,7 @@ def __replace_instance_resource(context: dict) -> dict:
     }
 
 
-def __replace_instance(context: dict):
+def _replace_instance(context: dict):
     instance = context["resource_configs"]["instance"]
     kwargs = {}
     if "identity" in instance:
@@ -1277,7 +1277,7 @@ def __replace_instance(context: dict):
     return payload
 
 
-def __replace_instance_broker(context: dict):
+def _replace_instance_broker(context: dict):
     return {
         "apiVersion": context["instance_api"],
         "name": "[concat(parameters('instanceName'), '/default')]",
@@ -1289,7 +1289,7 @@ def __replace_instance_broker(context: dict):
     }
 
 
-def __replace_generic_resource(_: dict, api_version: str) -> dict:
+def _replace_generic_resource(_: dict, api_version: str) -> dict:
     return {
         "apiVersion": api_version,
         "extendedLocation": {
@@ -1299,26 +1299,26 @@ def __replace_generic_resource(_: dict, api_version: str) -> dict:
     }
 
 
-__replace_asset_resource = partial(__replace_generic_resource, api_version="2024-11-01")
-__replace_secretsync_resource = partial(__replace_generic_resource, api_version="2024-08-21-preview")
+_replace_asset_resource = partial(_replace_generic_resource, api_version="2024-11-01")
+_replace_secretsync_resource = partial(_replace_generic_resource, api_version="2024-08-21-preview")
 
 
 EXPECTED_ORD_MIN_RESOURCE_MAP = {
     **EXPECTED_ORD_EXT_RESOURCE_MAP,
-    "customLocation": {"replacements": __replace_cl},
-    "instance": {"replacements": __replace_instance},
+    "customLocation": {"replacements": _replace_cl},
+    "instance": {"replacements": _replace_instance},
     "roleAssignments": {},
-    "broker": {"replacements": __replace_instance_broker},
-    "listeners": {"replacements": __replace_instance_resource},
-    "authns": {"replacements": __replace_instance_resource},
-    "authzs": {"replacements": __replace_instance_resource},
-    "dataflowProfiles": {"replacements": __replace_instance_resource},
-    "dataflowEndpoints": {"replacements": __replace_instance_resource},
-    "dataflows": {"replacements": __replace_instance_resource},
-    "assetEndpointProfiles": {"replacements": __replace_asset_resource},
-    "assets": {"replacements": __replace_asset_resource},
-    "secretProviderClasss": {"replacements": __replace_secretsync_resource},
-    "secretSyncs": {"replacements": __replace_secretsync_resource},
+    "broker": {"replacements": _replace_instance_broker},
+    "listeners": {"replacements": _replace_instance_resource},
+    "authns": {"replacements": _replace_instance_resource},
+    "authzs": {"replacements": _replace_instance_resource},
+    "dataflowProfiles": {"replacements": _replace_instance_resource},
+    "dataflowEndpoints": {"replacements": _replace_instance_resource},
+    "dataflows": {"replacements": _replace_instance_resource},
+    "assetEndpointProfiles": {"replacements": _replace_asset_resource},
+    "assets": {"replacements": _replace_asset_resource},
+    "secretProviderClasss": {"replacements": _replace_secretsync_resource},
+    "secretSyncs": {"replacements": _replace_secretsync_resource},
 }
 
 
@@ -1326,6 +1326,7 @@ class CloneAssertor:
     """
     Assert content correctness.
     """
+
     def __init__(self, clone_scenario: CloneScenario):
         self.clone_scenario = clone_scenario
         self.resource_configs = clone_scenario.resource_configs
