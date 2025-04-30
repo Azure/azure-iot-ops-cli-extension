@@ -60,10 +60,10 @@ class WorkCategoryKey(IntEnum):
 class WorkStepKey(IntEnum):
     REG_RP = 1
     ENUMERATE_PRE_FLIGHT = 2
-    WHAT_IF_ENABLEMENT = 4
-    DEPLOY_ENABLEMENT = 5
-    DEPLOY_INSTANCE = 6
-    DEPLOY_RESOURCES = 7
+    WHAT_IF_ENABLEMENT = 3
+    DEPLOY_ENABLEMENT = 4
+    DEPLOY_INSTANCE = 5
+    DEPLOY_RESOURCES = 6
 
 
 class WorkRecord:

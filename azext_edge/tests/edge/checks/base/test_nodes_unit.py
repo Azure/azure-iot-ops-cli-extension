@@ -122,35 +122,35 @@ def test_check_nodes(mocked_node_client, check_acsa_node_version):
     # the generator is weird
     unpacked_cols = [list(col.cells) for col in table.columns]
 
-    min_req_row = 0
-    arch_row = 1
-    kernel_row = 2
-    cpu_row = 3 if check_acsa_node_version else 2
-    memory_row = 4 if check_acsa_node_version else 3
+    name_idx = 0
+    arch_idx = 1
+    kernel_idx = 2
+    cpu_idx = 3 if check_acsa_node_version else 2
+    memory_idx = 4 if check_acsa_node_version else 3
 
     # expected row
-    assert "Minimum requirements" in unpacked_cols[min_req_row][0]
-    assert ", ".join(AIO_SUPPORTED_ARCHITECTURES) in unpacked_cols[arch_row][0]
+    assert "Minimum requirements" in unpacked_cols[name_idx][0]
+    assert ", ".join(AIO_SUPPORTED_ARCHITECTURES) in unpacked_cols[arch_idx][0]
     if check_acsa_node_version:
-        assert ACSA_MIN_NODE_KERNEL_VERSION in unpacked_cols[kernel_row][0]
-    assert MIN_NODE_VCPU in unpacked_cols[cpu_row][0]
-    assert MIN_NODE_MEMORY[:-1] in unpacked_cols[memory_row][0]
+        assert ACSA_MIN_NODE_KERNEL_VERSION in unpacked_cols[kernel_idx][0]
+    assert MIN_NODE_VCPU in unpacked_cols[cpu_idx][0]
+    assert MIN_NODE_MEMORY[:-1] in unpacked_cols[memory_idx][0]
 
     for i in range(len(nodes)):
         node = nodes[i]
         name = node.metadata.name
         # first row is to show expected
         i = i + 1
-        assert name in unpacked_cols[0][i]
+        assert name in unpacked_cols[name_idx][i]
         arch = node.status.node_info.architecture
-        assert arch in unpacked_cols[1][i]
+        assert arch in unpacked_cols[arch_idx][i]
         if check_acsa_node_version:
             kernel_version = node.status.node_info.kernel_version
-            assert kernel_version in unpacked_cols[2][i]
+            assert kernel_version in unpacked_cols[kernel_idx][i]
         cpu = node.status.capacity.get("cpu", 0)
-        assert str(cpu) in unpacked_cols[-2][i]
+        assert str(cpu) in unpacked_cols[cpu_idx][i]
         memory = node.status.capacity.get("memory", 0)
-        assert "%.2f" % (parse_quantity(memory) / DISPLAY_BYTES_PER_GIGABYTE) in unpacked_cols[-1][i]
+        assert "%.2f" % (parse_quantity(memory) / DISPLAY_BYTES_PER_GIGABYTE) in unpacked_cols[memory_idx][i]
 
         assert f"cluster/nodes/{name}" in result["targets"]
         result_node = result["targets"][f"cluster/nodes/{name}"]["_all_"]

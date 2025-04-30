@@ -34,7 +34,11 @@ def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
                 for idx, check_eval in enumerate(check["targets"][target][namespace]["evaluations"]):
                     if check_eval["status"] not in NON_ERROR_STATUSES:
                         # TODO - relies on same order and count of conditions / evaluations
-                        expected_condition = check["targets"][target][namespace]["conditions"][idx]
+                        expected_condition = (
+                            check["targets"][target][namespace]["conditions"][idx]
+                            if idx < len(check["targets"][target][namespace]["conditions"])
+                            else None
+                        )
                         if not errors.get(target):
                             errors[target] = []
                         errors[target].append(f"Expected: '{expected_condition}', Actual: '{check_eval['value']}'")

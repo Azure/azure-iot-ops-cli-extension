@@ -194,6 +194,9 @@ AIO_OPCUA_PREFIX = "aio-opc-"
 # Pre-deployment KPIs
 
 MIN_K8S_VERSION = "1.29"
+
+# Node prerequisite constants
+
 MIN_NODE_MEMORY = "16G"
 MIN_NODE_VCPU = "4"
 AIO_SUPPORTED_ARCHITECTURES = ["amd64"]  # someday arm64
