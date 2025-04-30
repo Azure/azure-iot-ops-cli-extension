@@ -115,7 +115,7 @@ def init(
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
-    from .providers.orchestration import WorkManager
+    from .providers.orchestration.work import WorkManager
     from .util import (
         is_env_flag_enabled,
     )
@@ -182,7 +182,7 @@ def create_instance(
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
-    from .providers.orchestration import WorkManager
+    from .providers.orchestration.work import WorkManager
     from .util import (
         is_env_flag_enabled,
         read_file_content,
@@ -326,7 +326,7 @@ def delete(
     force: Optional[bool] = None,
     include_dependencies: Optional[bool] = None,
 ):
-    from .providers.orchestration import delete_ops_resources
+    from .providers.orchestration.deletion import delete_ops_resources
 
     return delete_ops_resources(
         cmd=cmd,
