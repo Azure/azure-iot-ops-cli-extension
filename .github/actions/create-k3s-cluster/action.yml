@@ -19,11 +19,12 @@ runs:
         # vars
         release_url="https://github.com/k3s-io/k3s/releases/download"
         install_dir="/usr/local/bin/k3s"
+        curl -sfLo $install_dir https://get.k3s.io | INSTALL_K3S_VERSION=${{ env.K3S_VERSION }} sh -s
 
         # install k3s
-        curl -Lo $install_dir "$release_url/${{ env.K3S_VERSION }}/k3s"
-        chmod a+x $install_dir
-        sudo ls -R $install_dir
+        # curl -Lo $install_dir "$release_url/${{ env.K3S_VERSION }}/k3s"
+        # chmod a+x $install_dir
+        # sudo ls -R $install_dir
       shell: bash
     - name: "Start K3S server"
       env:
