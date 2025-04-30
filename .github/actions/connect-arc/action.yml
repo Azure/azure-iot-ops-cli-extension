@@ -104,7 +104,8 @@ runs:
       run: |
         account_issuer=$(az connectedk8s show -n ${{ env.cluster-name }} -g ${{ env.resource-group }} --query oidcIssuerProfile.issuerUrl --output tsv)
 
-        sudo systemctl stop k3s
+        # sudo systemctl stop k3s
+        sudo /usr/local/bin/k3s-killall.sh
         sudo k3s server --cluster-init --kube-apiserver-arg service-account-issuer=$account_issuer --kube-apiserver-arg service-account-max-token-expiration=24h &
 
         sleep 15s
