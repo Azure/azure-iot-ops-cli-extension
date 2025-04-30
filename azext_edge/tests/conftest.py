@@ -4,9 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import pytest
 import os
 import sys
+
+import pytest
 import responses
 
 
@@ -28,6 +29,7 @@ def mocked_get_subscription_id(mocker):
 @pytest.fixture
 def mocked_azcli_cred_get_token(mocker):
     from unittest.mock import PropertyMock
+
     patched = mocker.patch(
         "azure.identity._credentials.azure_cli.AzureCliCredential.get_token",
     )
@@ -37,8 +39,27 @@ def mocked_azcli_cred_get_token(mocker):
 
 
 @pytest.fixture
-def mocked_cmd(mocker, mocked_get_subscription_id, mocked_azcli_cred_get_token):
-    az_cli_mock = mocker.patch("azure.cli.core.AzCli", autospec=True)
+def mocked_azcli_profile_get_raw_token(mocker):
+    patched = mocker.patch(
+        "azure.cli.core._profile.Profile.get_raw_token",
+        autospec=True,
+    )
+    patched.return_value = (("Bearer", "token", None), None, None)
+    yield patched
+
+
+@pytest.fixture
+def mocked_cmd(mocker, mocked_get_subscription_id, mocked_azcli_cred_get_token, mocked_azcli_profile_get_raw_token):
+    class Stub:
+        pass
+
+    cloud = Stub()
+    cloud.endpoints = Stub()
+    cloud.endpoints.resource_manager = "https://management.azure.com/"
+    cloud.endpoints.active_directory = "https://login.microsoftonline.com/"
+    cloud.endpoints.active_directory_resource_id = "https://management.azure.com/"
+
+    az_cli_mock = mocker.patch("azure.cli.core.AzCli", autospec=True, **{"data": {"command": "az"}, "cloud": cloud})
     config = {"cli_ctx": az_cli_mock}
     patched = mocker.patch("azure.cli.core.commands.AzCliCommand", autospec=True, **config)
     yield patched

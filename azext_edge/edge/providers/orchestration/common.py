@@ -15,9 +15,13 @@ GRAPH_V1_SP_ENDPOINT = f"{GRAPH_V1_ENDPOINT}/servicePrincipals"
 
 CUSTOM_LOCATIONS_RP_APP_ID = "bc313c14-388c-4e7d-a58e-70017303ee3b"
 
+CONTRIBUTOR_ROLE_ID = "b24988ac-6180-42a0-ab88-20f7382dd24c"
+
 EXTENDED_LOCATION_ROLE_BINDING = "AzureArc-Microsoft.ExtendedLocation-RP-RoleBinding"
 ARC_CONFIG_MAP = "azure-clusterconfig"
 ARC_NAMESPACE = "azure-arc"
+
+PROVISIONING_STATE_SUCCESS = "Succeeded"
 
 # Key Vault KPIs
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
@@ -147,3 +151,18 @@ class TlsKeyRotation(Enum):
 
 
 X509_ISSUER_REF_KEYS = ["group", "kind", "name"]
+
+
+# Clone
+CLONE_INSTANCE_VERS_MAX = "1.2.0"
+CLONE_INSTANCE_VERS_MIN = "1.0.34"
+
+
+class CloneSummaryMode(Enum):
+    SIMPLE = "simple"
+    DETAILED = "detailed"
+
+
+class CloneTemplateMode(Enum):
+    NESTED = "nested"
+    LINKED = "linked"

@@ -456,7 +456,7 @@ class OpcUACerts(Queryable):
         private_key_name = os.path.splitext(private_key_name)[0]
 
         if public_key_name != private_key_name:
-            raise ValueError(
+            raise InvalidArgumentValueError(
                 f"Public key file name {public_key_name} and private key file name {private_key_name} must match."
             )
 
@@ -842,7 +842,9 @@ class OpcUACerts(Queryable):
         certificate = decode_der_certificate(der_data)
 
         if not certificate:
-            raise ValueError("Error decoding DER certificate. Please make sure the certificate is valid.")
+            raise InvalidArgumentValueError(
+                "Error decoding DER certificate. Please make sure the certificate is valid."
+            )
 
         # Get the subject name and application uri from the certificate
         # and validate it with the provided values
@@ -868,7 +870,7 @@ class OpcUACerts(Queryable):
         for value, name in [(cert_subject_name, "subject name"), (cert_application_uri, "application URI")]:
             # if value is empty or space, raise error
             if not value or value.isspace():
-                raise ValueError(
+                raise InvalidArgumentValueError(
                     f"Not able to extract {name} from the certificate. "
                     f"Please provide the correct {name} in certificate via --public-key-file."
                 )
@@ -885,14 +887,14 @@ class OpcUACerts(Queryable):
         cert_subject_name, cert_application_uri = self._extract_cert_content(public_key_file)
 
         if subject_name and subject_name != cert_subject_name:
-            raise ValueError(
+            raise InvalidArgumentValueError(
                 f"Given --subject-name {subject_name} does not match certificate subject name {cert_subject_name}. "
                 "Please provide the correct subject name via --subject-name or correct certificate using "
                 "--public-key-file."
             )
 
         if application_uri and application_uri != cert_application_uri:
-            raise ValueError(
+            raise InvalidArgumentValueError(
                 f"Given --application-uri {application_uri} does not match certificate application URI "
                 f"{cert_application_uri}. Please provide the correct application URI via --application-uri "
                 "or correct certificate using --public-key-file."
