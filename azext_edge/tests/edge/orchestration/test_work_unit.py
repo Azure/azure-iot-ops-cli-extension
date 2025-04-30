@@ -9,13 +9,28 @@ import json
 import re
 from enum import Enum
 from random import randint
-from typing import Callable, Dict, FrozenSet, List, NamedTuple, Optional, Tuple, Type, Union, Set
+from typing import (
+    Callable,
+    Dict,
+    FrozenSet,
+    List,
+    NamedTuple,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 from unittest.mock import Mock
 
 import pytest
 import requests
 import responses
-from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError, AzureResponseError
+from azure.cli.core.azclierror import (
+    AzureResponseError,
+    InvalidArgumentValueError,
+    ValidationError,
+)
 
 from azext_edge.edge.common import (
     DEFAULT_BROKER,
@@ -34,16 +49,19 @@ from azext_edge.edge.providers.orchestration.common import (
     KubernetesDistroType,
 )
 from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET
-from azext_edge.edge.providers.orchestration.work import (
-    ClusterConnectStatus,
-    PROVISIONING_STATE_SUCCESS,
+from azext_edge.edge.providers.orchestration.targets import (
+    InstancePhase,
+    get_default_cl_name,
 )
-from azext_edge.edge.providers.orchestration.targets import get_default_cl_name, InstancePhase
+from azext_edge.edge.providers.orchestration.work import (
+    PROVISIONING_STATE_SUCCESS,
+    ClusterConnectStatus,
+)
 from azext_edge.edge.util import assemble_nargs_to_dict
 
 from ...generators import generate_random_string, get_zeroed_subscription
+from .resources.conftest import RequestKPIs, get_request_kpis
 from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS
-
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 
@@ -79,14 +97,6 @@ class CallKey(Enum):
 
 
 CL_EXTENSION_TYPES = ["microsoft.azure.secretstore", "microsoft.iotoperations.platform", "microsoft.iotoperations"]
-
-
-class RequestKPIs(NamedTuple):
-    method: str
-    url: str
-    params: dict
-    path_url: str
-    body_str: str
 
 
 class ExceptionMeta(NamedTuple):
@@ -297,16 +307,6 @@ class ServiceGenerator:
 
 def get_deployment_path_regex(kind="instance") -> str:
     return r"/providers/Microsoft\.Resources/deployments/aziotops\." + kind + r"\.[a-zA-Z0-9\.-]+"
-
-
-def get_request_kpis(request: requests.PreparedRequest):
-    return RequestKPIs(
-        method=request.method,
-        url=request.url,
-        params=request.params,
-        path_url=request.path_url.split("?")[0],
-        body_str=request.body,
-    )
 
 
 def build_target_scenario(

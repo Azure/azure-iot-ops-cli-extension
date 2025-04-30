@@ -25,6 +25,7 @@ from .conftest import (
     get_base_endpoint,
     get_mock_resource,
     get_resource_id,
+    ZEROED_SUBSCRIPTION,
 )
 
 CUSTOM_LOCATION_RP = "Microsoft.ExtendedLocation"
@@ -50,24 +51,59 @@ def get_cl_endpoint(resource_group_name: Optional[str] = None, cl_name: Optional
     )
 
 
+def get_uami_id_map(resource_group_name: str) -> dict:
+    return {
+        f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}"
+        f"/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{generate_random_string()}": {
+            "clientId": generate_random_string(),
+            "principalId": generate_random_string(),
+        }
+    }
+
+
 def get_mock_instance_record(
     name: str,
     resource_group_name: str,
     description: Optional[str] = None,
     tags: Optional[dict] = None,
     features: Optional[dict] = None,
+    cl_name: Optional[str] = None,
+    schema_registry_name: Optional[str] = None,
+    version: Optional[str] = None,
+    identity_map: Optional[dict] = None,
 ) -> dict:
-    properties = {"provisioningState": "Succeeded"}
+    properties = {
+        "provisioningState": "Succeeded",
+        "schemaRegistryRef": {
+            "resourceId": (
+                f"/subscriptions/{ZEROED_SUBSCRIPTION}"
+                f"/resourceGroups/{resource_group_name}/providers/Microsoft.DeviceRegistry"
+                f"/schemaRegistries/{schema_registry_name or 'myschemaregistry'}"
+            )
+        },
+        "version": version or "1.1.15",
+    }
     if description:
         properties["description"] = description
     if features:
         properties["features"] = features
 
+    kwargs = {}
+    if cl_name:
+        kwargs["custom_location_name"] = cl_name
+    if identity_map:
+        kwargs["identity"] = {
+            "type": "UserAssigned",
+            "userAssignedIdentities": identity_map,
+        }
+
     return get_mock_resource(
         name=name,
+        resource_path=f"/instances/{name}",
         properties=properties,
         resource_group_name=resource_group_name,
         tags=tags,
+        **kwargs,
     )
 
 
