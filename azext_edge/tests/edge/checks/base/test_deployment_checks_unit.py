@@ -4,11 +4,13 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from typing import List
 from unittest.mock import Mock
 
 import pytest
 from azure.cli.core.azclierror import ValidationError
-from kubernetes.client.models import V1ObjectMeta, V1StorageClass, V1StorageClassList, VersionInfo
+from kubernetes.client.models import (V1ObjectMeta, V1StorageClass,
+                                      V1StorageClassList, VersionInfo)
 
 from azext_edge.edge.providers.check.common import MIN_K8S_VERSION
 
@@ -25,7 +27,8 @@ local_vars_configuration = Mock(client_side_validation=False)
     ],
 )
 def test_check_k8s_version(mocked_version_client, k8s_version, expected_status):
-    from azext_edge.edge.providers.check.base.deployment import _check_k8s_version
+    from azext_edge.edge.providers.check.base.deployment import \
+        _check_k8s_version
 
     major, minor = k8s_version.split(".")
     mocked_version_client.return_value.get_code.return_value = VersionInfo(
@@ -48,7 +51,8 @@ def test_check_k8s_version(mocked_version_client, k8s_version, expected_status):
     ],
 )
 def test_check_storage_classes(mocked_storage_client, storage_classes, expected_classes, expected_status):
-    from azext_edge.edge.providers.check.base.deployment import _check_storage_classes
+    from azext_edge.edge.providers.check.base.deployment import \
+        _check_storage_classes
 
     mocked_storage_client.return_value.list_storage_class.return_value = V1StorageClassList(
         items=[
@@ -191,7 +195,8 @@ def test_check_storage_classes(mocked_storage_client, storage_classes, expected_
     ids=["acs_config", "no_acs_config"],
 )
 def test_validate_cluster_prechecks(mocker, pre_check_results, error, acs_config):
-    from azext_edge.edge.providers.check.base.deployment import validate_cluster_prechecks
+    from azext_edge.edge.providers.check.base.deployment import \
+        validate_cluster_prechecks
 
     mocked_precheck = mocker.patch(
         "azext_edge.edge.providers.check.base.deployment.check_pre_deployment", return_value=pre_check_results
@@ -209,7 +214,7 @@ def test_validate_cluster_prechecks(mocker, pre_check_results, error, acs_config
     mocked_precheck.assert_called_once_with(acs_config=acs_config)
 
 
-def assert_cluster_precheck_errors(error_str: str, pre_check_results: list[dict]):
+def assert_cluster_precheck_errors(error_str: str, pre_check_results: List[dict]):
     failed_targets = []
     failed_conditions = []
     failed_evals = []
@@ -235,7 +240,8 @@ def assert_cluster_precheck_errors(error_str: str, pre_check_results: list[dict]
     ],
 )
 def test_check_pre_deployment(mocker, acs_config):
-    from azext_edge.edge.providers.check.base.deployment import check_pre_deployment
+    from azext_edge.edge.providers.check.base.deployment import \
+        check_pre_deployment
 
     mocker.patch(
         "azext_edge.edge.providers.check.base.deployment._check_k8s_version",
