@@ -506,9 +506,19 @@ def load_iotops_arguments(self, _):
         context.argument(
             "host",
             options_list=["--host"],
-            help="Host of the Azure Data Explorer is"
+            help="Host of the Azure Data Explorer is "
             "Azure Data Explorer cluster URI. In the form "
             "of https://<cluster>.<region>.kusto.windows.net",
+        )
+        context.argument(
+            "authentication_type",
+            options_list=["--auth-type"],
+            choices=CaseInsensitiveList(
+                [
+                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
+                ]
+            ),
         )
     
     with self.argument_context("iot ops dataflow endpoint create adls") as context:

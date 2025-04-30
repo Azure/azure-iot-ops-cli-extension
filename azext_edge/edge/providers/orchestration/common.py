@@ -209,53 +209,53 @@ class MqttRetainType(Enum):
     NEVER = "Never"
 
 DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
-    DataflowEndpointType.DATAEXPLORER.value: [
+    DataflowEndpointType.DATAEXPLORER.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
-    ],
-    DataflowEndpointType.DATALAKESTORAGE.value: [
+    },
+    DataflowEndpointType.DATALAKESTORAGE.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.ACCESSTOKEN.value,
-    ],
-    DataflowEndpointType.FABRICONELAKE.value: [
+    },
+    DataflowEndpointType.FABRICONELAKE.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
-    ],
-    DataflowEndpointType.AIOLOCALMQTT.value: [
+    },
+    DataflowEndpointType.AIOLOCALMQTT.value: {
         DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
         DataflowEndpointAuthenticationType.X509.value,
         DataflowEndpointAuthenticationType.ANONYMOUS.value,
-    ],
-    DataflowEndpointType.EVENTGRID.value: [
+    },
+    DataflowEndpointType.EVENTGRID.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.X509.value,
-    ],
-    DataflowEndpointType.CUSTOMMQTT.value: [
+    },
+    DataflowEndpointType.CUSTOMMQTT.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
         DataflowEndpointAuthenticationType.X509.value,
         DataflowEndpointAuthenticationType.ANONYMOUS.value,
-    ],
-    DataflowEndpointType.EVENTHUB.value: [
+    },
+    DataflowEndpointType.EVENTHUB.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.SASL.value,
-    ],
-    DataflowEndpointType.FABRICREALTIME.value: [
+    },
+    DataflowEndpointType.FABRICREALTIME.value: {
         DataflowEndpointAuthenticationType.SASL.value,
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
-    ],
-    DataflowEndpointType.CUSTOMKAFKA.value: [
+    },
+    DataflowEndpointType.CUSTOMKAFKA.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.SASL.value,
         DataflowEndpointAuthenticationType.X509.value,
         DataflowEndpointAuthenticationType.ANONYMOUS.value,
-    ],
+    },
 }
 
 # DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS = {
@@ -284,12 +284,13 @@ DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
     DataflowEndpointType.CUSTOMMQTT.value: "mqttSettings",
 }
 
+# turn this into set
 AUTHENTICATION_TYPE_REQUIRED_PARAMS = {
-    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value: [],
-    DataflowEndpointAuthenticationType.USERASSIGNED.value: ["client_id", "tenant_id"],
-    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value: ["audience"],
-    DataflowEndpointAuthenticationType.X509.value: ["secret_name"],
-    DataflowEndpointAuthenticationType.ANONYMOUS.value: [],
+    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value: {},
+    DataflowEndpointAuthenticationType.USERASSIGNED.value: {"client_id", "tenant_id"},
+    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value: {"audience"},
+    DataflowEndpointAuthenticationType.X509.value: {"secret_name"},
+    DataflowEndpointAuthenticationType.ANONYMOUS.value: {},
 }
 
 
