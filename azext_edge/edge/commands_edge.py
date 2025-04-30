@@ -407,3 +407,37 @@ def instance_identity_remove(
         federated_credential_name=federated_credential_name,
         **kwargs,
     )
+
+
+def clone_instance(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    summary_mode: Optional[str] = None,
+    to_dir: Optional[str] = None,
+    template_mode: Optional[str] = None,
+    to_instance_name: Optional[str] = None,
+    to_cluster_id: Optional[str] = None,
+    use_self_hosted_issuer: Optional[bool] = None,
+    linked_base_uri: Optional[str] = None,
+    no_progress: Optional[bool] = None,
+    confirm_yes: Optional[bool] = None,
+    force: Optional[bool] = None,
+) -> dict:
+    from .providers.orchestration.clone import clone_instance
+
+    return clone_instance(
+        cmd=cmd,
+        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        summary_mode=summary_mode,
+        to_dir=to_dir,
+        template_mode=template_mode,
+        to_instance_name=to_instance_name,
+        to_cluster_id=to_cluster_id,
+        use_self_hosted_issuer=use_self_hosted_issuer,
+        linked_base_uri=linked_base_uri,
+        no_progress=no_progress,
+        confirm_yes=confirm_yes,
+        force=force,
+    )
