@@ -104,7 +104,8 @@ runs:
       run: |
         account_issuer=$(az connectedk8s show -n ${{ env.cluster-name }} -g ${{ env.resource-group }} --query oidcIssuerProfile.issuerUrl --output tsv)
         # sudo systemctl stop k3s
-        sudo k3s server --cluster-init --kube-apiserver-arg service-account-issuer=$account_issuer --kube-apiserver-arg service-account-max-token-expiration=24h &
+        sudo k3s server --https-listen-port 6444
+        sudo k3s server --https-listen-port 6443 --kube-apiserver-arg service-account-issuer=$account_issuer --kube-apiserver-arg service-account-max-token-expiration=24h &
         # sudo touch /etc/rancher/k3s/agent/config.yaml
         # echo "kube-apiserver-arg:\n- service-account-issuer=$account_issuer\n- service-account-max-token-expiration=24h\n" | sudo tee /etc/rancher/k3s/agent/config.yaml
         # echo "config.yaml file created"
