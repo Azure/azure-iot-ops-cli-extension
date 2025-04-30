@@ -1211,7 +1211,7 @@ class TemplateContent:
             "microsoft.deviceregistry/assets": 0,
             "microsoft.deviceregistry/assetendpointprofiles": 0,
         }
-        self.copy_params = {"clusterName", "customLocationName", "resourceSlug", "instanceName"}
+        self.copy_params = {"clusterName", "customLocationName", "instanceName"}
 
     @property
     def content(self) -> dict:
