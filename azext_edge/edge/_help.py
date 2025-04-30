@@ -648,164 +648,64 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops dataflow endpoint create"
+        "iot ops dataflow endpoint apply"
     ] = """
-        type: group
+        type: command
         short-summary: Create or replace a dataflow endpoint resource.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          {
+            "properties": {
+              "endpointType": "Kafka",
+              "kafkaSettings": {
+                "authentication": {
+                  "method": "SystemAssignedManagedIdentity",
+                  "systemAssignedManagedIdentitySettings": {
+                    "audience": "aio-internal"
+                  }
+                },
+                "batching": {
+                  "latencyMs": 5,
+                  "maxBytes": 1000000,
+                  "maxMessages": 100000,
+                  "mode": "Enabled"
+                },
+                "cloudEventAttributes": "Propagate",
+                "compression": "None",
+                "copyMqttProperties": "Disabled",
+                "host": "*.servicebus.windows.net:9093",
+                "kafkaAcks": "All",
+                "partitionStrategy": "Default",
+                "tls": {
+                  "mode": "Enabled"
+                }
+              },
+            }
+          }
+
+          When used with apply the above content will create or replace a target kafka dataflow endpoint
+          resource configured with system assigned managed identity authentication method.
+
+        examples:
+        - name: Create or replace an dataflow endpoint resource using a config file.
+          text: >
+            az iot ops dataflow endpoint apply -n dataflowep -i myinstance -g myresourcegroup --config-file /path/to/dataflowep/config.json
     """
 
     helps[
-        "iot ops dataflow endpoint create adls"
+        "iot ops dataflow endpoint delete"
     ] = """
         type: command
-        short-summary: Create or replace a dataflow endpoint resource for Azure Data Lake Storage Gen2.
-    """
+        short-summary: Delete a dataflow endpoint resource.
 
-    helps[
-        "iot ops dataflow endpoint create adx"
-    ] = """
-        type: command
-        short-summary: Create or replace a dataflow endpoint resource for Azure Data Explorer.
-    """
-
-    helps[
-        "iot ops dataflow endpoint create custom-kafka"
-    ] = """
-        type: command
-        short-summary: Create or replace a dataflow endpoint resource for custom kafka broker.
-    """
-
-    helps[
-        "iot ops dataflow endpoint create custom-mqtt"
-    ] = """
-        type: command
-        short-summary: Create or replace a dataflow endpoint resource for custom MQTT broker.
-    """
-
-    helps[
-        "iot ops dataflow endpoint create eventgrid"
-    ] = """
-        type: command
-        short-summary: Create or replace a dataflow endpoint resource for Azure Event Grid.
-    """
-
-    helps[
-        "iot ops dataflow endpoint create eventhub"
-    ] = """
-        type: command
-        short-summary: Create or replace a dataflow endpoint resource for kafka-enabled Azure Event Hubs namespace.
-    """
-
-    helps[
-        "iot ops dataflow endpoint create fabric-onelake"
-    ] = """
-        type: command
-        short-summary: Create or replace a dataflow endpoint resource for Microsoft Fabric OneLake.
-    """
-
-    helps[
-        "iot ops dataflow endpoint create fabric-realtime"
-    ] = """
-        type: command
-        short-summary: Create or replace a Microsoft Fabric Real-Time Intelligence data flow endpoint.
-    """
-
-    helps[
-        "iot ops dataflow endpoint create local-mqtt"
-    ] = """
-        type: command
-        short-summary: Create or replace a Azure IoT Operations Local MQTT data flow endpoint.
-    """
-
-    helps[
-        "iot ops dataflow endpoint create localstorage"
-    ] = """
-        type: command
-        short-summary: Create or replace a local storage data flow endpoint.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update"
-    ] = """
-        type: group
-        short-summary: Update the properties of an existing dataflow endpoint resource.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update adls"
-    ] = """
-        type: command
-        short-summary: Update the properties of an existing dataflow endpoint resource for Azure Data Lake Storage Gen2.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update adx"
-    ] = """
-        type: command
-        short-summary: Update the properties of an existing dataflow endpoint resource for Azure Data Explorer.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update custom-kafka"
-    ] = """
-        type: command
-        short-summary: Update the properties of an existing dataflow endpoint resource for custom kafka broker.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update custom-mqtt"
-    ] = """
-        type: command
-        short-summary: Update the properties of an existing dataflow endpoint resource for custom MQTT broker.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update eventgrid"
-    ] = """
-        type: command
-        short-summary: Update the properties of an existing dataflow endpoint resource for Azure Event Grid.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update eventhub"
-    ] = """
-        type: command
-        short-summary: Update the properties of an existing dataflow endpoint resource for kafka-enabled Azure Event Hubs namespace.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update fabric-onelake"
-    ] = """
-        type: command
-        short-summary: Update the properties of an existing dataflow endpoint resource for Microsoft Fabric OneLake.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update fabric-realtime"
-    ] = """
-        type: command
-        short-summary: Update the properties of an existing Microsoft Fabric Real-Time Intelligence data flow endpoint.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update local-mqtt"
-    ] = """
-        type: command
-        short-summary: Update the properties of an existing Azure IoT Operations Local MQTT data flow endpoint.
-    """
-
-    helps[
-        "iot ops dataflow endpoint update localstorage"
-    ] = """
-        type: command
-        short-summary: Update the properties of an existing local storage data flow endpoint.
-    """
-
-    helps[
-        "iot ops dataflow endpoint import"
-    ] = """
-        type: group
-        short-summary: Import a dataflow endpoint resource.
+        examples:
+        - name: Delete the dataflow endpoint resource called 'dataflowep'.
+          text: >
+            az iot ops dataflow endpoint delete -n dataflowep -i myinstance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops dataflow endpoint delete -n dataflowep -i myinstance -g myresourcegroup -y
     """
 
     helps[
