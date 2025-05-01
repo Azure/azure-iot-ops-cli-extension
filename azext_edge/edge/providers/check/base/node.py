@@ -74,7 +74,9 @@ def _generate_node_table(
     check_manager: CheckManager, nodes: V1NodeList, check_acsa_node_version: Optional[bool] = False
 ) -> Table:
     from kubernetes.utils import parse_quantity
-    from packaging import version
+    from ....util.machinery import scoped_semver_import
+
+    semver = scoped_semver_import()
 
     # prep table
     table = Table(show_header=True, header_style="bold", show_lines=True, caption_justify="left")
@@ -149,8 +151,7 @@ def _generate_node_table(
                 if actual not in expected:
                     row_status = cell_status = CheckTaskStatus.error
             elif condition == "info.kernel_version":
-                # ACSA node version does not fit semver - 6.8.0-1026-azure
-                if version.parse(actual.split("-")[0]) < version.parse(expected):
+                if semver.parse(actual, optional_minor_and_patch=True) < semver.parse(expected, optional_minor_and_patch=True):
                     row_status = cell_status = CheckTaskStatus.error
 
             else:
