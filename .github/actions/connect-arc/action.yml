@@ -112,5 +112,9 @@ runs:
         sudo k3s server --cluster-init --kube-apiserver-arg service-account-issuer=$account_issuer --kube-apiserver-arg service-account-max-token-expiration=24h &
 
         sleep 15s
+      shell: bash
+    - name: "Check OpenID Configuration"
+      if: inputs.enable-workload-identity
+      run: |
         kubectl get --raw /.well-known/openid-configuration
       shell: bash
