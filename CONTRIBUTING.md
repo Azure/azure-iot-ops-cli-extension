@@ -1,287 +1,221 @@
 # Contributing
 
+This guide will assist you in setting up a local development environment for this extension.
+
+We also regularly utilize GitHub Codespaces, and have automated this environment setup in our [devcontainer config](./.devcontainer/devcontainer.json)
+
+
+> You can run all commands in this setup in `bash` or `cmd` environments, this documentation just shows the `powershell` flavor.
+
 ## Dev Setup
 
 1. Get Python 3: https://www.python.org/downloads/
 
-### Required Repositories
+## Install and initialize a virtual environment
 
-You must fork and clone the repositories below. Follow the videos and instructions found [here](https://github.com/Azure/azure-cli-dev-tools#setting-up-your-development-environment).
+1. Create a virtual environment (example, named 'env3')
 
-1. https://github.com/Azure/azure-cli
+    ```powershell
+    python -m venv env3
+    ```
 
-2. https://github.com/Azure/azure-iot-cli-extension
+
+2. Activate your virtual environment
+
+    Windows:
+
+    ```powershell
+    ./env3/Scripts/activate
+    ```
+    
+    Unix: 
+    
+    ```bash
+    source ./env3/bin/activate
+    ```
+
+> IMPORTANT: Ensure you keep this Python virtual environment. It is required for development.
+
+## Local repository clones
+
+### [azure-iot-ops-cli-extension](https://github.com/Azure/azure-iot-ops-cli-extension)
+
+
+```powershell
+git clone https://github.com/Azure/azure-iot-ops-cli-extension
+```
+### [azure-cli](https://github.com/Azure/azure-cli)
+
+```powershell
+git clone https://github.com/Azure/azure-cli
+```
 
 > IMPORTANT: When cloning the repositories and environments, ensure they are all siblings to each other. This makes things much easier down the line.
 
 ```text
 source-directory/
 |-- azure-cli/
-|-- azure-iot-cli-extension/
+|-- azure-iot-ops-cli-extension/
 |-- .env3/
 ```
 
-> IMPORTANT: Ensure you keep the Python virtual environment you created above. It is required for development.
+To assist in local development, it's suggested to utilize a local clone of the core [azure-cli](https://github.com/Azure/azure-cli) repository.
 
-After following the videos, ensure you have:
+You may also utilize `azdev setup` (explained in the next section) to customize your local CLI installation.
 
-1. Python virtual environment
+## Install and configure [Azure CLI dev tools](https://github.com/Azure/azure-cli-dev-tools)
 
-2. Functional development az cli
+With your **virtual environment activated**:
 
-#### Environment Variables
-
-You can run this setup in `bash` or `cmd` environments, this documentation just show the `powershell` flavor.
-
-1. Create a directory for your development extensions to live in
-
-    ```powershell
-    mkdir path/to/source/extensions/azure-iot
+1.  ```powershell
+    (env) pip install azdev
     ```
 
-2. Set `AZURE_EXTENSION_DIR` to the following
-
-    ```powershell
-    $env:AZURE_EXTENSION_DIR="path/to/source/extensions"
+2.  ```powershell
+    (env) azdev setup -c ./path_to/azure-cli
     ```
 
-#### azdev Steps
+    `azdev setup` can utilize your local copy of the `azure-cli` repository, or it can download one for you:
+    - `azdev setup -c ./path_to/azure-cli` will use your local copy of the `azure-cli` repo
+    - `azdev setup -c EDGE` will install the current dev branch of the `azure-cli` repo
+    - `azdev setup` with no arguments provides an interactive setup experience
+    - `azdev setup -h` will display other configuration options.
 
-Similar to the video, have your virtual environment activated then execute the following command
+3. Verify your CLI is configured correctly:
+
+    ```powershell
+    (env) az -v
+    ```
+
+    You should see `Python location` with a Python executable in your local `env3` path:
+
+    ```powershell
+    Python location 'C:\src\azure-iot-ops-cli-extension\env3\Scripts\python.exe'
+    ```
+
+## Install dev extension
+
+You can isolate your development extensions in a separate folder to aid in debugging.
+
+Create a new folder for your extensions, and create an environment variable named `AZURE_EXTENSION_DIR` that points to it:
 
 ```powershell
-(.env3) azdev setup -c path/to/source/azure-cli
+mkdir "/path/to/source/extensions"
+$env:AZURE_EXTENSION_DIR="path/to/source/extensions"
 ```
 
-#### Install dev extension
+Otherwise, you can utilize the default extension path `~/.azure/cliextensions`, but note that **this may cause conflicts** if your machine has an existing installation of `az` CLI and/or other CLI extensions.
 
-1. Change directories
+Inside your `azure-iot-ops-cli-extension` directory, run
 
-    ```powershell
-    cd path/to/source/azure-iot-cli-extension
-    ```
-
-2. Install the extension (should only be needed once)
-
-    ```powershell
-    pip install -U --target path/to/source/extensions/azure-iot .
-    ```
+```powershell
+(env) pip install -U --target $env:AZURE_EXTENSION_DIR/azure-iot-ops
+```
 
 #### Verify environment is setup correctly
 
 Run a command that is present in the iot extension space
 
 ```powershell
-az iot central app -h
+az iot ops -h
 ```
 
-If this works, then you should now be able to make changes to the extension and have them reflected immediately in your az cli.
+If this works, then you should now be able to make changes to the extension and have them reflected immediately in your `az` CLI.
 
 ## Unit and Integration Testing
 
-Tests are organized into folders by resource in `azext_iot\tests\`:
-- Central
-- Digital Twins
-- Device Provisioning Service
-- IoT Hub
-- Product
-- Utility
+
+Our tests are located inside `azext_edge/tests/`:
+- `azext_edge/tests/edge` - core functionality tests
+- `azext_edge/tests/utility` - utility unit tests
+
+Inside `azext_edge/tests/edge` - the tests are broken up by category:
+
+- `checks` - Check tests
+- `init` - Init tests
+- `mq` - Tests for MQTTBroker
+- `orchestration` - Init/Create/Clone orchestration tests
+- `rpsaas` - Cloud resource provider tests
+- `support` - Support bundle tests
+
+We support running tests locally using [Tox](https://tox.wiki/) - our [Tox testing guide](./docs/tox-testing.md) has more detailed information on our configuration.
+
+
+Tox can be installed as part of our [`dev requirements`](./dev_requirements.txt), which are required to run tests locally:
+
+```powershell
+pip install -r path/to/source/dev_requirements.txt
+```
+
+To see available tox environments:
+
+```powershell
+tox -av
+```
+
+To run linters and unit test checks inside their own virtual environments, simply run:
+
+```powershell
+tox 
+```
 
 ### Unit Tests
 
-You may need to install the dev_requirements for this
 
+Unit tests end in `_unit.py` so execute the following command to run all unit tests:
 ```powershell
-pip install -r path/to/source/dev_requirements
+pytest -k "_unit.py"
 ```
 
-Example unit tests runs:
+Execute the following command to run the support bundle unit tests:
 
-_Hub:_
-`pytest azext_iot/tests/iothub/core/test_iot_ext_unit.py`
-
-_DPS:_
-`pytest azext_iot/tests/dps/core/test_dps_discovery_unit.py`
-
-Unit tests end in "_unit.py" so execute the following command to run all unit tests,
-`pytest -k "_unit.py"`
-
-Execute the following command to run the IoT Hub unit tests:
-
-`pytest azext_iot/tests/iothub/ -k "_unit.py"`
+```powershell
+pytest azext_edge/tests/edge/support -k "_unit.py"
+```
 
 ### Integration Tests
 
-Integration tests are run against Azure resources and depend on environment variables.
+> Integration tests are run against Azure resources and depend on various configured environment variables. Some tests also require a connection to a connected cluster with Azure IoT Operations deployed.
+
+You can create a local `pytest.ini` using our [example file](./pytest.ini.example) by running:
+
+```powershell
+cp ./pytest.ini.example ./pytest.ini
+```
+
+Integration tests end in `_int.py` so execute the following command to run all integration tests,
+```powershell
+pytest -k "_int.py"
+```
 
 Example int tests runs:
 
-_Hub:_
-`pytest azext_iot/tests/iothub/core/test_iothub_storage_int.py`
-
-_DPS:_
-`pytest azext_iot/tests/dps/core/test_dps_discovery_int.py`
-
-Integration tests end in "_int.py" so execute the following command to run all integration tests,
-`pytest -k "_int.py"`
-
-Execute the following command to run the IoT Hub integration tests:
-
-`pytest azext_iot/tests/iothub/ -k "_int.py"`
-
-To run specific test in any integration test file, such as:
-
-`pytest azext_iot/tests/central/test_iot_central_int.py::TestIotCentral::test_central_query_methods_run`
-
-#### Azure Resource Setup
-
-The following resources will be needed for the integration tests.
-
-- IoT Hub
-- IoT Device Provisioning Service
-- Azure Digital Twins instance
-- IoT Central App
-- Storage Account (with an empty Container)
-- Event Grid Topic
-- Event Hub Namespace with an Event Hub
-- Service Bus Namespace with a Topic
-- Azure Data Explorer Cluster with a Database
-
-If specified in the pytest.ini configuration file, those resources will be used. Please ensure that the resources are in a clean, new state (ex: Iot Hub should not have any devices). Otherwise, new resources will be generated during the test startup and deleted during the test teardown.
-
-> Note: If you interrupt test execution (for example via ctrl + C), the teardown or clean up processes may not run leaving resources in an indeterminant state.
-
-#### Integration Test Environment Variables
-
-You can either manually set the environment variables or use the `pytest.ini.example` file in the root of the extension repo. To use that file, rename it to `pytest.ini`, open it and set the variables as indicated below.
-
-```
-    AZURE_TEST_RUN_LIVE=True
-    azext_iot_testrg=
-    azext_iot_testhub=
-    azext_iot_testdps=
-    azext_iot_testdps_hub=
-    azext_iot_teststorageaccount=
-    azext_iot_teststoragecontainer=
-    azext_iot_central_app_id=
-    azext_iot_central_scope_id=
-    azext_iot_central_primarykey=
-    azext_iot_central_storage_cstring=
-    azext_iot_central_storage_container=
-    azext_dt_adx_cluster=
-    azext_dt_adx_database=
-    azext_dt_adx_rg=
-    azext_dt_ep_eventgrid_topic=
-    azext_dt_ep_servicebus_namespace=
-    azext_dt_ep_servicebus_policy=
-    azext_dt_ep_servicebus_topic=
-    azext_dt_ep_eventhub_namespace=
-    azext_dt_ep_eventhub_policy=
-    azext_dt_ep_eventhub_topic=
-    azext_dt_ep_eventhub_topic_consumer_group=
-    azext_dt_ep_rg=
-    azext_dt_region=
+_Init:_
+```powershell
+pytest azext_edge/tests/edge/init/int/test_init_int.py
 ```
 
-To run almost all of the tests, only the `azext_iot_testrg` is needed.
+_All support bundle int tests:_
+```powershell
+pytest azext_edge/tests/edge/support/create_bundle_int -k "_int.py"
+```
 
-To run all tests, `azext_iot_testrg`, `azext_iot_central_app_id`, and `azext_iot_central_primarykey` are needed because the IoT Central Primary Key cannot be currently retrieved through the CLI.
-
-For all resources, if the environmental variable is not provided, a new instance will be created for the test run and deleted at the end of the test run.
-
-| Variable name 	| Tests Used for 	| Description 	|
-|---------------	|----------------	|-------------	|
-| `az_iot_testrg`  	|    All          	| The resource group that contains the IoT Hub and DPS instances or where all test resources are created. It will be the default resource group if any other resource group variables are not provided.	|
-| `azext_iot_teststorageaccount`	| Iot Hub and Central Storage Tests	| The storage account used for running IoT Hub and Central storage tests. During these tests, your hub will be assigned a System-Assigned AAD identity, and will be granted the role of "Storage Blob Data Contributor" on the storage account you provide. Both the hub's identity and the RBAC role will be removed once the test completes. No role assignments are made for the IoT Central App.	|
-| `azext_iot_teststoragecontainer`	| Iot Hub Storage Tests	| The name of blob container belonging to the `azext_iot_teststorageaccount` storage account. Defaults to 'devices' when not specified.	|
-| `azext_iot_testhub` 	| Iot Hub Tests	| The name of the Iot Hub instance. 	|
-| `azext_iot_testdps`	| Iot DPS Tests	| The name of the Iot DPS instance.	|
-| `azext_iot_testdps_hub`	| Iot DPS Tests	| The name of the Iot Hub instance to use for DPS tests.	|
-| `azext_iot_central_app_id`	| Iot Central Tests	| The IoT Central Application Id or name.	|
-| `azext_iot_central_scope_id`	| Iot Central Tests	| The ID scope for the DPS associated with the IoT Central Application.	|
-| `azext_iot_central_token`	| Iot Central Tests	| The api token to use for the IoT Central Application. This is only used to populate --token argument in IoT Central commands.	|
-| `azext_iot_central_dns_suffix`	| Iot Central Tests	| The DNS Suffix to use for the IoT Central Application. This is only used to populate --central-dns-suffix argument in IoT Central commands.	|
-| `azext_iot_central_primarykey`	| Iot Central Tests	| The IoT Central Application Id or name. Cannot be currently retrieved through the CLI.	|
-| `azext_iot_central_storage_container`	| Iot Central Storage Tests	| The name of blob container belonging to the `azext_iot_teststorageaccount` storage account. Defaults to 'central' when not specified.	|
-| `azext_dt_region`	| Digital Twin Tests	| The region to restrict Digital Twins creation. If not specified, will create the Digital Twins in a supported region.	|
-| `azext_dt_adx_cluster`	| Digital Twin Data History Tests	| The name of the Azure Data Explorer Cluster to use. Azure Data Explorer Cluster creation time can take up to 20 minutes, so having a cluster is recommended.	|
-| `azext_dt_adx_database`	| Digital Twin Data History Tests	| The name of the database in the Azure Data Explorer Cluster to use.	|
-| `azext_dt_adx_rg`	| Digital Twin Data History Tests	| The resource group that contains the Azure Data Explorer Cluster. If not provided, `az_iot_testrg` will be used as the resource group. 	|
-| `azext_dt_ep_eventgrid_topic`	| Digital Twin Endpoint Tests	| The Event Grid Topic to use.	|
-| `azext_dt_ep_servicebus_namespace`	| Digital Twin Endpoint Tests	| The Service Bus Namespace to use.	|
-| `azext_dt_ep_servicebus_policy`	| Digital Twin Endpoint Tests	| The policy for the topic in the Service Bus Namespace to use.	|
-| `azext_dt_ep_servicebus_topic`	| Digital Twin Endpoint Tests	| The topic in the Service Bus Namespace to use.	|
-| `azext_dt_ep_eventhub_namespace`	| Digital Twin Data History and Endpoint Tests	| The Event Hub Namespace to use.	|
-| `azext_dt_ep_eventhub_policy`	| Digital Twin Endpoint Tests	| The policy for the Event Hub instance in the Event Hub Namespace to use.	|
-| `azext_dt_ep_eventhub_topic`	| Digital Twin Data History and Endpoint Tests	| The Event Hub instance in the Event Hub Namespace to use.	|
-| `azext_dt_ep_eventhub_topic_consumer_group`	| Digital Twin Data History Tests	| The Event Hub consumer group name to use. Defaults to "$Default".	|
-| `azext_dt_ep_rg`	| Digital Twin Data History and Endpoint Tests	| The resource group that contains the endpoint (Event Hub, Event Grid, Service Bus) variables. If not provided, `az_iot_testrg` will be used as the resource group.	|
-| `azext_dt_max_models_per_batch`	| Digital Twin Model Tests	| The maximum number of models per batch to submit to the DT Instance if the total set of models exceed the single page API limit. |
-| `use_tags`	| IoT Hub, DPS, and Central Tagging	| Flag to enable resource tagging. Please see "Test Resource Tagging" for more details.	|
-| `definition_id`	| IoT Hub, DPS, and Central Tagging	| Definition Id populated by an internal pipeline run. Can be manually set to customize the pipeline name tag. Please see "Test Resource Tagging" for more details.	|
-| `job_display_name`	| IoT Hub, DPS, and Central Tagging	| Job Display Name populated by an internal pipeline run. Can be manually set to customize the pipeline name tag. Please see "Test Resource Tagging" for more details.	|
-| `job_id`	| IoT Hub, DPS, and Central Tagging	| Job Id populated by an internal pipeline run. Can be manually set to customize the pipeline name tag. Please see "Test Resource Tagging" for more details.	|
-
-### IoT Digital Twins
-
-IoT Digital Twins test for creation of larger ontologies require ontology submodules to be cloned.
-
-Run the following command to clone required submodules.
-
-`git submodule update --init --recursive`
-
-##### Test Resource Tagging
-
-There are 4 more test variables used for tagging the test resources:
-- `use_tags`
-- `definition_id`
-- `job_display_name`
-- `job_id`
-
-If `use_tags` is set to "True", then the resources created and used in Iot Central, DPS, and Hub tests will be tagged. The tested resources (IoT Hub, DPS, and Central App instances) will have two types of tags:
-- number of test method runs (ex: `test_central_device_c2d_purge_success : 1` means that the test "test_central_device_c2d_purge_success" was run once)
-- a pipeline name or id (ex: `pipeline_id : 00 Test IoT Central Python310 00000000-0000-0000-0000-000000000` generated from internal pipeline runs) which can be manually set with `definition_id`, `job_display_name` and `job_id`.
-
-Other resources created for these tests (ex: Storage Accounts for IoT Hub and Central tests) will have tags showing which test resource is associated (ex: `iot_resource : test-app-xxx` shows that the tagged storage account was created to be tested with the IoT Central App `test-app-xxx`).
-
-These are mainly used for test pipeline debugging and differentiating what resources were created for what runs.
-
-#### Unit and Integration Tests Single Command
-
-Execute the following command to run both Unit and Integration tests and output a code coverage report to the console and to a `.coverage` file.  You can configure code coverage with the `.coveragerc` file.
-
-`pytest -v . --cov=azext_iot --cov-config .coveragerc`
-
-#### Formatting and Linting
-
-The repo uses the linter in `azdev`. For more information, see here: https://github.com/Azure/azure-cli-dev-tools#style-linter-check-and-testing
-
-We use our flake8 and pylint rules. We recommend you set up your IDE as per the VSCode setup below for best compliance.
-
-To manually run pylint with our rules, run this command:
+You can also target specific test functions in any test file, such as:
 
 ```powershell
-pylint azext_iot/ --rcfile=.pylintrc
+pytest azext_edge/tests/edge/checks/int/test_dataflow_int.py::test_dataflow_check
 ```
+## Suggested tools and IDE configuration
 
-To manually run flake8 with our rules, run this command:
-
-```powershell
-flake8 azext_iot/ --statistics --config=setup.cfg
-```
-
-We are also starting to use `python black`. To set this up on VSCode, see the following blog post.
-
-https://medium.com/@marcobelo/setting-up-python-black-on-visual-studio-code-5318eba4cd00
-
-## Optional
 
 ### VSCode setup
 
 1. Install VSCode
 
 2. Install the required extensions
-    * ([ms-python.python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) is recommended)
+    * [`ms-python.python`](https://marketplace.visualstudio.com/items?itemName=ms-python.python) is recommended
+    * [`python black`](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter) for linting and auto-formatting
+
 
 3. Set up `settings.json`
 
@@ -297,14 +231,10 @@ https://medium.com/@marcobelo/setting-up-python-black-on-visual-studio-code-5318
         "python.linting.flake8Args": [
             "--config=setup.cfg"
         ],
-        "files.associations": {
-            "*/.azure-devops/.yml": "azure-pipelines"
-        }
     }
     ```
 
 4. Set up `launch.json`
-
     ```json
     {
         "version": "0.2.0",
@@ -352,12 +282,9 @@ https://medium.com/@marcobelo/setting-up-python-black-on-visual-studio-code-5318
         "--a value --b value"
     ],
     ```
+5. You should now be able to place breakpoints in VSCode and see execution halt as the code hits them.
 
-5. Set up python black.
-
-6. You should now be able to place breakpoints in VSCode and see execution halt as the code hits them.
-
-### Python debugging
+### Python command-line debugging
 
 https://docs.python.org/3/library/pdb.html
 
