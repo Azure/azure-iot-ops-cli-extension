@@ -33,7 +33,6 @@ DEPENDENCIES = [
     "azure-identity>=1.14.1,<1.18.0",
     "protobuf~=4.25.0",
     "opentelemetry-proto~=1.20.0",
-    "packaging>=23.2",
     "semver>=3.0.4,<4",
 ]
 

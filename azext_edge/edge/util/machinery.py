@@ -8,8 +8,7 @@ from typing import Protocol, Any
 
 
 class HasParse(Protocol):
-    def parse(self) -> Any:
-        ...
+    def parse(self, version: str) -> Any: ...
 
 
 def scoped_semver_import() -> HasParse:

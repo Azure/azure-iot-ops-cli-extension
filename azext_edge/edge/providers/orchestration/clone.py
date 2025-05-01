@@ -14,7 +14,6 @@ from uuid import uuid4
 from azure.cli.core.azclierror import ValidationError
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
-from packaging.version import parse as parse_version
 from rich.console import Console
 from rich.progress import (
     Progress,
@@ -674,6 +673,7 @@ class CloneManager:
     """
     Encompasses the components for analyzing an instance and preparing it for cloning.
     """
+
     def __init__(
         self,
         cmd,
@@ -1435,19 +1435,22 @@ def get_role_assignment():
 # TODO: Work out goals, placement and version library
 class VersionGuru:
     def __init__(self, instance: dict):
+        from ...util.machinery import scoped_semver_import
+
+        self.semver_version = scoped_semver_import()
         self.instance = instance
         self.version: str = self.instance["properties"].get("version")
         if not self.version:
             raise ValidationError("Unable to determine version of the instance.")
-        self.parsed_version = parse_version(self.version)
+        self.parsed_version = self.semver_version.parse(self.version)
 
     def ensure_compat(self, force: Optional[bool] = None):
         if force:
             return
 
-        if self.parsed_version >= parse_version(CLONE_INSTANCE_VERS_MIN) and self.parsed_version < parse_version(
-            CLONE_INSTANCE_VERS_MAX
-        ):
+        if self.parsed_version >= self.semver_version.parse(
+            CLONE_INSTANCE_VERS_MIN
+        ) and self.parsed_version < self.semver_version.parse(CLONE_INSTANCE_VERS_MAX):
             return
 
         raise ValidationError(
@@ -1457,6 +1460,6 @@ class VersionGuru:
         )
 
     def get_instance_api(self) -> str:
-        if self.parsed_version < parse_version("1.1.0"):
+        if self.parsed_version < self.semver_version.parse("1.1.0"):
             return "2024-11-01"
         return "2025-04-01"

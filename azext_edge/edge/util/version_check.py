@@ -65,8 +65,10 @@ class IndexManager:
     def upgrade_available(self, force_refresh: Optional[bool] = False) -> Optional[str]:
         try:
             # Import here for exception safety
-            from packaging import version
             from azure.cli.core._session import Session
+            from .machinery import scoped_semver_import
+
+            semver_version = scoped_semver_import()
 
             self.iot_ops_session = Session(encoding="utf8")
             self.iot_ops_session.load(os.path.join(self.config_dir, SESSION_FILE_NAME))
@@ -92,7 +94,7 @@ class IndexManager:
                         latest_cli_version = _just_fetched_gh_version
                         self.iot_ops_session[SESSION_KEY_LATEST_VERSION] = latest_cli_version
 
-            is_upgrade = version.parse(latest_cli_version) > version.parse(CURRENT_CLI_VERSION)
+            is_upgrade = semver_version.parse(latest_cli_version) > semver_version.parse(CURRENT_CLI_VERSION)
             if is_upgrade:
                 return latest_cli_version
 

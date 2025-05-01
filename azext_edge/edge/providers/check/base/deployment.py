@@ -97,8 +97,9 @@ def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
     )
 
     try:
-        from packaging import version
+        from ....util.machinery import scoped_semver_import
 
+        semver_version = scoped_semver_import()
         version_details: VersionInfo = version_client.get_code()
     except (ApiException, ImportError) as ae:
         logger.debug(str(ae))
@@ -117,7 +118,7 @@ def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
         minor_version = version_details.minor
         semver = f"{major_version}.{minor_version}"
 
-        if version.parse(semver) >= version.parse(MIN_K8S_VERSION):
+        if semver_version.parse(semver) >= semver_version.parse(MIN_K8S_VERSION):
             semver_status = CheckTaskStatus.success.value
             semver_colored = f"[green]v{semver}[/green]"
         else:
