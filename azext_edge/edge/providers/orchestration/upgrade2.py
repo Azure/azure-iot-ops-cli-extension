@@ -273,7 +273,7 @@ class ExtensionUpgradeState:
         self.override = override or ConfigOverride()
         self.config_delta = {}
         self.force = force
-        self.semver = scoped_semver_import()
+        self.semver_version = scoped_semver_import()
 
     @property
     def current_version(self) -> Tuple[str, str]:
@@ -322,13 +322,14 @@ class ExtensionUpgradeState:
     def _has_delta_in_version(self) -> bool:
         return bool(self.override.version) or (
             self.desired_version[0]
-            and self.semver.parse(self.desired_version[0]) > self.semver.parse(self.current_version[0])
+            and self.semver_version.parse(self.desired_version[0]) > self.semver_version.parse(self.current_version[0])
         )
 
     def _has_delta_in_train(self) -> bool:
         return bool(self.override.train) or (
             self.desired_version[0]
-            and self.semver.parse(self.desired_version[0]) >= self.semver.parse(self.current_version[0])
+            and self.semver_version.parse(self.desired_version[0])
+            >= self.semver_version.parse(self.current_version[0])
             and not self.override.version
             and self.desired_version[1]
             and self.desired_version[1].lower() != self.current_version[1].lower()
@@ -346,7 +347,7 @@ class ExtensionUpgradeState:
     def _throw_on_downgrade(self):
         if self.force:
             return
-        if self.semver.parse(self.desired_version[0]) < self.semver.parse(self.current_version[0]):
+        if self.semver_version.parse(self.desired_version[0]) < self.semver_version.parse(self.current_version[0]):
             raise ValidationError(
                 f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
                 f"The desired {self.desired_version[0]} version is a downgrade which is not supported."
