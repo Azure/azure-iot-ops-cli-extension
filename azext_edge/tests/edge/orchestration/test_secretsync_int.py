@@ -75,31 +75,31 @@ def secretsync_int_setup(settings, tracked_resources: List[str]):
     }
 
     # note that you need to purge the kv too...
-    if kv_name:
-        try:
-            run(f"az keyvault delete -n {kv_name} -g {settings.env.azext_edge_rg}")
-            # sometimes it takes a bit to get the deleted list to update
-            sleep(ROLE_RETRY_INTERVAL)
-            run(f"az keyvault purge -n {kv_name}")
-        except CLIInternalError as e:
-            logger.error(f"Failed to delete the keyvault {kv_name} properly. {e.error_msg}")
+    # if kv_name:
+    #     try:
+    #         run(f"az keyvault delete -n {kv_name} -g {settings.env.azext_edge_rg}")
+    #         # sometimes it takes a bit to get the deleted list to update
+    #         sleep(ROLE_RETRY_INTERVAL)
+    #         run(f"az keyvault purge -n {kv_name}")
+    #     except CLIInternalError as e:
+    #         logger.error(f"Failed to delete the keyvault {kv_name} properly. {e.error_msg}")
 
-    # if it was enabled before, reenable
-    if initial_list_result:
-        kv_name = initial_list_result[0]["properties"]["keyvaultName"]
-        mi_client_id = initial_list_result[0]["properties"]["clientId"]
-        spc_name = initial_list_result[0]["name"]
-        try:
-            kv_id = run(f"az keyvault show -n {kv_name}")["id"]
-            mi_id = run(f"az identity list --query \"[?clientId=='{mi_client_id}']\"")[0]["id"]
-            # if the role assignments were applied, they should still exist
-            # TODO: phase 2 - direct cluster connection for --self-hosted-issuer
-            run(
-                f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
-                f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name} --skip-ra"
-            )
-        except (CLIInternalError, IndexError):
-            logger.error("Could not reenable secretsync correctly.")
+    # # if it was enabled before, reenable
+    # if initial_list_result:
+    #     kv_name = initial_list_result[0]["properties"]["keyvaultName"]
+    #     mi_client_id = initial_list_result[0]["properties"]["clientId"]
+    #     spc_name = initial_list_result[0]["name"]
+    #     try:
+    #         kv_id = run(f"az keyvault show -n {kv_name}")["id"]
+    #         mi_id = run(f"az identity list --query \"[?clientId=='{mi_client_id}']\"")[0]["id"]
+    #         # if the role assignments were applied, they should still exist
+    #         # TODO: phase 2 - direct cluster connection for --self-hosted-issuer
+    #         run(
+    #             f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
+    #             f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name} --skip-ra"
+    #         )
+    #     except (CLIInternalError, IndexError):
+    #         logger.error("Could not reenable secretsync correctly.")
 
 
 @pytest.mark.rpsaas
