@@ -10,7 +10,8 @@ Version = object  # Placeholder for the actual Version type from semver
 
 
 class HasSemverParse(Protocol):
-    def parse(self, version: str, optional_minor_and_patch: bool = False) -> Version: ...
+    def parse(self, version: str, optional_minor_and_patch: bool = False) -> Version:
+        ...
 
 
 def scoped_semver_import() -> HasSemverParse:
