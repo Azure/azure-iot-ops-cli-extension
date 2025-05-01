@@ -537,10 +537,11 @@ def load_iotops_arguments(self, _):
             )
             # Cluster Precheck opt-in
             context.argument(
-                "cluster_checks",
-                options_list=["--cluster-checks"],
+                "check_cluster",
+                options_list=["--check_cluster"],
                 arg_type=get_three_state_flag(),
                 help="Enforce a check for minimum cluster requirements before bootstrapping.",
+                is_preview=True,
             )
 
             # Schema Registry

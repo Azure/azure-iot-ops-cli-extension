@@ -166,7 +166,7 @@ class WorkManager:
             WorkCategoryKey.PRE_FLIGHT,
             WorkStepKey.ENUMERATE_PRE_FLIGHT,
             title="Enumerate pre-flight checks",
-            description="[bright_yellow]•[/bright_yellow] Cluster readiness" if self._cluster_checks else None,
+            description="[bright_yellow]•[/bright_yellow] Cluster readiness" if self._check_cluster else None,
         )
 
         if self._apply_foundation:
@@ -318,7 +318,7 @@ class WorkManager:
     def execute_ops_init(
         self,
         apply_foundation: bool = True,
-        cluster_checks: bool = False,
+        check_cluster: bool = False,
         context_name: Optional[str] = None,
         show_progress: bool = True,
         pre_flight: bool = True,
@@ -328,7 +328,7 @@ class WorkManager:
         self._work_id = uuid4().hex
         self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
         self._apply_foundation = apply_foundation
-        self._cluster_checks = cluster_checks
+        self._check_cluster = check_cluster
         self._context_name = context_name
         self._pre_flight = pre_flight
 
@@ -378,7 +378,7 @@ class WorkManager:
                     verify_write_permission_against_rg(
                         subscription_id=self.subscription_id, resource_group_name=self._targets.resource_group_name
                     )
-                if self._cluster_checks:
+                if self._check_cluster:
                     load_config_context(context_name=self._context_name)
                     validate_cluster_prechecks(
                         acs_config=(

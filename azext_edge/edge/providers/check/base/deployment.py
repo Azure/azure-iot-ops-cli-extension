@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from collections import defaultdict
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional
 
@@ -22,12 +23,11 @@ from .resource import enumerate_ops_service_resources
 from .user_strings import UNABLE_TO_DETERMINE_VERSION_MSG
 
 logger = get_logger(__name__)
-# TODO: unit test
 
 
 def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
     pre_checks = check_pre_deployment(acs_config=acs_config)
-    errors = {}
+    errors = defaultdict(list)
     for check in pre_checks:
         for target in check["targets"]:
             for namespace in check["targets"][target]:  # for all prechecks, namespace is currently _all_
@@ -39,8 +39,6 @@ def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
                             if idx < len(check["targets"][target][namespace]["conditions"])
                             else None
                         )
-                        if not errors.get(target):
-                            errors[target] = []
                         errors[target].append(f"Expected: '{expected_condition}', Actual: '{check_eval['value']}'")
 
     if errors:
@@ -169,12 +167,15 @@ def _check_k8s_version(as_list: bool = False) -> Dict[str, Any]:
 def _check_storage_classes(acs_config: dict, as_list: bool = False) -> Dict[str, Any]:
     from kubernetes.client.models import V1StorageClassList
 
-    expected_classes = acs_config.get("feature.diskStorageClass", [])
+    expected_classes = acs_config.get("feature.diskStorageClass", "")
     check_manager = CheckManager(check_name="evalStorageClasses", check_desc="Evaluate storage classes")
     target = "cluster/storage-classes"
     check_manager.add_target(
         target_name=target,
-        conditions=["len(cluster/storage-classes)>=1", f"contains(cluster/storage-classes, any({expected_classes}))"],
+        conditions=[
+            "len(cluster/storage-classes)>=1",
+            f"contains(cluster/storage-classes, any({expected_classes}))",
+        ],
     )
 
     try:
@@ -204,7 +205,7 @@ def _check_storage_classes(acs_config: dict, as_list: bool = False) -> Dict[str,
         expected_class_names = expected_classes.split(",")
         storage_class_names = [sc.metadata.name for sc in storage_classes.items]
         matches = [sc for sc in storage_class_names if sc in expected_class_names]
-        storage_status = CheckTaskStatus.success if len(matches) else CheckTaskStatus.error
+        storage_status = CheckTaskStatus.success if matches else CheckTaskStatus.error
         check_manager.add_target_eval(
             target_name=target,
             status=storage_status.value,
