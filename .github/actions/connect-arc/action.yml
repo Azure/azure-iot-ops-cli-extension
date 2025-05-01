@@ -106,6 +106,8 @@ runs:
 
         # sudo systemctl stop k3s
         sudo /usr/local/bin/k3s-killall.sh
+        sleep 30s
+
         sudo k3s server --cluster-init --kube-apiserver-arg service-account-issuer=$account_issuer --kube-apiserver-arg service-account-max-token-expiration=24h &
 
         sleep 15s
