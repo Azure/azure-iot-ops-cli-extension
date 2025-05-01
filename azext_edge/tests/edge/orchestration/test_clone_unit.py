@@ -1128,14 +1128,14 @@ def test_clone_to_dir(
         aep_pages = math.ceil(add_aeps / DEPLOYMENT_CHUNK_LEN)
         for i in range(aep_pages):
             assert mock_open_write.call_args_list[i + 1].kwargs == {
-                "file": f"{target_path.joinpath(f'assetendpointprofiles_{i+1}')}.json",
+                "file": f"{target_path.joinpath(f'assetendpointprofiles_{i + 1}')}.json",
                 "mode": "w",
                 "encoding": "utf8",
             }
         asset_pages = math.ceil(add_assets / DEPLOYMENT_CHUNK_LEN)
         for i in range(asset_pages):
             assert mock_open_write.call_args_list[aep_pages + 1 + i].kwargs == {
-                "file": f"{target_path.joinpath(f'assets_{i+1}')}.json",
+                "file": f"{target_path.joinpath(f'assets_{i + 1}')}.json",
                 "mode": "w",
                 "encoding": "utf8",
             }
