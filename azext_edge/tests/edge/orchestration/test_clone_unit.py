@@ -726,7 +726,7 @@ class CloneScenario:
         self.responses.add_callback(
             method="POST",
             url=re.compile(
-                r"https://management.azure.com/providers/Microsoft.ResourceGraph/resources\?api-version=2022-10-01"
+                r"https://management\.azure\.com/providers/Microsoft\.ResourceGraph/resources\?api-version=2022-10-01"
             ),
             callback=_handle_requests,
         )
