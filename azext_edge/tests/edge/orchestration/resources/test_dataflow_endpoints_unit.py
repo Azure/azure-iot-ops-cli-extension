@@ -133,7 +133,7 @@ def test_dataflow_endpoint_delete(mocked_cmd, mocked_responses: responses):
 
     mocked_responses.add(
         method=responses.DELETE,
-        url=get_dataflow_endpoint(
+        url=get_dataflow_endpoint_endpoint(
             dataflow_endpoint_name=dataflow_endpoint_name,
             resource_group_name=resource_group_name,
             instance_name=instance_name,
@@ -181,7 +181,7 @@ def test_dataflow_endpoint_apply(mocked_cmd, mocked_responses: responses, mocked
     )
     put_response = mocked_responses.add(
         method=responses.PUT,
-        url=get_dataflow_endpoint(
+        url=get_dataflow_endpoint_endpoint(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_endpoint_name=dataflow_endpoint_name,
