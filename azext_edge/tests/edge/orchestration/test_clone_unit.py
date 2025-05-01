@@ -22,6 +22,7 @@ import responses
 from azure.cli.core.azclierror import ValidationError
 
 from azext_edge.constants import VERSION as CLI_VERSION
+from azext_edge.edge.commands_edge import clone_instance
 from azext_edge.edge.common import (
     DEFAULT_BROKER,
     DEFAULT_BROKER_AUTHN,
@@ -39,7 +40,6 @@ from azext_edge.edge.providers.orchestration.clone import (
     VersionGuru,
     default_bundle_name,
     get_fc_name,
-    parse_version,
 )
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_ACS,
@@ -47,8 +47,8 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
 )
-from azext_edge.edge.commands_edge import clone_instance
 from azext_edge.edge.util.id_tools import parse_resource_id
+from azext_edge.edge.util.machinery import scoped_semver_import
 
 from ...generators import generate_random_string, generate_uuid, get_zeroed_subscription
 from .resources.conftest import BASE_URL, get_request_kpis
@@ -1332,6 +1332,7 @@ class CloneAssertor:
         self.resource_configs = clone_scenario.resource_configs
         self.extension_name_map = {}
         self.instance_api = VersionGuru(self.resource_configs["instance"]).get_instance_api()
+        self.semver_version = scoped_semver_import()
 
     def assert_content(self, content: dict):
         assert isinstance(content, dict), "content should be a dictionary"
@@ -1379,9 +1380,9 @@ class CloneAssertor:
         self._assert_resources(content)
 
     def _assert_instance_api(self):
-        parsed_version = parse_version(self.resource_configs["instance"]["properties"]["version"])
+        parsed_version = self.semver_version.parse(self.resource_configs["instance"]["properties"]["version"])
 
-        if parsed_version < parse_version("1.1.0"):
+        if parsed_version < self.semver_version.parse("1.1.0"):
             assert self.instance_api == "2024-11-01"
         assert self.instance_api == "2025-04-01"
 
