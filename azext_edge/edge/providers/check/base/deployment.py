@@ -26,7 +26,8 @@ logger = get_logger(__name__)
 
 
 def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
-    pre_checks = check_pre_deployment(acs_config=acs_config)
+    # Storage space check is currently not run on init, but it's run as part of `ops check`
+    pre_checks = check_pre_deployment(acs_config=acs_config, storage_space_check=False)
     errors = defaultdict(list)
     for check in pre_checks:
         for target in check["targets"]:
@@ -51,14 +52,22 @@ def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
         raise ValidationError("Cluster readiness pre-checks failed:\n" + error_str)
 
 
+# TODO - pipe kwargs through as named args for better control
 def check_pre_deployment(as_list: bool = False, **kwargs) -> List[dict]:
     result = []
     desired_checks = {}
     acs_config = kwargs.get("acs_config")
+    storage_space_check = kwargs.get("storage_space_check", True)
+    kernel_version_check = bool(acs_config)
     desired_checks.update(
         {
             "checkK8sVersion": partial(_check_k8s_version, as_list=as_list),
-            "checkNodes": partial(check_nodes, as_list=as_list, check_acsa_node_version=bool(acs_config)),
+            "checkNodes": partial(
+                check_nodes,
+                as_list=as_list,
+                kernel_version_check=kernel_version_check,
+                storage_space_check=storage_space_check,
+            ),
         }
     )
     if acs_config:

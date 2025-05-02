@@ -44,6 +44,7 @@ def test_check_pre_post(cluster_connection, post, pre):
             expected_pre = "iotoperations.azure.com" not in aio_check
         except CLIInternalError:
             from azext_edge.edge.providers.edge_api import META_API_V1
+
             expected_pre = not META_API_V1.is_deployed()
 
     assert bool(result.get("preDeployment")) == expected_pre
@@ -97,21 +98,21 @@ def test_check_pre_post(cluster_connection, post, pre):
 
         assert node_target["conditions"] == [
             f"info.architecture in ({','.join(AIO_SUPPORTED_ARCHITECTURES)})",
-            f"condition.cpu>={MIN_NODE_VCPU}",
-            f"condition.memory>={MIN_NODE_MEMORY}"
+            f"allocatable.cpu>={MIN_NODE_VCPU}",
+            f"allocatable.memory>={MIN_NODE_MEMORY}",
         ]
 
         node_arch = node_target["evaluations"][0]["value"]["info.architecture"]
         assert node_arch == node["status"]["nodeInfo"]["architecture"]
         assert node_target["evaluations"][0]["status"] == get_expected_status(node_arch in AIO_SUPPORTED_ARCHITECTURES)
 
-        node_capacity = node["status"]["capacity"]
-        node_cpu = node_target["evaluations"][1]["value"]["condition.cpu"]
-        assert node_cpu == int(node_capacity["cpu"])
+        node_allocatable = node["status"]["allocatable"]
+        node_cpu = node_target["evaluations"][1]["value"]["allocatable.cpu"]
+        assert node_cpu == int(node_allocatable["cpu"])
         assert node_target["evaluations"][1]["status"] == get_expected_status(node_cpu >= int(MIN_NODE_VCPU))
 
-        node_memory = node_target["evaluations"][2]["value"]["condition.memory"]
-        assert node_memory == int(parse_quantity(node_capacity["memory"]))
+        node_memory = node_target["evaluations"][2]["value"]["allocatable.memory"]
+        assert node_memory == int(parse_quantity(node_allocatable["memory"]))
         assert node_target["evaluations"][2]["status"] == get_expected_status(
             node_memory >= parse_quantity(MIN_NODE_MEMORY)
         )

@@ -9,8 +9,7 @@ from unittest.mock import Mock
 
 import pytest
 from azure.cli.core.azclierror import ValidationError
-from kubernetes.client.models import (V1ObjectMeta, V1StorageClass,
-                                      V1StorageClassList, VersionInfo)
+from kubernetes.client.models import V1ObjectMeta, V1StorageClass, V1StorageClassList, VersionInfo
 
 from azext_edge.edge.providers.check.common import MIN_K8S_VERSION
 
@@ -27,8 +26,7 @@ local_vars_configuration = Mock(client_side_validation=False)
     ],
 )
 def test_check_k8s_version(mocked_version_client, k8s_version, expected_status):
-    from azext_edge.edge.providers.check.base.deployment import \
-        _check_k8s_version
+    from azext_edge.edge.providers.check.base.deployment import _check_k8s_version
 
     major, minor = k8s_version.split(".")
     mocked_version_client.return_value.get_code.return_value = VersionInfo(
@@ -51,8 +49,7 @@ def test_check_k8s_version(mocked_version_client, k8s_version, expected_status):
     ],
 )
 def test_check_storage_classes(mocked_storage_client, storage_classes, expected_classes, expected_status):
-    from azext_edge.edge.providers.check.base.deployment import \
-        _check_storage_classes
+    from azext_edge.edge.providers.check.base.deployment import _check_storage_classes
 
     mocked_storage_client.return_value.list_storage_class.return_value = V1StorageClassList(
         items=[
@@ -116,13 +113,13 @@ def test_check_storage_classes(mocked_storage_client, storage_classes, expected_
                             "_all_": {
                                 "conditions": [
                                     "info.architecture in (amd64)",
-                                    "condition.cpu>=4",
-                                    "condition.memory>=16G",
+                                    "allocatable.cpu>=4",
+                                    "allocatable.memory>=16G",
                                 ],
                                 "evaluations": [
                                     {"status": "success", "value": {"info.architecture": "amd64"}},
-                                    {"status": "success", "value": {"condition.cpu": 4}},
-                                    {"status": "success", "value": {"condition.memory": "16G"}},
+                                    {"status": "success", "value": {"allocatable.cpu": 4}},
+                                    {"status": "success", "value": {"allocatable.memory": "16G"}},
                                 ],
                                 "status": "success",
                             }
@@ -164,16 +161,16 @@ def test_check_storage_classes(mocked_storage_client, storage_classes, expected_
                             "_all_": {
                                 "conditions": [
                                     "info.architecture in (amd64)",
-                                    "condition.cpu>=4",
-                                    "condition.memory>=16G",
+                                    "allocatable.cpu>=4",
+                                    "allocatable.memory>=16G",
                                 ],
                                 "evaluations": [
                                     {
                                         "status": "error",
                                         "value": {"info.architecture": "invalid_arch"},
                                     },  # invalid architecture
-                                    {"status": "error", "value": {"condition.cpu": 1}},  # invalid cpu count
-                                    {"status": "success", "value": {"condition.memory": "12G"}},  # invalid memory
+                                    {"status": "error", "value": {"allocatable.cpu": 1}},  # invalid cpu count
+                                    {"status": "success", "value": {"allocatable.memory": "12G"}},  # invalid memory
                                 ],
                                 "status": "success",
                             }
@@ -195,8 +192,7 @@ def test_check_storage_classes(mocked_storage_client, storage_classes, expected_
     ids=["acs_config", "no_acs_config"],
 )
 def test_validate_cluster_prechecks(mocker, pre_check_results, error, acs_config):
-    from azext_edge.edge.providers.check.base.deployment import \
-        validate_cluster_prechecks
+    from azext_edge.edge.providers.check.base.deployment import validate_cluster_prechecks
 
     mocked_precheck = mocker.patch(
         "azext_edge.edge.providers.check.base.deployment.check_pre_deployment", return_value=pre_check_results
@@ -211,7 +207,7 @@ def test_validate_cluster_prechecks(mocker, pre_check_results, error, acs_config
     else:
         validate_cluster_prechecks(acs_config=acs_config)
 
-    mocked_precheck.assert_called_once_with(acs_config=acs_config)
+    mocked_precheck.assert_called_once_with(acs_config=acs_config, storage_space_check=False)
 
 
 def assert_cluster_precheck_errors(error_str: str, pre_check_results: List[dict]):
@@ -240,8 +236,7 @@ def assert_cluster_precheck_errors(error_str: str, pre_check_results: List[dict]
     ],
 )
 def test_check_pre_deployment(mocker, acs_config):
-    from azext_edge.edge.providers.check.base.deployment import \
-        check_pre_deployment
+    from azext_edge.edge.providers.check.base.deployment import check_pre_deployment
 
     mocker.patch(
         "azext_edge.edge.providers.check.base.deployment._check_k8s_version",
@@ -259,7 +254,8 @@ def test_check_pre_deployment(mocker, acs_config):
 
     kwargs = {}
     if acs_config:
-        kwargs.update({"acs_config": acs_config})
+        # @c-ryan-k - Currently we are only checking storage space if acs_config is set
+        kwargs.update({"acs_config": acs_config}, storage_space_check=bool(acs_config))
     result = check_pre_deployment(as_list=True, **kwargs)
 
     assert len(result) == 3 if acs_config else 2

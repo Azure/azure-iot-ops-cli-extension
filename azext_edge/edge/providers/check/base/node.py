@@ -19,6 +19,7 @@ from ..common import (
     COLOR_STR_FORMAT,
     DISPLAY_BYTES_PER_GIGABYTE,
     MIN_NODE_MEMORY,
+    MIN_NODE_STORAGE,
     MIN_NODE_VCPU,
 )
 from .check_manager import CheckManager
@@ -27,7 +28,9 @@ from .user_strings import NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
 logger = get_logger(__name__)
 
 
-def check_nodes(as_list: bool = False, check_acsa_node_version: Optional[bool] = False) -> Dict[str, Any]:
+def check_nodes(
+    as_list: bool = False, kernel_version_check: Optional[bool] = False, storage_space_check: Optional[bool] = True
+) -> Dict[str, Any]:
     from ...base import client
 
     check_manager = CheckManager(check_name="evalClusterNodes", check_desc="Evaluate cluster nodes")
@@ -61,7 +64,10 @@ def check_nodes(as_list: bool = False, check_acsa_node_version: Optional[bool] =
             target_name=target, status=CheckTaskStatus.success.value, value={"len(cluster/nodes)": len(nodes.items)}
         )
         table = _generate_node_table(
-            check_manager=check_manager, nodes=nodes, check_acsa_node_version=check_acsa_node_version
+            check_manager=check_manager,
+            nodes=nodes,
+            acs_kernel_check=kernel_version_check,
+            storage_space_check=storage_space_check,
         )
 
         check_manager.add_display(target_name=target, display=Padding("Node Resources", padding))
@@ -71,9 +77,13 @@ def check_nodes(as_list: bool = False, check_acsa_node_version: Optional[bool] =
 
 
 def _generate_node_table(
-    check_manager: CheckManager, nodes: V1NodeList, check_acsa_node_version: Optional[bool] = False
+    check_manager: CheckManager,
+    nodes: V1NodeList,
+    acs_kernel_check: Optional[bool] = False,
+    storage_space_check: Optional[bool] = False,
 ) -> Table:
     from kubernetes.utils import parse_quantity
+
     from ....util.machinery import scoped_semver_import
 
     semver = scoped_semver_import()
@@ -82,10 +92,11 @@ def _generate_node_table(
     table = Table(show_header=True, header_style="bold", show_lines=True, caption_justify="left")
     for column_name, justify in [
         ("Name", "left"),
-        ("Architecture", "right"),
-        *([("Kernel version", "right")] if check_acsa_node_version else []),
-        ("CPU (vCPU)", "right"),
-        ("Memory (GB)", "right"),
+        ("Architecture", "left"),
+        *([("Kernel version", "left")] if acs_kernel_check else []),
+        *([("Ephemeral\nStorage (GB)", "left")] if storage_space_check else []),
+        ("CPU (vCPU)", "left"),
+        ("Memory (GB)", "left"),
     ]:
         table.add_column(column_name, justify=f"{justify}")
     table.add_row(
@@ -94,7 +105,8 @@ def _generate_node_table(
             for value in [
                 "Minimum requirements",
                 ", ".join(AIO_SUPPORTED_ARCHITECTURES),
-                *([ACSA_MIN_NODE_KERNEL_VERSION] if check_acsa_node_version else []),
+                *([ACSA_MIN_NODE_KERNEL_VERSION] if acs_kernel_check else []),
+                *([MIN_NODE_STORAGE[:-1]] if storage_space_check else []),
                 MIN_NODE_VCPU,
                 MIN_NODE_MEMORY[:-1],
             ]
@@ -118,7 +130,7 @@ def _generate_node_table(
                 AIO_SUPPORTED_ARCHITECTURES,
                 node.status.node_info.architecture,
             ),
-            # Only check kernel version for ACS
+            # Optional kernel version check
             *(
                 [
                     (
@@ -127,18 +139,30 @@ def _generate_node_table(
                         node.status.node_info.kernel_version,
                     )
                 ]
-                if check_acsa_node_version
+                if acs_kernel_check
+                else []
+            ),
+            # Optional storage space check
+            *(
+                [
+                    (
+                        "allocatable.ephemeral-storage",
+                        MIN_NODE_STORAGE,
+                        parse_quantity(node.status.allocatable.get("ephemeral-storage", 0)),
+                    )
+                ]
+                if storage_space_check
                 else []
             ),
             (
-                "condition.cpu",
+                "allocatable.cpu",
                 MIN_NODE_VCPU,
-                parse_quantity(node.status.capacity.get("cpu", 0)),
+                parse_quantity(node.status.allocatable.get("cpu", 0)),
             ),
             (
-                "condition.memory",
+                "allocatable.memory",
                 MIN_NODE_MEMORY,
-                parse_quantity(node.status.capacity.get("memory", 0)),
+                parse_quantity(node.status.allocatable.get("memory", 0)),
             ),
         ]
         for condition, expected, actual in table_tuples:
@@ -151,7 +175,9 @@ def _generate_node_table(
                 if actual not in expected:
                     row_status = cell_status = CheckTaskStatus.error
             elif condition == "info.kernel_version":
-                if semver.parse(actual, optional_minor_and_patch=True) < semver.parse(expected, optional_minor_and_patch=True):
+                if semver.parse(actual, optional_minor_and_patch=True) < semver.parse(
+                    expected, optional_minor_and_patch=True
+                ):
                     row_status = cell_status = CheckTaskStatus.error
 
             else:
@@ -160,7 +186,8 @@ def _generate_node_table(
                 if actual < expected:
                     row_status = cell_status = CheckTaskStatus.error
                 actual = int(actual)
-                if condition == "condition.memory":
+                # display as "xxG"
+                if condition in ["allocatable.memory", "allocatable.ephemeral-storage"]:
                     actual = f"{int(actual / DISPLAY_BYTES_PER_GIGABYTE)}G"
 
             check_manager.add_target_conditions(target_name=node_target, conditions=[condition_str])
