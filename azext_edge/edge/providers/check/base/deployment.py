@@ -43,7 +43,7 @@ def validate_cluster_prechecks(**kwargs) -> None:
                         expected_condition = (
                             check["targets"][target][namespace]["conditions"][idx]
                             if idx < len(check["targets"][target][namespace]["conditions"])
-                            else None
+                            else "N/A"
                         )
                         errors[target].append(f"Expected: '{expected_condition}', Actual: '{check_eval['value']}'")
 
