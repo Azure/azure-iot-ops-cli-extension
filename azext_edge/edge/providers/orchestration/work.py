@@ -380,17 +380,8 @@ class WorkManager:
                     )
                 if self._check_cluster:
                     load_config_context(context_name=self._context_name)
-                    validate_cluster_prechecks(
-                        acs_config=(
-                            get_merged_acs_config(
-                                enable_fault_tolerance=self._targets.enable_fault_tolerance,
-                                acs_config=self._targets.acs_config,
-                            )
-                            # Only pass acs_config if not enable_fault_tolerance
-                            if not self._targets.enable_fault_tolerance
-                            else None
-                        )
-                    )
+                    cluster_check_kwargs = self._build_cluster_check_kwargs()
+                    validate_cluster_prechecks(**cluster_check_kwargs)
                 self._complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
@@ -671,3 +662,20 @@ class WorkManager:
                     f"{insert_newlines(f'{cl_error_prefix}{http_exc.error.message}', 140)}\n\n{explain}"
                 )
             raise http_exc
+
+    def _build_cluster_check_kwargs(self) -> Dict[str, dict]:
+        cluster_check_kwargs = {}
+
+        # Storage space check is currently not run on init
+        cluster_check_kwargs["storage_space_check"] = False
+
+        # Check ACS config unless fault tolerance is enabled
+        cluster_check_kwargs["acs_config"] = (
+            get_merged_acs_config(
+                enable_fault_tolerance=self._targets.enable_fault_tolerance,
+                acs_config=self._targets.acs_config,
+            )
+            if not self._targets.enable_fault_tolerance
+            else None
+        )
+        return cluster_check_kwargs

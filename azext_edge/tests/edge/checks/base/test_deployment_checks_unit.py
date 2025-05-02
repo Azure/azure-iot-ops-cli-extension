@@ -187,27 +187,40 @@ def test_check_storage_classes(mocked_storage_client, storage_classes, expected_
     "acs_config",
     [
         {"feature.diskStorageClass": "default,local-path"},
+        {"feature.diskStorageClass": "singleclass"},
+        {"feature.diskStorageClass": ""},
         None,
     ],
-    ids=["acs_config", "no_acs_config"],
+    ids=["default", "singleclass", "noclass", "no_config"],
 )
-def test_validate_cluster_prechecks(mocker, pre_check_results, error, acs_config):
+@pytest.mark.parametrize(
+    "storage_space_check",
+    [
+        True,
+        False,
+    ],
+    ids=["storage", "no_storage"],
+)
+def test_validate_cluster_prechecks(mocker, pre_check_results, error, acs_config, storage_space_check):
     from azext_edge.edge.providers.check.base.deployment import validate_cluster_prechecks
+
+    kwargs = {"acs_config": acs_config}
+    kwargs.update({"storage_space_check": storage_space_check})
 
     mocked_precheck = mocker.patch(
         "azext_edge.edge.providers.check.base.deployment.check_pre_deployment", return_value=pre_check_results
     )
     if error:
         with pytest.raises(Exception, match=r"^Cluster readiness pre-checks failed") as ex:
-            validate_cluster_prechecks(acs_config=acs_config)
+            validate_cluster_prechecks(**kwargs)
         assert "Cluster readiness pre-checks failed" in str(ex.value)
         assert isinstance(ex.value, ValidationError)
         assert_cluster_precheck_errors(str(ex.value), pre_check_results)
 
     else:
-        validate_cluster_prechecks(acs_config=acs_config)
+        validate_cluster_prechecks(**kwargs)
 
-    mocked_precheck.assert_called_once_with(acs_config=acs_config, storage_space_check=False)
+    mocked_precheck.assert_called_once_with(acs_config=acs_config, storage_space_check=storage_space_check)
 
 
 def assert_cluster_precheck_errors(error_str: str, pre_check_results: List[dict]):
@@ -232,10 +245,21 @@ def assert_cluster_precheck_errors(error_str: str, pre_check_results: List[dict]
     "acs_config",
     [
         {"feature.diskStorageClass": "default,local-path"},
+        {"feature.diskStorageClass": "singleclass"},
+        {"feature.diskStorageClass": ""},
         None,
     ],
+    ids=["default", "singleclass", "noclass", "no_config"],
 )
-def test_check_pre_deployment(mocker, acs_config):
+@pytest.mark.parametrize(
+    "storage_space_check",
+    [
+        True,
+        False,
+    ],
+    ids=["storage", "no_storage"],
+)
+def test_check_pre_deployment(mocker, acs_config, storage_space_check):
     from azext_edge.edge.providers.check.base.deployment import check_pre_deployment
 
     mocker.patch(
@@ -246,21 +270,20 @@ def test_check_pre_deployment(mocker, acs_config):
         "azext_edge.edge.providers.check.base.deployment.check_nodes",
         return_value={"name": "evalClusterNodes", "status": "success"},
     )
-
     mocker.patch(
         "azext_edge.edge.providers.check.base.deployment._check_storage_classes",
         return_value={"name": "evalStorageClasses", "status": "success"},
     )
 
     kwargs = {}
-    if acs_config:
-        # @c-ryan-k - Currently we are only checking storage space if acs_config is set
-        kwargs.update({"acs_config": acs_config}, storage_space_check=bool(acs_config))
+    kwargs.update(acs_config=acs_config, storage_space_check=storage_space_check)
     result = check_pre_deployment(as_list=True, **kwargs)
 
-    assert len(result) == 3 if acs_config else 2
-    assert result[0]["name"] == "evalK8sVers"
-    assert result[1]["name"] == "evalClusterNodes"
-
+    expected_checks = ["evalK8sVers", "evalClusterNodes"]
     if acs_config:
-        assert result[2]["name"] == "evalStorageClasses"
+        expected_checks.append("evalStorageClasses")
+
+    # ensure correct checks are present
+    for idx, check in enumerate(expected_checks):
+        assert result[idx]["name"] == check
+        assert result[idx]["status"] == "success"

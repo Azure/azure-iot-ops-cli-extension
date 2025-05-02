@@ -25,9 +25,11 @@ from .user_strings import UNABLE_TO_DETERMINE_VERSION_MSG
 logger = get_logger(__name__)
 
 
-def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
-    # Storage space check is currently not run on init, but it's run as part of `ops check`
-    pre_checks = check_pre_deployment(acs_config=acs_config, storage_space_check=False)
+def validate_cluster_prechecks(**kwargs) -> None:
+    acs_config = kwargs.get("acs_config")
+    storage_space_check = kwargs.get("storage_space_check")
+
+    pre_checks = check_pre_deployment(acs_config=acs_config, storage_space_check=storage_space_check)
     errors = defaultdict(list)
     for check in pre_checks:
         for target in check["targets"]:
@@ -52,12 +54,11 @@ def validate_cluster_prechecks(acs_config: Optional[dict] = None) -> None:
         raise ValidationError("Cluster readiness pre-checks failed:\n" + error_str)
 
 
-# TODO - pipe kwargs through as named args for better control
-def check_pre_deployment(as_list: bool = False, **kwargs) -> List[dict]:
+def check_pre_deployment(
+    as_list: bool = False, acs_config: Optional[dict] = None, storage_space_check: Optional[bool] = False
+) -> List[dict]:
     result = []
     desired_checks = {}
-    acs_config = kwargs.get("acs_config")
-    storage_space_check = kwargs.get("storage_space_check", True)
     kernel_version_check = bool(acs_config)
     desired_checks.update(
         {
