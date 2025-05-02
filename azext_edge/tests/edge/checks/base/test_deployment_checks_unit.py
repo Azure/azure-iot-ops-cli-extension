@@ -210,7 +210,7 @@ def test_check_storage_classes(mocked_storage_client, storage_classes, expected_
     ],
     ids=["storage", "no_storage"],
 )
-def test_validate_cluster_prechecks(mocker, pre_check_results, error, acs_config, storage_space_check):
+def test_validate_cluster_prechecks(mocker, mocked_config, pre_check_results, error, acs_config, storage_space_check):
     from azext_edge.edge.providers.check.base.deployment import validate_cluster_prechecks
 
     kwargs = {"acs_config": acs_config}
