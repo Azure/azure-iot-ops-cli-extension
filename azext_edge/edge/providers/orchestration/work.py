@@ -21,7 +21,6 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
-from azext_edge.edge.providers.base import load_config_context
 from azext_edge.edge.providers.check.base.deployment import validate_cluster_prechecks
 
 from ...util.az_client import (
@@ -379,7 +378,6 @@ class WorkManager:
                         subscription_id=self.subscription_id, resource_group_name=self._targets.resource_group_name
                     )
                 if self._check_cluster:
-                    load_config_context(context_name=self._context_name)
                     cluster_check_kwargs = self._build_cluster_check_kwargs()
                     validate_cluster_prechecks(**cluster_check_kwargs)
                 self._complete_step(
@@ -665,6 +663,9 @@ class WorkManager:
 
     def _build_cluster_check_kwargs(self) -> Dict[str, dict]:
         cluster_check_kwargs = {}
+
+        # Cluster context
+        cluster_check_kwargs["context_name"] = self._context_name
 
         # Storage space check is currently not run on init
         cluster_check_kwargs["storage_space_check"] = False

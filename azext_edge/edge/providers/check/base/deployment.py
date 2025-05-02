@@ -15,7 +15,7 @@ from rich.padding import Padding
 
 from ....common import CheckTaskStatus, ListableEnum
 from ....providers.edge_api import EdgeResourceApi
-from ...base import client
+from ...base import client, load_config_context
 from ..common import NON_ERROR_STATUSES, CoreServiceResourceKinds, ResourceOutputDetailLevel
 from .check_manager import CheckManager
 from .node import check_nodes
@@ -26,6 +26,9 @@ logger = get_logger(__name__)
 
 
 def validate_cluster_prechecks(**kwargs) -> None:
+    context_name = kwargs.get("context_name")
+    load_config_context(context_name=context_name)
+
     acs_config = kwargs.get("acs_config")
     storage_space_check = kwargs.get("storage_space_check")
 
@@ -179,7 +182,9 @@ def _check_storage_classes(acs_config: dict, as_list: bool = False) -> Dict[str,
 
     expected_classes = acs_config.get("feature.diskStorageClass", "")
     if not expected_classes:
-        raise ValidationError(f"Provided ACS config does not contain a 'feature.diskStorageClass' value:\n\t{acs_config}")
+        raise ValidationError(
+            f"Provided ACS config does not contain a 'feature.diskStorageClass' value:\n\t{acs_config}"
+        )
 
     check_manager = CheckManager(check_name="evalStorageClasses", check_desc="Evaluate storage classes")
     target = "cluster/storage-classes"
