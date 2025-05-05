@@ -112,7 +112,8 @@ Inside your `azure-iot-ops-cli-extension` directory, run
 (env) pip install -U --target $env:AZURE_EXTENSION_DIR/azure-iot-ops
 ```
 
-#### Verify environment is setup correctly
+
+### Verify environment is setup correctly
 
 Run a command that is present in the iot extension space
 
@@ -122,7 +123,7 @@ az iot ops -h
 
 If this works, then you should now be able to make changes to the extension and have them reflected immediately in your `az` CLI.
 
-## Unit and Integration Testing
+## Unit and integration Testing
 
 
 Our tests are located inside `azext_edge/tests/`:
@@ -137,6 +138,8 @@ Inside `azext_edge/tests/edge` - the tests are broken up by category:
 - `orchestration` - Init/Create/Clone orchestration tests
 - `rpsaas` - Cloud resource provider tests
 - `support` - Support bundle tests
+
+### Tox
 
 We support running tests locally using [Tox](https://tox.wiki/) - our [Tox testing guide](./docs/tox-testing.md) has more detailed information on our configuration.
 
@@ -205,8 +208,16 @@ You can also target specific test functions in any test file, such as:
 ```powershell
 pytest azext_edge/tests/edge/checks/int/test_dataflow_int.py::test_dataflow_check
 ```
-## Suggested tools and IDE configuration
 
+## Pull requests
+
+Pull request titles **must** follow the [conventional commits specification](https://www.conventionalcommits.org/en/v1.0.0/#specification) before merging. This ensures that our production-ready branches can be easily parsed and processed by downstream tooling and aids us in creating effective release notes.
+
+Pull requests should be opened in `DRAFT` mode unless they are considered ready for review to prevent churn on code that is still changing.
+
+To simulate most of the CI checks running against your code, you can run [`tox`](#tox) locally to check the linters and unit tests in an isolated environment.
+
+## Suggested tools and IDE configuration
 
 ### VSCode setup
 
