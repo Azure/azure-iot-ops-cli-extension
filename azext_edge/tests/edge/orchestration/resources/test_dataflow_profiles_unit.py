@@ -46,6 +46,7 @@ def get_mock_dataflow_profile_record(profile_name: str, instance_name: str, reso
             "provisioningState": "Succeeded",
         },
         resource_group_name=resource_group_name,
+        qualified_type="microsoft.iotoperations/instances/dataflowprofiles"
     )
 
 

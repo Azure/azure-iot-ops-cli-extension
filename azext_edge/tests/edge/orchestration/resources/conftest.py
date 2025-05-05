@@ -4,10 +4,12 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 import re
-from typing import Optional
+from typing import NamedTuple, Optional, Tuple
 
 import pytest
+import requests
 
 from ....generators import generate_random_string, get_zeroed_subscription
 
@@ -110,3 +112,35 @@ def get_authz_endpoint_pattern() -> re.Pattern:
 @pytest.fixture
 def mocked_get_file_config(mocker):
     yield mocker.patch("azext_edge.edge.providers.orchestration.resources.reskit.read_file_content")
+
+
+def get_request_kpis(request: requests.PreparedRequest) -> "RequestKPIs":
+    """Extracts key performance indicators from a request object."""
+    return RequestKPIs(
+        method=request.method,
+        url=request.url,
+        params=request.params,
+        path_url=request.path_url.split("?")[0],
+        body_str=request.body,
+    )
+
+
+class RequestKPIs(NamedTuple):
+    method: str
+    url: str
+    params: dict
+    path_url: str
+    body_str: str
+
+    @classmethod
+    def respond_with(
+        cls,
+        response_code: int,
+        response_headers: Optional[dict] = None,
+        response_body: Optional[dict] = None,
+    ) -> Tuple[int, dict, dict]:
+        if isinstance(response_body, dict):
+            response_body = json.dumps(response_body)
+        if not response_headers and response_body:
+            response_headers = {"Content-Type": "application/json"}
+        return response_code, response_headers, response_body

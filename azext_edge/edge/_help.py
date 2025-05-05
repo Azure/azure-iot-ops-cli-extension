@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 """
-Help definitions for Digital Twins commands.
+Help content for Azure IoT Operations commands.
 """
 
 from knack.help_files import helps
@@ -18,12 +18,15 @@ from azext_edge.edge.providers.edge_api import (
     TRUSTMANAGER_API_V1,
 )
 
-
+from .providers.orchestration.common import (
+    CLONE_INSTANCE_VERS_MAX,
+    CLONE_INSTANCE_VERS_MIN,
+)
 from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
+    COMPAT_DATAFLOW_APIS,
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
-    COMPAT_DATAFLOW_APIS,
 )
 
 
@@ -1995,4 +1998,37 @@ def load_iotops_help():
         - name: Show schema reference for all schemas but only the latest versions in schema registry "myregistry".
           text: >
             az iot ops schema show-dataflow-refs --registry myregistry -g myresourcegroup --latest
+    """
+
+    helps[
+        "iot ops clone"
+    ] = f"""
+        type: command
+        short-summary: Clone an instance.
+        long-summary: |
+          Clone analyzes an instance then reproduces it in an infrastructure-as-code
+          manner via ARM templates. The output of clone may be applied directly to another connected cluster,
+          and/or saved locally to use at another time (potentially with modification).
+
+          The clone definition being a generic ARM template, can be deployed via existing tools.
+          See https://aka.ms/aio-clone-deploy for details.
+
+          Clone is compatible with the following instance version range: {CLONE_INSTANCE_VERS_MIN}>=,<{CLONE_INSTANCE_VERS_MAX}
+
+        examples:
+        - name: Clone an instance to a desired connected cluster.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID
+        - name: Clone an instance to a desired connected cluster, but splitting and serially applying asset related sub-deployments.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --mode linked
+        - name: Clone an instance to a local directory.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-dir .
+        - name: Clone an instance to a local directory, but splitting and linking to asset related sub-deployments.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-dir /my/content --mode linked
+        - name: Hide progress displays and skip prompts.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-dir . --no-progress -y
     """

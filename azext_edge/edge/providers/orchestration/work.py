@@ -29,10 +29,12 @@ from ...util.az_client import (
 )
 from ...util.common import insert_newlines
 from .common import (
+    CONTRIBUTOR_ROLE_ID,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
+    PROVISIONING_STATE_SUCCESS,
     ClusterConnectStatus,
 )
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
@@ -66,10 +68,6 @@ class WorkRecord:
         self.title = title
         self.description = description
 
-
-PROVISIONING_STATE_SUCCESS = "Succeeded"
-
-CONTRIBUTOR_ROLE_ID = "b24988ac-6180-42a0-ab88-20f7382dd24c"
 
 # Baked-in time for CL service to catch up.
 CATCH_UP_SEC = 7

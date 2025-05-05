@@ -15,7 +15,7 @@ from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
 
 
-def get_dataflow_endpoint(
+def get_dataflow_endpoint_endpoint(
     instance_name: str, resource_group_name: str, dataflow_endpoint_name: Optional[str] = None
 ) -> str:
     resource_path = f"/instances/{instance_name}/dataflowEndpoints"
@@ -38,6 +38,7 @@ def get_mock_dataflow_endpoint_record(
             "provisioningState": "Succeeded",
         },
         resource_group_name=resource_group_name,
+        qualified_type="microsoft.iotoperations/instances/dataflowendpoints",
     )
 
 
@@ -54,7 +55,7 @@ def test_dataflow_endpoint_show(mocked_cmd, mocked_responses: responses):
 
     mocked_responses.add(
         method=responses.GET,
-        url=get_dataflow_endpoint(
+        url=get_dataflow_endpoint_endpoint(
             resource_group_name=resource_group_name,
             instance_name=instance_name,
             dataflow_endpoint_name=dataflow_endpoint_name,
@@ -96,7 +97,7 @@ def test_dataflow_endpoint_list(mocked_cmd, mocked_responses: responses, records
 
     mocked_responses.add(
         method=responses.GET,
-        url=get_dataflow_endpoint(instance_name=instance_name, resource_group_name=resource_group_name),
+        url=get_dataflow_endpoint_endpoint(instance_name=instance_name, resource_group_name=resource_group_name),
         json=mock_dataflow_endpoint_records,
         status=200,
         content_type="application/json",
