@@ -56,7 +56,7 @@ def mocked_node_client(mocked_client, mocker, request):
                 "kernel_version": "6.0.0-azure-test",
             },
         ],
-        [{"architecture": "amd64", "cpu": 3, "memory": "20G", "ephemeral-storage": "30G"}],
+        [{"architecture": "amd64", "cpu": 3, "memory": "20G", "ephemeral-storage": "30G", "kernel_version": "5.15.1.1-test1.2"}],
         [{"architecture": "x86", "cpu": 3, "memory": "20G", "ephemeral-storage": "30G"}],
         [
             {"architecture": "amd64", "cpu": 5, "memory": "10G", "ephemeral-storage": "30G"},
@@ -175,7 +175,8 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
         kernel_status = False
         if kernel_version_check:
             semver = scoped_semver_import()
-            kernel_status = semver.parse(node.status.node_info.kernel_version, True) >= semver.parse(
+            kernel_version = ".".join(node.status.node_info.kernel_version.split(".")[:3])
+            kernel_status = semver.parse(kernel_version, True) >= semver.parse(
                 ACSA_MIN_NODE_KERNEL_VERSION, True
             )
             assert result_node["conditions"][kernel_col] == f"info.kernel_version>={ACSA_MIN_NODE_KERNEL_VERSION}"
