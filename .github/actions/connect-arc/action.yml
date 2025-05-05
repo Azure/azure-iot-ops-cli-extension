@@ -104,8 +104,6 @@ runs:
       run: |
         account_issuer=$(az connectedk8s show -n ${{ env.cluster-name }} -g ${{ env.resource-group }} --query oidcIssuerProfile.issuerUrl --output tsv)
 
-        # TODO: see if kill script is still needed
-        # sudo sh /usr/local/bin/k3s-killall.sh
         sudo kill -9 $(pgrep k3s)
         sleep 60s
 

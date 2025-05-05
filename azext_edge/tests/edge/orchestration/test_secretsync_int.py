@@ -151,6 +151,7 @@ def test_secretsync(cluster_connection, secretsync_int_setup, tracked_files: Lis
         kv_id=kv_id,
         mi_principal_id=mi_principal_id
     )
+    # note that since the role assignments are not applied, the secrets will not be synced
 
     # list
     list_result = run(f"az iot ops secretsync list -n {instance_name} -g {resource_group}")
