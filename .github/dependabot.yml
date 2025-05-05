@@ -25,7 +25,7 @@ updates:
 
   # Enable weekly version updates for devcontainer
   - package-ecosystem: "devcontainers"
-    directory: "/.devcontainer/"
+    directory: "/"
     schedule:
       interval: "weekly"
     commit-message:
