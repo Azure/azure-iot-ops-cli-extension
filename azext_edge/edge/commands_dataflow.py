@@ -36,6 +36,25 @@ def list_dataflows(cmd, profile_name: str, instance_name: str, resource_group_na
     )
 
 
+def apply_dataflow(
+    cmd,
+    dataflow_name: str,
+    profile_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    config_file: str,
+    **kwargs: dict,
+) -> dict:
+    return DataFlowProfiles(cmd).dataflows.apply(
+        name=dataflow_name,
+        dataflow_profile_name=profile_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        config_file=config_file,
+        **kwargs,
+    )
+
+
 def show_dataflow_endpoint(cmd, endpoint_name: str, instance_name: str, resource_group_name: str) -> dict:
     return DataFlowEndpoints(cmd).show(
         name=endpoint_name,
