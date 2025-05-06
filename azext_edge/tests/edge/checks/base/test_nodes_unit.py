@@ -115,9 +115,9 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
     expected_headers = ["Name", "Architecture"]
     if kernel_version_check:
         expected_headers.append("Kernel version")
+    expected_headers.extend(["CPU (vCPU)", "Memory (GB)"])
     if storage_space_check:
         expected_headers.append("Ephemeral\nStorage (GB)")
-    expected_headers.extend(["CPU (vCPU)", "Memory (GB)"])
     assert headers == expected_headers
 
     # the generator is weird
@@ -127,9 +127,9 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
     name_idx = 0
     arch_idx = 1
     kernel_idx = 2
-    storage_idx = 3 if kernel_version_check else 2
-    cpu_idx = -2
-    memory_idx = -1
+    cpu_idx = 3 if kernel_version_check else 2
+    memory_idx = -2 if storage_space_check else -1
+    storage_idx = -1
 
     # expected row
     assert "Minimum requirements" in unpacked_cols[name_idx][0]
@@ -166,9 +166,9 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
         # expected columns
         arch_col = 0
         kernel_col = 1
-        storage_col = 2 if kernel_version_check else 1
-        cpu_col = -2
-        memory_col = -1
+        cpu_col = 2 if kernel_version_check else 1
+        memory_col = -2 if storage_space_check else -1
+        storage_col = -1
 
         arch_status = arch in AIO_SUPPORTED_ARCHITECTURES
         assert result_node["conditions"][arch_col] == f"info.architecture in ({','.join(AIO_SUPPORTED_ARCHITECTURES)})"

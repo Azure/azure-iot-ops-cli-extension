@@ -12,7 +12,10 @@ from ....helpers import run
 from .helpers import combine_statuses, get_expected_status
 from azext_edge.edge.providers.check.common import (
     AIO_SUPPORTED_ARCHITECTURES,
+    DISPLAY_BYTES_PER_GIGABYTE,
+    MIN_K8S_VERSION,
     MIN_NODE_MEMORY,
+    MIN_NODE_STORAGE,
     MIN_NODE_VCPU,
 )
 
@@ -63,7 +66,7 @@ def test_check_pre_post(cluster_connection, post, pre):
     assert "k8s" in k8s_result["targets"]
     assert "_all_" in k8s_result["targets"]["k8s"]
     k8s_target_result = k8s_result["targets"]["k8s"]["_all_"]
-    assert k8s_target_result["conditions"] == ["(k8s version)>=1.20"]
+    assert k8s_target_result["conditions"] == [f"(k8s version)>={MIN_K8S_VERSION}"]
     k8s_version = run("kubectl version -o json").get("serverVersion")
 
     k8s_status = k8s_target_result["evaluations"][0]["status"]
@@ -88,6 +91,11 @@ def test_check_pre_post(cluster_connection, post, pre):
     final_status = get_expected_status(success_or_fail=len(kubectl_nodes) >= 1)
     assert node_count_target["status"] == final_status
 
+    arch_eval = 0
+    cpu_eval = 1
+    memory_eval = 2
+    storage_eval = 3
+
     # node eval
     for node in kubectl_nodes:
         node_name = node["metadata"]["name"]
@@ -100,21 +108,33 @@ def test_check_pre_post(cluster_connection, post, pre):
             f"info.architecture in ({','.join(AIO_SUPPORTED_ARCHITECTURES)})",
             f"allocatable.cpu>={MIN_NODE_VCPU}",
             f"allocatable.memory>={MIN_NODE_MEMORY}",
+            f"allocatable.ephemeral-storage>={MIN_NODE_STORAGE}",
         ]
 
-        node_arch = node_target["evaluations"][0]["value"]["info.architecture"]
+        node_arch = node_target["evaluations"][arch_eval]["value"]["info.architecture"]
         assert node_arch == node["status"]["nodeInfo"]["architecture"]
-        assert node_target["evaluations"][0]["status"] == get_expected_status(node_arch in AIO_SUPPORTED_ARCHITECTURES)
+        assert node_target["evaluations"][arch_eval]["status"] == get_expected_status(
+            node_arch in AIO_SUPPORTED_ARCHITECTURES
+        )
 
         node_allocatable = node["status"]["allocatable"]
-        node_cpu = node_target["evaluations"][1]["value"]["allocatable.cpu"]
+        node_cpu = node_target["evaluations"][cpu_eval]["value"]["allocatable.cpu"]
         assert node_cpu == int(node_allocatable["cpu"])
-        assert node_target["evaluations"][1]["status"] == get_expected_status(node_cpu >= int(MIN_NODE_VCPU))
+        assert node_target["evaluations"][cpu_eval]["status"] == get_expected_status(node_cpu >= int(MIN_NODE_VCPU))
 
-        node_memory = node_target["evaluations"][2]["value"]["allocatable.memory"]
-        assert node_memory == int(parse_quantity(node_allocatable["memory"]))
-        assert node_target["evaluations"][2]["status"] == get_expected_status(
-            node_memory >= parse_quantity(MIN_NODE_MEMORY)
+        node_memory = node_target["evaluations"][memory_eval]["value"]["allocatable.memory"]
+        assert node_memory == f"{int(parse_quantity(node_allocatable['memory']) / DISPLAY_BYTES_PER_GIGABYTE)}G"
+        assert node_target["evaluations"][memory_eval]["status"] == get_expected_status(
+            parse_quantity(node_memory) >= parse_quantity(MIN_NODE_MEMORY)
+        )
+
+        node_storage = node_target["evaluations"][storage_eval]["value"]["allocatable.ephemeral-storage"]
+        assert (
+            node_storage
+            == f"{int(parse_quantity(node_allocatable['ephemeral-storage']) / DISPLAY_BYTES_PER_GIGABYTE)}G"
+        )
+        assert node_target["evaluations"][storage_eval]["status"] == get_expected_status(
+            parse_quantity(node_storage) >= parse_quantity(MIN_NODE_MEMORY)
         )
 
         node_status = combine_statuses([cond["status"] for cond in node_target["evaluations"]])

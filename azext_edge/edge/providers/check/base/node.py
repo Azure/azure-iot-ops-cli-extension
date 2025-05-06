@@ -94,9 +94,9 @@ def _generate_node_table(
         ("Name", "left"),
         ("Architecture", "left"),
         *([("Kernel version", "left")] if acs_kernel_check else []),
-        *([("Ephemeral\nStorage (GB)", "left")] if storage_space_check else []),
         ("CPU (vCPU)", "left"),
         ("Memory (GB)", "left"),
+        *([("Ephemeral\nStorage (GB)", "left")] if storage_space_check else []),
     ]:
         table.add_column(column_name, justify=f"{justify}")
     table.add_row(
@@ -106,9 +106,9 @@ def _generate_node_table(
                 "Minimum requirements",
                 ", ".join(AIO_SUPPORTED_ARCHITECTURES),
                 *([ACSA_MIN_NODE_KERNEL_VERSION] if acs_kernel_check else []),
-                *([MIN_NODE_STORAGE[:-1]] if storage_space_check else []),
                 MIN_NODE_VCPU,
                 MIN_NODE_MEMORY[:-1],
+                *([MIN_NODE_STORAGE[:-1]] if storage_space_check else []),
             ]
         ]
     )
@@ -142,6 +142,16 @@ def _generate_node_table(
                 if acs_kernel_check
                 else []
             ),
+            (
+                "allocatable.cpu",
+                MIN_NODE_VCPU,
+                parse_quantity(node.status.allocatable.get("cpu", 0)),
+            ),
+            (
+                "allocatable.memory",
+                MIN_NODE_MEMORY,
+                parse_quantity(node.status.allocatable.get("memory", 0)),
+            ),
             # Optional storage space check
             *(
                 [
@@ -153,16 +163,6 @@ def _generate_node_table(
                 ]
                 if storage_space_check
                 else []
-            ),
-            (
-                "allocatable.cpu",
-                MIN_NODE_VCPU,
-                parse_quantity(node.status.allocatable.get("cpu", 0)),
-            ),
-            (
-                "allocatable.memory",
-                MIN_NODE_MEMORY,
-                parse_quantity(node.status.allocatable.get("memory", 0)),
             ),
         ]
         for condition, expected, actual in table_tuples:
