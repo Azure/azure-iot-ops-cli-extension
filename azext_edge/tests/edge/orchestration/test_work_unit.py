@@ -481,6 +481,7 @@ def test_iot_ops_init(
     spy_work_displays: Dict[str, Mock],
     mock_prechecks: Dict[str, Mock],
     mocked_config: Mock,
+    mocked_verify_arc_cluster_config: Mock,
     target_scenario: dict,
 ):
     servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses)

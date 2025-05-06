@@ -21,7 +21,9 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
+from azext_edge.edge.providers.base import load_config_context
 from azext_edge.edge.providers.check.base.deployment import validate_cluster_prechecks
+from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_config
 
 from ...util.az_client import (
     REGISTRY_PREVIEW_API_VERSION,
@@ -379,6 +381,9 @@ class WorkManager:
                     )
                 if self._check_cluster:
                     cluster_check_kwargs = self._build_cluster_check_kwargs()
+                    # TODO - load_config_context should be moved down to functions that directly call it
+                    load_config_context(context_name=self._context_name)
+                    verify_arc_cluster_config(self._resource_map.connected_cluster)
                     validate_cluster_prechecks(**cluster_check_kwargs)
                 self._complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,

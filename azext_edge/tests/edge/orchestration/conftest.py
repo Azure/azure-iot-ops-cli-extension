@@ -117,3 +117,9 @@ def mock_prechecks(mocker):
 def mocked_logger(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.work.logger", autospec=True)
     yield patched
+
+
+@pytest.fixture
+def mocked_verify_arc_cluster_config(mocker):
+    patched = mocker.patch("azext_edge.edge.providers.orchestration.work.verify_arc_cluster_config", autospec=True)
+    yield patched
