@@ -10,9 +10,9 @@ from knack.log import get_logger
 from rich.console import Console
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
-from azext_edge.edge.providers.orchestration.common import AUTHENTICATION_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP, DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_TYPE_SETTINGS, DataflowEndpointType, DataflowEndpointAuthenticationType, DataflowOperationType
+from azext_edge.edge.providers.orchestration.common import AUTHENTICATION_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP, DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_TYPE_SETTINGS, DATAFLOW_OPERATION_TYPE_SETTINGS, DataflowEndpointType, DataflowEndpointAuthenticationType, DataflowOperationType
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
-from azext_edge.edge.providers.orchestration.resources.reskit import GetInstanceExtLoc, get_file_config
+from azext_edge.edge.providers.orchestration.resources.reskit import get_file_config
 from azext_edge.edge.util.common import should_continue_prompt
 
 from ....util.az_client import get_iotops_mgmt_client, wait_for_terminal_state
@@ -21,6 +21,8 @@ from ....util.queryable import Queryable
 logger = get_logger(__name__)
 
 console = Console()
+
+LOCAL_MQTT_HOST_PREFIX = "aio-broker"
 
 
 if TYPE_CHECKING:
@@ -137,23 +139,7 @@ class DataFlows(Queryable):
         resource_group_name: str,
     ):
         operations = dataflow_config.get("operations", [])
-        # # get source endpoint
-        # source_operation = next(
-        #     (op for op in operations if op.get("operationType") == "Source"), {}
-        # )
-        # source_endpoint_name = source_operation.get("sourceSettings", {}).get("endpointRef", "")
-        # # call get_dataflow_endpoint
-        # dataflow_endpoint = DataFlowEndpoints(self.cmd)
-        # source_endpoint_obj = dataflow_endpoint.show(
-        #     name=source_endpoint_name,
-        #     instance_name=instance_name,
-        #     resource_group_name=resource_group_name,
-        # )
 
-        # if not source_endpoint_obj:
-        #     raise InvalidArgumentValueError(
-        #         f"Source dataflow endpoint '{source_endpoint_name}' not found in instance '{instance_name}'"
-        #     )
         # get source endpoint
         source_endpoint_obj = self._process_exist_endpoint(
             operations=operations,
@@ -179,8 +165,7 @@ class DataFlows(Queryable):
                 raise InvalidArgumentValueError(
                     f"Consumer group id is required for source dataflow endpoint."
                 )
-        
-        
+
         # get destination endpoint
         desination_endpoint_obj = self._process_exist_endpoint(
             operations=operations,
@@ -188,29 +173,17 @@ class DataFlows(Queryable):
             resource_group_name=resource_group_name,
             operation_type=DataflowOperationType.DESTINATION.value,
         )
-        # destination_operation = next(
-        #     (op for op in operations if op.get("operationType") == "Destination"), {}
-        # )
-        # destination_endpoint_name = destination_operation.get("destinationSettings", {}).get("endpointRef", "")
-        # # call get_dataflow_endpoint
-        # desination_endpoint_obj = dataflow_endpoint.show(
-        #     name=destination_endpoint_name,
-        #     instance_name=instance_name,
-        #     resource_group_name=resource_group_name,
-        # )
-        # if not desination_endpoint_obj:
-        #     raise InvalidArgumentValueError(
-        #         f"Destination dataflow endpoint '{destination_endpoint_name}' not found in instance '{instance_name}'"
-        #     )
-        
-        transformation_operation = next(
-            (op for op in operations if op.get("operationType") == "BuiltInTransformation"), {}
+
+        trans_operation_type = DataflowOperationType.TRANSFORMATION.value
+        transformation_operation = self._get_operation(
+            operations=operations,
+            operation_type=trans_operation_type,
         )
-        schema_ref = transformation_operation.get("builtInTransformationSettings", {}).get("schemaRef", "")
+        schema_ref = transformation_operation.get(DATAFLOW_OPERATION_TYPE_SETTINGS[trans_operation_type], {}).get("schemaRef", "")
         
         # validate schema_ref for destination endpoint type
         destination_endpoint_type = desination_endpoint_obj.get("properties", {}).get("endpointType", "")
-        if destination_endpoint_type not in [
+        if destination_endpoint_type in [
             DataflowEndpointType.DATAEXPLORER.value,
             DataflowEndpointType.DATALAKESTORAGE.value,
             DataflowEndpointType.FABRICONELAKE.value,
@@ -219,19 +192,16 @@ class DataFlows(Queryable):
             raise InvalidArgumentValueError(
                 f"'schemaRef' is required for dataflow due to destination endpoint type '{destination_endpoint_type}'"
             )
-        
-        # validate one of source and destination endpoint must be MQTT endpoint
-        if source_endpoint_type != DataflowEndpointType.MQTT.value and destination_endpoint_type != DataflowEndpointType.MQTT.value:
-            raise InvalidArgumentValueError(
-                f"Either source or destination endpoint must be MQTT endpoint."
-            )
 
-        # validate one of source and destination endpoint must have host with "aio-broker"
+        # validate at least one of source and destination endpoint must have host with "aio-broker" that is MQTT endpoint
+        import pdb; pdb.set_trace()
         source_endpoint_host = source_endpoint_obj.get("properties", {}).get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[source_endpoint_type], {}).get("host", "")
         destination_endpoint_host = desination_endpoint_obj.get("properties", {}).get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[source_endpoint_type], {}).get("host", "")
-        if "aio-broker" not in source_endpoint_host and "aio-broker" not in destination_endpoint_host:
+        is_source_local_mqtt = LOCAL_MQTT_HOST_PREFIX in source_endpoint_host and source_endpoint_type == DataflowEndpointType.MQTT.value
+        is_destination_local_mqtt = LOCAL_MQTT_HOST_PREFIX in destination_endpoint_host and destination_endpoint_type == DataflowEndpointType.MQTT.value
+        if not is_source_local_mqtt and not is_destination_local_mqtt:
             raise InvalidArgumentValueError(
-                f"Either source or destination endpoint must have host with 'aio-broker'."
+                f"Either source or destination endpoint must be Azure IoT Operations Local MQTT endpoint with host containing '{LOCAL_MQTT_HOST_PREFIX}'."
             )
         
     def _process_exist_endpoint(
@@ -242,18 +212,15 @@ class DataFlows(Queryable):
         operation_type: str,
     ) -> dict:
         # get endpoint
-        operation = next(
-            (op for op in operations if op.get("operationType") == operation_type), {}
+        operation = self._get_operation(
+            operations=operations,
+            operation_type=operation_type,
         )
 
         # get operation settings
-        if operation_type == "Source":
-            operation_settings = operation.get("sourceSettings", {})
-        elif operation_type == "Destination":
-            operation_settings = operation.get("destinationSettings", {})
-        elif operation_type == "BuiltInTransformation":
-            operation_settings = operation.get("builtInTransformationSettings", {})
+        operation_settings = operation.get(DATAFLOW_OPERATION_TYPE_SETTINGS[operation_type], {})
         endpoint_name = operation_settings.get("endpointRef", "")
+
         # call get_dataflow_endpoint
         dataflow_endpoint = DataFlowEndpoints(self.cmd)
         endpoint_obj = dataflow_endpoint.show(
@@ -269,6 +236,16 @@ class DataFlows(Queryable):
             )
         
         return endpoint_obj
+    
+    def _get_operation(
+        self,
+        operations: list,
+        operation_type: str,
+    ) -> dict:
+        operation = next(
+            (op for op in operations if op.get("operationType") == operation_type), {}
+        )
+        return operation
 
 
 class DataFlowEndpoints(Queryable):
