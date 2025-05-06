@@ -181,11 +181,6 @@ def _check_storage_classes(acs_config: dict, as_list: bool = False) -> Dict[str,
     from kubernetes.client.models import V1StorageClassList
 
     expected_classes = acs_config.get("feature.diskStorageClass", "")
-    if not expected_classes:
-        raise ValidationError(
-            f"Provided ACS config does not contain a 'feature.diskStorageClass' value:\n\t{acs_config}"
-        )
-
     check_manager = CheckManager(check_name="evalStorageClasses", check_desc="Evaluate storage classes")
     target = "cluster/storage-classes"
     check_manager.add_target(

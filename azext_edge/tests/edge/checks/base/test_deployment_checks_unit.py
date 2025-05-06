@@ -61,14 +61,6 @@ def test_check_storage_classes(mocked_storage_client, storage_classes, expected_
 
     acs_config = {"feature.diskStorageClass": expected_classes}
 
-    # if no storage classes are provided, should raise a validation error
-    if expected_classes == "":
-        with pytest.raises(
-            ValidationError, match=r"^Provided ACS config does not contain a 'feature.diskStorageClass' value"
-        ):
-            _check_storage_classes(acs_config=acs_config, as_list=True)
-        return
-
     result = _check_storage_classes(acs_config=acs_config, as_list=True)
 
     assert result["name"] == "evalStorageClasses"

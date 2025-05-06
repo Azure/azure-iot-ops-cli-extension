@@ -431,6 +431,12 @@ def get_merged_acs_config(
     merged_acs_config = get_default_acs_config(enable_fault_tolerance=enable_fault_tolerance)
     if acs_config:
         merged_acs_config.update(acs_config)
+
+    storage_classes = merged_acs_config.get("feature.diskStorageClass")
+    if not storage_classes:
+        raise InvalidArgumentValueError(
+            f"Provided ACS config does not contain a 'feature.diskStorageClass' value:\n\t{merged_acs_config}"
+        )
     return merged_acs_config
 
 
