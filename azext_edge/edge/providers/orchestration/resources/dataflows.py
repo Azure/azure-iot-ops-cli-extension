@@ -10,7 +10,12 @@ from knack.log import get_logger
 from rich.console import Console
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
-from azext_edge.edge.providers.orchestration.common import AUTHENTICATION_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP, DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_TYPE_SETTINGS, DATAFLOW_OPERATION_TYPE_SETTINGS, DataflowEndpointType, DataflowEndpointAuthenticationType, DataflowOperationType
+from azext_edge.edge.providers.orchestration.common import (
+    DATAFLOW_ENDPOINT_TYPE_SETTINGS,
+    DATAFLOW_OPERATION_TYPE_SETTINGS,
+    DataflowEndpointType,
+    DataflowOperationType,
+)
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
 from azext_edge.edge.providers.orchestration.resources.reskit import get_file_config
 from azext_edge.edge.util.common import should_continue_prompt
@@ -155,7 +160,7 @@ class DataFlows(Queryable):
             DataflowEndpointType.MQTT.value,
         ]:
             raise InvalidArgumentValueError(
-                f"Source dataflow endpoint '{source_endpoint_type}' is not a valid type for dataflow."
+                f"'{source_endpoint_type}' is not a valid type for source dataflow endpoint."
             )
         
         # when Kafka endpoint, validate consumer group id
@@ -163,7 +168,7 @@ class DataFlows(Queryable):
             group_id = source_endpoint_obj.get("properties", {}).get("kafkaSettings", {}).get("consumerGroupId", "")
             if not group_id:
                 raise InvalidArgumentValueError(
-                    f"Consumer group id is required for source dataflow endpoint."
+                    f"'consumerGroupId' is required in kafka source dataflow endpoint configuration."
                 )
 
         # get destination endpoint
@@ -190,11 +195,10 @@ class DataFlows(Queryable):
             DataflowEndpointType.LOCALSTORAGE.value,
         ] and not schema_ref:
             raise InvalidArgumentValueError(
-                f"'schemaRef' is required for dataflow due to destination endpoint type '{destination_endpoint_type}'"
+                f"'schemaRef' is required for dataflow due to destination endpoint '{destination_endpoint_type}' type."
             )
 
         # validate at least one of source and destination endpoint must have host with "aio-broker" that is MQTT endpoint
-        import pdb; pdb.set_trace()
         source_endpoint_host = source_endpoint_obj.get("properties", {}).get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[source_endpoint_type], {}).get("host", "")
         destination_endpoint_host = desination_endpoint_obj.get("properties", {}).get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[source_endpoint_type], {}).get("host", "")
         is_source_local_mqtt = LOCAL_MQTT_HOST_PREFIX in source_endpoint_host and source_endpoint_type == DataflowEndpointType.MQTT.value
