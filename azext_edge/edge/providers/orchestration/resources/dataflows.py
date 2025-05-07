@@ -9,12 +9,11 @@ from typing import TYPE_CHECKING, Iterable
 from knack.log import get_logger
 from rich.console import Console
 
-from azext_edge.edge.providers.orchestration.resources.instances import Instances
-from azext_edge.edge.providers.orchestration.resources.reskit import GetInstanceExtLoc, get_file_config
-from azext_edge.edge.util.common import should_continue_prompt
-
+from ....util.common import should_continue_prompt
 from ....util.az_client import get_iotops_mgmt_client, wait_for_terminal_state
 from ....util.queryable import Queryable
+from .instances import Instances
+from .reskit import GetInstanceExtLoc, get_file_config
 
 logger = get_logger(__name__)
 

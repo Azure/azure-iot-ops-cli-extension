@@ -693,7 +693,7 @@ def load_iotops_help():
         examples:
         - name: Create or replace an dataflow endpoint resource using a config file.
           text: >
-            az iot ops dataflow endpoint apply -n dataflowep -i myinstance -g myresourcegroup --config-file /path/to/dataflowep/config.json
+            az iot ops dataflow endpoint apply -n dataflowep -in myinstance -g myresourcegroup --config-file /path/to/dataflowep/config.json
     """
 
     helps[
@@ -705,10 +705,10 @@ def load_iotops_help():
         examples:
         - name: Delete the dataflow endpoint resource called 'dataflowep'.
           text: >
-            az iot ops dataflow endpoint delete -n dataflowep -i myinstance -g myresourcegroup
+            az iot ops dataflow endpoint delete -n dataflowep -in myinstance -g myresourcegroup
         - name: Same as prior example but skipping the confirmation prompt.
           text: >
-            az iot ops dataflow endpoint delete -n dataflowep -i myinstance -g myresourcegroup -y
+            az iot ops dataflow endpoint delete -n dataflowep -in myinstance -g myresourcegroup -y
     """
 
     helps[
