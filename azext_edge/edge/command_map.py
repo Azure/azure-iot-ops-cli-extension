@@ -127,6 +127,8 @@ def load_iotops_commands(self, _):
         "iot ops dataflow endpoint",
         command_type=dataflow_resource_ops,
     ) as cmd_group:
+        cmd_group.command("delete", "delete_dataflow_endpoint")
+        cmd_group.command("apply", "apply_dataflow_endpoint")
         cmd_group.show_command("show", "show_dataflow_endpoint")
         cmd_group.command("list", "list_dataflow_endpoints")
 
