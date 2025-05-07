@@ -59,9 +59,13 @@ def get_mock_resource(
     identity: dict = {},
     qualified_type: Optional[str] = None,
     tags: Optional[dict] = None,
+    is_proxy_resource: bool = False,
 ) -> dict:
+    kwargs = {}
     if not location:
         location = "northeurope"
+    if not is_proxy_resource:
+        kwargs["location"] = location
     resource = {
         "extendedLocation": {
             "name": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
@@ -73,7 +77,6 @@ def get_mock_resource(
             resource_path=resource_path,
             resource_provider=resource_provider or RESOURCE_PROVIDER,
         ).split("?")[0][len(BASE_URL) :],
-        "location": location,
         "name": name,
         "properties": properties,
         "resourceGroup": resource_group_name,
@@ -86,6 +89,7 @@ def get_mock_resource(
             "lastModifiedByType": "Application",
         },
         "type": qualified_type or QUALIFIED_INSTANCE_TYPE,
+        **kwargs,
     }
 
     if identity:

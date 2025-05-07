@@ -51,6 +51,7 @@ def get_mock_broker_authn_record(
         properties=properties or default_properties,
         resource_group_name=resource_group_name,
         qualified_type="microsoft.iotoperations/instances/brokers/authentications",
+        is_proxy_resource=True,
     )
 
 

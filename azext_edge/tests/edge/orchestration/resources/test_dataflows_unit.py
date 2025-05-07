@@ -43,6 +43,7 @@ def get_mock_dataflow_record(
         },
         resource_group_name=resource_group_name,
         qualified_type="microsoft.iotoperations/instances/dataflows",
+        is_proxy_resource=True,
     )
 
 

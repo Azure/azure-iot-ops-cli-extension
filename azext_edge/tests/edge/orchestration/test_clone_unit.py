@@ -1155,8 +1155,10 @@ EXPECTED_PARAMETER_KEYS = {
     "clusterNamespace",
     "customLocationName",
     "instanceName",
+    "location",
     "opsExtensionName",
     "resourceSlug",
+    "schemaRegistryId"
 }
 
 EXPECTED_ORD_EXT_RESOURCE_MAP = {
@@ -1219,6 +1221,7 @@ def _replace_cl(context: dict) -> dict:
 
     return {
         "apiVersion": "2021-08-31-preview",
+        "location": "[parameters('location')]",
         "name": "[parameters('customLocationName')]",
         "properties": {
             "hostResourceId": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
@@ -1265,6 +1268,7 @@ def _replace_instance(context: dict):
 
     payload = {
         "apiVersion": context["instance_api"],
+        "location": "[parameters('location')]",
         "name": "[parameters('instanceName')]",
         "extendedLocation": {
             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
@@ -1292,6 +1296,7 @@ def _replace_instance_broker(context: dict):
 def _replace_generic_resource(_: dict, api_version: str) -> dict:
     return {
         "apiVersion": api_version,
+        "location": "[parameters('location')]",
         "extendedLocation": {
             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
             "type": "CustomLocation",
@@ -1365,6 +1370,10 @@ class CloneAssertor:
             "type": "string",
             "defaultValue": self.clone_scenario.instance_name,
         }
+        assert content["parameters"]["location"] == {
+            "type": "string",
+            "defaultValue": self.resource_configs["instance"]["location"],
+        }
         assert content["parameters"]["opsExtensionName"] == {
             "type": "string",
             "defaultValue": self.resource_configs["extensions"][EXT_NAME_OPS]["name"],
@@ -1376,6 +1385,16 @@ class CloneAssertor:
                 "parameters('clusterNamespace')), 5)]"
             ),
         }
+        parsed_sr_id = parse_resource_id(self.resource_configs["schemaRegistryId"])
+        assert content["parameters"]["schemaRegistryId"] == {
+            "type": "object",
+            "defaultValue": {
+                "subscription": parsed_sr_id["subscription"],
+                "resourceGroup": parsed_sr_id["resource_group"],
+                "name": parsed_sr_id["name"],
+            },
+        }
+
         self._assert_resources(content)
 
     def _assert_instance_api(self):
@@ -1444,18 +1463,18 @@ class CloneAssertor:
         key = "roleAssignments_1"
 
         deployment = resources[key]
-        parsed_sr_id = parse_resource_id(self.resource_configs["schemaRegistryId"])
         self._assert_deployment_generic(
-            deployment, key, resource_group=parsed_sr_id["resource_group"], depends_on=["iotOperations"]
+            deployment,
+            key,
+            resource_group="[parameters('schemaRegistryId').resourceGroup]",
+            depends_on=["iotOperations"],
         )
         dep_props = deployment["properties"]
         dep_props["parameters"] = {
             "clusterName": {"value": "[parameters('clusterName')]"},
             "instanceName": {"value": "[parameters('instanceName')]"},
             "principalId": {"value": "[reference('iotOperations', '2023-05-01', 'Full').identity.principalId]"},
-            "schemaRegistryId": {
-                "value": self.resource_configs["instance"]["properties"]["schemaRegistryRef"]["resourceId"]
-            },
+            "schemaRegistryId": {"value": "[parameters('schemaRegistryId')]"},
         }
         template = deployment["properties"]["template"]
         assert template["$schema"] == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
@@ -1464,7 +1483,7 @@ class CloneAssertor:
             "clusterName": {"type": "string"},
             "instanceName": {"type": "string"},
             "principalId": {"type": "string"},
-            "schemaRegistryId": {"type": "string"},
+            "schemaRegistryId": {"type": "object"},
         }
         assert isinstance(template["resources"], list), "Deployment resources key should be a list"
         assert len(template["resources"]) == 1
@@ -1475,7 +1494,10 @@ class CloneAssertor:
             "[guid(parameters('instanceName'), parameters('clusterName'), "
             "parameters('principalId'), resourceGroup().id)]"
         )
-        assert sr_ra_def["scope"] == "[parameters('schemaRegistryId')]"
+        assert sr_ra_def["scope"] == (
+            "[concat(parameters('schemaRegistryId').subscription, '/', "
+            "parameters('schemaRegistryId').resourceGroup, '/', parameters('schemaRegistryId').name)]"
+        )
         assert sr_ra_def["properties"]["roleDefinitionId"] == (
             "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', "
             "'b24988ac-6180-42a0-ab88-20f7382dd24c')]"
@@ -1507,6 +1529,8 @@ class CloneAssertor:
                 "secretSyncs",
             ]:
                 expected_parameters["instanceName"] = {"type": "string"}
+            else:
+                expected_parameters["location"] = {"type": "string"}
             assert template["parameters"] == expected_parameters
             assert isinstance(template["resources"], list), "Deployment resources key should be a list"
             deployment_resources = template["resources"]
@@ -1623,6 +1647,8 @@ class CloneAssertor:
             }
             if resource_key not in ["assetEndpointProfiles", "assets", "secretProviderClasss", "secretSyncs"]:
                 expected_params["instanceName"] = {"value": "[parameters('instanceName')]"}
+            else:
+                expected_params["location"] = {"value": "[parameters('location')]"}
             assert deployment["properties"]["parameters"] == expected_params
 
         if resource_group:
