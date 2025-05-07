@@ -189,6 +189,7 @@ class DeploymentContainer:
         depends_on: Optional[Union[Iterable[str], str]] = None,
         resource_group: Optional[str] = None,
         subscription: Optional[str] = None,
+        condition: Optional[str] = None,
     ):
         self.name = name
         self.rcontainer_map: Dict[str, "ResourceContainer"] = {}
@@ -199,6 +200,7 @@ class DeploymentContainer:
             self.depends_on = {self.depends_on}
         self.resource_group = resource_group
         self.subscription = subscription
+        self.condition = condition
 
     def add_resources(
         self,
@@ -247,6 +249,8 @@ class DeploymentContainer:
             # TODO: verify
             # result["subscription"] = self.subscription
             pass
+        if self.condition:
+            result["condition"] = self.condition
         if self.parameters:
             input_param_map = {}
             template_param_map = {}
@@ -950,11 +954,6 @@ class CloneManager:
                 type="object",
                 value=TEMPLATE_EXPRESSION_MAP["schemaRegistryId"],
             ),
-            **build_parameter(
-                name=TemplateParams.APPLY_ROLE_ASSIGNMENTS.value,
-                type="bool",
-                value=TEMPLATE_EXPRESSION_MAP[TemplateParams.APPLY_ROLE_ASSIGNMENTS],
-            ),
         }
         # Providing resource_group means a separate deployment to that resource group.
         self._add_deployment(
@@ -965,6 +964,7 @@ class CloneManager:
             parameters=nested_params,
             resource_group="[parameters('schemaRegistryId').resourceGroup]",
             subscription="[parameters('schemaRegistryId').subscription]",
+            condition=TEMPLATE_EXPRESSION_MAP[TemplateParams.APPLY_ROLE_ASSIGNMENTS],
         )
 
     def _analyze_instance_resources(self):
@@ -1202,6 +1202,7 @@ class CloneManager:
         parameters: Optional[dict] = None,
         resource_group: Optional[str] = None,
         subscription: Optional[str] = None,
+        condition: Optional[str] = None,
     ):
         data_iter = list(data_iter)
         if data_iter:
@@ -1218,6 +1219,7 @@ class CloneManager:
                     parameters=parameters,
                     resource_group=resource_group,
                     subscription=subscription,
+                    condition=condition,
                 )
                 deployment_container.add_resources(
                     key=key,
@@ -1464,7 +1466,6 @@ def build_parameter(
 def get_role_assignment():
     return {
         "type": "Microsoft.Authorization/roleAssignments",
-        "condition": TEMPLATE_EXPRESSION_MAP[TemplateParams.APPLY_ROLE_ASSIGNMENTS],
         "name": (
             f"[guid(parameters('{TemplateParams.INSTANCE_NAME.value}'), "
             f"parameters('{TemplateParams.CLUSTER_NAME.value}'), parameters('principalId'), resourceGroup().id)]"

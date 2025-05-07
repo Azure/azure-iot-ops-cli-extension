@@ -1521,13 +1521,13 @@ class CloneAssertor:
             resource_group="[parameters('schemaRegistryId').resourceGroup]",
             depends_on=["iotOperations"],
         )
+        assert deployment["condition"] == "[parameters('applyRoleAssignments')]"
         dep_props = deployment["properties"]
         dep_props["parameters"] = {
             "clusterName": {"value": "[parameters('clusterName')]"},
             "instanceName": {"value": "[parameters('instanceName')]"},
             "principalId": {"value": "[reference('iotOperations', '2023-05-01', 'Full').identity.principalId]"},
             "schemaRegistryId": {"value": "[parameters('schemaRegistryId')]"},
-            "applyRoleAssignments": {"value": "[parameters('applyRoleAssignments')]"},
         }
         template = deployment["properties"]["template"]
         assert template["$schema"] == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
@@ -1537,7 +1537,6 @@ class CloneAssertor:
             "instanceName": {"type": "string"},
             "principalId": {"type": "string"},
             "schemaRegistryId": {"type": "object"},
-            "applyRoleAssignments": {"type": "bool"},
         }
         assert isinstance(template["resources"], list), "Deployment resources key should be a list"
         assert len(template["resources"]) == 1
