@@ -4,12 +4,16 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from base64 import b64decode
+from copy import deepcopy
+import json
 import pytest
 from knack.log import get_logger
 from time import sleep
-from typing import Optional
+from typing import List, Optional
 
 from azure.cli.core.azclierror import CLIInternalError
+
 from ...generators import generate_random_string
 from ...helpers import run
 
@@ -19,7 +23,7 @@ ROLE_RETRY_INTERVAL = 15
 
 
 @pytest.fixture
-def secretsync_int_setup(settings, tracked_resources):
+def secretsync_int_setup(settings, tracked_resources: List[str]):
     from ...settings import EnvironmentVariables
 
     settings.add_to_config(EnvironmentVariables.rg.value)
@@ -100,7 +104,7 @@ def secretsync_int_setup(settings, tracked_resources):
 
 @pytest.mark.rpsaas
 @pytest.mark.require_wlif_setup
-def test_secretsync(secretsync_int_setup):
+def test_secretsync(cluster_connection, secretsync_int_setup, tracked_files: List[str]):
     resource_group = secretsync_int_setup["resourceGroup"]
     instance_name = secretsync_int_setup["instanceName"]
     kv_id = secretsync_int_setup["keyvaultId"]
@@ -147,6 +151,7 @@ def test_secretsync(secretsync_int_setup):
         kv_id=kv_id,
         mi_principal_id=mi_principal_id
     )
+    # note that --skip-ra results in the role assignments not applied, the secrets will not be synced
 
     # list
     list_result = run(f"az iot ops secretsync list -n {instance_name} -g {resource_group}")
@@ -178,9 +183,77 @@ def test_secretsync(secretsync_int_setup):
         mi_principal_id=mi_principal_id,
         expected_secretsync_roles=True
     )
+    _assert_cluster_side_sync(kv_id=kv_id, tracked_files=tracked_files, spc_name=spc_name)
 
     # disable
     run(f"az iot ops secretsync disable -n {instance_name} -g {resource_group} -y")
+
+
+def _assert_cluster_side_sync(kv_id: str, tracked_files: List[str], spc_name: str):
+    # add secret to kv
+    secret_name = f"clitest{generate_random_string()}"
+    secret_value = generate_random_string(size=100)
+    kv_name = kv_id.rsplit("/", maxsplit=1)[1]
+    run(
+        f"az keyvault secret set --vault-name {kv_name} --name {secret_name} "
+        f"--value {secret_value}"
+    )
+
+    # get the current secret provider class
+    list_result = run("kubectl get secretproviderclass -A -o json")["items"]
+    assert list_result
+    spc_data = next(spc for spc in list_result if spc["metadata"]["name"] == spc_name)
+    aio_namespace = spc_data["metadata"]["namespace"]
+
+    # add in the reference for the secret (note that this is a stringified yaml in the json)
+    object_string = "array:\n"
+    if "objects" in spc_data["spec"]["parameters"]:
+        object_string = spc_data["spec"]["parameters"]["objects"]
+    object_string += f"    - |\n      objectName: {secret_name}\n      objectType: secret\n"
+    spc_data["spec"]["parameters"]["objects"] = object_string
+
+    temp_spc_json = f"temp{generate_random_string(size=6)}.json"
+    tracked_files.append(temp_spc_json)
+    with open(temp_spc_json, "w", encoding="utf-8") as f:
+        json.dump(spc_data, f)
+
+    run(f"kubectl apply -f {temp_spc_json}")
+
+    # generate the secretsync
+    secret_key_name = f"targetkey{generate_random_string()}"
+    secret_sync_name = f"sync-{generate_random_string(size=6, force_lower=True)}"
+    secret_sync_data = deepcopy(SECRET_SYNC_TEMPLATE)
+    secret_sync_data["metadata"]["name"] = secret_sync_name
+    secret_sync_data["metadata"]["namespace"] = aio_namespace
+    secret_sync_data["spec"]["secretProviderClassName"] = spc_name
+    secret_sync_data["spec"]["secretObject"]["data"].append({
+        "sourcePath": secret_name,
+        "targetKey": secret_key_name
+    })
+    temp_sync_json = f"temp{generate_random_string(size=6)}.json"
+    tracked_files.append(temp_sync_json)
+    with open(temp_sync_json, "w", encoding="utf-8") as f:
+        json.dump(secret_sync_data, f)
+
+    run(f"kubectl apply -f {temp_sync_json}")
+
+    # use the try mechanism for waiting for the secret to be created
+    tries = 0
+    while tries < ROLE_MAX_RETRIES:
+        try:
+            # check the secret
+            secret_data = run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json")
+            assert secret_key_name in secret_data["data"]
+            decoded = str(b64decode(secret_data["data"][secret_key_name]), encoding="utf-8")
+            assert decoded == secret_value
+            break
+        except CLIInternalError as e:
+            tries += 1
+            sleep(ROLE_RETRY_INTERVAL)
+            if tries == ROLE_MAX_RETRIES:
+                raise e
+
+    run(f"az keyvault secret delete --vault-name {kv_name} --name {secret_name}")
 
 
 def _assert_secret_sync_class(
@@ -243,4 +316,26 @@ def _get_role_list(
             tries += 1
             sleep(ROLE_RETRY_INTERVAL)
 
-    raise AssertionError("Failed to create user assigned identity. Please retry with a given identity.")
+    raise AssertionError("Failed to fetch role assignments.")
+
+
+SECRET_SYNC_TEMPLATE = {
+    "apiVersion": "secret-sync.x-k8s.io/v1alpha1",
+    "kind": "SecretSync",
+    "metadata": {
+        "annotations": {},
+        "generation": 1,
+        "name": "",
+        "namespace": "",
+        "uid": "cbb0b6a9-2565-4e7a-930f-b4c5abc6464b"
+    },
+    "spec": {
+        "secretObject": {
+            "data": [],
+            "type": "Opaque"
+        },
+        "secretProviderClassName": "",
+        "secretSyncControllerName": "",
+        "serviceAccountName": "aio-ssc-sa"
+    }
+}
