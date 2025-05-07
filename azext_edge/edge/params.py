@@ -461,7 +461,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "custom_endpoint",
             options_list=["--custom-ep"],
-            help="Endpoint to use for the custom auth service. Format is 'https://.*'.",
+            help="Endpoint to use for the custom auth service. Format is `https://.*`.",
             arg_group="Custom",
         )
         context.argument(
