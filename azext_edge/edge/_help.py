@@ -658,6 +658,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
             "properties": {
               "endpointType": "Kafka",
@@ -677,7 +678,7 @@ def load_iotops_help():
                 "cloudEventAttributes": "Propagate",
                 "compression": "None",
                 "copyMqttProperties": "Disabled",
-                "host": "*.servicebus.windows.net:9093",
+                "host": "test.servicebus.windows.net:9093",
                 "kafkaAcks": "All",
                 "partitionStrategy": "Default",
                 "tls": {
@@ -686,6 +687,7 @@ def load_iotops_help():
               },
             }
           }
+          ```
 
           When used with apply the above content will create or replace a target kafka dataflow endpoint
           resource configured with system assigned managed identity authentication method.
