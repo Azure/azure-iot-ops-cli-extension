@@ -183,6 +183,7 @@ class CloneScenario:
         cluster_name: str,
         add_resources_map: Optional[dict] = None,
         instance_version: Optional[str] = None,
+        instance_features: Optional[dict] = None,
     ):
         self.responses = mocked_responses
         self.instance_name = instance_name
@@ -200,12 +201,14 @@ class CloneScenario:
         self.spc_client_ids = []
         self.uami_ids = []
         self.client_id_uami_map = {}
-        self._configure_instance(instance_version=instance_version)
+        self._configure_instance(instance_version=instance_version, instance_features=instance_features)
 
-    def _configure_instance(self: C, instance_version: Optional[str] = None) -> C:
+    def _configure_instance(
+        self: C, instance_version: Optional[str] = None, instance_features: Optional[dict] = None
+    ) -> C:
         self.add_extensions()
         self.add_custom_location(namespace=generate_random_string())
-        self.add_instance(version=instance_version)
+        self.add_instance(version=instance_version, features=instance_features)
         self.add_broker()
         self.add_listeners()
         self.add_authns()
@@ -399,7 +402,7 @@ class CloneScenario:
         )
         self.resource_configs["customLocation"] = mock_cl_record
 
-    def add_instance(self: C, version: Optional[str] = None):
+    def add_instance(self: C, version: Optional[str] = None, features: Optional[dict] = None):
         optional_kwargs = {}
         identity_map = {}
 
@@ -417,6 +420,7 @@ class CloneScenario:
             cl_name=self.cl_name,
             schema_registry_name=self.sr_name,
             version=version,
+            features=features,
             **optional_kwargs,
         )
         self.resource_configs["schemaRegistryId"] = mock_instance_record["properties"]["schemaRegistryRef"][
@@ -967,6 +971,49 @@ def test_clone_scale(
     mock_open_write().write.assert_called_once_with(json.dumps(content, indent=2))
 
 
+@pytest.mark.parametrize("instance_features", [None, {"connectors": {"settings": {"preview": "Enabled"}, "mode": ""}}])
+@pytest.mark.parametrize("clone_scenario", [CloneScenario()])
+def test_clone_instance_feature_capture(
+    mocked_cmd: Mock,
+    mocked_responses: responses,
+    clone_scenario: CloneScenario,
+    instance_features: Optional[dict],
+):
+    model_cluster_name = generate_random_string()
+    model_instance_name = generate_random_string()
+    model_resource_group_name = generate_random_string()
+
+    clone_scenario.bootstrap(
+        mocked_responses,
+        resource_group_name=model_resource_group_name,
+        instance_name=model_instance_name,
+        cluster_name=model_cluster_name,
+        instance_features=instance_features,
+    )
+
+    deploy_responses, to_cluster_id = clone_scenario.wrap_cluster_deploy()
+    clone = partial(
+        clone_instance,
+        cmd=mocked_cmd,
+        resource_group_name=model_resource_group_name,
+        instance_name=model_instance_name,
+        no_progress=True,
+        confirm_yes=True,
+        to_cluster_id=to_cluster_id,
+    )
+    clone()
+    deploy_body_payload = json.loads(deploy_responses[0].calls[0].request.body)
+    deploy_instance = deploy_body_payload["properties"]["template"]["resources"]["instance"]
+    if not instance_features:
+        assert "features" not in deploy_instance["properties"]
+        return
+
+    assert deploy_instance["properties"]["features"]
+    for f in instance_features:
+        if not instance_features[f]["mode"]:
+            assert "mode" not in deploy_instance["properties"]["features"][f]
+
+
 @pytest.mark.parametrize(
     "cred_state",
     [
@@ -1158,7 +1205,8 @@ EXPECTED_PARAMETER_KEYS = {
     "location",
     "opsExtensionName",
     "resourceSlug",
-    "schemaRegistryId"
+    "schemaRegistryId",
+    "applyRoleAssignments",
 }
 
 EXPECTED_ORD_EXT_RESOURCE_MAP = {
@@ -1394,6 +1442,10 @@ class CloneAssertor:
                 "name": parsed_sr_id["name"],
             },
         }
+        assert content["parameters"]["applyRoleAssignments"] == {
+            "type": "bool",
+            "defaultValue": True,
+        }
 
         self._assert_resources(content)
 
@@ -1475,6 +1527,7 @@ class CloneAssertor:
             "instanceName": {"value": "[parameters('instanceName')]"},
             "principalId": {"value": "[reference('iotOperations', '2023-05-01', 'Full').identity.principalId]"},
             "schemaRegistryId": {"value": "[parameters('schemaRegistryId')]"},
+            "applyRoleAssignments": {"value": "[parameters('applyRoleAssignments')]"},
         }
         template = deployment["properties"]["template"]
         assert template["$schema"] == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
@@ -1484,6 +1537,7 @@ class CloneAssertor:
             "instanceName": {"type": "string"},
             "principalId": {"type": "string"},
             "schemaRegistryId": {"type": "object"},
+            "applyRoleAssignments": {"type": "bool"},
         }
         assert isinstance(template["resources"], list), "Deployment resources key should be a list"
         assert len(template["resources"]) == 1
@@ -1495,8 +1549,8 @@ class CloneAssertor:
             "parameters('principalId'), resourceGroup().id)]"
         )
         assert sr_ra_def["scope"] == (
-            "[concat(parameters('schemaRegistryId').subscription, '/', "
-            "parameters('schemaRegistryId').resourceGroup, '/', parameters('schemaRegistryId').name)]"
+            "[resourceId(parameters('schemaRegistryId').subscription, parameters('schemaRegistryId').resourceGroup, "
+            "'Microsoft.DeviceRegistry/schemaRegistries', parameters('schemaRegistryId').name)]"
         )
         assert sr_ra_def["properties"]["roleDefinitionId"] == (
             "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', "

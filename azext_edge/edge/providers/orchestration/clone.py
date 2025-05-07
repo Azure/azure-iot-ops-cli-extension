@@ -105,6 +105,7 @@ class TemplateParams(Enum):
     PRINCIPAL_ID = "principalId"
     RESOURCE_SLUG = "resourceSlug"
     LOCATION = "location"
+    APPLY_ROLE_ASSIGNMENTS = "applyRoleAssignments"
 
 
 TEMPLATE_EXPRESSION_MAP = {
@@ -129,6 +130,7 @@ TEMPLATE_EXPRESSION_MAP = {
     "schemaRegistryId": f"[parameters('{TemplateParams.SCHEMA_REGISTRY_ID.value}')]",
     # TODO: Decide on keys being enum members/str/alt
     TemplateParams.LOCATION: f"[parameters('{TemplateParams.LOCATION.value}')]",
+    TemplateParams.APPLY_ROLE_ASSIGNMENTS: f"[parameters('{TemplateParams.APPLY_ROLE_ASSIGNMENTS.value}')]",
 }
 
 
@@ -820,6 +822,13 @@ class CloneManager:
                 },
             )
         )
+        self.parameter_map.update(
+            build_parameter(
+                name=TemplateParams.APPLY_ROLE_ASSIGNMENTS.value,
+                type="bool",
+                default=True,
+            )
+        )
 
     def _build_metadata(self):
         self.metadata_map["opsCliVersion"] = CLI_VERSION
@@ -915,12 +924,14 @@ class CloneManager:
             config={"apply_nested_name": False},
             depends_on=cl_monikers,
         )
+
         instance_copy = deepcopy(self.instance_record)
         # A features mode should be removed if empty string or None.
-        features: Dict[str, Union[dict, str]] = instance_copy.get("features", {})
+        features: Dict[str, Union[dict, str]] = instance_copy["properties"].get("features", {})
         for f in features:
-            if "mode" in f and not f["mode"]:
-                del f["mode"]
+            if "mode" in features[f] and not features[f]["mode"]:
+                del features[f]["mode"]
+
         self._add_resource(
             key=StateResourceKey.INSTANCE,
             api_version=api_version,
@@ -938,6 +949,11 @@ class CloneManager:
                 name=TemplateParams.SCHEMA_REGISTRY_ID.value,
                 type="object",
                 value=TEMPLATE_EXPRESSION_MAP["schemaRegistryId"],
+            ),
+            **build_parameter(
+                name=TemplateParams.APPLY_ROLE_ASSIGNMENTS.value,
+                type="bool",
+                value=TEMPLATE_EXPRESSION_MAP[TemplateParams.APPLY_ROLE_ASSIGNMENTS],
             ),
         }
         # Providing resource_group means a separate deployment to that resource group.
@@ -1448,13 +1464,14 @@ def build_parameter(
 def get_role_assignment():
     return {
         "type": "Microsoft.Authorization/roleAssignments",
+        "condition": TEMPLATE_EXPRESSION_MAP[TemplateParams.APPLY_ROLE_ASSIGNMENTS],
         "name": (
             f"[guid(parameters('{TemplateParams.INSTANCE_NAME.value}'), "
             f"parameters('{TemplateParams.CLUSTER_NAME.value}'), parameters('principalId'), resourceGroup().id)]"
         ),
         "scope": (
-            "[concat(parameters('schemaRegistryId').subscription, '/', "
-            "parameters('schemaRegistryId').resourceGroup, '/', parameters('schemaRegistryId').name)]"
+            "[resourceId(parameters('schemaRegistryId').subscription, parameters('schemaRegistryId').resourceGroup, "
+            "'Microsoft.DeviceRegistry/schemaRegistries', parameters('schemaRegistryId').name)]"
         ),
         "properties": {
             "roleDefinitionId": (
