@@ -461,7 +461,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "custom_endpoint",
             options_list=["--custom-ep"],
-            help="Endpoint to use for the custom auth service. Format is 'https://.*'.",
+            help="Endpoint to use for the custom auth service. Format is `https://.*`.",
             arg_group="Custom",
         )
         context.argument(
@@ -1066,7 +1066,7 @@ def load_iotops_arguments(self, _):
             options_list=["--base-uri"],
             help="Base URI to use for template links. If not provided a relative path strategy will be used. "
             "Relevant when --mode is set to 'linked'. "
-            "Example: 'https://raw.githubusercontent.com/myorg/myproject/main/myclones/'.",
+            "Example: `https://raw.githubusercontent.com/myorg/myproject/main/myclones/`.",
             arg_group="Local Target",
         )
         context.argument(

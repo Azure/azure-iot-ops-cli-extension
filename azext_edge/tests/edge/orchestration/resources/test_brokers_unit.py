@@ -48,7 +48,8 @@ def get_mock_broker_record(broker_name: str, instance_name: str, resource_group_
             "provisioningState": "Succeeded",
         },
         resource_group_name=resource_group_name,
-        qualified_type="microsoft.iotoperations/instances/brokers"
+        qualified_type="microsoft.iotoperations/instances/brokers",
+        is_proxy_resource=True,
     )
 
 

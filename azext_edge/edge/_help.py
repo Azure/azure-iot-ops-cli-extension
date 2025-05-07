@@ -209,6 +209,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
             "serviceType": "LoadBalancer",
             "ports": [
@@ -233,6 +234,7 @@ def load_iotops_help():
                 }
             ]
           }
+          ```
 
           When used with apply the above content will create or replace a target listener
           with a two port configuration.
@@ -338,6 +340,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
               "authenticationMethods": [
                   {
@@ -393,6 +396,7 @@ def load_iotops_help():
                   }
               ]
           }
+          ```
 
           When used with apply the above content will create or replace a target authentication
           resource configured with three authn methods.
@@ -493,6 +497,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
               "authorizationPolicies": {
                   "cache": "Enabled",
@@ -532,6 +537,7 @@ def load_iotops_help():
                   ]
               }
           }
+          ```
 
           When used with apply the above content will create or replace a target authorization
           resource configured with a single authz rule.
@@ -648,6 +654,67 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Dataflow endpoint management.
+    """
+
+    helps[
+        "iot ops dataflow endpoint apply"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          ```
+          {
+            "endpointType": "Kafka",
+            "kafkaSettings": {
+              "authentication": {
+                "method": "SystemAssignedManagedIdentity",
+                "systemAssignedManagedIdentitySettings": {
+                  "audience": "aio-internal"
+                }
+              },
+              "batching": {
+                "latencyMs": 5,
+                "maxBytes": 1000000,
+                "maxMessages": 100000,
+                "mode": "Enabled"
+              },
+              "cloudEventAttributes": "Propagate",
+              "compression": "None",
+              "copyMqttProperties": "Disabled",
+              "host": "test.servicebus.windows.net:9093",
+              "kafkaAcks": "All",
+              "partitionStrategy": "Default",
+              "tls": {
+                "mode": "Enabled"
+              }
+            },
+          }
+          ```
+
+          When used with apply the above content will create or replace a target kafka dataflow endpoint
+          resource configured with system assigned managed identity authentication method.
+
+        examples:
+        - name: Create or replace an dataflow endpoint resource using a config file.
+          text: >
+            az iot ops dataflow endpoint apply -n dataflowep --in myinstance -g myresourcegroup --config-file /path/to/dataflowep/config.json
+    """
+
+    helps[
+        "iot ops dataflow endpoint delete"
+    ] = """
+        type: command
+        short-summary: Delete a dataflow endpoint resource.
+
+        examples:
+        - name: Delete the dataflow endpoint resource called 'dataflowep'.
+          text: >
+            az iot ops dataflow endpoint delete -n dataflowep --in myinstance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops dataflow endpoint delete -n dataflowep --in myinstance -g myresourcegroup -y
     """
 
     helps[
