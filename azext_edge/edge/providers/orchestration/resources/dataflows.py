@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Iterable, Optional
 
 from knack.log import get_logger
 from rich.console import Console
+
+from azure.core.exceptions import ResourceNotFoundError
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
 from azext_edge.edge.providers.orchestration.common import (
@@ -200,7 +202,7 @@ class DataFlows(Queryable):
 
         # validate at least one of source and destination endpoint must have host with "aio-broker" that is MQTT endpoint
         source_endpoint_host = source_endpoint_obj.get("properties", {}).get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[source_endpoint_type], {}).get("host", "")
-        destination_endpoint_host = desination_endpoint_obj.get("properties", {}).get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[source_endpoint_type], {}).get("host", "")
+        destination_endpoint_host = desination_endpoint_obj.get("properties", {}).get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[destination_endpoint_type], {}).get("host", "")
         is_source_local_mqtt = LOCAL_MQTT_HOST_PREFIX in source_endpoint_host and source_endpoint_type == DataflowEndpointType.MQTT.value
         is_destination_local_mqtt = LOCAL_MQTT_HOST_PREFIX in destination_endpoint_host and destination_endpoint_type == DataflowEndpointType.MQTT.value
         if not is_source_local_mqtt and not is_destination_local_mqtt:
@@ -234,7 +236,7 @@ class DataFlows(Queryable):
         )
 
         if not endpoint_obj:
-            raise InvalidArgumentValueError(
+            raise ResourceNotFoundError(
                 f"{operation_type} dataflow endpoint '{endpoint_name}' not found in instance '{instance_name}'. "
                 "Please provide a valid 'endpointRef' using --config-file."
             )

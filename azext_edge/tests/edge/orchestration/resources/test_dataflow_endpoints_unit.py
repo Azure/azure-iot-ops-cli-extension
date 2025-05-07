@@ -31,6 +31,7 @@ def get_mock_dataflow_endpoint_record(
     resource_group_name: str,
     dataflow_endpoint_type: Optional[str] = None,
     host: Optional[str] = None,
+    group_id: Optional[str] = None,
 ) -> dict:
     return get_mock_resource(
         name=dataflow_endpoint_name,
@@ -42,6 +43,7 @@ def get_mock_dataflow_endpoint_record(
             DATAFLOW_ENDPOINT_TYPE_SETTINGS[dataflow_endpoint_type or "Kafka"]: {
                 "tls": {"mode": "Enabled", "trustedCaCertificateConfigMapRef": "myconfigmap"},
                 "host": host or "myhost",
+                "consumerGroupId": group_id or "",
             },
             "provisioningState": "Succeeded",
         },
