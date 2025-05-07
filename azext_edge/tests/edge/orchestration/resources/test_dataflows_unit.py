@@ -30,37 +30,46 @@ def get_dataflow_endpoint(
 
 
 def get_mock_dataflow_record(
-    dataflow_name: str, profile_name: str, instance_name: str, resource_group_name: str
+    dataflow_name: str,
+    profile_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    trans_operation: Optional[dict] = None,
 ) -> dict:
+    properties={
+        "operations": [
+            {
+                "operationType": "Source",
+                "sourceSettings": {
+                "endpointRef": "default",
+                "assetRef": "",
+                "serializationFormat": "Json",
+                "schemaRef": "",
+                "dataSources": [
+                    "test"
+                ]
+                }
+            },
+            {
+                "operationType": "Destination",
+                "destinationSettings": {
+                "endpointRef": "test",
+                "dataDestination": "test"
+                }
+            }
+        ],
+        "profileRef": "mydataflowprofile",
+        "mode": "Enabled",
+        "provisioningState": "Succeeded",
+    }
+    
+    if trans_operation:
+        properties["operations"].append(trans_operation)
+
     return get_mock_resource(
         name=dataflow_name,
         resource_path=f"/instances/{instance_name}/dataflowProfiles/{profile_name}/dataflows/{dataflow_name}",
-        properties={
-            "operations": [
-                {
-                    "operationType": "Source",
-                    "sourceSettings": {
-                    "endpointRef": "default",
-                    "assetRef": "",
-                    "serializationFormat": "Json",
-                    "schemaRef": "",
-                    "dataSources": [
-                        "test"
-                    ]
-                    }
-                },
-                {
-                    "operationType": "Destination",
-                    "destinationSettings": {
-                    "endpointRef": "test",
-                    "dataDestination": "test"
-                    }
-                }
-            ],
-            "profileRef": "mydataflowprofile",
-            "mode": "Enabled",
-            "provisioningState": "Succeeded",
-        },
+        properties=properties,
         resource_group_name=resource_group_name,
         qualified_type="microsoft.iotoperations/instances/dataflows",
     )
@@ -163,24 +172,38 @@ def test_dataflow_list(mocked_cmd, mocked_responses: responses, records: int):
             profile_name=generate_random_string(),
             instance_name=generate_random_string(),
             resource_group_name=generate_random_string(),
+            trans_operation={
+                "operationType": "BuiltInTransformation",
+                "builtInTransformationSettings": {
+                    "serializationFormat": "Json",
+                    "schemaRef": "",
+                    "datasets": [],
+                    "filter": [],
+                    "map": [
+                        {
+                            "type": "PassThrough",
+                            "inputs": [
+                                "*"
+                            ],
+                            "output": "*"
+                        }
+                    ]
+                }
+            }
         ),
             "dataflow_profile_name": generate_random_string(),
         },
     ],
 )
 def test_dataflow_apply(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
-    dataflow_name = generate_random_string()
-    instance_name = generate_random_string()
-    resource_group_name = generate_random_string()
-    dataflow_profile_name = generate_random_string()
+    file_payload = scenario["file_payload"]
+    dataflow_name = file_payload["name"]
+    resource_id = file_payload["id"]
+    instance_name = resource_id.split("/instances/")[1].split("/dataflowProfiles/")[0]
+    resource_group_name = resource_id.split("/resourceGroups/")[1].split("/providers/")[0]
+    dataflow_profile_name = resource_id.split("/dataflowProfiles/")[1].split("/dataflows/")[0]
 
     expected_payload = None
-    file_payload = get_mock_dataflow_record(
-        dataflow_name=dataflow_name,
-        profile_name=dataflow_profile_name or DEFAULT_DATAFLOW_PROFILE,
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-    )
     if file_payload:
         expected_payload = file_payload
         expected_file_content = json.dumps(file_payload)
@@ -260,6 +283,22 @@ def test_dataflow_apply(mocked_cmd, mocked_responses: responses, mocked_get_file
     assert create_result == expected_payload
     request_payload = json.loads(put_response.calls[0].request.body)
     assert request_payload["extendedLocation"] == mock_instance_record["extendedLocation"]
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        # Invalid source type
+        {"file_payload": get_mock_dataflow_record(
+            dataflow_name=generate_random_string(),
+            profile_name=generate_random_string(),
+            instance_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+        )},
+    ],
+)
+def test_dataflow_apply_error(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
+
 
 
 
