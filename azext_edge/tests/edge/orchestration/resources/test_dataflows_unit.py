@@ -4,12 +4,17 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 from typing import Optional
+from unittest.mock import Mock
 
 import pytest
 import responses
 
-from azext_edge.edge.commands_dataflow import show_dataflow, list_dataflows
+from azext_edge.edge.commands_dataflow import apply_dataflow, delete_dataflow, show_dataflow, list_dataflows
+from azext_edge.edge.common import DEFAULT_DATAFLOW_PROFILE
+from azext_edge.tests.edge.orchestration.resources.test_dataflow_endpoints_unit import get_dataflow_endpoint_endpoint, get_mock_dataflow_endpoint_record
+from azext_edge.tests.edge.orchestration.resources.test_instances_unit import get_instance_endpoint, get_mock_instance_record
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
@@ -33,8 +38,23 @@ def get_mock_dataflow_record(
         properties={
             "operations": [
                 {
-                    "sourceSettings": {"dataSources": ["test/#"], "serializationFormat": "Json"},
-                    "destinationSettings": {"dataDestination": "$topic", "endpointRef": "mykafkaendpoint"},
+                    "operationType": "Source",
+                    "sourceSettings": {
+                    "endpointRef": "default",
+                    "assetRef": "",
+                    "serializationFormat": "Json",
+                    "schemaRef": "",
+                    "dataSources": [
+                        "test"
+                    ]
+                    }
+                },
+                {
+                    "operationType": "Destination",
+                    "destinationSettings": {
+                    "endpointRef": "test",
+                    "dataDestination": "test"
+                    }
                 }
             ],
             "profileRef": "mydataflowprofile",
@@ -46,7 +66,7 @@ def get_mock_dataflow_record(
     )
 
 
-def test_dataflow_profile_show(mocked_cmd, mocked_responses: responses):
+def test_dataflow_show(mocked_cmd, mocked_responses: responses):
     dataflow_name = generate_random_string()
     profile_name = generate_random_string()
     instance_name = generate_random_string()
@@ -88,7 +108,7 @@ def test_dataflow_profile_show(mocked_cmd, mocked_responses: responses):
     "records",
     [0, 2],
 )
-def test_dataflow_profile_list(mocked_cmd, mocked_responses: responses, records: int):
+def test_dataflow_list(mocked_cmd, mocked_responses: responses, records: int):
     profile_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -125,4 +145,147 @@ def test_dataflow_profile_list(mocked_cmd, mocked_responses: responses, records:
     )
 
     assert result == mock_dataflow_records["value"]
+    assert len(mocked_responses.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        {"file_payload": get_mock_dataflow_record(
+            dataflow_name=generate_random_string(),
+            profile_name=generate_random_string(),
+            instance_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+        )},
+        {
+            "file_payload": get_mock_dataflow_record(
+            dataflow_name=generate_random_string(),
+            profile_name=generate_random_string(),
+            instance_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+        ),
+            "dataflow_profile_name": generate_random_string(),
+        },
+    ],
+)
+def test_dataflow_apply(mocked_cmd, mocked_responses: responses, mocked_get_file_config: Mock, scenario: dict):
+    dataflow_name = generate_random_string()
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    dataflow_profile_name = generate_random_string()
+
+    expected_payload = None
+    file_payload = get_mock_dataflow_record(
+        dataflow_name=dataflow_name,
+        profile_name=dataflow_profile_name or DEFAULT_DATAFLOW_PROFILE,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+    if file_payload:
+        expected_payload = file_payload
+        expected_file_content = json.dumps(file_payload)
+    mocked_get_file_config.return_value = expected_file_content
+
+    operations = file_payload["properties"]["operations"]
+    source_operation = next(
+        (operation for operation in operations if operation["operationType"] == "Source"), None
+    )
+    destination_operation = next(
+        (operation for operation in operations if operation["operationType"] == "Destination"), None
+    )
+    source_endpoint_name = source_operation["sourceSettings"]["endpointRef"]
+    destination_endpoint_name = destination_operation["destinationSettings"]["endpointRef"]
+
+    mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_instance_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+        ),
+        json=mock_instance_record,
+        status=200,
+    )
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_dataflow_endpoint_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_endpoint_name=source_endpoint_name,
+        ),
+        json=get_mock_dataflow_endpoint_record(
+            dataflow_endpoint_name=source_endpoint_name,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+            dataflow_endpoint_type="Mqtt",
+            host="aio-broker",
+        ),
+        status=200,
+    )
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_dataflow_endpoint_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_endpoint_name=destination_endpoint_name,
+        ),
+        json=get_mock_dataflow_endpoint_record(
+            dataflow_endpoint_name=destination_endpoint_name,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+        ),
+        status=200,
+    )
+    put_response = mocked_responses.add(
+        method=responses.PUT,
+        url=get_dataflow_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            profile_name=dataflow_profile_name or DEFAULT_DATAFLOW_PROFILE,
+            dataflow_name=dataflow_name,
+        ),
+        json=expected_payload,
+        status=200,
+    )
+    create_result = apply_dataflow(
+        cmd=mocked_cmd,
+        profile_name=dataflow_profile_name or DEFAULT_DATAFLOW_PROFILE,
+        dataflow_name=dataflow_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        config_file="config.json",
+        wait_sec=0.1,
+    )
+    assert len(mocked_responses.calls) == 4
+    assert create_result == expected_payload
+    request_payload = json.loads(put_response.calls[0].request.body)
+    assert request_payload["extendedLocation"] == mock_instance_record["extendedLocation"]
+
+
+
+def test_dataflow_delete(mocked_cmd, mocked_responses: responses):
+    profile_name = generate_random_string()
+    dataflow_name = generate_random_string()
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+
+    mocked_responses.add(
+        method=responses.DELETE,
+        url=get_dataflow_endpoint(
+            profile_name=profile_name,
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_name=dataflow_name
+        ),
+        status=204,
+    )
+    delete_dataflow(
+        cmd=mocked_cmd,
+        dataflow_name=dataflow_name,
+        profile_name=profile_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=True,
+        wait_sec=0.25,
+    )
     assert len(mocked_responses.calls) == 1

@@ -10,6 +10,7 @@ import pytest
 import responses
 
 from azext_edge.edge.commands_dataflow import show_dataflow_endpoint, list_dataflow_endpoints
+from azext_edge.edge.providers.orchestration.common import DATAFLOW_ENDPOINT_TYPE_SETTINGS
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
@@ -25,7 +26,11 @@ def get_dataflow_endpoint_endpoint(
 
 
 def get_mock_dataflow_endpoint_record(
-    dataflow_endpoint_name: str, instance_name: str, resource_group_name: str
+    dataflow_endpoint_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    dataflow_endpoint_type: Optional[str] = None,
+    host: Optional[str] = None,
 ) -> dict:
     return get_mock_resource(
         name=dataflow_endpoint_name,
@@ -33,8 +38,11 @@ def get_mock_dataflow_endpoint_record(
         properties={
             "authentication": {"method": "AccessToken"},
             "accessTokenSecretRef": "mysecret",
-            "endpointType": "Kafka",
-            "kafkaSettings": {"tls": {"mode": "Enabled", "trustedCaCertificateConfigMapRef": "myconfigmap"}},
+            "endpointType": dataflow_endpoint_type or "Kafka",
+            DATAFLOW_ENDPOINT_TYPE_SETTINGS[dataflow_endpoint_type or "Kafka"]: {
+                "tls": {"mode": "Enabled", "trustedCaCertificateConfigMapRef": "myconfigmap"},
+                "host": host or "myhost",
+            },
             "provisioningState": "Succeeded",
         },
         resource_group_name=resource_group_name,

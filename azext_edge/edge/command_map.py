@@ -116,6 +116,7 @@ def load_iotops_commands(self, _):
         cmd_group.show_command("show", "show_dataflow")
         cmd_group.command("list", "list_dataflows")
         cmd_group.command("apply", "apply_dataflow")
+        cmd_group.command("delete", "delete_dataflow")
 
     with self.command_group(
         "iot ops dataflow profile",

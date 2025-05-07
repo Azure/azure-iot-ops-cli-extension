@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from knack.log import get_logger
 from rich.console import Console
@@ -119,7 +119,7 @@ class DataFlows(Queryable):
         dataflow_profile_name: str,
         instance_name: str,
         resource_group_name: str,
-        confirm_yes: bool = False,
+        confirm_yes: Optional[bool] = None,
         **kwargs
     ) -> dict:
         should_bail = not should_continue_prompt(

@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Iterable
+from typing import Iterable, Optional
 
 from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles
 
@@ -51,6 +51,25 @@ def apply_dataflow(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         config_file=config_file,
+        **kwargs,
+    )
+
+
+def delete_dataflow(
+    cmd,
+    dataflow_name: str,
+    profile_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    confirm_yes: Optional[bool] = None,
+    **kwargs: dict,
+) -> dict:
+    return DataFlowProfiles(cmd).dataflows.delete(
+        name=dataflow_name,
+        dataflow_profile_name=profile_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
         **kwargs,
     )
 
