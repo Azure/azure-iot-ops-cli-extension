@@ -107,7 +107,7 @@ class DataFlowEndpoints(Queryable):
         resource_group_name: str,
         confirm_yes: bool = False,
         **kwargs
-    ) -> dict:
+    ):
         should_bail = not should_continue_prompt(
             confirm_yes=confirm_yes,
         )

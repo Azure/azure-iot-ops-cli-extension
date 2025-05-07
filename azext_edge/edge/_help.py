@@ -660,32 +660,30 @@ def load_iotops_help():
 
           ```
           {
-            "properties": {
-              "endpointType": "Kafka",
-              "kafkaSettings": {
-                "authentication": {
-                  "method": "SystemAssignedManagedIdentity",
-                  "systemAssignedManagedIdentitySettings": {
-                    "audience": "aio-internal"
-                  }
-                },
-                "batching": {
-                  "latencyMs": 5,
-                  "maxBytes": 1000000,
-                  "maxMessages": 100000,
-                  "mode": "Enabled"
-                },
-                "cloudEventAttributes": "Propagate",
-                "compression": "None",
-                "copyMqttProperties": "Disabled",
-                "host": "test.servicebus.windows.net:9093",
-                "kafkaAcks": "All",
-                "partitionStrategy": "Default",
-                "tls": {
-                  "mode": "Enabled"
+            "endpointType": "Kafka",
+            "kafkaSettings": {
+              "authentication": {
+                "method": "SystemAssignedManagedIdentity",
+                "systemAssignedManagedIdentitySettings": {
+                  "audience": "aio-internal"
                 }
               },
-            }
+              "batching": {
+                "latencyMs": 5,
+                "maxBytes": 1000000,
+                "maxMessages": 100000,
+                "mode": "Enabled"
+              },
+              "cloudEventAttributes": "Propagate",
+              "compression": "None",
+              "copyMqttProperties": "Disabled",
+              "host": "test.servicebus.windows.net:9093",
+              "kafkaAcks": "All",
+              "partitionStrategy": "Default",
+              "tls": {
+                "mode": "Enabled"
+              }
+            },
           }
           ```
 

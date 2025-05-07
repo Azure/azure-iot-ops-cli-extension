@@ -60,8 +60,8 @@ def delete_dataflow_endpoint(
     resource_group_name: str,
     confirm_yes: bool = False,
     **kwargs,
-) -> None:
-    DataFlowEndpoints(cmd).delete(
+):
+    return DataFlowEndpoints(cmd).delete(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
