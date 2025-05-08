@@ -181,42 +181,42 @@ class DataflowEndpointFabricPathType(Enum):
 
 
 DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
-    DataflowEndpointType.DATAEXPLORER.value: [
+    DataflowEndpointType.DATAEXPLORER.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
-    ],
-    DataflowEndpointType.DATALAKESTORAGE.value: [
+    },
+    DataflowEndpointType.DATALAKESTORAGE.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.ACCESSTOKEN.value,
-    ],
-    DataflowEndpointType.FABRICONELAKE.value: [
+    },
+    DataflowEndpointType.FABRICONELAKE.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
-    ],
-    DataflowEndpointType.KAFKA.value: [
+    },
+    DataflowEndpointType.KAFKA.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.SASL.value,
         DataflowEndpointAuthenticationType.X509.value,
         DataflowEndpointAuthenticationType.ANONYMOUS.value,
-    ],
-    DataflowEndpointType.MQTT.value: [
+    },
+    DataflowEndpointType.MQTT.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
         DataflowEndpointAuthenticationType.X509.value,
         DataflowEndpointAuthenticationType.ANONYMOUS.value,
-    ],
+    },
 }
 
 DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS = {
-    DataflowEndpointType.DATAEXPLORER.value: ["database_name", "host"],
-    DataflowEndpointType.DATALAKESTORAGE.value: ["host"],
-    DataflowEndpointType.FABRICONELAKE.value: ["lakehouse_name", "workspace_name", "path_type", "host"],
-    DataflowEndpointType.KAFKA.value: ["host"],
-    DataflowEndpointType.LOCALSTORAGE.value: ["pvc_reference"],
-    DataflowEndpointType.MQTT.value: ["host"],
+    DataflowEndpointType.DATAEXPLORER.value: {"database_name", "host"},
+    DataflowEndpointType.DATALAKESTORAGE.value: {"host"},
+    DataflowEndpointType.FABRICONELAKE.value: {"lakehouse_name", "workspace_name", "path_type", "host"},
+    DataflowEndpointType.KAFKA.value: {"host"},
+    DataflowEndpointType.LOCALSTORAGE.value: {"pvc_reference"},
+    DataflowEndpointType.MQTT.value: {"host"},
 }
 
 DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
@@ -229,11 +229,11 @@ DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
 }
 
 AUTHENTICATION_TYPE_REQUIRED_PARAMS = {
-    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value: [],
-    DataflowEndpointAuthenticationType.USERASSIGNED.value: ["client_Id", "tenant_id"],
-    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value: ["audience"],
-    DataflowEndpointAuthenticationType.X509.value: ["secret_name"],
-    DataflowEndpointAuthenticationType.ANONYMOUS.value: [],
+    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value: {},
+    DataflowEndpointAuthenticationType.USERASSIGNED.value: {"client_Id", "tenant_id"},
+    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value: {"audience"},
+    DataflowEndpointAuthenticationType.X509.value: {"secret_name"},
+    DataflowEndpointAuthenticationType.ANONYMOUS.value: {},
 }
 
 DATAFLOW_OPERATION_TYPE_SETTINGS = {
