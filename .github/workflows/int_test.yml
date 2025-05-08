@@ -297,7 +297,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Create Storage and Schema Registry for init tests"
         run: |
-          storage_account_name=$(echo "initst${{ env.CLUSTER_NAME }}" | tr -d '|')
+          storage_account_name=$(echo "initst${{ env.CLUSTER_NAME }}" | tr -d '-')
           storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n $storage_account_name --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny -o tsv --query id)
           registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n initreg${{ env.CLUSTER_NAME }} --rn initrn${{ env.CLUSTER_NAME }} --sa-resource-id $storage_id -o tsv --query id)
           echo "STORAGE_ID=$storage_id" >> $GITHUB_ENV
