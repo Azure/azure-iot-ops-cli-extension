@@ -33,6 +33,7 @@ from .providers.orchestration.common import (
     X509_ISSUER_REF_KEYS,
     CloneSummaryMode,
     CloneTemplateMode,
+    CloneTemplateParams,
     ConfigSyncModeType,
     IdentityUsageType,
     KubernetesDistroType,
@@ -474,7 +475,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "custom_endpoint",
             options_list=["--custom-ep"],
-            help="Endpoint to use for the custom auth service. Format is 'https://.*'.",
+            help="Endpoint to use for the custom auth service. Format is `https://.*`.",
             arg_group="Custom",
         )
         context.argument(
@@ -1079,7 +1080,7 @@ def load_iotops_arguments(self, _):
             options_list=["--base-uri"],
             help="Base URI to use for template links. If not provided a relative path strategy will be used. "
             "Relevant when --mode is set to 'linked'. "
-            "Example: 'https://raw.githubusercontent.com/myorg/myproject/main/myclones/'.",
+            "Example: `https://raw.githubusercontent.com/myorg/myproject/main/myclones/`.",
             arg_group="Local Target",
         )
         context.argument(
@@ -1089,10 +1090,14 @@ def load_iotops_arguments(self, _):
             arg_group="Cluster Target",
         )
         context.argument(
-            "to_instance_name",
-            options_list=["--to-instance"],
-            help="The instance name that will be used when replicating the clone. If omitted the "
-            "model instance name will be used.",
+            "to_cluster_params",
+            options_list=["--param", "-p"],
+            nargs="+",
+            action="extend",
+            help="Parameter overrides when replicating the clone to a connected cluster. If omitted "
+            "default values from the model instance are used. Format is space-separated key=value pairs where the "
+            "key represents a clone definition parameter. The following keys can be set: "
+            f"{', '.join([m.value for m in CloneTemplateParams])}. Can be used one or more times.",
             arg_group="Cluster Target",
         )
         context.argument(

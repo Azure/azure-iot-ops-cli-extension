@@ -209,6 +209,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
             "serviceType": "LoadBalancer",
             "ports": [
@@ -233,6 +234,7 @@ def load_iotops_help():
                 }
             ]
           }
+          ```
 
           When used with apply the above content will create or replace a target listener
           with a two port configuration.
@@ -338,6 +340,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
               "authenticationMethods": [
                   {
@@ -393,6 +396,7 @@ def load_iotops_help():
                   }
               ]
           }
+          ```
 
           When used with apply the above content will create or replace a target authentication
           resource configured with three authn methods.
@@ -493,6 +497,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
               "authorizationPolicies": {
                   "cache": "Enabled",
@@ -532,6 +537,7 @@ def load_iotops_help():
                   ]
               }
           }
+          ```
 
           When used with apply the above content will create or replace a target authorization
           resource configured with a single authz rule.
@@ -691,6 +697,67 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Dataflow endpoint management.
+    """
+
+    helps[
+        "iot ops dataflow endpoint apply"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          ```
+          {
+            "endpointType": "Kafka",
+            "kafkaSettings": {
+              "authentication": {
+                "method": "SystemAssignedManagedIdentity",
+                "systemAssignedManagedIdentitySettings": {
+                  "audience": "aio-internal"
+                }
+              },
+              "batching": {
+                "latencyMs": 5,
+                "maxBytes": 1000000,
+                "maxMessages": 100000,
+                "mode": "Enabled"
+              },
+              "cloudEventAttributes": "Propagate",
+              "compression": "None",
+              "copyMqttProperties": "Disabled",
+              "host": "test.servicebus.windows.net:9093",
+              "kafkaAcks": "All",
+              "partitionStrategy": "Default",
+              "tls": {
+                "mode": "Enabled"
+              }
+            },
+          }
+          ```
+
+          When used with apply the above content will create or replace a target kafka dataflow endpoint
+          resource configured with system assigned managed identity authentication method.
+
+        examples:
+        - name: Create or replace an dataflow endpoint resource using a config file.
+          text: >
+            az iot ops dataflow endpoint apply -n dataflowep --in myinstance -g myresourcegroup --config-file /path/to/dataflowep/config.json
+    """
+
+    helps[
+        "iot ops dataflow endpoint delete"
+    ] = """
+        type: command
+        short-summary: Delete a dataflow endpoint resource.
+
+        examples:
+        - name: Delete the dataflow endpoint resource called 'dataflowep'.
+          text: >
+            az iot ops dataflow endpoint delete -n dataflowep --in myinstance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops dataflow endpoint delete -n dataflowep --in myinstance -g myresourcegroup -y
     """
 
     helps[
@@ -2007,8 +2074,11 @@ def load_iotops_help():
         short-summary: Clone an instance.
         long-summary: |
           Clone analyzes an instance then reproduces it in an infrastructure-as-code
-          manner via ARM templates. The output of clone may be applied directly to another connected cluster,
-          and/or saved locally to use at another time (potentially with modification).
+          manner via ARM templates.
+
+          The output of clone may be applied directly to another connected
+          cluster (referred to as replication), and/or saved locally to use at another time
+          - potentially with modification.
 
           The clone definition being a generic ARM template, can be deployed via existing tools.
           See https://aka.ms/aio-clone-deploy for details.
@@ -2019,6 +2089,9 @@ def load_iotops_help():
         - name: Clone an instance to a desired connected cluster.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID
+        - name: Clone an instance to a desired connected cluster, with customized replication.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --param location=eastus
         - name: Clone an instance to a desired connected cluster, but splitting and serially applying asset related sub-deployments.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --mode linked

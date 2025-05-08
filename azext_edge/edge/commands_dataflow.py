@@ -99,6 +99,40 @@ def list_dataflows(cmd, profile_name: str, instance_name: str, resource_group_na
     )
 
 
+def apply_dataflow_endpoint(
+    cmd,
+    endpoint_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    config_file: str,
+    **kwargs,
+) -> dict:
+    return DataFlowEndpoints(cmd).apply(
+        name=endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        config_file=config_file,
+        **kwargs,
+    )
+
+
+def delete_dataflow_endpoint(
+    cmd,
+    endpoint_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    confirm_yes: bool = False,
+    **kwargs,
+):
+    return DataFlowEndpoints(cmd).delete(
+        name=endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
+        **kwargs,
+    )
+
+
 def show_dataflow_endpoint(cmd, endpoint_name: str, instance_name: str, resource_group_name: str) -> dict:
     return DataFlowEndpoints(cmd).show(
         name=endpoint_name,
