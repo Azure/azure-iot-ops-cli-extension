@@ -209,6 +209,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
             "serviceType": "LoadBalancer",
             "ports": [
@@ -233,6 +234,7 @@ def load_iotops_help():
                 }
             ]
           }
+          ```
 
           When used with apply the above content will create or replace a target listener
           with a two port configuration.
@@ -338,6 +340,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
               "authenticationMethods": [
                   {
@@ -393,6 +396,7 @@ def load_iotops_help():
                   }
               ]
           }
+          ```
 
           When used with apply the above content will create or replace a target authentication
           resource configured with three authn methods.
@@ -493,6 +497,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
               "authorizationPolicies": {
                   "cache": "Enabled",
@@ -532,6 +537,7 @@ def load_iotops_help():
                   ]
               }
           }
+          ```
 
           When used with apply the above content will create or replace a target authorization
           resource configured with a single authz rule.
