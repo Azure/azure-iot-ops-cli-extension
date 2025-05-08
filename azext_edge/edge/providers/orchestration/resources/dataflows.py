@@ -20,7 +20,7 @@ from azext_edge.edge.providers.orchestration.common import (
 )
 
 from ....util.common import should_continue_prompt
-from ....util.az_client import get_iotops_mgmt_client, wait_for_terminal_state
+from ....util.az_client import wait_for_terminal_state
 from ....util.queryable import Queryable
 from .instances import Instances
 from .reskit import get_file_config
@@ -43,11 +43,9 @@ if TYPE_CHECKING:
 class DataFlowProfiles(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
-        self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.default_subscription_id,
-        )
-        self.ops: "DataflowProfileOperations" = self.iotops_mgmt_client.dataflow_profile
         self.instances = Instances(cmd=cmd)
+        self.iotops_mgmt_client = self.instances.iotops_mgmt_client
+        self.ops: "DataflowProfileOperations" = self.iotops_mgmt_client.dataflow_profile
         self.dataflows = DataFlows(cmd=cmd)
 
     def show(self, name: str, instance_name: str, resource_group_name: str) -> dict:
@@ -62,11 +60,9 @@ class DataFlowProfiles(Queryable):
 class DataFlows(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
-        self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.default_subscription_id,
-        )
-        self.ops: "DataflowOperations" = self.iotops_mgmt_client.dataflow
         self.instances = Instances(self.cmd)
+        self.iotops_mgmt_client = self.instances.iotops_mgmt_client
+        self.ops: "DataflowOperations" = self.iotops_mgmt_client.dataflow
 
     def show(self, name: str, dataflow_profile_name: str, instance_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
@@ -264,11 +260,9 @@ class DataFlows(Queryable):
 class DataFlowEndpoints(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
-        self.iotops_mgmt_client = get_iotops_mgmt_client(
-            subscription_id=self.default_subscription_id,
-        )
-        self.ops: "DataflowEndpointOperations" = self.iotops_mgmt_client.dataflow_endpoint
         self.instances = Instances(self.cmd)
+        self.iotops_mgmt_client = self.instances.iotops_mgmt_client
+        self.ops: "DataflowEndpointOperations" = self.iotops_mgmt_client.dataflow_endpoint
 
     def apply(
         self,

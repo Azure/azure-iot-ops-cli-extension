@@ -663,7 +663,6 @@ def load_iotops_help():
             az iot ops dataflow apply -n mydataflow -p myprofile --in myinstance -g myresourcegroup --config-file /path/to/dataflow/config.json
     """
 
-
     helps[
         "iot ops dataflow delete"
     ] = """
@@ -675,7 +674,6 @@ def load_iotops_help():
           text: >
             az iot ops dataflow delete -n mydataflow -p myprofile --in mycluster-ops-instance -g myresourcegroup
     """
-
 
     helps[
         "iot ops dataflow show"
