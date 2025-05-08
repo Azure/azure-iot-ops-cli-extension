@@ -1185,7 +1185,7 @@ class CloneManager:
 
     def _add_deployment_by_key(self, key: StateResourceKey) -> Tuple[str, str]:
         deployments_by_key = self.active_deployment.get(key, [])
-        symbolic_name = f"{key.value}s_{len(deployments_by_key)+1}"
+        symbolic_name = f"{key.value}s_{len(deployments_by_key) + 1}"
         deployment_name = f"concat(parameters('resourceSlug'), '_{symbolic_name}')"
         deployments_by_key.append(deployment_name)
         self.active_deployment[key] = deployments_by_key

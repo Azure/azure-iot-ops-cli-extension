@@ -971,7 +971,6 @@ def test_clone_scale(
 def test_clone_instance_feature_capture(
     mocked_cmd: Mock,
     mocked_responses: responses,
-    clone_scenario: CloneScenario,
     instance_features: Optional[dict],
 ):
     clone_scenario = CloneScenario()
