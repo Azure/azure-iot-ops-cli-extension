@@ -500,9 +500,9 @@ class InstanceRestore:
             # TODO: Show warnings if they exist from federation
 
             for i in range(total_pages):
-                status = f"Replicating {deployment_name} {i+1}/{total_pages}"
+                status = f"Replicating {deployment_name} {i + 1}/{total_pages}"
                 console.update(status=status)
-                page = f"_{i+1}" if total_pages > 1 else ""
+                page = f"_{i + 1}" if total_pages > 1 else ""
                 poller = self._deploy_template(
                     content=deployment_work[i],
                     parameters=parameters,
@@ -510,7 +510,7 @@ class InstanceRestore:
                 )
                 deployment_link = self._get_deployment_link(deployment_name=f"{deployment_name}{page}")
                 DEFAULT_CONSOLE.print(
-                    f"->[link={deployment_link}]Link to {self.cluster_name} deployment {i+1}/{total_pages}[/link]",
+                    f"->[link={deployment_link}]Link to {self.cluster_name} deployment {i + 1}/{total_pages}[/link]",
                     highlight=False,
                 )
                 if total_pages > 1:
