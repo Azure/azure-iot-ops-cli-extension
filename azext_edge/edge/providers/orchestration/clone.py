@@ -937,7 +937,8 @@ class CloneManager:
         schema_registry_ref = instance_copy["properties"].get("schemaRegistryRef", {})
         if schema_registry_ref:
             schema_registry_ref["resourceId"] = (
-                "[resourceId(parameters('schemaRegistryId').subscription, parameters('schemaRegistryId').resourceGroup, "
+                "[resourceId(parameters('schemaRegistryId').subscription, "
+                "parameters('schemaRegistryId').resourceGroup, "
                 "'Microsoft.DeviceRegistry/schemaRegistries', parameters('schemaRegistryId').name)]"
             )
 
