@@ -285,8 +285,8 @@ def load_iotops_arguments(self, _):
             "log_level",
             options_list=["--log-level"],
             help="The level of detail given in diagnostic logs. "
-            "Format is comma-separated module=level pairs and a default level. "
-            "Example: 'h2=trace,kube=debug,info'."
+            "Levels: 'error', 'warn', 'info', 'debug', 'trace', 'off'. "
+            "For advanced usage you can specify a comma-separated list of module=level pairs. "
         )
 
     with self.argument_context("iot ops dataflow endpoint") as context:
