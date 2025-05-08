@@ -16,6 +16,7 @@ edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edg
 secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_secretsync#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
+namespace_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_namespaces#{}")
 connector_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_connector#{}")
 
 
@@ -187,6 +188,24 @@ def load_iotops_commands(self, _):
             "onvif", "create_onvif_asset_endpoint_profile", deprecate_info=cmd_group.deprecate(hide=True)
         )
         cmd_group.command("opcua", "create_opcua_asset_endpoint_profile")
+
+    with self.command_group(
+        "iot ops namespace",
+        command_type=namespace_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("create", "create_namespace")
+        cmd_group.command("delete", "delete_namespace")
+        cmd_group.command("list", "list_namespaces")
+        cmd_group.show_command("show", "show_namespace")
+        cmd_group.command("update", "update_namespace")
+
+    with self.command_group(
+        "iot ops namespace endpoint",
+        command_type=namespace_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("add", "add_namespace_endpoint")
+        cmd_group.command("list", "list_namespace_endpoints")
+        cmd_group.command("remove", "remove_namespace_endpoint")
 
     with self.command_group(
         "iot ops schema",

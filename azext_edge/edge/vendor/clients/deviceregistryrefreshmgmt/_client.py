@@ -5,15 +5,13 @@
 # --------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import Any, Optional, TYPE_CHECKING, cast
+from typing import Any, TYPE_CHECKING
 from typing_extensions import Self
 
 from azure.core.pipeline import policies
 from azure.core.rest import HttpRequest, HttpResponse
-from azure.core.settings import settings
 from azure.mgmt.core import ARMPipelineClient
 from azure.mgmt.core.policies import ARMAutoResourceProviderRegistrationPolicy
-from azure.mgmt.core.tools import get_arm_endpoints
 
 from ._configuration import MicrosoftDeviceRegistryManagementServiceConfiguration
 from ._utils.serialization import Deserializer, Serializer
@@ -83,15 +81,10 @@ class MicrosoftDeviceRegistryManagementService:  # pylint: disable=too-many-inst
     """
 
     def __init__(
-        self, credential: "TokenCredential", subscription_id: str, endpoint: Optional[str] = None, **kwargs: Any
+        self, credential: "TokenCredential", subscription_id: str, endpoint: str = "https://management.azure.com", **kwargs: Any
     ) -> None:
-        _cloud = kwargs.pop("cloud_setting", None) or settings.current.azure_cloud  # type: ignore
-        _endpoints = get_arm_endpoints(_cloud)
-        if not endpoint:
-            endpoint = _endpoints["resource_manager"]
-        credential_scopes = kwargs.pop("credential_scopes", _endpoints["credential_scopes"])
         self._config = MicrosoftDeviceRegistryManagementServiceConfiguration(
-            credential=credential, subscription_id=subscription_id, credential_scopes=credential_scopes, **kwargs
+            credential=credential, subscription_id=subscription_id,  **kwargs
         )
 
         _policies = kwargs.pop("policies", None)
@@ -112,7 +105,7 @@ class MicrosoftDeviceRegistryManagementService:  # pylint: disable=too-many-inst
                 policies.SensitiveHeaderCleanupPolicy(**kwargs) if self._config.redirect_policy else None,
                 self._config.http_logging_policy,
             ]
-        self._client: ARMPipelineClient = ARMPipelineClient(base_url=cast(str, endpoint), policies=_policies, **kwargs)
+        self._client: ARMPipelineClient = ARMPipelineClient(base_url=endpoint, policies=_policies, **kwargs)
 
         self._serialize = Serializer()
         self._deserialize = Deserializer()

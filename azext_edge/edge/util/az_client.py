@@ -42,6 +42,9 @@ if TYPE_CHECKING:
     from ..vendor.clients.deviceregistrymgmt import (
         MicrosoftDeviceRegistryManagementService,
     )
+    from ..vendor.clients.deviceregistryrefreshmgmt import (
+        MicrosoftDeviceRegistryManagementService as MicrosoftDeviceRegistryRefreshManagementService
+    )
     from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
     from ..vendor.clients.resourcesmgmt import ResourceManagementClient
     from ..vendor.clients.storagemgmt import StorageManagementClient
@@ -140,6 +143,24 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
 
 REGISTRY_PREVIEW_API_VERSION = "2024-09-01-preview"
 REGISTRY_API_VERSION = "2024-11-01"
+
+
+def get_registry_refresh_mgmt_client(
+    subscription_id: str, **kwargs
+) -> "MicrosoftDeviceRegistryRefreshManagementService":
+    from ..vendor.clients.deviceregistryrefreshmgmt import (
+        MicrosoftDeviceRegistryManagementService,
+    )
+
+    if "http_logging_policy" not in kwargs:
+        kwargs["http_logging_policy"] = get_default_logging_policy()
+
+    return MicrosoftDeviceRegistryManagementService(
+        credential=AZURE_CLI_CREDENTIAL,
+        subscription_id=subscription_id,
+        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        **kwargs,
+    )
 
 
 def get_registry_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftDeviceRegistryManagementService":
