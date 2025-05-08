@@ -29,7 +29,7 @@ from ....util.common import (
 )
 from ....util.queryable import Queryable
 from ..common import CUSTOM_LOCATIONS_API_VERSION, KEYVAULT_CLOUD_API_VERSION
-from ..permissions import ROLE_DEF_FORMAT_STR, PermissionManager
+from ..permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from ..resource_map import IoTOperationsResourceMap
 
 logger = get_logger(__name__)
@@ -266,6 +266,8 @@ class Instances(Queryable):
         spc_name: Optional[str] = None,
         skip_role_assignments: bool = False,
         use_self_hosted_issuer: Optional[bool] = None,
+        custom_role_id: Optional[str] = None,
+        tags: Optional[dict] = None,
         **kwargs,
     ):
         # TODO: add unit test
@@ -282,10 +284,11 @@ class Instances(Queryable):
                 resource_group_name=mi_resource_id_container.resource_group_name,
                 resource_name=mi_resource_id_container.resource_name,
             )
-            role_assignment_error = None
             if not skip_role_assignments:
-                role_assignment_error = self._attempt_keyvault_role_assignments(
-                    keyvault_resource_id_container=keyvault_resource_id_container, mi_user_assigned=mi_user_assigned
+                self._attempt_keyvault_role_assignments(
+                    keyvault_resource_id_container=keyvault_resource_id_container,
+                    mi_user_assigned=mi_user_assigned,
+                    custom_role_id=custom_role_id,
                 )
 
             instance = self.show(name=name, resource_group_name=resource_group_name)
@@ -318,6 +321,9 @@ class Instances(Queryable):
                 subject=cred_subject,
                 federated_credential_name=federated_credential_name,
             )
+            spc_kwargs = {}
+            if tags:
+                spc_kwargs["tags"] = tags
             spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_create_or_update(
                 resource_group_name=resource_group_name,
                 azure_key_vault_secret_provider_class_name=spc_name
@@ -334,12 +340,10 @@ class Instances(Queryable):
                         "keyvaultName": keyvault_resource_id_container.resource_name,
                         "tenantId": get_tenant_id(),
                     },
+                    **spc_kwargs,
                 },
             )
             result_spc = wait_for_terminal_state(spc_poller, **kwargs)
-            status.stop()
-            if role_assignment_error:
-                logger.warning(role_assignment_error)
             return result_spc
 
     def list_secretsync(self, name: str, resource_group_name: str) -> Optional[dict]:
@@ -452,27 +456,50 @@ class Instances(Queryable):
         return related_secretsyncs
 
     def _attempt_keyvault_role_assignments(
-        self, keyvault_resource_id_container: ResourceIdContainer, mi_user_assigned: dict
-    ) -> Optional[str]:
+        self,
+        keyvault_resource_id_container: ResourceIdContainer,
+        mi_user_assigned: dict,
+        custom_role_id: Optional[str] = None,
+    ):
         """
-        Returns error string if the role-assignment fails.
+        Error must be thrown when role assignment fails.
         """
-        target_role_ids = [KEYVAULT_ROLE_ID_SECRETS_USER, KEYVAULT_ROLE_ID_READER]
+        target_role_def_ids = []
+        if custom_role_id:
+            target_role_def_ids.append(custom_role_id)
+
+        if not target_role_def_ids:
+            target_role_def_ids.append(
+                ROLE_DEF_FORMAT_STR.format(
+                    subscription_id=keyvault_resource_id_container.subscription_id,
+                    role_id=KEYVAULT_ROLE_ID_SECRETS_USER,
+                )
+            )
+            target_role_def_ids.append(
+                ROLE_DEF_FORMAT_STR.format(
+                    subscription_id=keyvault_resource_id_container.subscription_id,
+                    role_id=KEYVAULT_ROLE_ID_READER,
+                )
+            )
+
         try:
-            for role_id in target_role_ids:
+            for role_def_id in target_role_def_ids:
                 self.permission_manager.apply_role_assignment(
                     scope=keyvault_resource_id_container.resource_id,
                     principal_id=mi_user_assigned["properties"]["principalId"],
-                    role_def_id=ROLE_DEF_FORMAT_STR.format(
-                        subscription_id=keyvault_resource_id_container.subscription_id,
-                        role_id=role_id,
-                    ),
+                    role_def_id=role_def_id,
+                    principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
                 )
         except Exception as e:
-            return get_user_msg_warn_ra(
-                prefix=f"Role assignment failed with:\n{str(e)}.",
-                principal_id=mi_user_assigned["properties"]["principalId"],
-                scope=keyvault_resource_id_container.resource_id,
+            import pdb
+
+            pdb.set_trace()
+            raise ValidationError(
+                get_user_msg_warn_ra(
+                    prefix=f"Role assignment failed with:\n{str(e)}.",
+                    principal_id=mi_user_assigned["properties"]["principalId"],
+                    scope=keyvault_resource_id_container.resource_id,
+                )
             )
 
     def _ensure_oidc_issuer(self, cluster_resource: dict, use_self_hosted_issuer: Optional[bool] = None) -> str:
