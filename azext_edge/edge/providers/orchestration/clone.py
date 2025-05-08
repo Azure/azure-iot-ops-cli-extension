@@ -26,7 +26,9 @@ from rich.table import Table, box
 from ....constants import VERSION as CLI_VERSION
 from ...util import (
     chunk_list,
+    parse_kvp_nargs,
     should_continue_prompt,
+    str_to_bool,
     to_safe_filename,
 )
 from ...util.az_client import (
@@ -47,12 +49,9 @@ from .common import (
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
 )
-from .common import (
-    CloneSummaryMode as SummaryMode,
-)
-from .common import (
-    CloneTemplateMode as TemplateMode,
-)
+from .common import CloneSummaryMode as SummaryMode
+from .common import CloneTemplateMode as TemplateMode
+from .common import CloneTemplateParams as TemplateParams
 from .connected_cluster import ConnectedCluster
 from .resources import Instances
 from .resources.instances import (
@@ -93,19 +92,15 @@ class StateResourceKey(Enum):
     FEDERATE = "identityFederation"
 
 
-class TemplateParams(Enum):
-    INSTANCE_NAME = "instanceName"
-    CLUSTER_NAME = "clusterName"
-    CLUSTER_NAMESPACE = "clusterNamespace"
-    CUSTOM_LOCATION_NAME = "customLocationName"
-    OPS_EXTENSION_NAME = "opsExtensionName"
-    SUBSCRIPTION = "subscription"
-    RESOURCEGROUP = "resourceGroup"
-    SCHEMA_REGISTRY_ID = "schemaRegistryId"
+TEMPLATE_PARAMS_SET = {m.value for m in TemplateParams}
+
+
+class NestedTemplateParams(Enum):
+    """
+    These params are not exposed with the root deployment.
+    """
+
     PRINCIPAL_ID = "principalId"
-    RESOURCE_SLUG = "resourceSlug"
-    LOCATION = "location"
-    APPLY_ROLE_ASSIGNMENTS = "applyRoleAssignments"
 
 
 TEMPLATE_EXPRESSION_MAP = {
@@ -478,7 +473,7 @@ class InstanceRestore:
 
     def deploy(
         self,
-        instance_name: Optional[str] = None,
+        to_cluster_params: Optional[dict] = None,
         use_self_hosted_issuer: Optional[bool] = None,
     ):
         if not self.connected_cluster.connected:
@@ -487,10 +482,10 @@ class InstanceRestore:
         parameters = {
             "clusterName": {"value": self.cluster_name},
         }
-        if instance_name:
-            parameters["instanceName"] = {"value": instance_name}
-        deployment_name = default_bundle_name(self.instance_record["name"])
+        if to_cluster_params:
+            parameters.update(to_cluster_params)
 
+        deployment_name = default_bundle_name(self.instance_record["name"])
         DEFAULT_CONSOLE.print()
 
         deployment_work = []
@@ -505,9 +500,9 @@ class InstanceRestore:
             # TODO: Show warnings if they exist from federation
 
             for i in range(total_pages):
-                status = f"Replicating {deployment_name} {i+1}/{total_pages}"
+                status = f"Replicating {deployment_name} {i + 1}/{total_pages}"
                 console.update(status=status)
-                page = f"_{i+1}" if total_pages > 1 else ""
+                page = f"_{i + 1}" if total_pages > 1 else ""
                 poller = self._deploy_template(
                     content=deployment_work[i],
                     parameters=parameters,
@@ -515,7 +510,7 @@ class InstanceRestore:
                 )
                 deployment_link = self._get_deployment_link(deployment_name=f"{deployment_name}{page}")
                 DEFAULT_CONSOLE.print(
-                    f"->[link={deployment_link}]Link to {self.cluster_name} deployment {i+1}/{total_pages}[/link]",
+                    f"->[link={deployment_link}]Link to {self.cluster_name} deployment {i + 1}/{total_pages}[/link]",
                     highlight=False,
                 )
                 if total_pages > 1:
@@ -539,7 +534,7 @@ def clone_instance(
     summary_mode: Optional[str] = None,
     to_dir: Optional[str] = None,
     template_mode: Optional[str] = None,
-    to_instance_name: Optional[str] = None,
+    to_cluster_params: Optional[List[str]] = None,
     to_cluster_id: Optional[str] = None,
     use_self_hosted_issuer: Optional[bool] = None,
     linked_base_uri: Optional[str] = None,
@@ -553,6 +548,9 @@ def clone_instance(
         if not is_valid_resource_id(to_cluster_id):
             raise ValidationError(f"Invalid resource Id: {to_cluster_id}")
         parsed_cluster_id = parse_resource_id(to_cluster_id)
+
+    if to_cluster_params:
+        to_cluster_params = process_to_cluster_params(to_cluster_params)
 
     clone_manager = CloneManager(
         cmd=cmd,
@@ -586,7 +584,7 @@ def clone_instance(
         restore_client = clone_state.get_restore_client(
             parsed_cluster_id=parsed_cluster_id, template_mode=template_mode, no_progress=no_progress
         )
-        restore_client.deploy(instance_name=to_instance_name, use_self_hosted_issuer=use_self_hosted_issuer)
+        restore_client.deploy(to_cluster_params=to_cluster_params, use_self_hosted_issuer=use_self_hosted_issuer)
 
 
 def render_clone_table(
@@ -946,7 +944,7 @@ class CloneManager:
             **build_parameter(name=TemplateParams.CLUSTER_NAME.value),
             **build_parameter(name=TemplateParams.INSTANCE_NAME.value),
             **build_parameter(
-                name=TemplateParams.PRINCIPAL_ID.value,
+                name=NestedTemplateParams.PRINCIPAL_ID.value,
                 value="[reference('iotOperations', '2023-05-01', 'Full').identity.principalId]",
             ),
             **build_parameter(
@@ -1187,7 +1185,7 @@ class CloneManager:
 
     def _add_deployment_by_key(self, key: StateResourceKey) -> Tuple[str, str]:
         deployments_by_key = self.active_deployment.get(key, [])
-        symbolic_name = f"{key.value}s_{len(deployments_by_key)+1}"
+        symbolic_name = f"{key.value}s_{len(deployments_by_key) + 1}"
         deployment_name = f"concat(parameters('resourceSlug'), '_{symbolic_name}')"
         deployments_by_key.append(deployment_name)
         self.active_deployment[key] = deployments_by_key
@@ -1260,7 +1258,6 @@ class TemplateContent:
             "microsoft.deviceregistry/assets": 0,
             "microsoft.deviceregistry/assetendpointprofiles": 0,
         }
-        self.copy_params = {"clusterName", "customLocationName", "instanceName", "location"}
 
     @property
     def content(self) -> dict:
@@ -1285,8 +1282,8 @@ class TemplateContent:
             if nested_type not in self.linked_type_map:
                 continue
 
-            for param in self.copy_params:
-                resources[key]["properties"]["template"]["parameters"][param] = parameters[param]
+            # TODO: Bring back efficient parameter usage for linked templates.
+            resources[key]["properties"]["template"]["parameters"] = parameters
 
             result.append(resources[key]["properties"].pop("template"))
             del resources[key]
@@ -1461,6 +1458,30 @@ def build_parameter(
     if default:
         result[name]["defaultValue"] = default
     return result
+
+
+def process_to_cluster_params(to_cluster_params: Optional[List[str]]) -> dict:
+    params = {}
+    kvp_map = parse_kvp_nargs(to_cluster_params)
+    for k in kvp_map:
+        if k not in TEMPLATE_PARAMS_SET:
+            raise ValidationError(f"Invalid parameter '{k}'. The following set is supported {TEMPLATE_PARAMS_SET}.")
+        if k == TemplateParams.SCHEMA_REGISTRY_ID.value:
+            if not is_valid_resource_id(kvp_map[k]):
+                raise ValidationError(f"Invalid resource Id '{kvp_map[k]}'.")
+            sr_resource_id = parse_resource_id(kvp_map[k])
+            kvp_map[k] = {
+                "name": sr_resource_id["name"],
+                "resourceGroup": sr_resource_id["resource_group"],
+                "subscription": sr_resource_id["subscription"],
+            }
+        if k == TemplateParams.APPLY_ROLE_ASSIGNMENTS.value:
+            try:
+                kvp_map[k] = str_to_bool(kvp_map[k])
+            except ValueError as ve:
+                raise ValidationError(str(ve))
+        params[k] = {"value": kvp_map[k]}
+    return params
 
 
 def get_role_assignment():

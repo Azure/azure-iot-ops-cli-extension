@@ -124,6 +124,9 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_dataflow_profile")
         cmd_group.command("list", "list_dataflow_profiles")
+        cmd_group.command("create", "create_dataflow_profile")
+        cmd_group.command("update", "update_dataflow_profile")
+        cmd_group.command("delete", "delete_dataflow_profile")
 
     with self.command_group(
         "iot ops dataflow endpoint",
