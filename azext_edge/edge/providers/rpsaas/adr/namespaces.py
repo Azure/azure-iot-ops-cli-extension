@@ -8,7 +8,7 @@ from rich.console import Console
 from typing import TYPE_CHECKING, Dict, List, Iterable, Optional
 from knack.log import get_logger
 
-from .common import IdentityType
+from ....common import IdentityType
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.queryable import Queryable
 
@@ -123,7 +123,7 @@ class Namespaces(Queryable):
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
         )
-        # TODO: check if the messaging.endpoints exist in response calls with no initial endpoints
+        # TODO: check with DOE if the messaging.endpoints exist in response calls with no initial endpoints
 
         # add the endpoint to the namespace body
         endpoint_body = self._process_endpoints(endpoint_ids=endpoint_ids)
@@ -162,7 +162,7 @@ class Namespaces(Queryable):
             resource_group_name=resource_group_name
         )
         # remove the endpoints from the namespace body
-        # TODO: check if a namespace can have an endpoint with no resourceId
+        # TODO: check with DOE if a namespace can have an endpoint with no resourceId
         # would removing by name/key be better?
         remaining_endpoints = {
             endpoint: endpoint_body
@@ -181,6 +181,17 @@ class Namespaces(Queryable):
             return result["properties"]["messaging"]["endpoints"]
 
     def _process_endpoints(self, endpoint_ids: List[str] = None) -> dict:
+        """
+        Takes a list of endpoint ids and returns a dictionary of endpoints
+        with the format:
+        {
+            "<resource_group>-<endpoint_name>": {
+                "endpointType": "<endpoint_type>",
+                "address": "<endpoint_address>",
+                "resourceId": "<endpoint_id>"
+            }
+        }
+        """
         result = {}
         if not endpoint_ids:
             return result
@@ -205,20 +216,11 @@ class Namespaces(Queryable):
         return result
 
 
-# TODO: generalize and move this elsewhere
-def _build_identity(system: bool = False, user_identities: Optional[List[str]] = None) -> dict:
-    identity_type = IdentityType.none.value
-    if system and user_identities:
-        identity_type = IdentityType.system_assigned_user_assigned.value
-    elif system and not user_identities:
+def _build_identity(system: bool = False) -> dict:
+    if system:
         identity_type = IdentityType.system_assigned.value
-    elif user_identities:
-        identity_type = IdentityType.user_assigned.value
     else:
+        identity_type = IdentityType.none.value
         logger.warning("An identity type was not specified. The namespace may not function as expected.")
 
-    identity = {"type": identity_type}
-    if user_identities:
-        identity["userAssignedIdentities"] = {i: {} for i in user_identities}
-
-    return identity
+    return {"type": identity_type}

@@ -211,6 +211,16 @@ class AEPTypes(ListableEnum):
     onvif = "Microsoft.Onvif"
 
 
+class IdentityType(Enum):
+    """
+    Types of managed identity for ARM resources.
+    """
+    system_assigned = "SystemAssigned"
+    user_assigned = "UserAssigned"
+    system_assigned_user_assigned = "SystemAssigned, UserAssigned"
+    none = "None"
+
+
 class TopicRetain(Enum):
     """Set the retain flag for messages published to an MQTT broker."""
 
