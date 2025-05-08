@@ -14,11 +14,22 @@ import responses
 from azure.core.exceptions import ResourceNotFoundError
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
-from azext_edge.edge.commands_dataflow import apply_dataflow, delete_dataflow, show_dataflow, list_dataflows
+from azext_edge.edge.commands_dataflow import (
+    apply_dataflow,
+    delete_dataflow,
+    show_dataflow,
+    list_dataflows,
+)
 from azext_edge.edge.common import DEFAULT_DATAFLOW_PROFILE
 from azext_edge.edge.providers.orchestration.common import DATAFLOW_ENDPOINT_TYPE_SETTINGS
-from azext_edge.tests.edge.orchestration.resources.test_dataflow_endpoints_unit import get_dataflow_endpoint_endpoint, get_mock_dataflow_endpoint_record
-from azext_edge.tests.edge.orchestration.resources.test_instances_unit import get_instance_endpoint, get_mock_instance_record
+from azext_edge.tests.edge.orchestration.resources.test_dataflow_endpoints_unit import (
+    get_dataflow_endpoint_endpoint,
+    get_mock_dataflow_endpoint_record,
+)
+from azext_edge.tests.edge.orchestration.resources.test_instances_unit import (
+    get_instance_endpoint,
+    get_mock_instance_record,
+)
 
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
@@ -40,25 +51,25 @@ def get_mock_dataflow_record(
     resource_group_name: str,
     trans_operation: Optional[dict] = None,
 ) -> dict:
-    properties={
+    properties = {
         "operations": [
             {
                 "operationType": "Source",
                 "sourceSettings": {
-                "endpointRef": "myendpoint1",
-                "assetRef": "",
-                "serializationFormat": "Json",
-                "schemaRef": "",
-                "dataSources": [
-                    "test"
-                ]
+                    "endpointRef": "myendpoint1",
+                    "assetRef": "",
+                    "serializationFormat": "Json",
+                    "schemaRef": "",
+                    "dataSources": [
+                        "test"
+                    ]
                 }
             },
             {
                 "operationType": "Destination",
                 "destinationSettings": {
-                "endpointRef": "myendpoint2",
-                "dataDestination": "test"
+                    "endpointRef": "myendpoint2",
+                    "dataDestination": "test"
                 }
             }
         ],
@@ -66,7 +77,7 @@ def get_mock_dataflow_record(
         "mode": "Enabled",
         "provisioningState": "Succeeded",
     }
-    
+
     if trans_operation:
         properties["operations"].append(trans_operation)
 
@@ -263,16 +274,6 @@ def test_dataflow_apply(mocked_cmd, mocked_responses: responses, mocked_get_file
         expected_file_content = json.dumps(file_payload)
     mocked_get_file_config.return_value = expected_file_content
 
-    operations = file_payload["properties"]["operations"]
-    source_operation = next(
-        (operation for operation in operations if operation["operationType"] == "Source"), None
-    )
-    destination_operation = next(
-        (operation for operation in operations if operation["operationType"] == "Destination"), None
-    )
-    source_endpoint_name = source_operation["sourceSettings"]["endpointRef"]
-    destination_endpoint_name = destination_operation["destinationSettings"]["endpointRef"]
-
     mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
     mocked_responses.add(
         method=responses.GET,
@@ -433,7 +434,8 @@ def test_dataflow_apply(mocked_cmd, mocked_responses: responses, mocked_get_file
                 ),
             },
             InvalidArgumentValueError,
-            "Either source or destination endpoint must be Azure IoT Operations Local MQTT endpoint with host containing 'aio-broker'.",
+            "Either source or destination endpoint must be Azure IoT Operations "
+            "Local MQTT endpoint with host containing 'aio-broker'.",
         ),
         (
             {
@@ -458,18 +460,19 @@ def test_dataflow_apply(mocked_cmd, mocked_responses: responses, mocked_get_file
                 ),
             },
             InvalidArgumentValueError,
-            "Either source or destination endpoint must be Azure IoT Operations Local MQTT endpoint with host containing 'aio-broker'.",
+            "Either source or destination endpoint must be Azure IoT Operations "
+            "Local MQTT endpoint with host containing 'aio-broker'.",
         ),
     ],
 )
 def test_dataflow_apply_error(
-        mocked_cmd,
-        mocked_responses: responses,
-        mocked_get_file_config: Mock,
-        scenario: dict,
-        expected_error_type: Exception,
-        expected_error_text: str,
-    ):
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_get_file_config: Mock,
+    scenario: dict,
+    expected_error_type: Exception,
+    expected_error_text: str,
+):
     file_payload = scenario["file_payload"]
     dataflow_name = file_payload["name"]
     resource_id = file_payload["id"]
@@ -560,7 +563,8 @@ def test_dataflow_apply_error(
                 ),
             },
             ResourceNotFoundError,
-            "Source dataflow endpoint 'myendpoint1' not found in instance 'myinstance'. Please provide a valid 'endpointRef' using --config-file.",
+            "Source dataflow endpoint 'myendpoint1' not found in instance 'myinstance'. "
+            "Please provide a valid 'endpointRef' using --config-file.",
         ),
     ]
 )

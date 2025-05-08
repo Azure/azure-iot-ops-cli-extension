@@ -174,9 +174,11 @@ class DataflowEndpointAuthenticationType(Enum):
     USERASSIGNED = "UserAssignedManagedIdentity"
     X509 = "X509Certificate"
 
+
 class DataflowEndpointFabricPathType(Enum):
     FILES = "Files"
     TABLES = "Tables"
+
 
 DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
     DataflowEndpointType.DATAEXPLORER.value: [

@@ -18,14 +18,12 @@ from azext_edge.edge.providers.orchestration.common import (
     DataflowEndpointType,
     DataflowOperationType,
 )
-from azext_edge.edge.providers.orchestration.resources.instances import Instances
-from azext_edge.edge.providers.orchestration.resources.reskit import get_file_config
-from azext_edge.edge.util.common import should_continue_prompt
 
+from ....util.common import should_continue_prompt
 from ....util.az_client import get_iotops_mgmt_client, wait_for_terminal_state
 from ....util.queryable import Queryable
 from .instances import Instances
-from .reskit import GetInstanceExtLoc, get_file_config
+from .reskit import get_file_config
 
 logger = get_logger(__name__)
 
@@ -116,7 +114,7 @@ class DataFlows(Queryable):
                 resource=resource,
             )
             return wait_for_terminal_state(poller, **kwargs)
-    
+
     def delete(
         self,
         name: str,
@@ -140,7 +138,7 @@ class DataFlows(Queryable):
                 resource_group_name=resource_group_name,
             )
             return wait_for_terminal_state(poller, **kwargs)
-        
+
     def _validate_dataflow_config(
         self,
         dataflow_config: dict,
@@ -156,7 +154,7 @@ class DataFlows(Queryable):
             resource_group_name=resource_group_name,
             operation_type=DataflowOperationType.SOURCE.value,
         )
-        
+
         # validate source endpoint type
         source_endpoint_type = source_endpoint_obj.get("properties", {}).get("endpointType", "")
         if source_endpoint_type not in [
@@ -166,13 +164,13 @@ class DataFlows(Queryable):
             raise InvalidArgumentValueError(
                 f"'{source_endpoint_type}' is not a valid type for source dataflow endpoint."
             )
-        
+
         # when Kafka endpoint, validate consumer group id
         if source_endpoint_type == DataflowEndpointType.KAFKA.value:
             group_id = source_endpoint_obj.get("properties", {}).get("kafkaSettings", {}).get("consumerGroupId", "")
             if not group_id:
                 raise InvalidArgumentValueError(
-                    f"'consumerGroupId' is required in kafka source dataflow endpoint configuration."
+                    "'consumerGroupId' is required in kafka source dataflow endpoint configuration."
                 )
 
         # get destination endpoint
@@ -188,8 +186,9 @@ class DataFlows(Queryable):
             operations=operations,
             operation_type=trans_operation_type,
         )
-        schema_ref = transformation_operation.get(DATAFLOW_OPERATION_TYPE_SETTINGS[trans_operation_type], {}).get("schemaRef", "")
-        
+        schema_ref = transformation_operation.get(
+            DATAFLOW_OPERATION_TYPE_SETTINGS[trans_operation_type], {}).get("schemaRef", "")
+
         # validate schema_ref for destination endpoint type
         destination_endpoint_type = desination_endpoint_obj.get("properties", {}).get("endpointType", "")
         if destination_endpoint_type in [
@@ -202,16 +201,22 @@ class DataFlows(Queryable):
                 f"'schemaRef' is required for dataflow due to destination endpoint '{destination_endpoint_type}' type."
             )
 
-        # validate at least one of source and destination endpoint must have host with "aio-broker" that is MQTT endpoint
-        source_endpoint_host = source_endpoint_obj.get("properties", {}).get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[source_endpoint_type], {}).get("host", "")
-        destination_endpoint_host = desination_endpoint_obj.get("properties", {}).get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[destination_endpoint_type], {}).get("host", "")
-        is_source_local_mqtt = LOCAL_MQTT_HOST_PREFIX in source_endpoint_host and source_endpoint_type == DataflowEndpointType.MQTT.value
-        is_destination_local_mqtt = LOCAL_MQTT_HOST_PREFIX in destination_endpoint_host and destination_endpoint_type == DataflowEndpointType.MQTT.value
+        # validate at least one of source and destination endpoint
+        # must have host with "aio-broker" that is MQTT endpoint
+        source_endpoint_host = source_endpoint_obj.get("properties", {}).get(
+            DATAFLOW_ENDPOINT_TYPE_SETTINGS[source_endpoint_type], {}).get("host", "")
+        destination_endpoint_host = desination_endpoint_obj.get("properties", {}).get(
+            DATAFLOW_ENDPOINT_TYPE_SETTINGS[destination_endpoint_type], {}).get("host", "")
+        is_source_local_mqtt = LOCAL_MQTT_HOST_PREFIX in source_endpoint_host and\
+            source_endpoint_type == DataflowEndpointType.MQTT.value
+        is_destination_local_mqtt = LOCAL_MQTT_HOST_PREFIX in destination_endpoint_host and\
+            destination_endpoint_type == DataflowEndpointType.MQTT.value
         if not is_source_local_mqtt and not is_destination_local_mqtt:
             raise InvalidArgumentValueError(
-                f"Either source or destination endpoint must be Azure IoT Operations Local MQTT endpoint with host containing '{LOCAL_MQTT_HOST_PREFIX}'."
+                "Either source or destination endpoint must be Azure IoT Operations Local "
+                f"MQTT endpoint with host containing '{LOCAL_MQTT_HOST_PREFIX}'."
             )
-        
+
     def _process_exist_endpoint(
         self,
         operations: list,
@@ -242,9 +247,9 @@ class DataFlows(Queryable):
                 f"{operation_type} dataflow endpoint '{endpoint_name}' not found in instance '{instance_name}'. "
                 "Please provide a valid 'endpointRef' using --config-file."
             )
-        
+
         return endpoint_obj
-    
+
     def _get_operation(
         self,
         operations: list,
