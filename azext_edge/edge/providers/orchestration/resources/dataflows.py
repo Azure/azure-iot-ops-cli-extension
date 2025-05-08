@@ -111,7 +111,7 @@ class DataFlowProfiles(Queryable):
         resource_group_name: str,
         confirm_yes: Optional[bool] = None,
         **kwargs,
-    ) -> dict:
+    ):
         dataflows = self.dataflows.list(
             dataflow_profile_name=name,
             instance_name=instance_name,
