@@ -205,7 +205,7 @@ class Namespaces(Queryable):
         return result
 
 
-# TODO: move this elsewhere
+# TODO: generalize and move this elsewhere
 def _build_identity(system: bool = False, user_identities: Optional[List[str]] = None) -> dict:
     identity_type = IdentityType.none.value
     if system and user_identities:
