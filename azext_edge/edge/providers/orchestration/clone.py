@@ -934,6 +934,14 @@ class CloneManager:
             if "mode" in features[f] and not features[f]["mode"]:
                 del features[f]["mode"]
 
+        schema_registry_ref = instance_copy["properties"].get("schemaRegistryRef", {})
+        if schema_registry_ref:
+            schema_registry_ref["resourceId"] = (
+                "[resourceId(parameters('schemaRegistryId').subscription, "
+                "parameters('schemaRegistryId').resourceGroup, "
+                "'Microsoft.DeviceRegistry/schemaRegistries', parameters('schemaRegistryId').name)]"
+            )
+
         self._add_resource(
             key=StateResourceKey.INSTANCE,
             api_version=api_version,
