@@ -2025,8 +2025,11 @@ def load_iotops_help():
         short-summary: Clone an instance.
         long-summary: |
           Clone analyzes an instance then reproduces it in an infrastructure-as-code
-          manner via ARM templates. The output of clone may be applied directly to another connected cluster,
-          and/or saved locally to use at another time (potentially with modification).
+          manner via ARM templates.
+
+          The output of clone may be applied directly to another connected
+          cluster (referred to as replication), and/or saved locally to use at another time
+          - potentially with modification.
 
           The clone definition being a generic ARM template, can be deployed via existing tools.
           See https://aka.ms/aio-clone-deploy for details.
@@ -2037,6 +2040,9 @@ def load_iotops_help():
         - name: Clone an instance to a desired connected cluster.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID
+        - name: Clone an instance to a desired connected cluster, with customized replication.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --param location=eastus
         - name: Clone an instance to a desired connected cluster, but splitting and serially applying asset related sub-deployments.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --mode linked

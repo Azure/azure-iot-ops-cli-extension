@@ -166,3 +166,15 @@ class CloneSummaryMode(Enum):
 class CloneTemplateMode(Enum):
     NESTED = "nested"
     LINKED = "linked"
+
+
+class CloneTemplateParams(Enum):
+    INSTANCE_NAME = "instanceName"
+    CLUSTER_NAME = "clusterName"
+    CLUSTER_NAMESPACE = "clusterNamespace"
+    CUSTOM_LOCATION_NAME = "customLocationName"
+    OPS_EXTENSION_NAME = "opsExtensionName"
+    SCHEMA_REGISTRY_ID = "schemaRegistryId"
+    RESOURCE_SLUG = "resourceSlug"
+    LOCATION = "location"
+    APPLY_ROLE_ASSIGNMENTS = "applyRoleAssignments"

@@ -22,6 +22,7 @@ import responses
 from azure.cli.core.azclierror import ValidationError
 
 from azext_edge.constants import VERSION as CLI_VERSION
+from azext_edge.edge.commands_edge import clone_instance
 from azext_edge.edge.common import (
     DEFAULT_BROKER,
     DEFAULT_BROKER_AUTHN,
@@ -33,6 +34,7 @@ from azext_edge.edge.providers.orchestration.clone import (
     DEPLOYMENT_CHUNK_LEN,
     SERVICE_ACCOUNT_DATAFLOW,
     SERVICE_ACCOUNT_SECRETSYNC,
+    TEMPLATE_PARAMS_SET,
     CloneManager,
     InstanceRestore,
     TemplateMode,
@@ -47,10 +49,14 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
 )
-from azext_edge.edge.commands_edge import clone_instance
 from azext_edge.edge.util.id_tools import parse_resource_id
 
-from ...generators import generate_random_string, generate_uuid, get_zeroed_subscription
+from ...generators import (
+    generate_random_string,
+    generate_resource_id,
+    generate_uuid,
+    get_zeroed_subscription,
+)
 from .resources.conftest import BASE_URL, get_request_kpis
 from .resources.test_aeps_unit import get_mock_aep_record
 from .resources.test_assets_unit import get_mock_asset_record
@@ -126,6 +132,11 @@ PLURALS = [
     "assets",
 ]
 SINGLETONS = ["customLocation", "instance", "roleAssignments_1", "broker"]
+
+MOCK_SR_RESOURCE_ID = (
+    f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{generate_random_string()}"
+    f"/providers/Microsoft.DeviceRegistry/schemaRegistries/{generate_random_string()}"
+)
 
 
 @pytest.fixture
@@ -802,22 +813,18 @@ def test_clone_manager(
 
     CloneAssertor(clone_scenario).assert_content(content)
 
-    to_instance_name = generate_random_string()
     deploy_responses, to_cluster_id = clone_scenario.wrap_cluster_deploy()
     parsed_cluster_id = parse_resource_id(to_cluster_id)
 
     restore_client: InstanceRestore = clone_state.get_restore_client(parsed_cluster_id=parsed_cluster_id)
-    restore_client.deploy(instance_name=to_instance_name)
+    restore_client.deploy()
     deploy_body_payload = json.loads(deploy_responses[0].calls[0].request.body)
     request_headers = deploy_responses[0].calls[0].request.headers
 
     assert request_headers["CommandName"] == "iot ops clone"
     assert request_headers["x-ms-correlation-request-id"]
     assert deploy_body_payload["properties"]["mode"] == "Incremental"
-    assert deploy_body_payload["properties"]["parameters"] == {
-        "clusterName": {"value": parsed_cluster_id["name"]},
-        "instanceName": {"value": to_instance_name},
-    }
+    assert deploy_body_payload["properties"]["parameters"] == {"clusterName": {"value": parsed_cluster_id["name"]}}
     assert deploy_body_payload["properties"]["template"] == content
 
     write_to = ["my", "clone", "path"]
@@ -883,50 +890,27 @@ def test_clone_instance_compat(
 LOAD_VALUE = 1000
 
 
-@pytest.mark.parametrize("add_dataflows", [200])  # total=len(dataflows)*(len(profiles)+1)
-@pytest.mark.parametrize("add_dataflow_endpoints", [LOAD_VALUE])
-@pytest.mark.parametrize("add_dataflow_profiles", [4])
-@pytest.mark.parametrize("add_authzs", [LOAD_VALUE])
-@pytest.mark.parametrize("add_authns", [LOAD_VALUE])
-@pytest.mark.parametrize("add_listeners", [2])
-@pytest.mark.parametrize("add_aeps", [LOAD_VALUE])
-@pytest.mark.parametrize("add_assets", [LOAD_VALUE])
-@pytest.mark.parametrize("add_secretsyncs", [10])
-@pytest.mark.parametrize("add_spcs", [10])
-@pytest.mark.parametrize("add_identities", [10])
-@pytest.mark.parametrize("clone_scenario", [CloneScenario()])
 def test_clone_scale(
     mocked_cmd: Mock,
     mocked_responses: responses,
-    clone_scenario: CloneScenario,
     mock_open_write: Mock,
-    add_listeners: int,
-    add_authns: int,
-    add_authzs: int,
-    add_dataflow_profiles: int,
-    add_dataflow_endpoints: int,
-    add_dataflows: int,
-    add_aeps: int,
-    add_assets: int,
-    add_spcs: int,
-    add_secretsyncs: int,
-    add_identities: int,
 ):
+    clone_scenario = CloneScenario()
     model_cluster_name = generate_random_string()
     model_instance_name = generate_random_string()
     model_resource_group_name = generate_random_string()
     add_resources_map = {
-        "listeners": add_listeners,
-        "authns": add_authns,
-        "authzs": add_authzs,
-        "dataflowProfiles": add_dataflow_profiles,
-        "dataflowEndpoints": add_dataflow_endpoints,
-        "dataflows": add_dataflows,
-        "aeps": add_aeps,
-        "assets": add_assets,
-        "spcs": add_spcs,
-        "secretsyncs": add_secretsyncs,
-        "identities": add_identities,
+        "listeners": 2,
+        "authns": LOAD_VALUE,
+        "authzs": LOAD_VALUE,
+        "dataflowProfiles": 4,
+        "dataflowEndpoints": LOAD_VALUE,
+        "dataflows": 200,  # total=len(dataflows)*(len(profiles)+1)
+        "aeps": LOAD_VALUE,
+        "assets": LOAD_VALUE,
+        "spcs": 10,
+        "secretsyncs": 10,
+        "identities": 10,
     }
 
     clone_scenario.bootstrap(
@@ -949,19 +933,31 @@ def test_clone_scale(
 
     CloneAssertor(clone_scenario).assert_content(content)
 
-    to_instance_name = generate_random_string()
+    # TODO: Cheap. Not exhaustive.
+    split_content = template_content.get_split_content()
+    aep_pages = math.ceil(add_resources_map["aeps"] / DEPLOYMENT_CHUNK_LEN)
+    asset_pages = math.ceil(add_resources_map["assets"] / DEPLOYMENT_CHUNK_LEN)
+    total_pages = aep_pages + asset_pages + 1
+
+    expected_params = deepcopy(TEMPLATE_PARAMS_SET)
+
+    assert len(split_content) == total_pages
+    for i in range(aep_pages):
+        assert set(split_content[i + 1]["parameters"].keys()) == expected_params
+        assert split_content[i + 1]["resources"][0]["type"] == "microsoft.deviceregistry/assetendpointprofiles"
+    for j in range(aep_pages, aep_pages + asset_pages):
+        assert set(split_content[j + 1]["parameters"].keys()) == expected_params
+        assert split_content[j + 1]["resources"][0]["type"] == "microsoft.deviceregistry/assets"
+
     deploy_responses, to_cluster_id = clone_scenario.wrap_cluster_deploy()
     parsed_cluster_id = parse_resource_id(to_cluster_id)
 
     restore_client: InstanceRestore = clone_state.get_restore_client(parsed_cluster_id=parsed_cluster_id)
-    restore_client.deploy(instance_name=to_instance_name)
+    restore_client.deploy()
     deploy_body_payload = json.loads(deploy_responses[0].calls[0].request.body)
 
     assert deploy_body_payload["properties"]["mode"] == "Incremental"
-    assert deploy_body_payload["properties"]["parameters"] == {
-        "clusterName": {"value": parsed_cluster_id["name"]},
-        "instanceName": {"value": to_instance_name},
-    }
+    assert deploy_body_payload["properties"]["parameters"] == {"clusterName": {"value": parsed_cluster_id["name"]}}
     assert deploy_body_payload["properties"]["template"] == content
 
     write_to = ["my", "clone", "path"]
@@ -972,13 +968,13 @@ def test_clone_scale(
 
 
 @pytest.mark.parametrize("instance_features", [None, {"connectors": {"settings": {"preview": "Enabled"}, "mode": ""}}])
-@pytest.mark.parametrize("clone_scenario", [CloneScenario()])
 def test_clone_instance_feature_capture(
     mocked_cmd: Mock,
     mocked_responses: responses,
     clone_scenario: CloneScenario,
     instance_features: Optional[dict],
 ):
+    clone_scenario = CloneScenario()
     model_cluster_name = generate_random_string()
     model_instance_name = generate_random_string()
     model_resource_group_name = generate_random_string()
@@ -1026,35 +1022,22 @@ def test_clone_instance_feature_capture(
 @pytest.mark.parametrize(
     "cluster_state", [{"connectivityStatus": "Connected"}, {"connectivityStatus": "Disconnected"}]
 )
-@pytest.mark.parametrize("to_instance_name", [None, generate_random_string()])
-@pytest.mark.parametrize("add_aeps", [2])
-@pytest.mark.parametrize("add_assets", [2])
-@pytest.mark.parametrize("add_secretsyncs", [2])
-@pytest.mark.parametrize("add_spcs", [2])
-@pytest.mark.parametrize("add_identities", [2])
-@pytest.mark.parametrize("clone_scenario", [CloneScenario()])
-def test_clone_deploy(
+def test_clone_deploy_subjects(
     mocked_cmd: Mock,
     mocked_responses: responses,
-    clone_scenario: CloneScenario,
     cred_state: dict,
     cluster_state: dict,
-    to_instance_name: str,
-    add_aeps: int,
-    add_assets: int,
-    add_spcs: int,
-    add_secretsyncs: int,
-    add_identities: int,
 ):
+    clone_scenario = CloneScenario()
     model_cluster_name = generate_random_string()
     model_instance_name = generate_random_string()
     model_resource_group_name = generate_random_string()
     add_resources_map = {
-        "aeps": add_aeps,
-        "assets": add_assets,
-        "spcs": add_spcs,
-        "secretsyncs": add_secretsyncs,
-        "identities": add_identities,
+        "aeps": 2,
+        "assets": 2,
+        "spcs": 2,
+        "secretsyncs": 2,
+        "identities": 2,
     }
 
     clone_scenario.bootstrap(
@@ -1080,19 +1063,126 @@ def test_clone_deploy(
     parsed_cluster_id = parse_resource_id(to_cluster_id)
     if connectivity_status.lower() != "connected":
         with pytest.raises(ValidationError) as e:
-            clone(to_instance_name=to_instance_name, to_cluster_id=to_cluster_id)
+            clone(to_cluster_id=to_cluster_id)
         assert f"Cluster {parsed_cluster_id['name']} is not connected to Azure." == str(e.value)
         return
 
-    clone(to_instance_name=to_instance_name, to_cluster_id=to_cluster_id)
+    clone(to_cluster_id=to_cluster_id)
     deploy_body_payload = json.loads(deploy_responses[0].calls[0].request.body)
     assert deploy_body_payload["properties"]["mode"] == "Incremental"
 
     expected_deploy_params = {
         "clusterName": {"value": parsed_cluster_id["name"]},
     }
-    if to_instance_name:
-        expected_deploy_params["instanceName"] = {"value": to_instance_name}
+
+    assert deploy_body_payload["properties"]["parameters"] == expected_deploy_params
+    assert deploy_body_payload["properties"]["template"]
+
+
+@pytest.mark.parametrize(
+    "params_scenario",
+    [
+        {
+            "input": [
+                f"instanceName={generate_random_string()}",
+                f"clusterNamespace={generate_random_string()}",
+                f"customLocationName={generate_random_string()}",
+                f"opsExtensionName={generate_random_string()}",
+                f"schemaRegistryId={MOCK_SR_RESOURCE_ID}",
+                f"resourceSlug={generate_random_string()}",
+                f"location={generate_random_string()}",
+                "applyRoleAssignments=true",
+            ]
+        },
+        {
+            "input": [
+                f"instanceName={generate_random_string()}",
+                f"customLocationName={generate_random_string()}",
+                "applyRoleAssignments=false",
+            ]
+        },
+        {"input": ["schemaRegistryId=a"], "error": (ValidationError, "Invalid resource Id 'a'.")},
+        {
+            "input": ["applyRoleAssignments=a"],
+            "error": (ValidationError, "Invalid boolean string: a. Use 'true' or 'false'."),
+        },
+        {
+            "input": ["applyRoleAssignments="],
+            "error": (ValidationError, "Boolean string requires a value. Use 'true' or 'false'."),
+        },
+    ],
+)
+def test_clone_deploy_params(
+    mocked_cmd: Mock,
+    mocked_responses: responses,
+    params_scenario: dict,
+):
+    clone_scenario = CloneScenario()
+    model_cluster_name = generate_random_string()
+    model_instance_name = generate_random_string()
+    model_resource_group_name = generate_random_string()
+    add_resources_map = {
+        "aeps": 2,
+        "assets": 2,
+        "spcs": 2,
+        "secretsyncs": 2,
+        "identities": 2,
+    }
+
+    clone = partial(
+        clone_instance,
+        cmd=mocked_cmd,
+        resource_group_name=model_resource_group_name,
+        instance_name=model_instance_name,
+        no_progress=True,
+        confirm_yes=True,
+    )
+    params_input = params_scenario.get("input")
+    expected_error, expected_error_msg = params_scenario.get("error", (None, None))
+    if expected_error:
+        with pytest.raises(expected_error) as e:
+            clone(
+                to_cluster_id=generate_resource_id(
+                    resource_group_name=model_resource_group_name,
+                    resource_provider="Microsoft.Kubernetes",
+                    resource_path="/connectedClusters/cluster",
+                ),
+                to_cluster_params=params_input,
+            )
+        assert str(e.value) == expected_error_msg
+        return
+
+    clone_scenario.bootstrap(
+        mocked_responses,
+        resource_group_name=model_resource_group_name,
+        instance_name=model_instance_name,
+        cluster_name=model_cluster_name,
+        add_resources_map=add_resources_map,
+    )
+
+    deploy_responses, to_cluster_id = clone_scenario.wrap_cluster_deploy()
+    parsed_cluster_id = parse_resource_id(to_cluster_id)
+
+    clone(to_cluster_id=to_cluster_id, to_cluster_params=params_input)
+    deploy_body_payload = json.loads(deploy_responses[0].calls[0].request.body)
+    assert deploy_body_payload["properties"]["mode"] == "Incremental"
+
+    expected_deploy_params = {
+        "clusterName": {"value": parsed_cluster_id["name"]},
+    }
+    for param in params_input:
+        key, value = param.split("=")
+        if key == "schemaRegistryId":
+            parsed_sr_id = parse_resource_id(value)
+            value = {
+                "subscription": parsed_sr_id["subscription"],
+                "name": parsed_sr_id["name"],
+                "resourceGroup": parsed_sr_id["resource_group"],
+            }
+        if key == "applyRoleAssignments":
+            value = value.lower() == "true"
+        expected_deploy_params[key] = {"value": value}
+
     assert deploy_body_payload["properties"]["parameters"] == expected_deploy_params
     assert deploy_body_payload["properties"]["template"]
 
