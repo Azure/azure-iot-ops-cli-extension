@@ -600,7 +600,7 @@ def load_iotops_help():
         type: command
         short-summary: Create or replace a dataflow associated with a dataflow profile.
         long-summary: |
-        An example of the config file format is as follows:
+          An example of the config file format is as follows:
 
           ```
           {
