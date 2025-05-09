@@ -2025,14 +2025,17 @@ def load_iotops_help():
           text: >
             az iot ops namespace create -n myNamespace -g myResourceGroup --system-identity
 
-        - name: Create a namespace with Event Grid Topic endpoints
-          text: >
-            az iot ops namespace create -n myNamespace -g myResourceGroup --endpoint-id "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName}"
-
-        - name: Create a namespace with multiple endpoints, custom location, and tags
+        - name: Create a namespace with one Event Grid Topic endpoint named myTopic.
           text: >
             az iot ops namespace create -n myNamespace -g myResourceGroup
-            --endpoint-id "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName1}"
+            --endpoint id="/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName}"
+            name="myTopic"
+
+        - name: Create a namespace with multiple endpoints, custom location, and tags.
+                The default name of {resourceGroup}-{topicName} will be used for the endpoints.
+          text: >
+            az iot ops namespace create -n myNamespace -g myResourceGroup
+            --endpoint id="/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName1}"
             "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName2}"
             --location "eastus" --tags env=prod department=operations
     """
@@ -2112,16 +2115,16 @@ def load_iotops_help():
         short-summary: Add endpoints to a Device Registry namespace.
 
         examples:
-        - name: Add a single endpoint to a namespace
+        - name: Add a single endpoint to a namespace with the default name of {resourceGroup}-{topicName}.
           text: >
             az iot ops namespace endpoint add --namespace myNamespace -g myResourceGroup
-            --endpoint-id "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName}"
+            --endpoint id="/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName}"
 
-        - name: Add multiple endpoints to a namespace
+        - name: Add multiple endpoints to a namespace with custom names
           text: >
             az iot ops namespace endpoint add --namespace myNamespace -g myResourceGroup
-            --endpoint-id "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName1}"
-            "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName2}"
+            --endpoint id="/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName1}" name="myTopic1"
+            "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName2}" name="myTopic2"
     """
 
     helps[
@@ -2146,11 +2149,10 @@ def load_iotops_help():
         - name: Remove a single endpoint from a namespace
           text: >
             az iot ops namespace endpoint remove --namespace myNamespace -g myResourceGroup
-            --endpoint-id "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName}"
+            --endpoint myTopic
 
         - name: Remove multiple endpoints from a namespace
           text: >
             az iot ops namespace endpoint remove --namespace myNamespace -g myResourceGroup
-            --endpoint-id "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName1}"
-            "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName2}"
+            --endpoint resourceGroup1-topicName1 myTopic
     """

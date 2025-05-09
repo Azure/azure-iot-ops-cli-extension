@@ -609,7 +609,9 @@ def load_adr_arguments(self, _):
         context.argument(
             "endpoints",
             options_list=["--endpoint"],
-            help="Space-separated list of endpoint IDs. Currently only Event Grid Topic endpoints are supported.",
+            help="Space-separated key=value pairs corresponding to properties of the endpoint to create. "
+            "The following key values are supported: `id` (required), `name`. Can be used more than once. "
+            "Currently only Event Grid Topic endpoints are supported.",
             nargs="+",
             action="append",
         )
