@@ -1403,6 +1403,12 @@ def _replace_instance(context: dict):
         for identity in instance["identity"]["userAssignedIdentities"]:
             kwargs["identity"]["userAssignedIdentities"][identity] = {}
 
+    properties = deepcopy(instance["properties"])
+    properties["schemaRegistryRef"]["resourceId"] = (
+        "[resourceId(parameters('schemaRegistryId').subscription, parameters('schemaRegistryId').resourceGroup, "
+        "'Microsoft.DeviceRegistry/schemaRegistries', parameters('schemaRegistryId').name)]"
+    )
+
     payload = {
         "apiVersion": context["instance_api"],
         "location": "[parameters('location')]",
@@ -1411,6 +1417,7 @@ def _replace_instance(context: dict):
             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
             "type": "CustomLocation",
         },
+        "properties": properties,
         "dependsOn": ["customLocation"],
         **kwargs,
     }
