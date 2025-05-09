@@ -1051,21 +1051,23 @@ def load_iotops_help():
             against the target Key Vault.
 
             The flow starts with ensuring Key Vault role assignments, applying them if they don't exist.
-            If necessary you can provide a custom role via --custom-role-id to use instead.
+            An error will be raised if the role assignments cannot be made. If necessary a custom role
+            via --custom-role-id can be used in-place of the built-in roles. Or the --skip-ra flag can
+            be used to skip role assignments.
 
         examples:
         - name: Enable the target instance for Key Vault secret sync.
           text: >
             az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
-        - name: Usage of flag to skip Key Vault role assignments.
-          text: >
-            az iot ops secretsync enable --instance myinstance -g myresourcegroup
-            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --skip-ra
         - name: Enable secret sync and apply tags when creating the default secret provider class.
           text: >
             az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --tags a=b c=d
+        - name: Usage of flag to skip Key Vault role assignments.
+          text: >
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
+            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --skip-ra
     """
 
     helps[
