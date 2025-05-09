@@ -28,8 +28,8 @@ def dataflow_profile_test_setup(settings):
 
 
 def test_dataflow_profile(dataflow_profile_test_setup, tracked_resources):
-    profile1_name = f"test-profile-{generate_random_string(force_lower=True, size=6)}"
-    profile2_name = f"test-profile-{generate_random_string(force_lower=True, size=6)}"
+    profile1_name = f"test-profile-{generate_random_string(size=6)}"
+    profile2_name = f"test-profile-{generate_random_string(size=6)}"
     rg = dataflow_profile_test_setup["resourceGroup"]
     instance = dataflow_profile_test_setup["instanceName"]
 
@@ -87,17 +87,13 @@ def test_dataflow_profile(dataflow_profile_test_setup, tracked_resources):
 
     # DELETE
     run(f"az iot ops dataflow profile delete -n {profile1_name} -g {rg} -i {instance} --y")
+    tracked_resources.remove(profile1["id"])
+    run(f"az iot ops dataflow profile delete -n {profile2_name} -g {rg} -i {instance} --y")
+    tracked_resources.remove(profile2["id"])
     list_profiles = run(f"az iot ops dataflow profile list -g {rg} -i {instance}")
     list_profile_names = [profile["name"] for profile in list_profiles]
     assert profile1_name not in list_profile_names
-    assert profile2_name in list_profile_names
-    tracked_resources.remove(profile1["id"])
-
-    run(f"az iot ops dataflow profile delete -n {profile2_name} -g {rg} -i {instance} --y")
-    list_profiles = run(f"az iot ops dataflow profile list -g {rg} -i {instance}")
-    list_profile_names = [profile["name"] for profile in list_profiles]
     assert profile2_name not in list_profile_names
-    tracked_resources.remove(profile2["id"])
 
 
 def assert_dataflow_profile(profile: dict, **expected):
