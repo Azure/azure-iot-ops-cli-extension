@@ -28,8 +28,8 @@ def dataflow_profile_test_setup(settings):
 
 
 def test_dataflow_profile(dataflow_profile_test_setup, tracked_resources):
-    profile1_name = f"test-profile-{generate_random_string(size=6)}"
-    profile2_name = f"test-profile-{generate_random_string(size=6)}"
+    profile1_name = f"test-profile-{generate_random_string(force_lower=True, size=6)}"
+    profile2_name = f"test-profile-{generate_random_string(force_lower=True, size=6)}"
     rg = dataflow_profile_test_setup["resourceGroup"]
     instance = dataflow_profile_test_setup["instanceName"]
 
