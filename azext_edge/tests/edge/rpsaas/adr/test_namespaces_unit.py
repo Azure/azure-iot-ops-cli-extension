@@ -4,7 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Dict, Optional
+from copy import deepcopy
+from typing import Dict, List, Optional
 import json
 import pytest
 import responses
@@ -19,6 +20,7 @@ from azext_edge.edge.commands_namespaces import (
     list_namespace_endpoints,
     remove_namespace_endpoint,
 )
+from azext_edge.edge.util.common import parse_kvp_nargs
 from ...orchestration.resources.conftest import get_base_endpoint
 
 from .conftest import get_namespace_mgmt_uri, get_namespace_record
@@ -30,6 +32,13 @@ EVENTGRIDTOPIC_API_VERSION = "2025-02-15"
 EVENTGRIDTOPIC_RESOURCE_TYPE = "Microsoft.EventGrid/topics"
 
 
+def convert_dict_to_nargs(input_dict: Dict[str, str]) -> List[str]:
+    """
+    Converts a dictionary to a list of key=value strings.
+    """
+    return [f"{key}={value}" for key, value in input_dict.items()]
+
+
 @pytest.fixture()
 def mocked_logger(mocker):
     return mocker.patch("azext_edge.edge.providers.rpsaas.adr.namespaces.logger", autospec=True)
@@ -39,16 +48,25 @@ def mocked_logger(mocker):
 @pytest.mark.parametrize("req", [
     {},
     {
-        "initial_endpoint_ids": ["endpoint-id-1", "endpoint-id-2"],
+        "endpoints": [
+            ["id=endpoint-id-1", f"name={generate_random_string()}"], ["id=endpoint-id-2"]
+        ],
         "location": "westus",
         "mi_system_identity": True,
         "tags": {"tag1": "value1", "tag2": "value2"},
     },
     {
-        "initial_endpoint_ids": ["endpoint-id-1"],
+        "endpoints": [["id=endpoint-id-1", "invalid_id=invalid-endpoint-id"]],
         "mi_system_identity": False,
-        "invalid_endpoint_ids": ["invalid-endpoint-id"],
-    }
+    },
+    {
+        "endpoints": [f"name={generate_random_string()}"],
+    },
+    {
+        "endpoints": [
+            ["id=endpoint-id-1", f"name={generate_random_string()}"]
+        ]
+    },
 ])
 def test_namespace_create(
     mocked_logger,
@@ -62,7 +80,7 @@ def test_namespace_create(
 
     # Add mock response for resource group location
     mock_resource_group = {"location": generate_random_string()}
-    if not req.get("location"):
+    if "location" not in req:
         mocked_responses.add(
             method=responses.GET,
             url=get_base_endpoint(
@@ -74,20 +92,29 @@ def test_namespace_create(
 
     # Setup mock for endpoint processing if endpoints are provided
     expected_endpoints = {}
-    if req.get("initial_endpoint_ids"):
-        endpoint_ids = []
-        for endpoint_name in req["initial_endpoint_ids"]:
+    if req.get("endpoints"):
+        input_endpoints = []
+        for endpoint in req["endpoints"]:
+            parsed_endpoint = parse_kvp_nargs(endpoint)
+            if all(["id" not in parsed_endpoint, "invalid_id" not in parsed_endpoint]):
+                input_endpoints.append(endpoint)
+                continue
+
+            # Generate a mock endpoint response
+            endpoint_name = parsed_endpoint["id"]
             endpoint_rg = generate_random_string()
             endpoint_uri = f"https://{endpoint_name}.eventgrid.azure.net/topics/{generate_random_string()}"
-            endpoint_resource_id = get_base_endpoint(
+            parsed_endpoint["id"] = get_base_endpoint(
                 resource_group_name=endpoint_rg,
-                resource_path=EVENTGRIDTOPIC_RESOURCE_TYPE,
+                resource_provider=EVENTGRIDTOPIC_RESOURCE_TYPE,
+                resource_path=endpoint_name,
             ).split("?")[0][len(BASE_URL) :]
             mocked_responses.add(
                 method=responses.GET,
                 url=get_base_endpoint(
                     resource_group_name=endpoint_rg,
-                    resource_path=EVENTGRIDTOPIC_RESOURCE_TYPE,
+                    resource_provider=EVENTGRIDTOPIC_RESOURCE_TYPE,
+                    resource_path=endpoint_name,
                     api_version=EVENTGRIDTOPIC_API_VERSION,
                 ),
                 json={
@@ -97,56 +124,34 @@ def test_namespace_create(
                     "name": endpoint_name,
                     "resourceGroup": endpoint_rg,
                     "type": EVENTGRIDTOPIC_RESOURCE_TYPE,
-                },
-                status=200,
+                } if "id" in parsed_endpoint else {},
+                status=200 if "id" in parsed_endpoint else 443,
             )
-            expected_endpoints[f"{endpoint_rg}-{endpoint_name}"] = {
-                "address": endpoint_uri,
-                "resourceId": endpoint_resource_id,
-                "endpointType": EVENTGRIDTOPIC_RESOURCE_TYPE.split("/")[0],
-            }
-            endpoint_ids.append(endpoint_resource_id)
-        req["initial_endpoint_ids"] = endpoint_ids
 
-    # Process invalid endpoint IDs if provided
-    if req.get("invalid_endpoint_ids"):
-        endpoint_ids = []
-        for endpoint_name in req["invalid_endpoint_ids"]:
-            endpoint_resource_id = get_base_endpoint(
-                resource_group_name=endpoint_rg,
-                resource_path=EVENTGRIDTOPIC_RESOURCE_TYPE,
-            ).split("?")[0][len(BASE_URL) :]
-            mocked_responses.add(
-                method=responses.GET,
-                url=get_base_endpoint(
-                    resource_group_name=endpoint_rg,
-                    resource_path=EVENTGRIDTOPIC_RESOURCE_TYPE,
-                    api_version=EVENTGRIDTOPIC_API_VERSION,
-                ),
-                json={},
-                status=443,
-            )
-            endpoint_ids.append(endpoint_resource_id)
-        req["initial_endpoint_ids"].extend(endpoint_ids)
+            if "id" in parsed_endpoint:
+                # the name value is used as the key in the dict
+                endpoint_key = parsed_endpoint.get("name", f"{endpoint_rg}-{endpoint_name}")
+                expected_endpoints[endpoint_key] = {
+                    "address": endpoint_uri,
+                    "resourceId": parsed_endpoint["id"],
+                    "endpointType": EVENTGRIDTOPIC_RESOURCE_TYPE.split("/", maxsplit=1)[0],
+                }
+
+            # revert the endpoints to key=value format for the request
+            input_endpoints.append(convert_dict_to_nargs(parsed_endpoint))
+
+        req["endpoints"] = input_endpoints
 
     # Create mock response
     mock_namespace_record = get_namespace_record(
         namespace_name=namespace_name, namespace_resource_group=resource_group_name
     )
 
-    # Add error response for failure case
-    error_response = {
-        "error": {
-            "code": "BadRequest",
-            "message": "Invalid request parameters"
-        }
-    }
-
     # Add mock response
-    namespace_put = mocked_responses.add(
+    mocked_responses.add(
         method=responses.PUT,
         url=get_namespace_mgmt_uri(namespace_name=namespace_name, namespace_resource_group=resource_group_name),
-        json=mock_namespace_record if response_status == 200 else error_response,
+        json=mock_namespace_record if response_status == 200 else {"error": "BadRequest"},
         status=response_status,
         content_type="application/json",
     )
@@ -172,17 +177,12 @@ def test_namespace_create(
         **req
     )
 
-    # Verify result matches mock response
+    # Verify result matches mock response and the number of API calls
     assert result == mock_namespace_record
-
-    # Verify API call was made with correct URL and method
-    expected_calls = 1 + len(req.get("initial_endpoint_ids", []))
-    if not req.get("location"):
-        expected_calls += 1
-    assert len(mocked_responses.calls) == expected_calls
+    assert len(mocked_responses.calls) == len(mocked_responses.registered())
 
     # Verify request body contains expected values
-    call_body = json.loads(namespace_put.calls[0].request.body)
+    call_body = json.loads(mocked_responses.calls[-1].request.body)
 
     # Check identity
     if "mi_system_identity" in req:
@@ -242,8 +242,9 @@ def test_namespace_delete(mocked_cmd, mocked_responses: responses, response_stat
 
 @pytest.mark.parametrize("records", [0, 2])
 @pytest.mark.parametrize("resource_group_name", [None, generate_random_string()])
+@pytest.mark.parametrize("response_status", [200, 443])
 def test_namespace_list(
-    mocked_cmd, mocked_responses: responses, records: int, resource_group_name: Optional[str]
+    mocked_cmd, mocked_responses: responses, records: int, resource_group_name: Optional[str], response_status: int
 ):
     mock_namespace_records = {
         "value": [
@@ -259,9 +260,17 @@ def test_namespace_list(
         method=responses.GET,
         url=get_namespace_mgmt_uri(namespace_resource_group=resource_group_name),
         json=mock_namespace_records,
-        status=200,
+        status=response_status,
         content_type="application/json",
     )
+
+    if response_status != 200:
+        with pytest.raises(Exception):
+            list(list_namespaces(
+                cmd=mocked_cmd,
+                resource_group_name=resource_group_name,
+            ))
+        return
 
     result = list(list_namespaces(cmd=mocked_cmd, resource_group_name=resource_group_name))
     assert result == mock_namespace_records["value"]
@@ -351,7 +360,7 @@ def test_namespace_update(
     mock_original_namespace["tags"] = {"original": "tag"}
 
     # Create updated record for successful response
-    mock_updated_namespace = mock_original_namespace.copy()
+    mock_updated_namespace = deepcopy(mock_original_namespace)
     if "tags" in req:
         mock_updated_namespace["tags"] = req["tags"]
     if "mi_system_identity" in req:
@@ -420,27 +429,71 @@ def test_namespace_update(
 
 
 @pytest.mark.parametrize("response_status", [200, 443])
-@pytest.mark.parametrize("num_of_new_endpoints", [1, 3])
-@pytest.mark.parametrize("num_of_endpoints_to_replace", [0, 1])
+@pytest.mark.parametrize("endpoints", [
+    [
+        ["id=endpoint-id-1", "rg=my-rg2", "name=my-endpoint1"], ["id=endpoint-id-2", "rg=my-rg1"]
+    ],
+    [
+        ["id=endpoint-id-1", "rg=my-rg1"]
+    ],
+    [
+        ["name=my-endpoint1"]
+    ],
+    [
+        ["invalid_id=endpoint-id-1", "rg=my-rg2", "name=my-endpoint1"], ["id=endpoint-id-2", "rg=my-rg1"]
+    ],
+])
+@pytest.mark.parametrize("present_endpoints", [
+    {},
+    {
+        "my-endpoint1": {
+            "address": generate_random_string(),
+            "resourceId": generate_random_string(),
+            "endpointType": "Microsoft.EventGrid/topics"
+        },
+        "my-rg1-endpoint-id-1": {
+            "address": generate_random_string(),
+            "resourceId": generate_random_string(),
+            "endpointType": "Microsoft.EventGrid/topics"
+        }
+    }
+])
 def test_add_namespace_endpoint(
+    mocked_logger,
     mocked_cmd,
     mocked_responses: responses,
     response_status: int,
-    num_of_new_endpoints: int,
-    num_of_endpoints_to_replace: int,
+    endpoints: List[List[str]],
+    present_endpoints: List[List[str]]
 ):
     # Setup test data
     namespace_name = generate_random_string()
     resource_group_name = generate_random_string()
 
+    # Setup mock for original namespace
+    mock_original_namespace = get_namespace_record(
+        namespace_name=namespace_name,
+        namespace_resource_group=resource_group_name
+    )
+
+    # Add endpoints to replace
+    mock_original_namespace["properties"]["messaging"]["endpoints"] = deepcopy(present_endpoints)
+
     # Setup endpoint mock and input
-    endpoint_ids = []
-    expected_endpoints = {}
-    for i in range(num_of_new_endpoints):
-        endpoint_name = generate_random_string()
-        endpoint_rg = generate_random_string()
+    input_endpoints = []
+    expected_endpoints = deepcopy(present_endpoints)
+
+    for endpoint in endpoints:
+        parsed_endpoint = parse_kvp_nargs(endpoint)
+        if all(["id" not in parsed_endpoint, "invalid_id" not in parsed_endpoint]):
+            input_endpoints.append(endpoint)
+            continue
+
+        # This time do not regenerate the endpoint name/rg to allow replacement testing
+        endpoint_name = parsed_endpoint.get("id", parsed_endpoint.get("invalid_id"))
+        endpoint_rg = parsed_endpoint.pop("rg")
         endpoint_uri = f"https://{endpoint_name}.eventgrid.azure.net/topics/{generate_random_string()}"
-        endpoint_resource_id = get_base_endpoint(
+        parsed_endpoint["id"] = get_base_endpoint(
             resource_group_name=endpoint_rg,
             resource_path=endpoint_name,
             resource_provider=EVENTGRIDTOPIC_RESOURCE_TYPE,
@@ -460,38 +513,24 @@ def test_add_namespace_endpoint(
                 "name": endpoint_name,
                 "resourceGroup": endpoint_rg,
                 "type": EVENTGRIDTOPIC_RESOURCE_TYPE,
-            },
-            status=200,
+            } if "id" in parsed_endpoint else {},
+            status=200 if "id" in parsed_endpoint else 443,
         )
-        expected_endpoints[f"{endpoint_rg}-{endpoint_name}"] = {
-            "address": endpoint_uri,
-            "resourceId": endpoint_resource_id,
-            "endpointType": EVENTGRIDTOPIC_RESOURCE_TYPE.split("/", maxsplit=1)[0],
-        }
-        endpoint_ids.append(endpoint_resource_id)
 
-    # Setup mock for original namespace
-    mock_original_namespace = get_namespace_record(
-        namespace_name=namespace_name,
-        namespace_resource_group=resource_group_name
-    )
+        if "id" in parsed_endpoint:
+            # the name value is used as the key in the dict
+            endpoint_key = parsed_endpoint.get("name", f"{endpoint_rg}-{endpoint_name}")
+            expected_endpoints[endpoint_key] = {
+                "address": endpoint_uri,
+                "resourceId": parsed_endpoint["id"],
+                "endpointType": EVENTGRIDTOPIC_RESOURCE_TYPE.split("/", maxsplit=1)[0],
+            }
 
-    # Add endpoints to replace
-    for i in range(num_of_endpoints_to_replace):
-        endpoint_id = endpoint_ids[i]
-        endpoint_id_parts = endpoint_id.split('/')
-        endpoint_resource_group = endpoint_id_parts[4]
-        endpoint_name = endpoint_id_parts[-1]
-        endpoint_key = f"{endpoint_resource_group}-{endpoint_name}"
-
-        mock_original_namespace["properties"]["messaging"]["endpoints"][endpoint_key] = {
-            "endpointType": "Microsoft.EventGrid",
-            "address": f"https://example{i}.eventgrid.azure.net",
-            "resourceId": endpoint_id
-        }
+        # revert the endpoints to key=value format for the request
+        input_endpoints.append(convert_dict_to_nargs(parsed_endpoint))
 
     # Setup mock for updated namespace (after adding endpoints)
-    mock_updated_namespace = mock_original_namespace.copy()
+    mock_updated_namespace = deepcopy(mock_original_namespace)
     mock_updated_namespace["properties"]["messaging"]["endpoints"].update(expected_endpoints)
 
     # Mock the GET response
@@ -503,7 +542,7 @@ def test_add_namespace_endpoint(
         content_type="application/json",
     )
 
-    namespace_put = mocked_responses.add(
+    mocked_responses.add(
         method=responses.PUT,
         url=get_namespace_mgmt_uri(namespace_name=namespace_name, namespace_resource_group=resource_group_name),
         json=mock_updated_namespace,
@@ -518,7 +557,7 @@ def test_add_namespace_endpoint(
                 cmd=mocked_cmd,
                 namespace_name=namespace_name,
                 resource_group_name=resource_group_name,
-                endpoint_ids=endpoint_ids,
+                endpoints=input_endpoints,
                 wait_sec=0,
             )
         return
@@ -528,18 +567,18 @@ def test_add_namespace_endpoint(
         cmd=mocked_cmd,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
-        endpoint_ids=endpoint_ids,
+        endpoints=input_endpoints,
         wait_sec=0,
     )
 
     # Verify result matches mock response
-    assert result == mock_updated_namespace
+    assert result == mock_updated_namespace["properties"]["messaging"]["endpoints"]
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == (2 + num_of_new_endpoints)
+    assert len(mocked_responses.calls) == len(mocked_responses.registered())
 
     # Verify the PUT request body contains all the expected endpoints
-    call_body = json.loads(namespace_put.calls[0].request.body)
+    call_body = json.loads(mocked_responses.calls[-1].request.body)
 
     # Check that all endpoints were added
     endpoints_in_body = call_body["properties"]["messaging"]["endpoints"]
@@ -619,7 +658,7 @@ def test_remove_namespace_endpoint(
     resource_group_name = generate_random_string()
 
     # Create endpoints to remove
-    endpoint_ids_to_remove = []
+    endpoint_names_to_remove = []
     mock_endpoints = {}
     for i in range(num_endpoints_to_remove):
         endpoint_name = f"topic-remove-{i}"
@@ -629,7 +668,7 @@ def test_remove_namespace_endpoint(
             resource_path=endpoint_name,
             resource_provider=EVENTGRIDTOPIC_RESOURCE_TYPE,
         ).split("?")[0][len(BASE_URL) :]
-        endpoint_ids_to_remove.append(endpoint_id)
+        endpoint_names_to_remove.append(endpoint_id)
         mock_endpoints[f"{endpoint_rg}-{endpoint_name}"] = {
             "endpointType": "Microsoft.EventGrid/topics",
             "address": f"https://{endpoint_name}.eventgrid.azure.net",
@@ -660,7 +699,7 @@ def test_remove_namespace_endpoint(
         namespace_resource_group=resource_group_name
     )
     mock_original_namespace["properties"]["messaging"]["endpoints"] = mock_endpoints
-    mock_updated_namespace = mock_original_namespace.copy()
+    mock_updated_namespace = deepcopy(mock_original_namespace)
     mock_updated_namespace["properties"]["messaging"]["endpoints"] = expected_endpoints
 
     # Mock the GET response
@@ -688,7 +727,7 @@ def test_remove_namespace_endpoint(
                 cmd=mocked_cmd,
                 namespace_name=namespace_name,
                 resource_group_name=resource_group_name,
-                endpoint_ids=endpoint_ids_to_remove,
+                endpoint_names=endpoint_names_to_remove,
                 wait_sec=0,
             )
         return
@@ -698,12 +737,12 @@ def test_remove_namespace_endpoint(
         cmd=mocked_cmd,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
-        endpoint_ids=endpoint_ids_to_remove,
+        endpoint_names=endpoint_names_to_remove,
         wait_sec=0,
     )
 
     # Verify result matches mock response
-    assert result == mock_updated_namespace
+    assert result == mock_updated_namespace["properties"]["messaging"]["endpoints"]
 
     # Verify API calls were made correctly
     assert len(mocked_responses.calls) == 2  # GET followed by PUT
@@ -712,11 +751,10 @@ def test_remove_namespace_endpoint(
     call_body = json.loads(mocked_responses.calls[1].request.body)
 
     endpoints_in_body = call_body["properties"]["messaging"]["endpoints"]
-    endpoint_ids_in_body = [endpoint_data["resourceId"] for endpoint_data in endpoints_in_body.values()]
 
     # Verify all endpoints to remove are gone
-    for endpoint_id in endpoint_ids_to_remove:
-        assert endpoint_id not in endpoint_ids_in_body
+    for endpoint_name in endpoint_names_to_remove:
+        assert endpoint_name not in endpoints_in_body
 
     # Verify endpoints to keep is still there
     for endpoint_key in expected_endpoints:

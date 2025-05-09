@@ -607,10 +607,11 @@ def load_adr_arguments(self, _):
             help="Namespace name.",
         )
         context.argument(
-            "initial_endpoint_ids",
-            options_list=["--endpoint-id", "--eid"],
+            "endpoints",
+            options_list=["--endpoint"],
             help="Space-separated list of endpoint IDs. Currently only Event Grid Topic endpoints are supported.",
             nargs="+",
+            action="append",
         )
         context.argument(
             "mi_system_identity",
@@ -626,18 +627,11 @@ def load_adr_arguments(self, _):
             help="Namespace name.",
         )
 
-    with self.argument_context("iot ops namespace endpoint add") as context:
-        context.argument(
-            "endpoint_id",
-            options_list=["--endpoint-id", "--eid"],
-            help="Space-separated list of endpoint IDs to add to the namespace.",
-            nargs="+",
-        )
-
     with self.argument_context("iot ops namespace endpoint remove") as context:
         context.argument(
-            "endpoint_id",
-            options_list=["--endpoint-id", "--eid"],
-            help="Space-separated list of endpoint IDs to remove to the namespace.",
+            "endpoint_names",
+            options_list=["--endpoint"],
+            help="Space-separated list of endpoint names to remove to the namespace.",
             nargs="+",
+            action="extend",
         )
