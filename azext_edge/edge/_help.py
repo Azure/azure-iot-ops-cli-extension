@@ -595,6 +595,87 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow apply"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow associated with a dataflow profile.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          ```
+          {
+            "mode": "Enabled",
+            "operations": [
+              {
+                "operationType": "Source",
+                "sourceSettings": {
+                  "endpointRef": "myenpoint1",
+                  "assetRef": "",
+                  "serializationFormat": "Json",
+                  "schemaRef": "myschema1",
+                  "dataSources": [
+                    "testfrom"
+                  ]
+                }
+              },
+              {
+                "operationType": "BuiltInTransformation",
+                "builtInTransformationSettings": {
+                  "serializationFormat": "Json",
+                  "datasets": [],
+                  "filter": [
+                    {
+                      "type": "Filter",
+                      "description": "",
+                      "inputs": [
+                        "$metadata.user_property.value"
+                      ],
+                      "expression": "$1 > 100"
+                    }
+                  ],
+                  "map": [
+                    {
+                      "type": "PassThrough",
+                      "inputs": [
+                        "*"
+                      ],
+                      "output": "*"
+                    }
+                  ]
+                }
+              },
+              {
+                "operationType": "Destination",
+                "destinationSettings": {
+                  "endpointRef": "myenpoint2",
+                  "dataDestination": "test"
+                }
+              }
+            ]
+          }
+          ```
+
+          When used with apply the above content will create or replace a target dataflow resource.
+
+        examples:
+        - name: Create or replace a dataflow 'mydataflow' associated with a profile 'myprofile' using a config file.
+          text: >
+            az iot ops dataflow apply -n mydataflow -p myprofile --in myinstance -g myresourcegroup --config-file /path/to/dataflow/config.json
+    """
+
+    helps[
+        "iot ops dataflow delete"
+    ] = """
+        type: command
+        short-summary: Delete a dataflow associated with a dataflow profile.
+
+        examples:
+        - name: Delete a dataflow 'mydataflow' associated with a profile 'myprofile'.
+          text: >
+            az iot ops dataflow delete -n mydataflow -p myprofile --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
         "iot ops dataflow show"
     ] = """
         type: command
