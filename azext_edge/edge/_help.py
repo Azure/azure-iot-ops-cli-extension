@@ -1064,6 +1064,11 @@ def load_iotops_help():
           text: >
             az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --tags a=b c=d
+        - name: Enable secret sync with custom role Id against the Key Vault.
+          text: >
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
+            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
+            --custom-role-id $CUSTOM_ROLE_ID
         - name: Usage of flag to skip Key Vault role assignments.
           text: >
             az iot ops secretsync enable --instance myinstance -g myresourcegroup
