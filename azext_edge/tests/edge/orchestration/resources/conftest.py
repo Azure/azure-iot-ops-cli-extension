@@ -27,6 +27,11 @@ CLUSTER_EXTENSIONS_URL_MATCH_RE = re.compile(
     r"providers\/Microsoft\.Kubernetes\/connectedClusters\/[a-zA-Z0-9]+\/providers\/"
     r"Microsoft\.KubernetesConfiguration\/extensions\/[a-zA-Z0-9]+(\?api-version=2023-05-01)?$"
 )
+ROLE_ASSIGNMENT_RP = "Microsoft.Authorization"
+ROLE_ASSIGNMENT_API_VERSION = "2022-04-01"
+
+ARG_API_VERSION = "2022-10-01"
+ARG_ENDPOINT = f"{BASE_URL}/providers/Microsoft.ResourceGraph/resources?api-version={ARG_API_VERSION}"
 
 
 def get_base_endpoint(
@@ -148,3 +153,17 @@ class RequestKPIs(NamedTuple):
         if not response_headers and response_body:
             response_headers = {"Content-Type": "application/json"}
         return response_code, response_headers, response_body
+
+
+def append_role_assignment_endpoint(
+    resource_endpoint: str, ra_name: Optional[str] = None, filter_query: Optional[str] = None
+) -> str:
+    endpoint = resource_endpoint.split("?")[0]
+    endpoint = f"{endpoint}/providers/Microsoft.Authorization/roleAssignments"
+    if ra_name:
+        endpoint += f"/{ra_name}"
+    endpoint += "?"
+    if filter_query:
+        endpoint += f"$filter={filter_query}&"
+
+    return f"{endpoint}api-version={ROLE_ASSIGNMENT_API_VERSION}"

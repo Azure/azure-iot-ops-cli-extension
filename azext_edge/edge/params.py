@@ -136,6 +136,12 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Show the generated resource config instead of invoking the API with it.",
         )
+        context.argument(
+            "custom_role_id",
+            options_list=["--custom-role-id"],
+            help="Fully qualified role definition Id in the following format: "
+            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
+        )
 
     with self.argument_context("iot ops identity") as context:
         context.argument(
@@ -913,12 +919,6 @@ def load_iotops_arguments(self, _):
             "storage_container_name",
             options_list=["--sa-container"],
             help="Storage account container name where schemas will be stored.",
-        )
-        context.argument(
-            "custom_role_id",
-            options_list=["--custom-role-id"],
-            help="Fully qualified role definition Id in the following format: "
-            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
         )
 
     with self.argument_context("iot ops connector opcua") as context:
