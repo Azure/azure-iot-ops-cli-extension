@@ -4,9 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 from random import randint
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
 import pytest
+from azure.cli.core.azclierror import InvalidArgumentValueError
 
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_ACS,
@@ -19,9 +20,11 @@ from azext_edge.edge.providers.orchestration.targets import (
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
     InitTargets,
-    parse_kvp_nargs,
+    get_default_acs_config,
     get_insecure_listener,
+    get_merged_acs_config,
     parse_feature_kvp_nargs,
+    parse_kvp_nargs,
 )
 
 from ...generators import generate_random_string
@@ -359,3 +362,50 @@ def assert_version_attr(
         assert variables["VERSIONS"][key] == version
     if train:
         assert variables["TRAINS"][key] == train
+
+
+@pytest.mark.parametrize(
+    "enable_fault_tolerance",
+    [True, False],
+)
+@pytest.mark.parametrize(
+    "acs_config",
+    [
+        None,
+        {"test": generate_random_string()},
+        {"feature.diskStorageClass": "default,local-path"},
+        {"feature.diskStorageClass": ""},
+    ],
+)
+def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optional[List[str]]):
+    targets = InitTargets(generate_random_string(), generate_random_string())
+    targets.enable_fault_tolerance = enable_fault_tolerance
+    targets.acs_config = acs_config
+
+    if (
+        acs_config
+        and acs_config.get("feature.diskStorageClass") is not None
+        and not acs_config.get("feature.diskStorageClass")
+    ):
+        with pytest.raises(
+            InvalidArgumentValueError,
+            match=r"^Provided ACS config does not contain a 'feature.diskStorageClass' value:",
+        ):
+            get_merged_acs_config(acs_config=acs_config, enable_fault_tolerance=enable_fault_tolerance)
+    else:
+        result = get_merged_acs_config(
+            acs_config=acs_config,
+            enable_fault_tolerance=enable_fault_tolerance,
+        )
+
+        default_config = get_default_acs_config(enable_fault_tolerance=enable_fault_tolerance)
+        for key in [
+            "edgeStorageConfiguration.create",
+            "feature.diskStorageClass",
+            "acstorConfiguration.create",
+            "acstorConfiguration.properties.diskMountPoint",
+            "test",
+        ]:
+            assert result.get(key) == (
+                acs_config.get(key, default_config.get(key)) if acs_config else default_config.get(key)
+            )

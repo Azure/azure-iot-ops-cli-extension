@@ -243,3 +243,15 @@ def mocked_validate_runtime_resource_ref(mocker):
     )
 
     yield patched
+
+
+@pytest.fixture
+def mocked_version_client(mocker):
+    mocked_client = mocker.patch("azext_edge.edge.providers.check.base.deployment.client.VersionApi")
+    yield mocked_client
+
+
+@pytest.fixture
+def mocked_storage_client(mocker):
+    mocked_client = mocker.patch("azext_edge.edge.providers.check.base.deployment.client.StorageV1Api")
+    yield mocked_client

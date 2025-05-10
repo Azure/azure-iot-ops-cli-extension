@@ -8,7 +8,7 @@ inputs:
   version:
     required: false
     description: 'K3S version string'
-    default: "v1.28.5+k3s1"
+    default: "v1.29.15+k3s1"
 runs:
   using: 'composite'
   steps:

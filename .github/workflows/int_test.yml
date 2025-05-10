@@ -90,7 +90,7 @@ permissions:
 
 env:
   RESOURCE_GROUP: "${{ inputs.resource-group }}"
-  K3S_VERSION: "v1.28.5+k3s1"
+  K3S_VERSION: "v1.29.15+k3s1"
   CUSTOM_LOCATIONS_OID: "${{ inputs.custom-locations-oid }}"
   KEEP_ALIVE: ${{ inputs.keep-on-failure }}
   RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args }}"
