@@ -8,7 +8,7 @@ import re
 from typing import Dict, Iterable, List, Optional
 
 from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
-from azure.core.exceptions import ResourceNotFoundError
+from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
 from knack.log import get_logger
 from rich import print
 from rich.console import Console
@@ -490,13 +490,10 @@ class Instances(Queryable):
                     role_def_id=role_def_id,
                     principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
                 )
-        except Exception as e:
-            import pdb
-
-            pdb.set_trace()
+        except HttpResponseError as http_exc:
             raise ValidationError(
                 get_user_msg_warn_ra(
-                    prefix=f"Role assignment failed with:\n{str(e)}.",
+                    prefix=f"Role assignment failure:\n{str(http_exc.error.message)}.",
                     principal_id=mi_user_assigned["properties"]["principalId"],
                     scope=keyvault_resource_id_container.resource_id,
                 )

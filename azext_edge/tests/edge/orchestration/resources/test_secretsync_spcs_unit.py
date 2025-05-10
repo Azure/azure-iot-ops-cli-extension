@@ -30,11 +30,17 @@ def get_spc_endpoint(resource_group_name: Optional[str] = None, spc_name: Option
 
 
 def get_mock_spc_record(
-    name: str, resource_group_name: str, location: Optional[str] = None, cl_name: Optional[str] = None
+    name: str,
+    resource_group_name: str,
+    location: Optional[str] = None,
+    cl_name: Optional[str] = None,
+    tags: Optional[dict] = None,
 ) -> dict:
     optional_kwargs = {}
     if cl_name:
         optional_kwargs["custom_location_name"] = cl_name
+    if tags:
+        optional_kwargs["tags"] = tags
     record = get_mock_resource(
         name=name,
         resource_provider=SECRETSYNC_RP,
