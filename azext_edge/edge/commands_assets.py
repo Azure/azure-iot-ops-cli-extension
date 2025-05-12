@@ -97,6 +97,14 @@ def delete_asset(
     )
 
 
+# TODO: add in once GA
+def list_assets(
+    cmd,
+    resource_group_name: str = None,
+) -> List[dict]:
+    return Assets(cmd).list(resource_group_name=resource_group_name)
+
+
 def query_assets(
     cmd,
     asset_name: Optional[str] = None,

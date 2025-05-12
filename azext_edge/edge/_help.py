@@ -1452,13 +1452,6 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops namspace"
-    ] = """
-        type: group
-        short-summary: Device Registry Namespaces management.
-    """
-
-    helps[
         "iot ops schema"
     ] = """
         type: group

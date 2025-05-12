@@ -156,6 +156,16 @@ def delete_asset_endpoint_profile(
     )
 
 
+# TODO: add in once GA
+def list_asset_endpoint_profiles(
+    cmd,
+    resource_group_name: str,
+) -> dict:
+    return AssetEndpointProfiles(cmd).list(
+        resource_group_name=resource_group_name
+    )
+
+
 def query_asset_endpoint_profiles(
     cmd,
     asset_endpoint_profile_name: Optional[str] = None,
