@@ -331,7 +331,7 @@ class DataFlows:
         if not is_source_local_mqtt and not is_destination_local_mqtt:
             raise InvalidArgumentValueError(
                 "Either source or destination endpoint must be an Azure IoT Operations Local "
-                f"MQTT endpoint with 'host' containing '{LOCAL_MQTT_HOST_PREFIX}'."
+                f"MQTT endpoint with the 'host' containing '{LOCAL_MQTT_HOST_PREFIX}'."
             )
 
     def _process_existing_endpoint(
