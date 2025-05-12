@@ -438,5 +438,3 @@ jobs:
         if: ${{ always() }}
         run: |
           az resource delete -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
-          az resource delete -v --id ${{ steps.env_out.outputs.STORAGE_ID }} --verbose
-          az resource delete -v --id ${{ steps.env_out.outputs.SCHEMA_REGISTRY_ID }} --verbose
