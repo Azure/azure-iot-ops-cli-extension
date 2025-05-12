@@ -315,7 +315,7 @@ class DataFlows:
             DataflowEndpointType.LOCALSTORAGE.value,
         ] and not schema_ref:
             raise InvalidArgumentValueError(
-                f"schemaRef' is required for destination endpoint '{destination_endpoint_type}' type."
+                f"'schemaRef' is required for destination endpoint '{destination_endpoint_type}' type."
             )
 
         # validate at least one of source and destination endpoint

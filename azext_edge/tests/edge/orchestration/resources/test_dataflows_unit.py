@@ -408,7 +408,7 @@ def test_dataflow_apply(mocked_cmd, mocked_responses: responses, mocked_get_file
                 ),
             },
             InvalidArgumentValueError,
-            "'schemaRef' is required for dataflow due to destination endpoint 'LocalStorage' type.",
+            "'schemaRef' is required for destination endpoint 'LocalStorage' type.",
         ),
         # At least one of source and destination endpoint must have host with "aio-broker" that is MQTT endpoint
         (
@@ -434,8 +434,8 @@ def test_dataflow_apply(mocked_cmd, mocked_responses: responses, mocked_get_file
                 ),
             },
             InvalidArgumentValueError,
-            "Either source or destination endpoint must be Azure IoT Operations "
-            "Local MQTT endpoint with host containing 'aio-broker'.",
+            "Either source or destination endpoint must be an Azure IoT Operations "
+            "Local MQTT endpoint with the 'host' containing 'aio-broker'.",
         ),
         (
             {
@@ -460,8 +460,8 @@ def test_dataflow_apply(mocked_cmd, mocked_responses: responses, mocked_get_file
                 ),
             },
             InvalidArgumentValueError,
-            "Either source or destination endpoint must be Azure IoT Operations "
-            "Local MQTT endpoint with host containing 'aio-broker'.",
+            "Either source or destination endpoint must be an Azure IoT Operations "
+            "Local MQTT endpoint with the 'host' containing 'aio-broker'.",
         ),
     ],
 )
