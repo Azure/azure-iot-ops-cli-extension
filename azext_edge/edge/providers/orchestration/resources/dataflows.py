@@ -265,7 +265,7 @@ class DataFlows:
         operations = dataflow_config.get("operations", [])
 
         # get source endpoint
-        source_endpoint_obj = self._process_exist_endpoint(
+        source_endpoint_obj = self._process_existing_endpoint(
             operations=operations,
             instance_name=instance_name,
             resource_group_name=resource_group_name,
@@ -282,7 +282,7 @@ class DataFlows:
                 f"'{source_endpoint_type}' is not a valid type for source dataflow endpoint."
             )
 
-        # when Kafka endpoint, validate consumer group id
+        # if Kafka endpoint, validate consumer group id
         if source_endpoint_type == DataflowEndpointType.KAFKA.value:
             group_id = source_endpoint_obj.get("properties", {}).get("kafkaSettings", {}).get("consumerGroupId", "")
             if not group_id:
@@ -291,7 +291,7 @@ class DataFlows:
                 )
 
         # get destination endpoint
-        desination_endpoint_obj = self._process_exist_endpoint(
+        desination_endpoint_obj = self._process_existing_endpoint(
             operations=operations,
             instance_name=instance_name,
             resource_group_name=resource_group_name,
@@ -315,7 +315,7 @@ class DataFlows:
             DataflowEndpointType.LOCALSTORAGE.value,
         ] and not schema_ref:
             raise InvalidArgumentValueError(
-                f"'schemaRef' is required for dataflow due to destination endpoint '{destination_endpoint_type}' type."
+                f"schemaRef' is required for destination endpoint '{destination_endpoint_type}' type."
             )
 
         # validate at least one of source and destination endpoint
@@ -330,11 +330,11 @@ class DataFlows:
             destination_endpoint_type == DataflowEndpointType.MQTT.value
         if not is_source_local_mqtt and not is_destination_local_mqtt:
             raise InvalidArgumentValueError(
-                "Either source or destination endpoint must be Azure IoT Operations Local "
-                f"MQTT endpoint with host containing '{LOCAL_MQTT_HOST_PREFIX}'."
+                "Either source or destination endpoint must be an Azure IoT Operations Local "
+                f"MQTT endpoint with 'host' containing '{LOCAL_MQTT_HOST_PREFIX}'."
             )
 
-    def _process_exist_endpoint(
+    def _process_existing_endpoint(
         self,
         operations: list,
         instance_name: str,
