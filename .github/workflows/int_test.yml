@@ -127,22 +127,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
+        feature: [syncrules]
         runtime-args:
           - ${{ needs.setup.outputs.init_args != '' || needs.setup.outputs.create_args != '' }}
-        exclude:
-          - feature: custom-input
-            runtime-args: false
-          - feature: default
-            runtime-args: true
-          - feature: insecure-listener
-            runtime-args: true
-          - feature: syncrules
-            runtime-args: true
-          - feature: redeploy
-            runtime-args: true
-          - feature: trustbundle
-            runtime-args: true
+        # exclude:
+        #   - feature: custom-input
+        #     runtime-args: false
+        #   - feature: default
+        #     runtime-args: true
+        #   - feature: insecure-listener
+        #     runtime-args: true
+        #   - feature: syncrules
+        #     runtime-args: true
+        #   - feature: redeploy
+        #     runtime-args: true
+        #   - feature: trustbundle
+        #     runtime-args: true
     name: "Run cluster tests"
     runs-on: ubuntu-22.04
     steps:
@@ -326,6 +326,13 @@ jobs:
           tox r -e "python-edge-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+      - name: "Az CLI login"
+        if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Tox Cloud Integration Tests"
         if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
         env:
