@@ -420,14 +420,14 @@ def clone_instance(
     summary_mode: Optional[str] = None,
     to_dir: Optional[str] = None,
     template_mode: Optional[str] = None,
-    to_instance_name: Optional[str] = None,
+    to_cluster_params: Optional[List[str]] = None,
     to_cluster_id: Optional[str] = None,
     use_self_hosted_issuer: Optional[bool] = None,
     linked_base_uri: Optional[str] = None,
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
     force: Optional[bool] = None,
-) -> dict:
+):
     from .providers.orchestration.clone import clone_instance
 
     return clone_instance(
@@ -437,7 +437,7 @@ def clone_instance(
         summary_mode=summary_mode,
         to_dir=to_dir,
         template_mode=template_mode,
-        to_instance_name=to_instance_name,
+        to_cluster_params=to_cluster_params,
         to_cluster_id=to_cluster_id,
         use_self_hosted_issuer=use_self_hosted_issuer,
         linked_base_uri=linked_base_uri,

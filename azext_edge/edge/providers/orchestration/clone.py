@@ -26,7 +26,9 @@ from rich.table import Table, box
 from ....constants import VERSION as CLI_VERSION
 from ...util import (
     chunk_list,
+    parse_kvp_nargs,
     should_continue_prompt,
+    str_to_bool,
     to_safe_filename,
 )
 from ...util.az_client import (
@@ -47,12 +49,9 @@ from .common import (
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
 )
-from .common import (
-    CloneSummaryMode as SummaryMode,
-)
-from .common import (
-    CloneTemplateMode as TemplateMode,
-)
+from .common import CloneSummaryMode as SummaryMode
+from .common import CloneTemplateMode as TemplateMode
+from .common import CloneTemplateParams as TemplateParams
 from .connected_cluster import ConnectedCluster
 from .resources import Instances
 from .resources.instances import (
@@ -93,17 +92,15 @@ class StateResourceKey(Enum):
     FEDERATE = "identityFederation"
 
 
-class TemplateParams(Enum):
-    INSTANCE_NAME = "instanceName"
-    CLUSTER_NAME = "clusterName"
-    CLUSTER_NAMESPACE = "clusterNamespace"
-    CUSTOM_LOCATION_NAME = "customLocationName"
-    OPS_EXTENSION_NAME = "opsExtensionName"
-    SUBSCRIPTION = "subscription"
-    RESOURCEGROUP = "resourceGroup"
-    SCHEMA_REGISTRY_ID = "schemaRegistryId"
+TEMPLATE_PARAMS_SET = {m.value for m in TemplateParams}
+
+
+class NestedTemplateParams(Enum):
+    """
+    These params are not exposed with the root deployment.
+    """
+
     PRINCIPAL_ID = "principalId"
-    RESOURCE_SLUG = "resourceSlug"
 
 
 TEMPLATE_EXPRESSION_MAP = {
@@ -126,6 +123,9 @@ TEMPLATE_EXPRESSION_MAP = {
     ),
     "opsExtensionName": f"[parameters('{TemplateParams.OPS_EXTENSION_NAME.value}')]",
     "schemaRegistryId": f"[parameters('{TemplateParams.SCHEMA_REGISTRY_ID.value}')]",
+    # TODO: Decide on keys being enum members/str/alt
+    TemplateParams.LOCATION: f"[parameters('{TemplateParams.LOCATION.value}')]",
+    TemplateParams.APPLY_ROLE_ASSIGNMENTS: f"[parameters('{TemplateParams.APPLY_ROLE_ASSIGNMENTS.value}')]",
 }
 
 
@@ -184,6 +184,7 @@ class DeploymentContainer:
         depends_on: Optional[Union[Iterable[str], str]] = None,
         resource_group: Optional[str] = None,
         subscription: Optional[str] = None,
+        condition: Optional[str] = None,
     ):
         self.name = name
         self.rcontainer_map: Dict[str, "ResourceContainer"] = {}
@@ -194,6 +195,7 @@ class DeploymentContainer:
             self.depends_on = {self.depends_on}
         self.resource_group = resource_group
         self.subscription = subscription
+        self.condition = condition
 
     def add_resources(
         self,
@@ -242,6 +244,8 @@ class DeploymentContainer:
             # TODO: verify
             # result["subscription"] = self.subscription
             pass
+        if self.condition:
+            result["condition"] = self.condition
         if self.parameters:
             input_param_map = {}
             template_param_map = {}
@@ -314,6 +318,10 @@ class ResourceContainer:
         if "extendedLocation" in self.resource_state:
             self.resource_state["extendedLocation"]["name"] = TEMPLATE_EXPRESSION_MAP["customLocationId"]
 
+    def _apply_location_ref(self):
+        if "location" in self.resource_state:
+            self.resource_state["location"] = TEMPLATE_EXPRESSION_MAP[TemplateParams.LOCATION]
+
     def _apply_nested_name(self):
         def _extract_suffix(path: str) -> str:
             return "/" + path.partition("/")[2]
@@ -339,6 +347,7 @@ class ResourceContainer:
             self._apply_nested_name()
 
         self._apply_cl_ref()
+        self._apply_location_ref()
         self._prune_identity()
         self._prune_resource()
 
@@ -464,7 +473,7 @@ class InstanceRestore:
 
     def deploy(
         self,
-        instance_name: Optional[str] = None,
+        to_cluster_params: Optional[dict] = None,
         use_self_hosted_issuer: Optional[bool] = None,
     ):
         if not self.connected_cluster.connected:
@@ -473,10 +482,10 @@ class InstanceRestore:
         parameters = {
             "clusterName": {"value": self.cluster_name},
         }
-        if instance_name:
-            parameters["instanceName"] = {"value": instance_name}
-        deployment_name = default_bundle_name(self.instance_record["name"])
+        if to_cluster_params:
+            parameters.update(to_cluster_params)
 
+        deployment_name = default_bundle_name(self.instance_record["name"])
         DEFAULT_CONSOLE.print()
 
         deployment_work = []
@@ -525,7 +534,7 @@ def clone_instance(
     summary_mode: Optional[str] = None,
     to_dir: Optional[str] = None,
     template_mode: Optional[str] = None,
-    to_instance_name: Optional[str] = None,
+    to_cluster_params: Optional[List[str]] = None,
     to_cluster_id: Optional[str] = None,
     use_self_hosted_issuer: Optional[bool] = None,
     linked_base_uri: Optional[str] = None,
@@ -539,6 +548,9 @@ def clone_instance(
         if not is_valid_resource_id(to_cluster_id):
             raise ValidationError(f"Invalid resource Id: {to_cluster_id}")
         parsed_cluster_id = parse_resource_id(to_cluster_id)
+
+    if to_cluster_params:
+        to_cluster_params = process_to_cluster_params(to_cluster_params)
 
     clone_manager = CloneManager(
         cmd=cmd,
@@ -572,7 +584,7 @@ def clone_instance(
         restore_client = clone_state.get_restore_client(
             parsed_cluster_id=parsed_cluster_id, template_mode=template_mode, no_progress=no_progress
         )
-        restore_client.deploy(instance_name=to_instance_name, use_self_hosted_issuer=use_self_hosted_issuer)
+        restore_client.deploy(to_cluster_params=to_cluster_params, use_self_hosted_issuer=use_self_hosted_issuer)
 
 
 def render_clone_table(
@@ -595,7 +607,7 @@ def render_clone_table(
     DEFAULT_CONSOLE.print(table)
 
     if bundle_path:
-        DEFAULT_CONSOLE.print(f"State will be saved to:\n-> {bundle_path}\n")
+        DEFAULT_CONSOLE.print(f"State will be saved to:\n-> {bundle_path}.json\n")
         if clone_state.user_assigned_mis and not parsed_cluster_id:
             DEFAULT_CONSOLE.print(
                 ":exclamation: Credential federation of user-assigned managed "
@@ -674,6 +686,7 @@ class CloneManager:
     """
     Encompasses the components for analyzing an instance and preparing it for cloning.
     """
+
     def __init__(
         self,
         cmd,
@@ -787,7 +800,9 @@ class CloneManager:
                 ),
             )
         )
-
+        self.parameter_map.update(
+            build_parameter(name=TemplateParams.LOCATION.value, default=self.instance_record["location"])
+        )
         self.parameter_map.update(
             build_parameter(
                 name=TemplateParams.RESOURCE_SLUG.value,
@@ -795,6 +810,25 @@ class CloneManager:
                     "[take(uniqueString(resourceGroup().id, "
                     "parameters('clusterName'), parameters('clusterNamespace')), 5)]"
                 ),
+            )
+        )
+        parsed_sr_id = parse_resource_id(self.instance_record["properties"]["schemaRegistryRef"]["resourceId"])
+        self.parameter_map.update(
+            build_parameter(
+                name=TemplateParams.SCHEMA_REGISTRY_ID.value,
+                type="object",
+                default={
+                    "name": parsed_sr_id["name"],
+                    "resourceGroup": parsed_sr_id["resource_group"],
+                    "subscription": parsed_sr_id["subscription"],
+                },
+            )
+        )
+        self.parameter_map.update(
+            build_parameter(
+                name=TemplateParams.APPLY_ROLE_ASSIGNMENTS.value,
+                type="bool",
+                default=True,
             )
         )
 
@@ -892,25 +926,41 @@ class CloneManager:
             config={"apply_nested_name": False},
             depends_on=cl_monikers,
         )
+
+        instance_copy = deepcopy(self.instance_record)
+        # A features mode should be removed if empty string or None.
+        features: Dict[str, Union[dict, str]] = instance_copy["properties"].get("features", {})
+        for f in features:
+            if "mode" in features[f] and not features[f]["mode"]:
+                del features[f]["mode"]
+
+        schema_registry_ref = instance_copy["properties"].get("schemaRegistryRef", {})
+        if schema_registry_ref:
+            schema_registry_ref["resourceId"] = (
+                "[resourceId(parameters('schemaRegistryId').subscription, "
+                "parameters('schemaRegistryId').resourceGroup, "
+                "'Microsoft.DeviceRegistry/schemaRegistries', parameters('schemaRegistryId').name)]"
+            )
+
         self._add_resource(
             key=StateResourceKey.INSTANCE,
             api_version=api_version,
-            data=deepcopy(self.instance_record),
+            data=instance_copy,
             depends_on=StateResourceKey.CL,
         )
         nested_params = {
             **build_parameter(name=TemplateParams.CLUSTER_NAME.value),
             **build_parameter(name=TemplateParams.INSTANCE_NAME.value),
             **build_parameter(
-                name=TemplateParams.PRINCIPAL_ID.value,
+                name=NestedTemplateParams.PRINCIPAL_ID.value,
                 value="[reference('iotOperations', '2023-05-01', 'Full').identity.principalId]",
             ),
             **build_parameter(
                 name=TemplateParams.SCHEMA_REGISTRY_ID.value,
-                value=self.instance_record["properties"]["schemaRegistryRef"]["resourceId"],
+                type="object",
+                value=TEMPLATE_EXPRESSION_MAP["schemaRegistryId"],
             ),
         }
-        parsed_sr_id = parse_resource_id(self.instance_record["properties"]["schemaRegistryRef"]["resourceId"])
         # Providing resource_group means a separate deployment to that resource group.
         self._add_deployment(
             key=StateResourceKey.ROLE_ASSIGNMENT,
@@ -918,8 +968,9 @@ class CloneManager:
             data_iter=[get_role_assignment()],
             depends_on=EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS],
             parameters=nested_params,
-            resource_group=parsed_sr_id["resource_group"],
-            subscription=parsed_sr_id["subscription"],
+            resource_group="[parameters('schemaRegistryId').resourceGroup]",
+            subscription="[parameters('schemaRegistryId').subscription]",
+            condition=TEMPLATE_EXPRESSION_MAP[TemplateParams.APPLY_ROLE_ASSIGNMENTS],
         )
 
     def _analyze_instance_resources(self):
@@ -1048,6 +1099,7 @@ class CloneManager:
     def _analyze_assets(self):
         nested_params = {
             **build_parameter(name=TemplateParams.CUSTOM_LOCATION_NAME.value),
+            **build_parameter(name=TemplateParams.LOCATION.value),
         }
         instance_resource_id_expr = get_resource_id_by_param(
             "microsoft.iotoperations/instances", TemplateParams.INSTANCE_NAME
@@ -1085,6 +1137,7 @@ class CloneManager:
     def _analyze_secretsync(self):
         nested_params = {
             **build_parameter(name=TemplateParams.CUSTOM_LOCATION_NAME.value),
+            **build_parameter(name=TemplateParams.LOCATION.value),
         }
         ssc_client = self.instances.ssc_mgmt_client
         ssc_api_version = ssc_client._config.api_version
@@ -1155,6 +1208,7 @@ class CloneManager:
         parameters: Optional[dict] = None,
         resource_group: Optional[str] = None,
         subscription: Optional[str] = None,
+        condition: Optional[str] = None,
     ):
         data_iter = list(data_iter)
         if data_iter:
@@ -1171,6 +1225,7 @@ class CloneManager:
                     parameters=parameters,
                     resource_group=resource_group,
                     subscription=subscription,
+                    condition=condition,
                 )
                 deployment_container.add_resources(
                     key=key,
@@ -1211,7 +1266,6 @@ class TemplateContent:
             "microsoft.deviceregistry/assets": 0,
             "microsoft.deviceregistry/assetendpointprofiles": 0,
         }
-        self.copy_params = {"clusterName", "customLocationName", "instanceName"}
 
     @property
     def content(self) -> dict:
@@ -1236,8 +1290,8 @@ class TemplateContent:
             if nested_type not in self.linked_type_map:
                 continue
 
-            for param in self.copy_params:
-                resources[key]["properties"]["template"]["parameters"][param] = parameters[param]
+            # TODO: Bring back efficient parameter usage for linked templates.
+            resources[key]["properties"]["template"]["parameters"] = parameters
 
             result.append(resources[key]["properties"].pop("template"))
             del resources[key]
@@ -1414,6 +1468,30 @@ def build_parameter(
     return result
 
 
+def process_to_cluster_params(to_cluster_params: Optional[List[str]]) -> dict:
+    params = {}
+    kvp_map = parse_kvp_nargs(to_cluster_params)
+    for k in kvp_map:
+        if k not in TEMPLATE_PARAMS_SET:
+            raise ValidationError(f"Invalid parameter '{k}'. The following set is supported {TEMPLATE_PARAMS_SET}.")
+        if k == TemplateParams.SCHEMA_REGISTRY_ID.value:
+            if not is_valid_resource_id(kvp_map[k]):
+                raise ValidationError(f"Invalid resource Id '{kvp_map[k]}'.")
+            sr_resource_id = parse_resource_id(kvp_map[k])
+            kvp_map[k] = {
+                "name": sr_resource_id["name"],
+                "resourceGroup": sr_resource_id["resource_group"],
+                "subscription": sr_resource_id["subscription"],
+            }
+        if k == TemplateParams.APPLY_ROLE_ASSIGNMENTS.value:
+            try:
+                kvp_map[k] = str_to_bool(kvp_map[k])
+            except ValueError as ve:
+                raise ValidationError(str(ve))
+        params[k] = {"value": kvp_map[k]}
+    return params
+
+
 def get_role_assignment():
     return {
         "type": "Microsoft.Authorization/roleAssignments",
@@ -1421,7 +1499,10 @@ def get_role_assignment():
             f"[guid(parameters('{TemplateParams.INSTANCE_NAME.value}'), "
             f"parameters('{TemplateParams.CLUSTER_NAME.value}'), parameters('principalId'), resourceGroup().id)]"
         ),
-        "scope": f"[parameters('{TemplateParams.SCHEMA_REGISTRY_ID.value}')]",
+        "scope": (
+            "[resourceId(parameters('schemaRegistryId').subscription, parameters('schemaRegistryId').resourceGroup, "
+            "'Microsoft.DeviceRegistry/schemaRegistries', parameters('schemaRegistryId').name)]"
+        ),
         "properties": {
             "roleDefinitionId": (
                 f"[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '{CONTRIBUTOR_ROLE_ID}')]"

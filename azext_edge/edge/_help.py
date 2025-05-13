@@ -209,6 +209,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
             "serviceType": "LoadBalancer",
             "ports": [
@@ -233,6 +234,7 @@ def load_iotops_help():
                 }
             ]
           }
+          ```
 
           When used with apply the above content will create or replace a target listener
           with a two port configuration.
@@ -338,6 +340,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
               "authenticationMethods": [
                   {
@@ -393,6 +396,7 @@ def load_iotops_help():
                   }
               ]
           }
+          ```
 
           When used with apply the above content will create or replace a target authentication
           resource configured with three authn methods.
@@ -493,6 +497,7 @@ def load_iotops_help():
         long-summary: |
           An example of the config file format is as follows:
 
+          ```
           {
               "authorizationPolicies": {
                   "cache": "Enabled",
@@ -532,6 +537,7 @@ def load_iotops_help():
                   ]
               }
           }
+          ```
 
           When used with apply the above content will create or replace a target authorization
           resource configured with a single authz rule.
@@ -586,6 +592,87 @@ def load_iotops_help():
     ] = """
         type: group
         short-summary: Dataflow management.
+    """
+
+    helps[
+        "iot ops dataflow apply"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow associated with a dataflow profile.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          ```
+          {
+            "mode": "Enabled",
+            "operations": [
+              {
+                "operationType": "Source",
+                "sourceSettings": {
+                  "endpointRef": "myenpoint1",
+                  "assetRef": "",
+                  "serializationFormat": "Json",
+                  "schemaRef": "myschema1",
+                  "dataSources": [
+                    "testfrom"
+                  ]
+                }
+              },
+              {
+                "operationType": "BuiltInTransformation",
+                "builtInTransformationSettings": {
+                  "serializationFormat": "Json",
+                  "datasets": [],
+                  "filter": [
+                    {
+                      "type": "Filter",
+                      "description": "",
+                      "inputs": [
+                        "$metadata.user_property.value"
+                      ],
+                      "expression": "$1 > 100"
+                    }
+                  ],
+                  "map": [
+                    {
+                      "type": "PassThrough",
+                      "inputs": [
+                        "*"
+                      ],
+                      "output": "*"
+                    }
+                  ]
+                }
+              },
+              {
+                "operationType": "Destination",
+                "destinationSettings": {
+                  "endpointRef": "myenpoint2",
+                  "dataDestination": "test"
+                }
+              }
+            ]
+          }
+          ```
+
+          When used with apply the above content will create or replace a target dataflow resource.
+
+        examples:
+        - name: Create or replace a dataflow 'mydataflow' associated with a profile 'myprofile' using a config file.
+          text: >
+            az iot ops dataflow apply -n mydataflow -p myprofile --in myinstance -g myresourcegroup --config-file /path/to/dataflow/config.json
+    """
+
+    helps[
+        "iot ops dataflow delete"
+    ] = """
+        type: command
+        short-summary: Delete a dataflow associated with a dataflow profile.
+
+        examples:
+        - name: Delete a dataflow 'mydataflow' associated with a profile 'myprofile'.
+          text: >
+            az iot ops dataflow delete -n mydataflow -p myprofile --in mycluster-ops-instance -g myresourcegroup
     """
 
     helps[
@@ -644,10 +731,114 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow profile create"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow profile.
+
+        examples:
+        - name: Create a dataflow profile in the instance 'mycluster-ops-instance' with default properties.
+          text: >
+            az iot ops dataflow profile create -n myprofile --in mycluster-ops-instance -g myresourcegroup
+        - name: Create a dataflow profile in the instance 'mycluster-ops-instance' with 2 profile instances.
+          text: >
+            az iot ops dataflow profile create -n myprofile --in mycluster-ops-instance -g myresourcegroup --profile-instances 2
+    """
+
+    helps[
+        "iot ops dataflow profile update"
+    ] = """
+        type: command
+        short-summary: Update a dataflow profile.
+
+        examples:
+        - name: Update the log level of the dataflow profile 'myprofile' to 'debug'.
+          text: >
+            az iot ops dataflow profile update -n myprofile --in mycluster-ops-instance -g myresourcegroup --log-level debug
+    """
+
+    helps[
+        "iot ops dataflow profile delete"
+    ] = """
+        type: command
+        short-summary: Delete a dataflow profile.
+        long-summary: Deleting a dataflow profile will also delete associated dataflows.
+
+        examples:
+        - name: Delete the dataflow profile 'myprofile' in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops dataflow profile delete -n myprofile --in mycluster-ops-instance -g myresourcegroup
+        - name: Skip the delete confirmation prompt while deleting the dataflow profile 'myprofile' in the instance 'mycluster-ops-instance'.
+          text: >
+            az iot ops dataflow profile delete -n myprofile --in mycluster-ops-instance -g myresourcegroup -y
+    """
+
+    helps[
         "iot ops dataflow endpoint"
     ] = """
         type: group
         short-summary: Dataflow endpoint management.
+    """
+
+    helps[
+        "iot ops dataflow endpoint apply"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource.
+        long-summary: |
+          An example of the config file format is as follows:
+
+          ```
+          {
+            "endpointType": "Kafka",
+            "kafkaSettings": {
+              "authentication": {
+                "method": "SystemAssignedManagedIdentity",
+                "systemAssignedManagedIdentitySettings": {
+                  "audience": "aio-internal"
+                }
+              },
+              "batching": {
+                "latencyMs": 5,
+                "maxBytes": 1000000,
+                "maxMessages": 100000,
+                "mode": "Enabled"
+              },
+              "cloudEventAttributes": "Propagate",
+              "compression": "None",
+              "copyMqttProperties": "Disabled",
+              "host": "test.servicebus.windows.net:9093",
+              "kafkaAcks": "All",
+              "partitionStrategy": "Default",
+              "tls": {
+                "mode": "Enabled"
+              }
+            },
+          }
+          ```
+
+          When used with apply the above content will create or replace a target kafka dataflow endpoint
+          resource configured with system assigned managed identity authentication method.
+
+        examples:
+        - name: Create or replace an dataflow endpoint resource using a config file.
+          text: >
+            az iot ops dataflow endpoint apply -n dataflowep --in myinstance -g myresourcegroup --config-file /path/to/dataflowep/config.json
+    """
+
+    helps[
+        "iot ops dataflow endpoint delete"
+    ] = """
+        type: command
+        short-summary: Delete a dataflow endpoint resource.
+
+        examples:
+        - name: Delete the dataflow endpoint resource called 'dataflowep'.
+          text: >
+            az iot ops dataflow endpoint delete -n dataflowep --in myinstance -g myresourcegroup
+        - name: Same as prior example but skipping the confirmation prompt.
+          text: >
+            az iot ops dataflow endpoint delete -n dataflowep --in myinstance -g myresourcegroup -y
     """
 
     helps[
@@ -943,12 +1134,26 @@ def load_iotops_help():
             and role assignments (Key Vault Reader, Key Vault Secrets User) of the managed identity
             against the target Key Vault.
 
+            The flow starts with ensuring Key Vault role assignments, applying them if they don't exist.
+            An error will be raised if the role assignments cannot be made. If necessary a custom role
+            via --custom-role-id can be used in-place of the built-in roles. Or the --skip-ra flag can
+            be used to skip role assignments.
+
         examples:
         - name: Enable the target instance for Key Vault secret sync.
           text: >
             az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
-        - name: Same as prior example except flag to skip Key Vault role assignments.
+        - name: Enable secret sync and apply tags when creating the default secret provider class.
+          text: >
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
+            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --tags a=b c=d
+        - name: Enable secret sync with custom role Id against the Key Vault.
+          text: >
+            az iot ops secretsync enable --instance myinstance -g myresourcegroup
+            --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID
+            --custom-role-id $CUSTOM_ROLE_ID
+        - name: Usage of flag to skip Key Vault role assignments.
           text: >
             az iot ops secretsync enable --instance myinstance -g myresourcegroup
             --mi-user-assigned $UA_MI_RESOURCE_ID --kv-resource-id $KEYVAULT_RESOURCE_ID --skip-ra
@@ -1967,8 +2172,11 @@ def load_iotops_help():
         short-summary: Clone an instance.
         long-summary: |
           Clone analyzes an instance then reproduces it in an infrastructure-as-code
-          manner via ARM templates. The output of clone may be applied directly to another connected cluster,
-          and/or saved locally to use at another time (potentially with modification).
+          manner via ARM templates.
+
+          The output of clone may be applied directly to another connected
+          cluster (referred to as replication), and/or saved locally to use at another time
+          - potentially with modification.
 
           The clone definition being a generic ARM template, can be deployed via existing tools.
           See https://aka.ms/aio-clone-deploy for details.
@@ -1979,6 +2187,9 @@ def load_iotops_help():
         - name: Clone an instance to a desired connected cluster.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID
+        - name: Clone an instance to a desired connected cluster, with customized replication.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --param location=eastus
         - name: Clone an instance to a desired connected cluster, but splitting and serially applying asset related sub-deployments.
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID --mode linked
