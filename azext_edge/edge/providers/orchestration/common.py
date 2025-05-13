@@ -15,11 +15,14 @@ GRAPH_V1_SP_ENDPOINT = f"{GRAPH_V1_ENDPOINT}/servicePrincipals"
 
 CUSTOM_LOCATIONS_RP_APP_ID = "bc313c14-388c-4e7d-a58e-70017303ee3b"
 
+CONTRIBUTOR_ROLE_ID = "b24988ac-6180-42a0-ab88-20f7382dd24c"
+
 EXTENDED_LOCATION_ROLE_BINDING = "AzureArc-Microsoft.ExtendedLocation-RP-RoleBinding"
 ARC_CONFIG_MAP = "azure-clusterconfig"
 ARC_NAMESPACE = "azure-arc"
 
 AIO_MQTT_DEFAULT_CONFIG_MAP = "azure-iot-operations-aio-ca-trust-bundle"
+PROVISIONING_STATE_SUCCESS = "Succeeded"
 
 # Key Vault KPIs
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
@@ -148,6 +151,12 @@ class TlsKeyRotation(Enum):
     NEVER = "Never"
 
 
+class DataflowOperationType(Enum):
+    SOURCE = "Source"
+    TRANSFORMATION = "BuiltInTransformation"
+    DESTINATION = "Destination"
+
+
 class DataflowEndpointType(Enum):
     DATAEXPLORER = "DataExplorer"
     DATALAKESTORAGE = "DataLakeStorage"
@@ -258,19 +267,6 @@ DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
     },
 }
 
-# DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS = {
-#     DataflowEndpointType.DATAEXPLORER.value: ["database_name", "host"],
-#     DataflowEndpointType.DATALAKESTORAGE.value: ["host"],
-#     DataflowEndpointType.FABRICONELAKE.value: ["lakehouse_name", "workspace_name", "path_type", "host"],
-#     DataflowEndpointType.EVENTGRID.value: ["host"],
-#     DataflowEndpointType.FABRICREALTIME.value: ["host"],
-#     DataflowEndpointType.CUSTOMKAFKA.value: ["host"],
-#     DataflowEndpointType.LOCALSTORAGE.value: ["pvc_reference"],
-#     DataflowEndpointType.AIOLOCALMQTT.value: ["host"],
-#     DataflowEndpointType.EVENTGRID.value: ["host"],
-#     DataflowEndpointType.CUSTOMMQTT.value: ["host"],
-# }
-
 DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
     DataflowEndpointType.DATAEXPLORER.value: "dataExplorerSettings",
     DataflowEndpointType.DATALAKESTORAGE.value: "dataLakeStorageSettings",
@@ -284,14 +280,45 @@ DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
     DataflowEndpointType.CUSTOMMQTT.value: "mqttSettings",
 }
 
-# turn this into set
 AUTHENTICATION_TYPE_REQUIRED_PARAMS = {
     DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value: {},
-    DataflowEndpointAuthenticationType.USERASSIGNED.value: {"client_id", "tenant_id"},
+    DataflowEndpointAuthenticationType.USERASSIGNED.value: {"client_Id", "tenant_id"},
     DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value: {"audience"},
     DataflowEndpointAuthenticationType.X509.value: {"secret_name"},
     DataflowEndpointAuthenticationType.ANONYMOUS.value: {},
 }
 
+DATAFLOW_OPERATION_TYPE_SETTINGS = {
+    DataflowOperationType.SOURCE.value: "sourceSettings",
+    DataflowOperationType.TRANSFORMATION.value: "builtInTransformationSettings",
+    DataflowOperationType.DESTINATION.value: "destinationSettings",
+}
+
 
 X509_ISSUER_REF_KEYS = ["group", "kind", "name"]
+
+# Clone
+CLONE_INSTANCE_VERS_MAX = "1.2.0"
+CLONE_INSTANCE_VERS_MIN = "1.0.34"
+
+
+class CloneSummaryMode(Enum):
+    SIMPLE = "simple"
+    DETAILED = "detailed"
+
+
+class CloneTemplateMode(Enum):
+    NESTED = "nested"
+    LINKED = "linked"
+
+
+class CloneTemplateParams(Enum):
+    INSTANCE_NAME = "instanceName"
+    CLUSTER_NAME = "clusterName"
+    CLUSTER_NAMESPACE = "clusterNamespace"
+    CUSTOM_LOCATION_NAME = "customLocationName"
+    OPS_EXTENSION_NAME = "opsExtensionName"
+    SCHEMA_REGISTRY_ID = "schemaRegistryId"
+    RESOURCE_SLUG = "resourceSlug"
+    LOCATION = "location"
+    APPLY_ROLE_ASSIGNMENTS = "applyRoleAssignments"

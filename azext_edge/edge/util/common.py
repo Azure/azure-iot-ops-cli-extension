@@ -12,6 +12,7 @@ common: Defines common utility functions and components.
 import base64
 import json
 import logging
+import re
 from typing import Dict, List, Optional
 
 from knack.log import get_logger
@@ -253,3 +254,46 @@ def upsert_by_discriminator(initial: List[dict], disc_key: str, config: dict) ->
             return initial
     initial.append(config)
     return initial
+
+
+def chunk_list(data: list, chunk_len: int, data_size: int = 1024, size_unit: str = "kb") -> List[list]:
+    if size_unit.lower() == "mb":
+        data_size *= 1024
+
+    result = []
+    current_chunk = []
+
+    for item in data:
+        current_chunk.append(item)
+
+        serialized_size = len(json.dumps(current_chunk).encode("utf-8")) / 1024  # convert bytes to kb
+
+        if len(current_chunk) > chunk_len or serialized_size > data_size:
+            current_chunk.pop()
+            result.append(current_chunk)
+            current_chunk = [item]
+
+    if current_chunk:
+        result.append(current_chunk)
+
+    return result
+
+
+def to_safe_filename(name: str) -> str:
+    return re.sub(r"[^\w\-.]", "_", name).strip(".")
+
+
+def str_to_bool(s: str) -> bool:
+    """
+    Converts a string to a boolean value.
+    """
+    if not s:
+        raise ValueError("Boolean string requires a value. Use 'true' or 'false'.")
+
+    s_lower = s.lower()
+    if s_lower == "true":
+        return True
+    if s_lower == "false":
+        return False
+
+    raise ValueError(f"Invalid boolean string: {s}. Use 'true' or 'false'.")

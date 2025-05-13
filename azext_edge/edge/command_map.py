@@ -35,6 +35,7 @@ def load_iotops_commands(self, _):
         cmd_group.show_command("show", "show_instance")
         cmd_group.command("list", "list_instances")
         cmd_group.command("delete", "delete")
+        cmd_group.command("clone", "clone_instance", is_preview=True)
 
     with self.command_group(
         "iot ops identity",
@@ -114,6 +115,8 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_dataflow")
         cmd_group.command("list", "list_dataflows")
+        cmd_group.command("apply", "apply_dataflow")
+        cmd_group.command("delete", "delete_dataflow")
 
     with self.command_group(
         "iot ops dataflow profile",
@@ -121,6 +124,9 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.show_command("show", "show_dataflow_profile")
         cmd_group.command("list", "list_dataflow_profiles")
+        cmd_group.command("create", "create_dataflow_profile")
+        cmd_group.command("update", "update_dataflow_profile")
+        cmd_group.command("delete", "delete_dataflow_profile")
 
     with self.command_group(
         "iot ops dataflow endpoint",

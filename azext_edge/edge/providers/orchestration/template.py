@@ -54,7 +54,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.34.44.8038", "templateHash": "14730289139762308894"}
+            "_generator": {"name": "bicep", "version": "0.35.1.17967", "templateHash": "13596236932885288798"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -193,7 +193,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "_1.InstanceFeature": {
                 "type": "object",
                 "properties": {
-                    "mode": {"$ref": "#/definitions/_1.InstanceFeatureMode"},
+                    "mode": {"$ref": "#/definitions/_1.InstanceFeatureMode", "nullable": True},
                     "settings": {
                         "type": "object",
                         "properties": {},
@@ -254,7 +254,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"platform": "0.7.12", "secretStore": "0.8.2", "containerStorage": "2.4.0"},
+            "VERSIONS": {"platform": "0.7.20", "secretStore": "0.9.4", "containerStorage": "2.5.1"},
             "TRAINS": {"platform": "preview", "secretStore": "preview", "containerStorage": "stable"},
             "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arccontainerstorage-storage-pool')]",
             "nonFaultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'default,local-path')]",
@@ -362,7 +362,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.34.44.8038", "templateHash": "10538541707463554057"}
+            "_generator": {"name": "bicep", "version": "0.35.1.17967", "templateHash": "16837242519512011809"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -501,7 +501,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "_1.InstanceFeature": {
                 "type": "object",
                 "properties": {
-                    "mode": {"$ref": "#/definitions/_1.InstanceFeatureMode"},
+                    "mode": {"$ref": "#/definitions/_1.InstanceFeatureMode", "nullable": True},
                     "settings": {
                         "type": "object",
                         "properties": {},
@@ -579,8 +579,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "variables": {
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
-            "VERSIONS": {"iotOperations": "1.1.19"},
-            "TRAINS": {"iotOperations": "stable"},
+            "VERSIONS": {"iotOperations": "1.1.28"},
+            "TRAINS": {"iotOperations": "integration"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,

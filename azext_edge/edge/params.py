@@ -32,6 +32,9 @@ from .providers.orchestration.common import (
     TRUST_SETTING_KEYS,
     X509_ISSUER_REF_KEYS,
     AuthenticationSaslType,
+    CloneSummaryMode,
+    CloneTemplateMode,
+    CloneTemplateParams,
     ConfigSyncModeType,
     DataflowEndpointAuthenticationType,
     DataflowEndpointFabricPathType,
@@ -140,6 +143,12 @@ def load_iotops_arguments(self, _):
             options_list=["--show-config"],
             arg_type=get_three_state_flag(),
             help="Show the generated resource config instead of invoking the API with it.",
+        )
+        context.argument(
+            "custom_role_id",
+            options_list=["--custom-role-id"],
+            help="Fully qualified role definition Id in the following format: "
+            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
         )
 
     with self.argument_context("iot ops identity") as context:
@@ -280,6 +289,19 @@ def load_iotops_arguments(self, _):
             "profile_name",
             options_list=["--name", "-n"],
             help="Dataflow profile name.",
+        )
+        context.argument(
+            "profile_instances",
+            type=int,
+            options_list=["--profile-instances"],
+            help="The number of pods that run associated dataflows. Min value: 1, max value: 20."
+        )
+        context.argument(
+            "log_level",
+            options_list=["--log-level"],
+            help="The level of detail given in diagnostic logs. "
+            "Levels: 'error', 'warn', 'info', 'debug', 'trace', 'off'. "
+            "For advanced usage you can specify a comma-separated list of module=level pairs. "
         )
 
     with self.argument_context("iot ops dataflow endpoint") as context:
@@ -896,7 +918,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "custom_endpoint",
             options_list=["--custom-ep"],
-            help="Endpoint to use for the custom auth service. Format is 'https://.*'.",
+            help="Endpoint to use for the custom auth service. Format is `https://.*`.",
             arg_group="Custom",
         )
         context.argument(
@@ -1335,12 +1357,6 @@ def load_iotops_arguments(self, _):
             options_list=["--sa-container"],
             help="Storage account container name where schemas will be stored.",
         )
-        context.argument(
-            "custom_role_id",
-            options_list=["--custom-role-id"],
-            help="Fully qualified role definition Id in the following format: "
-            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
-        )
 
     with self.argument_context("iot ops connector opcua") as context:
         context.argument(
@@ -1463,4 +1479,69 @@ def load_iotops_arguments(self, _):
             options_list=["--content"],
             help="File path containing or inline content for the version.",
             arg_group=None,
+        )
+
+    with self.argument_context("iot ops clone") as context:
+        context.argument(
+            "summary_mode",
+            options_list=["--summary"],
+            arg_type=get_enum_type(CloneSummaryMode, default=CloneSummaryMode.SIMPLE.value),
+            help="Deployment summary option.",
+        )
+        context.argument(
+            "instance_name",
+            options_list=["--name", "-n"],
+            help="The model instance to clone.",
+        )
+        context.argument(
+            "resource_group_name",
+            options_list=["--resource-group", "-g"],
+            help="The resource group the model instance to clone resides in.",
+        )
+        context.argument(
+            "to_dir",
+            options_list=["--to-dir"],
+            help="The local directory the instance clone definitions will be stored in.",
+            arg_group="Local Target",
+        )
+        context.argument(
+            "template_mode",
+            options_list=["--mode"],
+            arg_type=get_enum_type(CloneTemplateMode, default=CloneTemplateMode.NESTED.value),
+            help="When mode 'nested' is used, sub-deployments will be self-contained in the root deployment. "
+            "When mode 'linked' is used, asset related sub-deployments will be split and stored as separate files "
+            "linked by the root deployment.",
+        )
+        context.argument(
+            "linked_base_uri",
+            options_list=["--base-uri"],
+            help="Base URI to use for template links. If not provided a relative path strategy will be used. "
+            "Relevant when --mode is set to 'linked'. "
+            "Example: `https://raw.githubusercontent.com/myorg/myproject/main/myclones/`.",
+            arg_group="Local Target",
+        )
+        context.argument(
+            "to_cluster_id",
+            options_list=["--to-cluster-id"],
+            help="The resource Id of the connected cluster the clone will be applied to.",
+            arg_group="Cluster Target",
+        )
+        context.argument(
+            "to_cluster_params",
+            options_list=["--param", "-p"],
+            nargs="+",
+            action="extend",
+            help="Parameter overrides when replicating the clone to a connected cluster. If omitted "
+            "default values from the model instance are used. Format is space-separated key=value pairs where the "
+            "key represents a clone definition parameter. The following keys can be set: "
+            f"{', '.join([m.value for m in CloneTemplateParams])}. Can be used one or more times.",
+            arg_group="Cluster Target",
+        )
+        context.argument(
+            "use_self_hosted_issuer",
+            options_list=["--self-hosted-issuer"],
+            arg_type=get_three_state_flag(),
+            help="Use the self-hosted oidc issuer for federation. Only applicable if "
+            "user-assigned managed identities are associated to the model instance.",
+            arg_group="Cluster Target",
         )
