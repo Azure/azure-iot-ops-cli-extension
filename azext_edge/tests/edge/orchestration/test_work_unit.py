@@ -125,9 +125,7 @@ class ServiceGenerator:
             responses.PUT,
         ]:
             if method not in omit_methods:
-                self.mocked_responses.add_callback(
-                    method=method, url=re.compile(r".*"), callback=self._handle_requests
-                )
+                self.mocked_responses.add_callback(method=method, url=re.compile(r".*"), callback=self._handle_requests)
         self._reset_call_map()
 
     def _reset_call_map(self):
@@ -368,6 +366,7 @@ def build_target_scenario(
         },
         "trust": {"userTrust": None, "settings": None},
         "enableFaultTolerance": None,
+        "check_cluster": None,
         "ensureLatest": None,
         "schemaRegistry": {
             "id": (
@@ -443,6 +442,7 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
             cluster_properties={"totalNodeCount": 3},
             enableFaultTolerance=True,
             trust={"userTrust": True},
+            check_cluster=True,
         ),
         build_target_scenario(
             cluster_properties={"connectivityStatus": "Disconnected"},
@@ -469,6 +469,9 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
             ),
             omit_http_methods=frozenset([responses.PUT]),
         ),
+        build_target_scenario(
+            check_cluster=True,
+        ),
     ],
 )
 def test_iot_ops_init(
@@ -476,6 +479,9 @@ def test_iot_ops_init(
     mocked_responses: responses,
     mocked_sleep: Mock,
     spy_work_displays: Dict[str, Mock],
+    mock_prechecks: Dict[str, Mock],
+    mocked_config: Mock,
+    mocked_verify_arc_cluster_config: Mock,
     target_scenario: dict,
 ):
     servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses)
@@ -496,6 +502,9 @@ def test_iot_ops_init(
     if target_scenario["ensureLatest"]:
         init_call_kwargs["ensure_latest"] = target_scenario["ensureLatest"]
 
+    if target_scenario["check_cluster"]:
+        init_call_kwargs["check_cluster"] = target_scenario["check_cluster"]
+
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
     if exc_meta:
         exc_meta: ExceptionMeta
@@ -512,6 +521,7 @@ def test_iot_ops_init(
     }
     assert_call_map(expected_call_count_map, servgen.call_map)
     assert_init_displays(spy_work_displays, target_scenario)
+    assert_cluster_prechecks(mock_prechecks, target_scenario)
 
     # TODO - @digimaun
     if target_scenario["noProgress"]:
@@ -547,6 +557,21 @@ def assert_init_deployment_body(body_str: str, target_scenario: dict):
     if target_scenario["enableFaultTolerance"]:
         expected_advanced_config["edgeStorageAccelerator"] = {"faultToleranceEnabled": True}
     assert parameters["advancedConfig"]["value"] == expected_advanced_config
+
+
+def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: dict):
+    check_cluster = target_scenario.get("check_cluster")
+    enable_fault_tolerance = target_scenario.get("enableFaultTolerance")
+
+    mock_validate_prechecks = mock_prechecks["validate_cluster_prechecks"]
+    mock_check_k8s_version = mock_prechecks["check_k8s_version"]
+    mock_check_nodes = mock_prechecks["check_nodes"]
+    mock_check_storage_classes = mock_prechecks["check_storage_classes"]
+
+    assert mock_validate_prechecks.call_count == (1 if check_cluster else 0)
+    assert mock_check_k8s_version.call_count == (1 if check_cluster else 0)
+    assert mock_check_nodes.call_count == (1 if check_cluster else 0)
+    assert mock_check_storage_classes.call_count == (1 if check_cluster and not enable_fault_tolerance else 0)
 
 
 @pytest.mark.parametrize(
