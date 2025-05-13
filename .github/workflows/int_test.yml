@@ -303,8 +303,8 @@ jobs:
           echo $storage_id
           registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n initreg${{ env.CLUSTER_NAME }} --rn initrn${{ env.CLUSTER_NAME }} --sa-resource-id $storage_id -o tsv --query id)
           echo $registry_id
-          echo "STORAGE_ID=$storage_id" >> $GITHUB_ENV
-          echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_ENV
+          echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
+          echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
       - name: "Tox INIT Integration Tests"
         env:
           AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
