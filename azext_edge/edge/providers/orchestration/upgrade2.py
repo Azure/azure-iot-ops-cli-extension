@@ -10,7 +10,6 @@ from uuid import uuid4
 
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
-from packaging import version
 from rich.console import Console
 from rich.json import JSON
 from rich.progress import (
@@ -23,6 +22,7 @@ from rich.progress import (
 from rich.table import Table, box
 
 from ...util import parse_kvp_nargs, should_continue_prompt
+from ...util.machinery import scoped_semver_import
 from .common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     EXTENSION_TYPE_OPS,
@@ -273,6 +273,7 @@ class ExtensionUpgradeState:
         self.override = override or ConfigOverride()
         self.config_delta = {}
         self.force = force
+        self.semver = scoped_semver_import()
 
     @property
     def current_version(self) -> Tuple[str, str]:
@@ -320,13 +321,14 @@ class ExtensionUpgradeState:
 
     def _has_delta_in_version(self) -> bool:
         return bool(self.override.version) or (
-            self.desired_version[0] and version.parse(self.desired_version[0]) > version.parse(self.current_version[0])
+            self.desired_version[0]
+            and self.semver.parse(self.desired_version[0]) > self.semver.parse(self.current_version[0])
         )
 
     def _has_delta_in_train(self) -> bool:
         return bool(self.override.train) or (
             self.desired_version[0]
-            and version.parse(self.desired_version[0]) >= version.parse(self.current_version[0])
+            and self.semver.parse(self.desired_version[0]) >= self.semver.parse(self.current_version[0])
             and not self.override.version
             and self.desired_version[1]
             and self.desired_version[1].lower() != self.current_version[1].lower()
@@ -344,7 +346,7 @@ class ExtensionUpgradeState:
     def _throw_on_downgrade(self):
         if self.force:
             return
-        if version.parse(self.desired_version[0]) < version.parse(self.current_version[0]):
+        if self.semver.parse(self.desired_version[0]) < self.semver.parse(self.current_version[0]):
             raise ValidationError(
                 f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
                 f"The desired {self.desired_version[0]} version is a downgrade which is not supported."

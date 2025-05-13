@@ -281,3 +281,19 @@ def chunk_list(data: list, chunk_len: int, data_size: int = 1024, size_unit: str
 
 def to_safe_filename(name: str) -> str:
     return re.sub(r"[^\w\-.]", "_", name).strip(".")
+
+
+def str_to_bool(s: str) -> bool:
+    """
+    Converts a string to a boolean value.
+    """
+    if not s:
+        raise ValueError("Boolean string requires a value. Use 'true' or 'false'.")
+
+    s_lower = s.lower()
+    if s_lower == "true":
+        return True
+    if s_lower == "false":
+        return False
+
+    raise ValueError(f"Invalid boolean string: {s}. Use 'true' or 'false'.")
