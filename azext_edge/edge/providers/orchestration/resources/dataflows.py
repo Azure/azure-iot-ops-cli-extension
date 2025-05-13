@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import os
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Iterable, Optional
 
 from knack.log import get_logger
 from rich.console import Console
@@ -87,6 +87,7 @@ class DataFlowEndpoints(Queryable):
         instance_name: str,
         resource_group_name: str,
         endpoint_type: DataflowEndpointType,
+        show_config: Optional[bool] = None,
         **kwargs
     ) -> dict:
         self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group_name)
@@ -135,6 +136,9 @@ class DataFlowEndpoints(Queryable):
             }
         }
 
+        if show_config:
+            return resource["properties"]
+
         with console.status("Working..."):
             poller = self.ops.begin_create_or_update(
                 resource_group_name=resource_group_name,
@@ -150,6 +154,7 @@ class DataFlowEndpoints(Queryable):
         instance_name: str,
         resource_group_name: str,
         endpoint_type: DataflowEndpointType,
+        show_config: Optional[bool] = None,
         **kwargs
     ) -> dict:
         self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group_name)
@@ -188,7 +193,8 @@ class DataFlowEndpoints(Queryable):
             "properties": original_endpoint["properties"],
         }
 
-        import pdb; pdb.set_trace()
+        if show_config:
+            return resource["properties"]
 
         with console.status("Working..."):
             poller = self.ops.begin_create_or_update(

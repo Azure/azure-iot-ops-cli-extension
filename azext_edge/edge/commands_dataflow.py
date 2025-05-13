@@ -52,26 +52,24 @@ def create_dataflow_endpoint_adx(
     scope: Optional[str] = None,
     audience: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    #TODO: Put kwargs directly in the function call
-    kwargs = {
-        "database_name": database_name,
-        "host": host,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "scope": scope,
-        "sami_audience": audience,
-        "latency": latency,
-        "message_count": message_count,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).create(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.DATAEXPLORER.value,
-        **kwargs
+        database_name=database_name,
+        host=host,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+        sami_audience=audience,
+        latency=latency,
+        message_count=message_count,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -89,6 +87,7 @@ def create_dataflow_endpoint_adls(
     scope: Optional[str] = None,
     audience: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
     kwargs = {
         "storage_account_name": storage_account_name,
@@ -107,7 +106,16 @@ def create_dataflow_endpoint_adls(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.DATALAKESTORAGE.value,
-        **kwargs
+        storage_account_name=storage_account_name,
+        at_secret_name=secret_name,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+        sami_audience=audience,
+        latency=latency,
+        message_count=message_count,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 def create_dataflow_endpoint_fabric_onelake(
