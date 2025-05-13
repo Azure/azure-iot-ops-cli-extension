@@ -326,13 +326,13 @@ jobs:
           tox r -e "python-edge-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
-      - name: "Az CLI login"
-        if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      # - name: "Az CLI login"
+      #   if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
+      #   uses: azure/login@v2
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Tox Cloud Integration Tests"
         if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
         env:
