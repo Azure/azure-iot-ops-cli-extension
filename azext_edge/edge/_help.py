@@ -1989,3 +1989,162 @@ def load_iotops_help():
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-dir . --no-progress -y
     """
+
+    helps[
+        "iot ops namespace"
+    ] = """
+        type: group
+        short-summary: Device Registry Namespaces management.
+        long-summary: |
+          Namespaces enable organizing your namespaced assets and devices.
+    """
+
+    helps[
+        "iot ops namespace create"
+    ] = """
+        type: command
+        short-summary: Create a Device Registry namespace.
+        long-summary: |
+          Enabled system identity is required for the namespace to function correctly.
+          Endpoints allow you to specify the destination for data flowing through the namespace.
+
+        examples:
+        - name: Create a namespace with minimal configuration
+          text: >
+            az iot ops namespace create -n myNamespace -g myResourceGroup
+
+        - name: Create a namespace with system-assigned managed identity enabled
+          text: >
+            az iot ops namespace create -n myNamespace -g myResourceGroup --system-identity
+
+        - name: Create a namespace with one Event Grid Topic endpoint named myTopic.
+          text: >
+            az iot ops namespace create -n myNamespace -g myResourceGroup
+            --endpoint id="/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName}"
+            name="myTopic"
+
+        - name: Create a namespace with multiple endpoints, custom location, and tags.
+                The default name of {resourceGroup}-{topicName} will be used for the endpoints.
+          text: >
+            az iot ops namespace create -n myNamespace -g myResourceGroup
+            --endpoint id="/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName1}"
+            "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName2}"
+            --location "eastus" --tags env=prod department=operations
+    """
+
+    helps[
+        "iot ops namespace delete"
+    ] = """
+        type: command
+        short-summary: Delete a Device Registry namespace.
+
+        examples:
+        - name: Delete a namespace
+          text: >
+            az iot ops namespace delete -n myNamespace -g myResourceGroup
+    """
+
+    helps[
+        "iot ops namespace show"
+    ] = """
+        type: command
+        short-summary: Show details of a Device Registry namespace.
+
+        examples:
+        - name: Show details of a namespace
+          text: >
+            az iot ops namespace show -n myNamespace -g myResourceGroup
+    """
+
+    helps[
+        "iot ops namespace list"
+    ] = """
+        type: command
+        short-summary: List Device Registry namespaces.
+
+        examples:
+        - name: List all namespaces in a resource group
+          text: >
+            az iot ops namespace list -g myResourceGroup
+
+        - name: List all namespaces in the current subscription
+          text: >
+            az iot ops namespace list
+    """
+
+    helps[
+        "iot ops namespace update"
+    ] = """
+        type: command
+        short-summary: Update a Device Registry namespace.
+        long-summary: |
+          Updates a namespace's properties including system-assigned managed identity and tags.
+
+        examples:
+        - name: Enable system-assigned managed identity for a namespace
+          text: >
+            az iot ops namespace update -n myNamespace -g myResourceGroup --system-identity
+
+        - name: Update tags for a namespace
+          text: >
+            az iot ops namespace update -n myNamespace -g myResourceGroup --tags env=test department=iot
+    """
+
+    helps[
+        "iot ops namespace endpoint"
+    ] = """
+        type: group
+        short-summary: Manage endpoints for Device Registry namespaces.
+        long-summary: |
+          Endpoints define the destinations where data will be sent from this namespace.
+          Currently, only Event Grid Topics are supported as endpoints.
+    """
+
+    helps[
+        "iot ops namespace endpoint add"
+    ] = """
+        type: command
+        short-summary: Add endpoints to a Device Registry namespace.
+
+        examples:
+        - name: Add a single endpoint to a namespace with the default name of {resourceGroup}-{topicName}.
+          text: >
+            az iot ops namespace endpoint add --namespace myNamespace -g myResourceGroup
+            --endpoint id="/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName}"
+
+        - name: Add multiple endpoints to a namespace with custom names
+          text: >
+            az iot ops namespace endpoint add --namespace myNamespace -g myResourceGroup
+            --endpoint id="/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName1}" name="myTopic1"
+            "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.EventGrid/topics/{topicName2}" name="myTopic2"
+    """
+
+    helps[
+        "iot ops namespace endpoint list"
+    ] = """
+        type: command
+        short-summary: List endpoints in a Device Registry namespace.
+
+        examples:
+        - name: List all endpoints in a namespace
+          text: >
+            az iot ops namespace endpoint list --namespace myNamespace -g myResourceGroup
+    """
+
+    helps[
+        "iot ops namespace endpoint remove"
+    ] = """
+        type: command
+        short-summary: Remove endpoints from a Device Registry namespace.
+
+        examples:
+        - name: Remove a single endpoint from a namespace
+          text: >
+            az iot ops namespace endpoint remove --namespace myNamespace -g myResourceGroup
+            --endpoint myTopic
+
+        - name: Remove multiple endpoints from a namespace
+          text: >
+            az iot ops namespace endpoint remove --namespace myNamespace -g myResourceGroup
+            --endpoint resourceGroup1-topicName1 myTopic
+    """

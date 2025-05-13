@@ -599,3 +599,41 @@ def load_adr_arguments(self, _):
             arg_group="Authentication",
             deprecate_info=context.deprecate(hide=True)
         )
+    # ADR REFRESH
+    with self.argument_context("iot ops namespace") as context:
+        context.argument(
+            "namespace_name",
+            options_list=["--name", "-n"],
+            help="Namespace name.",
+        )
+        context.argument(
+            "endpoints",
+            options_list=["--endpoint"],
+            help="Space-separated key=value pairs corresponding to properties of the endpoint to create. "
+            "The following key values are supported: `id` (required), `name`. Can be used more than once. "
+            "Currently only Event Grid Topic endpoints are supported.",
+            nargs="+",
+            action="append",
+        )
+        context.argument(
+            "mi_system_identity",
+            options_list=["--system-identity", "--si"],
+            help="Enable system-assigned managed identity for the namespace.",
+            arg_type=get_three_state_flag(),
+        )
+
+    with self.argument_context("iot ops namespace endpoint") as context:
+        context.argument(
+            "namespace_name",
+            options_list=["--namespace", "--ns"],
+            help="Namespace name.",
+        )
+
+    with self.argument_context("iot ops namespace endpoint remove") as context:
+        context.argument(
+            "endpoint_names",
+            options_list=["--endpoint"],
+            help="Space-separated list of endpoint names to remove to the namespace.",
+            nargs="+",
+            action="extend",
+        )
