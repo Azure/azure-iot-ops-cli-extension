@@ -77,6 +77,7 @@ def get_mock_broker_listener_record(
         properties=properties or default_properties,
         resource_group_name=resource_group_name,
         qualified_type="microsoft.iotoperations/instances/brokers/listeners",
+        is_proxy_resource=True,
     )
 
 

@@ -20,6 +20,7 @@ from .common import (
     upsert_by_discriminator,
     url_safe_hash_phrase,
     url_safe_random_chars,
+    str_to_bool,
 )
 from .file_operations import (
     deserialize_file_content,
@@ -50,4 +51,5 @@ __all__ = [
     "upsert_by_discriminator",
     "url_safe_hash_phrase",
     "url_safe_random_chars",
+    "str_to_bool",
 ]

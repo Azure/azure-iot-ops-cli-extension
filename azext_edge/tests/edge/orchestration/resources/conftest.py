@@ -27,6 +27,11 @@ CLUSTER_EXTENSIONS_URL_MATCH_RE = re.compile(
     r"providers\/Microsoft\.Kubernetes\/connectedClusters\/[a-zA-Z0-9]+\/providers\/"
     r"Microsoft\.KubernetesConfiguration\/extensions\/[a-zA-Z0-9]+(\?api-version=2023-05-01)?$"
 )
+ROLE_ASSIGNMENT_RP = "Microsoft.Authorization"
+ROLE_ASSIGNMENT_API_VERSION = "2022-04-01"
+
+ARG_API_VERSION = "2022-10-01"
+ARG_ENDPOINT = f"{BASE_URL}/providers/Microsoft.ResourceGraph/resources?api-version={ARG_API_VERSION}"
 
 
 def get_base_endpoint(
@@ -59,9 +64,13 @@ def get_mock_resource(
     identity: dict = {},
     qualified_type: Optional[str] = None,
     tags: Optional[dict] = None,
+    is_proxy_resource: bool = False,
 ) -> dict:
+    kwargs = {}
     if not location:
         location = "northeurope"
+    if not is_proxy_resource:
+        kwargs["location"] = location
     resource = {
         "extendedLocation": {
             "name": f"/subscriptions/{subscription_id}/resourceGroups/{resource_group_name}"
@@ -73,7 +82,6 @@ def get_mock_resource(
             resource_path=resource_path,
             resource_provider=resource_provider or RESOURCE_PROVIDER,
         ).split("?")[0][len(BASE_URL) :],
-        "location": location,
         "name": name,
         "properties": properties,
         "resourceGroup": resource_group_name,
@@ -86,6 +94,7 @@ def get_mock_resource(
             "lastModifiedByType": "Application",
         },
         "type": qualified_type or QUALIFIED_INSTANCE_TYPE,
+        **kwargs,
     }
 
     if identity:
@@ -144,3 +153,17 @@ class RequestKPIs(NamedTuple):
         if not response_headers and response_body:
             response_headers = {"Content-Type": "application/json"}
         return response_code, response_headers, response_body
+
+
+def append_role_assignment_endpoint(
+    resource_endpoint: str, ra_name: Optional[str] = None, filter_query: Optional[str] = None
+) -> str:
+    endpoint = resource_endpoint.split("?")[0]
+    endpoint = f"{endpoint}/providers/Microsoft.Authorization/roleAssignments"
+    if ra_name:
+        endpoint += f"/{ra_name}"
+    endpoint += "?"
+    if filter_query:
+        endpoint += f"$filter={filter_query}&"
+
+    return f"{endpoint}api-version={ROLE_ASSIGNMENT_API_VERSION}"
