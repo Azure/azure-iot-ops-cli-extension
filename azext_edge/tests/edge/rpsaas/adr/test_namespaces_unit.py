@@ -366,18 +366,9 @@ def test_namespace_update(
     if "mi_system_identity" in req:
         mock_updated_namespace["identity"]["type"] = "SystemAssigned" if req["mi_system_identity"] else "None"
 
-    # Add mock GET response
+    # Add mock PATCH response for update operation
     mocked_responses.add(
-        method=responses.GET,
-        url=get_namespace_mgmt_uri(namespace_name=namespace_name, namespace_resource_group=resource_group_name),
-        json=mock_original_namespace,
-        status=200,
-        content_type="application/json",
-    )
-
-    # Add mock PUT response for update operation
-    mocked_responses.add(
-        method=responses.PUT,
+        method=responses.PATCH,
         url=get_namespace_mgmt_uri(namespace_name=namespace_name, namespace_resource_group=resource_group_name),
         json=mock_updated_namespace,
         status=response_status,
@@ -409,18 +400,14 @@ def test_namespace_update(
     assert result == mock_updated_namespace
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 2  # GET followed by PUT
-    assert mocked_responses.calls[0].request.method == "GET"
-    assert mocked_responses.calls[1].request.method == "PUT"
+    assert len(mocked_responses.calls) == 1
+    assert mocked_responses.calls[0].request.method == "PATCH"
 
     # Verify request body contains expected values
-    call_body = json.loads(mocked_responses.calls[1].request.body)
+    call_body = json.loads(mocked_responses.calls[0].request.body)
 
     # Check tags update
-    if "tags" in req:
-        assert call_body["tags"] == req["tags"]
-    else:
-        assert call_body["tags"] == mock_original_namespace["tags"]
+    assert call_body.get("tags") == req.get("tags")
 
     # Check identity update
     if "mi_system_identity" in req:
@@ -543,7 +530,7 @@ def test_add_namespace_endpoint(
     )
 
     mocked_responses.add(
-        method=responses.PUT,
+        method=responses.PATCH,
         url=get_namespace_mgmt_uri(namespace_name=namespace_name, namespace_resource_group=resource_group_name),
         json=mock_updated_namespace,
         status=response_status,
@@ -711,9 +698,9 @@ def test_remove_namespace_endpoint(
         content_type="application/json",
     )
 
-    # Mock the PUT response for update
+    # Mock the PATCH response for update
     mocked_responses.add(
-        method=responses.PUT,
+        method=responses.PATCH,
         url=get_namespace_mgmt_uri(namespace_name=namespace_name, namespace_resource_group=resource_group_name),
         json=mock_updated_namespace,
         status=response_status,

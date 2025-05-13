@@ -94,22 +94,18 @@ class Namespaces(Queryable):
         tags: Optional[Dict[str, str]] = None,
         **kwargs
     ):
-        # get the namespace
-        original_namespace = self.show(
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name
-        )
+        update_payload = {}
         if tags:
-            original_namespace["tags"] = tags
+            update_payload["tags"] = tags
 
         if mi_system_identity is not None:
-            original_namespace["identity"] = _build_identity(system=mi_system_identity)
+            update_payload["identity"] = _build_identity(system=mi_system_identity)
 
         with console.status(f"Updating {namespace_name}..."):
-            poller = self.ops.begin_create_or_replace(
+            poller = self.ops.begin_update(
                 resource_group_name,
                 namespace_name,
-                original_namespace
+                update_payload
             )
             return wait_for_terminal_state(poller, **kwargs)
 
@@ -120,22 +116,31 @@ class Namespaces(Queryable):
         endpoints: List[List[str]],
         **kwargs
     ):
-        # get the namespace
-        original_namespace = self.show(
+        # get the original namespace endpoints
+        original_endpoints = self.show(
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
-        )
-        # TODO: check with DOE if the messaging.endpoints exist in response calls with no initial endpoints
+        )["properties"]["messaging"]["endpoints"]
 
-        # add the endpoint to the namespace body
+        # TODO: check with DOE if the messaging.endpoints exist in response calls with no initial endpoints
+        # update the endpoints with the new ones
         endpoint_body = self._process_endpoints(endpoints=endpoints)
-        original_namespace["properties"]["messaging"]["endpoints"].update(endpoint_body)
+        original_endpoints.update(endpoint_body)
+
+        # update payload
+        update_payload = {
+            "properties": {
+                "messaging": {
+                    "endpoints": original_endpoints
+                }
+            }
+        }
 
         with console.status(f"Updating to {namespace_name}..."):
-            poller = self.ops.begin_create_or_replace(
+            poller = self.ops.begin_update(
                 resource_group_name,
                 namespace_name,
-                original_namespace
+                update_payload
             )
             result = wait_for_terminal_state(poller, **kwargs)
             return result["properties"]["messaging"]["endpoints"]
@@ -158,24 +163,32 @@ class Namespaces(Queryable):
         endpoint_names: List[str],
         **kwargs
     ):
-        # get the namespace
-        original_namespace = self.show(
+        # get the namespace endpoints
+        original_endpoints = self.show(
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
-        )
+        )["properties"]["messaging"]["endpoints"]
         # remove the endpoints from the namespace body by key
         remaining_endpoints = {
             endpoint: endpoint_body
-            for endpoint, endpoint_body in original_namespace["properties"]["messaging"]["endpoints"].items()
+            for endpoint, endpoint_body in original_endpoints.items()
             if endpoint not in endpoint_names
         }
-        original_namespace["properties"]["messaging"]["endpoints"] = remaining_endpoints
+
+        # update payload
+        update_payload = {
+            "properties": {
+                "messaging": {
+                    "endpoints": remaining_endpoints
+                }
+            }
+        }
 
         with console.status(f"Updating to {namespace_name}..."):
-            poller = self.ops.begin_create_or_replace(
+            poller = self.ops.begin_update(
                 resource_group_name,
                 namespace_name,
-                original_namespace
+                update_payload
             )
             result = wait_for_terminal_state(poller, **kwargs)
             return result["properties"]["messaging"]["endpoints"]

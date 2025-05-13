@@ -2006,7 +2006,6 @@ def load_iotops_help():
         short-summary: Create a Device Registry namespace.
         long-summary: |
           Enabled system identity is required for the namespace to function correctly.
-
           Endpoints allow you to specify the destination for data flowing through the namespace.
 
         examples:
