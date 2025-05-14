@@ -194,9 +194,9 @@ class ResourceTypeMapping(Enum):
         return mapping[self]
 
 
-class AEPAuthModes(Enum):
+class ADRAuthModes(Enum):
     """
-    Authentication modes for asset endpoints
+    Authentication modes for asset endpoints/devices
     """
 
     anonymous = "Anonymous"

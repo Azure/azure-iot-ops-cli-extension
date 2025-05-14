@@ -24,7 +24,7 @@ from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
     _process_additional_configuration,
     _process_authentication,
     _update_properties,
-    AEPAuthModes
+    ADRAuthModes
 )
 from ....generators import generate_random_string
 
@@ -301,17 +301,17 @@ def test_process_additional_configuration_error(mocker):
 @pytest.mark.parametrize("req", [
     {},
     {
-        "auth_mode": AEPAuthModes.anonymous.value
+        "auth_mode": ADRAuthModes.anonymous.value
     },
     {
-        "auth_mode": AEPAuthModes.certificate.value,
+        "auth_mode": ADRAuthModes.certificate.value,
         "certificate_reference": generate_random_string()
     },
     {
         "certificate_reference": generate_random_string()
     },
     {
-        "auth_mode": AEPAuthModes.userpass.value,
+        "auth_mode": ADRAuthModes.userpass.value,
         "password_reference": generate_random_string(),
         "username_reference": generate_random_string()
     },
@@ -334,18 +334,18 @@ def test_process_authentication(
         original_props = {}
     expected_auth = req.get("auth_mode") or original_props.get("method")
     if expected_auth is None and req.get("certificate_reference"):
-        expected_auth = AEPAuthModes.certificate.value
+        expected_auth = ADRAuthModes.certificate.value
     if expected_auth is None and req.get("password_reference"):
-        expected_auth = AEPAuthModes.userpass.value
+        expected_auth = ADRAuthModes.userpass.value
     assert result.get("method") == expected_auth
 
-    if result.get("method") == AEPAuthModes.anonymous.value:
+    if result.get("method") == ADRAuthModes.anonymous.value:
         assert result.get("x509Credentials") is None
         assert result.get("usernamePasswordCredentials") is None
-    elif result.get("method") == AEPAuthModes.certificate.value:
+    elif result.get("method") == ADRAuthModes.certificate.value:
         assert result["x509Credentials"]["certificateSecretName"] == req["certificate_reference"]
         assert result.get("usernamePasswordCredentials") is None
-    elif result.get("method") == AEPAuthModes.userpass.value:
+    elif result.get("method") == ADRAuthModes.userpass.value:
         assert result.get("x509Credentials") is None
         assert result["usernamePasswordCredentials"]["passwordSecretName"] == req["password_reference"]
         assert result["usernamePasswordCredentials"]["usernameSecretName"] == req["username_reference"]
@@ -355,41 +355,41 @@ def test_process_authentication(
 
 @pytest.mark.parametrize("req", [
     {
-        "auth_mode": AEPAuthModes.anonymous.value,
+        "auth_mode": ADRAuthModes.anonymous.value,
         "certificate_reference": generate_random_string()
     },
     {
-        "auth_mode": AEPAuthModes.anonymous.value,
+        "auth_mode": ADRAuthModes.anonymous.value,
         "password_reference": generate_random_string(),
     },
     {
-        "auth_mode": AEPAuthModes.anonymous.value,
+        "auth_mode": ADRAuthModes.anonymous.value,
         "username_reference": generate_random_string()
     },
     {
-        "auth_mode": AEPAuthModes.certificate.value,
+        "auth_mode": ADRAuthModes.certificate.value,
     },
     {
-        "auth_mode": AEPAuthModes.certificate.value,
+        "auth_mode": ADRAuthModes.certificate.value,
         "password_reference": generate_random_string(),
     },
     {
-        "auth_mode": AEPAuthModes.certificate.value,
+        "auth_mode": ADRAuthModes.certificate.value,
         "username_reference": generate_random_string()
     },
     {
-        "auth_mode": AEPAuthModes.userpass.value,
+        "auth_mode": ADRAuthModes.userpass.value,
     },
     {
-        "auth_mode": AEPAuthModes.userpass.value,
+        "auth_mode": ADRAuthModes.userpass.value,
         "certificate_reference": generate_random_string()
     },
     {
-        "auth_mode": AEPAuthModes.userpass.value,
+        "auth_mode": ADRAuthModes.userpass.value,
         "password_reference": generate_random_string(),
     },
     {
-        "auth_mode": AEPAuthModes.userpass.value,
+        "auth_mode": ADRAuthModes.userpass.value,
         "username_reference": generate_random_string(),
     },
     {
@@ -408,7 +408,7 @@ def test_process_authentication_error(
             **req
         )
 
-    if req.get("auth_mode") in [None, AEPAuthModes.userpass.value] and any(
+    if req.get("auth_mode") in [None, ADRAuthModes.userpass.value] and any(
         [req.get("username_reference"), req.get("password_reference")]
     ):
         assert isinstance(e.value, RequiredArgumentMissingError)
@@ -448,17 +448,17 @@ def test_process_authentication_error(
     {
         "target_address": generate_random_string(),
         "additional_configuration": generate_random_string(),
-        "auth_mode": AEPAuthModes.anonymous.value,
+        "auth_mode": ADRAuthModes.anonymous.value,
     },
     {
         "target_address": generate_random_string(),
-        "auth_mode": AEPAuthModes.userpass.value,
+        "auth_mode": ADRAuthModes.userpass.value,
         "username_reference": generate_random_string(),
         "password_reference": generate_random_string(),
     },
     {
         "additional_configuration": generate_random_string(),
-        "auth_mode": AEPAuthModes.certificate.value,
+        "auth_mode": ADRAuthModes.certificate.value,
         "certificate_reference": generate_random_string(),
     }
 ])

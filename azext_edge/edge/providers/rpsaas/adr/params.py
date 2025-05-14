@@ -10,7 +10,7 @@ from azure.cli.core.commands.parameters import (
     tags_type,
 )
 from ....common import (
-    AEPAuthModes,
+    ADRAuthModes,
     FileType,
     SecurityModes,
     SecurityPolicies,
@@ -434,7 +434,7 @@ def load_adr_arguments(self, _):
             options_list=["--authentication-mode", "--am"],
             help="Authentication Mode.",
             arg_group="Authentication",
-            arg_type=get_enum_type(AEPAuthModes),
+            arg_type=get_enum_type(ADRAuthModes),
         )
         context.argument(
             "certificate_reference",

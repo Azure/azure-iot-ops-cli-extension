@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 from knack.log import get_logger
 
 from .providers.rpsaas.adr.namespaces import Namespaces
+from .providers.rpsaas.adr.namespace_devices import NamespaceDevices
 
 logger = get_logger(__name__)
 
@@ -36,8 +37,8 @@ def create_namespace(
 
 def delete_namespace(
     cmd, namespace_name: str, resource_group_name: str, **kwargs
-) -> dict:
-    return Namespaces(cmd).delete(
+):
+    Namespaces(cmd).delete(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
         **kwargs
@@ -107,4 +108,82 @@ def remove_namespace_endpoint(
         resource_group_name=resource_group_name,
         endpoint_names=endpoint_names,
         **kwargs
+    )
+
+
+def create_namespace_device(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    instance_name: str,
+    device_group_id: str,
+    device_template_id: str,
+    custom_attributes: Optional[List[str]] = None,
+    disabled: Optional[bool] = None,
+    instance_resource_group: Optional[str] = None,
+    instance_subscription: Optional[str] = None,
+    manufacturer: Optional[str] = None,
+    model: Optional[str] = None,
+    operating_system: Optional[str] = None,
+    operating_system_version: Optional[str] = None,
+    tags: Optional[Dict[str, str]] = None,
+    **kwargs
+):
+    return NamespaceDevices(cmd).create(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        device_group_id=device_group_id,
+        device_template_id=device_template_id,
+        custom_attributes=custom_attributes,
+        disabled=disabled,
+        instance_resource_group=instance_resource_group,
+        instance_subscription=instance_subscription,
+        manufacturer=manufacturer,
+        model=model,
+        operating_system=operating_system,
+        operating_system_version=operating_system_version,
+        tags=tags,
+        **kwargs
+    )
+
+
+def list_namespace_devices(
+    cmd,
+    namespace_name: str,
+    resource_group_name: str
+) -> List[dict]:
+    return NamespaceDevices(cmd).list(
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+
+
+def delete_namespace_device(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    **kwargs
+):
+    NamespaceDevices(cmd).delete(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        **kwargs
+    )
+
+
+def show_namespace_device(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str
+) -> dict:
+    return NamespaceDevices(cmd).show(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
     )
