@@ -229,17 +229,6 @@ def create_dataflow_endpoint_adls(
     authentication_type: Optional[str] = None,
     show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "storage_account_name": storage_account_name,
-        "at_secret_name": secret_name,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "scope": scope,
-        "sami_audience": audience,
-        "latency": latency,
-        "message_count": message_count,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).create(
         name=endpoint_name,
@@ -273,27 +262,25 @@ def create_dataflow_endpoint_fabric_onelake(
     scope: Optional[str] = None,
     audience: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    
-    kwargs = {
-        "lakehouse_name": lakehouse_name,
-        "workspace_name": workspace_name,
-        "path_type": path_type,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "scope": scope,
-        "sami_audience": audience,
-        "latency": latency,
-        "message_count": message_count,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).create(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.FABRICONELAKE.value,
-        **kwargs
+        lakehouse_name=lakehouse_name,
+        workspace_name=workspace_name,
+        path_type=path_type,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+        sami_audience=audience,
+        latency=latency,
+        message_count=message_count,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -321,35 +308,34 @@ def create_dataflow_endpoint_eventhub(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "eventhub_namespace": eventhub_namespace,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "sasl_type": sasl_type,
-        "sasl_secret_name": secret_name,
-        "scope": scope,
-        "sami_audience": audience,
-        "group_id": group_id,
-        "batching_disabled": batching_disabled,
-        "latency_ms": latency,
-        "message_count": message_count,
-        "max_byte": max_byte,
-        "copy_broker_props_disabled": copy_broker_props_disabled,
-        "compression": compression,
-        "acks": acks,
-        "partition_strategy": partition_strategy,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).create(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.EVENTHUB.value,
-        **kwargs
+        eventhub_namespace=eventhub_namespace,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        sasl_type=sasl_type,
+        sasl_secret_name=secret_name,
+        scope=scope,
+        sami_audience=audience,
+        group_id=group_id,
+        batching_disabled=batching_disabled,
+        latency_ms=latency,
+        message_count=message_count,
+        max_byte=max_byte,
+        copy_broker_props_disabled=copy_broker_props_disabled,
+        compression=compression,
+        acks=acks,
+        partition_strategy=partition_strategy,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -368,7 +354,6 @@ def create_dataflow_endpoint_fabric_realtime(
     acks: Optional[str] = None,
     compression: Optional[str] = None,
     partition_strategy: Optional[str] = None,
-    # TODO: might support MI, waiting for service confirmation
     client_id: Optional[str] = None,
     tenant_id: Optional[str] = None,
     sasl_type: Optional[str] = None,
@@ -379,36 +364,35 @@ def create_dataflow_endpoint_fabric_realtime(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "host_name": host,
-        "sasl_type": sasl_type,
-        "sasl_secret_name": secret_name,
-        "group_id": group_id,
-        "batching_disabled": batching_disabled,
-        "latency_ms": latency,
-        "message_count": message_count,
-        "max_byte": max_byte,
-        "copy_broker_props_disabled": copy_broker_props_disabled,
-        "compression": compression,
-        "acks": acks,
-        "partition_strategy": partition_strategy,
-        "tls_disabled": tls_disabled,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "authentication_type": authentication_type,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "scope": scope,
-        "sami_audience": audience,
-    }
 
     return DataFlowEndpoints(cmd).create(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.FABRICREALTIME.value,
-        **kwargs
+        host_name=host,
+        sasl_type=sasl_type,
+        sasl_secret_name=secret_name,
+        group_id=group_id,
+        batching_disabled=batching_disabled,
+        latency_ms=latency,
+        message_count=message_count,
+        max_byte=max_byte,
+        copy_broker_props_disabled=copy_broker_props_disabled,
+        compression=compression,
+        acks=acks,
+        partition_strategy=partition_strategy,
+        tls_disabled=tls_disabled,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        authentication_type=authentication_type,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+        sami_audience=audience,
+        show_config=show_config,
     )
 
 
@@ -439,38 +423,37 @@ def create_dataflow_endpoint_custom_kafka(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "host": host,
-        "port": port,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "sasl_type": sasl_type,
-        "sasl_secret_name": secret_name,
-        "scope": scope,
-        "sami_audience": audience,
-        "group_id": group_id,
-        "batching_disabled": batching_disabled,
-        "latency_ms": latency,
-        "message_count": message_count,
-        "max_byte": max_byte,
-        "copy_broker_props_disabled": copy_broker_props_disabled,
-        "compression": compression,
-        "acks": acks,
-        "partition_strategy": partition_strategy,
-        "tls_disabled": tls_disabled,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "no_auth": no_auth,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).create(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.CUSTOMKAFKA.value,
-        **kwargs
+        host=host,
+        port=port,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        sasl_type=sasl_type,
+        sasl_secret_name=secret_name,
+        scope=scope,
+        sami_audience=audience,
+        group_id=group_id,
+        batching_disabled=batching_disabled,
+        latency_ms=latency,
+        message_count= message_count,
+        max_byte=max_byte,
+        copy_broker_props_disabled=copy_broker_props_disabled,
+        compression=compression,
+        acks=acks,
+        partition_strategy=partition_strategy,
+        tls_disabled=tls_disabled,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        no_auth=no_auth,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -480,17 +463,16 @@ def create_dataflow_endpoint_localstorage(
     instance_name: str,
     resource_group_name: str,
     pvc_reference: str,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "pvc_reference": pvc_reference,
-    }
 
     return DataFlowEndpoints(cmd).create(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.LOCALSTORAGE.value,
-        **kwargs
+        pvc_reference=pvc_reference,
+        show_config=show_config,
     )
 
 
@@ -515,32 +497,31 @@ def create_dataflow_endpoint_aio(
     retain: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "x509_secret_name": secret_name,
-        "sat_audience": audience,
-        "host": host,
-        "port": port,
-        "client_id_prefix": client_id_prefix,
-        "protocol": protocol,
-        "keep_alive": keep_alive,
-        "retain": retain,
-        "max_inflight_messages": max_inflight_messages,
-        "qos": qos,
-        "session_expiry": session_expiry,
-        "tls_disabled": tls_disabled,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "no_auth": no_auth,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).create(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.AIOLOCALMQTT.value,
-        **kwargs
+        x509_secret_name=secret_name,
+        sat_audience=audience,
+        host=host,
+        port=port,
+        client_id_prefix=client_id_prefix,
+        protocol=protocol,
+        keep_alive=keep_alive,
+        retain=retain,
+        max_inflight_messages=max_inflight_messages,
+        qos=qos,
+        session_expiry=session_expiry,
+        tls_disabled=tls_disabled,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        no_auth=no_auth,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -566,33 +547,32 @@ def create_dataflow_endpoint_eventgrid(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "sat_audience": audience,
-        "x509_secret_name": secret_name,
-        "scope": scope,
-        "host": host,
-        "port": port,
-        "client_id_prefix": client_id_prefix,
-        "protocol": protocol,
-        "keep_alive": keep_alive,
-        "retain": retain,
-        "max_inflight_messages": max_inflight_messages,
-        "qos": qos,
-        "session_expiry": session_expiry,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).create(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.EVENTGRID.value,
-        **kwargs
+        client_id=client_id,
+        tenant_id=tenant_id,
+        sat_audience=audience,
+        x509_secret_name=secret_name,
+        scope=scope,
+        host=host,
+        port=port,
+        client_id_prefix=client_id_prefix,
+        protocol=protocol,
+        keep_alive=keep_alive,
+        retain=retain,
+        max_inflight_messages=max_inflight_messages,
+        qos=qos,
+        session_expiry=session_expiry,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -621,36 +601,35 @@ def create_dataflow_endpoint_custom_mqtt(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[str] = None,
 ) -> dict:
-    kwargs = {
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "sami_audience": sami_audience,
-        "x509_secret_name": secret_name,
-        "scope": scope,
-        "sat_audience": sat_audience,
-        "host": host,
-        "port": port,
-        "client_id_prefix": client_id_prefix,
-        "protocol": protocol,
-        "keep_alive": keep_alive,
-        "retain": retain,
-        "max_inflight_messages": max_inflight_messages,
-        "qos": qos,
-        "session_expiry": session_expiry,
-        "tls_disabled": tls_disabled,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "no_auth": no_auth,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).create(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.CUSTOMMQTT.value,
-        **kwargs
+        client_id=client_id,
+        tenant_id=tenant_id,
+        sami_audience=sami_audience,
+        x509_secret_name=secret_name,
+        scope=scope,
+        sat_audience=sat_audience,
+        host=host,
+        port=port,
+        client_id_prefix=client_id_prefix,
+        protocol=protocol,
+        keep_alive=keep_alive,
+        retain=retain,
+        max_inflight_messages=max_inflight_messages,
+        qos=qos,
+        session_expiry=session_expiry,
+        tls_disabled=tls_disabled,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        no_auth=no_auth,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -668,25 +647,24 @@ def update_dataflow_endpoint_adx(
     scope: Optional[str] = None,
     audience: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "database_name": database_name,
-        "host": host,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "scope": scope,
-        "sami_audience": audience,
-        "latency": latency,
-        "message_count": message_count,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).update(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.DATAEXPLORER.value,
-        **kwargs
+        database_name=database_name,
+        host=host,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+        sami_audience=audience,
+        latency=latency,
+        message_count=message_count,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -704,25 +682,24 @@ def update_dataflow_endpoint_adls(
     scope: Optional[str] = None,
     audience: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "storage_account_name": storage_account_name,
-        "at_secret_name": secret_name,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "scope": scope,
-        "sami_audience": audience,
-        "latency": latency,
-        "message_count": message_count,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).update(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.DATALAKESTORAGE.value,
-        **kwargs
+        storage_account_name=storage_account_name,
+        at_secret_name=secret_name,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+        sami_audience=audience,
+        latency=latency,
+        message_count=message_count,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -741,27 +718,25 @@ def update_dataflow_endpoint_fabric_onelake(
     scope: Optional[str] = None,
     audience: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    
-    kwargs = {
-        "lakehouse_name": lakehouse_name,
-        "workspace_name": workspace_name,
-        "path_type": path_type,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "scope": scope,
-        "sami_audience": audience,
-        "latency": latency,
-        "message_count": message_count,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).update(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.FABRICONELAKE.value,
-        **kwargs
+        lakehouse_name=lakehouse_name,
+        workspace_name=workspace_name,
+        path_type=path_type,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+        sami_audience=audience,
+        latency=latency,
+        message_count=message_count,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -790,6 +765,7 @@ def update_dataflow_endpoint_eventhub(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
     kwargs = {
         "eventhub_namespace": eventhub_namespace,
@@ -819,7 +795,27 @@ def update_dataflow_endpoint_eventhub(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.EVENTHUB.value,
-        **kwargs
+        eventhub_namespace=eventhub_namespace,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        sasl_type=sasl_type,
+        sasl_secret_name=secret_name,
+        scope=scope,
+        sami_audience=audience,
+        group_id=group_id,
+        batching_disabled=batching_disabled,
+        latency_ms=latency,
+        message_count=message_count,
+        max_byte=max_byte,
+        copy_broker_props_disabled=copy_broker_props_disabled,
+        compression=compression,
+        acks=acks,
+        partition_strategy=partition_strategy,
+        tls_disabled=tls_disabled,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -848,36 +844,35 @@ def update_dataflow_endpoint_fabric_realtime(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "host_name": host,
-        "sasl_type": sasl_type,
-        "sasl_secret_name": secret_name,
-        "group_id": group_id,
-        "batching_disabled": batching_disabled,
-        "latency_ms": latency,
-        "message_count": message_count,
-        "max_byte": max_byte,
-        "copy_broker_props_disabled": copy_broker_props_disabled,
-        "compression": compression,
-        "acks": acks,
-        "partition_strategy": partition_strategy,
-        "tls_disabled": tls_disabled,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "authentication_type": authentication_type,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "scope": scope,
-        "sami_audience": audience,
-    }
 
     return DataFlowEndpoints(cmd).update(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.FABRICREALTIME.value,
-        **kwargs
+        host_name=host,
+        sasl_type=sasl_type,
+        sasl_secret_name=secret_name,
+        group_id=group_id,
+        batching_disabled=batching_disabled,
+        latency_ms=latency,
+        message_count=message_count,
+        max_byte=max_byte,
+        copy_broker_props_disabled=copy_broker_props_disabled,
+        compression=compression,
+        acks=acks,
+        partition_strategy=partition_strategy,
+        tls_disabled=tls_disabled,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        authentication_type=authentication_type,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+        sami_audience=audience,
+        show_config=show_config,
     )
 
 
@@ -908,38 +903,37 @@ def update_dataflow_endpoint_custom_kafka(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "host": host,
-        "port": port,
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "sasl_type": sasl_type,
-        "sasl_secret_name": secret_name,
-        "scope": scope,
-        "sami_audience": audience,
-        "group_id": group_id,
-        "batching_disabled": batching_disabled,
-        "latency_ms": latency,
-        "message_count": message_count,
-        "max_byte": max_byte,
-        "copy_broker_props_disabled": copy_broker_props_disabled,
-        "compression": compression,
-        "acks": acks,
-        "partition_strategy": partition_strategy,
-        "tls_disabled": tls_disabled,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "no_auth": no_auth,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).update(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.CUSTOMKAFKA.value,
-        **kwargs
+        host=host,
+        port=port,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        sasl_type=sasl_type,
+        sasl_secret_name=secret_name,
+        scope=scope,
+        sami_audience=audience,
+        group_id=group_id,
+        batching_disabled=batching_disabled,
+        latency_ms=latency,
+        message_count=message_count,
+        max_byte=max_byte,
+        copy_broker_props_disabled=copy_broker_props_disabled,
+        compression=compression,
+        acks=acks,
+        partition_strategy=partition_strategy,
+        tls_disabled=tls_disabled,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        no_auth=no_auth,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -949,17 +943,16 @@ def update_dataflow_endpoint_localstorage(
     instance_name: str,
     resource_group_name: str,
     pvc_reference: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "pvc_reference": pvc_reference,
-    }
 
     return DataFlowEndpoints(cmd).update(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.LOCALSTORAGE.value,
-        **kwargs
+        pvc_reference=pvc_reference,
+        show_config=show_config,
     )
 
 
@@ -984,32 +977,31 @@ def update_dataflow_endpoint_aio(
     cloud_event_attribute: Optional[str] = None,
     no_auth: Optional[bool] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "x509_secret_name": secret_name,
-        "sat_audience": audience,
-        "host": host,
-        "port": port,
-        "client_id_prefix": client_id_prefix,
-        "protocol": protocol,
-        "keep_alive": keep_alive,
-        "retain": retain,
-        "max_inflight_messages": max_inflight_messages,
-        "qos": qos,
-        "session_expiry": session_expiry,
-        "tls_disabled": tls_disabled,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "no_auth": no_auth,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).update(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.AIOLOCALMQTT.value,
-        **kwargs
+        x509_secret_name=secret_name,
+        sat_audience=audience,
+        host=host,
+        port=port,
+        client_id_prefix=client_id_prefix,
+        protocol=protocol,
+        keep_alive=keep_alive,
+        retain=retain,
+        max_inflight_messages=max_inflight_messages,
+        qos=qos,
+        session_expiry=session_expiry,
+        tls_disabled=tls_disabled,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        no_auth=no_auth,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -1036,34 +1028,33 @@ def update_dataflow_endpoint_eventgrid(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "sat_audience": audience,
-        "x509_secret_name": secret_name,
-        "scope": scope,
-        "host": host,
-        "port": port,
-        "client_id_prefix": client_id_prefix,
-        "protocol": protocol,
-        "keep_alive": keep_alive,
-        "retain": retain,
-        "max_inflight_messages": max_inflight_messages,
-        "qos": qos,
-        "session_expiry": session_expiry,
-        "tls_disabled": tls_disabled,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).update(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.EVENTGRID.value,
-        **kwargs
+        client_id=client_id,
+        tenant_id=tenant_id,
+        sat_audience=audience,
+        x509_secret_name=secret_name,
+        scope=scope,
+        host=host,
+        port=port,
+        client_id_prefix=client_id_prefix,
+        protocol=protocol,
+        keep_alive=keep_alive,
+        retain=retain,
+        max_inflight_messages=max_inflight_messages,
+        qos=qos,
+        session_expiry=session_expiry,
+        tls_disabled=tls_disabled,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
@@ -1092,36 +1083,35 @@ def update_dataflow_endpoint_custom_mqtt(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: Optional[str] = None,
     authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
-    kwargs = {
-        "client_id": client_id,
-        "tenant_id": tenant_id,
-        "sami_audience": sami_audience,
-        "x509_secret_name": secret_name,
-        "scope": scope,
-        "sat_audience": sat_audience,
-        "host": host,
-        "port": port,
-        "client_id_prefix": client_id_prefix,
-        "protocol": protocol,
-        "keep_alive": keep_alive,
-        "retain": retain,
-        "max_inflight_messages": max_inflight_messages,
-        "qos": qos,
-        "session_expiry": session_expiry,
-        "tls_disabled": tls_disabled,
-        "config_map_reference": config_map_reference,
-        "cloud_event_attribute": cloud_event_attribute,
-        "no_auth": no_auth,
-        "authentication_type": authentication_type,
-    }
 
     return DataFlowEndpoints(cmd).update(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.CUSTOMMQTT.value,
-        **kwargs
+        client_id=client_id,
+        tenant_id=tenant_id,
+        sami_audience=sami_audience,
+        x509_secret_name=secret_name,
+        scope=scope,
+        sat_audience=sat_audience,
+        host=host,
+        port=port,
+        client_id_prefix=client_id_prefix,
+        protocol=protocol,
+        keep_alive=keep_alive,
+        retain=retain,
+        max_inflight_messages=max_inflight_messages,
+        qos=qos,
+        session_expiry=session_expiry,
+        tls_disabled=tls_disabled,
+        config_map_reference=config_map_reference,
+        cloud_event_attribute=cloud_event_attribute,
+        no_auth=no_auth,
+        authentication_type=authentication_type,
+        show_config=show_config,
     )
 
 
