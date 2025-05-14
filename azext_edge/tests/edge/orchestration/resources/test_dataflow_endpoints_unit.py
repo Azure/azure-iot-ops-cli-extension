@@ -11,6 +11,7 @@ from unittest.mock import Mock
 import pytest
 import responses
 
+from azext_edge.edge.providers.orchestration.common import DATAFLOW_ENDPOINT_TYPE_SETTINGS
 from azext_edge.edge.commands_dataflow import (
     apply_dataflow_endpoint,
     delete_dataflow_endpoint,
@@ -36,7 +37,12 @@ def get_dataflow_endpoint_endpoint(
 
 
 def get_mock_dataflow_endpoint_record(
-    dataflow_endpoint_name: str, instance_name: str, resource_group_name: str
+    dataflow_endpoint_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    dataflow_endpoint_type: Optional[str] = None,
+    host: Optional[str] = None,
+    group_id: Optional[str] = None,
 ) -> dict:
     return get_mock_resource(
         name=dataflow_endpoint_name,
@@ -44,8 +50,12 @@ def get_mock_dataflow_endpoint_record(
         properties={
             "authentication": {"method": "AccessToken"},
             "accessTokenSecretRef": "mysecret",
-            "endpointType": "Kafka",
-            "kafkaSettings": {"tls": {"mode": "Enabled", "trustedCaCertificateConfigMapRef": "myconfigmap"}},
+            "endpointType": dataflow_endpoint_type or "Kafka",
+            DATAFLOW_ENDPOINT_TYPE_SETTINGS[dataflow_endpoint_type or "Kafka"]: {
+                "tls": {"mode": "Enabled", "trustedCaCertificateConfigMapRef": "myconfigmap"},
+                "host": host or "myhost",
+                "consumerGroupId": group_id or "",
+            },
             "provisioningState": "Succeeded",
         },
         resource_group_name=resource_group_name,

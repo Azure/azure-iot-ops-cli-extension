@@ -7,6 +7,7 @@
 from typing import Iterable, Optional
 
 from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles
+from .common import DEFAULT_DATAFLOW_PROFILE
 
 
 def create_dataflow_profile(
@@ -79,9 +80,9 @@ def list_dataflow_profiles(cmd, instance_name: str, resource_group_name: str) ->
 def show_dataflow(
     cmd,
     dataflow_name: str,
-    profile_name: str,
     instance_name: str,
     resource_group_name: str,
+    profile_name: str = DEFAULT_DATAFLOW_PROFILE,
 ) -> dict:
     return DataFlowProfiles(cmd).dataflows.show(
         name=dataflow_name,
@@ -91,11 +92,54 @@ def show_dataflow(
     )
 
 
-def list_dataflows(cmd, profile_name: str, instance_name: str, resource_group_name: str) -> Iterable[dict]:
+def list_dataflows(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    profile_name: str = DEFAULT_DATAFLOW_PROFILE,
+) -> Iterable[dict]:
     return DataFlowProfiles(cmd).dataflows.list(
         dataflow_profile_name=profile_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
+    )
+
+
+def apply_dataflow(
+    cmd,
+    dataflow_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    config_file: str,
+    profile_name: str = DEFAULT_DATAFLOW_PROFILE,
+    **kwargs: dict,
+) -> dict:
+    return DataFlowProfiles(cmd).dataflows.apply(
+        name=dataflow_name,
+        dataflow_profile_name=profile_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        config_file=config_file,
+        **kwargs,
+    )
+
+
+def delete_dataflow(
+    cmd,
+    dataflow_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    profile_name: str = DEFAULT_DATAFLOW_PROFILE,
+    confirm_yes: Optional[bool] = None,
+    **kwargs: dict,
+):
+    return DataFlowProfiles(cmd).dataflows.delete(
+        name=dataflow_name,
+        dataflow_profile_name=profile_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
+        **kwargs,
     )
 
 
