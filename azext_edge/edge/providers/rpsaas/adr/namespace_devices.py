@@ -4,9 +4,12 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 from rich.console import Console
 from typing import TYPE_CHECKING, Dict, List, Iterable, Optional
 from knack.log import get_logger
+
+from azext_edge.edge.providers.rpsaas.adr.helpers import process_authentication
 
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.common import parse_kvp_nargs
@@ -19,8 +22,6 @@ if TYPE_CHECKING:
 
 console = Console()
 logger = get_logger(__name__)
-EVENTGRIDTOPIC_API_VERSION = "2025-02-15"
-NAMESPACE_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces"
 
 
 class NamespaceDevices(Queryable):
@@ -42,8 +43,8 @@ class NamespaceDevices(Queryable):
         namespace_name: str,
         resource_group_name: str,
         instance_name: str,
-        device_group_id: str,
         device_template_id: str,
+        device_group_id: Optional[str] = None,
         custom_attributes: Optional[List[str]] = None,
         disabled: Optional[bool] = None,
         instance_resource_group: Optional[str] = None,
@@ -115,29 +116,44 @@ class NamespaceDevices(Queryable):
     def list(self, namespace_name: str, resource_group_name: str) -> Iterable[dict]:
         return self.ops.list_by_resource_group(namespace_name=namespace_name, resource_group_name=resource_group_name)
 
-    # def update(
-    #     self,
-    #     namespace_name: str,
-    #     resource_group_name: str,
-    #     # Note for now, keep this here but will be moved once user identities are supported
-    #     mi_system_identity: Optional[bool] = None,
-    #     tags: Optional[Dict[str, str]] = None,
-    #     **kwargs
-    # ):
-    #     update_payload = {}
-    #     if tags:
-    #         update_payload["tags"] = tags
+    def update(
+        self,
+        device_name: str,
+        namespace_name: str,
+        resource_group_name: str,
+        custom_attributes: Optional[List[str]] = None,
+        device_group_id: Optional[str] = None,
+        disabled: Optional[bool] = None,
+        operating_system_version: Optional[str] = None,
+        tags: Optional[Dict[str, str]] = None,
+        **kwargs
+    ):
+        update_payload = {
+            "properties": {}
+        }
+        if tags:
+            update_payload["tags"] = tags
+        if custom_attributes:
+            update_payload["properties"]["customAttributes"] = parse_kvp_nargs(custom_attributes)
+        if device_group_id:
+            update_payload["properties"]["deviceGroupId"] = device_group_id
+        if disabled is not None:
+            update_payload["properties"]["enabled"] = not disabled
+        if operating_system_version:
+            update_payload["properties"]["operatingSystemVersion"] = operating_system_version
 
-    #     if mi_system_identity is not None:
-    #         update_payload["identity"] = _build_identity(system=mi_system_identity)
+        # remove the properties key if there are no properties to update
+        if not update_payload["properties"]:
+            update_payload.pop("properties")
 
-    #     with console.status(f"Updating {namespace_name}..."):
-    #         poller = self.ops.begin_update(
-    #             resource_group_name,
-    #             namespace_name,
-    #             update_payload
-    #         )
-    #         return wait_for_terminal_state(poller, **kwargs)
+        with console.status(f"Updating {namespace_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                device_name=device_name,
+                properties=update_payload
+            )
+            return wait_for_terminal_state(poller, **kwargs)
 
     # def add_inbound_endpoint(
     #     self,
@@ -151,11 +167,10 @@ class NamespaceDevices(Queryable):
     #         device_name=device_name,
     #         namespace_name=namespace_name,
     #         resource_group_name=resource_group_name
-    #     )["properties"]["endpoints"]["inbound"]
+    #     )["properties"].get("endpoints", {}).get("inbound", {})
 
-    #     # TODO: check with DOE if the messaging.endpoints exist in response calls with no initial endpoints
-    #     # update the endpoints with the new ones
-    #     endpoint_body = self._process_endpoints(endpoints=endpoints)
+    #     # update the endpoints with the new one
+    #     endpoint_body = self._process_endpoint(endpoints=endpoints)
     #     original_endpoints.update(endpoint_body)
 
     #     # update payload
@@ -187,7 +202,7 @@ class NamespaceDevices(Queryable):
             device_name=device_name,
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
-        )["properties"]["endpoints"]["inbound"]
+        )["properties"].get("endpoints", {}).get("inbound", {})
 
     def remove_endpoint(
         self,
@@ -202,7 +217,7 @@ class NamespaceDevices(Queryable):
             device_name=device_name,
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
-        )["properties"]["endpoints"]["inbound"]
+        )["properties"].get("endpoints", {}).get("inbound", {})
         # remove the endpoints from the endpoint list by key
         remaining_endpoints = {
             endpoint: endpoint_body
@@ -227,7 +242,7 @@ class NamespaceDevices(Queryable):
                 properties=update_payload
             )
             result = wait_for_terminal_state(poller, **kwargs)
-            return result["properties"]["messaging"]["endpoints"]
+            return result["properties"].get("endpoints", {}).get("inbound", {})
 
     def _process_endpoint(
         self,
@@ -243,5 +258,28 @@ class NamespaceDevices(Queryable):
         enable_discovery: Optional[bool] = None,
         topic_path: Optional[str] = None,
         topic_retain_policy: Optional[str] = None,
-    ):
-        pass
+    ) -> dict:
+        result = {
+            endpoint_name: {
+                "endpointType": endpoint_type,
+                "address": endpoint_address,
+                "authentication": process_authentication(
+                    certificate_reference=certificate_reference,
+                    password_reference=password_reference,
+                    username_reference=username_reference
+                ),
+            }
+        }
+
+        # TODO: check DOE how enable discovery works in AEPs (the functionality will be copied)
+        additional_configuration = {
+            "publishingInterval": publishing_interval,
+            "samplingInterval": sampling_interval,
+            "queueSize": queue_size,
+            "enableDiscovery": enable_discovery
+        }
+        result[endpoint_name]["additionalConfiguration"] = json.dumps(
+            additional_configuration
+        )
+
+        return result

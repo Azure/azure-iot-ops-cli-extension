@@ -136,7 +136,7 @@ class Namespaces(Queryable):
             }
         }
 
-        with console.status(f"Updating to {namespace_name}..."):
+        with console.status(f"Updating endpoints for {namespace_name}..."):
             poller = self.ops.begin_update(
                 resource_group_name,
                 namespace_name,
@@ -184,7 +184,7 @@ class Namespaces(Queryable):
             }
         }
 
-        with console.status(f"Updating to {namespace_name}..."):
+        with console.status(f"Updating endpoints for {namespace_name}..."):
             poller = self.ops.begin_update(
                 resource_group_name,
                 namespace_name,
