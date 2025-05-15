@@ -123,6 +123,17 @@ def mocked_get_file_config(mocker):
     yield mocker.patch("azext_edge.edge.providers.orchestration.resources.reskit.read_file_content")
 
 
+@pytest.fixture
+def mocked_endpoint_create(mocker):
+    yield mocker.patch("azext_edge.edge.providers.orchestration.resources.dataflows.Instances.iotops_mgmt_client.begin_create_or_update")
+
+@pytest.fixture
+def mocked_instance(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.dataflows.Instances",
+    )
+    yield patched()
+
 def get_request_kpis(request: requests.PreparedRequest) -> "RequestKPIs":
     """Extracts key performance indicators from a request object."""
     return RequestKPIs(

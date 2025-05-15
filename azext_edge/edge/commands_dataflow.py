@@ -1115,36 +1115,6 @@ def update_dataflow_endpoint_custom_mqtt(
     )
 
 
-def apply_dataflow_endpoint(
-    cmd,
-    endpoint_name: str,
-    instance_name: str,
-    resource_group_name: str,
-    file_path: str,
-) -> dict:
-    return DataFlowEndpoints(cmd).apply(
-        name=endpoint_name,
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-        file_path=file_path,
-    )
-
-
-def delete_dataflow_endpoint(
-    cmd,
-    endpoint_name: str,
-    instance_name: str,
-    resource_group_name: str,
-    confirm_yes: bool = False,
-) -> None:
-    DataFlowEndpoints(cmd).delete(
-        name=endpoint_name,
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-        confirm_yes=confirm_yes,
-    )
-
-
 def show_dataflow_endpoint(cmd, endpoint_name: str, instance_name: str, resource_group_name: str) -> dict:
     return DataFlowEndpoints(cmd).show(
         name=endpoint_name,

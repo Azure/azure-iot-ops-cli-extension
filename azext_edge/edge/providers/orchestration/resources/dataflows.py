@@ -19,7 +19,6 @@ from azext_edge.edge.util.file_operations import deserialize_file_content
 
 from ....util.az_client import get_iotops_mgmt_client, wait_for_terminal_state
 from azure.core.exceptions import ResourceNotFoundError
-from azure.cli.core.azclierror import InvalidArgumentValueError
 
 from azext_edge.edge.providers.orchestration.common import (
     DATAFLOW_ENDPOINT_TYPE_SETTINGS,
@@ -419,6 +418,8 @@ class DataFlowEndpoints(Queryable):
             **kwargs
         )
 
+        if host and kwargs.get("host"):
+            del kwargs["host"]
         self._process_endpoint_properties(
             endpoint_type=endpoint_type,
             settings=settings,
@@ -662,18 +663,18 @@ class DataFlowEndpoints(Queryable):
         
         # Check if authentication method is allowed for the given endpoint type
         if authentication_method not in DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]:
-            raise ValueError(
+            raise InvalidArgumentValueError(
                 f"Authentication method '{authentication_method}' is not allowed for endpoint type '{endpoint_type}'. "
-                f"Allowed methods are: {DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]}"
+                f"Allowed methods are: {list(sorted(DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]))}."
             )
         
         # Check required properties for authentication method
         required_params = AUTHENTICATION_TYPE_REQUIRED_PARAMS.get(authentication_method, [])
-        missing_params = [param for param in required_params if param not in kwargs]
+        missing_params = [param for param in required_params if param not in kwargs or not kwargs[param]]
 
         if missing_params:
-            raise ValueError(
-                f"Missing required parameters for authentication method '{authentication_method}': {', '.join(missing_params)}"
+            raise InvalidArgumentValueError(
+                f"Missing required parameters for authentication method '{authentication_method}': {', '.join(missing_params)}."
             )
         
         settings["authentication"] = {
@@ -685,10 +686,12 @@ class DataFlowEndpoints(Queryable):
 
         auth_settings = {}
         for param_name, property_name in [
+            ("sami_audience", "audience"),
             ("audience", "audience"),
             ("client_id", "clientId"),
             ("tenant_id", "tenantId"),
             ("scope", "scope"),
+            ("at_secret_name", "secretRef"),
             ("secret_name", "secretRef"),
             ("sasl_type", "saslType"),
         ]:
@@ -709,7 +712,7 @@ class DataFlowEndpoints(Queryable):
         # Check for the presence of authentication-related parameters in kwargs
         if kwargs.get("no_auth"):
             return DataflowEndpointAuthenticationType.ANONYMOUS.value
-        elif kwargs.get("client_id") and kwargs.get("tenant_id"):
+        elif kwargs.get("client_id") or kwargs.get("tenant_id"):
             return DataflowEndpointAuthenticationType.USERASSIGNED.value
         elif kwargs.get("sat_audience"):
             return DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value

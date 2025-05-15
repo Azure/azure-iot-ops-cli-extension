@@ -365,14 +365,14 @@ def load_iotops_arguments(self, _):
         context.argument(
             "latency",
             options_list=["--latency", "-l"],
-            help="The batching latency in seconds.",
+            help="The batching latency in seconds. Min value: 0, max value: 65535.",
             type=int,
             arg_group="Batching Configuration",
         )
         context.argument(
             "message_count",
             options_list=["--message-count", "--mc"],
-            help="Maximum number of messages in a batch.",
+            help="Maximum number of messages in a batch. Min value: 0, max value: 4294967295.",
             type=int,
             arg_group="Batching Configuration",
         )
