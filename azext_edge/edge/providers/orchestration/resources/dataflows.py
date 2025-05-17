@@ -11,7 +11,7 @@ from knack.log import get_logger
 from rich.console import Console
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
-from azext_edge.edge.providers.orchestration.common import AUTHENTICATION_TYPE_REQUIRED_PARAMS, DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP, DATAFLOW_ENDPOINT_TYPE_SETTINGS, DataflowEndpointModeType, DataflowEndpointType, DataflowEndpointAuthenticationType
+from azext_edge.edge.providers.orchestration.common import AUTHENTICATION_TYPE_REQUIRED_PARAMS, AUTHENTICATION_TYPE_PARAMS_TEXT_MAP, DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP, DATAFLOW_ENDPOINT_TYPE_SETTINGS, DataflowEndpointModeType, DataflowEndpointType, DataflowEndpointAuthenticationType
 from azext_edge.edge.providers.orchestration.resources.instances import Instances
 from azext_edge.edge.providers.orchestration.resources.reskit import GetInstanceExtLoc, get_file_config
 from azext_edge.edge.util.common import should_continue_prompt
@@ -639,7 +639,7 @@ class DataFlowEndpoints(Queryable):
             DataflowEndpointType.EVENTGRID.value,
             DataflowEndpointType.CUSTOMMQTT.value,
         ]:
-            host = f"{kwargs["host"]}:{kwargs["port"]}"
+            host = f"{kwargs["hostname"]}:{kwargs["port"]}"
         
         return host
 
@@ -663,18 +663,24 @@ class DataFlowEndpoints(Queryable):
         
         # Check if authentication method is allowed for the given endpoint type
         if authentication_method not in DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]:
+            supported_auths = list(sorted(DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]))
+            if DataflowEndpointAuthenticationType.ANONYMOUS.value in supported_auths:
+                supported_auths.remove(DataflowEndpointAuthenticationType.ANONYMOUS.value)
             raise InvalidArgumentValueError(
                 f"Authentication method '{authentication_method}' is not allowed for endpoint type '{endpoint_type}'. "
-                f"Allowed methods are: {list(sorted(DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]))}."
+                f"Allowed methods are: {supported_auths}."
             )
         
         # Check required properties for authentication method
         required_params = AUTHENTICATION_TYPE_REQUIRED_PARAMS.get(authentication_method, [])
-        missing_params = [param for param in required_params if param not in kwargs or not kwargs[param]]
+        missing_params = sorted([param for param in required_params if param not in kwargs or not kwargs[param]])
 
         if missing_params:
+            missing_params_texts = [
+                AUTHENTICATION_TYPE_PARAMS_TEXT_MAP[param] for param in missing_params
+            ]
             raise InvalidArgumentValueError(
-                f"Missing required parameters for authentication method '{authentication_method}': {', '.join(missing_params)}."
+                f"Missing required parameters for authentication method '{authentication_method}': {', '.join(missing_params_texts)}."
             )
         
         settings["authentication"] = {
@@ -686,12 +692,15 @@ class DataFlowEndpoints(Queryable):
 
         auth_settings = {}
         for param_name, property_name in [
+            ("sat_audience", "audience"),
             ("sami_audience", "audience"),
             ("audience", "audience"),
             ("client_id", "clientId"),
             ("tenant_id", "tenantId"),
             ("scope", "scope"),
             ("at_secret_name", "secretRef"),
+            ("sasl_secret_name", "secretRef"),
+            ("x509_secret_name", "secretRef"),
             ("secret_name", "secretRef"),
             ("sasl_type", "saslType"),
         ]:
@@ -718,7 +727,7 @@ class DataFlowEndpoints(Queryable):
             return DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value
         elif kwargs.get("x509_secret_name"):
             return DataflowEndpointAuthenticationType.X509.value
-        elif kwargs.get("sasl_type"):
+        elif kwargs.get("sasl_type") or kwargs.get("sasl_secret_name"):
             return DataflowEndpointAuthenticationType.SASL.value
         elif kwargs.get("at_secret_name"):
             return DataflowEndpointAuthenticationType.ACCESSTOKEN.value
@@ -738,7 +747,7 @@ class DataFlowEndpoints(Queryable):
         if kwargs.get("database_name"):
             settings["database"] = kwargs["database_name"]
         if kwargs.get("latency") or kwargs.get("message_count") or kwargs.get("batching_disabled") or kwargs.get("max_byte") or kwargs.get("latency_ms"):
-            settings["batching"] = {}
+            settings["batching"] = settings.get("batching", {})
             if kwargs.get("latency"):
                 settings["batching"]["latencySeconds"] = kwargs["latency"]
             if kwargs.get("latency_ms"):
@@ -750,7 +759,7 @@ class DataFlowEndpoints(Queryable):
             if kwargs.get("max_byte"):
                 settings["batching"]["maxBytes"] = kwargs["max_byte"]
         if kwargs.get("lakehouse_name") or kwargs.get("workspace_name"):
-            settings["names"] = {}
+            settings["names"] = settings.get("names", {})
             if kwargs.get("lakehouse_name"):
                 settings["names"]["lakehouseName"] = kwargs["lakehouse_name"]
             if kwargs.get("workspace_name"):
@@ -767,12 +776,12 @@ class DataFlowEndpoints(Queryable):
             settings["aks"] = kwargs["aks"]
         if kwargs.get("patition_strategy"):
             settings["partitionStrategy"] = kwargs["patition_strategy"]
-        if kwargs.get("tls_disabled") or kwargs.get("tls_config_map_reference"):
-            settings["tls"] = {}
-            if kwargs.get("tls_disabled"):
+        if kwargs.get("tls_disabled") is not None or kwargs.get("config_map_reference"):
+            settings["tls"] = settings.get("tls", {})
+            if kwargs.get("tls_disabled") is not None:
                 settings["tls"]["mode"] = DataflowEndpointModeType.DISABLED.value if kwargs["tls_disabled"] else DataflowEndpointModeType.ENABLED.value
-            if kwargs.get("tls_config_map_reference"):
-                settings["tls"]["trustedCaCertificateConfigMapRef"] = kwargs["tls_config_map_reference"]
+            if kwargs.get("config_map_reference"):
+                settings["tls"]["trustedCaCertificateConfigMapRef"] = kwargs["config_map_reference"]
         if kwargs.get("cloud_event_attribute"):
             settings["cloudEventAttributes"] = kwargs["cloud_event_attribute"]
         if kwargs.get("pvc_reference"):
@@ -797,7 +806,6 @@ class DataFlowEndpoints(Queryable):
             DataflowEndpointType.EVENTHUB.value,
             DataflowEndpointType.EVENTGRID.value,
         ]:
-            import pdb; pdb.set_trace()
             if settings.get("tls"):
                 settings["tls"]["mode"] = DataflowEndpointModeType.ENABLED.value
             else:
@@ -840,6 +848,9 @@ class DataFlowEndpoints(Queryable):
                 settings=settings,
                 **kwargs
             )
+        
+        if settings.get("host") and kwargs.get("host"):
+            del kwargs["host"]
         
         self._process_endpoint_properties(
             endpoint_type=endpoint_type,

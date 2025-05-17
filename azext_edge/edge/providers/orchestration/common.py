@@ -262,7 +262,6 @@ DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.SASL.value,
-        DataflowEndpointAuthenticationType.X509.value,
         DataflowEndpointAuthenticationType.ANONYMOUS.value,
     },
 }
@@ -281,11 +280,24 @@ DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
 }
 
 AUTHENTICATION_TYPE_REQUIRED_PARAMS = {
+    DataflowEndpointAuthenticationType.ACCESSTOKEN.value: {"at_secret_name"},
+    DataflowEndpointAuthenticationType.SASL.value: {"sasl_secret_name", "sasl_type"},
     DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value: {},
     DataflowEndpointAuthenticationType.USERASSIGNED.value: {"client_id", "tenant_id"},
-    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value: {"audience"},
-    DataflowEndpointAuthenticationType.X509.value: {"secret_name"},
+    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value: {"sat_audience"},
+    DataflowEndpointAuthenticationType.X509.value: {"x509_secret_name"},
     DataflowEndpointAuthenticationType.ANONYMOUS.value: {},
+}
+
+AUTHENTICATION_TYPE_PARAMS_TEXT_MAP = {
+    "client_id": "--client-id",
+    "tenant_id": "--tenant-id",
+    "audience": "--audience",
+    "at_secret_name": "--secret-name",
+    "sasl_secret_name": "--secret-name",
+    "x509_secret_name": "--secret-name",
+    "sasl_type": "--sasl-type",
+    "sat_audience": "--audience",
 }
 
 DATAFLOW_OPERATION_TYPE_SETTINGS = {
