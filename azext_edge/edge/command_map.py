@@ -136,7 +136,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("apply", "apply_dataflow_endpoint")
         cmd_group.show_command("show", "show_dataflow_endpoint")
         cmd_group.command("list", "list_dataflow_endpoints")
-    
+
     with self.command_group(
         "iot ops dataflow endpoint create",
         command_type=dataflow_resource_ops,
@@ -151,7 +151,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("local-mqtt", "create_dataflow_endpoint_aio")
         cmd_group.command("eventgrid", "create_dataflow_endpoint_eventgrid")
         cmd_group.command("custom-mqtt", "create_dataflow_endpoint_custom_mqtt")
-    
+
     with self.command_group(
         "iot ops dataflow endpoint update",
         command_type=dataflow_resource_ops,

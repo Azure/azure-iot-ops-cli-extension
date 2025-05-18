@@ -6,7 +6,16 @@
 
 from typing import Iterable, Optional
 
-from .providers.orchestration.common import AIO_MQTT_DEFAULT_CONFIG_MAP, DataflowEndpointKafkaAcksType, DataflowEndpointType, KafkaCloudEventAttributeType, KafkaCompressionType, KafkaPartitionStrategyType, ListenerProtocol, MqttRetainType
+from .providers.orchestration.common import (
+    AIO_MQTT_DEFAULT_CONFIG_MAP,
+    DataflowEndpointKafkaAcksType,
+    DataflowEndpointType,
+    KafkaCloudEventAttributeType,
+    KafkaCompressionType,
+    KafkaPartitionStrategyType,
+    ListenerProtocol,
+    MqttRetainType,
+)
 from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles
 from .common import DEFAULT_DATAFLOW_PROFILE
 
@@ -247,6 +256,7 @@ def create_dataflow_endpoint_adls(
         show_config=show_config,
     )
 
+
 def create_dataflow_endpoint_fabric_onelake(
     cmd,
     endpoint_name: str,
@@ -442,7 +452,7 @@ def create_dataflow_endpoint_custom_kafka(
         group_id=group_id,
         batching_disabled=batching_disabled,
         latency_ms=latency,
-        message_count= message_count,
+        message_count=message_count,
         max_byte=max_byte,
         copy_broker_props_disabled=copy_broker_props_disabled,
         compression=compression,
@@ -749,7 +759,6 @@ def update_dataflow_endpoint_eventhub(
     latency: Optional[int] = None,
     max_byte: Optional[int] = None,
     message_count: Optional[int] = None,
-    tls_disabled: Optional[bool] = None,
     batching_disabled: Optional[bool] = None,
     copy_broker_props_disabled: Optional[bool] = None,
     acks: Optional[str] = None,
@@ -789,7 +798,6 @@ def update_dataflow_endpoint_eventhub(
         compression=compression,
         acks=acks,
         partition_strategy=partition_strategy,
-        tls_disabled=tls_disabled,
         config_map_reference=config_map_reference,
         cloud_event_attribute=cloud_event_attribute,
         authentication_type=authentication_type,
@@ -830,7 +838,7 @@ def update_dataflow_endpoint_fabric_realtime(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         endpoint_type=DataflowEndpointType.FABRICREALTIME.value,
-        host_name=host,
+        host=host,
         sasl_type=sasl_type,
         sasl_secret_name=secret_name,
         group_id=group_id,
@@ -993,7 +1001,6 @@ def update_dataflow_endpoint_eventgrid(
     keep_alive: Optional[int] = None,
     max_inflight_messages: Optional[int] = None,
     qos: Optional[int] = None,
-    tls_disabled: bool = False,
     client_id: Optional[str] = None,
     tenant_id: Optional[str] = None,
     audience: Optional[str] = None,
@@ -1028,7 +1035,6 @@ def update_dataflow_endpoint_eventgrid(
         max_inflight_messages=max_inflight_messages,
         qos=qos,
         session_expiry=session_expiry,
-        tls_disabled=tls_disabled,
         config_map_reference=config_map_reference,
         cloud_event_attribute=cloud_event_attribute,
         authentication_type=authentication_type,

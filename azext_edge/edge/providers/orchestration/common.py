@@ -179,22 +179,27 @@ class DataflowEndpointAuthenticationType(Enum):
     USERASSIGNED = "UserAssignedManagedIdentity"
     X509 = "X509Certificate"
 
+
 class DataflowEndpointModeType(Enum):
     ENABLED = "Enabled"
     DISABLED = "Disabled"
 
+
 class DataflowEndpointFabricPathType(Enum):
     FILES = "Files"
     TABLES = "Tables"
+
 
 class DataflowEndpointKafkaAcksType(Enum):
     ZERO = "Zero"
     ONE = "One"
     ALL = "All"
 
+
 class KafkaCloudEventAttributeType(Enum):
     PROPAGATE = "Propagate"
     CREATEORREMAP = "CreateOrRemap"
+
 
 class KafkaCompressionType(Enum):
     NONE = "None"
@@ -202,20 +207,24 @@ class KafkaCompressionType(Enum):
     LZ4 = "Lz4"
     SNAPPY = "Snappy"
 
+
 class KafkaPartitionStrategyType(Enum):
     DEFAULT = "Default"
     STATIC = "Static"
     TOPIC = "Topic"
     PROPERTY = "Property"
 
+
 class AuthenticationSaslType(Enum):
     PLAIN = "Plain"
     SCRAMSHA256 = "ScramSha256"
     SCRAMSHA512 = "ScramSha512"
 
+
 class MqttRetainType(Enum):
     KEEP = "Keep"
     NEVER = "Never"
+
 
 DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
     DataflowEndpointType.DATAEXPLORER.value: {
