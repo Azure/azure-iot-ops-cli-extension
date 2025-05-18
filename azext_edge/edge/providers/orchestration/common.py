@@ -34,6 +34,9 @@ AIO_INSECURE_LISTENER_NAME = "default-insecure"
 AIO_INSECURE_LISTENER_SERVICE_NAME = "aio-broker-insecure"
 AIO_INSECURE_LISTENER_SERVICE_PORT = 1883
 
+KAFKA_ENDPOINT_TYPE = "Kafka"
+MQTT_ENDPOINT_TYPE = "Mqtt"
+
 TRUST_ISSUER_KIND_KEY = "issuerKind"
 TRUST_SETTING_KEYS = ["issuerName", TRUST_ISSUER_KIND_KEY, "configMapName", "configMapKey"]
 
@@ -286,6 +289,8 @@ DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
     DataflowEndpointType.AIOLOCALMQTT.value: "mqttSettings",
     DataflowEndpointType.EVENTGRID.value: "mqttSettings",
     DataflowEndpointType.CUSTOMMQTT.value: "mqttSettings",
+    KAFKA_ENDPOINT_TYPE: "kafkaSettings",
+    MQTT_ENDPOINT_TYPE: "mqttSettings",
 }
 
 AUTHENTICATION_TYPE_REQUIRED_PARAMS = {

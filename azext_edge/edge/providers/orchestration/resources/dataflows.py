@@ -21,6 +21,8 @@ from ..common import (
     DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP,
     DATAFLOW_ENDPOINT_TYPE_SETTINGS,
     DATAFLOW_OPERATION_TYPE_SETTINGS,
+    KAFKA_ENDPOINT_TYPE,
+    MQTT_ENDPOINT_TYPE,
     DataflowEndpointType,
     DataflowOperationType,
     DataflowEndpointModeType,
@@ -279,15 +281,15 @@ class DataFlows:
         # validate source endpoint type
         source_endpoint_type = source_endpoint_obj.get("properties", {}).get("endpointType", "")
         if source_endpoint_type not in [
-            DataflowEndpointType.KAFKA.value,
-            DataflowEndpointType.MQTT.value,
+            KAFKA_ENDPOINT_TYPE,
+            MQTT_ENDPOINT_TYPE,
         ]:
             raise InvalidArgumentValueError(
                 f"'{source_endpoint_type}' is not a valid type for source dataflow endpoint."
             )
 
         # if Kafka endpoint, validate consumer group id
-        if source_endpoint_type == DataflowEndpointType.KAFKA.value:
+        if source_endpoint_type == KAFKA_ENDPOINT_TYPE:
             group_id = source_endpoint_obj.get("properties", {}).get("kafkaSettings", {}).get("consumerGroupId", "")
             if not group_id:
                 raise InvalidArgumentValueError(
@@ -329,9 +331,9 @@ class DataFlows:
         destination_endpoint_host = desination_endpoint_obj.get("properties", {}).get(
             DATAFLOW_ENDPOINT_TYPE_SETTINGS[destination_endpoint_type], {}).get("host", "")
         is_source_local_mqtt = LOCAL_MQTT_HOST_PREFIX in source_endpoint_host and\
-            source_endpoint_type == DataflowEndpointType.MQTT.value
+            source_endpoint_type == MQTT_ENDPOINT_TYPE
         is_destination_local_mqtt = LOCAL_MQTT_HOST_PREFIX in destination_endpoint_host and\
-            destination_endpoint_type == DataflowEndpointType.MQTT.value
+            destination_endpoint_type == MQTT_ENDPOINT_TYPE
         if not is_source_local_mqtt and not is_destination_local_mqtt:
             raise InvalidArgumentValueError(
                 "Either source or destination endpoint must be an Azure IoT Operations Local "
@@ -430,13 +432,13 @@ class DataFlowEndpoints(Queryable):
             DataflowEndpointType.EVENTHUB.value,
             DataflowEndpointType.CUSTOMKAFKA.value,
         ]:
-            actual_endpoint_type = "Kafka"
+            actual_endpoint_type = KAFKA_ENDPOINT_TYPE
         elif endpoint_type in [
             DataflowEndpointType.AIOLOCALMQTT.value,
             DataflowEndpointType.EVENTGRID.value,
             DataflowEndpointType.CUSTOMMQTT.value,
         ]:
-            actual_endpoint_type = "Mqtt"
+            actual_endpoint_type = MQTT_ENDPOINT_TYPE
 
         resource = {
             "extendedLocation": extended_location,
