@@ -573,7 +573,7 @@ class DataFlowEndpoints(Queryable):
             DataflowEndpointType.EVENTGRID.value,
             DataflowEndpointType.CUSTOMMQTT.value,
         ]:
-            host = f"{kwargs["hostname"]}:{kwargs["port"]}"
+            host = f'{kwargs["hostname"]}:{kwargs["port"]}'
 
         return host
 
