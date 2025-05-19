@@ -810,7 +810,7 @@ def load_iotops_help():
               --storage-account-name mystorageaccount
               --client-id myclientid
               --tenant-id mytenantid
-              --scope https://storage.azure.com/.default
+              --scope "https://storage.azure.com/.default"
         - name: Show config file for creating a dataflow endpoint resource.
           text: >
             az iot ops dataflow endpoint create adls
@@ -890,7 +890,7 @@ def load_iotops_help():
               --secret-name mysecret
         - name: Create or replace a dataflow endpoint resource anonymously.
           text: >
-            az iot ops dataflow endpoint create custom-mqtt
+            az iot ops dataflow endpoint create custom-kafka
               --name myendpoint
               --instance mycluster-ops-instance
               --resource-group myresourcegroup
@@ -983,7 +983,7 @@ def load_iotops_help():
               --name myendpoint
               --instance mycluster-ops-instance
               --resource-group myresourcegroup
-              --hostname namespace.region-1.ts.eventgrid.azure.net
+              --hostname "namespace.region-1.ts.eventgrid.azure.net"
               --port 9092
         - name: Create or replace a dataflow endpoint resource using X509 authentication method.
           text: >
@@ -991,7 +991,7 @@ def load_iotops_help():
               --name myendpoint
               --instance mycluster-ops-instance
               --resource-group myresourcegroup
-              --hostname namespace.region-1.ts.eventgrid.azure.net
+              --hostname "namespace.region-1.ts.eventgrid.azure.net"
               --port 9092
               --secret-name mysecret
         - name: Show config file for creating a dataflow endpoint resource.
@@ -1000,7 +1000,7 @@ def load_iotops_help():
               --name myendpoint
               --instance mycluster-ops-instance
               --resource-group myresourcegroup
-              --hostname namespace.region-1.ts.eventgrid.azure.net
+              --hostname "namespace.region-1.ts.eventgrid.azure.net"
               --port 9092
               --client-id-pre myclientprefix
               --keep-alive 100
@@ -1116,14 +1116,14 @@ def load_iotops_help():
               --name myendpoint
               --instance mycluster-ops-instance
               --resource-group myresourcegroup
-              --host fabricrealtime.servicebus.windows.net:9093
+              --host "fabricrealtime.servicebus.windows.net:9093"
         - name: Create or replace a dataflow endpoint resource using Sasl authentication method.
           text: >
             az iot ops dataflow endpoint create fabric-realtime
               --name myendpoint
               --instance mycluster-ops-instance
               --resource-group myresourcegroup
-              --host fabricrealtime.servicebus.windows.net:9093
+              --host "fabricrealtime.servicebus.windows.net:9093"
               --sasl-type ScramSha256
               --secret-name mysecret
         - name: Show config file for creating a dataflow endpoint resource.
@@ -1132,7 +1132,7 @@ def load_iotops_help():
               --name myendpoint
               --instance mycluster-ops-instance
               --resource-group myresourcegroup
-              --host fabricrealtime.servicebus.windows.net:9093
+              --host "fabricrealtime.servicebus.windows.net:9093"
               --acks One
               --compression Gzip
               --group-id mygroupid
@@ -1246,7 +1246,7 @@ def load_iotops_help():
               --resource-group myresourcegroup
               --client-id myclientid
               --tenant-id mytenantid
-              --scope https://storage.azure.com/.default
+              --scope "https://storage.azure.com/.default"
     """
 
     helps[
