@@ -684,17 +684,11 @@ class DataFlowEndpoints(Queryable):
         else:
             return DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value
 
-    def _process_endpoint_properties(
+    def _set_batching_settings(
         self,
-        endpoint_type: DataflowEndpointType,
         settings: dict,
-        host: str,
         **kwargs
     ):
-        if host:
-            settings["host"] = host
-        if kwargs.get("database_name"):
-            settings["database"] = kwargs["database_name"]
         if any([
             kwargs.get("latency"),
             kwargs.get("message_count"),
@@ -714,12 +708,59 @@ class DataFlowEndpoints(Queryable):
                     if kwargs["batching_disabled"] else DataflowEndpointModeType.ENABLED.value
             if kwargs.get("max_byte"):
                 settings["batching"]["maxBytes"] = kwargs["max_byte"]
+
+    def _set_names_settings(
+        self,
+        settings: dict,
+        **kwargs
+    ):
         if kwargs.get("lakehouse_name") or kwargs.get("workspace_name"):
             settings["names"] = settings.get("names", {})
             if kwargs.get("lakehouse_name"):
                 settings["names"]["lakehouseName"] = kwargs["lakehouse_name"]
             if kwargs.get("workspace_name"):
                 settings["names"]["workspaceName"] = kwargs["workspace_name"]
+
+    def _set_tls_settings(
+        self,
+        settings: dict,
+        endpoint_type: DataflowEndpointType,
+        **kwargs
+    ):
+        if kwargs.get("tls_disabled") is not None or kwargs.get("config_map_reference"):
+            settings["tls"] = settings.get("tls", {})
+            if kwargs.get("tls_disabled") is not None:
+                settings["tls"]["mode"] = DataflowEndpointModeType.DISABLED.value \
+                    if kwargs["tls_disabled"] else DataflowEndpointModeType.ENABLED.value
+            if kwargs.get("config_map_reference"):
+                settings["tls"]["trustedCaCertificateConfigMapRef"] = kwargs["config_map_reference"]
+
+        # for eventhub and eventgrid, tls mode is always enabled
+        if endpoint_type in [
+            DataflowEndpointType.EVENTHUB.value,
+            DataflowEndpointType.EVENTGRID.value,
+        ]:
+            if settings.get("tls"):
+                settings["tls"]["mode"] = DataflowEndpointModeType.ENABLED.value
+            else:
+                settings["tls"] = {"mode": DataflowEndpointModeType.ENABLED.value}
+
+    def _process_endpoint_properties(
+        self,
+        endpoint_type: DataflowEndpointType,
+        settings: dict,
+        host: str,
+        **kwargs
+    ):
+        if host:
+            settings["host"] = host
+        if kwargs.get("database_name"):
+            settings["database"] = kwargs["database_name"]
+        self._set_batching_settings(
+            settings=settings,
+            **kwargs
+        )
+        self._set_names_settings(settings=settings, **kwargs)
         if kwargs.get("path_type"):
             settings["oneLakePathType"] = kwargs["path_type"]
         if kwargs.get("group_id"):
@@ -733,13 +774,11 @@ class DataFlowEndpoints(Queryable):
             settings["kafkaAcks"] = kwargs["acks"]
         if kwargs.get("partition_strategy"):
             settings["partitionStrategy"] = kwargs["partition_strategy"]
-        if kwargs.get("tls_disabled") is not None or kwargs.get("config_map_reference"):
-            settings["tls"] = settings.get("tls", {})
-            if kwargs.get("tls_disabled") is not None:
-                settings["tls"]["mode"] = DataflowEndpointModeType.DISABLED.value \
-                    if kwargs["tls_disabled"] else DataflowEndpointModeType.ENABLED.value
-            if kwargs.get("config_map_reference"):
-                settings["tls"]["trustedCaCertificateConfigMapRef"] = kwargs["config_map_reference"]
+        self._set_tls_settings(
+            settings=settings,
+            endpoint_type=endpoint_type,
+            **kwargs
+        )
         if kwargs.get("cloud_event_attribute"):
             settings["cloudEventAttributes"] = kwargs["cloud_event_attribute"]
         if kwargs.get("pvc_reference"):
@@ -759,15 +798,6 @@ class DataFlowEndpoints(Queryable):
         if kwargs.get("session_expiry"):
             settings["sessionExpirySeconds"] = kwargs["session_expiry"]
 
-        # for eventhub and eventgrid, tls mode is always enabled
-        if endpoint_type in [
-            DataflowEndpointType.EVENTHUB.value,
-            DataflowEndpointType.EVENTGRID.value,
-        ]:
-            if settings.get("tls"):
-                settings["tls"]["mode"] = DataflowEndpointModeType.ENABLED.value
-            else:
-                settings["tls"] = {"mode": DataflowEndpointModeType.ENABLED.value}
         return
 
     def _update_properties(
