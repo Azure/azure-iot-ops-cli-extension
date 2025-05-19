@@ -509,16 +509,6 @@ def load_iotops_arguments(self, _):
             type=int,
         )
 
-    with self.argument_context("iot ops dataflow endpoint import") as context:
-        context.argument(
-            "file_path",
-            options_list=["--config-file"],
-            help="Path to a config file containing resource properties in json format. The config file "
-            "should contain an object with properties compatible with the ARM representation of the resource. "
-            "The object correlates directly with 'properties:{}' of the ARM resource.",
-            arg_group="Config",
-        )
-
     with self.argument_context("iot ops dataflow endpoint create adx") as context:
         context.argument(
             "database_name",
