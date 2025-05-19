@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 from knack.log import get_logger
 
 from .providers.rpsaas.adr.namespaces import Namespaces
-from .providers.rpsaas.adr.namespace_devices import NamespaceDevices
+from .providers.rpsaas.adr.namespace_devices import NamespaceDevices, DeviceEndpointType
 
 logger = get_logger(__name__)
 
@@ -111,6 +111,7 @@ def remove_namespace_endpoint(
     )
 
 
+# DEVICE COMMANDS
 def create_namespace_device(
     cmd,
     device_name: str,
@@ -186,4 +187,208 @@ def show_namespace_device(
         device_name=device_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name
+    )
+
+
+def update_namespace_device(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    custom_attributes: Optional[List[str]] = None,
+    device_group_id: Optional[str] = None,
+    disabled: Optional[bool] = None,
+    operating_system_version: Optional[str] = None,
+    tags: Optional[Dict[str, str]] = None,
+    **kwargs
+):
+    return NamespaceDevices(cmd).update(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        custom_attributes=custom_attributes,
+        device_group_id=device_group_id,
+        disabled=disabled,
+        operating_system_version=operating_system_version,
+        tags=tags,
+        **kwargs
+    )
+
+
+def add_inbound_custom_device_endpoint(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    endpoint_name: str,
+    endpoint_type: str,
+    endpoint_address: str,
+    additional_configuration: Optional[str] = None,
+    certificate_reference: Optional[str] = None,
+    password_reference: Optional[str] = None,
+    username_reference: Optional[str] = None,
+    trust_list: Optional[str] = None,
+    **kwargs
+):
+    return NamespaceDevices(cmd).add_inbound_endpoint(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_name=endpoint_name,
+        endpoint_type=endpoint_type,
+        endpoint_address=endpoint_address,
+        additional_configuration=additional_configuration,
+        certificate_reference=certificate_reference,
+        password_reference=password_reference,
+        username_reference=username_reference,
+        trust_list=trust_list,
+        **kwargs
+    )
+
+
+def add_inbound_media_device_endpoint(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    endpoint_name: str,
+    endpoint_address: str,
+    certificate_reference: Optional[str] = None,
+    password_reference: Optional[str] = None,
+    username_reference: Optional[str] = None,
+    **kwargs
+):
+    return NamespaceDevices(cmd).add_inbound_endpoint(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_name=endpoint_name,
+        endpoint_type=DeviceEndpointType.MEDIA.value,
+        endpoint_address=endpoint_address,
+        certificate_reference=certificate_reference,
+        password_reference=password_reference,
+        username_reference=username_reference,
+        **kwargs
+    )
+
+
+def add_inbound_onvif_device_endpoint(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    endpoint_name: str,
+    endpoint_address: str,
+    accept_invalid_hostnames: Optional[bool] = False,
+    accept_invalid_certificates: Optional[bool] = False,
+    certificate_reference: Optional[str] = None,
+    password_reference: Optional[str] = None,
+    username_reference: Optional[str] = None,
+    **kwargs
+):
+    return NamespaceDevices(cmd).add_inbound_endpoint(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_name=endpoint_name,
+        endpoint_type=DeviceEndpointType.ONVIF.value,
+        endpoint_address=endpoint_address,
+        certificate_reference=certificate_reference,
+        password_reference=password_reference,
+        username_reference=username_reference,
+        accept_invalid_hostnames=accept_invalid_hostnames,
+        accept_invalid_certificates=accept_invalid_certificates,
+        **kwargs
+    )
+
+
+def add_inbound_opcua_device_endpoint(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    endpoint_name: str,
+    endpoint_address: str,
+    application_name: Optional[str] = "OPC UA Broker",
+    keep_alive: Optional[int] = 10000,
+    publishing_interval: Optional[int] = 1000,
+    sampling_interval: Optional[int] = 1000,
+    queue_size: Optional[int] = 1,
+    key_frame_count: Optional[int] = 0,
+    session_timeout: Optional[int] = 60000,
+    session_keep_alive_interval: Optional[int] = 10000,
+    session_reconnect_period: Optional[int] = 2000,
+    session_reconnect_exponential_backoff: Optional[int] = 10000,
+    session_enable_tracing_headers: Optional[bool] = False,
+    subscription_max_items: Optional[int] = 1000,
+    subscription_life_time: Optional[int] = 60000,
+    security_auto_accept_certificates: Optional[bool] = False,
+    security_policy: Optional[str] = None,
+    security_mode: Optional[str] = None,
+    run_asset_discovery: Optional[bool] = False,
+    certificate_reference: Optional[str] = None,
+    password_reference: Optional[str] = None,
+    username_reference: Optional[str] = None,
+    trust_list: Optional[str] = None,
+    **kwargs
+):
+    return NamespaceDevices(cmd).add_inbound_endpoint(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_name=endpoint_name,
+        endpoint_type=DeviceEndpointType.OPCUA.value,
+        endpoint_address=endpoint_address,
+        certificate_reference=certificate_reference,
+        password_reference=password_reference,
+        username_reference=username_reference,
+        trust_list=trust_list,
+        application_name=application_name,
+        keep_alive=keep_alive,
+        publishing_interval=publishing_interval,
+        sampling_interval=sampling_interval,
+        queue_size=queue_size,
+        key_frame_count=key_frame_count,
+        session_timeout=session_timeout,
+        session_keep_alive_interval=session_keep_alive_interval,
+        session_reconnect_period=session_reconnect_period,
+        session_reconnect_exponential_backoff=session_reconnect_exponential_backoff,
+        session_enable_tracing_headers=session_enable_tracing_headers,
+        subscription_max_items=subscription_max_items,
+        subscription_life_time=subscription_life_time,
+        security_auto_accept_certificates=security_auto_accept_certificates,
+        security_policy=security_policy,
+        security_mode=security_mode,
+        run_asset_discovery=run_asset_discovery,
+        **kwargs
+    )
+
+
+def list_namespace_device_endpoints(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str
+) -> dict:
+    return NamespaceDevices(cmd).list_endpoints(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+
+
+def remove_namespace_device_endpoints(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    endpoint_names: List[str],
+    **kwargs
+):
+    return NamespaceDevices(cmd).remove_endpoint(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_names=endpoint_names,
+        **kwargs
     )

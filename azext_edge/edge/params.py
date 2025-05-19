@@ -21,7 +21,7 @@ from ._validators import (
     validate_namespace,
     validate_resource_name,
 )
-from .common import OpsServiceType
+from .common import OpsServiceType, SecurityModes, SecurityPolicies
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import (
     DeviceRegistryResourceKinds,
@@ -248,7 +248,7 @@ def load_iotops_arguments(self, _):
             "Choose 0 for a summary view (minimal output), "
             "1 for a detailed view (more comprehensive information), "
             "or 2 for a verbose view (all available information).",
-        ),
+        )
         context.argument(
             "resource_name",
             options_list=["--resource-name", "--rn"],
@@ -1107,4 +1107,197 @@ def load_iotops_arguments(self, _):
             help="Use the self-hosted oidc issuer for federation. Only applicable if "
             "user-assigned managed identities are associated to the model instance.",
             arg_group="Cluster Target",
+        )
+
+    with self.argument_context("iot ops namespace device endpoint") as context:
+        context.argument(
+            "device_name",
+            options_list=["--device", "-d"],
+            help="Device name.",
+        )
+        context.argument(
+            "namespace_name",
+            options_list=["--namespace", "-n"],
+            help="Namespace name.",
+        )
+        context.argument(
+            "endpoint_name",
+            options_list=["--name", "--endpoint-name"],
+            help="Endpoint name.",
+        )
+        context.argument(
+            "endpoint_address",
+            options_list=["--endpoint-address", "--address"],
+            help="Endpoint address to connect to.",
+        )
+        context.argument(
+            "certificate_reference",
+            options_list=["--certificate-ref", "--cert-ref"],
+            help="Reference for the certificate used in authentication.",
+            arg_group="Authentication",
+        )
+        context.argument(
+            "password_reference",
+            options_list=["--password-ref", "--pass-ref"],
+            help="Reference for the password used in authentication.",
+            arg_group="Authentication",
+        )
+        context.argument(
+            "username_reference",
+            options_list=["--username-ref", "--user-ref"],
+            help="Reference for the username used in authentication.",
+            arg_group="Authentication",
+        )
+        context.argument(
+            "trust_list",
+            options_list=["--trust-list"],
+            help="List of trusted certificates for the endpoint.",
+        )
+
+    with self.argument_context("iot ops namespace device endpoint add custom") as context:
+        context.argument(
+            "endpoint_type",
+            options_list=["--endpoint-type", "--type"],
+            help="Type of the custom endpoint.",
+        )
+        context.argument(
+            "additional_configuration",
+            options_list=["--additional-config", "--config"],
+            help="Additional configuration for the custom endpoint in JSON format.",
+        )
+
+    with self.argument_context("iot ops namespace device endpoint add onvif") as context:
+        context.argument(
+            "accept_invalid_hostnames",
+            options_list=["--accept-invalid-hostnames", "--aih"],
+            help="Accept invalid hostnames in certificates.",
+            arg_type=get_three_state_flag(),
+            arg_group="ONVIF Configuration",
+        )
+        context.argument(
+            "accept_invalid_certificates",
+            options_list=["--accept-invalid-certificates", "--aic"],
+            help="Accept invalid certificates.",
+            arg_type=get_three_state_flag(),
+            arg_group="ONVIF Configuration",
+        )
+
+    with self.argument_context("iot ops namespace device endpoint add-opcua") as context:
+        context.argument(
+            "application_name",
+            options_list=["--application-name", "--app"],
+            help="Application name for the OPC UA client.",
+            arg_group="OPC UA Configuration",
+        )
+        context.argument(
+            "keep_alive",
+            options_list=["--keep-alive"],
+            help="Keep alive time in milliseconds.",
+            type=int,
+            arg_group="OPC UA Configuration",
+        )
+        context.argument(
+            "publishing_interval",
+            options_list=["--publishing-interval", "--pi"],
+            help="Publishing interval in milliseconds.",
+            type=int,
+            arg_group="OPC UA Configuration",
+        )
+        context.argument(
+            "sampling_interval",
+            options_list=["--sampling-interval", "--si"],
+            help="Sampling interval in milliseconds.",
+            type=int,
+            arg_group="OPC UA Configuration",
+        )
+        context.argument(
+            "queue_size",
+            options_list=["--queue-size", "--qs"],
+            help="Queue size.",
+            type=int,
+            arg_group="OPC UA Configuration",
+        )
+        context.argument(
+            "key_frame_count",
+            options_list=["--key-frame-count", "--kfc"],
+            help="Key frame count.",
+            type=int,
+            arg_group="OPC UA Configuration",
+        )
+        context.argument(
+            "session_timeout",
+            options_list=["--session-timeout"],
+            help="Session timeout in milliseconds.",
+            type=int,
+            arg_group="OPC UA Session",
+        )
+        context.argument(
+            "session_keep_alive_interval",
+            options_list=["--session-keep-alive", "--ska"],
+            help="Session keep alive interval in milliseconds.",
+            type=int,
+            arg_group="OPC UA Session",
+        )
+        context.argument(
+            "session_reconnect_period",
+            options_list=["--session-reconnect", "--srp"],
+            help="Session reconnect period in milliseconds.",
+            type=int,
+            arg_group="OPC UA Session",
+        )
+        context.argument(
+            "session_reconnect_exponential_backoff",
+            options_list=["--session-backoff", "--sbo"],
+            help="Session reconnect exponential backoff in milliseconds.",
+            type=int,
+            arg_group="OPC UA Session",
+        )
+        context.argument(
+            "session_enable_tracing_headers",
+            options_list=["--session-tracing", "--str"],
+            help="Enable tracing headers for the session.",
+            arg_type=get_three_state_flag(),
+            arg_group="OPC UA Session",
+        )
+        context.argument(
+            "subscription_max_items",
+            options_list=["--subscription-max-items", "--smi"],
+            help="Maximum number of items in subscription.",
+            type=int,
+            arg_group="OPC UA Subscription",
+        )
+        context.argument(
+            "subscription_life_time",
+            options_list=["--subscription-lifetime", "--slt"],
+            help="Subscription lifetime in milliseconds.",
+            type=int,
+            arg_group="OPC UA Subscription",
+        )
+        context.argument(
+            "security_auto_accept_certificates",
+            options_list=["--accept-certs", "--ac"],
+            help="Auto accept untrusted server certificates.",
+            arg_type=get_three_state_flag(),
+            arg_group="OPC UA Security",
+        )
+        context.argument(
+            "security_policy",
+            options_list=["--security-policy", "--sp"],
+            help="Security policy to use for the connection.",
+            arg_type=get_enum_type(SecurityPolicies),
+            arg_group="OPC UA Security",
+        )
+        context.argument(
+            "security_mode",
+            options_list=["--security-mode", "--sm"],
+            help="Security mode to use for the connection.",
+            arg_type=get_enum_type(SecurityModes),
+            arg_group="OPC UA Security",
+        )
+        context.argument(
+            "run_asset_discovery",
+            options_list=["--asset-discovery", "--ad"],
+            help="Enable asset discovery after connecting to the endpoint.",
+            arg_type=get_three_state_flag(),
+            arg_group="OPC UA Configuration",
         )

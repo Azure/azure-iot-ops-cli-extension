@@ -350,7 +350,7 @@ def test_namespace_update(
     namespace_name = generate_random_string()
     resource_group_name = generate_random_string()
 
-    # Create mock namespace records for GET and PUT responses
+    # Create mock namespace records for PATCH responses
     mock_original_namespace = get_namespace_record(
         namespace_name=namespace_name,
         namespace_resource_group=resource_group_name

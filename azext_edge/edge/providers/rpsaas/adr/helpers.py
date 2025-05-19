@@ -9,6 +9,7 @@ from typing import Dict, Optional
 from azure.cli.core.azclierror import (
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
+    InvalidArgumentValueError
 )
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
@@ -138,3 +139,60 @@ def process_authentication(
         raise MutuallyExclusiveArgumentError(GENERAL_AUTH_REF_MISMATCH_ERROR)
 
     return auth_props
+
+
+# TODO unit test
+def ensure_schema_structure(schema: dict, input_data: dict):
+    """
+    Quick and dirty alternative for using jsonschema (to avoid conflicts in other extensions). This partial
+    implementation focuses on checks not covered by azure core parameter checks:
+    - minimum and maximum checks for integers
+
+    Not covered in this:
+    - type checks
+    - enum checks
+    """
+    invalid_items = []
+
+    def _recursive_check(schema_properties: dict, input_data: dict):
+        for key, value in input_data.items():
+            if value is None:
+                # assume this is to clear the value
+                continue
+
+            if key in schema_properties and ("type" in schema_properties[key]):
+                schema_value = schema_properties[key]
+                expected_type = schema_value["type"]
+
+                # go deeper if the expected type is an object
+                if expected_type == "object":
+                    _recursive_check(schema_value["properties"], value)
+
+                # lazy way of getting first item for now - assume that the second item is a null type
+                if isinstance(expected_type, list):
+                    expected_type = expected_type[0]
+
+                # minimum and maximum checks for integers
+                if expected_type == "integer":
+                    if all([
+                        "minimum" in schema_value,
+                        "maximum" in schema_value,
+                        not schema_value["minimum"] < value < schema_value["maximum"]
+                    ]):
+                        invalid_items.append(
+                            f"Invalid value for {key}: expected <= {schema_value['maximum']} and >= "
+                            f"{schema_value['minimum']}, got {value}"
+                        )
+                    elif "minimum" in schema_value and (value < schema_value["minimum"]):
+                        invalid_items.append(
+                            f"Invalid value for {key}: expected >= {schema_value['minimum']}, got {value}"
+                        )
+                    elif "maximum" in schema_value and (value > schema_value["maximum"]):
+                        invalid_items.append(
+                            f"Invalid value for {key}: expected <= {schema_value['maximum']}, got {value}"
+                        )
+
+    _recursive_check(schema["properties"], input_data)
+    if invalid_items:
+        error_msg = ', \n'.join(invalid_items)
+        raise InvalidArgumentValueError(f"Invalid input data: {error_msg}")

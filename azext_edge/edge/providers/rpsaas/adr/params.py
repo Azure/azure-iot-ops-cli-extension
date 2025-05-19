@@ -599,6 +599,7 @@ def load_adr_arguments(self, _):
             arg_group="Authentication",
             deprecate_info=context.deprecate(hide=True)
         )
+
     # ADR REFRESH
     with self.argument_context("iot ops namespace") as context:
         context.argument(
@@ -617,7 +618,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "mi_system_identity",
-            options_list=["--system-identity", "--si"],
+            options_list=["--mi-system-assigned"],
             help="Enable system-assigned managed identity for the namespace.",
             arg_type=get_three_state_flag(),
         )
@@ -634,6 +635,103 @@ def load_adr_arguments(self, _):
             "endpoint_names",
             options_list=["--endpoint"],
             help="Space-separated list of endpoint names to remove to the namespace.",
+            nargs="+",
+            action="extend",
+        )
+
+    with self.argument_context("iot ops namespace device") as context:
+        context.argument(
+            "namespace_name",
+            options_list=["--namespace", "--ns"],
+            help="Namespace name.",
+        )
+        context.argument(
+            "device_name",
+            options_list=["--name", "-n"],
+            help="The name of the device to create.",
+        )
+        context.argument(
+            "custom_attributes",
+            options_list=["--custom-attribute", "--attr"],
+            help="Space-separated key=value pairs corresponding to additional custom attributes for the device. "
+                 "This parameter can be used more than once.",
+            nargs="+",
+            action="extend",
+        )
+        context.argument(
+            "device_group_id",
+            options_list=["--device-group-id", "--group-id"],
+            help="The device group ID for the device.",
+        )
+        context.argument(
+            "disabled",
+            options_list=["--disabled"],
+            help="Disable the device. By default, no change will be made to the device's enabled/disabled state.",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "operating_system_version",
+            options_list=["--os-version"],
+            help="The device operating system version.",
+        )
+        context.argument(
+            "tags",
+            options_list=["--tags"],
+            help="Space-separated tags in 'key[=value]' format. Use '' to clear existing tags.",
+            arg_type=tags_type,
+        )
+
+    with self.argument_context("iot ops namespace device create") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "--inst"],
+            help="The name of the Azure IoT Operations instance.",
+        )
+        context.argument(
+            "device_template_id",
+            options_list=["--template-id", "--tid"],
+            help="The device template ID to use for the device.",
+        )
+        context.argument(
+            "instance_resource_group",
+            options_list=["--instance-resource-group", "--irg"],
+            help="The resource group of the Azure IoT Operations instance. If not provided, the device "
+            "resource group will be used.",
+        )
+        context.argument(
+            "instance_subscription",
+            options_list=["--instance-subscription", "--isub"],
+            help="The subscription ID of the Azure IoT Operations instance. If not provided, the current "
+            "subscription will be used.",
+        )
+        context.argument(
+            "manufacturer",
+            options_list=["--manufacturer"],
+            help="The device manufacturer.",
+        )
+        context.argument(
+            "model",
+            options_list=["--model"],
+            help="The device model.",
+        )
+        context.argument(
+            "operating_system",
+            options_list=["--os"],
+            help="The device operating system.",
+        )
+
+    with self.argument_context("iot ops namespace device endpoint") as context:
+        context.argument(
+            "device_name",
+            options_list=["--device", "-d"],
+            help="The name of the device.",
+        )
+
+    with self.argument_context("iot ops namespace device endpoint remove") as context:
+        context.argument(
+            "endpoint_names",
+            options_list=["--endpoint"],
+            help="Space-separated list of endpoint names to remove from the device.",
             nargs="+",
             action="extend",
         )
