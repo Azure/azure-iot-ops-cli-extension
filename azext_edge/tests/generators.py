@@ -81,3 +81,11 @@ def generate_base_endpoint(
 
 def generate_uuid() -> str:
     return str(uuid4())
+
+
+def generate_role_def_id(subscription_id: Optional[str] = None, role_id: Optional[str] = None) -> str:
+    if not subscription_id:
+        subscription_id = get_zeroed_subscription()
+    if not role_id:
+        role_id = generate_uuid()
+    return f"/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/{role_id}"
