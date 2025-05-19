@@ -298,11 +298,10 @@ jobs:
       - name: "Create Storage and Schema Registry for init tests"
         id: "init_reqs"
         run: |
-          storage_account_name=$(echo "initst${{ env.CLUSTER_NAME }}" | tr -d '-')
+          # Remove -'s and limit name length to 20 chars for storage accounts
+          storage_account_name=$(echo "initstore${{ env.CLUSTER_NAME }}" | tr -d '-' | cut -c 1-20)
           storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n $storage_account_name --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny -o tsv --query id)
-          echo $storage_id
-          registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n initreg${{ env.CLUSTER_NAME }} --rn initrn${{ env.CLUSTER_NAME }} --sa-resource-id $storage_id -o tsv --query id)
-          echo $registry_id
+          registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n init-registry-${{ env.CLUSTER_NAME }} --rn init-namespace-${{ env.CLUSTER_NAME }} --sa-resource-id $storage_id -o tsv --query id)
           echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
           echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
       - name: "Tox INIT Integration Tests"
