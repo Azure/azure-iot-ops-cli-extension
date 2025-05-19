@@ -530,7 +530,7 @@ def load_iotops_arguments(self, _):
             options_list=["--host"],
             help="Host of the Azure Data Explorer is "
             "Azure Data Explorer cluster URI. In the form "
-            "of https://<cluster>.<region>.kusto.windows.net",
+            "of https://cluster.region.kusto.windows.net",
         )
         context.argument(
             "authentication_type",
@@ -753,7 +753,7 @@ def load_iotops_arguments(self, _):
             options_list=["--hostname"],
             help="The hostname of the event grid namespace. Can"
             " be found in 'Http hostname' property. In the form "
-            "of <NAMESPACE>.<REGION>-1.ts.eventgrid.azure.net",
+            "of NAMESPACE.REGION-1.ts.eventgrid.azure.net",
         )
         context.argument(
             "port",
@@ -839,7 +839,7 @@ def load_iotops_arguments(self, _):
             options_list=["--host"],
             help="Host of the Azure Data Explorer is "
             "Azure Data Explorer cluster URI. In the form "
-            "of https://<cluster>.<region>.kusto.windows.net",
+            "of https://cluster.region.kusto.windows.net",
         )
         context.argument(
             "authentication_type",
@@ -1062,7 +1062,7 @@ def load_iotops_arguments(self, _):
             options_list=["--hostname"],
             help="The hostname of the event grid namespace. Can"
             " be found in 'Http hostname' property. In the form "
-            "of <NAMESPACE>.<REGION>-1.ts.eventgrid.azure.net",
+            "of NAMESPACE.REGION-1.ts.eventgrid.azure.net",
         )
         context.argument(
             "port",
