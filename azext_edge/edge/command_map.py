@@ -17,6 +17,7 @@ secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.comman
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
 aep_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_asset_endpoint_profiles#{}")
 connector_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_connector#{}")
+graph_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_graph#{}")
 
 
 def load_iotops_commands(self, _):
@@ -293,3 +294,18 @@ def load_iotops_commands(self, _):
         cmd_group.command("add", "add_connector_opcua_client")
         cmd_group.command("remove", "remove_connector_opcua_client")
         cmd_group.show_command("show", "show_connector_opcua_client")
+
+    temp_namespace = 'graph'
+        
+    with self.command_group(
+        f"iot ops {temp_namespace}",
+        command_type=graph_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("list", "list_dataflow_graphs")
+
+    with self.command_group(
+        f"iot ops {temp_namespace} registry",
+        command_type=graph_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("list", "list_dataflow_graph_registries")
+        cmd_group.command("create", "create_dataflow_graph_registry")
