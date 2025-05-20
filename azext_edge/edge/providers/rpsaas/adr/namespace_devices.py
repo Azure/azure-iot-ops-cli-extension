@@ -178,7 +178,7 @@ class NamespaceDevices(Queryable):
         trust_list: Optional[str] = None,
         **kwargs
     ):
-        from .helpers import process_authentication
+        from .helpers import process_authentication, process_additional_configuration
         # get the original inbound endpoints
         original_endpoints = self.show(
             device_name=device_name,
@@ -190,7 +190,7 @@ class NamespaceDevices(Queryable):
         endpoint_body = {
             "address": endpoint_address,
             "endpointType": endpoint_type,
-            "authentciation": process_authentication(
+            "authentication": process_authentication(
                 certificate_reference=certificate_reference,
                 password_reference=password_reference,
                 username_reference=username_reference
@@ -198,7 +198,7 @@ class NamespaceDevices(Queryable):
         }
 
         # process the configuration for the endpoint
-        config_func = ENDPOINT_TYPE_TO_FUNCTION_MAP.get(endpoint_type, process_custom_configuration)
+        config_func = ENDPOINT_TYPE_TO_FUNCTION_MAP.get(endpoint_type, process_additional_configuration)
         if config_func:
             endpoint_body["additionalConfiguration"] = config_func(**kwargs)
 
@@ -228,7 +228,7 @@ class NamespaceDevices(Queryable):
                 properties=update_payload
             )
             result = wait_for_terminal_state(poller, **kwargs)
-            return result["properties"]["messaging"]["endpoints"]
+            return result["properties"].get("endpoints", {}).get("inbound", {})
 
     def list_endpoints(
         self,
@@ -281,24 +281,6 @@ class NamespaceDevices(Queryable):
             )
             result = wait_for_terminal_state(poller, **kwargs)
             return result["properties"].get("endpoints", {}).get("inbound", {})
-
-
-def process_custom_configuration(
-    custom_configuration: Optional[str] = None,
-    **kwargs
-) -> str:
-    """
-    Creates a stringified JSON from the given custom_configuration.
-    """
-    # TODO: add read from file
-    if custom_configuration:
-        # check that the string is a valid JSON
-        try:
-            json.loads(custom_configuration)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON format: {e}")
-
-    return custom_configuration
 
 
 def process_onvif_configuration(

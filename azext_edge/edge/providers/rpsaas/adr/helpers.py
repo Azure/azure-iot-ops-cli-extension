@@ -4,12 +4,14 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 from knack.log import get_logger
 from typing import Dict, Optional
 from azure.cli.core.azclierror import (
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
-    InvalidArgumentValueError
+    InvalidArgumentValueError,
+    FileOperationError
 )
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
@@ -135,6 +137,8 @@ def process_authentication(
             logger.warning(REMOVED_CERT_REF_MSG)
         if auth_props.pop("usernamePasswordCredentials", None):
             logger.warning(REMOVED_USERPASS_REF_MSG)
+    elif not auth_mode and not auth_props:
+        auth_props["method"] = ADRAuthModes.anonymous.value
     elif any([auth_mode, certificate_reference, username_reference, password_reference]):
         raise MutuallyExclusiveArgumentError(GENERAL_AUTH_REF_MISMATCH_ERROR)
 
@@ -196,3 +200,39 @@ def ensure_schema_structure(schema: dict, input_data: dict):
     if invalid_items:
         error_msg = ', \n'.join(invalid_items)
         raise InvalidArgumentValueError(f"Invalid input data: {error_msg}")
+
+
+def process_additional_configuration(
+    additional_configuration: Optional[str] = None,
+    **kwargs
+) -> Optional[str]:
+    """
+    Checks that the custom configuration is a valid JSON and returns the stringified JSON.
+    If it is a file, it will read the content.
+    """
+    from ....util import read_file_content
+    inline_json = False
+
+    if not additional_configuration:
+        return
+
+    try:
+        logger.debug("Processing additional configuration.")
+        additional_configuration = read_file_content(additional_configuration)
+        if not additional_configuration:
+            raise InvalidArgumentValueError("Given file is empty.")
+    except FileOperationError:
+        inline_json = True
+        logger.debug("Given additional configuration is not a file.")
+
+    # make sure it is an actual json
+    try:
+        json.loads(additional_configuration)
+        return additional_configuration
+    except json.JSONDecodeError as e:
+        error_msg = "Additional configuration is not a valid JSON. "
+        if inline_json:
+            error_msg += "For examples of valid JSON formating, please see https://aka.ms/inline-json-examples "
+        raise InvalidArgumentValueError(
+            f"{error_msg}\n{e.msg}"
+        )

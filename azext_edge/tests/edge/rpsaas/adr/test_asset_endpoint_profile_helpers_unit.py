@@ -9,11 +9,7 @@ import json
 import pytest
 
 from azure.cli.core.azclierror import (
-    CLIError,
-    FileOperationError,
     InvalidArgumentValueError,
-    MutuallyExclusiveArgumentError,
-    RequiredArgumentMissingError,
 )
 
 from azext_edge.edge.common import SecurityPolicies, SecurityModes
@@ -21,11 +17,10 @@ from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
     _assert_above_min,
     _build_opcua_config,
     _build_query_body,
-    _process_additional_configuration,
-    _process_authentication,
     _update_properties,
     ADRAuthModes
 )
+from azext_edge.edge.providers.rpsaas.adr.helpers import process_authentication
 from ....generators import generate_random_string
 
 
@@ -242,188 +237,6 @@ def test_build_query_body(
         assert f"where properties.targetAddress =~ \"{target_address}\"" in result
 
 
-@pytest.mark.parametrize("configuration", [
-    "",
-    json.dumps({generate_random_string(): generate_random_string()}),
-])
-@pytest.mark.parametrize("is_file", [True, False])
-def test_process_additional_configuration(
-    mocker, configuration, is_file
-):
-    patched_read_file = mocker.patch("azext_edge.edge.util.read_file_content")
-    file_name = None
-    if is_file:
-        patched_read_file.return_value = configuration
-        file_name = generate_random_string()
-    else:
-        patched_read_file.side_effect = FileOperationError("Not a file.")
-
-    if is_file and not configuration:
-        with pytest.raises(InvalidArgumentValueError):
-            _process_additional_configuration(file_name)
-        return
-
-    result = _process_additional_configuration(file_name if is_file else configuration)
-    if configuration == "":
-        assert result is None
-    else:
-        assert result == configuration
-
-
-def test_process_additional_configuration_error(mocker):
-    configuration = json.dumps({generate_random_string(): generate_random_string()})
-    configuration = configuration[-2:-1]  # remove the } to make invalid
-    file_name = generate_random_string
-
-    # file
-    patched_read_file = mocker.patch("azext_edge.edge.util.read_file_content")
-    patched_read_file.return_value = configuration
-    with pytest.raises(InvalidArgumentValueError):
-        _process_additional_configuration(file_name)
-
-    # in-line
-    patched_read_file.side_effect = FileOperationError("Not a file.")
-    with pytest.raises(InvalidArgumentValueError):
-        _process_additional_configuration(configuration)
-
-
-@pytest.mark.parametrize("original_props", [
-    None,
-    {
-        "method": generate_random_string(),
-        "x509Credentials": {"certificateSecretName": generate_random_string()},
-        "usernamePasswordCredentials": {
-            "usernameSecretName": generate_random_string(),
-            "passwordSecretName": generate_random_string(),
-        },
-    }
-])
-@pytest.mark.parametrize("req", [
-    {},
-    {
-        "auth_mode": ADRAuthModes.anonymous.value
-    },
-    {
-        "auth_mode": ADRAuthModes.certificate.value,
-        "certificate_reference": generate_random_string()
-    },
-    {
-        "certificate_reference": generate_random_string()
-    },
-    {
-        "auth_mode": ADRAuthModes.userpass.value,
-        "password_reference": generate_random_string(),
-        "username_reference": generate_random_string()
-    },
-    {
-        "password_reference": generate_random_string(),
-        "username_reference": generate_random_string()
-    },
-])
-def test_process_authentication(
-    mocker, original_props, req
-):
-    # remove logger warnings
-    mocker.patch("azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles.logger")
-    result = _process_authentication(
-        auth_props=original_props,
-        **req
-    )
-
-    if original_props is None:
-        original_props = {}
-    expected_auth = req.get("auth_mode") or original_props.get("method")
-    if expected_auth is None and req.get("certificate_reference"):
-        expected_auth = ADRAuthModes.certificate.value
-    if expected_auth is None and req.get("password_reference"):
-        expected_auth = ADRAuthModes.userpass.value
-    assert result.get("method") == expected_auth
-
-    if result.get("method") == ADRAuthModes.anonymous.value:
-        assert result.get("x509Credentials") is None
-        assert result.get("usernamePasswordCredentials") is None
-    elif result.get("method") == ADRAuthModes.certificate.value:
-        assert result["x509Credentials"]["certificateSecretName"] == req["certificate_reference"]
-        assert result.get("usernamePasswordCredentials") is None
-    elif result.get("method") == ADRAuthModes.userpass.value:
-        assert result.get("x509Credentials") is None
-        assert result["usernamePasswordCredentials"]["passwordSecretName"] == req["password_reference"]
-        assert result["usernamePasswordCredentials"]["usernameSecretName"] == req["username_reference"]
-    else:
-        assert result == original_props
-
-
-@pytest.mark.parametrize("req", [
-    {
-        "auth_mode": ADRAuthModes.anonymous.value,
-        "certificate_reference": generate_random_string()
-    },
-    {
-        "auth_mode": ADRAuthModes.anonymous.value,
-        "password_reference": generate_random_string(),
-    },
-    {
-        "auth_mode": ADRAuthModes.anonymous.value,
-        "username_reference": generate_random_string()
-    },
-    {
-        "auth_mode": ADRAuthModes.certificate.value,
-    },
-    {
-        "auth_mode": ADRAuthModes.certificate.value,
-        "password_reference": generate_random_string(),
-    },
-    {
-        "auth_mode": ADRAuthModes.certificate.value,
-        "username_reference": generate_random_string()
-    },
-    {
-        "auth_mode": ADRAuthModes.userpass.value,
-    },
-    {
-        "auth_mode": ADRAuthModes.userpass.value,
-        "certificate_reference": generate_random_string()
-    },
-    {
-        "auth_mode": ADRAuthModes.userpass.value,
-        "password_reference": generate_random_string(),
-    },
-    {
-        "auth_mode": ADRAuthModes.userpass.value,
-        "username_reference": generate_random_string(),
-    },
-    {
-        "password_reference": generate_random_string(),
-    },
-    {
-        "username_reference": generate_random_string(),
-    },
-])
-def test_process_authentication_error(
-    req
-):
-    with pytest.raises(CLIError) as e:
-        _process_authentication(
-            auth_props=None,
-            **req
-        )
-
-    if req.get("auth_mode") in [None, ADRAuthModes.userpass.value] and any(
-        [req.get("username_reference"), req.get("password_reference")]
-    ):
-        assert isinstance(e.value, RequiredArgumentMissingError)
-    else:
-        assert isinstance(e.value, MutuallyExclusiveArgumentError)
-    # bad scenarios: all mutual unless noted
-    # authmode anon + any pass, user, cert
-    # authmode cert + pass/user
-    # authmode cert + no cert in param or props
-    # authmode pass + cert
-    # authmode pass + one of pass/user in result -> req
-    # one of pass/user in result
-    # pass, user, cert
-
-
 @pytest.mark.parametrize("properties", [
     {},
     {
@@ -480,7 +293,7 @@ def test_update_properties(mocker, properties, req):
     expected_certs = original_properties.get("transportAuthentication", {}).get("ownCertificates")
     assert properties.get("transportAuthentication", {}).get("ownCertificates") == expected_certs
 
-    expected_auth = _process_authentication(
+    expected_auth = process_authentication(
         auth_props=properties.get("authentication", {}),
         auth_mode=req.get("auth_mode"),
         certificate_reference=req.get("certificate_reference"),

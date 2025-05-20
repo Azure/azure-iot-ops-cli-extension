@@ -5,10 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 from copy import deepcopy
-from typing import Dict
+from typing import Dict, Optional
 import json
 import pytest
 import responses
+
+from azure.cli.core.azclierror import FileOperationError
 
 from azext_edge.edge.commands_namespaces import (
     create_namespace_device,
@@ -18,7 +20,9 @@ from azext_edge.edge.commands_namespaces import (
     update_namespace_device,
     list_namespace_device_endpoints,
     remove_namespace_device_endpoints,
+    add_inbound_custom_device_endpoint,
 )
+from azext_edge.edge.common import ADRAuthModes
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 # Import necessary modules
@@ -682,3 +686,163 @@ def test_remove_namespace_device_endpoints(
     # Verify request body contains expected endpoints
     patch_body = json.loads(mocked_responses.calls[1].request.body)
     assert patch_body["properties"]["endpoints"]["inbound"] == expected_remaining
+
+
+@pytest.mark.parametrize("response_status", [200, 400])
+@pytest.mark.parametrize("config_is_file, additional_configuration", [
+    (False, '{"customSetting": "value"}'),  # Test with JSON string
+    (True, '{"fileContent": "content"}'),   # Test with file content
+])
+@pytest.mark.parametrize("cert_ref, username_ref, password_ref", [
+    (None, None, None),              # Anonymous auth
+    (None, "secretRef:username", "secretRef:password"),  # Username/Password auth
+    ("secretRef:certificate", None, None),  # Certificate auth
+])
+def test_add_inbound_custom_device_endpoint(
+    mocker,
+    mocked_cmd,
+    mocked_responses: responses,
+    config_is_file: bool,
+    additional_configuration: str,
+    cert_ref: Optional[str],
+    username_ref: Optional[str],
+    password_ref: Optional[str],
+    response_status: int
+):
+    # Setup mock for file reading
+    mock_read_file_content = mocker.patch("azext_edge.edge.util.read_file_content")
+    if config_is_file:
+        mock_read_file_content.return_value = additional_configuration
+    else:
+        mock_read_file_content.side_effect = FileOperationError("Not a file")
+
+    # Setup test data
+    device_name = generate_random_string()
+    namespace_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    endpoint_name = f"custom-endpoint-{generate_random_string()}"
+    endpoint_type = "Custom.Type"
+    endpoint_address = "192.168.1.100:8080"
+
+    # Create original device record with no endpoints
+    original_device = get_namespace_device_record(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    original_device["properties"]["endpoints"] = {"inbound": {}}
+
+    # Create expected endpoint structure based on auth type
+    expected_endpoint = {
+        "endpointType": endpoint_type,
+        "address": endpoint_address,
+        "additionalConfiguration": additional_configuration
+    }
+
+    # Set up authentication structure based on auth type
+    if cert_ref:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.certificate.value,
+            "x509Credentials": {
+                "certificateSecretName": cert_ref
+            }
+        }
+    elif username_ref and password_ref:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.userpass.value,
+            "usernamePasswordCredentials": {
+                "usernameSecretName": username_ref,
+                "passwordSecretName": password_ref
+            }
+        }
+    else:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.anonymous.value
+        }
+
+    # Create updated device record for PATCH response
+    updated_device = deepcopy(original_device)
+    updated_device["properties"]["endpoints"] = {
+        "inbound": {endpoint_name: expected_endpoint}
+    }
+
+    # Mock the GET call to get the original device
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=original_device,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Mock the PATCH call to update the endpoints
+    mocked_responses.add(
+        method=responses.PATCH,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=updated_device if response_status == 200 else {"error": "Bad Request"},
+        status=response_status,
+        content_type="application/json",
+    )
+
+    # Execute test based on status code
+    if response_status != 200:
+        with pytest.raises(Exception):
+            add_inbound_custom_device_endpoint(
+                cmd=mocked_cmd,
+                device_name=device_name,
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name,
+                endpoint_name=endpoint_name,
+                endpoint_type=endpoint_type,
+                endpoint_address=endpoint_address,
+                additional_configuration=additional_configuration,
+                certificate_reference=cert_ref,
+                username_reference=username_ref,
+                password_reference=password_ref,
+                wait_sec=0
+            )
+        return
+
+    # Test add_inbound_custom_device_endpoint for success case
+    result = add_inbound_custom_device_endpoint(
+        cmd=mocked_cmd,
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_name=endpoint_name,
+        endpoint_type=endpoint_type,
+        endpoint_address=endpoint_address,
+        additional_configuration=additional_configuration,
+        certificate_reference=cert_ref,
+        username_reference=username_ref,
+        password_reference=password_ref,
+        wait_sec=0
+    )
+    assert result == updated_device["properties"]["endpoints"]["inbound"]
+    # Verify that both GET and PATCH calls were made
+    assert len(mocked_responses.calls) == 2
+    assert mocked_responses.calls[0].request.method == "GET"
+    assert mocked_responses.calls[1].request.method == "PATCH"
+
+    # Verify request body contains expected endpoint
+    patch_body = json.loads(mocked_responses.calls[1].request.body)
+    patch_endpoints = patch_body["properties"]["endpoints"]["inbound"]
+    assert endpoint_name in patch_endpoints
+    patch_endpoint = patch_endpoints[endpoint_name]
+    assert patch_endpoint["endpointType"] == endpoint_type
+    assert patch_endpoint["address"] == endpoint_address
+    assert patch_endpoint["additionalConfiguration"] == additional_configuration
+    assert patch_endpoint["authentication"]["method"] == expected_endpoint["authentication"]["method"]
+    assert patch_endpoint["authentication"] == expected_endpoint["authentication"]
+
+    # Verify file reading mock was called correctly
+    if config_is_file:
+        mock_read_file_content.assert_called_once_with(additional_configuration)
