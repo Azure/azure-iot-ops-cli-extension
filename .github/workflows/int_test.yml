@@ -452,13 +452,13 @@ jobs:
         if: ${{ always() }}
         run: |
           az resource delete -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
-          if [ "${{ steps.env_out.outputs.SCHEMA_REGISTRY_ID}}"]; then
-            az resource delete -v --id ${{ steps.env_out.outputs.SCHEMA_REGISTRY_ID }} --verbose
+          if [ "${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}" ]; then
+            az resource delete -v --id ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }} --verbose
           else
             echo "No schema registry to delete"
           fi
-          if [ "${{ steps.env_out.outputs.STORAGE_ID}}"]; then
-            az resource delete -v --id ${{ steps.env_out.outputs.STORAGE_ID }} --verbose
+          if [ "${{ steps.init_reqs.outputs.STORAGE_ID }}" ]; then
+            az resource delete -v --id ${{ steps.init_reqs.outputs.STORAGE_ID }} --verbose
           else
             echo "No storage account to delete"
           fi
