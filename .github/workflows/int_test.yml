@@ -303,7 +303,7 @@ jobs:
           storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n $storage_account_name --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny -o tsv --query id)
           echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
 
-          registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n init-registry-${{ env.CLUSTER_NAME }} --rn init-namespace-too-loooooooooooooong-${{ env.CLUSTER_NAME }} --sa-resource-id $storage_id -o tsv --query id)
+          registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n init-registry-${{ env.CLUSTER_NAME }} --rn init-name-${{ env.CLUSTER_NAME }} --sa-resource-id $storage_id -o tsv --query id)
           echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
       - name: "OIDC Token exchange service"
         run: |
