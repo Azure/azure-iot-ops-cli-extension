@@ -40,28 +40,38 @@ We also regularly utilize GitHub Codespaces, and have automated this environment
 
 ### [azure-iot-ops-cli-extension](https://github.com/Azure/azure-iot-ops-cli-extension)
 
-
 ```powershell
 git clone https://github.com/Azure/azure-iot-ops-cli-extension
 ```
+
 ### [azure-cli](https://github.com/Azure/azure-cli)
 
 ```powershell
 git clone https://github.com/Azure/azure-cli
 ```
 
-> IMPORTANT: When cloning the repositories and environments, ensure they are all siblings to each other. This makes things much easier down the line.
-
-```text
-source-directory/
-|-- azure-cli/
-|-- azure-iot-ops-cli-extension/
-|-- .env3/
-```
-
 To assist in local development, it's suggested to utilize a local clone of the core [azure-cli](https://github.com/Azure/azure-cli) repository.
 
-You may also utilize `azdev setup` (explained in the next section) to customize your local CLI installation.
+You may also utilize `azdev setup` (explained in [this later section](#install-and-configure-azure-cli-dev-tools)) to customize your local CLI installation, some options will download a version of CLI core on your behalf.
+
+> IMPORTANT: When cloning the repositories and environments, ensure they are all siblings to each other. This makes things much easier down the line.
+
+Example folder structure:
+```text
+source/
+|-- .env3/
+|-- azure-cli/
+|-- azure-iot-ops-cli-extension/
+|-- extensions/
+```
+
+The `extensions/` folder is optional, but allows you to isolate your installed extensions with an environment variable named `AZURE_EXTENSION_DIR` that points to it:
+
+```powershell
+$env:AZURE_EXTENSION_DIR="path/to/source/extensions"
+```
+
+Otherwise, you can utilize the default extension path `~/.azure/cliextensions`, but note that **this may cause conflicts** if your machine has an existing installation of `az` CLI and/or other CLI extensions.
 
 ## Install and configure [Azure CLI dev tools](https://github.com/Azure/azure-cli-dev-tools)
 
@@ -93,18 +103,13 @@ With your **virtual environment activated**:
     Python location 'C:\src\azure-iot-ops-cli-extension\env3\Scripts\python.exe'
     ```
 
+    You should see `Extensions directory` with the value you set for `AZURE_EXTENSION_DIR`, or `~/.azure/cliextensions`:
+
+    ```powershell
+    Extensions directory 'path/to/source/extensions'
+    ```
+
 ## Install dev extension
-
-You can isolate your development extensions in a separate folder to aid in debugging.
-
-Create a new folder for your extensions, and create an environment variable named `AZURE_EXTENSION_DIR` that points to it:
-
-```powershell
-mkdir "/path/to/source/extensions"
-$env:AZURE_EXTENSION_DIR="path/to/source/extensions"
-```
-
-Otherwise, you can utilize the default extension path `~/.azure/cliextensions`, but note that **this may cause conflicts** if your machine has an existing installation of `az` CLI and/or other CLI extensions.
 
 Inside your `azure-iot-ops-cli-extension` directory, run
 
@@ -112,6 +117,7 @@ Inside your `azure-iot-ops-cli-extension` directory, run
 (env) pip install -U --target $env:AZURE_EXTENSION_DIR/azure-iot-ops
 ```
 
+> Note, if you did not setup the `AZURE_EXTENSION_DIR` variable in the previous step, this value is `~/.azure/cliextensions`
 
 ### Verify environment is setup correctly
 
