@@ -637,7 +637,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "secret_name",
             options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains 'Connection string-primary key' Value. "
+            help="The name for the kubernetes secret that contains Connection string-primary key value. "
             "Can be found in event stream destination -- 'SAS Key Authentication' section. "
             "Note: The secret must be in the same namespace as the Kafka data flow endpoint.",
             arg_group="SASL Authentication",

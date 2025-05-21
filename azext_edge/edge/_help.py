@@ -1117,7 +1117,7 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --host "fabricrealtime.servicebus.windows.net:9093"
-        - name: Create or replace a dataflow endpoint resource using Sasl authentication method.
+        - name: Create or replace a dataflow endpoint resource using SASL authentication method.
           text: >
             az iot ops dataflow endpoint create fabric-realtime
             --name myendpoint
@@ -1238,7 +1238,7 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --storage-account-name newstorageaccount
-        - name: Update the authentication method of the dataflow endpoint resource called 'myendpoint'.
+        - name: Update to use user assigned managed identity authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update adls
             --name myendpoint
@@ -1264,7 +1264,7 @@ def load_iotops_help():
             --resource-group myresourcegroup
             --latency 70
             --message-count 100
-        - name: Update the authentication method of the dataflow endpoint resource called 'myendpoint'.
+        - name: Update to use system assigned managed identity authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update adx
             --name myendpoint
@@ -1287,7 +1287,7 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --hostname newkafkabroker
-        - name: Update the authentication method of the dataflow endpoint resource called 'myendpoint'.
+        - name: Update to use SASL authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update custom-kafka
             --name myendpoint
@@ -1311,7 +1311,7 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --cloud-event-attribute CreateOrRemap
-        - name: Update the authentication method of the dataflow endpoint resource called 'myendpoint'.
+        - name: Update to use X509 authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update custom-mqtt
             --name myendpoint
@@ -1335,7 +1335,7 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --session-expiry 100
-        - name: Update the authentication method of the dataflow endpoint resource called 'myendpoint'.
+        - name: Update to use X509 authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update eventgrid
             --name myendpoint
@@ -1358,7 +1358,7 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --compression Gzip
-        - name: Update the authentication method of the dataflow endpoint resource called 'myendpoint'.
+        - name: Update to use SASL authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update eventhub
             --name myendpoint
@@ -1382,7 +1382,7 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --lakehouse-name newlakehouse
-        - name: Update the authentication method of the dataflow endpoint resource called 'myendpoint'.
+        - name: Update to use system assigned managed identity authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update fabric-onelake
             --name myendpoint
@@ -1405,7 +1405,7 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --partition-strategy Static
-        - name: Update the authentication method of the dataflow endpoint resource called 'myendpoint'.
+        - name: Update to use SASL authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update fabric-realtime
             --name myendpoint
@@ -1429,7 +1429,7 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --config-map-ref mynewconfigmap
-        - name: Update the authentication method of the dataflow endpoint resource called 'myendpoint'.
+        - name: Update to use Kubernetes Service Account Token authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update local-mqtt
             --name myendpoint
