@@ -21,8 +21,13 @@ from azext_edge.edge.commands_namespaces import (
     list_namespace_device_endpoints,
     remove_namespace_device_endpoints,
     add_inbound_custom_device_endpoint,
+    add_inbound_media_device_endpoint,
+    add_inbound_onvif_device_endpoint,
+    add_inbound_opcua_device_endpoint,
 )
 from azext_edge.edge.common import ADRAuthModes
+from azext_edge.edge.providers.rpsaas.adr.namespace_devices import DeviceEndpointType
+from azext_edge.edge.providers.rpsaas.adr.specs import SecurityPolicy
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 # Import necessary modules
@@ -711,8 +716,10 @@ def test_add_inbound_custom_device_endpoint(
 ):
     # Setup mock for file reading
     mock_read_file_content = mocker.patch("azext_edge.edge.util.read_file_content")
+    expected_additional_configuration = additional_configuration
     if config_is_file:
-        mock_read_file_content.return_value = additional_configuration
+        mock_read_file_content.return_value = expected_additional_configuration
+        additional_configuration = f"{generate_random_string()}.json"
     else:
         mock_read_file_content.side_effect = FileOperationError("Not a file")
 
@@ -736,7 +743,7 @@ def test_add_inbound_custom_device_endpoint(
     expected_endpoint = {
         "endpointType": endpoint_type,
         "address": endpoint_address,
-        "additionalConfiguration": additional_configuration
+        "additionalConfiguration": expected_additional_configuration
     }
 
     # Set up authentication structure based on auth type
@@ -839,10 +846,536 @@ def test_add_inbound_custom_device_endpoint(
     patch_endpoint = patch_endpoints[endpoint_name]
     assert patch_endpoint["endpointType"] == endpoint_type
     assert patch_endpoint["address"] == endpoint_address
-    assert patch_endpoint["additionalConfiguration"] == additional_configuration
+    assert patch_endpoint["additionalConfiguration"] == expected_additional_configuration
     assert patch_endpoint["authentication"]["method"] == expected_endpoint["authentication"]["method"]
     assert patch_endpoint["authentication"] == expected_endpoint["authentication"]
 
     # Verify file reading mock was called correctly
     if config_is_file:
         mock_read_file_content.assert_called_once_with(additional_configuration)
+
+
+@pytest.mark.parametrize("response_status", [200, 400])
+@pytest.mark.parametrize("cert_ref, username_ref, password_ref", [
+    (None, None, None),              # Anonymous auth
+    (None, "secretRef:username", "secretRef:password"),  # Username/Password auth
+    ("secretRef:certificate", None, None),  # Certificate auth
+])
+def test_add_inbound_media_device_endpoint(
+    mocked_cmd,
+    mocked_responses: responses,
+    cert_ref: Optional[str],
+    username_ref: Optional[str],
+    password_ref: Optional[str],
+    response_status: int
+):
+    # Setup test data
+    device_name = generate_random_string()
+    namespace_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    endpoint_name = f"media-endpoint-{generate_random_string()}"
+    endpoint_address = "rtsp://192.168.1.100:554/stream"
+
+    # Create original device record with no endpoints
+    original_device = get_namespace_device_record(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    original_device["properties"]["endpoints"] = {"inbound": {}}
+
+    # Create expected endpoint structure
+    expected_endpoint = {
+        "endpointType": DeviceEndpointType.MEDIA.value,
+        "address": endpoint_address,
+    }
+
+    # Set up authentication structure based on auth type
+    if cert_ref:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.certificate.value,
+            "x509Credentials": {
+                "certificateSecretName": cert_ref
+            }
+        }
+    elif username_ref and password_ref:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.userpass.value,
+            "usernamePasswordCredentials": {
+                "usernameSecretName": username_ref,
+                "passwordSecretName": password_ref
+            }
+        }
+    else:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.anonymous.value
+        }
+
+    # Create updated device record for PATCH response
+    updated_device = deepcopy(original_device)
+    updated_device["properties"]["endpoints"] = {
+        "inbound": {endpoint_name: expected_endpoint}
+    }
+
+    # Mock the GET call to get the original device
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=original_device,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Mock the PATCH call to update the endpoints
+    mocked_responses.add(
+        method=responses.PATCH,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=updated_device if response_status == 200 else {"error": "Bad Request"},
+        status=response_status,
+        content_type="application/json",
+    )
+
+    # Execute test based on status code
+    if response_status != 200:
+        with pytest.raises(Exception):
+            add_inbound_media_device_endpoint(
+                cmd=mocked_cmd,
+                device_name=device_name,
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name,
+                endpoint_name=endpoint_name,
+                endpoint_address=endpoint_address,
+                certificate_reference=cert_ref,
+                username_reference=username_ref,
+                password_reference=password_ref,
+                wait_sec=0
+            )
+        return
+
+    # Test add_inbound_media_device_endpoint for success case
+    result = add_inbound_media_device_endpoint(
+        cmd=mocked_cmd,
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_name=endpoint_name,
+        endpoint_address=endpoint_address,
+        certificate_reference=cert_ref,
+        username_reference=username_ref,
+        password_reference=password_ref,
+        wait_sec=0
+    )
+    assert result == updated_device["properties"]["endpoints"]["inbound"]
+
+    # Verify that both GET and PATCH calls were made
+    assert len(mocked_responses.calls) == 2
+    assert mocked_responses.calls[0].request.method == "GET"
+    assert mocked_responses.calls[1].request.method == "PATCH"
+
+    # Verify request body contains expected endpoint
+    patch_body = json.loads(mocked_responses.calls[1].request.body)
+    endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
+    assert endpoint_patch["endpointType"] == DeviceEndpointType.MEDIA.value
+    assert endpoint_patch["address"] == endpoint_address
+    assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
+    assert endpoint_patch["authentication"] == expected_endpoint["authentication"]
+
+
+@pytest.mark.parametrize("response_status", [200, 400])
+@pytest.mark.parametrize("cert_ref, username_ref, password_ref", [
+    (None, None, None),              # Anonymous auth
+    (None, "secretRef:username", "secretRef:password"),  # Username/Password auth
+    ("secretRef:certificate", None, None),  # Certificate auth
+])
+@pytest.mark.parametrize("accept_invalid_hostnames", [True, False])
+@pytest.mark.parametrize("accept_invalid_certificates", [True, False])
+def test_add_inbound_onvif_device_endpoint(
+    mocked_cmd,
+    mocked_responses: responses,
+    cert_ref: Optional[str],
+    username_ref: Optional[str],
+    password_ref: Optional[str],
+    accept_invalid_hostnames: bool,
+    accept_invalid_certificates: bool,
+    response_status: int
+):
+    # Setup test data
+    device_name = generate_random_string()
+    namespace_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    endpoint_name = f"onvif-endpoint-{generate_random_string()}"
+    endpoint_address = "http://192.168.1.100:80/onvif/device_service"
+
+    # Create original device record with no endpoints
+    original_device = get_namespace_device_record(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    original_device["properties"]["endpoints"] = {"inbound": {}}
+
+    # Create expected endpoint structure
+    expected_endpoint = {
+        "endpointType": DeviceEndpointType.ONVIF.value,
+        "address": endpoint_address,
+        "acceptInvalidHostnames": accept_invalid_hostnames,
+        "acceptInvalidCertificates": accept_invalid_certificates
+    }
+
+    # Set up authentication structure based on auth type
+    if cert_ref:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.certificate.value,
+            "x509Credentials": {
+                "certificateSecretName": cert_ref
+            }
+        }
+    elif username_ref and password_ref:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.userpass.value,
+            "usernamePasswordCredentials": {
+                "usernameSecretName": username_ref,
+                "passwordSecretName": password_ref
+            }
+        }
+    else:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.anonymous.value
+        }
+
+    # Create updated device record for PATCH response
+    updated_device = deepcopy(original_device)
+    updated_device["properties"]["endpoints"] = {
+        "inbound": {endpoint_name: expected_endpoint}
+    }
+
+    # Mock the GET call to get the original device
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=original_device,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Mock the PATCH call to update the endpoints
+    mocked_responses.add(
+        method=responses.PATCH,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=updated_device if response_status == 200 else {"error": "Bad Request"},
+        status=response_status,
+        content_type="application/json",
+    )
+
+    # Execute test based on status code
+    if response_status != 200:
+        with pytest.raises(Exception):
+            add_inbound_onvif_device_endpoint(
+                cmd=mocked_cmd,
+                device_name=device_name,
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name,
+                endpoint_name=endpoint_name,
+                endpoint_address=endpoint_address,
+                certificate_reference=cert_ref,
+                username_reference=username_ref,
+                password_reference=password_ref,
+                accept_invalid_hostnames=accept_invalid_hostnames,
+                accept_invalid_certificates=accept_invalid_certificates,
+                wait_sec=0
+            )
+        return
+
+    # Test add_inbound_onvif_device_endpoint for success case
+    result = add_inbound_onvif_device_endpoint(
+        cmd=mocked_cmd,
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_name=endpoint_name,
+        endpoint_address=endpoint_address,
+        certificate_reference=cert_ref,
+        username_reference=username_ref,
+        password_reference=password_ref,
+        accept_invalid_hostnames=accept_invalid_hostnames,
+        accept_invalid_certificates=accept_invalid_certificates,
+        wait_sec=0
+    )
+    assert result == updated_device["properties"]["endpoints"]["inbound"]
+
+    # Verify that both GET and PATCH calls were made
+    assert len(mocked_responses.calls) == 2
+    assert mocked_responses.calls[0].request.method == "GET"
+    assert mocked_responses.calls[1].request.method == "PATCH"
+
+    # Verify request body contains expected endpoint
+    patch_body = json.loads(mocked_responses.calls[1].request.body)
+    endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
+    assert endpoint_patch["endpointType"] == DeviceEndpointType.ONVIF.value
+    assert endpoint_patch["address"] == endpoint_address
+
+    assert endpoint_patch["additionalConfiguration"]
+    additional_config = json.loads(endpoint_patch["additionalConfiguration"])
+    assert additional_config["acceptInvalidHostnames"] == accept_invalid_hostnames
+    assert additional_config["acceptInvalidCertificates"] == accept_invalid_certificates
+
+    assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
+    assert endpoint_patch["authentication"] == expected_endpoint["authentication"]
+
+
+@pytest.mark.parametrize("response_status", [200, 400])
+@pytest.mark.parametrize("username_ref, password_ref", [
+    (None, None),              # Anonymous auth
+    ("secretRef:username", "secretRef:password"),  # Username/Password auth
+])
+@pytest.mark.parametrize("req", [
+    {},  # Default values, no options specified
+    {   # All optional parameters specified
+        "application_name": "Test OPC UA Application",
+        "keep_alive": 15000,
+        "publishing_interval": 2000,
+        "sampling_interval": 2000,
+        "queue_size": 2,
+        "key_frame_count": 5,
+        "session_timeout": 55000,
+        "session_keep_alive_interval": 12000,
+        "session_reconnect_period": 3000,
+        "session_reconnect_exponential_backoff": 12000,
+        "session_enable_tracing_headers": True,
+        "subscription_max_items": 1500,
+        "subscription_life_time": 65000,
+        "security_auto_accept_certificates": True,
+        "security_policy": "Basic256Sha256",
+        "security_mode": "signAndEncrypt",
+        "run_asset_discovery": True,
+        "trust_list": "secretRef:trustlist"
+    },
+    {   # Partial set of parameters
+        "application_name": "Simple OPC UA App",
+        "session_enable_tracing_headers": True,
+        "security_auto_accept_certificates": True,
+        "security_policy": "Aes256_Sha256_RsaPss",
+        "security_mode": "sign",
+    }
+])
+def test_add_inbound_opcua_device_endpoint(
+    mocked_cmd,
+    mocked_responses: responses,
+    username_ref: Optional[str],
+    password_ref: Optional[str],
+    req: dict,
+    response_status: int
+):
+    """Tests that add_inbound_opcua_device_endpoint calls the expected APIs with the correct parameters."""
+    # Setup test data
+    device_name = generate_random_string()
+    namespace_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    endpoint_name = f"opcua-endpoint-{generate_random_string()}"
+    endpoint_address = "opc.tcp://192.168.1.100:4840"
+
+    # Apply default values if not in req
+    application_name = req.get("application_name", "OPC UA Broker")
+    keep_alive = req.get("keep_alive", 10000)
+    publishing_interval = req.get("publishing_interval", 1000)
+    sampling_interval = req.get("sampling_interval", 1000)
+    queue_size = req.get("queue_size", 1)
+    key_frame_count = req.get("key_frame_count", 0)
+    session_timeout = req.get("session_timeout", 60000)
+    session_keep_alive_interval = req.get("session_keep_alive_interval", 10000)
+    session_reconnect_period = req.get("session_reconnect_period", 2000)
+    session_reconnect_exponential_backoff = req.get("session_reconnect_exponential_backoff", 10000)
+    session_enable_tracing_headers = req.get("session_enable_tracing_headers", False)
+    subscription_max_items = req.get("subscription_max_items", 1000)
+    subscription_life_time = req.get("subscription_life_time", 60000)
+    security_auto_accept_certificates = req.get("security_auto_accept_certificates", False)
+    security_policy = req.get("security_policy", None)
+    if security_policy:
+        security_policy = f"http://opcfoundation.org/UA/SecurityPolicy#{SecurityPolicy[security_policy].value}"
+    security_mode = req.get("security_mode", None)
+    run_asset_discovery = req.get("run_asset_discovery", False)
+    trust_list = req.get("trust_list", None)
+
+    # Create original device record with no endpoints
+    original_device = get_namespace_device_record(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+    original_device["properties"]["endpoints"] = {"inbound": {}}
+
+    # Create expected endpoint structure with OPC UA specific properties
+    expected_endpoint = {
+        "endpointType": DeviceEndpointType.OPCUA.value,
+        "address": endpoint_address,
+        "additionalConfiguration": json.dumps({
+            "applicationName": application_name,
+            "keepAliveMilliseconds": keep_alive,
+            "defaults": {
+                "publishingIntervalMilliseconds": publishing_interval,
+                "samplingIntervalMilliseconds": sampling_interval,
+                "queueSize": queue_size,
+                "keyFrameCount": key_frame_count
+            },
+            "session": {
+                "timeoutMilliseconds": session_timeout,
+                "keepAliveIntervalMilliseconds": session_keep_alive_interval,
+                "reconnectPeriodMilliseconds": session_reconnect_period,
+                "reconnectExponentialBackOffMilliseconds": session_reconnect_exponential_backoff,
+                "enableTracingHeaders": session_enable_tracing_headers
+            },
+            "subscription": {
+                "maxItems": subscription_max_items,
+                "lifeTimeMilliseconds": subscription_life_time
+            },
+            "security": {
+                "autoAcceptUntrustedServerCertificates": security_auto_accept_certificates,
+                "securityPolicy": security_policy,
+                "securityMode": security_mode
+            },
+            "runAssetDiscovery": run_asset_discovery
+        })
+    }
+    if trust_list:
+        expected_endpoint["trustSettings"] = {"trustList": trust_list}
+
+    # Set up authentication structure based on auth type
+    if username_ref and password_ref:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.userpass.value,
+            "usernamePasswordCredentials": {
+                "usernameSecretName": username_ref,
+                "passwordSecretName": password_ref
+            }
+        }
+    else:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.anonymous.value
+        }
+
+    # Create updated device record for PATCH response
+    updated_device = deepcopy(original_device)
+    updated_device["properties"]["endpoints"] = {
+        "inbound": {endpoint_name: expected_endpoint}
+    }
+
+    # Mock the GET call to get the original device
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=original_device,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Mock the PATCH call to update the endpoints
+    mocked_responses.add(
+        method=responses.PATCH,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=updated_device if response_status == 200 else {"error": "Bad Request"},
+        status=response_status,
+        content_type="application/json",
+    )
+
+    # Execute test based on status code
+    if response_status != 200:
+        with pytest.raises(Exception):
+            add_inbound_opcua_device_endpoint(
+                cmd=mocked_cmd,
+                device_name=device_name,
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name,
+                endpoint_name=endpoint_name,
+                endpoint_address=endpoint_address,
+                username_reference=username_ref,
+                password_reference=password_ref,
+                wait_sec=0,
+                **req
+            )
+        return
+
+    # Test add_inbound_opcua_device_endpoint for success case
+    result = add_inbound_opcua_device_endpoint(
+        cmd=mocked_cmd,
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_name=endpoint_name,
+        endpoint_address=endpoint_address,
+        username_reference=username_ref,
+        password_reference=password_ref,
+        wait_sec=0,
+        **req
+    )
+    assert result == updated_device["properties"]["endpoints"]["inbound"]
+
+    # Verify that both GET and PATCH calls were made
+    assert len(mocked_responses.calls) == 2
+    assert mocked_responses.calls[0].request.method == "GET"
+    assert mocked_responses.calls[1].request.method == "PATCH"
+
+    # Verify request body contains expected endpoint
+    patch_body = json.loads(mocked_responses.calls[1].request.body)
+    endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
+    assert endpoint_patch["endpointType"] == DeviceEndpointType.OPCUA.value
+    assert endpoint_patch["address"] == endpoint_address
+    assert endpoint_patch.get("trustSettings") == expected_endpoint.get("trustSettings")
+
+    # Parse additionalConfiguration for validation
+    assert endpoint_patch["additionalConfiguration"]
+    additional_config = json.loads(endpoint_patch["additionalConfiguration"])
+    assert additional_config["applicationName"] == application_name
+    assert additional_config["keepAliveMilliseconds"] == keep_alive
+    assert additional_config["runAssetDiscovery"] == run_asset_discovery
+
+    # Validate defaults settings
+    assert additional_config["defaults"]["publishingIntervalMilliseconds"] == publishing_interval
+    assert additional_config["defaults"]["samplingIntervalMilliseconds"] == sampling_interval
+    assert additional_config["defaults"]["queueSize"] == queue_size
+    assert additional_config["defaults"]["keyFrameCount"] == key_frame_count
+
+    # Validate session settings
+    config_session = additional_config["session"]
+    assert config_session["timeoutMilliseconds"] == session_timeout
+    assert config_session["keepAliveIntervalMilliseconds"] == session_keep_alive_interval
+    assert config_session["reconnectPeriodMilliseconds"] == session_reconnect_period
+    assert config_session["reconnectExponentialBackOffMilliseconds"] == session_reconnect_exponential_backoff
+    assert config_session["enableTracingHeaders"] == session_enable_tracing_headers
+
+    # Validate subscription settings
+    assert additional_config["subscription"]["maxItems"] == subscription_max_items
+    assert additional_config["subscription"]["lifeTimeMilliseconds"] == subscription_life_time
+
+    # Validate security settings
+    config_security = additional_config["security"]
+    assert config_security["autoAcceptUntrustedServerCertificates"] == security_auto_accept_certificates
+    assert config_security["securityPolicy"] == security_policy
+    assert config_security["securityMode"] == security_mode
+
+    # Verify authentication structure
+    assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
+    assert endpoint_patch["authentication"] == expected_endpoint["authentication"]

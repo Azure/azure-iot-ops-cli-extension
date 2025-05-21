@@ -300,4 +300,4 @@ def test_update_properties(mocker, properties, req):
         username_reference=req.get("username_reference"),
         password_reference=req.get("password_reference")
     )
-    assert properties.get("authentication", {}) == expected_auth
+    assert properties.get("authentication", {"method": "Anonymous"}) == expected_auth

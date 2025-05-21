@@ -158,19 +158,18 @@ class SecurityPolicy(Enum):
     Security policies for the OPC UA connector as defined in NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA.
     Values correspond to the part after the "#" in the security policy URLs.
     """
-    NONE = "None"
-    BASIC128RSA15 = "Basic128Rsa15"
-    BASIC256 = "Basic256"
-    BASIC256SHA256 = "Basic256Sha256"
-    AES128_SHA256_RSAOAEP = "Aes128_Sha256_RsaOaep"
-    AES256_SHA256_RSAPSS = "Aes256_Sha256_RsaPss"
+    none = "None"
+    Basic128Rsa15 = "Basic128Rsa15"
+    Basic256 = "Basic256"
+    Basic256Sha256 = "Basic256Sha256"
+    Aes128_Sha256_RsaOaep = "Aes128_Sha256_RsaOaep"
+    Aes256_Sha256_RsaPss = "Aes256_Sha256_RsaPss"
 
 
 class SecurityMode(Enum):
     """
     Security modes for the OPC UA connector as defined in NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA.
     """
-    NONE = "none"
-    SIGN = "sign"
-    SIGN_AND_ENCRYPT = "signAndEncrypt"
-
+    none = "none"
+    sign = "sign"
+    signAndEncrypt = "signAndEncrypt"

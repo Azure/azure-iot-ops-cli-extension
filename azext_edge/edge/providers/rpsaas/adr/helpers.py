@@ -178,22 +178,24 @@ def ensure_schema_structure(schema: dict, input_data: dict):
 
                 # minimum and maximum checks for integers
                 if expected_type == "integer":
-                    if all([
-                        "minimum" in schema_value,
-                        "maximum" in schema_value,
-                        not schema_value["minimum"] < value < schema_value["maximum"]
-                    ]):
+                    if (
+                        "minimum" in schema_value
+                        and "maximum" in schema_value
+                        and not schema_value["minimum"] <= value <= schema_value["maximum"]
+                    ):
                         invalid_items.append(
-                            f"Invalid value for {key}: expected <= {schema_value['maximum']} and >= "
-                            f"{schema_value['minimum']}, got {value}"
+                            f"Invalid value for {key}: the value must be between {schema_value['minimum']} and "
+                            f"{schema_value['maximum']} inclusive, instead got {value}"
                         )
                     elif "minimum" in schema_value and (value < schema_value["minimum"]):
                         invalid_items.append(
-                            f"Invalid value for {key}: expected >= {schema_value['minimum']}, got {value}"
+                            f"Invalid value for {key}: the value must be at least {schema_value['minimum']}, "
+                            f"instead got {value}"
                         )
                     elif "maximum" in schema_value and (value > schema_value["maximum"]):
                         invalid_items.append(
-                            f"Invalid value for {key}: expected <= {schema_value['maximum']}, got {value}"
+                            f"Invalid value for {key}: the value must be at most {schema_value['maximum']}, "
+                            f"instead got {value}"
                         )
 
     _recursive_check(schema["properties"], input_data)

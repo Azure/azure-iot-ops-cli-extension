@@ -367,7 +367,7 @@ def process_opcua_configuration(
 
 
 ENDPOINT_TYPE_TO_FUNCTION_MAP: Dict[str, Optional[Callable]] = {
-    "OPCUA": process_opcua_configuration,
-    "ONVIF": process_onvif_configuration,
-    "MEDIA": None,
+    DeviceEndpointType.OPCUA.value: process_opcua_configuration,
+    DeviceEndpointType.ONVIF.value: process_onvif_configuration,
+    DeviceEndpointType.MEDIA.value: None,
 }

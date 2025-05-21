@@ -16,6 +16,10 @@ from azure.cli.core.azclierror import (
 )
 
 from azext_edge.edge.common import ADRAuthModes
+from azext_edge.edge.providers.rpsaas.adr.specs import (
+    NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA,
+    NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA,
+)
 from ....generators import generate_random_string, BASE_URL, generate_resource_id
 
 CONNECTED_CLUSTER_API = "2024-07-15-preview"
@@ -329,3 +333,261 @@ def test_process_authentication_error(
         assert isinstance(e.value, RequiredArgumentMissingError)
     else:
         assert isinstance(e.value, MutuallyExclusiveArgumentError)
+
+
+@pytest.mark.parametrize("schema, data", [
+    # Simple schema with basic data types
+    (
+        {
+            "properties": {
+                "name": {"type": "string"},
+                "age": {"type": "integer", "minimum": 0, "maximum": 150},
+                "settings": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "value": {"type": "integer", "minimum": 1, "maximum": 100}
+                    }
+                }
+            }
+        },
+        {
+            "name": "Test User",
+            "age": 30,
+            "settings": {
+                "enabled": True,
+                "value": 50
+            }
+        }
+    ),
+    # Simple schema with minimum and maximum value exactly at boundary
+    (
+        {
+            "properties": {
+                "count": {"type": "integer", "minimum": 0},
+                "percentage": {"type": "integer", "maximum": 100}
+            }
+        },
+        {
+            "count": 0,
+            "percentage": 100
+        }
+    ),
+    # Schema with nested objects
+    (
+        {
+            "properties": {
+                "name": {"type": "string"},
+                "settings": {
+                    "type": "object",
+                    "properties": {
+                        "security": {
+                            "type": "object",
+                            "properties": {
+                                "mode": {"type": "string"}
+                            }
+                        },
+                        "enabled": {"type": "boolean"},
+                        "value": {"type": "integer", "minimum": 1, "maximum": 100},
+                        "display": {
+                            "type": "object",
+                            "properties": {
+                                "width": {"type": "integer", "minimum": 0},
+                                "color": {
+                                    "type": "object",
+                                    "properties": {
+                                        "red": {"type": "integer", "minimum": 0, "maximum": 255},
+                                        "green": {"type": "integer", "minimum": 0, "maximum": 255},
+                                        "blue": {"type": "integer", "minimum": 0, "maximum": 255}
+                                    }
+                                },
+                                "height": {"type": "integer", "minimum": 0}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "Test User",
+            "settings": {
+                "security": {
+                    "mode": "secure"
+                },
+                "enabled": True,
+                "display": {
+                    "color": {
+                        "red": 255,
+                        "green": 0,
+                        "blue": 0
+                    },
+                    "width": 1920,
+                    "height": 1080
+                },
+                "value": 50,
+            }
+        }
+    ),
+    # OPCUA endpoint schema with minimal data
+    (
+        NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA,
+        {
+            "applicationName": "Test OPCUA App",
+            "keepAliveMilliseconds": 10000,
+            "defaults": {
+                "publishingIntervalMilliseconds": 1000,
+                "samplingIntervalMilliseconds": 1000,
+                "queueSize": 1,
+                "keyFrameCount": 0
+            },
+            "session": {
+                "timeoutMilliseconds": 60000,
+                "keepAliveIntervalMilliseconds": 10000,
+                "reconnectPeriodMilliseconds": 2000,
+                "reconnectExponentialBackOffMilliseconds": 10000,
+                "enableTracingHeaders": False
+            },
+            "subscription": {
+                "maxItems": 1000,
+                "lifeTimeMilliseconds": 60000
+            },
+            "security": {
+                "autoAcceptUntrustedServerCertificates": False,
+                "securityPolicy": None,
+                "securityMode": None
+            },
+            "runAssetDiscovery": False
+        }
+    ),
+    # ONVIF endpoint schema
+    (
+        NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA,
+        {
+            "acceptInvalidHostnames": True,
+            "acceptInvalidCertificates": False
+        }
+    ),
+    # Test with null values in schema
+    (
+        {
+            "properties": {
+                "required_string": {"type": "string"},
+                "optional_value": {"type": ["integer", "null"]}
+            }
+        },
+        {
+            "required_string": "test",
+            "optional_value": None
+        }
+    ),
+    # Test with null values in OPCUA security settings
+    (
+        NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA,
+        {
+            "applicationName": "Test App",
+            "keepAliveMilliseconds": 10000,
+            "defaults": {
+                "publishingIntervalMilliseconds": 1000,
+                "samplingIntervalMilliseconds": 1000,
+                "queueSize": 1,
+                "keyFrameCount": 0
+            },
+            "session": {
+                "timeoutMilliseconds": 60000,
+                "keepAliveIntervalMilliseconds": None,
+                "reconnectPeriodMilliseconds": 2000,
+                "reconnectExponentialBackOffMilliseconds": 10000,
+                "enableTracingHeaders": False
+            },
+            "subscription": {
+                "maxItems": 1000,
+                "lifeTimeMilliseconds": 60000
+            },
+            "security": {
+                "autoAcceptUntrustedServerCertificates": False,
+                "securityPolicy": None,
+                "securityMode": None
+            },
+            "runAssetDiscovery": False
+        }
+    )
+])
+def test_ensure_schema_structure_valid(schema, data):
+    """
+    Test ensure_schema_structure with valid inputs that don't trigger validation errors.
+    """
+    from azext_edge.edge.providers.rpsaas.adr.helpers import ensure_schema_structure
+
+    # This should not raise any exceptions for valid data
+    ensure_schema_structure(schema, data)
+
+    # Test passes if no exception is raised
+
+
+@pytest.mark.parametrize("schema, data, expected_error", [
+    # Test with value below minimum
+    (
+        {
+            "properties": {
+                "age": {"type": "integer", "minimum": 18}
+            }
+        },
+        {
+            "age": 15
+        },
+        "Invalid value for age: the value must be at least 18, instead got 15"
+    ),
+    # Test with value above maximum
+    (
+        {
+            "properties": {
+                "percentage": {"type": "integer", "maximum": 100}
+            }
+        },
+        {
+            "percentage": 120
+        },
+        "Invalid value for percentage: the value must be at most 100, instead got 120"
+    ),
+    # Test with value outside of both min and max
+    (
+        {
+            "properties": {
+                "score": {"type": "integer", "minimum": 0, "maximum": 10}
+            }
+        },
+        {
+            "score": 15
+        },
+        "Invalid value for score: the value must be between 0 and 10 inclusive, instead got 15"
+    ),
+    # Test with nested object having invalid value
+    (
+        {
+            "properties": {
+                "settings": {
+                    "type": "object",
+                    "properties": {
+                        "threshold": {"type": "integer", "minimum": 5, "maximum": 50}
+                    }
+                }
+            }
+        },
+        {
+            "settings": {
+                "threshold": 2
+            }
+        },
+        "Invalid value for threshold: the value must be between 5 and 50 inclusive, instead got 2"
+    )
+])
+def test_ensure_schema_structure_invalid(schema, data, expected_error):
+    """
+    Test ensure_schema_structure with invalid inputs that should trigger validation errors.
+    """
+    from azext_edge.edge.providers.rpsaas.adr.helpers import ensure_schema_structure
+
+    with pytest.raises(InvalidArgumentValueError) as exc:
+        ensure_schema_structure(schema, data)
+
+    assert expected_error in str(exc.value)
