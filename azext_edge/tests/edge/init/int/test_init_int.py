@@ -32,25 +32,32 @@ def init_test_setup(settings, tracked_resources):
     settings.add_to_config(EnvironmentVariables.aio_cleanup.value)
     settings.add_to_config(EnvironmentVariables.init_continue_on_error.value)
     settings.add_to_config(EnvironmentVariables.init_redeployment.value)
+    settings.add_to_config(EnvironmentVariables.schema_registry_id.value)
 
+    cleanup = settings.env.azext_edge_aio_cleanup
     instance_name = settings.env.azext_edge_instance
     if not instance_name:
         instance_name = f"testcli{generate_random_string(force_lower=True, size=6)}"
     # set up registry
-    storage_account_name = f"initstore{generate_random_string(force_lower=True, size=6)}"
-    registry_name = f"init-registry-{generate_random_string(force_lower=True, size=6)}"
-    registry_namespace = f"init-namespace-{generate_random_string(force_lower=True, size=6)}"
-    storage_account = run(
-        f"az storage account create -n {storage_account_name} -g {settings.env.azext_edge_rg} "
-        "--enable-hierarchical-namespace --public-network-access Disabled "
-        "--allow-shared-key-access false --allow-blob-public-access false --default-action Deny"
-    )
-    tracked_resources.append(storage_account["id"])
-    registry = run(
-        f"az iot ops schema registry create -n {registry_name} -g {settings.env.azext_edge_rg} "
-        f"--rn {registry_namespace} --sa-resource-id {storage_account['id']}"
-    )
-    tracked_resources.append(registry["id"])
+    registry_id = settings.env.azext_edge_schema_registry_id
+    if not registry_id:
+        storage_account_name = f"initstore{generate_random_string(force_lower=True, size=6)}"
+        registry_name = f"init-registry-{generate_random_string(force_lower=True, size=6)}"
+        registry_namespace = f"init-namespace-{generate_random_string(force_lower=True, size=6)}"
+        storage_account = run(
+            f"az storage account create -n {storage_account_name} -g {settings.env.azext_edge_rg} "
+            "--enable-hierarchical-namespace --public-network-access Disabled "
+            "--allow-shared-key-access false --allow-blob-public-access false --default-action Deny"
+        )
+        if cleanup:
+            tracked_resources.append(storage_account["id"])
+        registry = run(
+            f"az iot ops schema registry create -n {registry_name} -g {settings.env.azext_edge_rg} "
+            f"--rn {registry_namespace} --sa-resource-id {storage_account['id']}"
+        )
+        registry_id = registry["id"]
+        if cleanup:
+            tracked_resources.append(registry_id)
 
     if not all([settings.env.azext_edge_cluster, settings.env.azext_edge_rg]):
         raise AssertionError(
@@ -60,7 +67,7 @@ def init_test_setup(settings, tracked_resources):
     yield {
         "clusterName": settings.env.azext_edge_cluster,
         "resourceGroup": settings.env.azext_edge_rg,
-        "schemaRegistryId": registry["id"],
+        "schemaRegistryId": registry_id,
         "instanceName": instance_name,
         "additionalCreateArgs": strip_quotes(settings.env.azext_edge_create_args),
         "additionalInitArgs": strip_quotes(settings.env.azext_edge_init_args),
@@ -72,10 +79,6 @@ def init_test_setup(settings, tracked_resources):
             f"az iot ops delete --cluster {settings.env.azext_edge_cluster} -g {settings.env.azext_edge_rg} "
             "-y --no-progress --force --include-deps"
         )
-    else:
-        # if the init + create worked - make sure that schema reg + storage account aren't deleted
-        tracked_resources.remove(storage_account["id"])
-        tracked_resources.remove(registry["id"])
 
 
 @pytest.mark.init_scenario_test
