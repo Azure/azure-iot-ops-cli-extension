@@ -21,6 +21,10 @@ from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 from rich.style import Style
 from rich.table import Table
 
+from azext_edge.edge.providers.base import load_config_context
+from azext_edge.edge.providers.check.base.deployment import validate_cluster_prechecks
+from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_config
+
 from ...util.az_client import (
     REGISTRY_PREVIEW_API_VERSION,
     get_resource_client,
@@ -40,7 +44,7 @@ from .common import (
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from .resource_map import IoTOperationsResourceMap
 from .resources.custom_locations import CustomLocations
-from .targets import InitTargets, InstancePhase
+from .targets import InitTargets, InstancePhase, get_merged_acs_config
 
 logger = get_logger(__name__)
 
@@ -158,15 +162,17 @@ class WorkManager:
         pre_check_cat_desc = "Pre-Flight"
         self._display.add_category(WorkCategoryKey.PRE_FLIGHT, pre_check_cat_desc, skipped=not self._pre_flight)
         self._display.add_step(WorkCategoryKey.PRE_FLIGHT, WorkStepKey.REG_RP, "Ensure registered resource providers")
+
         self._display.add_step(
-            WorkCategoryKey.PRE_FLIGHT, WorkStepKey.ENUMERATE_PRE_FLIGHT, "Enumerate pre-flight checks"
+            WorkCategoryKey.PRE_FLIGHT,
+            WorkStepKey.ENUMERATE_PRE_FLIGHT,
+            title="Enumerate pre-flight checks",
+            description="[bright_yellow]•[/bright_yellow] Cluster readiness" if self._check_cluster else None,
         )
 
         if self._apply_foundation:
             self._display.add_category(WorkCategoryKey.ENABLE_IOT_OPS, "Enablement")
-            self._display.add_step(
-                WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation"
-            )
+            self._display.add_step(WorkCategoryKey.ENABLE_IOT_OPS, WorkStepKey.WHAT_IF_ENABLEMENT, "What-If evaluation")
             self._display.add_step(
                 WorkCategoryKey.ENABLE_IOT_OPS,
                 WorkStepKey.DEPLOY_ENABLEMENT,
@@ -313,6 +319,8 @@ class WorkManager:
     def execute_ops_init(
         self,
         apply_foundation: bool = True,
+        check_cluster: bool = False,
+        context_name: Optional[str] = None,
         show_progress: bool = True,
         pre_flight: bool = True,
         **kwargs,
@@ -321,6 +329,8 @@ class WorkManager:
         self._work_id = uuid4().hex
         self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
         self._apply_foundation = apply_foundation
+        self._check_cluster = check_cluster
+        self._context_name = context_name
         self._pre_flight = pre_flight
 
         self._completed_steps: Dict[int, int] = {}
@@ -336,6 +346,7 @@ class WorkManager:
         self._warnings: List[str] = []
         self._ops_ext_dependencies = None
         self._ops_ext = None
+
         self._build_display()
 
         return self._do_work()
@@ -368,6 +379,12 @@ class WorkManager:
                     verify_write_permission_against_rg(
                         subscription_id=self.subscription_id, resource_group_name=self._targets.resource_group_name
                     )
+                if self._check_cluster:
+                    cluster_check_kwargs = self._build_cluster_check_kwargs()
+                    # TODO - load_config_context should be moved down to functions that directly call it
+                    load_config_context(context_name=self._context_name)
+                    verify_arc_cluster_config(self._resource_map.connected_cluster)
+                    validate_cluster_prechecks(**cluster_check_kwargs)
                 self._complete_step(
                     category=WorkCategoryKey.PRE_FLIGHT,
                     completed_step=WorkStepKey.ENUMERATE_PRE_FLIGHT,
@@ -648,3 +665,23 @@ class WorkManager:
                     f"{insert_newlines(f'{cl_error_prefix}{http_exc.error.message}', 140)}\n\n{explain}"
                 )
             raise http_exc
+
+    def _build_cluster_check_kwargs(self) -> Dict[str, dict]:
+        cluster_check_kwargs = {}
+
+        # Cluster context
+        cluster_check_kwargs["context_name"] = self._context_name
+
+        # Storage space check is currently not run on init
+        cluster_check_kwargs["storage_space_check"] = False
+
+        # Check ACS config unless fault tolerance is enabled
+        cluster_check_kwargs["acs_config"] = (
+            get_merged_acs_config(
+                enable_fault_tolerance=self._targets.enable_fault_tolerance,
+                acs_config=self._targets.acs_config,
+            )
+            if not self._targets.enable_fault_tolerance
+            else None
+        )
+        return cluster_check_kwargs
