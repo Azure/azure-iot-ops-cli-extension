@@ -1587,6 +1587,9 @@ def load_iotops_help():
         - name: Provide custom deploy-time configs for Arc Secret Store.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --ssc-config rotationPollIntervalInSeconds=60
+        - name: Check if the cluster meets necessary prerequisite configuration before continuing with init. A valid kubeconfig is required with this option.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --check-cluster
     """
 
     helps[
