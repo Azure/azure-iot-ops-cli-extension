@@ -1109,3 +1109,23 @@ def show_dataflow_endpoint(cmd, endpoint_name: str, instance_name: str, resource
 
 def list_dataflow_endpoints(cmd, instance_name: str, resource_group_name: str) -> Iterable[dict]:
     return DataFlowEndpoints(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
+
+
+def list_dataflow_graphs(cmd, instance_name: str, resource_group_name: str):
+    pass
+
+
+def list_dataflow_graph_registries(cmd, instance_name: str, resource_group_name: str):
+    pass
+
+
+def create_dataflow_graph_registry(
+    cmd,
+    registry_name: str,
+    endpoint_url: str,
+    instance_name: str,
+    credentials: str,
+    resource_group_name: str,
+    description: Optional[str] = None,
+):
+    pass

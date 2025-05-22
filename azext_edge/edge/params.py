@@ -858,6 +858,29 @@ def load_iotops_arguments(self, _):
                 ),
             )
 
+    with self.argument_context(f"iot ops dataflow graph registry") as context:
+        context.argument(
+            "registry_name",
+            options_list=["--name", "-n"],
+            help="Dataflow graph registry name.",
+        )
+        context.argument(
+            "endpoint_url",
+            options_list=["--endpoint-url", "--url"],
+            help="The URL endpoint of the dataflow graph registry.",
+        )
+        context.argument(
+            "description",
+            options_list=["--description", "--desc"],
+            help="Description for this dataflow graph registry.",
+        )
+        context.argument(
+            "credentials",
+            options_list=["--credentials", "--creds"],
+            help="Credentials for authenticating to the graph registry.",
+        )
+
+
     with self.argument_context("iot ops broker") as context:
         context.argument(
             "instance_name",
