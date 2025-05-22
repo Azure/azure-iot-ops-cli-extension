@@ -100,7 +100,7 @@ class NamespaceDevices(Queryable):
             "tags": tags
         }
 
-        with console.status(f"Creating {namespace_name}..."):
+        with console.status(f"Creating {device_name}..."):
             poller = self.ops.begin_create_or_replace(
                 resource_group_name=resource_group_name,
                 namespace_name=namespace_name,
@@ -110,7 +110,7 @@ class NamespaceDevices(Queryable):
             return wait_for_terminal_state(poller, **kwargs)
 
     def delete(self, device_name: str, namespace_name: str, resource_group_name: str, **kwargs):
-        with console.status(f"Deleting {namespace_name}..."):
+        with console.status(f"Deleting {device_name}..."):
             poller = self.ops.begin_delete(
                 resource_group_name=resource_group_name,
                 namespace_name=namespace_name,
@@ -156,7 +156,7 @@ class NamespaceDevices(Queryable):
         if not update_payload["properties"]:
             update_payload.pop("properties")
 
-        with console.status(f"Updating {namespace_name}..."):
+        with console.status(f"Updating {device_name}..."):
             poller = self.ops.begin_update(
                 resource_group_name=resource_group_name,
                 namespace_name=namespace_name,
