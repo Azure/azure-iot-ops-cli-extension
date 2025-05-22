@@ -1596,7 +1596,7 @@ def load_iotops_help():
           text: >
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000 --accept-untrusted-certs --application myopcuaconnector
-            --default-publishing-int 1000 --default-queue-size 1 --default-sampling-int 1000 --keep-alive 10000 --run-asset-discovery
+            --default-publishing-int 1000 --default-queue-size 1 --default-sampling-int 1000 --keep-alive 10000 --asset-discovery
             --security-mode sign --security-policy Basic256 --session-keep-alive 10000 --session-reconnect-backoff 10000 --session-reconnect-period 2000
             --session-timeout 60000 --subscription-life-time 60000 --subscription-max-items 1000
     """
@@ -2346,7 +2346,7 @@ def load_iotops_help():
         - name: Remove multiple endpoints from a namespace
           text: >
             az iot ops namespace endpoint remove --namespace myNamespace -g myResourceGroup
-            --endpoint resourceGroup1-topicName1 myTopic
+            --endpoint resourceGroup1-topicName1 --endpoint myTopic
     """
 
     helps[
@@ -2514,11 +2514,11 @@ def load_iotops_help():
         examples:
         - name: Remove a single inbound endpoint from a device
           text: >
-            az iot ops namespace device endpoint inbound remove --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-names myEndpoint
+            az iot ops namespace device endpoint inbound remove --device myDevice --namespace myNamespace -g myResourceGroup --endpoint myEndpoint
 
         - name: Remove multiple inbound endpoints from a device
           text: >
-            az iot ops namespace device endpoint inbound remove --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-names myEndpoint1 myEndpoint2
+            az iot ops namespace device endpoint inbound remove --device myDevice --namespace myNamespace -g myResourceGroup --endpoint myEndpoint1 myEndpoint2
     """
 
     helps[
@@ -2530,6 +2530,7 @@ def load_iotops_help():
           Add inbound endpoints of different types (custom, media, ONVIF, OPC UA) to devices in Device Registry namespaces.
     """
 
+    # TODO: this is pretty long for a command name - debate on if I should throw out inbound
     helps[
         "iot ops namespace device endpoint inbound add custom"
     ] = """
@@ -2541,19 +2542,19 @@ def load_iotops_help():
         examples:
         - name: Add a basic custom endpoint to a device
           text: >
-            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080"
+            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080"
 
         - name: Add a custom endpoint with authentication
           text: >
-            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --username-reference "secretRef:username" --password-reference "secretRef:password"
+            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --user-ref "secretRef:username" --pass-ref "secretRef:password"
 
         - name: Add a custom endpoint with certificate authentication
           text: >
-            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --certificate-reference "secretRef:certificate"
+            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref "secretRef:certificate"
 
         - name: Add a custom endpoint with additional configuration
           text: >
-            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --additional-configuration "{\\\"customSetting\\\": \\\"value\\\"}"
+            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --additional-config "{\\\"customSetting\\\": \\\"value\\\"}"
     """
 
     helps[
@@ -2567,11 +2568,11 @@ def load_iotops_help():
         examples:
         - name: Add a basic media endpoint to a device
           text: >
-            az iot ops namespace device endpoint inbound add media --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream"
+            az iot ops namespace device endpoint inbound add media --device myDevice --namespace myNamespace -g myResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream"
 
         - name: Add a media endpoint with authentication
           text: >
-            az iot ops namespace device endpoint inbound add media --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --username-reference "secretRef:username" --password-reference "secretRef:password"
+            az iot ops namespace device endpoint inbound add media --device myDevice --namespace myNamespace -g myResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --user-ref "secretRef:username" --pass-ref "secretRef:password"
     """
 
     helps[
@@ -2585,15 +2586,15 @@ def load_iotops_help():
         examples:
         - name: Add a basic ONVIF endpoint to a device
           text: >
-            az iot ops namespace device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service"
+            az iot ops namespace device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service"
 
         - name: Add an ONVIF endpoint with authentication
           text: >
-            az iot ops namespace device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service" --username-reference "secretRef:username" --password-reference "secretRef:password"
+            az iot ops namespace device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service" --user-ref "secretRef:username" --pass-ref "secretRef:password"
 
         - name: Add an ONVIF endpoint that accepts invalid hostnames and certificates
           text: >
-            az iot ops namespace device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myONVIFEndpoint --endpoint-address "https://192.168.1.100:8000/onvif/device_service" --accept-invalid-hostnames --accept-invalid-certificates
+            az iot ops namespace device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --name myONVIFEndpoint --endpoint-address "https://192.168.1.100:8000/onvif/device_service" --accept-invalid-hostnames --accept-invalid-certificates
     """
 
     helps[
@@ -2607,21 +2608,21 @@ def load_iotops_help():
         examples:
         - name: Add a basic OPC UA endpoint to a device
           text: >
-            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840"
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840"
 
         - name: Add an OPC UA endpoint with authentication
           text: >
-            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --username-reference "secretRef:username" --password-reference "secretRef:password"
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --user-ref "secretRef:username" --pass-ref "secretRef:password"
 
         - name: Add an OPC UA endpoint with a custom application name
           text: >
-            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --application-name "My OPC UA App"
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --application-name "My OPC UA App"
 
         - name: Add an OPC UA endpoint with customized session parameters
           text: >
-            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --keep-alive 15000 --session-timeout 90000 --publishing-interval 2000 --sampling-interval 1500
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --keep-alive 15000 --session-timeout 90000 --publishing-interval 2000 --sampling-interval 1500
 
         - name: Add an OPC UA endpoint with security settings and asset discovery enabled
           text: >
-            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --endpoint-name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --run-asset-discovery
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --asset-discovery
     """

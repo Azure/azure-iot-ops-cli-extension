@@ -130,7 +130,7 @@ def test_asset_endpoint_lifecycle(require_init, tracked_resources, tracked_files
         "subscription_max_items": 10
     }
     command = f"az iot ops asset endpoint create opcua -n {cert_name} -g {rg} --instance {instance} "\
-        f"--ta {address} --certificate-ref {cert} --accept-untrusted-certs --run-asset-discovery "
+        f"--ta {address} --certificate-ref {cert} --accept-untrusted-certs --asset-discovery "
     for arg, val in opcua_args.items():
         command += f"--{arg.replace('_', '-')} {val} "
     cert_endpoint = run(command)

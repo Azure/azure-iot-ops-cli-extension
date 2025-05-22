@@ -113,10 +113,10 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     password_reference = "secretRef:password"
     result = run(
         f"az iot ops namespace device endpoint inbound add onvif --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} --endpoint-name {endpoint_name_onvif} "
+        f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_onvif} "
         f"--endpoint-address {endpoint_address} "
         f"--accept-invalid-hostnames true --accept-invalid-certificates true "
-        f"--username-reference {username_reference} --password-reference {password_reference} "
+        f"--user-ref {username_reference} --pass-ref {password_reference} "
     )
     assert_namespace_device_endpoint_props(
         result,
@@ -134,9 +134,9 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     endpoint_address = "rtsp://192.168.1.100:554/stream"
     result = run(
         f"az iot ops namespace device endpoint inbound add media --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} --endpoint-name {endpoint_name_media} "
+        f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_media} "
         f"--endpoint-address rtsp://192.168.1.100:554/stream "
-        f"--username-reference {username_reference} --password-reference {password_reference} "
+        f"--user-ref {username_reference} --pass-ref {password_reference} "
     )
     assert_namespace_device_endpoint_props(
         result,
@@ -166,12 +166,12 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
 
     result = run(
         f"az iot ops namespace device endpoint inbound add opcua --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} --endpoint-name {endpoint_name_opcua} "
+        f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_opcua} "
         f"--endpoint-address {endpoint_address} --application-name {application_name} "
         f"--keep-alive {keep_alive} --publishing-interval {publishing_interval} "
         f"--sampling-interval {sampling_interval} --queue-size {queue_size} "
         f"--key-frame-count {key_frame_count} --security-policy {security_policy} "
-        f"--security-mode {security_mode} --run-asset-discovery "
+        f"--security-mode {security_mode} --asset-discovery "
         f"--session-timeout {session_timeout} --reconnect-period {reconnect_period} "
         f"--reconnect-exponential-backoff {reconnect_exponential_backoff} "
         f"--enable-tracing --sub-lifetime {sub_lifetime} "
@@ -210,10 +210,10 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     trust_list = "cert1"
     result = run(
         f"az iot ops namespace device endpoint inbound add custom --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} --endpoint-name {endpoint_name_custom} "
+        f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_custom} "
         f"--endpoint-type {endpoint_type} --endpoint-address {endpoint_address} "
-        f"--additional-configuration \"{{\\\"customSetting\\\": \\\"value\\\"}}\""
-        f" --certificate-reference {certificate_reference} --trust-list {trust_list} "
+        f"--additional-config \"{{\\\"customSetting\\\": \\\"value\\\"}}\""
+        f" --cert-ref {certificate_reference} --trust-list {trust_list} "
     )
     assert_namespace_device_endpoint_props(
         result,
@@ -259,7 +259,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     result = run(
         f"az iot ops namespace device endpoint inbound remove --device {device_name_2} "
         f"--namespace {namespace_name} -g {resource_group} "
-        f"--endpoint-names {endpoint_name_onvif} {endpoint_name_media}"
+        f"--endpoint {endpoint_name_onvif} {endpoint_name_media}"
     )
     assert len(result["endpoints"]) == 2
     assert endpoint_name_onvif not in result["endpoints"]

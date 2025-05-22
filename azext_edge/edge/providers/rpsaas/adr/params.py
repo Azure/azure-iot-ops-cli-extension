@@ -528,7 +528,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "run_asset_discovery",
-            options_list=["--run-asset-discovery", "--rad"],
+            options_list=["--asset-discovery", "--rad"],
             help="Flag to determine if asset discovery should be run.",
             arg_type=get_three_state_flag(),
             arg_group="Connector",
@@ -734,7 +734,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "endpoint_name",
-            options_list=["--name", "--endpoint-name"],
+            options_list=["--name"],
             help="Endpoint name.",
         )
         context.argument(
