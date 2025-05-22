@@ -171,7 +171,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         f"--keep-alive {keep_alive} --publishing-interval {publishing_interval} "
         f"--sampling-interval {sampling_interval} --queue-size {queue_size} "
         f"--key-frame-count {key_frame_count} --security-policy {security_policy} "
-        f"--security-mode {security_mode} --asset-discovery "
+        f"--security-mode {security_mode} --run-asset-discovery "
         f"--session-timeout {session_timeout} --reconnect-period {reconnect_period} "
         f"--reconnect-exponential-backoff {reconnect_exponential_backoff} "
         f"--enable-tracing --sub-lifetime {sub_lifetime} "

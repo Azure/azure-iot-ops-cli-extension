@@ -1596,7 +1596,7 @@ def load_iotops_help():
           text: >
             az iot ops asset endpoint create opcua --name myprofile -g myresourcegroup --instance myinstance
             --target-address opc.tcp://opcplc-000000:50000 --accept-untrusted-certs --application myopcuaconnector
-            --default-publishing-int 1000 --default-queue-size 1 --default-sampling-int 1000 --keep-alive 10000 --asset-discovery
+            --default-publishing-int 1000 --default-queue-size 1 --default-sampling-int 1000 --keep-alive 10000 --run-asset-discovery
             --security-mode sign --security-policy Basic256 --session-keep-alive 10000 --session-reconnect-backoff 10000 --session-reconnect-period 2000
             --session-timeout 60000 --subscription-life-time 60000 --subscription-max-items 1000
     """
@@ -1640,7 +1640,7 @@ def load_iotops_help():
         - name: Update an asset endpoint profile's username and password reference with prefilled values. This will transform the
                 authentication mode to username-password if it is not so already.
           text: >
-            az iot ops asset endpoint update --name myAssetEndpoint -g MyRG
+            az iot ops asset endpoint update --name myAssetEndpoint -g myRG
             --username-ref "aio-opc-ua-broker-user-authentication/opc-plc-username"
             --password-ref "aio-opc-ua-broker-user-authentication/opc-plc-password"
     """
@@ -1868,15 +1868,15 @@ def load_iotops_help():
           - name: Remove trusted certificates from trusted certificate list, including remove related keyvault secret.
             text: >
               az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
-              --certificate-names testcert1.der --include-secrets
+              --certificate-names testcert1.der testcert2.crt --include-secrets
           - name: Force remove certificates operation regardless of warnings. May lead to errors.
             text: >
               az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
-              --certificate-names testcert1.der --force
+              --certificate-names testcert1.der testcert2.crt --force
           - name: Remove trusted certificates from trusted certificate list and skip confirmation prompt for removal.
             text: >
               az iot ops connector opcua trust remove --instance instance --resource-group instanceresourcegroup
-              --certificate-names testcert1.der --yes
+              --certificate-names testcert1.der testcert2.crt --yes
     """
 
     helps[
@@ -2060,6 +2060,17 @@ def load_iotops_help():
               az iot ops connector opcua client remove --instance instance --resource-group instanceresourcegroup
               --certificate-names testcert.der testcert.pem --yes
 
+    """
+
+    helps[
+        "iot ops connector opcua client show"
+    ] = """
+        type: command
+        short-summary: Show details of secretsync resource 'aio-opc-ua-broker-client-certificate'.
+        examples:
+        - name: Show details of 'aio-opc-ua-broker-client-certificate' secretsync resource.
+          text: >
+            az iot ops connector opcua client show --instance instance --resource-group instanceresourcegroup
     """
 
     helps[
@@ -2624,5 +2635,5 @@ def load_iotops_help():
 
         - name: Add an OPC UA endpoint with security settings and asset discovery enabled
           text: >
-            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --asset-discovery
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --run-asset-discovery
     """

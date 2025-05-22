@@ -12,7 +12,7 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
 )
 
-from azext_edge.edge.common import SecurityPolicies, SecurityModes
+from azext_edge.edge.providers.rpsaas.adr.specs import SecurityPolicy, SecurityMode
 from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
     _assert_above_min,
     _build_opcua_config,
@@ -58,8 +58,8 @@ def test_assert_above_min(value, minimum):
         },
         "security": {
             "autoAcceptUntrustedServerCertificates": False,
-            "securityMode": SecurityModes.none.value,
-            "securityPolicy": "http://opcfoundation.org/UA/SecurityPolicy#" + SecurityPolicies.basic256sha256.value
+            "securityMode": SecurityMode.none.value,
+            "securityPolicy": "http://opcfoundation.org/UA/SecurityPolicy#" + SecurityPolicy.basic256sha256.value
         }
     }
 ])
@@ -77,8 +77,8 @@ def test_assert_above_min(value, minimum):
         "session_keep_alive": 666,
         "session_reconnect_period": 777,
         "session_reconnect_exponential_back_off": 888,
-        "security_policy": SecurityPolicies.aes128.value,
-        "security_mode": SecurityModes.signencrypt.value,
+        "security_policy": SecurityPolicy.aes128.value,
+        "security_mode": SecurityMode.signandencrypt.value,
         "sub_max_items": 999,
         "sub_life_time": 1000,
     },

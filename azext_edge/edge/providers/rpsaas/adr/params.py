@@ -12,8 +12,6 @@ from azure.cli.core.commands.parameters import (
 from ....common import (
     ADRAuthModes,
     FileType,
-    SecurityModes,
-    SecurityPolicies,
     TopicRetain,
 )
 from .specs import SecurityPolicy, SecurityMode
@@ -528,7 +526,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "run_asset_discovery",
-            options_list=["--asset-discovery", "--rad"],
+            options_list=["--run-asset-discovery", "--rad"],
             help="Flag to determine if asset discovery should be run.",
             arg_type=get_three_state_flag(),
             arg_group="Connector",
@@ -567,14 +565,14 @@ def load_adr_arguments(self, _):
             options_list=["--security-policy", "--sp"],
             help="Security policy.",
             arg_group="Connector",
-            arg_type=get_enum_type(SecurityPolicies),
+            arg_type=get_enum_type(SecurityPolicy),
         )
         context.argument(
             "security_mode",
             options_list=["--security-mode", "--sm"],
             help="Security mode.",
             arg_group="Connector",
-            arg_type=get_enum_type(SecurityModes),
+            arg_type=get_enum_type(SecurityMode),
         )
         context.argument(
             "sub_max_items",
@@ -924,7 +922,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "run_asset_discovery",
-            options_list=["--asset-discovery", "--ad"],
+            options_list=["--run-asset-discovery", "--ad"],
             help="Enable asset discovery after connecting to the endpoint.",
             arg_type=get_three_state_flag(),
             arg_group="Configuration",
