@@ -78,7 +78,7 @@ def test_assert_above_min(value, minimum):
         "session_reconnect_period": 777,
         "session_reconnect_exponential_back_off": 888,
         "security_policy": SecurityPolicies.aes128.value,
-        "security_mode": SecurityModes.sign_and_encrypt.value,
+        "security_mode": SecurityModes.signencrypt.value,
         "sub_max_items": 999,
         "sub_life_time": 1000,
     },

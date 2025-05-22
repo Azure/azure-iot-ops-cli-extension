@@ -228,14 +228,14 @@ def load_iotops_commands(self, _):
         "iot ops namespace device endpoint",
         command_type=namespace_resource_ops,
     ) as cmd_group:
-        pass
+        cmd_group.command("list", "list_namespace_device_endpoints")
 
     with self.command_group(
         "iot ops namespace device endpoint inbound",
         command_type=namespace_resource_ops,
     ) as cmd_group:
-        cmd_group.command("list", "list_namespace_device_endpoints")
-        cmd_group.command("remove", "remove_namespace_device_endpoints")
+        cmd_group.command("list", "list_inbound_device_endpoints")
+        cmd_group.command("remove", "remove_inbound_device_endpoints")
 
     with self.command_group(
         "iot ops namespace device endpoint inbound add",

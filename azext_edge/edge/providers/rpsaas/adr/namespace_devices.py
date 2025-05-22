@@ -67,6 +67,7 @@ class NamespaceDevices(Queryable):
     ):
         # get the extended location from the instance
         from .helpers import get_extended_location
+        # TODO: add a check for instance being the right version
         extended_location = get_extended_location(
             cmd=self.cmd,
             instance_name=instance_name,
@@ -235,14 +236,16 @@ class NamespaceDevices(Queryable):
         device_name: str,
         namespace_name: str,
         resource_group_name: str,
+        inbound: bool = False
     ) -> dict:
-        return self.show(
+        endpoints = self.show(
             device_name=device_name,
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
-        )["properties"].get("endpoints", {}).get("inbound", {})
+        )["properties"].get("endpoints", {})
+        return endpoints.get("inbound") if inbound else endpoints
 
-    def remove_endpoint(
+    def inbound_remove_endpoint(
         self,
         device_name: str,
         namespace_name: str,

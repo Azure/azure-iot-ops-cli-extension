@@ -215,6 +215,21 @@ def update_namespace_device(
     )
 
 
+def list_namespace_device_endpoints(
+    cmd,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    inbound: Optional[bool] = False
+) -> dict:
+    return NamespaceDevices(cmd).list_endpoints(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        inbound=inbound
+    )
+
+
 def add_inbound_custom_device_endpoint(
     cmd,
     device_name: str,
@@ -253,7 +268,6 @@ def add_inbound_media_device_endpoint(
     resource_group_name: str,
     endpoint_name: str,
     endpoint_address: str,
-    certificate_reference: Optional[str] = None,
     password_reference: Optional[str] = None,
     username_reference: Optional[str] = None,
     **kwargs
@@ -265,7 +279,6 @@ def add_inbound_media_device_endpoint(
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.MEDIA.value,
         endpoint_address=endpoint_address,
-        certificate_reference=certificate_reference,
         password_reference=password_reference,
         username_reference=username_reference,
         **kwargs
@@ -281,7 +294,6 @@ def add_inbound_onvif_device_endpoint(
     endpoint_address: str,
     accept_invalid_hostnames: Optional[bool] = False,
     accept_invalid_certificates: Optional[bool] = False,
-    certificate_reference: Optional[str] = None,
     password_reference: Optional[str] = None,
     username_reference: Optional[str] = None,
     **kwargs
@@ -293,7 +305,6 @@ def add_inbound_onvif_device_endpoint(
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.ONVIF.value,
         endpoint_address=endpoint_address,
-        certificate_reference=certificate_reference,
         password_reference=password_reference,
         username_reference=username_reference,
         accept_invalid_hostnames=accept_invalid_hostnames,
@@ -328,7 +339,6 @@ def add_inbound_opcua_device_endpoint(
     run_asset_discovery: Optional[bool] = False,
     password_reference: Optional[str] = None,
     username_reference: Optional[str] = None,
-    trust_list: Optional[str] = None,
     **kwargs
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
@@ -340,7 +350,6 @@ def add_inbound_opcua_device_endpoint(
         endpoint_address=endpoint_address,
         password_reference=password_reference,
         username_reference=username_reference,
-        trust_list=trust_list,
         application_name=application_name,
         keep_alive=keep_alive,
         publishing_interval=publishing_interval,
@@ -362,7 +371,7 @@ def add_inbound_opcua_device_endpoint(
     )
 
 
-def list_namespace_device_endpoints(
+def list_inbound_device_endpoints(
     cmd,
     device_name: str,
     namespace_name: str,
@@ -371,11 +380,12 @@ def list_namespace_device_endpoints(
     return NamespaceDevices(cmd).list_endpoints(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
+        inbound=True
     )
 
 
-def remove_namespace_device_endpoints(
+def remove_inbound_device_endpoints(
     cmd,
     device_name: str,
     namespace_name: str,
@@ -383,7 +393,7 @@ def remove_namespace_device_endpoints(
     endpoint_names: List[str],
     **kwargs
 ):
-    return NamespaceDevices(cmd).remove_endpoint(
+    return NamespaceDevices(cmd).inbound_remove_endpoint(
         device_name=device_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,

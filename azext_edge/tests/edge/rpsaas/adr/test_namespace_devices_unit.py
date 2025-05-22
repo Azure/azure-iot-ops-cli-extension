@@ -19,7 +19,7 @@ from azext_edge.edge.commands_namespaces import (
     show_namespace_device,
     update_namespace_device,
     list_namespace_device_endpoints,
-    remove_namespace_device_endpoints,
+    remove_inbound_device_endpoints,
     add_inbound_custom_device_endpoint,
     add_inbound_media_device_endpoint,
     add_inbound_onvif_device_endpoint,
@@ -27,7 +27,7 @@ from azext_edge.edge.commands_namespaces import (
 )
 from azext_edge.edge.common import ADRAuthModes
 from azext_edge.edge.providers.rpsaas.adr.namespace_devices import DeviceEndpointType
-from azext_edge.edge.providers.rpsaas.adr.specs import SecurityPolicy
+from azext_edge.edge.providers.rpsaas.adr.specs import SecurityMode, SecurityPolicy
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 # Import necessary modules
@@ -469,14 +469,6 @@ def test_namespace_device_update(
         assert call_body_properties.get("enabled") == (not req["disabled"])
 
 
-# TODO: Implement the test for adding namespace device endpoints
-def test_add_namespace_device_endpoints(
-    mocked_cmd,
-    mocked_responses: responses
-):
-    pass
-
-
 @pytest.mark.parametrize("response_status", [200, 443])
 @pytest.mark.parametrize("endpoints", [
     {},  # Test with no endpoints
@@ -555,7 +547,7 @@ def test_list_namespace_device_endpoints(
     )
 
     # Verify result matches the endpoints in the mock response
-    assert result == endpoints
+    assert result == {"inbound": endpoints}
 
     # Verify the GET call was made
     assert len(mocked_responses.calls) == 1
@@ -602,7 +594,7 @@ def test_list_namespace_device_endpoints(
         ["endpoint2"]
     )
 ])
-def test_remove_namespace_device_endpoints(
+def test_remove_namespace_device_inbound_endpoints(
     mocked_cmd,
     mocked_responses: responses,
     original_endpoints: dict,
@@ -660,7 +652,7 @@ def test_remove_namespace_device_endpoints(
     # Execute test based on status code
     if response_status != 200:
         with pytest.raises(Exception):
-            remove_namespace_device_endpoints(
+            remove_inbound_device_endpoints(
                 cmd=mocked_cmd,
                 device_name=device_name,
                 namespace_name=namespace_name,
@@ -670,8 +662,8 @@ def test_remove_namespace_device_endpoints(
             )
         return
 
-    # Test remove_namespace_device_endpoints for success case
-    result = remove_namespace_device_endpoints(
+    # Test remove_inbound_device_endpoints for success case
+    result = remove_inbound_device_endpoints(
         cmd=mocked_cmd,
         device_name=device_name,
         namespace_name=namespace_name,
@@ -856,15 +848,13 @@ def test_add_inbound_custom_device_endpoint(
 
 
 @pytest.mark.parametrize("response_status", [200, 400])
-@pytest.mark.parametrize("cert_ref, username_ref, password_ref", [
-    (None, None, None),              # Anonymous auth
-    (None, "secretRef:username", "secretRef:password"),  # Username/Password auth
-    ("secretRef:certificate", None, None),  # Certificate auth
+@pytest.mark.parametrize("username_ref, password_ref", [
+    (None, None),              # Anonymous auth
+    ("secretRef:username", "secretRef:password"),  # Username/Password auth
 ])
 def test_add_inbound_media_device_endpoint(
     mocked_cmd,
     mocked_responses: responses,
-    cert_ref: Optional[str],
     username_ref: Optional[str],
     password_ref: Optional[str],
     response_status: int
@@ -891,14 +881,7 @@ def test_add_inbound_media_device_endpoint(
     }
 
     # Set up authentication structure based on auth type
-    if cert_ref:
-        expected_endpoint["authentication"] = {
-            "method": ADRAuthModes.certificate.value,
-            "x509Credentials": {
-                "certificateSecretName": cert_ref
-            }
-        }
-    elif username_ref and password_ref:
+    if username_ref and password_ref:
         expected_endpoint["authentication"] = {
             "method": ADRAuthModes.userpass.value,
             "usernamePasswordCredentials": {
@@ -953,7 +936,6 @@ def test_add_inbound_media_device_endpoint(
                 resource_group_name=resource_group_name,
                 endpoint_name=endpoint_name,
                 endpoint_address=endpoint_address,
-                certificate_reference=cert_ref,
                 username_reference=username_ref,
                 password_reference=password_ref,
                 wait_sec=0
@@ -968,7 +950,6 @@ def test_add_inbound_media_device_endpoint(
         resource_group_name=resource_group_name,
         endpoint_name=endpoint_name,
         endpoint_address=endpoint_address,
-        certificate_reference=cert_ref,
         username_reference=username_ref,
         password_reference=password_ref,
         wait_sec=0
@@ -990,17 +971,15 @@ def test_add_inbound_media_device_endpoint(
 
 
 @pytest.mark.parametrize("response_status", [200, 400])
-@pytest.mark.parametrize("cert_ref, username_ref, password_ref", [
-    (None, None, None),              # Anonymous auth
-    (None, "secretRef:username", "secretRef:password"),  # Username/Password auth
-    ("secretRef:certificate", None, None),  # Certificate auth
+@pytest.mark.parametrize("username_ref, password_ref", [
+    (None, None),              # Anonymous auth
+    ("secretRef:username", "secretRef:password"),  # Username/Password auth
 ])
 @pytest.mark.parametrize("accept_invalid_hostnames", [True, False])
 @pytest.mark.parametrize("accept_invalid_certificates", [True, False])
 def test_add_inbound_onvif_device_endpoint(
     mocked_cmd,
     mocked_responses: responses,
-    cert_ref: Optional[str],
     username_ref: Optional[str],
     password_ref: Optional[str],
     accept_invalid_hostnames: bool,
@@ -1031,14 +1010,7 @@ def test_add_inbound_onvif_device_endpoint(
     }
 
     # Set up authentication structure based on auth type
-    if cert_ref:
-        expected_endpoint["authentication"] = {
-            "method": ADRAuthModes.certificate.value,
-            "x509Credentials": {
-                "certificateSecretName": cert_ref
-            }
-        }
-    elif username_ref and password_ref:
+    if username_ref and password_ref:
         expected_endpoint["authentication"] = {
             "method": ADRAuthModes.userpass.value,
             "usernamePasswordCredentials": {
@@ -1093,7 +1065,6 @@ def test_add_inbound_onvif_device_endpoint(
                 resource_group_name=resource_group_name,
                 endpoint_name=endpoint_name,
                 endpoint_address=endpoint_address,
-                certificate_reference=cert_ref,
                 username_reference=username_ref,
                 password_reference=password_ref,
                 accept_invalid_hostnames=accept_invalid_hostnames,
@@ -1110,7 +1081,6 @@ def test_add_inbound_onvif_device_endpoint(
         resource_group_name=resource_group_name,
         endpoint_name=endpoint_name,
         endpoint_address=endpoint_address,
-        certificate_reference=cert_ref,
         username_reference=username_ref,
         password_reference=password_ref,
         accept_invalid_hostnames=accept_invalid_hostnames,
@@ -1161,16 +1131,15 @@ def test_add_inbound_onvif_device_endpoint(
         "subscription_max_items": 1500,
         "subscription_life_time": 65000,
         "security_auto_accept_certificates": True,
-        "security_policy": "Basic256Sha256",
-        "security_mode": "signAndEncrypt",
+        "security_policy": "basic256sha256",
+        "security_mode": "signandencrypt",
         "run_asset_discovery": True,
-        "trust_list": "secretRef:trustlist"
     },
     {   # Partial set of parameters
         "application_name": "Simple OPC UA App",
         "session_enable_tracing_headers": True,
         "security_auto_accept_certificates": True,
-        "security_policy": "Aes256_Sha256_RsaPss",
+        "security_policy": "aes256",
         "security_mode": "sign",
     }
 ])
@@ -1209,8 +1178,9 @@ def test_add_inbound_opcua_device_endpoint(
     if security_policy:
         security_policy = f"http://opcfoundation.org/UA/SecurityPolicy#{SecurityPolicy[security_policy].value}"
     security_mode = req.get("security_mode", None)
+    if security_mode:
+        security_mode = SecurityMode[security_mode].value
     run_asset_discovery = req.get("run_asset_discovery", False)
-    trust_list = req.get("trust_list", None)
 
     # Create original device record with no endpoints
     original_device = get_namespace_device_record(
@@ -1252,8 +1222,6 @@ def test_add_inbound_opcua_device_endpoint(
             "runAssetDiscovery": run_asset_discovery
         })
     }
-    if trust_list:
-        expected_endpoint["trustSettings"] = {"trustList": trust_list}
 
     # Set up authentication structure based on auth type
     if username_ref and password_ref:
@@ -1343,7 +1311,6 @@ def test_add_inbound_opcua_device_endpoint(
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.OPCUA.value
     assert endpoint_patch["address"] == endpoint_address
-    assert endpoint_patch.get("trustSettings") == expected_endpoint.get("trustSettings")
 
     # Parse additionalConfiguration for validation
     assert endpoint_patch["additionalConfiguration"]

@@ -153,17 +153,19 @@ NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA = {
 }
 
 
+# TODO: make AEPs use this assuming we keep AEPs
 class SecurityPolicy(Enum):
     """
     Security policies for the OPC UA connector as defined in NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA.
     Values correspond to the part after the "#" in the security policy URLs.
     """
+    # TODO: (nice to have) more user friendly names
     none = "None"
-    Basic128Rsa15 = "Basic128Rsa15"
-    Basic256 = "Basic256"
-    Basic256Sha256 = "Basic256Sha256"
-    Aes128_Sha256_RsaOaep = "Aes128_Sha256_RsaOaep"
-    Aes256_Sha256_RsaPss = "Aes256_Sha256_RsaPss"
+    basic128 = "Basic128Rsa15"
+    basic256 = "Basic256"
+    basic256sha256 = "Basic256Sha256"
+    aes128 = "Aes128_Sha256_RsaOaep"
+    aes256 = "Aes256_Sha256_RsaPss"
 
 
 class SecurityMode(Enum):
@@ -172,4 +174,4 @@ class SecurityMode(Enum):
     """
     none = "none"
     sign = "sign"
-    signAndEncrypt = "signAndEncrypt"
+    signandencrypt = "signAndEncrypt"

@@ -233,7 +233,7 @@ class SecurityModes(Enum):
 
     none = "none"
     sign = "sign"
-    sign_and_encrypt = "signAndEncrypt"
+    signencrypt = "signAndEncrypt"
 
 
 class SecurityPolicies(Enum):
