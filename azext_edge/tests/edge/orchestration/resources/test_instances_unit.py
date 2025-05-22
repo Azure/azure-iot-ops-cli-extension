@@ -18,13 +18,20 @@ from azext_edge.edge.commands_edge import list_instances, show_instance, update_
 from azext_edge.edge.commands_secretsync import secretsync_enable
 from azext_edge.edge.providers.orchestration.resources import Instances
 from azext_edge.edge.providers.orchestration.resources.instances import (
+    KEYVAULT_ROLE_ID_READER,
+    KEYVAULT_ROLE_ID_SECRETS_USER,
     SERVICE_ACCOUNT_SECRETSYNC,
     get_fc_name,
-    parse_feature_kvp_nargs,
     get_spc_name,
+    parse_feature_kvp_nargs,
 )
 
-from ....generators import generate_random_string, generate_resource_id, generate_uuid
+from ....generators import (
+    generate_random_string,
+    generate_resource_id,
+    generate_role_def_id,
+    generate_uuid,
+)
 from .conftest import (
     ARG_ENDPOINT,
     BASE_URL,
@@ -686,11 +693,21 @@ def test_secretsync_enable(
 
     mocked_get_tenant_id.assert_called_once()
 
-    if custom_role_id and not skip_role_assignments:
-        ra_put_request = json.loads(ra_put.calls[0].request.body)
-        assert ra_put_request["properties"]["roleDefinitionId"] == custom_role_id
-        assert ra_put_request["properties"]["principalId"] == principal_id
-        assert ra_put_request["properties"]["principalType"] == "ServicePrincipal"
+    if not skip_role_assignments:
+        role_ids = []
+        if custom_role_id:
+            assert len(ra_put.calls) == 1
+            role_ids.append(custom_role_id)
+        else:
+            assert len(ra_put.calls) == 2
+            role_ids.append(generate_role_def_id(role_id=KEYVAULT_ROLE_ID_SECRETS_USER))
+            role_ids.append(generate_role_def_id(role_id=KEYVAULT_ROLE_ID_READER))
+
+        for i in range(len(role_ids)):
+            ra_put_request = json.loads(ra_put.calls[i].request.body)
+            assert ra_put_request["properties"]["roleDefinitionId"] == role_ids[i]
+            assert ra_put_request["properties"]["principalId"] == principal_id
+            assert ra_put_request["properties"]["principalType"] == "ServicePrincipal"
 
 
 @pytest.mark.parametrize(
