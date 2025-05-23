@@ -716,8 +716,8 @@ def load_iotops_arguments(self, _):
             )
 
     for cmd_space in [
-        "iot ops dataflow endpoint create localstorage",
-        "iot ops dataflow endpoint update localstorage",
+        "iot ops dataflow endpoint create local-storage",
+        "iot ops dataflow endpoint update local-storage",
     ]:
         with self.argument_context(cmd_space) as context:
             context.argument(

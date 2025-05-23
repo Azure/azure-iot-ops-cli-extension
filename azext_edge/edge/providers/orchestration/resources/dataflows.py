@@ -561,41 +561,51 @@ class DataFlowEndpoints(Queryable):
     def list(self, instance_name: str, resource_group_name: str) -> Iterable[dict]:
         return self.ops.list_by_resource_group(resource_group_name=resource_group_name, instance_name=instance_name)
 
-    def _get_endpoint_host(self, endpoint_type: DataflowEndpointType, **kwargs) -> str:
-        host = ""
+    def _get_endpoint_host(
+        self,
+        endpoint_type: DataflowEndpointType,
+        host: Optional[str] = None,
+        storage_account_name: Optional[str] = None,
+        eventhub_namespace: Optional[str] = None,
+        hostname: Optional[str] = None,
+        port: Optional[str] = None,
+        **_
+    ) -> str:
+        processed_host = ""
         if endpoint_type in [
             DataflowEndpointType.DATAEXPLORER.value,
             DataflowEndpointType.FABRICREALTIME.value,
         ]:
-            host = kwargs["host"]
+            processed_host = host
         elif endpoint_type == DataflowEndpointType.DATALAKESTORAGE.value:
-            host = f"https://{kwargs['storage_account_name']}.blob.core.windows.net"
+            processed_host = f"https://{storage_account_name}.blob.core.windows.net"
         elif endpoint_type == DataflowEndpointType.FABRICONELAKE.value:
-            host = "https://onelake.dfs.fabric.microsoft.com"
+            processed_host = "https://onelake.dfs.fabric.microsoft.com"
         elif endpoint_type == DataflowEndpointType.EVENTHUB.value:
-            host = f"{kwargs['eventhub_namespace']}.servicebus.windows.net:9093"
+            processed_host = f"{eventhub_namespace}.servicebus.windows.net:9093"
         elif endpoint_type in [
             DataflowEndpointType.CUSTOMKAFKA.value,
             DataflowEndpointType.AIOLOCALMQTT.value,
             DataflowEndpointType.EVENTGRID.value,
             DataflowEndpointType.CUSTOMMQTT.value,
         ]:
-            host = f"{kwargs['hostname']}:{kwargs['port']}"
+            processed_host = f"{hostname}:{port}"
 
-        return host
+        return processed_host
 
     def _process_authentication_type(
         self,
         endpoint_type: DataflowEndpointType,
         settings: dict,
+        authentication_type: Optional[str] = None,
         **kwargs
     ):
         # No authentication method required for local storage
         if endpoint_type == DataflowEndpointType.LOCALSTORAGE.value:
             return
 
-        if kwargs.get("authentication_type"):
-            authentication_method = kwargs["authentication_type"]
+        if authentication_type:
+            authentication_method = authentication_type
         else:
             # Identify authentication method using the provided kwargs
             authentication_method = self._identify_authentication_method(
@@ -671,20 +681,29 @@ class DataFlowEndpoints(Queryable):
 
     def _identify_authentication_method(
         self,
-        **kwargs
+        no_auth: Optional[bool] = None,
+        client_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        scope: Optional[str] = None,
+        sat_audience: Optional[str] = None,
+        x509_secret_name: Optional[str] = None,
+        sasl_type: Optional[str] = None,
+        sasl_secret_name: Optional[str] = None,
+        at_secret_name: Optional[str] = None,
+        **_
     ) -> str:
         # Check for the presence of authentication-related parameters in kwargs
-        if kwargs.get("no_auth"):
+        if no_auth:
             return DataflowEndpointAuthenticationType.ANONYMOUS.value
-        elif kwargs.get("client_id") or kwargs.get("tenant_id") or kwargs.get("scope"):
+        elif client_id or tenant_id or scope:
             return DataflowEndpointAuthenticationType.USERASSIGNED.value
-        elif kwargs.get("sat_audience"):
+        elif sat_audience:
             return DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value
-        elif kwargs.get("x509_secret_name"):
+        elif x509_secret_name:
             return DataflowEndpointAuthenticationType.X509.value
-        elif kwargs.get("sasl_type") or kwargs.get("sasl_secret_name"):
+        elif sasl_type or sasl_secret_name:
             return DataflowEndpointAuthenticationType.SASL.value
-        elif kwargs.get("at_secret_name"):
+        elif at_secret_name:
             return DataflowEndpointAuthenticationType.ACCESSTOKEN.value
         else:
             return DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value
@@ -692,53 +711,62 @@ class DataFlowEndpoints(Queryable):
     def _set_batching_settings(
         self,
         settings: dict,
-        **kwargs
+        latency: Optional[int] = None,
+        message_count: Optional[int] = None,
+        batching_disabled: Optional[bool] = None,
+        max_byte: Optional[int] = None,
+        latency_ms: Optional[int] = None,
+        **_
     ):
         if any([
-            kwargs.get("latency"),
-            kwargs.get("message_count"),
-            kwargs.get("batching_disabled"),
-            kwargs.get("max_byte"),
-            kwargs.get("latency_ms"),
+            latency,
+            message_count,
+            batching_disabled,
+            max_byte,
+            latency_ms,
         ]):
             settings["batching"] = settings.get("batching", {})
-            if kwargs.get("latency"):
-                settings["batching"]["latencySeconds"] = kwargs["latency"]
-            if kwargs.get("latency_ms"):
-                settings["batching"]["latencyMs"] = kwargs["latency_ms"]
-            if kwargs.get("message_count"):
-                settings["batching"]["maxMessages"] = kwargs["message_count"]
-            if kwargs.get("batching_disabled"):
+            if latency:
+                settings["batching"]["latencySeconds"] = latency
+            if latency_ms:
+                settings["batching"]["latencyMs"] = latency_ms
+            if message_count:
+                settings["batching"]["maxMessages"] = message_count
+            if batching_disabled:
                 settings["batching"]["mode"] = DataflowEndpointModeType.DISABLED.value \
-                    if kwargs["batching_disabled"] else DataflowEndpointModeType.ENABLED.value
-            if kwargs.get("max_byte"):
-                settings["batching"]["maxBytes"] = kwargs["max_byte"]
+                    if batching_disabled else DataflowEndpointModeType.ENABLED.value
+            if max_byte:
+                settings["batching"]["maxBytes"] = max_byte
 
     def _set_names_settings(
         self,
         settings: dict,
-        **kwargs
+        lakehouse_name: Optional[str] = None,
+        workspace_name: Optional[str] = None,
+        **_
     ):
-        if kwargs.get("lakehouse_name") or kwargs.get("workspace_name"):
+        if lakehouse_name or workspace_name:
             settings["names"] = settings.get("names", {})
-            if kwargs.get("lakehouse_name"):
-                settings["names"]["lakehouseName"] = kwargs["lakehouse_name"]
-            if kwargs.get("workspace_name"):
-                settings["names"]["workspaceName"] = kwargs["workspace_name"]
+            if lakehouse_name:
+                settings["names"]["lakehouseName"] = lakehouse_name
+            if workspace_name:
+                settings["names"]["workspaceName"] = workspace_name
 
     def _set_tls_settings(
         self,
         settings: dict,
         endpoint_type: DataflowEndpointType,
-        **kwargs
+        tls_disabled: Optional[bool] = None,
+        config_map_reference: Optional[str] = None,
+        **_
     ):
-        if kwargs.get("tls_disabled") is not None or kwargs.get("config_map_reference"):
+        if tls_disabled is not None or config_map_reference:
             settings["tls"] = settings.get("tls", {})
-            if kwargs.get("tls_disabled") is not None:
+            if tls_disabled is not None:
                 settings["tls"]["mode"] = DataflowEndpointModeType.DISABLED.value \
-                    if kwargs["tls_disabled"] else DataflowEndpointModeType.ENABLED.value
-            if kwargs.get("config_map_reference"):
-                settings["tls"]["trustedCaCertificateConfigMapRef"] = kwargs["config_map_reference"]
+                    if tls_disabled else DataflowEndpointModeType.ENABLED.value
+            if config_map_reference:
+                settings["tls"]["trustedCaCertificateConfigMapRef"] = config_map_reference
 
         # for eventhub and eventgrid, tls mode is always enabled
         if endpoint_type in [
@@ -755,53 +783,69 @@ class DataFlowEndpoints(Queryable):
         endpoint_type: DataflowEndpointType,
         settings: dict,
         host: str,
+        database_name: Optional[str] = None,
+        path_type: Optional[str] = None,
+        group_id: Optional[str] = None,
+        copy_broker_props_disabled: Optional[bool] = None,
+        compression: Optional[str] = None,
+        acks: Optional[str] = None,
+        partition_strategy: Optional[str] = None,
+        cloud_event_attribute: Optional[str] = None,
+        pvc_reference: Optional[str] = None,
+        client_id_prefix: Optional[str] = None,
+        protocol: Optional[str] = None,
+        keep_alive: Optional[int] = None,
+        retain: Optional[bool] = None,
+        max_inflight_messages: Optional[int] = None,
+        qos: Optional[int] = None,
+        session_expiry: Optional[int] = None,
         **kwargs
     ):
         if host:
             settings["host"] = host
-        if kwargs.get("database_name"):
-            settings["database"] = kwargs["database_name"]
+        if database_name:
+            settings["database"] = database_name
         self._set_batching_settings(
             settings=settings,
             **kwargs
         )
         self._set_names_settings(settings=settings, **kwargs)
-        if kwargs.get("path_type"):
-            settings["oneLakePathType"] = kwargs["path_type"]
-        if kwargs.get("group_id"):
-            settings["consumerGroupId"] = kwargs["group_id"]
-        if kwargs.get("copy_broker_props_disabled"):
+        if path_type:
+            settings["oneLakePathType"] = path_type
+        if group_id:
+            settings["consumerGroupId"] = group_id
+        if copy_broker_props_disabled:
             settings["copyMqttProperties"] = DataflowEndpointModeType.DISABLED.value \
-                if kwargs["copy_broker_props_disabled"] else DataflowEndpointModeType.ENABLED.value
-        if kwargs.get("compression"):
-            settings["compression"] = kwargs["compression"]
-        if kwargs.get("acks"):
-            settings["kafkaAcks"] = kwargs["acks"]
-        if kwargs.get("partition_strategy"):
-            settings["partitionStrategy"] = kwargs["partition_strategy"]
+                if copy_broker_props_disabled else DataflowEndpointModeType.ENABLED.value
+        if compression:
+            settings["compression"] = compression
+        if acks:
+            settings["kafkaAcks"] = acks
+        if partition_strategy:
+            settings["partitionStrategy"] = partition_strategy
         self._set_tls_settings(
             settings=settings,
             endpoint_type=endpoint_type,
             **kwargs
         )
-        if kwargs.get("cloud_event_attribute"):
-            settings["cloudEventAttributes"] = kwargs["cloud_event_attribute"]
-        if kwargs.get("pvc_reference"):
-            settings["persistentVolumeClaimRef"] = kwargs["pvc_reference"]
-        if kwargs.get("client_id_prefix"):
-            settings["clientIdPrefix"] = kwargs["client_id_prefix"]
-        if kwargs.get("protocol"):
-            settings["protocol"] = kwargs["protocol"]
-        if kwargs.get("keep_alive"):
-            settings["keepAliveSeconds"] = kwargs["keep_alive"]
-        if kwargs.get("retain"):
-            settings["retain"] = kwargs["retain"]
-        if kwargs.get("max_inflight_messages"):
-            settings["maxInflightMessages"] = kwargs["max_inflight_messages"]
-        if kwargs.get("qos"):
-            settings["qos"] = kwargs["qos"]
-        if kwargs.get("session_expiry"):
-            settings["sessionExpirySeconds"] = kwargs["session_expiry"]
+        if cloud_event_attribute:
+            settings["cloudEventAttributes"] = cloud_event_attribute
+        if pvc_reference:
+            settings["persistentVolumeClaimRef"] = pvc_reference
+        if client_id_prefix:
+            settings["clientIdPrefix"] = client_id_prefix
+        if protocol:
+            settings["protocol"] = protocol
+        if keep_alive:
+            settings["keepAliveSeconds"] = keep_alive
+        if retain:
+            settings["retain"] = retain
+        if max_inflight_messages:
+            settings["maxInflightMessages"] = max_inflight_messages
+        if qos:
+            settings["qos"] = qos
+        if session_expiry:
+            settings["sessionExpirySeconds"] = session_expiry
 
         return
 
