@@ -572,12 +572,12 @@ def load_iotops_arguments(self, _):
         with self.argument_context(cmd_space) as context:
             context.argument(
                 "workspace_name",
-                options_list=["--workspace", "-w"],
+                options_list=["--workspace"],
                 help="The Microsoft Fabric workspace name. Note: The default 'my workspace' isn't supported.",
             )
             context.argument(
                 "lakehouse_name",
-                options_list=["--lakehouse", "-l"],
+                options_list=["--lakehouse"],
                 help="The Microsoft Fabric lakehouse name under provided workspace.",
             )
             context.argument(
