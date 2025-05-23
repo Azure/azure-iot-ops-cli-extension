@@ -12,3 +12,4 @@ flake8
 pytest-xdist
 pytest-rerunfailures
 tox
+build
