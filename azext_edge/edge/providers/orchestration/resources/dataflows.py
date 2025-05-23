@@ -598,6 +598,7 @@ class DataFlowEndpoints(Queryable):
         endpoint_type: DataflowEndpointType,
         settings: dict,
         authentication_type: Optional[str] = None,
+        #TODO: reduce usage of kwargs
         **kwargs
     ):
         # No authentication method required for local storage
