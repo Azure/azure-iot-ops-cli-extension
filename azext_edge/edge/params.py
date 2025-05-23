@@ -550,7 +550,7 @@ def load_iotops_arguments(self, _):
             )
             context.argument(
                 "storage_account_name",
-                options_list=["--storage-account-name", "--san"],
+                options_list=["--storage-account", "--sa"],
                 help="The name of Azure Data Lake Storage Gen2 account.",
             )
             context.argument(
