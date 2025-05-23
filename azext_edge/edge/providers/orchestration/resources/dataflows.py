@@ -400,8 +400,10 @@ class DataFlowEndpoints(Queryable):
         show_config: Optional[bool] = None,
         **kwargs
     ) -> dict:
-        self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group_name)
-        extended_location = self.instance["extendedLocation"]
+        extended_location = self.instances.get_ext_loc(
+            name=instance_name,
+            resource_group_name=resource_group_name,
+        )
         settings = {}
 
         # format the endpoint host
@@ -469,8 +471,10 @@ class DataFlowEndpoints(Queryable):
         show_config: Optional[bool] = None,
         **kwargs
     ) -> dict:
-        self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group_name)
-        extended_location = self.instance["extendedLocation"]
+        extended_location = self.instances.get_ext_loc(
+            name=instance_name,
+            resource_group_name=resource_group_name,
+        )
 
         # get the original endpoint
         original_endpoint = self.ops.get(
@@ -478,7 +482,6 @@ class DataFlowEndpoints(Queryable):
             instance_name=instance_name,
             dataflow_endpoint_name=name,
         )
-        # settings = {}
 
         self._update_properties(
             properties=original_endpoint["properties"],
@@ -513,8 +516,10 @@ class DataFlowEndpoints(Queryable):
     ) -> dict:
         resource = {}
         endpoint_config = get_file_config(config_file)
-        self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group_name)
-        resource["extendedLocation"] = self.instance["extendedLocation"]
+        resource["extendedLocation"] = self.instances.get_ext_loc(
+            name=instance_name,
+            resource_group_name=resource_group_name,
+        )
         resource["properties"] = endpoint_config
 
         with console.status("Working..."):
@@ -841,6 +846,7 @@ class DataFlowEndpoints(Queryable):
                 **kwargs
             )
 
+        # Preventing host parameter from duplication
         if settings.get("host") and "host" in kwargs:
             del kwargs["host"]
 

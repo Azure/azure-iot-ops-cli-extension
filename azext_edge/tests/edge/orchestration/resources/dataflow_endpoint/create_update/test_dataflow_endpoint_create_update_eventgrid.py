@@ -14,7 +14,7 @@ from azext_edge.edge.commands_dataflow import (
     create_dataflow_endpoint_eventgrid,
     update_dataflow_endpoint_eventgrid,
 )
-from ..helper import assert_dataflow_endpoint_create_update, assert_dataflow_endpoint_create_update_with_error
+from ..helpers import assert_dataflow_endpoint_create_update, assert_dataflow_endpoint_create_update_with_error
 
 
 @pytest.mark.parametrize(

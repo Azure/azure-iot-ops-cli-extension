@@ -383,7 +383,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "batching_disabled",
-            options_list=["--batching-disabled", "--bd"],
+            options_list=["--disable-batching", "--db"],
             arg_type=get_three_state_flag(),
             help="Disable batching.",
             arg_group="Batching Configuration",
@@ -421,13 +421,13 @@ def load_iotops_arguments(self, _):
             help="Config map reference for Trusted CA certificate for Kafka/MQTT endpoint. "
             "Note: This ConfigMap should contain the CA certificate in PEM format. "
             "The ConfigMap must be in the same namespace as the Kafka/MQTT data flow resource.",
-            arg_group="Transport Layer Security(TLS)",
+            arg_group="Transport Layer Security (TLS)",
         )
         context.argument(
             "copy_broker_props_disabled",
-            options_list=["--copy-broker-props-disabled", "--cpbd"],
+            options_list=["--disable-broker-props-copy", "--dbpc"],
             arg_type=get_three_state_flag(),
-            help="Disable copy broker properties.",
+            help="Disable MQTT broker properties copy to Kafka user headers.",
         )
         context.argument(
             "group_id",
@@ -454,14 +454,14 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "tls_disabled",
-            options_list=["--tls-disabled"],
+            options_list=["--disable-tls"],
             arg_type=get_three_state_flag(),
             help="The data flow uses an insecure connection to the Kafka/MQTT broker.",
-            arg_group="Transport Layer Security(TLS)",
+            arg_group="Transport Layer Security (TLS)",
         )
         context.argument(
             "client_id_prefix",
-            options_list=["--client-id-pre"],
+            options_list=["--client-id-prefix"],
             help="The client id prefix for MQTT client. "
             "Note: Changing the client ID prefix after IoT "
             "Operations deployment might result in data loss.",
@@ -490,7 +490,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "qos",
             options_list=["--qos"],
-            help="Quality of Service (QoS) level for the MQTT messages.",
+            help="Quality of Service (QoS) level for the MQTT messages. Only 0 or 1 are supported.",
             type=int,
         )
         context.argument(
@@ -509,623 +509,354 @@ def load_iotops_arguments(self, _):
             type=int,
         )
 
-    with self.argument_context("iot ops dataflow endpoint create adx") as context:
-        context.argument(
-            "database_name",
-            options_list=["--database-name", "--db"],
-            help="The name of the Azure Data Explorer database.",
-        )
-        context.argument(
-            "host",
-            options_list=["--host"],
-            help="Host of the Azure Data Explorer is "
-            "Azure Data Explorer cluster URI. In the form "
-            "of https://cluster.region.kusto.windows.net",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                ]
-            ),
-        )
+    for cmd_space in [
+        "iot ops dataflow endpoint create adx",
+        "iot ops dataflow endpoint update adx"
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "database_name",
+                options_list=["--database-name", "--db"],
+                help="The name of the Azure Data Explorer database.",
+            )
+            context.argument(
+                "host",
+                options_list=["--host"],
+                help="Host of the Azure Data Explorer is "
+                "Azure Data Explorer cluster URI. In the form "
+                "of https://cluster.region.kusto.windows.net",
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+                        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+                    ]
+                ),
+            )
 
-    with self.argument_context("iot ops dataflow endpoint create adls") as context:
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains SAS token.",
-            arg_group="Access Token",
-        )
-        context.argument(
-            "storage_account_name",
-            options_list=["--storage-account-name", "--san"],
-            help="The name of Azure Data Lake Storage Gen2 account.",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.ACCESSTOKEN.value,
-                ]
-            ),
-        )
+    for cmd_space in [
+        "iot ops dataflow endpoint create adls",
+        "iot ops dataflow endpoint update adls",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "secret_name",
+                options_list=["--secret-name", "-s"],
+                help="The name for the kubernetes secret that contains SAS token.",
+                arg_group="Access Token",
+            )
+            context.argument(
+                "storage_account_name",
+                options_list=["--storage-account-name", "--san"],
+                help="The name of Azure Data Lake Storage Gen2 account.",
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+                        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+                        DataflowEndpointAuthenticationType.ACCESSTOKEN.value,
+                    ]
+                ),
+            )
 
-    with self.argument_context("iot ops dataflow endpoint create fabric-onelake") as context:
-        context.argument(
-            "workspace_name",
-            options_list=["--workspace-name", "--wn"],
-            help="The Microsoft Fabric workspace name. Note: The default 'my workspace' isn't supported.",
-        )
-        context.argument(
-            "lakehouse_name",
-            options_list=["--lakehouse-name", "--ln"],
-            help="The Microsoft Fabric lakehouse name under provided workspace.",
-        )
-        context.argument(
-            "path_type",
-            options_list=["--path-type", "--pt"],
-            arg_type=get_enum_type(DataflowEndpointFabricPathType, default=None),
-            help="The type of path used in OneLake.",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                ]
-            ),
-        )
+    for cmd_space in [
+        "iot ops dataflow endpoint create fabric-onelake",
+        "iot ops dataflow endpoint update fabric-onelake",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "workspace_name",
+                options_list=["--workspace", "-w"],
+                help="The Microsoft Fabric workspace name. Note: The default 'my workspace' isn't supported.",
+            )
+            context.argument(
+                "lakehouse_name",
+                options_list=["--lakehouse", "-l"],
+                help="The Microsoft Fabric lakehouse name under provided workspace.",
+            )
+            context.argument(
+                "path_type",
+                options_list=["--path-type", "--pt"],
+                arg_type=get_enum_type(DataflowEndpointFabricPathType, default=None),
+                help="The type of path used in OneLake.",
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+                        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+                    ]
+                ),
+            )
 
-    with self.argument_context("iot ops dataflow endpoint create eventhub") as context:
-        context.argument(
-            "eventhub_namespace",
-            options_list=["--eventhub-namespace", "--ehns"],
-            help="The name of the Event Hubs namespace.",
-        )
-        context.argument(
-            "latency",
-            options_list=["--latency", "-l"],
-            help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
-            type=int,
-            arg_group="Batching Configuration",
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains event hub connection string. "
-            "Note: The secret must be in the same namespace as the Kafka data flow endpoint. "
-            "The secret must have both the username and password as key-value pairs.",
-            arg_group="SASL Authentication",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.SASL.value,
-                ]
-            ),
-        )
+    for cmd_space in [
+        "iot ops dataflow endpoint create eventhub",
+        "iot ops dataflow endpoint update eventhub",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "eventhub_namespace",
+                options_list=["--eventhub-namespace", "--ehns"],
+                help="The name of the Event Hubs namespace.",
+            )
+            context.argument(
+                "latency",
+                options_list=["--latency", "-l"],
+                help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
+                type=int,
+                arg_group="Batching Configuration",
+            )
+            context.argument(
+                "secret_name",
+                options_list=["--secret-name", "-s"],
+                help="The name for the kubernetes secret that contains event hub connection string. "
+                "Note: The secret must be in the same namespace as the Kafka data flow endpoint. "
+                "The secret must have both the username and password as key-value pairs.",
+                arg_group="SASL Authentication",
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+                        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+                        DataflowEndpointAuthenticationType.SASL.value,
+                    ]
+                ),
+            )
 
-    with self.argument_context("iot ops dataflow endpoint create fabric-realtime") as context:
-        context.argument(
-            "host",
-            options_list=["--host"],
-            help="Host of the Fabric real-time is the "
-            "'Bootstrap server' value. Can be found in "
-            "event stream destination -- 'SAS Key Authentication' "
-            "section. In the form of *.servicebus.windows.net:9093",
-        )
-        context.argument(
-            "latency",
-            options_list=["--latency", "-l"],
-            help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
-            type=int,
-            arg_group="Batching Configuration",
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains Connection string-primary key value. "
-            "Can be found in event stream destination -- 'SAS Key Authentication' section. "
-            "Note: The secret must be in the same namespace as the Kafka data flow endpoint.",
-            arg_group="SASL Authentication",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.SASL.value,
-                ]
-            ),
-        )
+    for cmd_space in [
+        "iot ops dataflow endpoint create fabric-realtime",
+        "iot ops dataflow endpoint update fabric-realtime",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "host",
+                options_list=["--host"],
+                help="Host of the Fabric real-time is the "
+                "'Bootstrap server' value. Can be found in "
+                "event stream destination -- 'SAS Key Authentication' "
+                "section. In the form of *.servicebus.windows.net:9093",
+            )
+            context.argument(
+                "latency",
+                options_list=["--latency", "-l"],
+                help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
+                type=int,
+                arg_group="Batching Configuration",
+            )
+            context.argument(
+                "secret_name",
+                options_list=["--secret-name", "-s"],
+                help="The name for the kubernetes secret that contains Connection string-primary key value. "
+                "Can be found in event stream destination -- 'SAS Key Authentication' section. "
+                "Note: The secret must be in the same namespace as the Kafka data flow endpoint.",
+                arg_group="SASL Authentication",
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+                        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+                        DataflowEndpointAuthenticationType.SASL.value,
+                    ]
+                ),
+            )
 
-    with self.argument_context("iot ops dataflow endpoint create custom-kafka") as context:
-        context.argument(
-            "hostname",
-            options_list=["--hostname"],
-            help="The hostname of the Kafka broker host setting.",
-        )
-        context.argument(
-            "port",
-            options_list=["--port"],
-            help="The port number of the Kafka broker host setting.",
-            type=int,
-        )
-        context.argument(
-            "latency",
-            options_list=["--latency", "-l"],
-            help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
-            type=int,
-            arg_group="Batching Configuration",
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name of the Kubernetes secret that contains the SASL token.",
-            arg_group="SASL Authentication",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.SASL.value,
-                ]
-            ),
-        )
+    for cmd_space in [
+        "iot ops dataflow endpoint create custom-kafka",
+        "iot ops dataflow endpoint update custom-kafka",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "hostname",
+                options_list=["--hostname"],
+                help="The hostname of the Kafka broker host setting.",
+            )
+            context.argument(
+                "port",
+                options_list=["--port"],
+                help="The port number of the Kafka broker host setting.",
+                type=int,
+            )
+            context.argument(
+                "latency",
+                options_list=["--latency", "-l"],
+                help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
+                type=int,
+                arg_group="Batching Configuration",
+            )
+            context.argument(
+                "secret_name",
+                options_list=["--secret-name", "-s"],
+                help="The name of the Kubernetes secret that contains the SASL token.",
+                arg_group="SASL Authentication",
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+                        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+                        DataflowEndpointAuthenticationType.SASL.value,
+                    ]
+                ),
+            )
 
-    with self.argument_context("iot ops dataflow endpoint create localstorage") as context:
-        context.argument(
-            "pvc_reference",
-            options_list=["--pvc-ref"],
-            help="The name of the PersistentVolumeClaim (PVC) to use for local storage. "
-            "Note: The PVC must be in the same namespace as the data flow endpoint.",
-        )
+    for cmd_space in [
+        "iot ops dataflow endpoint create localstorage",
+        "iot ops dataflow endpoint update localstorage",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "pvc_reference",
+                options_list=["--pvc-ref"],
+                help="The name of the PersistentVolumeClaim (PVC) to use for local storage. "
+                "Note: The PVC must be in the same namespace as the data flow endpoint.",
+            )
 
-    with self.argument_context("iot ops dataflow endpoint create local-mqtt") as context:
-        context.argument(
-            "hostname",
-            options_list=["--hostname"],
-            help="The hostname of the local MQTT broker.",
-        )
-        context.argument(
-            "port",
-            options_list=["--port"],
-            help="The port number of the local MQTT broker.",
-            type=int,
-        )
-        context.argument(
-            "audience",
-            options_list=["--audience", "--aud"],
-            help="The audience of the Kubernetes service account token (SAT).",
-            arg_group="Kubernetes Service Account Token",
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains the X509 client certificate, private key "
-            "corresponding to the client certificate, and intermediate certificates for the client certificate "
-            "chain. "
-            "Note: The certificate and private key must be in PEM format and not password protected.",
-            arg_group="X509 Authentication",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
-                    DataflowEndpointAuthenticationType.X509.value,
-                ]
-            ),
-        )
+    for cmd_space in [
+        "iot ops dataflow endpoint create local-mqtt",
+        "iot ops dataflow endpoint update local-mqtt",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "hostname",
+                options_list=["--hostname"],
+                help="The hostname of the local MQTT broker.",
+            )
+            context.argument(
+                "port",
+                options_list=["--port"],
+                help="The port number of the local MQTT broker.",
+                type=int,
+            )
+            context.argument(
+                "audience",
+                options_list=["--audience", "--aud"],
+                help="The audience of the Kubernetes service account token (SAT).",
+                arg_group="Kubernetes Service Account Token",
+            )
+            context.argument(
+                "secret_name",
+                options_list=["--secret-name", "-s"],
+                help="The name for the kubernetes secret that contains the X509 client certificate, private key "
+                "corresponding to the client certificate, and intermediate certificates for the client certificate "
+                "chain. "
+                "Note: The certificate and private key must be in PEM format and not password protected.",
+                arg_group="X509 Authentication",
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
+                        DataflowEndpointAuthenticationType.X509.value,
+                    ]
+                ),
+            )
 
-    with self.argument_context("iot ops dataflow endpoint create eventgrid") as context:
-        context.argument(
-            "hostname",
-            options_list=["--hostname"],
-            help="The hostname of the event grid namespace. Can"
-            " be found in 'Http hostname' property. In the form "
-            "of NAMESPACE.REGION-1.ts.eventgrid.azure.net",
-        )
-        context.argument(
-            "port",
-            options_list=["--port"],
-            help="The port number of the event grid namespace.",
-            type=int,
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains the X509 client certificate, private key "
-            "corresponding to the client certificate, and intermediate certificates for the client certificate "
-            "chain. "
-            "Note: The certificate and private key must be in PEM format and not password protected.",
-            arg_group="X509 Authentication",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.X509.value,
-                ]
-            ),
-        )
+    for cmd_space in [
+        "iot ops dataflow endpoint create eventgrid",
+        "iot ops dataflow endpoint update eventgrid",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "hostname",
+                options_list=["--hostname"],
+                help="The hostname of the event grid namespace. Can"
+                " be found in 'Http hostname' property. In the form "
+                "of NAMESPACE.REGION-1.ts.eventgrid.azure.net",
+            )
+            context.argument(
+                "port",
+                options_list=["--port"],
+                help="The port number of the event grid namespace.",
+                type=int,
+            )
+            context.argument(
+                "secret_name",
+                options_list=["--secret-name", "-s"],
+                help="The name for the kubernetes secret that contains the X509 client certificate, private key "
+                "corresponding to the client certificate, and intermediate certificates for the client certificate "
+                "chain. "
+                "Note: The certificate and private key must be in PEM format and not password protected.",
+                arg_group="X509 Authentication",
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+                        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+                        DataflowEndpointAuthenticationType.X509.value,
+                    ]
+                ),
+            )
 
-    with self.argument_context("iot ops dataflow endpoint create custom-mqtt") as context:
-        context.argument(
-            "hostname",
-            options_list=["--hostname"],
-            help="The hostname of the custom MQTT broker host setting.",
-        )
-        context.argument(
-            "port",
-            options_list=["--port"],
-            help="The port number of the custom MQTT broker host setting.",
-            type=int,
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains the X509 client certificate, private key "
-            "corresponding to the client certificate, and intermediate certificates for the client certificate "
-            "chain. "
-            "Note: The certificate and private key must be in PEM format and not password protected.",
-            arg_group="X509 Authentication",
-        )
-        context.argument(
-            "sami_audience",
-            options_list=["--sami-audience", "--sami-aud"],
-            help="The audience of the system assigned managed identity.",
-            arg_group="System Assigned Managed Identity",
-        )
-        context.argument(
-            "sat_audience",
-            options_list=["--sat-audience", "--sat-aud"],
-            help="The audience of the Kubernetes service account token (SAT).",
-            arg_group="Kubernetes Service Account Token",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.X509.value,
-                ]
-            ),
-        )
-
-    with self.argument_context("iot ops dataflow endpoint update adx") as context:
-        context.argument(
-            "database_name",
-            options_list=["--database-name", "--db"],
-            help="The name of the Azure Data Explorer database.",
-        )
-        context.argument(
-            "host",
-            options_list=["--host"],
-            help="Host of the Azure Data Explorer is "
-            "Azure Data Explorer cluster URI. In the form "
-            "of https://cluster.region.kusto.windows.net",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                ]
-            ),
-        )
-
-    with self.argument_context("iot ops dataflow endpoint update adls") as context:
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains SAS token.",
-            arg_group="Access Token",
-        )
-        context.argument(
-            "storage_account_name",
-            options_list=["--storage-account-name", "--san"],
-            help="The name of Azure Data Lake Storage Gen2 account.",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.ACCESSTOKEN.value,
-                ]
-            ),
-        )
-
-    with self.argument_context("iot ops dataflow endpoint update fabric-onelake") as context:
-        context.argument(
-            "workspace_name",
-            options_list=["--workspace-name", "--wn"],
-            help="The Microsoft Fabric workspace name. Note: The default 'my workspace' isn't supported.",
-        )
-        context.argument(
-            "lakehouse_name",
-            options_list=["--lakehouse-name", "--ln"],
-            help="The Microsoft Fabric lakehouse name under provided workspace.",
-        )
-        context.argument(
-            "path_type",
-            options_list=["--path-type", "--pt"],
-            arg_type=get_enum_type(DataflowEndpointFabricPathType, default=None),
-            help="The type of path used in OneLake.",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                ]
-            ),
-        )
-
-    with self.argument_context("iot ops dataflow endpoint update eventhub") as context:
-        context.argument(
-            "eventhub_namespace",
-            options_list=["--eventhub-namespace", "--ehns"],
-            help="The name of the Event Hubs namespace.",
-        )
-        context.argument(
-            "latency",
-            options_list=["--latency", "-l"],
-            help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
-            type=int,
-            arg_group="Batching Configuration",
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains event hub connection string. "
-            "Note: The secret must be in the same namespace as the Kafka data flow endpoint. "
-            "The secret must have both the username and password as key-value pairs.",
-            arg_group="SASL Authentication",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.SASL.value,
-                ]
-            ),
-        )
-
-    with self.argument_context("iot ops dataflow endpoint update fabric-realtime") as context:
-        context.argument(
-            "host",
-            options_list=["--host"],
-            help="Host of the Fabric real-time is the "
-            "'Bootstrap server' value. Can be found in "
-            "event stream destination -- 'SAS Key Authentication' "
-            "section. In the form of *.servicebus.windows.net:9093",
-        )
-        context.argument(
-            "latency",
-            options_list=["--latency", "-l"],
-            help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
-            type=int,
-            arg_group="Batching Configuration",
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains 'Connection string-primary key' Value. "
-            "Can be found in event stream destination -- 'SAS Key Authentication' section. "
-            "Note: The secret must be in the same namespace as the Kafka data flow endpoint.",
-            arg_group="SASL Authentication",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.SASL.value,
-                ]
-            ),
-        )
-
-    with self.argument_context("iot ops dataflow endpoint update custom-kafka") as context:
-        context.argument(
-            "hostname",
-            options_list=["--hostname"],
-            help="The hostname of the Kafka broker host setting.",
-        )
-        context.argument(
-            "port",
-            options_list=["--port"],
-            help="The port number of the Kafka broker host setting.",
-            type=int,
-        )
-        context.argument(
-            "latency",
-            options_list=["--latency", "-l"],
-            help="The batching latency in milliseconds. Min value: 0, max value: 65535.",
-            type=int,
-            arg_group="Batching Configuration",
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name of the Kubernetes secret that contains the SASL token.",
-            arg_group="SASL Authentication",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.SASL.value,
-                ]
-            ),
-        )
-
-    with self.argument_context("iot ops dataflow endpoint update localstorage") as context:
-        context.argument(
-            "pvc_reference",
-            options_list=["--pvc-ref"],
-            help="The name of the PersistentVolumeClaim (PVC) to use for local storage. "
-            "Note: The PVC must be in the same namespace as the data flow endpoint.",
-        )
-
-    with self.argument_context("iot ops dataflow endpoint update local-mqtt") as context:
-        context.argument(
-            "hostname",
-            options_list=["--hostname"],
-            help="The hostname of the local MQTT broker.",
-        )
-        context.argument(
-            "port",
-            options_list=["--port"],
-            help="The port number of the local MQTT broker.",
-            type=int,
-        )
-        context.argument(
-            "audience",
-            options_list=["--audience", "--aud"],
-            help="The audience of the Kubernetes service account token (SAT).",
-            arg_group="Kubernetes Service Account Token",
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains the X509 client certificate, private key "
-            "corresponding to the client certificate, and intermediate certificates for the client certificate "
-            "chain. "
-            "Note: The certificate and private key must be in PEM format and not password protected.",
-            arg_group="X509 Authentication",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
-                    DataflowEndpointAuthenticationType.X509.value,
-                ]
-            ),
-        )
-
-    with self.argument_context("iot ops dataflow endpoint update eventgrid") as context:
-        context.argument(
-            "hostname",
-            options_list=["--hostname"],
-            help="The hostname of the event grid namespace. Can"
-            " be found in 'Http hostname' property. In the form "
-            "of NAMESPACE.REGION-1.ts.eventgrid.azure.net",
-        )
-        context.argument(
-            "port",
-            options_list=["--port"],
-            help="The port number of the event grid namespace.",
-            type=int,
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains the X509 client certificate, private key "
-            "corresponding to the client certificate, and intermediate certificates for the client certificate "
-            "chain. "
-            "Note: The certificate and private key must be in PEM format and not password protected.",
-            arg_group="X509 Authentication",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.X509.value,
-                ]
-            ),
-        )
-
-    with self.argument_context("iot ops dataflow endpoint update custom-mqtt") as context:
-        context.argument(
-            "hostname",
-            options_list=["--hostname"],
-            help="The hostname of the custom MQTT broker host setting.",
-        )
-        context.argument(
-            "port",
-            options_list=["--port"],
-            help="The port number of the custom MQTT broker host setting.",
-            type=int,
-        )
-        context.argument(
-            "secret_name",
-            options_list=["--secret-name", "--sn"],
-            help="The name for the kubernetes secret that contains the X509 client certificate, private key "
-            "corresponding to the client certificate, and intermediate certificates for the client certificate "
-            "chain. "
-            "Note: The certificate and private key must be in PEM format and not password protected.",
-            arg_group="X509 Authentication",
-        )
-        context.argument(
-            "sami_audience",
-            options_list=["--sami-audience", "--sami-aud"],
-            help="The audience of the system assigned managed identity.",
-            arg_group="System Assigned Managed Identity",
-        )
-        context.argument(
-            "sat_audience",
-            options_list=["--sat-audience", "--sat-aud"],
-            help="The audience of the Kubernetes service account token (SAT).",
-            arg_group="Kubernetes Service Account Token",
-        )
-        context.argument(
-            "authentication_type",
-            options_list=["--auth-type"],
-            choices=CaseInsensitiveList(
-                [
-                    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
-                    DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-                    DataflowEndpointAuthenticationType.USERASSIGNED.value,
-                    DataflowEndpointAuthenticationType.X509.value,
-                ]
-            ),
-        )
+    for cmd_space in [
+        "iot ops dataflow endpoint create custom-mqtt",
+        "iot ops dataflow endpoint update custom-mqtt",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "hostname",
+                options_list=["--hostname"],
+                help="The hostname of the custom MQTT broker host setting.",
+            )
+            context.argument(
+                "port",
+                options_list=["--port"],
+                help="The port number of the custom MQTT broker host setting.",
+                type=int,
+            )
+            context.argument(
+                "secret_name",
+                options_list=["--secret-name", "-s"],
+                help="The name for the kubernetes secret that contains the X509 client certificate, private key "
+                "corresponding to the client certificate, and intermediate certificates for the client certificate "
+                "chain. "
+                "Note: The certificate and private key must be in PEM format and not password protected.",
+                arg_group="X509 Authentication",
+            )
+            context.argument(
+                "sami_audience",
+                options_list=["--sami-audience", "--sami-aud"],
+                help="The audience of the system assigned managed identity.",
+                arg_group="System Assigned Managed Identity",
+            )
+            context.argument(
+                "sat_audience",
+                options_list=["--sat-audience", "--sat-aud"],
+                help="The audience of the Kubernetes service account token (SAT).",
+                arg_group="Kubernetes Service Account Token",
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
+                        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+                        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+                        DataflowEndpointAuthenticationType.X509.value,
+                    ]
+                ),
+            )
 
     with self.argument_context("iot ops broker") as context:
         context.argument(

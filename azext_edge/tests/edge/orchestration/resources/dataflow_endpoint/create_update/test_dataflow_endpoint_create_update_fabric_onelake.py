@@ -14,7 +14,7 @@ from azext_edge.edge.commands_dataflow import (
     create_dataflow_endpoint_fabric_onelake,
     update_dataflow_endpoint_fabric_onelake,
 )
-from ..helper import assert_dataflow_endpoint_create_update, assert_dataflow_endpoint_create_update_with_error
+from ..helpers import assert_dataflow_endpoint_create_update, assert_dataflow_endpoint_create_update_with_error
 
 
 @pytest.mark.parametrize(

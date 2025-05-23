@@ -16,7 +16,7 @@ from azext_edge.edge.commands_dataflow import (
     show_dataflow_endpoint,
     list_dataflow_endpoints,
 )
-from .helper import get_dataflow_endpoint_endpoint, get_mock_dataflow_endpoint_record
+from .conftest import get_dataflow_endpoint_endpoint, get_mock_dataflow_endpoint_record
 from ..test_instances_unit import (
     get_instance_endpoint,
     get_mock_instance_record,

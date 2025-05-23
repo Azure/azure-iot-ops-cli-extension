@@ -9,7 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 from azext_edge.edge.commands_dataflow import create_dataflow_endpoint_localstorage
-from ..helper import assert_dataflow_endpoint_create_update
+from ..helpers import assert_dataflow_endpoint_create_update
 
 
 @pytest.mark.parametrize(

@@ -792,6 +792,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a dataflow endpoint resource for Azure Data Lake Storage Gen2.
+        long-summary: For more information on Azure Data Lake Storage Gen2 dataflow endpoint, see https://aka.ms/adlsv2.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -800,24 +801,24 @@ def load_iotops_help():
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --storage-account-name mystorageaccount
+            --storage-account mystorageaccount
         - name: Create or replace a dataflow endpoint resource using user assigned managed identity authentication method.
           text: >
             az iot ops dataflow endpoint create adls
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --storage-account-name mystorageaccount
-            --client-id myclientid
-            --tenant-id mytenantid
+            --storage-account mystorageaccount
+            --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
+            --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
             --scope "https://storage.azure.com/.default"
-        - name: Show config file for creating a dataflow endpoint resource.
+        - name: Show config for creating a dataflow endpoint resource.
           text: >
             az iot ops dataflow endpoint create adls
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --storage-account-name mystorageaccount
+            --storage-account mystorageaccount
             --latency 70
             --message-count 100
             --secret-name mysecret
@@ -829,6 +830,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a dataflow endpoint resource for Azure Data Explorer.
+        long-summary: For more information on Azure Data Explorer dataflow endpoint, see https://aka.ms/aio-adx.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -847,9 +849,9 @@ def load_iotops_help():
             --resource-group myresourcegroup
             --database-name mydatabase
             --host "https://cluster.region.kusto.windows.net"
-            --client-id myclientid
-            --tenant-id mytenantid
-        - name: Show config file for creating a dataflow endpoint resource.
+            --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
+            --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
+        - name: Show config for creating a dataflow endpoint resource.
           text: >
             az iot ops dataflow endpoint create adx
             --name myendpoint
@@ -868,6 +870,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a dataflow endpoint resource for custom kafka broker.
+        long-summary: For more information on custom kafka dataflow endpoint, see https://aka.ms/aio-custom-kafka.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -888,7 +891,7 @@ def load_iotops_help():
             --port 9092
             --sasl-type ScramSha256
             --secret-name mysecret
-        - name: Create or replace a dataflow endpoint resource anonymously.
+        - name: Create or replace a dataflow endpoint resource with anonymous auth.
           text: >
             az iot ops dataflow endpoint create custom-kafka
             --name myendpoint
@@ -897,7 +900,7 @@ def load_iotops_help():
             --hostname mykafkabroker
             --port 9092
             --no-auth
-        - name: Show config file for creating a dataflow endpoint resource.
+        - name: Show config for creating a dataflow endpoint resource.
           text: >
             az iot ops dataflow endpoint create custom-kafka
             --name myendpoint
@@ -905,13 +908,13 @@ def load_iotops_help():
             --resource-group myresourcegroup
             --hostname mykafkabroker
             --port 9092
-            --batching-disabled True
+            --disable-batching
             --latency 70
             --max-byte 200000
             --message-count 100
             --audience myaudience
             --config-map-ref myconfigmap
-            --tls-disabled True
+            --disable-tls
             --show-config
     """
 
@@ -920,6 +923,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a dataflow endpoint resource for custom MQTT broker.
+        long-summary: For more information on custom MQTT dataflow endpoint, see https://aka.ms/aio-custom-mqtt.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -940,7 +944,7 @@ def load_iotops_help():
             --port 9092
             --sat-audience myaudience
             --secret-name mysecret
-        - name: Create or replace a dataflow endpoint resource anonymously.
+        - name: Create or replace a dataflow endpoint resource with anonymous auth.
           text: >
             az iot ops dataflow endpoint create custom-mqtt
             --name myendpoint
@@ -949,7 +953,7 @@ def load_iotops_help():
             --hostname mymqttbroker
             --port 9092
             --no-auth
-        - name: Show config file for creating a dataflow endpoint resource.
+        - name: Show config for creating a dataflow endpoint resource.
           text: >
             az iot ops dataflow endpoint create custom-mqtt
             --name myendpoint
@@ -957,16 +961,16 @@ def load_iotops_help():
             --resource-group myresourcegroup
             --hostname mymqttbroker
             --port 9092
-            --client-id-pre myclientprefix
+            --client-id-prefix myclientprefix
             --keep-alive 100
             --max-inflight-msg 60
             --protocol WebSockets
-            --qos 2
+            --qos 1
             --retain Never
             --session-expiry 100
             --cloud-event-attribute CreateOrRemap
             --secret-name mysecret
-            --tls-disabled True
+            --disable-tls
             --show-config
     """
 
@@ -975,6 +979,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a dataflow endpoint resource for Azure Event Grid.
+        long-summary: For more information on Azure Event Grid dataflow endpoint, see https://aka.ms/aio-eventgrid.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -994,7 +999,7 @@ def load_iotops_help():
             --hostname "namespace.region-1.ts.eventgrid.azure.net"
             --port 9092
             --secret-name mysecret
-        - name: Show config file for creating a dataflow endpoint resource.
+        - name: Show config for creating a dataflow endpoint resource.
           text: >
             az iot ops dataflow endpoint create eventgrid
             --name myendpoint
@@ -1002,11 +1007,11 @@ def load_iotops_help():
             --resource-group myresourcegroup
             --hostname "namespace.region-1.ts.eventgrid.azure.net"
             --port 9092
-            --client-id-pre myclientprefix
+            --client-id-prefix myclientprefix
             --keep-alive 100
             --max-inflight-msg 60
             --protocol WebSockets
-            --qos 2
+            --qos 1
             --retain Never
             --session-expiry 100
             --cloud-event-attribute CreateOrRemap
@@ -1020,6 +1025,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a dataflow endpoint resource for kafka-enabled Azure Event Hubs namespace.
+        long-summary: For more information on Azure Event Hubs dataflow endpoint, see https://aka.ms/aio-eventhub.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -1036,10 +1042,10 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --eventhub-namespace myeventhubnamespace
-            --client-id myclientid
-            --tenant-id mytenantid
+            --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
+            --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
             --scope "https://eventhubs.azure.net/.default"
-        - name: Show config file for creating a dataflow endpoint resource.
+        - name: Show config for creating a dataflow endpoint resource.
           text: >
             az iot ops dataflow endpoint create eventhub
             --name myendpoint
@@ -1048,7 +1054,7 @@ def load_iotops_help():
             --eventhub-namespace myeventhubnamespace
             --acks One
             --compression Gzip
-            --copy-broker-props-disabled True
+            --disable-copy-broker-props
             --group-id mygroupid
             --partition-strategy Static
             --max-byte 200000
@@ -1066,6 +1072,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a dataflow endpoint resource for Microsoft Fabric OneLake.
+        long-summary: For more information on Microsoft Fabric OneLake dataflow endpoint, see https://aka.ms/fabric-onelake.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -1074,8 +1081,8 @@ def load_iotops_help():
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --lakehouse-name mylakehouse
-            --workspace-name myworkspace
+            --lakehouse mylakehouse
+            --workspace myworkspace
             --path-type Files
         - name: Create or replace a dataflow endpoint resource using user assigned managed identity authentication method.
           text: >
@@ -1083,19 +1090,19 @@ def load_iotops_help():
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --lakehouse-name mylakehouse
-            --workspace-name myworkspace
+            --lakehouse mylakehouse
+            --workspace myworkspace
             --path-type Files
-            --client-id myclientid
-            --tenant-id mytenantid
-        - name: Show config file for creating a dataflow endpoint resource.
+            --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
+            --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
+        - name: Show config for creating a dataflow endpoint resource.
           text: >
             az iot ops dataflow endpoint create fabric-onelake
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --lakehouse-name mylakehouse
-            --workspace-name myworkspace
+            --lakehouse mylakehouse
+            --workspace myworkspace
             --path-type Files
             --latency 70
             --message-count 100
@@ -1108,6 +1115,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a Microsoft Fabric Real-Time Intelligence data flow endpoint.
+        long-summary: For more information on Microsoft Fabric Real-Time Intelligence dataflow endpoint, see https://aka.ms/aio-fabric-real-time.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -1126,7 +1134,7 @@ def load_iotops_help():
             --host "fabricrealtime.servicebus.windows.net:9093"
             --sasl-type ScramSha256
             --secret-name mysecret
-        - name: Show config file for creating a dataflow endpoint resource.
+        - name: Show config for creating a dataflow endpoint resource.
           text: >
             az iot ops dataflow endpoint create fabric-realtime
             --name myendpoint
@@ -1139,7 +1147,7 @@ def load_iotops_help():
             --partition-strategy Static
             --max-byte 200000
             --cloud-event-attribute CreateOrRemap
-            --tls-disabled True
+            --disable-tls
             --show-config
     """
 
@@ -1147,7 +1155,8 @@ def load_iotops_help():
         "iot ops dataflow endpoint create local-mqtt"
     ] = """
         type: command
-        short-summary: Create or replace a Azure IoT Operations Local MQTT data flow endpoint.
+        short-summary: Create or replace a Azure IoT Operations Local MQTT dataflow endpoint.
+        long-summary: For more information on Azure IoT Operations Local MQTT dataflow endpoint, see https://aka.ms/local-mqtt-broker.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -1167,7 +1176,7 @@ def load_iotops_help():
             --hostname aio-broker
             --port 1883
             --secret-name mysecret
-        - name: Create or replace a dataflow endpoint resource anonymously.
+        - name: Create or replace a dataflow endpoint resource with anonymous auth.
           text: >
             az iot ops dataflow endpoint create local-mqtt
             --name myendpoint
@@ -1176,7 +1185,7 @@ def load_iotops_help():
             --hostname aio-broker
             --port 1883
             --no-auth
-        - name: Show config file for creating a dataflow endpoint resource.
+        - name: Show config for creating a dataflow endpoint resource.
           text: >
             az iot ops dataflow endpoint create local-mqtt
             --name myendpoint
@@ -1184,32 +1193,33 @@ def load_iotops_help():
             --resource-group myresourcegroup
             --hostname aio-broker
             --port 1883
-            --client-id-pre myclientprefix
+            --client-id-prefix myclientprefix
             --keep-alive 100
             --max-inflight-msg 70
             --protocol WebSockets
-            --qos 2
+            --qos 0
             --retain Never
             --show-config
     """
 
     helps[
-        "iot ops dataflow endpoint create localstorage"
+        "iot ops dataflow endpoint create local-storage"
     ] = """
         type: command
-        short-summary: Create or replace a local storage data flow endpoint.
+        short-summary: Create or replace a local storage dataflow endpoint.
+        long-summary: For more information on local storage dataflow endpoint, see https://aka.ms/local-storage-endpoint.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
           text: >
-            az iot ops dataflow endpoint create localstorage
+            az iot ops dataflow endpoint create local-storage
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --pvc-ref mypvc
-        - name: Show config file for creating a dataflow endpoint resource.
+        - name: Show config for creating a dataflow endpoint resource.
           text: >
-            az iot ops dataflow endpoint create localstorage
+            az iot ops dataflow endpoint create local-storage
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
@@ -1229,6 +1239,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update the properties of an existing dataflow endpoint resource for Azure Data Lake Storage Gen2.
+        long-summary: For more information on Azure Data Lake Storage Gen2 dataflow endpoint, see https://aka.ms/adlsv2.
 
         examples:
         - name: Update the storage account name of the dataflow endpoint resource called 'myendpoint'.
@@ -1237,15 +1248,15 @@ def load_iotops_help():
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --storage-account-name newstorageaccount
+            --storage-account newstorageaccount
         - name: Update to use user assigned managed identity authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update adls
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --client-id myclientid
-            --tenant-id mytenantid
+            --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
+            --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
             --scope "https://storage.azure.com/.default"
     """
 
@@ -1254,6 +1265,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update the properties of an existing dataflow endpoint resource for Azure Data Explorer.
+        long-summary: For more information on Azure Data Explorer dataflow endpoint, see https://aka.ms/aio-adx.
 
         examples:
         - name: Update the batching configurations of the dataflow endpoint resource called 'myendpoint'.
@@ -1278,6 +1290,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update the properties of an existing dataflow endpoint resource for custom kafka broker.
+        long-summary: For more information on custom kafka dataflow endpoint, see https://aka.ms/aio-custom-kafka.
 
         examples:
         - name: Update the hostname of the dataflow endpoint resource called 'myendpoint'.
@@ -1302,6 +1315,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update the properties of an existing dataflow endpoint resource for custom MQTT broker.
+        long-summary: For more information on custom MQTT dataflow endpoint, see https://aka.ms/aio-custom-mqtt.
 
         examples:
         - name: Update the cloud event setting type of the dataflow endpoint resource called 'myendpoint'.
@@ -1326,6 +1340,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update the properties of an existing dataflow endpoint resource for Azure Event Grid.
+        long-summary: For more information on Azure Event Grid dataflow endpoint, see https://aka.ms/aio-eventgrid.
 
         examples:
         - name: Update the session expiry interval of the dataflow endpoint resource called 'myendpoint'.
@@ -1349,6 +1364,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update the properties of an existing dataflow endpoint resource for kafka-enabled Azure Event Hubs namespace.
+        long-summary: For more information on Azure Event Hubs dataflow endpoint, see https://aka.ms/aio-eventhub.
 
         examples:
         - name: Update the compression type of the dataflow endpoint resource called 'myendpoint'.
@@ -1373,6 +1389,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update the properties of an existing dataflow endpoint resource for Microsoft Fabric OneLake.
+        long-summary: For more information on Microsoft Fabric OneLake dataflow endpoint, see https://aka.ms/fabric-onelake.
 
         examples:
         - name: Update the lakehouse name of the dataflow endpoint resource called 'myendpoint'.
@@ -1396,6 +1413,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update the properties of an existing Microsoft Fabric Real-Time Intelligence data flow endpoint.
+        long-summary: For more information on Microsoft Fabric Real-Time Intelligence dataflow endpoint, see https://aka.ms/aio-fabric-real-time.
 
         examples:
         - name: Update the partition strategy of the dataflow endpoint resource called 'myendpoint'.
@@ -1420,6 +1438,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update the properties of an existing Azure IoT Operations Local MQTT data flow endpoint.
+        long-summary: For more information on Azure IoT Operations Local MQTT dataflow endpoint, see https://aka.ms/local-mqtt-broker.
 
         examples:
         - name: Update the config map reference for trusted CA certificate of the dataflow endpoint resource called 'myendpoint'.
@@ -1440,15 +1459,16 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops dataflow endpoint update localstorage"
+        "iot ops dataflow endpoint update local-storage"
     ] = """
         type: command
         short-summary: Update the properties of an existing local storage data flow endpoint.
+        long-summary: For more information on local storage dataflow endpoint, see https://aka.ms/local-storage-endpoint.
 
         examples:
         - name: Update the PVC reference of the dataflow endpoint resource called 'myendpoint'.
           text: >
-            az iot ops dataflow endpoint update localstorage
+            az iot ops dataflow endpoint update local-storage
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
