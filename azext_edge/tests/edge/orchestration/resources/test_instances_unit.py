@@ -553,7 +553,6 @@ def test_secretsync_enable(
 
     # Role assignment fetch mock
     # TODO: assert when role assignment exists.
-    ra_put = None
     if not skip_role_assignments:
         ra_get_endpoint = append_role_assignment_endpoint(
             resource_endpoint=kv_endpoint, filter_query=f"principalId eq '{principal_id}'"
