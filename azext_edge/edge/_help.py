@@ -1398,7 +1398,7 @@ def load_iotops_help():
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --lakehouse-name newlakehouse
+            --lakehouse newlakehouse
         - name: Update to use system assigned managed identity authentication method of the dataflow endpoint resource called 'myendpoint'.
           text: >
             az iot ops dataflow endpoint update fabric-onelake
