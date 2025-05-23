@@ -1054,7 +1054,7 @@ def load_iotops_help():
             --eventhub-namespace myeventhubnamespace
             --acks One
             --compression Gzip
-            --disable-copy-broker-props
+            --disable-broker-props-copy
             --group-id mygroupid
             --partition-strategy Static
             --max-byte 200000
