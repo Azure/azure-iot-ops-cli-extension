@@ -22,7 +22,7 @@ from azext_edge.edge.commands_dataflow import (
 )
 from azext_edge.edge.common import DEFAULT_DATAFLOW_PROFILE
 from azext_edge.edge.providers.orchestration.common import DATAFLOW_ENDPOINT_TYPE_SETTINGS
-from azext_edge.tests.edge.orchestration.resources.test_dataflow_endpoints_unit import (
+from .dataflow_endpoint.conftest import (
     get_dataflow_endpoint_endpoint,
     get_mock_dataflow_endpoint_record,
 )
