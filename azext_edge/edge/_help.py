@@ -2179,7 +2179,7 @@ def load_iotops_help():
           with potential modification.
 
           The clone definition being a generic ARM template, can be deployed via existing tools.
-          See https://aka.ms/aio-clone-deploy for details.
+          See https://aka.ms/aio-clone for details.
 
           Clone is compatible with the following instance version range: `{CLONE_INSTANCE_VERS_MIN}>=,<{CLONE_INSTANCE_VERS_MAX}`
 
