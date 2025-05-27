@@ -910,7 +910,7 @@ def load_iotops_help():
             --port 9092
             --disable-batching
             --latency 70
-            --max-byte 200000
+            --max-bytes 200000
             --message-count 100
             --audience myaudience
             --config-map-ref myconfigmap
@@ -1057,7 +1057,7 @@ def load_iotops_help():
             --disable-broker-props-copy
             --group-id mygroupid
             --partition-strategy Static
-            --max-byte 200000
+            --max-bytes 200000
             --message-count 100
             --latency 70
             --cloud-event-attribute CreateOrRemap
@@ -1145,7 +1145,7 @@ def load_iotops_help():
             --compression Gzip
             --group-id mygroupid
             --partition-strategy Static
-            --max-byte 200000
+            --max-bytes 200000
             --cloud-event-attribute CreateOrRemap
             --disable-tls
             --show-config
