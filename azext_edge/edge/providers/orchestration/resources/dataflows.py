@@ -389,7 +389,6 @@ class DataFlowEndpoints(Queryable):
         self.instances = Instances(self.cmd)
         self.iotops_mgmt_client = self.instances.iotops_mgmt_client
         self.ops: "DataflowEndpointOperations" = self.iotops_mgmt_client.dataflow_endpoint
-        self.instances = Instances(self.cmd)
 
     def create(
         self,
@@ -625,7 +624,9 @@ class DataFlowEndpoints(Queryable):
 
         # Check if authentication method is allowed for the given endpoint type
         if authentication_method not in DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]:
-            supported_auths = list(sorted(DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]))
+            supported_auths = sorted(DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type])
+
+            # Remove ANONYMOUS from the --auth-type avaliable options to be displayed in the error message
             if DataflowEndpointAuthenticationType.ANONYMOUS.value in supported_auths:
                 supported_auths.remove(DataflowEndpointAuthenticationType.ANONYMOUS.value)
             raise InvalidArgumentValueError(
@@ -715,7 +716,7 @@ class DataFlowEndpoints(Queryable):
         latency: Optional[int] = None,
         message_count: Optional[int] = None,
         batching_disabled: Optional[bool] = None,
-        max_byte: Optional[int] = None,
+        max_bytes: Optional[int] = None,
         latency_ms: Optional[int] = None,
         **_
     ):
@@ -723,7 +724,7 @@ class DataFlowEndpoints(Queryable):
             latency,
             message_count,
             batching_disabled,
-            max_byte,
+            max_bytes,
             latency_ms,
         ]):
             settings["batching"] = settings.get("batching", {})
@@ -736,8 +737,8 @@ class DataFlowEndpoints(Queryable):
             if batching_disabled:
                 settings["batching"]["mode"] = DataflowEndpointModeType.DISABLED.value \
                     if batching_disabled else DataflowEndpointModeType.ENABLED.value
-            if max_byte:
-                settings["batching"]["maxBytes"] = max_byte
+            if max_bytes:
+                settings["batching"]["maxBytes"] = max_bytes
 
     def _set_names_settings(
         self,
@@ -783,7 +784,7 @@ class DataFlowEndpoints(Queryable):
         self,
         endpoint_type: DataflowEndpointType,
         settings: dict,
-        host: str,
+        host: Optional[str] = None,
         database_name: Optional[str] = None,
         path_type: Optional[str] = None,
         group_id: Optional[str] = None,

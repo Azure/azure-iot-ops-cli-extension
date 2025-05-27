@@ -390,8 +390,8 @@ def load_iotops_arguments(self, _):
             arg_group="Batching Configuration",
         )
         context.argument(
-            "max_byte",
-            options_list=["--max-byte", "--mb"],
+            "max_bytes",
+            options_list=["--max-bytes", "--mb"],
             help="Maximum number of bytes in a batch.",
             type=int,
             arg_group="Batching Configuration",
