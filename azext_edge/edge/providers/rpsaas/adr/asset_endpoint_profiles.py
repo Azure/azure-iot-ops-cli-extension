@@ -25,7 +25,7 @@ from .user_strings import (
 )
 from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state, REGISTRY_API_VERSION
 from ....util.queryable import Queryable
-from ....common import AEPAuthModes, AEPTypes
+from ....common import ADRAuthModes, AEPTypes
 
 if TYPE_CHECKING:
     from ....vendor.clients.deviceregistrymgmt.operations import (
@@ -74,7 +74,7 @@ class AssetEndpointProfiles(Queryable):
 
         auth_mode = None
         if not any([username_reference, password_reference, certificate_reference]):
-            auth_mode = AEPAuthModes.anonymous.value
+            auth_mode = ADRAuthModes.anonymous.value
 
         # Properties
         properties = {"endpointProfileType": endpoint_profile_type}
@@ -391,13 +391,13 @@ def _process_authentication(
     if certificate_reference and (username_reference or password_reference):
         raise MutuallyExclusiveArgumentError(AUTH_REF_MISMATCH_ERROR)
 
-    if certificate_reference and auth_mode in [None, AEPAuthModes.certificate.value]:
-        auth_props["method"] = AEPAuthModes.certificate.value
+    if certificate_reference and auth_mode in [None, ADRAuthModes.certificate.value]:
+        auth_props["method"] = ADRAuthModes.certificate.value
         auth_props["x509Credentials"] = {"certificateSecretName": certificate_reference}
         if auth_props.pop("usernamePasswordCredentials", None):
             logger.warning(REMOVED_USERPASS_REF_MSG)
-    elif (username_reference or password_reference) and auth_mode in [None, AEPAuthModes.userpass.value]:
-        auth_props["method"] = AEPAuthModes.userpass.value
+    elif (username_reference or password_reference) and auth_mode in [None, ADRAuthModes.userpass.value]:
+        auth_props["method"] = ADRAuthModes.userpass.value
         user_creds = auth_props.get("usernamePasswordCredentials", {})
         user_creds["usernameSecretName"] = username_reference
         user_creds["passwordSecretName"] = password_reference
@@ -406,10 +406,10 @@ def _process_authentication(
         auth_props["usernamePasswordCredentials"] = user_creds
         if auth_props.pop("x509Credentials", None):
             logger.warning(REMOVED_CERT_REF_MSG)
-    elif auth_mode == AEPAuthModes.anonymous.value and not any(
+    elif auth_mode == ADRAuthModes.anonymous.value and not any(
         [certificate_reference, username_reference, password_reference]
     ):
-        auth_props["method"] = AEPAuthModes.anonymous.value
+        auth_props["method"] = ADRAuthModes.anonymous.value
         if auth_props.pop("x509Credentials", None):
             logger.warning(REMOVED_CERT_REF_MSG)
         if auth_props.pop("usernamePasswordCredentials", None):

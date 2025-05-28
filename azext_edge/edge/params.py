@@ -248,7 +248,7 @@ def load_iotops_arguments(self, _):
             "Choose 0 for a summary view (minimal output), "
             "1 for a detailed view (more comprehensive information), "
             "or 2 for a verbose view (all available information).",
-        ),
+        )
         context.argument(
             "resource_name",
             options_list=["--resource-name", "--rn"],

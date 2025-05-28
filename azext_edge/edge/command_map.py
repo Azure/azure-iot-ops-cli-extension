@@ -215,6 +215,38 @@ def load_iotops_commands(self, _):
         cmd_group.command("remove", "remove_namespace_endpoint")
 
     with self.command_group(
+        "iot ops namespace device",
+        command_type=namespace_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("create", "create_namespace_device")
+        cmd_group.command("delete", "delete_namespace_device")
+        cmd_group.command("list", "list_namespace_devices")
+        cmd_group.show_command("show", "show_namespace_device")
+        cmd_group.command("update", "update_namespace_device")
+
+    with self.command_group(
+        "iot ops namespace device endpoint",
+        command_type=namespace_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("list", "list_namespace_device_endpoints")
+
+    with self.command_group(
+        "iot ops namespace device endpoint inbound",
+        command_type=namespace_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("list", "list_inbound_device_endpoints")
+        cmd_group.command("remove", "remove_inbound_device_endpoints")
+
+    with self.command_group(
+        "iot ops namespace device endpoint inbound add",
+        command_type=namespace_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("custom", "add_inbound_custom_device_endpoint")
+        cmd_group.command("media", "add_inbound_media_device_endpoint")
+        cmd_group.command("onvif", "add_inbound_onvif_device_endpoint")
+        cmd_group.command("opcua", "add_inbound_opcua_device_endpoint")
+
+    with self.command_group(
         "iot ops schema",
         command_type=schema_resource_ops,
         is_preview=True,

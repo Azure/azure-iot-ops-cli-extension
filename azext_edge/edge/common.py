@@ -194,9 +194,9 @@ class ResourceTypeMapping(Enum):
         return mapping[self]
 
 
-class AEPAuthModes(Enum):
+class ADRAuthModes(Enum):
     """
-    Authentication modes for asset endpoints
+    Authentication modes for asset endpoints/devices
     """
 
     anonymous = "Anonymous"
@@ -226,26 +226,6 @@ class TopicRetain(Enum):
 
     keep = "Keep"
     never = "Never"
-
-
-class SecurityModes(Enum):
-    """Security modes for OPCUA connector."""
-
-    none = "none"
-    sign = "sign"
-    sign_and_encrypt = "signAndEncrypt"
-
-
-class SecurityPolicies(Enum):
-    """Security policies for the OPCUA connector."""
-
-    # TODO: add in user friendly input mapping
-    none = "none"
-    basic128 = "Basic128Rsa15"
-    basic256 = "Basic256"
-    basic256sha256 = "Basic256Sha256"
-    aes128 = "Aes128_Sha256_RsaOaep"
-    aes256 = "Aes256_Sha256_RsaPss"
 
 
 class K8sSecretType(Enum):

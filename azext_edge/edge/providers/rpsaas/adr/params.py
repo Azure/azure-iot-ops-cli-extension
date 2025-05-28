@@ -10,12 +10,11 @@ from azure.cli.core.commands.parameters import (
     tags_type,
 )
 from ....common import (
-    AEPAuthModes,
+    ADRAuthModes,
     FileType,
-    SecurityModes,
-    SecurityPolicies,
     TopicRetain,
 )
+from .specs import SecurityPolicy, SecurityMode
 
 
 def load_adr_arguments(self, _):
@@ -434,7 +433,7 @@ def load_adr_arguments(self, _):
             options_list=["--authentication-mode", "--am"],
             help="Authentication Mode.",
             arg_group="Authentication",
-            arg_type=get_enum_type(AEPAuthModes),
+            arg_type=get_enum_type(ADRAuthModes),
         )
         context.argument(
             "certificate_reference",
@@ -566,14 +565,14 @@ def load_adr_arguments(self, _):
             options_list=["--security-policy", "--sp"],
             help="Security policy.",
             arg_group="Connector",
-            arg_type=get_enum_type(SecurityPolicies),
+            arg_type=get_enum_type(SecurityPolicy),
         )
         context.argument(
             "security_mode",
             options_list=["--security-mode", "--sm"],
             help="Security mode.",
             arg_group="Connector",
-            arg_type=get_enum_type(SecurityModes),
+            arg_type=get_enum_type(SecurityMode),
         )
         context.argument(
             "sub_max_items",
@@ -599,6 +598,7 @@ def load_adr_arguments(self, _):
             arg_group="Authentication",
             deprecate_info=context.deprecate(hide=True)
         )
+
     # ADR REFRESH
     with self.argument_context("iot ops namespace") as context:
         context.argument(
@@ -617,7 +617,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "mi_system_identity",
-            options_list=["--system-identity", "--si"],
+            options_list=["--mi-system-assigned"],
             help="Enable system-assigned managed identity for the namespace.",
             arg_type=get_three_state_flag(),
         )
@@ -636,4 +636,294 @@ def load_adr_arguments(self, _):
             help="Space-separated list of endpoint names to remove to the namespace.",
             nargs="+",
             action="extend",
+        )
+
+    with self.argument_context("iot ops namespace device") as context:
+        context.argument(
+            "namespace_name",
+            options_list=["--namespace", "--ns"],
+            help="Namespace name.",
+        )
+        context.argument(
+            "device_name",
+            options_list=["--name", "-n"],
+            help="The name of the device to create.",
+        )
+        context.argument(
+            "custom_attributes",
+            options_list=["--custom-attribute", "--attr"],
+            help="Space-separated key=value pairs corresponding to additional custom attributes for the device. "
+                 "This parameter can be used more than once.",
+            nargs="+",
+            action="extend",
+        )
+        context.argument(
+            "device_group_id",
+            options_list=["--device-group-id", "--group-id"],
+            help="The device group ID for the device.",
+        )
+        context.argument(
+            "disabled",
+            options_list=["--disabled"],
+            help="Disable the device. By default, no change will be made to the device's enabled/disabled state.",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "operating_system_version",
+            options_list=["--os-version"],
+            help="The device operating system version.",
+        )
+        context.argument(
+            "tags",
+            options_list=["--tags"],
+            help="Space-separated tags in 'key[=value]' format. Use '' to clear existing tags.",
+            arg_type=tags_type,
+        )
+
+    with self.argument_context("iot ops namespace device create") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "--inst"],
+            help="The name of the Azure IoT Operations instance.",
+        )
+        context.argument(
+            "device_template_id",
+            options_list=["--template-id", "--tid"],
+            help="The device template ID to use for the device.",
+        )
+        context.argument(
+            "instance_resource_group",
+            options_list=["--instance-resource-group", "--irg"],
+            help="The resource group of the Azure IoT Operations instance. If not provided, the device "
+            "resource group will be used.",
+        )
+        context.argument(
+            "instance_subscription",
+            options_list=["--instance-subscription", "--isub"],
+            help="The subscription ID of the Azure IoT Operations instance. If not provided, the current "
+            "subscription will be used.",
+        )
+        context.argument(
+            "manufacturer",
+            options_list=["--manufacturer"],
+            help="The device manufacturer.",
+        )
+        context.argument(
+            "model",
+            options_list=["--model"],
+            help="The device model.",
+        )
+        context.argument(
+            "operating_system",
+            options_list=["--os"],
+            help="The device operating system.",
+        )
+
+    with self.argument_context("iot ops namespace device endpoint") as context:
+        context.argument(
+            "device_name",
+            options_list=["--device", "-d"],
+            help="Device name.",
+        )
+        context.argument(
+            "namespace_name",
+            options_list=["--namespace", "-n"],
+            help="Namespace name.",
+        )
+        context.argument(
+            "endpoint_name",
+            options_list=["--name"],
+            help="Endpoint name.",
+        )
+        context.argument(
+            "endpoint_address",
+            options_list=["--endpoint-address", "--address"],
+            help="Endpoint address to connect to.",
+        )
+        context.argument(
+            "certificate_reference",
+            options_list=["--certificate-ref", "--cert-ref"],
+            help="Reference for the certificate used in authentication.",
+            arg_group="Authentication",
+        )
+        context.argument(
+            "password_reference",
+            options_list=["--password-ref", "--pass-ref"],
+            help="Reference for the password used in authentication.",
+            arg_group="Authentication",
+        )
+        context.argument(
+            "username_reference",
+            options_list=["--username-ref", "--user-ref"],
+            help="Reference for the username used in authentication.",
+            arg_group="Authentication",
+        )
+        context.argument(
+            "trust_list",
+            options_list=["--trust-list"],
+            help="List of trusted certificates for the endpoint.",
+        )
+    with self.argument_context("iot ops namespace device endpoint list") as context:
+        context.argument(
+            "inbound",
+            options_list=["--inbound"],
+            help="Flag to only list inbound endpoints.",
+            arg_type=get_three_state_flag(),
+        )
+
+    with self.argument_context("iot ops namespace device endpoint remove") as context:
+        context.argument(
+            "endpoint_names",
+            options_list=["--endpoint"],
+            help="Space-separated list of endpoint names to remove from the device.",
+            nargs="+",
+            action="extend",
+        )
+
+    with self.argument_context("iot ops namespace device endpoint inbound add custom") as context:
+        context.argument(
+            "endpoint_type",
+            options_list=["--endpoint-type", "--type"],
+            help="Type of the custom endpoint.",
+        )
+        context.argument(
+            "additional_configuration",
+            options_list=["--additional-config", "--config"],
+            help="Additional configuration for the custom endpoint in JSON format.",
+        )
+
+    with self.argument_context("iot ops namespace device endpoint inbound add onvif") as context:
+        context.argument(
+            "accept_invalid_hostnames",
+            options_list=["--accept-invalid-hostnames", "--aih"],
+            help="Accept invalid hostnames in certificates.",
+            arg_type=get_three_state_flag(),
+            arg_group="ONVIF Configuration",
+        )
+        context.argument(
+            "accept_invalid_certificates",
+            options_list=["--accept-invalid-certificates", "--aic"],
+            help="Accept invalid certificates.",
+            arg_type=get_three_state_flag(),
+            arg_group="ONVIF Configuration",
+        )
+
+    with self.argument_context("iot ops namespace device endpoint inbound add opcua") as context:
+        context.argument(
+            "application_name",
+            options_list=["--application-name", "--app"],
+            help="Application name for the OPC UA client.",
+            arg_group="Configuration",
+        )
+        context.argument(
+            "keep_alive",
+            options_list=["--keep-alive"],
+            help="Keep alive time in milliseconds.",
+            type=int,
+            arg_group="Configuration",
+        )
+        context.argument(
+            "publishing_interval",
+            options_list=["--publishing-interval", "--pi"],
+            help="Publishing interval in milliseconds.",
+            type=int,
+            arg_group="Configuration",
+        )
+        context.argument(
+            "sampling_interval",
+            options_list=["--sampling-interval", "--si"],
+            help="Sampling interval in milliseconds.",
+            type=int,
+            arg_group="Configuration",
+        )
+        context.argument(
+            "queue_size",
+            options_list=["--queue-size", "--qs"],
+            help="Queue size.",
+            type=int,
+            arg_group="Configuration",
+        )
+        context.argument(
+            "key_frame_count",
+            options_list=["--key-frame-count", "--kfc"],
+            help="Key frame count.",
+            type=int,
+            arg_group="Configuration",
+        )
+        context.argument(
+            "session_timeout",
+            options_list=["--session-timeout"],
+            help="Session timeout in milliseconds.",
+            type=int,
+            arg_group="Session",
+        )
+        context.argument(
+            "session_keep_alive_interval",
+            options_list=["--session-keep-alive", "--ska"],
+            help="Session keep alive interval in milliseconds.",
+            type=int,
+            arg_group="Session",
+        )
+        context.argument(
+            "session_reconnect_period",
+            options_list=["--session-reconnect", "--srp"],
+            help="Session reconnect period in milliseconds.",
+            type=int,
+            arg_group="Session",
+        )
+        context.argument(
+            "session_reconnect_exponential_backoff",
+            options_list=["--session-backoff", "--sbo"],
+            help="Session reconnect exponential backoff in milliseconds.",
+            type=int,
+            arg_group="Session",
+        )
+        context.argument(
+            "session_enable_tracing_headers",
+            options_list=["--session-tracing", "--str"],
+            help="Enable tracing headers for the session.",
+            arg_type=get_three_state_flag(),
+            arg_group="Session",
+        )
+        context.argument(
+            "subscription_max_items",
+            options_list=["--subscription-max-items", "--smi"],
+            help="Maximum number of items in subscription.",
+            type=int,
+            arg_group="Subscription",
+        )
+        context.argument(
+            "subscription_life_time",
+            options_list=["--subscription-lifetime", "--slt"],
+            help="Subscription lifetime in milliseconds.",
+            type=int,
+            arg_group="Subscription",
+        )
+        context.argument(
+            "security_auto_accept_certificates",
+            options_list=["--accept-certs", "--ac"],
+            help="Auto accept untrusted server certificates.",
+            arg_type=get_three_state_flag(),
+            arg_group="Security",
+        )
+        context.argument(
+            "security_policy",
+            options_list=["--security-policy", "--sp"],
+            help="Security policy to use for the connection.",
+            arg_type=get_enum_type(SecurityPolicy),  # should this be a caseinsensitivelist?
+            arg_group="Security",
+        )
+        context.argument(
+            "security_mode",
+            options_list=["--security-mode", "--sm"],
+            help="Security mode to use for the connection.",
+            arg_type=get_enum_type(SecurityMode),  # should this be a caseinsensitivelist?
+            arg_group="Security",
+        )
+        context.argument(
+            "run_asset_discovery",
+            options_list=["--run-asset-discovery", "--ad"],
+            help="Enable asset discovery after connecting to the endpoint.",
+            arg_type=get_three_state_flag(),
+            arg_group="Configuration",
         )
