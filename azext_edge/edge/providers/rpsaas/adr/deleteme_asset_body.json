@@ -1,0 +1,121 @@
+{
+    "extendedLocation": {
+        "name": "str",
+        "type": "str"
+    },
+    "location": "str",
+    "properties": {
+        "deviceRef": {
+            "deviceName": "str",
+            "endpointName": "str"
+        },
+        "assetTypeRefs": [
+            "str"
+        ],
+        "attributes": {
+            "str": {}
+        },
+        "datasets": [
+            {
+                "name": "str",
+                "dataPoints": [
+                    {
+                        "dataSource": "str",
+                        "name": "str",
+                        "dataPointConfiguration": "str",
+                        "typeRef": "str"
+                    }
+                ],
+                "dataSource": "str",
+                "datasetConfiguration": "str",
+                "destinations": [
+                    "dataset_destination"
+                ],
+                "typeRef": "str"
+            }
+        ],
+        "defaultDatasetsConfiguration": "str",
+        "defaultDatasetsDestinations": [
+            "dataset_destination"
+        ],
+        "defaultEventsConfiguration": "str",
+        "defaultEventsDestinations": [
+            "event_destination"
+        ],
+        "defaultManagementGroupsConfiguration": "str",
+        "defaultStreamsConfiguration": "str",
+        "defaultStreamsDestinations": [
+            "stream_destination"
+        ],
+        "description": "str",
+        "discoveredAssetRefs": [
+            "str"
+        ],
+        "displayName": "str",
+        "documentationUri": "str",
+        "enabled": "bool",
+        "events": [
+            {
+                "eventNotifier": "str",
+                "name": "str",
+                "dataPoints": [
+                    {
+                        "dataSource": "str",
+                        "name": "str",
+                        "dataPointConfiguration": "str"
+                    }
+                ],
+                "destinations": [
+                    "event_destination"
+                ],
+                "eventConfiguration": "str",
+                "typeRef": "str"
+            }
+        ],
+        "externalAssetId": "str",
+        "hardwareRevision": "str",
+        "lastTransitionTime": "2020-02-20 00:00:00",
+        "managementGroups": [
+            {
+                "name": "str",
+                "actions": [
+                    {
+                        "name": "str",
+                        "targetUri": "str",
+                        "actionConfiguration": "str",
+                        "actionType": "str",
+                        "timeoutInSeconds": 0,
+                        "topic": "str",
+                        "typeRef": "str"
+                    }
+                ],
+                "defaultTimeoutInSeconds": 100,
+                "defaultTopic": "str",
+                "managementGroupConfiguration": "str",
+                "typeRef": "str"
+            }
+        ],
+        "manufacturer": "str",
+        "manufacturerUri": "str",
+        "model": "str",
+        "productCode": "str",
+        "provisioningState": "str",
+        "serialNumber": "str",
+        "softwareRevision": "str",
+        "streams": [
+            {
+                "name": "str",
+                "destinations": [
+                    "stream_destination"
+                ],
+                "streamConfiguration": "str",
+                "typeRef": "str"
+            }
+        ],
+        "uuid": "str",
+        "version": 0
+    },
+    "tags": {
+        "str": "str"
+    }
+}
