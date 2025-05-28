@@ -2226,7 +2226,7 @@ def load_iotops_help():
 
         - name: Create a namespace with system-assigned managed identity enabled
           text: >
-            az iot ops namespace create -n myNamespace -g myResourceGroup --system-identity
+            az iot ops namespace create -n myNamespace -g myResourceGroup --mi-system-assigned
 
         - name: Create a namespace with one Event Grid Topic endpoint named myTopic.
           text: >
@@ -2294,7 +2294,7 @@ def load_iotops_help():
         examples:
         - name: Enable system-assigned managed identity for a namespace
           text: >
-            az iot ops namespace update -n myNamespace -g myResourceGroup --system-identity
+            az iot ops namespace update -n myNamespace -g myResourceGroup --mi-system-assigned
 
         - name: Update tags for a namespace
           text: >
@@ -2357,5 +2357,283 @@ def load_iotops_help():
         - name: Remove multiple endpoints from a namespace
           text: >
             az iot ops namespace endpoint remove --namespace myNamespace -g myResourceGroup
-            --endpoint resourceGroup1-topicName1 myTopic
+            --endpoint resourceGroup1-topicName1 --endpoint myTopic
+    """
+
+    helps[
+        "iot ops namespace device"
+    ] = """
+        type: group
+        short-summary: Manage devices in Device Registry namespaces.
+    """
+
+    helps[
+        "iot ops namespace device create"
+    ] = """
+        type: command
+        short-summary: Create a device in a Device Registry namespace.
+        long-summary: |
+          Creates a device in the specified namespace. The device will be linked to an Azure IoT Operations instance.
+          The device requires a device template ID and can be associated with a device group.
+          Additional properties like custom attributes, manufacturer details, and operating system information
+          can also be specified during creation.
+
+        examples:
+        - name: Create a device with minimal configuration
+          text: >
+            az iot ops namespace device create --name myDevice --namespace myNamespace -g myResourceGroup
+            --instance myInstance --template-id "dtmi:sample:device;1"
+
+        - name: Create a device with custom attributes and device group
+          text: >
+            az iot ops namespace device create --name myDevice --namespace myNamespace -g myResourceGroup
+            --instance myInstance --template-id "dtmi:sample:device;1"
+            --device-group-id "critical-devices" --attr location=building1 floor=3
+
+        - name: Create a device with manufacturer information and operating system details
+          text: >
+            az iot ops namespace device create --name myDevice --namespace myNamespace -g myResourceGroup
+            --instance myInstance --template-id "dtmi:sample:device;1"
+            --manufacturer "Contoso" --model "Gateway X1" --os "Linux" --os-version "4.15"
+
+        - name: Create a disabled device with tags
+          text: >
+            az iot ops namespace device create --name myDevice --namespace myNamespace -g myResourceGroup
+            --instance myInstance --template-id "dtmi:sample:device;1"
+            --disabled --tags environment=test criticality=low
+    """
+
+    helps[
+        "iot ops namespace device list"
+    ] = """
+        type: command
+        short-summary: List devices in a Device Registry namespace.
+
+        examples:
+        - name: List all devices in a namespace
+          text: >
+            az iot ops namespace device list --namespace myNamespace -g myResourceGroup
+    """
+
+    helps[
+        "iot ops namespace device show"
+    ] = """
+        type: command
+        short-summary: Show details of a device in a Device Registry namespace.
+
+        examples:
+        - name: Show details of a device
+          text: >
+            az iot ops namespace device show --name myDevice --namespace myNamespace -g myResourceGroup
+    """
+
+    helps[
+        "iot ops namespace device delete"
+    ] = """
+        type: command
+        short-summary: Delete a device from a Device Registry namespace.
+
+        examples:
+        - name: Delete a device
+          text: >
+            az iot ops namespace device delete --name myDevice --namespace myNamespace -g myResourceGroup
+    """
+
+    helps[
+        "iot ops namespace device update"
+    ] = """
+        type: command
+        short-summary: Update a device in a Device Registry namespace.
+        long-summary: |
+          Updates the properties of an existing device, including custom attributes, device group,
+          enabled/disabled state, operating system version, and resource tags.
+
+        examples:
+        - name: Update device custom attributes
+          text: >
+            az iot ops namespace device update --name myDevice --namespace myNamespace -g myResourceGroup
+            --attr location=building2 floor=5
+
+        - name: Move device to a different device group and update operating system version
+          text: >
+            az iot ops namespace device update --name myDevice --namespace myNamespace -g myResourceGroup
+            --device-group-id "maintenance-devices" --os-version "4.18"
+
+        - name: Disable a device
+          text: >
+            az iot ops namespace device update --name myDevice --namespace myNamespace -g myResourceGroup
+            --disabled
+
+        - name: Update device tags
+          text: >
+            az iot ops namespace device update --name myDevice --namespace myNamespace -g myResourceGroup
+            --tags environment=production criticality=high
+    """
+
+    helps[
+        "iot ops namespace device endpoint"
+    ] = """
+        type: group
+        short-summary: Manage endpoints for devices in Device Registry namespaces.
+        long-summary: |
+          Endpoints define the destinations where data will be sent from this namespace.
+          Currently, only Event Grid Topics are supported as endpoints.
+    """
+
+    helps[
+        "iot ops namespace device endpoint list"
+    ] = """
+        type: command
+        short-summary: List all endpoints of a device in a Device Registry namespace.
+
+        examples:
+        - name: List inbound and outbound endpoints of a device
+          text: >
+            az iot ops namespace device endpoint list --device myDevice --namespace myNamespace -g myResourceGroup
+        - name: List only inbound endpoints of a device
+          text: >
+            az iot ops namespace device endpoint list --device myDevice --namespace myNamespace -g myResourceGroup --inbound
+    """
+
+    helps[
+        "iot ops namespace device endpoint inbound"
+    ] = """
+        type: group
+        short-summary: Manage inbound endpoints for devices in Device Registry namespaces.
+        long-summary: |
+          Inbound endpoints define communication channels from the device to the IoT Ops platform.
+    """
+
+    helps[
+        "iot ops namespace device endpoint inbound list"
+    ] = """
+        type: command
+        short-summary: List inbound endpoints of a device in a Device Registry namespace.
+
+        examples:
+        - name: List all inbound endpoints of a device
+          text: >
+            az iot ops namespace device endpoint inbound list --device myDevice --namespace myNamespace -g myResourceGroup
+    """
+
+    helps[
+        "iot ops namespace device endpoint inbound remove"
+    ] = """
+        type: command
+        short-summary: Remove inbound endpoints from a device in a Device Registry namespace.
+
+        examples:
+        - name: Remove a single inbound endpoint from a device
+          text: >
+            az iot ops namespace device endpoint inbound remove --device myDevice --namespace myNamespace -g myResourceGroup --endpoint myEndpoint
+
+        - name: Remove multiple inbound endpoints from a device
+          text: >
+            az iot ops namespace device endpoint inbound remove --device myDevice --namespace myNamespace -g myResourceGroup --endpoint myEndpoint1 myEndpoint2
+    """
+
+    helps[
+        "iot ops namespace device endpoint inbound add"
+    ] = """
+        type: group
+        short-summary: Add inbound endpoints to devices in Device Registry namespaces.
+        long-summary: |
+          Add inbound endpoints of different types (custom, media, ONVIF, OPC UA) to devices in Device Registry namespaces.
+    """
+
+    # TODO: this is pretty long for a command name - debate on if I should throw out inbound
+    helps[
+        "iot ops namespace device endpoint inbound add custom"
+    ] = """
+        type: command
+        short-summary: Add a custom inbound endpoint to a device in a Device Registry namespace.
+        long-summary: |
+          Custom endpoints allow you to define your own endpoint type and configuration.
+
+        examples:
+        - name: Add a basic custom endpoint to a device
+          text: >
+            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080"
+
+        - name: Add a custom endpoint with authentication
+          text: >
+            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+
+        - name: Add a custom endpoint with certificate authentication
+          text: >
+            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref "secretRef:certificate"
+
+        - name: Add a custom endpoint with additional configuration
+          text: >
+            az iot ops namespace device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --additional-config "{\\\"customSetting\\\": \\\"value\\\"}"
+    """
+
+    helps[
+        "iot ops namespace device endpoint inbound add media"
+    ] = """
+        type: command
+        short-summary: Add a media inbound endpoint to a device in a Device Registry namespace.
+        long-summary: |
+          Media endpoints are used for media streaming devices like cameras.
+
+        examples:
+        - name: Add a basic media endpoint to a device
+          text: >
+            az iot ops namespace device endpoint inbound add media --device myDevice --namespace myNamespace -g myResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream"
+
+        - name: Add a media endpoint with authentication
+          text: >
+            az iot ops namespace device endpoint inbound add media --device myDevice --namespace myNamespace -g myResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+    """
+
+    helps[
+        "iot ops namespace device endpoint inbound add onvif"
+    ] = """
+        type: command
+        short-summary: Add an ONVIF inbound endpoint to a device in a Device Registry namespace.
+        long-summary: |
+          ONVIF endpoints are used for devices that support the ONVIF standard protocol.
+
+        examples:
+        - name: Add a basic ONVIF endpoint to a device
+          text: >
+            az iot ops namespace device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service"
+
+        - name: Add an ONVIF endpoint with authentication
+          text: >
+            az iot ops namespace device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+
+        - name: Add an ONVIF endpoint that accepts invalid hostnames and certificates
+          text: >
+            az iot ops namespace device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --name myONVIFEndpoint --endpoint-address "https://192.168.1.100:8000/onvif/device_service" --accept-invalid-hostnames --accept-invalid-certificates
+    """
+
+    helps[
+        "iot ops namespace device endpoint inbound add opcua"
+    ] = """
+        type: command
+        short-summary: Add an OPC UA inbound endpoint to a device in a Device Registry namespace.
+        long-summary: |
+          OPC UA endpoints are used for industrial automation devices that support the OPC UA protocol.
+
+        examples:
+        - name: Add a basic OPC UA endpoint to a device
+          text: >
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840"
+
+        - name: Add an OPC UA endpoint with authentication
+          text: >
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+
+        - name: Add an OPC UA endpoint with a custom application name
+          text: >
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --application-name "My OPC UA App"
+
+        - name: Add an OPC UA endpoint with customized session parameters
+          text: >
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --keep-alive 15000 --session-timeout 90000 --publishing-interval 2000 --sampling-interval 1500
+
+        - name: Add an OPC UA endpoint with security settings and asset discovery enabled
+          text: >
+            az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --run-asset-discovery
     """

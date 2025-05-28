@@ -10,7 +10,7 @@ from knack.log import get_logger
 
 from ....common import IdentityType
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
-from ....util.common import parse_kvp_nargs
+from ....util.common import parse_kvp_nargs, should_continue_prompt
 from ....util.queryable import Queryable
 
 if TYPE_CHECKING:
@@ -67,7 +67,11 @@ class Namespaces(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
-    def delete(self, namespace_name: str, resource_group_name: str, **kwargs):
+    def delete(self, namespace_name: str, resource_group_name: str, confirm_yes: bool = False, **kwargs):
+        # should bail prompt
+        if not should_continue_prompt(confirm_yes):
+            return
+
         with console.status(f"Deleting {namespace_name}..."):
             poller = self.ops.begin_delete(
                 resource_group_name=resource_group_name,
@@ -137,7 +141,7 @@ class Namespaces(Queryable):
             }
         }
 
-        with console.status(f"Updating to {namespace_name}..."):
+        with console.status(f"Updating endpoints for {namespace_name}..."):
             poller = self.ops.begin_update(
                 resource_group_name,
                 namespace_name,
@@ -185,7 +189,7 @@ class Namespaces(Queryable):
             }
         }
 
-        with console.status(f"Updating to {namespace_name}..."):
+        with console.status(f"Updating endpoints for {namespace_name}..."):
             poller = self.ops.begin_update(
                 resource_group_name,
                 namespace_name,

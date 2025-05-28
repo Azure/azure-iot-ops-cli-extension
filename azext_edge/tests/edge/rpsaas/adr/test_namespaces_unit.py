@@ -226,6 +226,7 @@ def test_namespace_delete(mocked_cmd, mocked_responses: responses, response_stat
                 namespace_name=namespace_name,
                 resource_group_name=resource_group_name,
                 wait_sec=0,
+                confirm_yes=True
             )
     else:
         # Test the delete_namespace function for success case
@@ -234,6 +235,7 @@ def test_namespace_delete(mocked_cmd, mocked_responses: responses, response_stat
             namespace_name=namespace_name,
             resource_group_name=resource_group_name,
             wait_sec=0,
+            confirm_yes=True
         )
 
         # Verify only the DELETE API call was made
@@ -350,7 +352,7 @@ def test_namespace_update(
     namespace_name = generate_random_string()
     resource_group_name = generate_random_string()
 
-    # Create mock namespace records for GET and PUT responses
+    # Create mock namespace records for PATCH responses
     mock_original_namespace = get_namespace_record(
         namespace_name=namespace_name,
         namespace_resource_group=resource_group_name
