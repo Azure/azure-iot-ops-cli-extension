@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Iterable, Optional
 from knack.log import get_logger
 
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
-from ....util.common import parse_kvp_nargs
+from ....util.common import parse_kvp_nargs, should_continue_prompt
 from ....util.queryable import Queryable
 
 if TYPE_CHECKING:
@@ -83,14 +83,13 @@ class NamespaceDevices(Queryable):
             namespace_name=namespace_name
         )["location"]
 
-        # TODO: what format should custom attributes be?
         device_body = {
             "extendedLocation": extended_location,
             "location": location,
             "properties": {
                 "deviceGroupId": device_group_id,
                 "deviceTemplateId": device_template_id,
-                "customAttributes": parse_kvp_nargs(custom_attributes),
+                "attributes": parse_kvp_nargs(custom_attributes),
                 "enabled": not disabled,
                 "manufacturer": manufacturer,
                 "model": model,
@@ -109,7 +108,13 @@ class NamespaceDevices(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
-    def delete(self, device_name: str, namespace_name: str, resource_group_name: str, **kwargs):
+    def delete(
+        self, device_name: str, namespace_name: str, resource_group_name: str, confirm_yes: bool = False, **kwargs
+    ):
+        # should bail prompt
+        if not should_continue_prompt(confirm_yes):
+            return
+
         with console.status(f"Deleting {device_name}..."):
             poller = self.ops.begin_delete(
                 resource_group_name=resource_group_name,
@@ -251,8 +256,13 @@ class NamespaceDevices(Queryable):
         namespace_name: str,
         resource_group_name: str,
         endpoint_names: List[str],
+        confirm_yes: bool = False,
         **kwargs
     ):
+        # should bail prompt
+        if not should_continue_prompt(confirm_yes):
+            return
+
         # get the original inbound endpoints
         original_endpoints = self.show(
             device_name=device_name,
@@ -286,10 +296,10 @@ class NamespaceDevices(Queryable):
             return result["properties"].get("endpoints", {}).get("inbound", {})
 
 
-def process_onvif_configuration(
+def _process_onvif_configuration(
     accept_invalid_hostnames: Optional[bool] = False,
     accept_invalid_certificates: Optional[bool] = False,
-    **kwargs
+    **_
 ) -> str:
     """
     Creates a stringified JSON that follows the ONVIF endpoint schema specifications
@@ -303,7 +313,7 @@ def process_onvif_configuration(
     return json.dumps(configuration)
 
 
-def process_opcua_configuration(
+def _process_opcua_configuration(
     application_name: Optional[str] = "OPC UA Broker",
     keep_alive: Optional[int] = 10000,
     publishing_interval: Optional[int] = 1000,
@@ -321,7 +331,7 @@ def process_opcua_configuration(
     security_policy: Optional[str] = None,
     security_mode: Optional[str] = None,
     run_asset_discovery: Optional[bool] = False,
-    **kwargs
+    **_
 ) -> str:
     """
     Creates a stringified JSON that follows the OPC UA endpoint schema specifications
@@ -331,7 +341,7 @@ def process_opcua_configuration(
     from .helpers import ensure_schema_structure
 
     if security_policy:
-        security_policy = f"http://opcfoundation.org/UA/SecurityPolicy#{SecurityPolicy[security_policy].value}"
+        security_policy = SecurityPolicy[security_policy].full_value
     if security_mode:
         security_mode = SecurityMode[security_mode].value
 
@@ -370,7 +380,7 @@ def process_opcua_configuration(
 
 
 ENDPOINT_TYPE_TO_FUNCTION_MAP: Dict[str, Optional[Callable]] = {
-    DeviceEndpointType.OPCUA.value: process_opcua_configuration,
-    DeviceEndpointType.ONVIF.value: process_onvif_configuration,
+    DeviceEndpointType.OPCUA.value: _process_opcua_configuration,
+    DeviceEndpointType.ONVIF.value: _process_onvif_configuration,
     DeviceEndpointType.MEDIA.value: None,
 }

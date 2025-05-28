@@ -220,7 +220,7 @@ def test_create_namespace_device(
     if "tags" in req:
         assert call_body["tags"] == req["tags"]
     if "custom_attributes" in req:
-        assert call_body["properties"]["customAttributes"] == parse_kvp_nargs(req["custom_attributes"])
+        assert call_body["properties"]["attributes"] == parse_kvp_nargs(req["custom_attributes"])
 
 
 @pytest.mark.parametrize("records", [0, 2])
@@ -296,7 +296,8 @@ def test_delete_namespace_device(mocked_cmd, mocked_responses: responses, respon
                 device_name=device_name,
                 namespace_name=namespace_name,
                 resource_group_name=resource_group_name,
-                wait_sec=0
+                wait_sec=0,
+                confirm_yes=True
             )
         return
 
@@ -306,7 +307,8 @@ def test_delete_namespace_device(mocked_cmd, mocked_responses: responses, respon
         device_name=device_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
-        wait_sec=0
+        wait_sec=0,
+        confirm_yes=True
     )
 
     # Verify the delete call was made
@@ -658,7 +660,8 @@ def test_remove_namespace_device_inbound_endpoints(
                 namespace_name=namespace_name,
                 resource_group_name=resource_group_name,
                 endpoint_names=endpoint_names_to_remove,
-                wait_sec=0
+                wait_sec=0,
+                confirm_yes=True
             )
         return
 
@@ -669,7 +672,8 @@ def test_remove_namespace_device_inbound_endpoints(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
         endpoint_names=endpoint_names_to_remove,
-        wait_sec=0
+        wait_sec=0,
+        confirm_yes=True
     )
 
     # Verify result matches expected

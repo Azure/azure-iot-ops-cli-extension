@@ -145,7 +145,6 @@ def process_authentication(
     return auth_props
 
 
-# TODO unit test
 def ensure_schema_structure(schema: dict, input_data: dict):
     """
     Quick and dirty alternative for using jsonschema (to avoid conflicts in other extensions). This partial

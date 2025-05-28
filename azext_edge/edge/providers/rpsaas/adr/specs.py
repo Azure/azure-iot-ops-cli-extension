@@ -153,7 +153,6 @@ NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA = {
 }
 
 
-# TODO: make AEPs use this assuming we keep AEPs
 class SecurityPolicy(Enum):
     """
     Security policies for the OPC UA connector as defined in NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA.
@@ -166,6 +165,13 @@ class SecurityPolicy(Enum):
     basic256sha256 = "Basic256Sha256"
     aes128 = "Aes128_Sha256_RsaOaep"
     aes256 = "Aes256_Sha256_RsaPss"
+
+    @property
+    def full_value(self):
+        """
+        Returns the full value of the security policy, including the URL prefix.
+        """
+        return f"http://opcfoundation.org/UA/SecurityPolicy#{self.value}"
 
 
 class SecurityMode(Enum):

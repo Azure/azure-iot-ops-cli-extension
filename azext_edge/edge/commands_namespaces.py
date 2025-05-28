@@ -36,11 +36,12 @@ def create_namespace(
 
 
 def delete_namespace(
-    cmd, namespace_name: str, resource_group_name: str, **kwargs
+    cmd, namespace_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None, **kwargs
 ):
     Namespaces(cmd).delete(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
         **kwargs
     )
 
@@ -167,12 +168,14 @@ def delete_namespace_device(
     device_name: str,
     namespace_name: str,
     resource_group_name: str,
+    confirm_yes: Optional[bool] = False,
     **kwargs
 ):
     NamespaceDevices(cmd).delete(
         device_name=device_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
         **kwargs
     )
 
@@ -391,6 +394,7 @@ def remove_inbound_device_endpoints(
     namespace_name: str,
     resource_group_name: str,
     endpoint_names: List[str],
+    confirm_yes: Optional[bool] = False,
     **kwargs
 ):
     return NamespaceDevices(cmd).inbound_remove_endpoint(
@@ -398,5 +402,6 @@ def remove_inbound_device_endpoints(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
         endpoint_names=endpoint_names,
+        confirm_yes=confirm_yes,
         **kwargs
     )
