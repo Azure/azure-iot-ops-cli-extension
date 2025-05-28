@@ -48,13 +48,13 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="d2c6c645ea487f45118a3321105ce94d24cbc069",
+    commit_id="2ab53b8aadf27ad448c8d2024e3365ad20584eaf",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.35.1.17967", "templateHash": "6688162522215809414"}
+            "_generator": {"name": "bicep", "version": "0.35.1.17967", "templateHash": "3623447480905135829"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -254,7 +254,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"platform": "0.7.20", "secretStore": "0.9.4", "containerStorage": "2.5.2"},
+            "VERSIONS": {"platform": "0.7.21", "secretStore": "0.9.4", "containerStorage": "2.5.2"},
             "TRAINS": {"platform": "preview", "secretStore": "preview", "containerStorage": "stable"},
             "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arccontainerstorage-storage-pool')]",
             "nonFaultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'default,local-path')]",
@@ -356,7 +356,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="d2c6c645ea487f45118a3321105ce94d24cbc069",
+    commit_id="2ab53b8aadf27ad448c8d2024e3365ad20584eaf",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
