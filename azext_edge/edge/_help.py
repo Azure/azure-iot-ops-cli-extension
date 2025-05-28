@@ -912,6 +912,9 @@ def load_iotops_help():
         - name: Provide custom deploy-time configs for Arc Secret Store.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --ssc-config rotationPollIntervalInSeconds=60
+        - name: Check if the cluster meets necessary prerequisite configuration before continuing with init. A valid kubeconfig is required with this option.
+          text: >
+             az iot ops init --cluster mycluster -g myresourcegroup --check-cluster
     """
 
     helps[
@@ -2173,12 +2176,12 @@ def load_iotops_help():
 
           The output of clone may be applied directly to another connected
           cluster (referred to as replication), and/or saved locally to use at another time
-          - potentially with modification.
+          with potential modification.
 
           The clone definition being a generic ARM template, can be deployed via existing tools.
-          See https://aka.ms/aio-clone-deploy for details.
+          See https://aka.ms/aio-clone for details.
 
-          Clone is compatible with the following instance version range: {CLONE_INSTANCE_VERS_MIN}>=,<{CLONE_INSTANCE_VERS_MAX}
+          Clone is compatible with the following instance version range: `{CLONE_INSTANCE_VERS_MIN}>=,<{CLONE_INSTANCE_VERS_MAX}`
 
         examples:
         - name: Clone an instance to a desired connected cluster.
