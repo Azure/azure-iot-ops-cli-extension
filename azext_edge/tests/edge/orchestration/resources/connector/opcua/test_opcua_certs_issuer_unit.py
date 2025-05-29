@@ -21,6 +21,7 @@ from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs imp
     OPCUA_SPC_NAME,
 )
 from azext_edge.tests.edge.orchestration.resources.connector.opcua.conftest import (
+    build_mock_cert,
     generate_ssc_object_string,
     get_mock_spc_record,
     get_mock_secretsync_record,
@@ -33,7 +34,8 @@ from azext_edge.tests.helpers import generate_ops_resource
 
 
 @pytest.mark.parametrize(
-    "expected_resources_map, issuer_list_spc, issuer_list_secretsync, file_name, secret_name, expected_secret_sync",
+    "expected_resources_map, issuer_list_spc, issuer_list_secretsync, "
+    "file_name, secret_name, mocked_cert, expected_secret_sync",
     [
         (
             {
@@ -52,6 +54,7 @@ from azext_edge.tests.helpers import generate_ops_resource
             ),
             "/fake/path/certificate.der",
             "new-secret",
+            [build_mock_cert(ca_cert=True)],
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
@@ -83,6 +86,7 @@ from azext_edge.tests.helpers import generate_ops_resource
             ),
             "/fake/path/certificate.crl",
             "new-secret",
+            [build_mock_cert(ca_cert=True)],
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
@@ -97,12 +101,14 @@ def test_issuer_add(
     mocked_cl_resources: Mock,
     mocked_logger: Mock,
     mocked_read_file_content: Mock,
+    mocked_decode_certificate: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     issuer_list_spc: dict,
     issuer_list_secretsync: dict,
     file_name: str,
     secret_name: str,
+    mocked_cert: list,
     expected_secret_sync: dict,
     mocked_responses: responses,
 ):
@@ -111,6 +117,7 @@ def test_issuer_add(
     rg_name = "mock-rg"
     mocked_cl_resources.return_value = expected_resources_map["resources"]
     mocked_read_file_content.return_value = file_content
+    mocked_decode_certificate.return_value = mocked_cert
 
     if expected_resources_map["resources"]:
         # get default spc

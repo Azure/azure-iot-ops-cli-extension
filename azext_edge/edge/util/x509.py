@@ -9,8 +9,9 @@ x509: certificate utilities.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
@@ -78,6 +79,23 @@ def generate_self_signed_cert(valid_days: int = DEFAULT_VALID_DAYS) -> Tuple[byt
     return (cert.public_bytes(serialization.Encoding.PEM), key_bytes)
 
 
+def decode_certificates(cert_data: bytes, content_format: str) -> Optional[List[x509.Certificate]]:
+    # Decodes an X.509 certificate from PEM or DER format.
+    certs: List = []
+    try:
+        if content_format == 'PEM':
+            # PEM format
+            certs = x509.load_pem_x509_certificates(cert_data)
+        elif content_format == 'DER':
+            # DER format
+            certs = [x509.load_der_x509_certificate(cert_data, default_backend())]
+        return certs
+    except Exception as e:
+        raise InvalidArgumentValueError(
+            f"Failed to decode certificate data. Ensure the data is in {content_format} format. Error: {e}"
+        )
+
+
 def decode_der_certificate(der_data: bytes) -> Optional[x509.Certificate]:
     # Decodes a DER-encoded X.509 certificate.
     try:
@@ -85,4 +103,14 @@ def decode_der_certificate(der_data: bytes) -> Optional[x509.Certificate]:
         return cert
     except Exception as e:
         logger.debug(f"Error decoding DER certificate: {e}")
+        return
+
+
+def decode_pem_certificates(pem_data: bytes) -> Optional[List[x509.Certificate]]:
+    # Decodes one or more PEM-encoded X.509 certificates.
+    try:
+        certs = x509.load_pem_x509_certificates(pem_data)
+        return certs
+    except Exception as e:
+        logger.debug(f"Error decoding PEM certificate: {e}")
         return
