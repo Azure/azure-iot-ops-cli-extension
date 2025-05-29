@@ -896,7 +896,7 @@ def load_iotops_help():
             --port 9092
             --sasl-type ScramSha256
             --secret-name mysecret
-        - name: Create or replace a dataflow endpoint resource with anonymous auth.
+        - name: Create or replace a dataflow endpoint resource with no auth.
           text: >
             az iot ops dataflow endpoint create custom-kafka
             --name myendpoint
@@ -949,7 +949,7 @@ def load_iotops_help():
             --port 9092
             --sat-audience myaudience
             --secret-name mysecret
-        - name: Create or replace a dataflow endpoint resource with anonymous auth.
+        - name: Create or replace a dataflow endpoint resource with no auth.
           text: >
             az iot ops dataflow endpoint create custom-mqtt
             --name myendpoint
@@ -1030,8 +1030,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a dataflow endpoint resource for kafka-enabled Azure Event Hubs namespace.
-        long-summary: |
-        For more information on Azure Event Hubs dataflow endpoint, see https://aka.ms/aio-eventhub.
+        long-summary: For more information on Azure Event Hubs dataflow endpoint, see https://aka.ms/aio-eventhub.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -1182,7 +1181,7 @@ def load_iotops_help():
             --hostname aio-broker
             --port 1883
             --secret-name mysecret
-        - name: Create or replace a dataflow endpoint resource with anonymous auth.
+        - name: Create or replace a dataflow endpoint resource with no auth.
           text: >
             az iot ops dataflow endpoint create local-mqtt
             --name myendpoint
