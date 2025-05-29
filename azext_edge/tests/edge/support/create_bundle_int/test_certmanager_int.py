@@ -8,16 +8,13 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import CERTMANAGER_API_V1, TRUSTMANAGER_API_V1
 from ....helpers import get_multi_kubectl_workload_items
-from .helpers import (
-    check_custom_resource_files,
-    check_workload_resource_files,
-    get_file_map,
-    run_bundle_command
-)
+from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
 CERTMGMT_PREFIXES = ["aio-cert-manager", "aio-trust-manager", "kube-root-ca"]
 CERTMGMT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "configmap"]
+
+USER_CERTMGMT_PREFIXES = ["cert-manager", "trust-manager"]
 
 
 def test_create_bundle_certmanager(cluster_connection, tracked_files):
@@ -25,7 +22,7 @@ def test_create_bundle_certmanager(cluster_connection, tracked_files):
     ops_service = OpsServiceType.certmanager.value
     pre_bundle_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=CERTMGMT_WORKLOAD_TYPES,
-        prefixes=CERTMGMT_PREFIXES,
+        prefixes=[*CERTMGMT_PREFIXES, *USER_CERTMGMT_PREFIXES],
     )
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
@@ -48,7 +45,7 @@ def test_create_bundle_certmanager(cluster_connection, tracked_files):
     check_workload_resource_files(
         file_objs=certmanager_file_map,
         pre_bundle_items=pre_bundle_workload_items,
-        prefixes=CERTMGMT_PREFIXES,
+        prefixes=[*CERTMGMT_PREFIXES, *USER_CERTMGMT_PREFIXES],
         bundle_path=bundle_path,
     )
 

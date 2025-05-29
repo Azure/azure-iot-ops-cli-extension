@@ -1,0 +1,271 @@
+name: "[auto] Nightly Integration Tests"
+on:
+  schedule:
+    - cron: "0 9 * * *" # Run daily at 1:00 AM Pacific Time (9:00 AM UTC)
+
+  workflow_dispatch:
+    inputs:
+      resource-group:
+        description: Resource group for cluster creation
+        type: string
+        required: true
+        default: ops-cli-int-test-rg
+      custom-locations-oid:
+        description: Object ID of Custom Locations RP
+        type: string
+        required: false
+        default: "51dfe1e8-70c6-4de5-a08e-e18aff23d815"
+      runtime-init-args:
+        description: Additional INIT arguments (beyond cluster name, resource group, schema registry).
+        type: string
+        required: false
+        default: ""
+      runtime-create-args:
+        description: Additional CREATE arguments (beyond cluster name, resource group, instance name).
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  # required for OpenID federation
+  contents: "read"
+  id-token: "write"
+
+env:
+  RESOURCE_GROUP: "${{ github.event.inputs.resource-group || 'ops-cli-int-test-rg' }}"
+  K3S_VERSION: "v1.29.15+k3s1"
+  CUSTOM_LOCATIONS_OID: "${{ inputs.custom-locations-oid || '51dfe1e8-70c6-4de5-a08e-e18aff23d815' }}"
+  RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args }}"
+  RUNTIME_INIT_ARGS: "${{ inputs.runtime-init-args }}"
+  TOX_INIT_ENV: "python-init-int"
+  TOX_INT_TEST_ENVS: "python-edge-int,python-wlif-int"
+
+jobs:
+  setup:
+    name: "Check Inputs"
+    runs-on: ubuntu-22.04
+    outputs:
+      create_args: ${{ steps.custom_input.outputs.CREATE_ARG }}
+      init_args: ${{ steps.custom_input.outputs.INIT_ARG }}
+    steps:
+      - name: "Output custom inputs for future job"
+        id: custom_input
+        run: |
+          echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
+          echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
+  test:
+    name: "Run cluster tests"
+    needs: setup
+    runs-on: ubuntu-22.04
+    env:
+      CLUSTER_NAME: "opt${{ github.run_number }}nightly"
+      INSTANCE_NAME: "inst${{ github.run_number }}nightly"
+      INIT_ARG: ${{ needs.setup.outputs.init_args }}
+      CREATE_ARG: ${{ needs.setup.outputs.create_args }}
+    steps:
+      - name: "Build init and create args"
+        id: "init"
+        run: |
+          if [[ -n "${{ env.RUNTIME_CREATE_ARGS }}" ]]; then
+            echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
+          else
+            CREATE_ARG="--add-insecure-listener --enable-rsync"
+            CREATE_ARG="${CREATE_ARG} --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer"
+            echo "CREATE_ARG=${CREATE_ARG}" >> $GITHUB_OUTPUT
+          fi
+
+          if [[ -n "${{ env.RUNTIME_INIT_ARGS }}" ]]; then
+            echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
+          else
+            echo INIT_ARG="--user-trust true" >> $GITHUB_OUTPUT
+          fi
+
+          echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
+      - name: "Output variables for future steps"
+        id: "env_out"
+        run: |
+          echo "RESOURCE_GROUP=${{ env.RESOURCE_GROUP }}" >> $GITHUB_OUTPUT
+          echo "CLUSTER_NAME=${{ env.CLUSTER_NAME }}" >> $GITHUB_OUTPUT
+          echo "INSTANCE_NAME=${{ env.INSTANCE_NAME }}" >> $GITHUB_OUTPUT
+      - name: "Setup python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Checkout extension source for build"
+        uses: actions/checkout@v4
+      - name: "Build and install local IoT Ops extension from source"
+        run: |
+          pip install -r dev_requirements.txt
+          python -m setup bdist_wheel -d dist
+          wheel=$(find ./dist/*.whl)
+          az extension add --source $wheel -y
+      - name: "Create k3s cluster"
+        uses: ./.github/actions/create-k3s-cluster
+      - name: "Apply custom cluster issuer"
+        if: ${{ contains(steps.init.outputs.INIT_ARG, '--user-trust') }}
+        run: |
+          set -x
+          helm repo add jetstack https://charts.jetstack.io --force-update
+
+          helm install \
+            cert-manager jetstack/cert-manager \
+            --namespace cert-manager \
+            --create-namespace \
+            --version v1.13.6 \
+            --set installCRDs=true \
+            --set startupapicheck.timeout=5m
+
+          kubectl create namespace azure-iot-operations
+
+          helm upgrade trust-manager jetstack/trust-manager \
+            --install \
+            --namespace cert-manager \
+            --set app.trust.namespace=cert-manager \
+            --wait
+
+          kubectl apply -f - <<EOF
+          apiVersion: cert-manager.io/v1
+          kind: Issuer
+          metadata:
+            name: selfsigned-issuer
+            namespace: cert-manager
+          spec:
+            selfSigned: {}
+          ---
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            name: trust-manager-example-ca
+            namespace: cert-manager
+          spec:
+            isCA: true
+            commonName: trust-manager-example-ca
+            secretName: trust-manager-example-ca-secret
+            privateKey:
+              algorithm: ECDSA
+              size: 256
+            issuerRef:
+              name: selfsigned-issuer
+              kind: Issuer
+              group: cert-manager.io
+          EOF
+
+          kubectl apply -f - <<EOF
+          apiVersion: trust.cert-manager.io/v1alpha1
+          kind: Bundle
+          metadata:
+            name: example-bundle
+            namespace: cert-manager
+          spec:
+            sources:
+            - useDefaultCAs: true
+            - secret:
+                name: "trust-manager-example-ca-secret"
+                key: "tls.crt"
+            target:
+              configMap:
+                key: "trust-bundle.pem"
+              namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: azure-iot-operations
+          EOF
+
+          kubectl apply -f - <<EOF
+          apiVersion: cert-manager.io/v1
+          kind: Issuer
+          metadata:
+            name: selfsigned-issuer
+            namespace: azure-iot-operations
+          spec:
+            selfSigned: {}
+          EOF
+      - name: "Tox test environment setup"
+        run: |
+          python -m pip install tox
+          tox r -vv --notest
+          tox r -vv -e "${{env.TOX_INIT_ENV}},${{env.TOX_INT_TEST_ENVS}}" --notest
+      - name: "Tox - lint, unit test"
+        continue-on-error: true
+        env:
+          AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+          azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
+          azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
+        run: tox r -vv --skip-pkg-install
+      - name: "Az CLI login"
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "ARC connect cluster"
+        uses: ./.github/actions/connect-arc
+        with:
+          cluster-name: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
+          enable-workload-identity: true
+      - name: "Az CLI login"
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "OIDC Token exchange service"
+        run: |
+          while true; do
+            token_request=$ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            token_uri=$ACTIONS_ID_TOKEN_REQUEST_URL
+            token=$(curl -H "Authorization: bearer $token_request" "${token_uri}&audience=api://AzureADTokenExchange" | jq .value -r)
+            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -t ${{ secrets.AZURE_TENANT_ID }} --federated-token $token --output none
+            # Sleep for 4 minutes
+            sleep 240
+          done &
+      - name: "Tox - init"
+        continue-on-error: true
+        env:
+          AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+          azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
+          azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
+        run: |
+          tox r -vv -e "${{ env.TOX_INIT_ENV }}" --skip-pkg-install
+      - name: "Tox - Integration tests"
+        env:
+          AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
+          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
+          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
+          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+          azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
+          azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
+          azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
+        run: |
+          IFS=',' read -ra TOX_ENV_ARRAY <<< "${{ env.TOX_INT_TEST_ENVS }}"
+          for env_name in "${TOX_ENV_ARRAY[@]}"; do
+            echo "::group::Tox - $env_name"
+            echo "Running Tox - $env_name"
+            tox r -vv -e "$env_name" --skip-pkg-install
+            echo "::endgroup::"
+          done
+      - name: "Tox Report"
+        if: ${{ always() }}
+        run: |
+          tox r -e report
+      - name: "Upload code coverage"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: htmlcov/
+      - name: "Delete AIO resources"
+        if: ${{ always() }}
+        run: |
+          az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
+      - name: "Delete connected cluster"
+        if: ${{ always() }}
+        run: |
+          az resource delete  -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
