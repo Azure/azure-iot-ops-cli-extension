@@ -138,6 +138,7 @@ class UpgradeScenario:
                     "version": vers,
                     "releaseTrain": train,
                     "configurationSettings": {},
+                    "provisioningState": "Succeeded",
                 },
                 "name": EXTENSION_TYPE_TO_MONIKER_MAP[ext_type],
             }
@@ -157,16 +158,25 @@ class UpgradeScenario:
         return self
 
     def set_extension(
-        self: T, ext_type: str, ext_vers: Optional[str] = None, ext_train: Optional[str] = None, remove: bool = False
+        self: T,
+        ext_type: str,
+        ext_vers: Optional[str] = None,
+        ext_train: Optional[str] = None,
+        provisioning_state: Optional[str] = None,
+        remove: bool = False,
     ) -> T:
         if remove:
             del self.extensions[ext_type]
             self.expect_exception = ValidationError
             return self
         if ext_vers:
+            if ext_vers == BUILT_IN_VALUE:
+                ext_vers = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"]
             self.extensions[ext_type]["properties"]["version"] = ext_vers
         if ext_train:
             self.extensions[ext_type]["properties"]["releaseTrain"] = ext_train
+        if provisioning_state:
+            self.extensions[ext_type]["properties"]["provisioningState"] = provisioning_state
         return self
 
     def set_response_on_patch(self: T, ext_type: str, code: int = 200, body: Optional[dict] = None) -> T:
@@ -420,6 +430,29 @@ class UpgradeScenario:
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_user_kwargs(plat_version="1.0.0"),
             {EXTENSION_TYPE_PLATFORM: {"properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": "1.0.0"}}},
+        ),
+        (
+            UpgradeScenario(
+                "Failed provisioning state by default means inclusion of the same version in the next upgrade run."
+            ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=BUILT_IN_VALUE, provisioning_state="Failed"),
+            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": BUILT_IN_VALUE}}},
+        ),
+        (
+            UpgradeScenario("Failed provisioning state against multiple extensions.")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=BUILT_IN_VALUE, provisioning_state="Failed")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers=BUILT_IN_VALUE, provisioning_state="Failed"),
+            {
+                EXTENSION_TYPE_PLATFORM: {
+                    "properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": BUILT_IN_VALUE}
+                },
+                EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": BUILT_IN_VALUE}},
+            },
+        ),
+        (
+            UpgradeScenario("Failed provisioning state but overriding version.")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", provisioning_state="Failed")
+            .set_user_kwargs(ops_version="1.1.0"),
+            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "1.1.0"}}},
         ),
     ],
 )
