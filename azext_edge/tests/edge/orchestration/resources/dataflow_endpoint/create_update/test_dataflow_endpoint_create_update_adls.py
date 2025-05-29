@@ -49,6 +49,34 @@ from ..helpers import assert_dataflow_endpoint_create_update, assert_dataflow_en
                 "endpointType": "DataLakeStorage",
             },
         ),
+        # uami without authentication type and scope
+        (
+            {
+                "storage_account_name": "mystorageaccount",
+                "client_id": "client_id",
+                "tenant_id": "tenant_id",
+                "latency": 1,
+                "message_count": 1,
+            },
+            {
+                "dataLakeStorageSettings": {
+                    "authentication": {
+                        "method": "UserAssignedManagedIdentity",
+                        "userAssignedManagedIdentitySettings" : {
+                            "clientId": "client_id",
+                            "tenantId": "tenant_id",
+                            "scope": "https://storage.azure.com/.default",
+                        },
+                    },
+                    "batching": {
+                        "latencySeconds": 1,
+                        "maxMessages": 1,
+                    },
+                    "host": "https://mystorageaccount.blob.core.windows.net",
+                },
+                "endpointType": "DataLakeStorage",
+            },
+        ),
         # uami with authentication type
         (
             {

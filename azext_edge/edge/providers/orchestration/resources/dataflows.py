@@ -16,8 +16,9 @@ from ....util.common import should_continue_prompt
 from ....util.az_client import wait_for_terminal_state
 from ....util.queryable import Queryable
 from ..common import (
+    ADLS_ENDPOINT_USER_ASSIGNED_DEFAULT_SCOPE,
     AUTHENTICATION_TYPE_REQUIRED_PARAMS,
-    AUTHENTICATION_TYPE_PARAMS_TEXT_MAP,
+    AUTHENTICATION_TYPE_REQUIRED_PARAMS_TEXT_MAP,
     DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP,
     DATAFLOW_ENDPOINT_TYPE_SETTINGS,
     DATAFLOW_OPERATION_TYPE_SETTINGS,
@@ -25,7 +26,7 @@ from ..common import (
     MQTT_ENDPOINT_TYPE,
     DataflowEndpointType,
     DataflowOperationType,
-    DataflowEndpointModeType,
+    OperationalModeType,
     DataflowEndpointAuthenticationType,
 )
 from .instances import Instances
@@ -641,7 +642,7 @@ class DataFlowEndpoints(Queryable):
 
             if missing_params:
                 missing_params_texts = [
-                    AUTHENTICATION_TYPE_PARAMS_TEXT_MAP[param] for param in missing_params
+                    AUTHENTICATION_TYPE_REQUIRED_PARAMS_TEXT_MAP[param] for param in missing_params
                 ]
                 raise InvalidArgumentValueError(
                     "Missing required parameters for authentication method "
@@ -671,6 +672,13 @@ class DataFlowEndpoints(Queryable):
         ]:
             if kwargs.get(param_name):
                 auth_settings[property_name] = kwargs[param_name]
+
+        # when endpoint type is ADLS, and user assigned identity is used,
+        # set scope to default value if not provided
+        if (endpoint_type == DataflowEndpointType.DATALAKESTORAGE.value) and \
+                authentication_method == DataflowEndpointAuthenticationType.USERASSIGNED.value and \
+                not kwargs.get("scope"):
+            auth_settings["scope"] = ADLS_ENDPOINT_USER_ASSIGNED_DEFAULT_SCOPE
 
         # lower the first letter of the authentication method
         auth_setting_name = authentication_method[0].lower() + authentication_method[1:] + "Settings"
@@ -735,8 +743,8 @@ class DataFlowEndpoints(Queryable):
             if message_count:
                 settings["batching"]["maxMessages"] = message_count
             if batching_disabled:
-                settings["batching"]["mode"] = DataflowEndpointModeType.DISABLED.value \
-                    if batching_disabled else DataflowEndpointModeType.ENABLED.value
+                settings["batching"]["mode"] = OperationalModeType.DISABLED.value \
+                    if batching_disabled else OperationalModeType.ENABLED.value
             if max_bytes:
                 settings["batching"]["maxBytes"] = max_bytes
 
@@ -765,8 +773,8 @@ class DataFlowEndpoints(Queryable):
         if tls_disabled is not None or config_map_reference:
             settings["tls"] = settings.get("tls", {})
             if tls_disabled is not None:
-                settings["tls"]["mode"] = DataflowEndpointModeType.DISABLED.value \
-                    if tls_disabled else DataflowEndpointModeType.ENABLED.value
+                settings["tls"]["mode"] = OperationalModeType.DISABLED.value \
+                    if tls_disabled else OperationalModeType.ENABLED.value
             if config_map_reference:
                 settings["tls"]["trustedCaCertificateConfigMapRef"] = config_map_reference
 
@@ -776,9 +784,9 @@ class DataFlowEndpoints(Queryable):
             DataflowEndpointType.EVENTGRID.value,
         ]:
             if settings.get("tls"):
-                settings["tls"]["mode"] = DataflowEndpointModeType.ENABLED.value
+                settings["tls"]["mode"] = OperationalModeType.ENABLED.value
             else:
-                settings["tls"] = {"mode": DataflowEndpointModeType.ENABLED.value}
+                settings["tls"] = {"mode": OperationalModeType.ENABLED.value}
 
     def _process_endpoint_properties(
         self,
@@ -817,8 +825,8 @@ class DataFlowEndpoints(Queryable):
         if group_id:
             settings["consumerGroupId"] = group_id
         if copy_broker_props_disabled:
-            settings["copyMqttProperties"] = DataflowEndpointModeType.DISABLED.value \
-                if copy_broker_props_disabled else DataflowEndpointModeType.ENABLED.value
+            settings["copyMqttProperties"] = OperationalModeType.DISABLED.value \
+                if copy_broker_props_disabled else OperationalModeType.ENABLED.value
         if compression:
             settings["compression"] = compression
         if acks:

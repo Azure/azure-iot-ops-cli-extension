@@ -486,7 +486,7 @@ def load_iotops_arguments(self, _):
             "protocol",
             options_list=["--protocol"],
             arg_type=get_enum_type(ListenerProtocol, default=ListenerProtocol.MQTT.value),
-            help="Enable or disable websockets.",
+            help="Protocol to use for client connections.",
         )
         context.argument(
             "qos",
@@ -517,7 +517,7 @@ def load_iotops_arguments(self, _):
         with self.argument_context(cmd_space) as context:
             context.argument(
                 "database_name",
-                options_list=["--database-name", "--db"],
+                options_list=["--database", "--db"],
                 help="The name of the Azure Data Explorer database.",
             )
             context.argument(
@@ -620,7 +620,8 @@ def load_iotops_arguments(self, _):
                 options_list=["--secret-name", "-s"],
                 help="The name for the kubernetes secret that contains event hub connection string. "
                 "Note: The secret must be in the same namespace as the Kafka data flow endpoint. "
-                "The secret must have both the username and password as key-value pairs.",
+                "The secret must have both the username and password as key-value pairs. "
+                "For more information about secret format, please refer to link in command description.",
                 arg_group="SASL Authentication",
             )
             context.argument(
@@ -660,7 +661,8 @@ def load_iotops_arguments(self, _):
                 options_list=["--secret-name", "-s"],
                 help="The name for the kubernetes secret that contains Connection string-primary key value. "
                 "Can be found in event stream destination -- 'SAS Key Authentication' section. "
-                "Note: The secret must be in the same namespace as the Kafka data flow endpoint.",
+                "Note: The secret must be in the same namespace as the Kafka data flow endpoint. "
+                "For more information about secret format, please refer to link in command description.",
                 arg_group="SASL Authentication",
             )
             context.argument(

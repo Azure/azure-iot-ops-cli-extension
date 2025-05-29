@@ -55,6 +55,40 @@ from ..helpers import assert_dataflow_endpoint_create_update, assert_dataflow_en
                 },
             },
         ),
+        # uami without authentication type and port
+        (
+            {
+                "hostname": "test.servicebus.windows.net",
+                "client_id_prefix": "aio-client",
+                "keep_alive": 61,
+                "client_id": "client_id",
+                "tenant_id": "tenant_id",
+            },
+            {
+                "endpointType": "Mqtt",
+                "mqttSettings": {
+                    "authentication": {
+                        "method": "UserAssignedManagedIdentity",
+                        "userAssignedManagedIdentitySettings" : {
+                            "clientId": "client_id",
+                            "tenantId": "tenant_id",
+                        },
+                    },
+                    "clientIdPrefix": "aio-client",
+                    "cloudEventAttributes": "Propagate",
+                    "host": "test.servicebus.windows.net:8883",
+                    "keepAliveSeconds": 61,
+                    "maxInflightMessages": 100,
+                    "protocol": "Mqtt",
+                    "qos": 1,
+                    "retain": "Keep",
+                    "sessionExpirySeconds": 3600,
+                    "tls": {
+                        "mode": "Enabled",
+                    },
+                },
+            },
+        ),
         # uami with authentication type
         (
             {

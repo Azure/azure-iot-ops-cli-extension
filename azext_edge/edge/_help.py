@@ -792,7 +792,12 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a dataflow endpoint resource for Azure Data Lake Storage Gen2.
-        long-summary: For more information on Azure Data Lake Storage Gen2 dataflow endpoint, see https://aka.ms/adlsv2.
+        long-summary: |
+          For more information on Azure Data Lake Storage Gen2 dataflow endpoint, see
+          https://aka.ms/adlsv2.
+          Note: When using user assigned managed identity authentication method,
+          scope will default to 'https://storage.azure.com/.default' if not
+          specified by `--scope`.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -839,7 +844,7 @@ def load_iotops_help():
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --database-name mydatabase
+            --database mydatabase
             --host "https://cluster.region.kusto.windows.net"
         - name: Create or replace a dataflow endpoint resource using user assigned managed identity authentication method.
           text: >
@@ -847,7 +852,7 @@ def load_iotops_help():
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --database-name mydatabase
+            --database mydatabase
             --host "https://cluster.region.kusto.windows.net"
             --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
             --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
@@ -857,7 +862,7 @@ def load_iotops_help():
             --name myendpoint
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
-            --database-name mydatabase
+            --database mydatabase
             --host "https://cluster.region.kusto.windows.net"
             --latency 70
             --message-count 100
@@ -1025,7 +1030,8 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace a dataflow endpoint resource for kafka-enabled Azure Event Hubs namespace.
-        long-summary: For more information on Azure Event Hubs dataflow endpoint, see https://aka.ms/aio-eventhub.
+        long-summary: |
+        For more information on Azure Event Hubs dataflow endpoint, see https://aka.ms/aio-eventhub.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.

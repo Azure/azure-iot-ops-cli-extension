@@ -541,7 +541,7 @@ def create_dataflow_endpoint_eventgrid(
     instance_name: str,
     resource_group_name: str,
     hostname: str,
-    port: int,
+    port: int = 8883,
     keep_alive: int = 60,
     max_inflight_messages: int = 100,
     qos: int = 1,

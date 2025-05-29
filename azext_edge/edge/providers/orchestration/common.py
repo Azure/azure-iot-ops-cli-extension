@@ -37,6 +37,8 @@ AIO_INSECURE_LISTENER_SERVICE_PORT = 1883
 KAFKA_ENDPOINT_TYPE = "Kafka"
 MQTT_ENDPOINT_TYPE = "Mqtt"
 
+ADLS_ENDPOINT_USER_ASSIGNED_DEFAULT_SCOPE = "https://storage.azure.com/.default"
+
 TRUST_ISSUER_KIND_KEY = "issuerKind"
 TRUST_SETTING_KEYS = ["issuerName", TRUST_ISSUER_KIND_KEY, "configMapName", "configMapKey"]
 
@@ -183,7 +185,7 @@ class DataflowEndpointAuthenticationType(Enum):
     X509 = "X509Certificate"
 
 
-class DataflowEndpointModeType(Enum):
+class OperationalModeType(Enum):
     ENABLED = "Enabled"
     DISABLED = "Disabled"
 
@@ -303,7 +305,7 @@ AUTHENTICATION_TYPE_REQUIRED_PARAMS = {
     DataflowEndpointAuthenticationType.ANONYMOUS.value: {},
 }
 
-AUTHENTICATION_TYPE_PARAMS_TEXT_MAP = {
+AUTHENTICATION_TYPE_REQUIRED_PARAMS_TEXT_MAP = {
     "client_id": "--client-id",
     "tenant_id": "--tenant-id",
     "audience": "--audience",
