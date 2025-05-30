@@ -34,7 +34,7 @@ jobs:
       python -m pip install -r dev_requirements.txt
     displayName: 'Install dev_requirements.txt'
   - script: |
-      python setup.py sdist bdist_wheel
+      python -m build
     displayName: 'Build package'
   
 
