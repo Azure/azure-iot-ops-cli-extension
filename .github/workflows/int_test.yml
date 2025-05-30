@@ -1,5 +1,7 @@
 name: Integration tests
 on:
+  schedule:
+    - cron: "0 9 * * *" # Run daily at 1:00 AM Pacific Time (9:00 AM UTC)
   workflow_call:
     inputs:
       resource-group:
