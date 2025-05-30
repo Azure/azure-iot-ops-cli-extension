@@ -318,7 +318,7 @@ jobs:
           tox r -e python-init-int --skip-pkg-install -- --durations=0
           tox r -e report
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
-          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+          echo "Init code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Tox Edge Integration Tests"
         if: ${{ matrix.feature == 'default' }}
         env:
@@ -329,7 +329,7 @@ jobs:
           tox r -e "python-edge-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
           tox r -e report
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
-          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+          echo "Edge code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Az CLI login"
         if: ${{ matrix.feature == 'syncrules' }}
         uses: azure/login@v2
@@ -347,7 +347,7 @@ jobs:
           tox r -e "python-rpsaas-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
           tox r -e report
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
-          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+          echo "Cloud code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Tox Workload Identity Integration Tests"
         if: ${{ matrix.feature == 'trustbundle' }}
         env:
@@ -358,13 +358,14 @@ jobs:
           tox r -e "python-wlif-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
           tox r -e report
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
-          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+          echo "WLIF code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Upload coverage artifacts"
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.feature }}
           path: ./.coverage
+          include-hidden-files: true
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle
