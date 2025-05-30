@@ -4,8 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from datetime import datetime, timezone
 import os
 import re
+from cryptography import x509
 from typing import List, Optional, Tuple, cast
 
 from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
@@ -26,7 +28,7 @@ from ......util.az_client import (
     wait_for_terminal_state,
 )
 from ......util.common import should_continue_prompt
-from ......util.x509 import decode_der_certificate
+from ......util.x509 import decode_certificates
 
 logger = get_logger(__name__)
 
@@ -67,8 +69,11 @@ class OpcUACerts(Queryable):
 
         # get file extension
         file_name = os.path.basename(file)
-        # get cert name by removing extension and path in front
-        cert_extension = validate_file_extension(file_name, [".der", ".crt"])
+        cert_extension, _ = self._process_cert_content(
+            file_path=file,
+            file_name=file_name,
+            expected_exts=[".der", ".crt"],
+        )
 
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
@@ -138,7 +143,22 @@ class OpcUACerts(Queryable):
 
         # get file extension
         file_name = os.path.basename(file)
-        cert_extension = validate_file_extension(file_name, [".der", ".crt", ".crl"])
+
+        cert_extension, cert = self._process_cert_content(
+            file_path=file,
+            file_name=file_name,
+            expected_exts=[".der", ".crt", ".crl"],
+        )
+
+        # see if should check if cert is CA if version is v3 and extension is .der or .crt
+        should_raise_ca_error = False
+        if cert_extension in [".der", ".crt"] and cert.version == x509.Version.v3:
+            should_raise_ca_error = not self._is_ca_cert(cert)
+        if should_raise_ca_error:
+            raise InvalidArgumentValueError(
+                f"The certificate {file_name} is not a CA certificate. "
+                "Only CA certificates can be added to the issuer list."
+            )
 
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
@@ -223,13 +243,6 @@ class OpcUACerts(Queryable):
         public_key_secret_name: Optional[str] = None,
         private_key_secret_name: Optional[str] = None,
     ) -> dict:
-        # inform user if the provided cert was issued by a CA, the CA cert must be added to the issuers list.
-        # TODO: only warn if the cert is not self-signed
-        logger.warning(
-            "If this certificate was issued by a CA, then please ensure that the CA certificate is "
-            "added to issuer list."
-        )
-
         cl_resources = self._get_cl_resources(instance_name=instance_name, resource_group=resource_group)
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
 
@@ -237,7 +250,11 @@ class OpcUACerts(Queryable):
         self._validate_key_files(public_key_file, private_key_file)
 
         # extract certificate information and validate if optional parameters are provided
-        subject_name, application_uri = self._process_cert_content(public_key_file, subject_name, application_uri)
+        subject_name, application_uri = self._process_client_cert_content(
+            public_key_file,
+            subject_name,
+            application_uri
+        )
 
         # get properties from default spc
         spc_properties = secretsync_spc.get("properties", {})
@@ -445,7 +462,19 @@ class OpcUACerts(Queryable):
 
     def _validate_key_files(self, public_key_file: str, private_key_file: str):
         # validate public key file end with .der
-        validate_file_extension(public_key_file, [".der"])
+        _, cert = self._process_cert_content(
+            file_path=public_key_file,
+            file_name=os.path.basename(public_key_file),
+            expected_exts=[".der"],
+        )
+
+        # warn if the certificate is not self-signed
+        # inform user if the provided cert was issued by a CA, the CA cert must be added to the issuers list.
+        if not self._is_cert_self_signed(cert):
+            logger.warning(
+                "If this certificate was issued by a CA, then please ensure that the CA certificate is "
+                "added to issuer list."
+            )
         # validate private key file end with .pem
         validate_file_extension(private_key_file, [".pem"])
 
@@ -829,17 +858,15 @@ class OpcUACerts(Queryable):
         # Failed to confirm deletion after retries
         raise TimeoutError(f"Failed to delete secret '{secret_name}' within {SECRET_DELETE_MAX_RETRIES} retries.")
 
-    def _extract_cert_content(
+    def _extract_client_cert_content(
         self,
         public_key_file: str,
     ) -> Tuple[str, str]:
-        from cryptography import x509
         from cryptography.x509.oid import NameOID, ExtensionOID
 
         der_data = read_file_content(file_path=public_key_file, read_as_binary=True)
-
-        # TODO: add cert expiry check
-        certificate = decode_der_certificate(der_data)
+        file_extension = os.path.splitext(public_key_file)[1].lower()
+        certificate = decode_certificates(der_data, "DER", file_extension).pop()
 
         if not certificate:
             raise InvalidArgumentValueError(
@@ -877,14 +904,14 @@ class OpcUACerts(Queryable):
 
         return cert_subject_name, cert_application_uri
 
-    def _process_cert_content(
+    def _process_client_cert_content(
         self,
         public_key_file: str,
         subject_name: Optional[str],
         application_uri: Optional[str],
     ) -> Tuple[str, str]:
         # extract subject name and application URI from public_key_file content
-        cert_subject_name, cert_application_uri = self._extract_cert_content(public_key_file)
+        cert_subject_name, cert_application_uri = self._extract_client_cert_content(public_key_file)
 
         if subject_name and subject_name != cert_subject_name:
             raise InvalidArgumentValueError(
@@ -901,3 +928,72 @@ class OpcUACerts(Queryable):
             )
 
         return cert_subject_name, cert_application_uri
+
+    def _process_cert_content(
+        self,
+        file_path: str,
+        file_name: str,
+        expected_exts: List[str],
+    ) -> Tuple[str, x509.Certificate]:
+        cert_extension = validate_file_extension(
+            file_name,
+            expected_exts,
+        )
+        # validate file content format by extension
+        expected_content_format = "PEM" if cert_extension == ".crt" else "DER"
+        certs = decode_certificates(
+            read_file_content(file_path, read_as_binary=True),
+            expected_content_format,
+            cert_extension
+        )
+
+        if not certs:
+            raise InvalidArgumentValueError(
+                f"Error decoding certificate from file '{file_name}'. Please make sure the file is "
+                "a valid {expected_content_format} certificate."
+            )
+
+        # Only one certificate is expected in the PEM format.
+        if expected_content_format == "PEM" and len(certs) > 1:
+            raise InvalidArgumentValueError(
+                f"Multiple certificates detected in file '{file_name}' in {expected_content_format} format. "
+                f"Please provide a file with only one {expected_content_format} certificate."
+            )
+        cert = certs.pop()
+
+        # check for certificate expiry
+        if not cert_extension == ".crl":
+            # check if the certificate is expired
+            expiry_date = cert.not_valid_after_utc
+            if expiry_date < datetime.now(timezone.utc):
+                raise InvalidArgumentValueError(
+                    f"Certificate in file '{file_name}' is expired. Please provide a valid certificate."
+                )
+
+        return cert_extension, cert
+
+    def _is_cert_self_signed(
+        self,
+        cert: x509.Certificate
+    ) -> bool:
+        # Check issuer and subject to determine if it's a self signed(non CA signed) certificate
+        issuer = cert.issuer
+        subject = cert.subject
+        return issuer == subject
+
+    def _is_ca_cert(
+        self,
+        cert: x509.Certificate,
+    ) -> bool:
+        # Check if it’s a CA cert
+        from cryptography.x509.oid import ExtensionOID
+        # this attribute only exist Version 3 of the X.509 standard
+        basic_constraints: x509.BasicConstraints = cert.extensions.get_extension_for_oid(
+            ExtensionOID.BASIC_CONSTRAINTS
+        ).value
+
+        if hasattr(basic_constraints, "ca"):
+            # if the certificate is a CA certificate
+            return basic_constraints.ca
+
+        return False
