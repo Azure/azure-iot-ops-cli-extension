@@ -445,3 +445,33 @@ def clone_instance(
         confirm_yes=confirm_yes,
         force=force,
     )
+
+
+def enable_rsync(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+):
+    from .providers.orchestration.resource_sync import ResourceSync
+
+    return ResourceSync(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).enable()
+
+
+def disable_rsync(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+):
+    from .providers.orchestration.resource_sync import ResourceSync
+
+    return ResourceSync(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).disable()
+
+
+def list_rsync(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+) -> List[dict]:
+    from .providers.orchestration.resource_sync import ResourceSync
+
+    return ResourceSync(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).list()

@@ -2903,3 +2903,26 @@ def load_iotops_help():
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-dir . --no-progress -y
     """
+
+
+    helps[
+        "iot ops rsync"
+    ] = """
+        type: group
+        short-summary: Resource sync rules management.
+    """
+
+    helps[
+        "iot ops rsync enable"
+    ] = """
+        type: command
+        short-summary: Enable edge to cloud hydration by creating resource sync rules for the instance.
+        long-summary: |
+          This operation will
+          - Create two resource sync rules. One for instance contained resources and one for assets.
+
+        examples:
+        - name: Clone an instance to a desired connected cluster.
+          text: >
+            az iot ops clone -n myinstance -g myresourcegroup --to-cluster-id $CLUSTER_RESOURCE_ID
+    """
