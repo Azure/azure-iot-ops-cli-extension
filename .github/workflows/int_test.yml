@@ -304,7 +304,7 @@ jobs:
           echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
 
           # limit both names - 30 for registry, 20 for namespace
-          schema_registy_name=$(echo "initreg-${{ env.CLUSTER_NAME }}" | cut -c 1-30)
+          schema_registy_name=$(echo "init-registry${{ env.CLUSTER_NAME }}" | cut -c 1-30)
           schema_namespace=$(echo "init-ns-${{ env.CLUSTER_NAME }}" | cut -c 1-20)
           registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n $schema_registy_name --rn $schema_namespace --sa-resource-id $storage_id -o tsv --query id)
           echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
