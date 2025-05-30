@@ -321,6 +321,7 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
         run: |
           tox r -e "python-edge-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          tox r -e report
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Az CLI login"
@@ -338,6 +339,7 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
         run: |
           tox r -e "python-rpsaas-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          tox r -e report
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Tox Workload Identity Integration Tests"
@@ -348,6 +350,7 @@ jobs:
           azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
         run: |
           tox r -e "python-wlif-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          tox r -e report
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
       - name: "Run smoke tests"
