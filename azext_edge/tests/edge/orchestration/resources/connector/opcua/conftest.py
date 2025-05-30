@@ -60,6 +60,7 @@ def build_mock_cert(
     uri: str = "uri",
     expired: bool = False,
     ca_cert: bool = False,
+    version: str = "V1",
 ):
     mock_cert = Mock(spec=x509.Certificate)
 
@@ -86,13 +87,23 @@ def build_mock_cert(
     else:
         # Set up a mock for not valid after
         mock_cert.not_valid_after_utc = datetime.now(timezone.utc) + timedelta(days=1)
-    
+
     if ca_cert:
         # Set up a mock for basic constraints
         mock_basic_constraints = Mock(spec=x509.BasicConstraints)
-        mock_basic_constraints.ca = True
-        mock_basic_constraints.path_length = None
+        mock_value = Mock()
+        mock_value.ca = True
+        mock_value.path_length = None
+
+        # assign the mock value to the correct attribute
+        mock_basic_constraints.value = mock_value
         mock_cert.extensions.get_extension_for_oid.return_value = mock_basic_constraints
+
+    # Set up a mock for version
+    if version == "V1":
+        mock_cert.version = x509.Version.v1
+    elif version == "V3":
+        mock_cert.version = x509.Version.v3
 
     return mock_cert
 

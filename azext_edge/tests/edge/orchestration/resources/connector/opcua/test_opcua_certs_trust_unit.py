@@ -232,7 +232,8 @@ def test_trust_add(
             "new-secret",
             [build_mock_cert(), build_mock_cert()],
             InvalidArgumentValueError,
-            "Multiple certificates detected in file 'certificate.crt' in PEM format. Please provide a file with only one PEM certificate.",
+            "Multiple certificates detected in file 'certificate.crt' in PEM format. "
+            "Please provide a file with only one PEM certificate.",
         ),
     ],
 )

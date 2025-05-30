@@ -79,7 +79,11 @@ def generate_self_signed_cert(valid_days: int = DEFAULT_VALID_DAYS) -> Tuple[byt
     return (cert.public_bytes(serialization.Encoding.PEM), key_bytes)
 
 
-def decode_certificates(cert_data: bytes, content_format: str) -> Optional[List[x509.Certificate]]:
+def decode_certificates(
+    cert_data: bytes,
+    content_format: str,
+    extension: str
+) -> Optional[List[x509.Certificate]]:
     # Decodes an X.509 certificate from PEM or DER format.
     certs: List = []
     try:
@@ -88,7 +92,10 @@ def decode_certificates(cert_data: bytes, content_format: str) -> Optional[List[
             certs = x509.load_pem_x509_certificates(cert_data)
         elif content_format == 'DER':
             # DER format
-            certs = [x509.load_der_x509_certificate(cert_data, default_backend())]
+            if extension and extension.lower() == '.der':
+                certs = [x509.load_der_x509_certificate(cert_data, default_backend())]
+            elif extension and extension.lower() == '.crl':
+                certs = [x509.load_der_x509_crl(cert_data, default_backend())]
         return certs
     except Exception as e:
         raise InvalidArgumentValueError(
