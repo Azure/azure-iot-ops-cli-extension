@@ -1,8 +1,8 @@
 name: Integration tests
 on:
   schedule:
-    # - cron: "0 9 * * *" # Run daily at 1:00 AM Pacific Time (9:00 AM UTC)
-    - cron: "0 20 * * *" # Run daily at 12:00 PM Pacific Time (8:00 PM UTC)
+    - cron: "0 9 * * *" # Run daily at 1:00 AM Pacific Time (9:00 AM UTC)
+    - cron: "0 22 * * *" # Remove - test only
   workflow_call:
     inputs:
       resource-group:
@@ -439,8 +439,9 @@ jobs:
       - name: "Combine coverage reports"
         run: |
           pip install coverage
-          coverage combine ./coverage_parts/*/.coverage || true
-          coverage report || true
+          coverage combine ./coverage_parts/*/.coverage
+          coverage report
+          coverage html --directory ./htmlcov --title "AIO CLI Combined Coverage Report"
       - name: "Upload combined coverage artifact"
         uses: actions/upload-artifact@v4
         with:
