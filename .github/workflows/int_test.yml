@@ -431,12 +431,14 @@ jobs:
     needs: test
     runs-on: ubuntu-22.04
     steps:
+      - name: "Checkout source"
+        uses: actions/checkout@v4
       - name: "Download all coverage artifacts"
         uses: actions/download-artifact@v4
         with:
           pattern: coverage-*
           path: ./coverage_parts
-      - name: "Combine coverage reports"
+      - name: "Combine coverage and generate report"
         run: |
           pip install coverage
           coverage combine ./coverage_parts/*/.coverage
