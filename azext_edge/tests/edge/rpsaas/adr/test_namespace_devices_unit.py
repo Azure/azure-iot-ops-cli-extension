@@ -31,8 +31,11 @@ from azext_edge.edge.providers.rpsaas.adr.specs import SecurityMode, SecurityPol
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 # Import necessary modules
-from .conftest import get_namespace_mgmt_uri
-from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
+from .test_namespaces_unit import get_namespace_mgmt_uri
+# TODO: once public
+# from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
+from ....generators import generate_random_string, get_zeroed_subscription
+BASE_URL = "https://eastus2euap.management.azure.com"
 
 ADR_REFRESH_API_VERSION = "2025-07-01-preview"
 
@@ -133,7 +136,7 @@ def test_create_namespace_device(
         method=responses.GET,
         url=get_namespace_mgmt_uri(
             namespace_name=namespace_name,
-            namespace_resource_group=resource_group_name
+            resource_group_name=resource_group_name
         ),
         json={"location": namespace_location},
         status=200,

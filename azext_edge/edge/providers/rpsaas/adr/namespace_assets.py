@@ -90,8 +90,14 @@ class NamespaceAssets(Queryable):
             raise InvalidArgumentValueError(
                 f"Device endpoint '{device_endpoint_name}' not found in device '{device_name}'."
             )
-        # allow custom assets for all device endpoints
-        if asset_type.lower() not in [device_endpoint["endpointType"].lower(), "custom"]:
+
+        # asset type must be the same as endpoint type unless either is custom
+        device_type_list = [d.lower() for d in DeviceEndpointType.list()]
+        if (
+            asset_type.lower() in device_type_list
+            and device_endpoint["endpointType"].lower() in device_type_list
+            and asset_type.lower() != device_endpoint["endpointType"].lower()
+        ):
             raise InvalidArgumentValueError(
                 f"Device endpoint '{device_endpoint_name}' is of type '{device_endpoint['endpointType']}', "
                 f"but expected '{asset_type}'."
@@ -311,6 +317,7 @@ class NamespaceAssets(Queryable):
             return wait_for_terminal_state(poller, **kwargs)
 
 
+# Helpers
 def _process_configs(
     asset_type: str,
     **kwargs
@@ -333,12 +340,16 @@ def _process_configs(
             "defaultEventsConfiguration": _process_opcua_event_configurations(
                 **kwargs
             ),
+            "defaultManagementGroupsConfiguration": process_additional_configuration(
+                additional_configuration=kwargs.get("mgmt_custom_configuration"),
+                config_type="management group"
+            ),
             "defaultDatasetsDestinations": _build_destination(
-                destination_args=kwargs.get("default_datasets_destinations", []),
+                destination_args=kwargs.get("datasets_destinations", []),
                 allowed_types=["Mqtt"]
             ),
             "defaultEventsDestinations": _build_destination(
-                destination_args=kwargs.get("default_events_destinations", []),
+                destination_args=kwargs.get("events_destinations", []),
                 allowed_types=["Mqtt"]
             ),
         }
@@ -348,11 +359,11 @@ def _process_configs(
         # still waiting on onvif schemas
         result = {
             "defaultEventsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("default_events_custom_configuration"),
+                additional_configuration=kwargs.get("events_custom_configuration"),
                 config_type="event"
             ),
             "defaultEventsDestinations": _build_destination(
-                destination_args=kwargs.get("default_events_destinations", []),
+                destination_args=kwargs.get("events_destinations", []),
                 allowed_types=["Mqtt"]
             )
         }
@@ -360,12 +371,11 @@ def _process_configs(
         # allowed: streams, destinations can be mqtt or storage
         # not allowed: datasets, events, mgmt groups
         result = {
-            "defaultStreamsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("default_streams_custom_configuration"),
-                config_type="stream"
+            "defaultStreamsConfiguration": _process_media_stream_configurations(
+                **kwargs
             ),
             "defaultStreamsDestinations": _build_destination(
-                destination_args=kwargs.get("default_streams_destinations", []),
+                destination_args=kwargs.get("streams_destinations", []),
                 allowed_types=["Storage", "Mqtt"]
             )
         }
@@ -373,29 +383,29 @@ def _process_configs(
         # Custom - treat everything as an overwrite
         result = {
             "defaultDatasetsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("default_datasets_custom_configuration"),
+                additional_configuration=kwargs.get("datasets_custom_configuration"),
                 config_type="dataset"
             ),
             "defaultEventsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("default_events_custom_configuration"),
+                additional_configuration=kwargs.get("events_custom_configuration"),
                 config_type="event"
             ),
             "defaultManagementGroupsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("default_mgmt_custom_configuration"),
+                additional_configuration=kwargs.get("mgmt_custom_configuration"),
                 config_type="management group"
             ),
             "defaultStreamsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("default_streams_custom_configuration"),
+                additional_configuration=kwargs.get("streams_custom_configuration"),
                 config_type="stream"
             ),
             "defaultDatasetsDestinations": _build_destination(
-                destination_args=kwargs.get("default_datasets_destinations", []),
+                destination_args=kwargs.get("datasets_destinations", []),
             ),
             "defaultEventsDestinations": _build_destination(
-                destination_args=kwargs.get("default_events_destinations", []),
+                destination_args=kwargs.get("events_destinations", []),
             ),
             "defaultStreamsDestinations": _build_destination(
-                destination_args=kwargs.get("default_streams_destinations", []),
+                destination_args=kwargs.get("streams_destinations", []),
             )
         }
 
@@ -404,27 +414,28 @@ def _process_configs(
     return result
 
 
+# maybe move the config processing functions to specs?
 def _process_opcua_dataset_configurations(
     original_dataset_configuration: Optional[str] = None,
-    publishing_interval: Optional[int] = None,
-    sampling_interval: Optional[int] = None,
-    queue_size: Optional[int] = None,
-    key_frame_count: Optional[int] = None,
-    start_instance: Optional[str] = None,
+    dataset_publishing_interval: Optional[int] = None,
+    dataset_sampling_interval: Optional[int] = None,
+    dataset_queue_size: Optional[int] = None,
+    dataset_key_frame_count: Optional[int] = None,
+    dataset_start_instance: Optional[str] = None,
     **_
 ) -> str:
     from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA
     result = json.loads(original_dataset_configuration) if original_dataset_configuration else {}
-    if publishing_interval is not None:
-        result["publishingInterval"] = publishing_interval
-    if sampling_interval is not None:
-        result["samplingInterval"] = sampling_interval
-    if queue_size is not None:
-        result["queueSize"] = queue_size
-    if key_frame_count is not None:
-        result["keyFrameCount"] = key_frame_count
-    if start_instance is not None:
-        result["startInstance"] = start_instance
+    if dataset_publishing_interval is not None:
+        result["publishingInterval"] = dataset_publishing_interval
+    if dataset_sampling_interval is not None:
+        result["samplingInterval"] = dataset_sampling_interval
+    if dataset_queue_size is not None:
+        result["queueSize"] = dataset_queue_size
+    if dataset_key_frame_count is not None:
+        result["keyFrameCount"] = dataset_key_frame_count
+    if dataset_start_instance is not None:
+        result["startInstance"] = dataset_start_instance
 
     ensure_schema_structure(
         schema=NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA,
@@ -435,30 +446,30 @@ def _process_opcua_dataset_configurations(
 
 def _process_opcua_event_configurations(
     original_event_configuration: Optional[str] = None,
-    publishing_interval: Optional[int] = None,
-    queue_size: Optional[int] = None,
-    start_instance: Optional[str] = None,
-    filter_type: Optional[str] = None,
-    filter_clauses: Optional[List[List[str]]] = None,  # path (req), type, field
+    event_publishing_interval: Optional[int] = None,
+    event_queue_size: Optional[int] = None,
+    event_start_instance: Optional[str] = None,
+    event_filter_type: Optional[str] = None,
+    event_filter_clauses: Optional[List[List[str]]] = None,  # path (req), type, field
     **_
 ) -> str:
     from .specs import NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA
 
     result = json.loads(original_event_configuration) if original_event_configuration else {}
-    if publishing_interval is not None:
-        result["publishingInterval"] = publishing_interval
-    if queue_size is not None:
-        result["queueSize"] = queue_size
-    if start_instance is not None:
-        result["startInstance"] = start_instance
+    if event_publishing_interval is not None:
+        result["publishingInterval"] = event_publishing_interval
+    if event_queue_size is not None:
+        result["queueSize"] = event_queue_size
+    if event_start_instance is not None:
+        result["startInstance"] = event_start_instance
 
-    if filter_type or filter_clauses:
+    if event_filter_type or event_filter_clauses:
         result["eventFilter"] = {}
-    if filter_type is not None:
-        result["eventFilter"]["typeDefinitionId"] = filter_type
-    if filter_clauses:
+    if event_filter_type is not None:
+        result["eventFilter"]["typeDefinitionId"] = event_filter_type
+    if event_filter_clauses:
         result["eventFilter"]["selectClauses"] = []
-        for clause in filter_clauses or []:
+        for clause in event_filter_clauses or []:
             clause = parse_kvp_nargs(clause)
             if "path" not in clause:
                 logger.warning(
@@ -474,6 +485,92 @@ def _process_opcua_event_configurations(
 
     ensure_schema_structure(
         schema=NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA,
+        input_data=result
+    )
+    return json.dumps(result)
+
+
+def _process_media_stream_configurations(
+    original_stream_configuration: Optional[str] = None,
+    task_type: Optional[str] = None,
+    task_format: Optional[str] = None,
+    snapshots_per_second: Optional[int] = None,
+    path: Optional[str] = None,
+    duration: Optional[int] = None,
+    media_server_address: Optional[str] = None,
+    media_server_path: Optional[str] = None,
+    media_server_port: Optional[int] = None,
+    media_server_username: Optional[str] = None,
+    media_server_password: Optional[str] = None,
+    **_
+) -> str:
+    from .specs import NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA, MediaFormat, MediaTaskType
+    result = json.loads(original_stream_configuration) if original_stream_configuration else {}
+
+    task_type = task_type or result.get("taskType")
+    allowed_properties = MediaTaskType(task_type).allowed_properties
+
+    # empty result if changing task type
+    if task_type != result.get("taskType"):
+        logger.warning("Chaning Media Stream Configuration task type, resetting configuration.")
+        result = {}
+
+    # Process provided parameters and update result
+    for property_name, param_value in {
+        "format": task_format,
+        "snapshotsPerSecond": snapshots_per_second,
+        "path": path,
+        "duration": duration,
+        "mediaServerAddress": media_server_address,
+        "mediaServerPath": media_server_path,
+        "mediaServerPort": media_server_port,
+        "mediaServerUsernameRef": media_server_username,
+        "mediaServerPasswordRef": media_server_password,
+    }.items():
+        # Skip None values
+        if param_value is None:
+            continue
+
+        # Check if this property is allowed for the current task type
+        if property_name not in allowed_properties:
+            raise InvalidArgumentValueError(
+                f"Property '{property_name}' is not allowed for task type '{task_type}'. "
+                f"Allowed properties: {allowed_properties}"
+            )
+
+        # Validate format based on the task type
+        if property_name == "format" and param_value:
+            format_enum = MediaFormat(param_value)
+            # Validate format for clip tasks
+            if task_type == MediaTaskType.clip_to_fs.value:
+                if not format_enum.allowed_for_clip:
+                    clip_formats = [
+                        f.value for f in MediaFormat
+                        if MediaFormat(f.value).allowed_for_clip
+                    ]
+                    raise InvalidArgumentValueError(
+                        f"Invalid format for clip task: '{param_value}'. "
+                        f"Valid formats: {clip_formats}"
+                    )
+            # Validate format for snapshot tasks
+            else:
+                if not format_enum.allowed_for_snapshot:
+                    snapshot_formats = [
+                        f.value for f in MediaFormat
+                        if MediaFormat(f.value).allowed_for_snapshot
+                    ]
+                    raise InvalidArgumentValueError(
+                        f"Invalid format for snapshot task: '{param_value}'. "
+                        f"Valid formats: {snapshot_formats}"
+                    )
+
+        # Apply the value to the result
+        result[property_name] = param_value
+
+    result["taskType"] = MediaTaskType(task_type).value
+    # Final schema validation
+    ensure_schema_structure(
+        schema=NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA,
         input_data=result
     )
     return json.dumps(result)
@@ -515,7 +612,12 @@ def _build_destination(
     }]
 
     or [] if no arguments are provided
+
+    Note that this will replace rather than update current destinations. Right now there is support
+    for only one destination at a time, but this may change in the future.
     """
+    if not destination_args:
+        return []
     destination = {}
     destination_args = parse_kvp_nargs(destination_args)
     destination_args_copy = deepcopy(destination_args)
@@ -551,8 +653,6 @@ def _build_destination(
                 "ttl": int(destination_args.pop("ttl"))
             }
         }
-    else:
-        return []
     if allowed_types and destination["target"] not in allowed_types:
         raise InvalidArgumentValueError(
             f"Destination type '{destination['target']}' is not allowed. "
@@ -617,4 +717,3 @@ def _update_asset_props(
         properties["serialNumber"] = serial_number
     if software_revision:
         properties["softwareRevision"] = software_revision
-

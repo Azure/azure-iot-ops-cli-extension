@@ -10,6 +10,7 @@ import json
 import pytest
 import responses
 
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.commands_namespaces import (
     create_namespace_custom_asset,
     create_namespace_media_asset,
@@ -27,8 +28,11 @@ from azext_edge.edge.providers.rpsaas.adr.namespace_assets import _process_confi
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 from .test_namespace_devices_unit import get_namespace_device_record, get_namespace_device_mgmt_uri
-from .conftest import get_namespace_mgmt_uri
-from ....generators import BASE_URL, generate_random_string
+from .test_namespaces_unit import get_namespace_mgmt_uri
+# TODO: once public
+# from ....generators import BASE_URL, generate_random_string
+from ....generators import generate_random_string
+BASE_URL = "https://eastus2euap.management.azure.com"
 
 # TODO: consolidate all these ADR refresh apis
 NAMESPACE_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces/assets"
@@ -42,7 +46,7 @@ def get_namespace_asset_mgmt_uri(
     Get the management URI for a namespace asset.
     """
     base_uri = get_namespace_mgmt_uri(
-        namespace_name=namespace_name, namespace_resource_group=resource_group_name
+        namespace_name=namespace_name, resource_group_name=resource_group_name, include_api=False
     )
     base_uri += "/assets" + (f"/{asset_name}" if asset_name else "")
     return f"{base_uri}?api-version={ADR_REFRESH_API_VERSION}"
@@ -106,12 +110,12 @@ def get_namespace_asset_record(
     [
         "custom", {
             "default_datasets_custom_configuration": json.dumps({"testConfig": "value"}),
-            "default_datasets_destinations": json.dumps({"testDest": "value"}),
+            "default_datasets_destinations": ["key=test-key"],
             "default_events_custom_configuration": json.dumps({"eventsConfig": "value"}),
-            "default_events_destinations": json.dumps({"eventsDest": "value"}),
+            "default_events_destinations": ["path=/data/test"],
             "default_mgmtg_custom_configuration": json.dumps({"mgmtgConfig": "value"}),
             "default_streams_custom_configuration": json.dumps({"streamsConfig": "value"}),
-            "default_streams_destinations": json.dumps({"streamsDest": "value"})
+            "default_streams_destinations": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
     [
@@ -121,13 +125,13 @@ def get_namespace_asset_record(
             "default_dataset_queue_size": 2,
             "default_dataset_key_frame_count": 3,
             "default_dataset_start_instance": "test-instance",
-            "default_datasets_destinations": json.dumps({"testDest": "value"}),
+            "default_datasets_destinations": ["topic=/contoso/test", "retain=Never", "qos=0", "ttl=3600"],
             "default_events_publishing_interval": 1500,
             "default_events_queue_size": 4,
             "default_events_start_instance": "event-instance",
             "default_events_filter_type": "test-filter-type",
             "default_events_filter_clauses": [["path=test", "type=test", "field=test"]],
-            "default_events_destinations": json.dumps({"eventsDest": "value"})
+            "default_events_destinations": ["topic=/contoso/test2", "retain=Never", "qos=1", "ttl=400"]
         }
     ]
 ])
@@ -227,6 +231,84 @@ def test_create_namespace_asset(
     assert request_body.get("tags") == all_reqs.get("tags")
 
     assert_asset_properties(request_body["properties"], all_reqs)
+
+
+@pytest.mark.parametrize("asset_type, create_command", [
+    ["media", create_namespace_media_asset],
+    ["onvif", create_namespace_onvif_asset],
+    ["opcua", create_namespace_opcua_asset]
+])
+def test_create_namespace_asset_error(
+    mocked_cmd, mocked_responses: responses, asset_type: str, create_command
+):
+    # Setup variables
+    asset_name = generate_random_string()
+    namespace_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    device_name = generate_random_string()
+    device_endpoint_name = generate_random_string()
+    fake_endpoint_name = generate_random_string()
+
+    # Create mock device record
+    mock_device_record = get_namespace_device_record(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+
+    # Add the endpoint but with an incompatible type
+    # For each asset type, use a different incorrect type
+    incorrect_types = {
+        "media": "Microsoft.opcua",
+        "onvif": "Microsoft.media",
+        "opcua": "Microsoft.onvif"
+    }
+    mock_device_record["properties"]["endpoints"]["inbound"] = {
+        device_endpoint_name: {"endpointType": incorrect_types[asset_type]}
+    }
+
+    # Add mock device response
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_device_mgmt_uri(
+            device_name=device_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=mock_device_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Test missing endpoint
+    with pytest.raises(InvalidArgumentValueError) as excinfo:
+        create_command(
+            cmd=mocked_cmd,
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name,
+            device_endpoint_name=fake_endpoint_name,
+            wait_sec=0
+        )
+
+    # Verify the error message contains our expected text
+    assert "not found in" in str(excinfo.value)
+
+    # Test incompatible type
+    with pytest.raises(InvalidArgumentValueError) as excinfo:
+        create_command(
+            cmd=mocked_cmd,
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name,
+            device_endpoint_name=device_endpoint_name,
+            wait_sec=0
+        )
+
+    # Verify the error message contains our expected text
+    assert "is of type" in str(excinfo.value)
 
 
 @pytest.mark.parametrize("response_status", [202, 404])
@@ -363,29 +445,29 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
     ["opcua", {}],
     [
         "custom", {
-            "default_datasets_custom_configuration": json.dumps({"updatedConfig": "value"}),
-            "default_datasets_destinations": json.dumps({"updatedDest": "value"}),
-            "default_events_custom_configuration": json.dumps({"updatedEventsConfig": "value"}),
-            "default_events_destinations": json.dumps({"updatedEventsDest": "value"}),
-            "default_mgmtg_custom_configuration": json.dumps({"updatedMgmtgConfig": "value"}),
-            "default_streams_custom_configuration": json.dumps({"updatedStreamsConfig": "value"}),
-            "default_streams_destinations": json.dumps({"updatedStreamsDest": "value"})
+            "default_datasets_custom_configuration": json.dumps({"testConfig": "value"}),
+            "default_datasets_destinations": ["key=test-key"],
+            "default_events_custom_configuration": json.dumps({"eventsConfig": "value"}),
+            "default_events_destinations": ["path=/data/test"],
+            "default_mgmtg_custom_configuration": json.dumps({"mgmtgConfig": "value"}),
+            "default_streams_custom_configuration": json.dumps({"streamsConfig": "value"}),
+            "default_streams_destinations": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
     [
         "opcua", {
-            "default_dataset_publishing_interval": 3000,
-            "default_dataset_sampling_interval": 1500,
-            "default_dataset_queue_size": 3,
-            "default_dataset_key_frame_count": 4,
-            "default_dataset_start_instance": "updated-test-instance",
-            "default_datasets_destinations": json.dumps({"updatedTestDest": "value"}),
-            "default_events_publishing_interval": 2500,
-            "default_events_queue_size": 5,
-            "default_events_start_instance": "updated-event-instance",
-            "default_events_filter_type": "updated-test-filter-type",
-            "default_events_filter_clauses": [["path=updated", "type=updated", "field=updated"]],
-            "default_events_destinations": json.dumps({"updatedEventsDest": "value"})
+            "default_dataset_publishing_interval": 2000,
+            "default_dataset_sampling_interval": 1000,
+            "default_dataset_queue_size": 2,
+            "default_dataset_key_frame_count": 3,
+            "default_dataset_start_instance": "test-instance",
+            "default_datasets_destinations": ["topic=/contoso/test", "retain=Never", "qos=0", "ttl=3600"],
+            "default_events_publishing_interval": 1500,
+            "default_events_queue_size": 4,
+            "default_events_start_instance": "event-instance",
+            "default_events_filter_type": "test-filter-type",
+            "default_events_filter_clauses": [["path=test", "type=test", "field=test"]],
+            "default_events_destinations": ["topic=/contoso/test2", "retain=Never", "qos=1", "ttl=400"]
         }
     ]
 ])

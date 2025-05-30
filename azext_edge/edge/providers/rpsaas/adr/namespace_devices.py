@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from enum import Enum
 import json
 from rich.console import Console
 from typing import TYPE_CHECKING, Callable, Dict, List, Iterable, Optional
@@ -13,6 +12,7 @@ from knack.log import get_logger
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.common import parse_kvp_nargs, should_continue_prompt
 from ....util.queryable import Queryable
+from ....common import ListableEnum
 
 if TYPE_CHECKING:
     from ....vendor.clients.deviceregistryrefreshmgmt.operations import NamespacesOperations, NamespaceDevicesOperations
@@ -23,7 +23,7 @@ console = Console()
 logger = get_logger(__name__)
 
 
-class DeviceEndpointType(Enum):
+class DeviceEndpointType(ListableEnum):
     """
     Enum for the device endpoint types.
     """

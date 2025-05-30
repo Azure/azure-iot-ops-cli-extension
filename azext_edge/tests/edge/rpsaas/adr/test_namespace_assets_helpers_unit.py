@@ -16,7 +16,8 @@ from azure.cli.core.azclierror import (
 from azext_edge.edge.providers.rpsaas.adr.namespace_assets import (
     _build_destination,
     _process_opcua_dataset_configurations,
-    _process_opcua_event_configurations
+    _process_opcua_event_configurations,
+    _process_media_stream_configurations
 )
 from azext_edge.edge.util.common import parse_kvp_nargs
 
@@ -41,6 +42,9 @@ def mocked_logger(mocker):
     {
         "args": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"],
         "expected_target": "Mqtt",
+    },
+    {
+        "args": None
     }
 ])
 @pytest.mark.parametrize("allowed_types", [None, ["BrokerStateStore", "Storage", "Mqtt"]])
@@ -50,6 +54,11 @@ def test_build_destination(test_case: dict, allowed_types: Optional[List[str]]):
         expected_config["ttl"] = int(expected_config["ttl"])
 
     result = _build_destination(test_case["args"], allowed_types=allowed_types)
+
+    if not test_case["args"]:
+        assert not result and isinstance(result, list)
+        return
+
     assert len(result) == 1
     assert result[0]["target"] == test_case["expected_target"]
     for key, value in expected_config.items():
@@ -112,11 +121,11 @@ def test_build_destination_error(test_case: dict):
     {
         "original": None,
         "params": {
-            "publishing_interval": 1000,
-            "sampling_interval": 500,
-            "queue_size": 50,
-            "key_frame_count": 5,
-            "start_instance": "test-instance"
+            "dataset_publishing_interval": 1000,
+            "dataset_sampling_interval": 500,
+            "dataset_queue_size": 50,
+            "dataset_key_frame_count": 5,
+            "dataset_start_instance": "test-instance"
         },
         "expected_values": {
             "publishingInterval": 1000,
@@ -130,8 +139,8 @@ def test_build_destination_error(test_case: dict):
     {
         "original": None,
         "params": {
-            "publishing_interval": 1000,
-            "queue_size": 50
+            "dataset_publishing_interval": 1000,
+            "dataset_queue_size": 50
         },
         "expected_values": {
             "publishingInterval": 1000,
@@ -141,7 +150,7 @@ def test_build_destination_error(test_case: dict):
     # Update existing configuration
     {
         "original": json.dumps({"publishingInterval": 1000, "samplingInterval": 500}),
-        "params": {"queue_size": 50, "key_frame_count": 5},
+        "params": {"dataset_queue_size": 50, "dataset_key_frame_count": 5},
         "expected_values": {
             "publishingInterval": 1000,
             "samplingInterval": 500,
@@ -152,14 +161,14 @@ def test_build_destination_error(test_case: dict):
     # Override existing configuration
     {
         "original": json.dumps({"publishingInterval": 1000, "samplingInterval": 500}),
-        "params": {"publishing_interval": 2000},
+        "params": {"dataset_publishing_interval": 2000},
         "expected_values": {"publishingInterval": 2000, "samplingInterval": 500}
     }
 ])
 def test_process_opcua_dataset_configurations(test_case):
     """Test processing OPC UA dataset configurations with various parameters."""
     result_json = _process_opcua_dataset_configurations(
-        original_configuration=test_case["original"],
+        original_dataset_configuration=test_case["original"],
         **test_case["params"]
     )
 
@@ -184,13 +193,13 @@ def test_process_opcua_dataset_configurations(test_case):
     # Set filter clauses with path only
     {
         "original": None,
-        "params": {"filter_clauses": [["path=/path/to/node"]]},
+        "params": {"event_filter_clauses": [["path=/path/to/node"]]},
         "expected_values": {"eventFilter": {"selectClauses": [{"browsePath": "/path/to/node"}]}},
     },
     # Set filter clauses with path, type, and field
     {
         "original": None,
-        "params": {"filter_clauses": [["path=/path/to/node", "type=TestType", "field=TestField"]]},
+        "params": {"event_filter_clauses": [["path=/path/to/node", "type=TestType", "field=TestField"]]},
         "expected_values": {
             "eventFilter": {
                 "selectClauses": [
@@ -206,15 +215,15 @@ def test_process_opcua_dataset_configurations(test_case):
     # Set filter clauses without path (should be skipped)
     {
         "original": None,
-        "params": {"filter_clauses": [["type=TestType", "field=TestField"]]},
+        "params": {"event_filter_clauses": [["type=TestType", "field=TestField"]]},
         "expected_values": {},
     },
     # Set both filter type and clauses
     {
         "original": None,
         "params": {
-            "filter_type": "test-type",
-            "filter_clauses": [["path=/path/to/node"]]
+            "event_filter_type": "test-type",
+            "event_filter_clauses": [["path=/path/to/node"]]
         },
         "expected_values": {
             "eventFilter": {
@@ -226,16 +235,16 @@ def test_process_opcua_dataset_configurations(test_case):
     # Update existing configuration
     {
         "original": json.dumps({"publishingInterval": 1000}),
-        "params": {"queue_size": 50},
+        "params": {"event_queue_size": 50},
         "expected_values": {"publishingInterval": 1000, "queueSize": 50}
     },
     # Update existing configuration with filter clauses
     {
         "original": json.dumps({"publishingInterval": 1000, "startInstance": "test-instance"}),
         "params": {
-            "queue_size": 50,
-            "start_instance": "new-instance",
-            "filter_clauses": [["path=/new/path", "type=NewType", "field=NewField"]]
+            "event_queue_size": 50,
+            "event_start_instance": "new-instance",
+            "event_filter_clauses": [["path=/new/path", "type=NewType", "field=NewField"]]
         },
         "expected_values": {
             "publishingInterval": 1000,
@@ -256,11 +265,11 @@ def test_process_opcua_dataset_configurations(test_case):
     {
         "original": None,
         "params": {
-            "publishing_interval": 1000,
-            "queue_size": 50,
-            "start_instance": "test-instance",
-            "filter_type": "test-type",
-            "filter_clauses": [["path=/path/to/node", "type=TestType", "field=TestField"]]
+            "event_publishing_interval": 1000,
+            "event_queue_size": 50,
+            "event_start_instance": "test-instance",
+            "event_filter_type": "test-type",
+            "event_filter_clauses": [["path=/path/to/node", "type=TestType", "field=TestField"]]
         },
         "expected_values": {
             "publishingInterval": 1000,
@@ -281,7 +290,7 @@ def test_process_opcua_dataset_configurations(test_case):
 ])
 def test_process_opcua_event_configurations(test_case, mocked_logger):
     result_json = _process_opcua_event_configurations(
-        original_configuration=test_case.get("original"),
+        original_event_configuration=test_case.get("original"),
         **test_case.get("params", {})
     )
 
@@ -304,7 +313,159 @@ def test_process_opcua_event_configurations(test_case, mocked_logger):
             assert result[key] == value
 
     # Check for warning logs when path is missing
-    len_param_filters = len(test_case["params"].get("filter_clauses", []))
+    len_param_filters = len(test_case["params"].get("event_filter_clauses", []))
     len_expected_select_clauses = len(test_case["expected_values"].get("eventFilter", {}).get("selectClauses", []))
     if len_param_filters > len_expected_select_clauses:
         mocked_logger.warning.assert_called()
+
+
+@pytest.mark.parametrize("test_case", [
+    # Empty configuration
+    {
+        "original": None,
+        "params": {"task_type": "snapshot-to-mqtt"},
+        "expected_values": {"taskType": "snapshot-to-mqtt"}
+    },
+    # Set parameters for snapshot-to-mqtt
+    {
+        "original": None,
+        "params": {
+            "task_type": "snapshot-to-mqtt",
+            "task_format": "png",
+            "snapshots_per_second": 1
+        },
+        "expected_values": {
+            "taskType": "snapshot-to-mqtt",
+            "format": "png",
+            "snapshotsPerSecond": 1
+        }
+    },
+    # Set parameters for snapshot-to-fs
+    {
+        "original": None,
+        "params": {
+            "task_type": "snapshot-to-fs",
+            "task_format": "jpeg",
+            "snapshots_per_second": 2,
+            "path": "/data/snapshots"
+        },
+        "expected_values": {
+            "taskType": "snapshot-to-fs",
+            "format": "jpeg",
+            "snapshotsPerSecond": 2,
+            "path": "/data/snapshots"
+        }
+    },
+    # Set parameters for clip-to-fs
+    {
+        "original": None,
+        "params": {
+            "task_type": "clip-to-fs",
+            "task_format": "mp4",
+            "duration": 60,
+            "path": "/data/clips"
+        },
+        "expected_values": {
+            "taskType": "clip-to-fs",
+            "format": "mp4",
+            "duration": 60,
+            "path": "/data/clips"
+        }
+    },
+    # Set parameters for stream-to-rtsp
+    {
+        "original": None,
+        "params": {
+            "task_type": "stream-to-rtsp",
+            "media_server_address": "rtsp-server",
+            "media_server_port": 554,
+            "media_server_path": "/live/stream"
+        },
+        "expected_values": {
+            "taskType": "stream-to-rtsp",
+            "mediaServerAddress": "rtsp-server",
+            "mediaServerPort": 554,
+            "mediaServerPath": "/live/stream"
+        }
+    },
+    # Set parameters for stream-to-rtsps with credentials
+    {
+        "original": None,
+        "params": {
+            "task_type": "stream-to-rtsps",
+            "media_server_address": "rtsps-server",
+            "media_server_port": 443,
+            "media_server_path": "/secure/stream",
+            "media_server_username": "username",
+            "media_server_password": "password"
+        },
+        "expected_values": {
+            "taskType": "stream-to-rtsps",
+            "mediaServerAddress": "rtsps-server",
+            "mediaServerPort": 443,
+            "mediaServerPath": "/secure/stream",
+            "mediaServerUsernameRef": "username",
+            "mediaServerPasswordRef": "password"
+        }
+    },
+    # Update existing configuration
+    {
+        "original": json.dumps({
+            "taskType": "snapshot-to-mqtt",
+            "format": "png",
+            "snapshotsPerSecond": 1
+        }),
+        "params": {
+            "task_type": "snapshot-to-mqtt",
+            "snapshots_per_second": 2
+        },
+        "expected_values": {
+            "taskType": "snapshot-to-mqtt",
+            "format": "png",
+            "snapshotsPerSecond": 2
+        }
+    },
+    # Change task type for existing configuration
+    {
+        "original": json.dumps({
+            "taskType": "snapshot-to-mqtt",
+            "format": "png",
+            "snapshotsPerSecond": 1
+        }),
+        "params": {
+            "task_type": "snapshot-to-fs",
+            "path": "/data/snapshots"
+        },
+        "expected_values": {
+            "taskType": "snapshot-to-fs",
+            "path": "/data/snapshots"
+        }
+    }
+])
+def test_process_media_stream_configurations(test_case):
+    """Test processing media stream configurations with various parameters."""
+    # Execute the function with the provided parameters
+    result_json = _process_media_stream_configurations(
+        original_stream_configuration=test_case["original"],
+        **test_case["params"]
+    )
+
+    # Verify the result is valid JSON
+    result = json.loads(result_json)
+
+    # Check that all expected values are correct
+    assert len(result) == len(test_case["expected_values"])
+    for key, value in test_case["expected_values"].items():
+        assert result[key] == value
+
+    # Verify task_type is always present
+    assert "taskType" in result
+
+    # Verify all properties in the result are allowed for the task type
+    from azext_edge.edge.providers.rpsaas.adr.specs import MediaTaskType
+    task_type = result["taskType"]
+    allowed_properties = MediaTaskType(task_type).allowed_properties
+
+    # Check that all properties in the result are allowed for this task type
+    for property_name in result:
+        assert property_name in allowed_properties, f"Property {property_name} is not allowed for task type {task_type}"

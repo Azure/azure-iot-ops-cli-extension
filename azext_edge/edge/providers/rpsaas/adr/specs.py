@@ -435,3 +435,71 @@ NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA = {
         }
     ]
 }
+
+
+class MediaTaskType(Enum):
+    """
+    Enum for media task types in NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA.
+    """
+    snapshot_to_mqtt = "snapshot-to-mqtt"
+    snapshot_to_fs = "snapshot-to-fs"
+    clip_to_fs = "clip-to-fs"
+    stream_to_rtsp = "stream-to-rtsp"
+    stream_to_rtsps = "stream-to-rtsps"
+
+    @property
+    def allowed_properties(self):
+        mapping = {
+            MediaTaskType.snapshot_to_mqtt.value: ["taskType", "format", "snapshotsPerSecond"],
+            MediaTaskType.snapshot_to_fs.value: ["taskType", "format", "snapshotsPerSecond", "path"],
+            MediaTaskType.clip_to_fs.value: ["taskType", "format", "duration", "path"],
+            MediaTaskType.stream_to_rtsp.value: [
+                "taskType", "mediaServerAddress", "mediaServerPort", "mediaServerPath",
+                "mediaServerUsernameRef", "mediaServerPasswordRef"
+            ],
+            MediaTaskType.stream_to_rtsps.value: [
+                "taskType", "mediaServerAddress", "mediaServerPort", "mediaServerPath",
+                "mediaServerUsernameRef", "mediaServerPasswordRef", "mediaServerCertificateRef"
+            ],
+        }
+        return mapping[self.value]
+
+
+class MediaFormat(Enum):
+    """
+    Enum for all media formats specified in NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA.
+    """
+    png = "png"
+    bmp = "bmp"
+    jpg = "jpg"
+    jpeg = "jpeg"
+    tif = "tif"
+    tiff = "tiff"
+    avi = "avi"
+    mp4 = "mp4"
+    mkv = "mkv"
+    mts = "mts"
+    mjpeg = "mjpeg"
+    mpg = "mpg"
+    mpeg = "mpeg"
+    flv = "flv"
+    webm = "webm"
+
+    @property
+    def allowed_for_snapshot(self):
+        """
+        Returns True if the format is allowed for snapshot tasks.
+        """
+        return self in {
+            MediaFormat.png, MediaFormat.bmp, MediaFormat.jpg, MediaFormat.jpeg, MediaFormat.tif, MediaFormat.tiff
+        }
+
+    @property
+    def allowed_for_clip(self):
+        """
+        Returns True if the format is allowed for clip tasks.
+        """
+        return self in {
+            MediaFormat.avi, MediaFormat.mp4, MediaFormat.mkv, MediaFormat.mts, MediaFormat.mjpeg,
+            MediaFormat.mpg, MediaFormat.mpeg, MediaFormat.flv, MediaFormat.webm
+        }
