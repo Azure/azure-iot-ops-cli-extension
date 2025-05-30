@@ -324,6 +324,12 @@ jobs:
           tox r -e report
           coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
           echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+      - name: "Upload coverage artifact"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.feature }}
+          path: .coverage
       - name: "Az CLI login"
         if: ${{ matrix.feature == 'syncrules' }}
         uses: azure/login@v2
@@ -412,3 +418,24 @@ jobs:
         if: ${{ always() }}
         run: |
           az resource delete  -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
+  combine-coverage:
+    name: "Combine coverage reports"
+    if: ${{ always() }}
+    needs: test
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Download all coverage artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: ./coverage_parts
+      - name: "Combine coverage reports"
+        run: |
+          pip install coverage
+          coverage combine ./coverage_parts/*/.coverage || true
+          coverage report || true
+      - name: "Upload combined coverage artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-coverage
+          path: ./htmlcov
