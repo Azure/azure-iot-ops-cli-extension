@@ -364,7 +364,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.feature }}
-          path: .coverage
+          path: ./.coverage
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle
