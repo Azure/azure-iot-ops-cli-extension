@@ -475,7 +475,6 @@ class OpcUACerts(Queryable):
                 "If this certificate was issued by a CA, then please ensure that the CA certificate is "
                 "added to issuer list."
             )
-        # validate_file_extension(public_key_file, [".der"])
         # validate private key file end with .pem
         validate_file_extension(private_key_file, [".pem"])
 

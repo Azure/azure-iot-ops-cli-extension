@@ -71,82 +71,84 @@ from azext_edge.tests.generators import generate_random_string
                 },
             }
         ),
-        # (
-        #     {
-        #         "resources": [
-        #             get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
-        #             get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
-        #             get_mock_secretsync_record(
-        #                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
-        #             ),
-        #         ],
-        #         "extension": {
-        #             EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {
-        #                 "configurationSettings": {
-        #                     "connectors.values.securityPki.applicationCert": OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-        #                     "connectors.values.securityPki.subjectName": "subjectname",
-        #                     "connectors.values.securityPki.applicationUri": "uriold",
-        #                 },
-        #             }}
-        #         },
-        #     },
-        #     get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
-        #     get_mock_secretsync_record(
-        #         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
-        #     ),
-        #     "/fake/path/certificate.der",
-        #     "/fake/path/certificate.pem",
-        #     [build_mock_cert()],
-        #     get_mock_secretsync_record(
-        #         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-        #         resource_group_name="mock-rg",
-        #         objects="new-secret",
-        #     ),
-        #     {
-        #         "configurationSettings": {
-        #             "connectors.values.securityPki.applicationUri": "uri",
-        #         },
-        #     }
-        # ),
-        # (
-        #     {
-        #         "resources": [
-        #             get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
-        #             get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
-        #             get_mock_secretsync_record(
-        #                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
-        #             ),
-        #         ],
-        #         "extension": {
-        #             EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {
-        #                 "configurationSettings": {
-        #                     "existingProperties": "foo",
-        #                     "connectors.values.securityPki.applicationCert": OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-        #                     "connectors.values.securityPki.subjectName": "subjectnameold",
-        #                     "connectors.values.securityPki.applicationUri": "uriold",
-        #                 },
-        #             }}
-        #         },
-        #     },
-        #     get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
-        #     get_mock_secretsync_record(
-        #         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
-        #     ),
-        #     "/fake/path/certificate.der",
-        #     "/fake/path/certificate.pem",
-        #     [build_mock_cert()],
-        #     get_mock_secretsync_record(
-        #         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
-        #         resource_group_name="mock-rg",
-        #         objects="new-secret",
-        #     ),
-        #     {
-        #         "configurationSettings": {
-        #             "connectors.values.securityPki.subjectName": "subjectname",
-        #             "connectors.values.securityPki.applicationUri": "uri",
-        #         },
-        #     }
-        # ),
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
+                "extension": {
+                    EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {
+                        "configurationSettings": {
+                            "connectors.values.securityPki.applicationCert": OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                            "connectors.values.securityPki.subjectName": "subjectname",
+                            "connectors.values.securityPki.applicationUri": "uriold",
+                        },
+                    }}
+                },
+            },
+            get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+            ),
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            [build_mock_cert()],
+            [build_mock_cert()],
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+            {
+                "configurationSettings": {
+                    "connectors.values.securityPki.applicationUri": "uri",
+                },
+            }
+        ),
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
+                "extension": {
+                    EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {
+                        "configurationSettings": {
+                            "existingProperties": "foo",
+                            "connectors.values.securityPki.applicationCert": OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                            "connectors.values.securityPki.subjectName": "subjectnameold",
+                            "connectors.values.securityPki.applicationUri": "uriold",
+                        },
+                    }}
+                },
+            },
+            get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+            ),
+            "/fake/path/certificate.der",
+            "/fake/path/certificate.pem",
+            [build_mock_cert()],
+            [build_mock_cert()],
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects="new-secret",
+            ),
+            {
+                "configurationSettings": {
+                    "connectors.values.securityPki.subjectName": "subjectname",
+                    "connectors.values.securityPki.applicationUri": "uri",
+                },
+            }
+        ),
     ],
 )
 def test_client_add(
