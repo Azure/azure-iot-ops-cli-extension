@@ -19,10 +19,13 @@ from azure.cli.core.azclierror import (
 from ....util.common import parse_kvp_nargs
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.queryable import Queryable
-from .asset_endpoint_profiles import _process_additional_configuration
+from .helpers import process_additional_configuration, ensure_schema_structure
+from .namespace_devices import DeviceEndpointType
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistryrefreshmgmt.operations import NamespaceAssetsOperations, NamespacesOperations
+    from ....vendor.clients.deviceregistryrefreshmgmt.operations import (
+        NamespaceAssetsOperations, NamespaceDevicesOperations
+    )
     from ....vendor.clients.resourcesmgmt.operations import ResourcesOperations
 
 
@@ -41,43 +44,19 @@ class NamespaceAssets(Queryable):
             subscription_id=self.default_subscription_id
         )
         self.ops: "NamespaceAssetsOperations" = self.deviceregistry_mgmt_client.namespace_assets
-        self.namespace_ops: "NamespacesOperations" = self.deviceregistry_mgmt_client.namespaces
+        self.device_ops: "NamespaceDevicesOperations" = self.deviceregistry_mgmt_client.namespace_devices
         self.resource_ops: "ResourcesOperations" = self.resource_mgmt_client.resources
 
     def create(  # noqa: C901
         self,
         asset_name: str,
         namespace_name: str,
-        instance_name: str,
         resource_group_name: str,
+        asset_type: str,
         device_name: str,
         device_endpoint_name: str,
-        instance_resource_group: Optional[str] = None,
-        instance_subscription: Optional[str] = None,
-        location: Optional[str] = None,
         asset_type_refs: Optional[List[str]] = None,
         attributes: Optional[List[str]] = None,
-        # default dataset configurations
-        default_dataset_publishing_interval: Optional[int] = None,
-        default_dataset_sampling_interval: Optional[int] = None,
-        default_dataset_queue_size: Optional[int] = None,
-        default_dataset_key_frame_count: Optional[int] = None,
-        default_dataset_start_instance: Optional[str] = None,
-        default_datasets_custom_configuration: Optional[str] = None,
-        default_datasets_destinations: Optional[str] = None,
-        # default events configurations
-        default_events_publishing_interval: Optional[int] = None,
-        default_events_queue_size: Optional[int] = None,
-        default_events_start_instance: Optional[str] = None,
-        default_events_filter_type: Optional[str] = None,
-        default_events_filter_clauses: Optional[List[str]] = None,  # path (req), type, field
-        default_events_custom_configuration: Optional[str] = None,
-        default_events_destinations: Optional[str] = None,
-        # default management groups configurations
-        default_mgmtg_custom_configuration: Optional[str] = None,
-        # default streams configurations
-        default_streams_custom_configuration: Optional[str] = None,
-        default_streams_destinations: Optional[str] = None,
         description: Optional[str] = None,
         disabled: Optional[bool] = None,
         discovered_asset_refs: Optional[List[str]] = None,
@@ -94,25 +73,29 @@ class NamespaceAssets(Queryable):
         tags: Optional[Dict[str, str]] = None,
         **kwargs
     ) -> dict:
+        """Creates a new asset in the specified namespace.
+
+        kwargs will contain arguments used for default configurations and destinations.
+        """
         # TODO: future, Add in options to import from files for datasets, events, streams, and mgmt groups
 
-        # get the extended location from the instance
-        from .helpers import get_extended_location
-        # TODO: add a check for instance being the right version
-        extended_location = get_extended_location(
-            cmd=self.cmd,
-            instance_name=instance_name,
-            instance_resource_group=instance_resource_group or resource_group_name,
-            instance_subscription=instance_subscription
-        )
-        # use the namespace location instead of the cluster location
-        extended_location.pop("cluster_location")
-
-        # get the location of the namespace
-        location = self.namespace_ops.get(
+        # use the device to get the location, extended location, and check type and endpoint
+        device = self.device_ops.get(
             resource_group_name=resource_group_name,
-            namespace_name=namespace_name
-        )["location"]
+            namespace_name=namespace_name,
+            device_name=device_name
+        )
+        device_endpoint = device["properties"].get("endpoints", {}).get("inbound", {}).get(device_endpoint_name)
+        if not device_endpoint:
+            raise InvalidArgumentValueError(
+                f"Device endpoint '{device_endpoint_name}' not found in device '{device_name}'."
+            )
+        # allow custom assets for all device endpoints
+        if asset_type.lower() not in [device_endpoint["endpointType"].lower(), "custom"]:
+            raise InvalidArgumentValueError(
+                f"Device endpoint '{device_endpoint_name}' is of type '{device_endpoint['endpointType']}', "
+                f"but expected '{asset_type}'."
+            )
 
         # Initialize properties dictionary
         properties = {
@@ -122,42 +105,17 @@ class NamespaceAssets(Queryable):
             }
         }
 
-        # TODO: future, add in checks mapping device type to allowed asset params:
-        # opcua ->
-        #   allowed: datasets, events, mgmt groups, destinations must be mqtt
-        #   not allowed: streams
-        # onvif ->
-        #   allowed: events, mgmt groups, destinations must be mqtt
-        #   not allowed: datasets, streams
-        # media ->
-        #   allowed: streams, destinations can be mqtt or storage
-        #   not allowed: datasets, events, mgmt groups
-        # custom -> allow all
+        # handle the configs + destinations
+        config_destinations = _process_configs(
+            asset_type=asset_type,
+            **kwargs
+        )
+        # might need to do some processing in the future
+        properties.update(config_destinations)
 
+        # other props
         _update_asset_props(
             properties=properties,
-            # dataset
-            default_dataset_publishing_interval=default_dataset_publishing_interval,
-            default_dataset_sampling_interval=default_dataset_sampling_interval,
-            default_dataset_queue_size=default_dataset_queue_size,
-            default_dataset_key_frame_count=default_dataset_key_frame_count,
-            default_dataset_start_instance=default_dataset_start_instance,
-            default_datasets_custom_configuration=default_datasets_custom_configuration,
-            default_datasets_destinations=default_datasets_destinations,
-            # event
-            default_events_destinations=default_events_destinations,
-            default_events_publishing_interval=default_events_publishing_interval,
-            default_events_queue_size=default_events_queue_size,
-            default_events_start_instance=default_events_start_instance,
-            default_events_filter_type=default_events_filter_type,
-            default_events_filter_clauses=default_events_filter_clauses,
-            default_events_custom_configuration=default_events_custom_configuration,
-            # mgmt
-            default_mgmtg_custom_configuration=default_mgmtg_custom_configuration,
-            # streams
-            default_streams_custom_configuration=default_streams_custom_configuration,
-            default_streams_destinations=default_streams_destinations,
-            # other
             asset_type_refs=asset_type_refs,
             attributes=attributes,
             description=description,
@@ -176,8 +134,8 @@ class NamespaceAssets(Queryable):
         )
 
         asset_body = {
-            "extendedLocation": extended_location,
-            "location": location,
+            "extendedLocation": device["extendedLocation"],
+            "location": device["location"],
             "properties": properties,
             "tags": tags,
         }
@@ -212,7 +170,7 @@ class NamespaceAssets(Queryable):
         namespace_name: str,
         resource_group_name: str
     ) -> dict:
-        self.ops.get(
+        return self.ops.get(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
             asset_name=asset_name
@@ -240,10 +198,11 @@ class NamespaceAssets(Queryable):
             device_endpoint_name: Optional[str] = None
         ) -> str:
             query_body = ""
-            if asset_name:
-                query_body += f' | where name =~ "{asset_name}"'
+            # add in namespace name
             if resource_group_name:
                 query_body += f' | where resourceGroup =~ "{resource_group_name}"'
+            if asset_name:
+                query_body += f' | where name =~ "{asset_name}"'
             if device_name:
                 query_body += f' | where properties.deviceRef.deviceName =~ "{device_name}"'
             if device_endpoint_name:
@@ -269,34 +228,15 @@ class NamespaceAssets(Queryable):
         asset_name: str,
         namespace_name: str,
         resource_group_name: str,
+        asset_type: str,
         asset_type_refs: Optional[List[str]] = None,
         attributes: Optional[List[str]] = None,
-        # default dataset configurations
-        default_dataset_publishing_interval: Optional[int] = None,
-        default_dataset_sampling_interval: Optional[int] = None,
-        default_dataset_queue_size: Optional[int] = None,
-        default_dataset_key_frame_count: Optional[int] = None,
-        default_dataset_start_instance: Optional[str] = None,
-        default_datasets_custom_configuration: Optional[str] = None,
-        default_datasets_destinations: Optional[str] = None,
-        # default events configurations
-        default_events_publishing_interval: Optional[int] = None,
-        default_events_queue_size: Optional[int] = None,
-        default_events_start_instance: Optional[str] = None,
-        default_events_filter_type: Optional[str] = None,
-        default_events_filter_clauses: Optional[List[str]] = None,  # path (req), type, field
-        default_events_custom_configuration: Optional[str] = None,
-        default_events_destinations: Optional[str] = None,
-        # default management groups configurations
-        default_mgmtg_custom_configuration: Optional[str] = None,
-        # default streams configurations
-        default_streams_custom_configuration: Optional[str] = None,
-        default_streams_destinations: Optional[str] = None,
         description: Optional[str] = None,
         disabled: Optional[bool] = None,
         discovered_asset_refs: Optional[List[str]] = None,
         display_name: Optional[str] = None,
         documentation_uri: Optional[str] = None,
+        external_asset_id: Optional[str] = None,
         hardware_revision: Optional[str] = None,
         manufacturer: Optional[str] = None,
         manufacturer_uri: Optional[str] = None,
@@ -307,35 +247,40 @@ class NamespaceAssets(Queryable):
         tags: Optional[Dict[str, str]] = None,
         **kwargs
     ) -> dict:
+        # need original asset default configurations to update
+        asset_properties = self.show(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        )["properties"]
+
+        # update payload
         update_payload = {}
         if tags:
             update_payload["tags"] = tags
 
         properties = {}
+
+        # handle the configs + destinations
+        original_configs = {
+            "original_dataset_configuration": asset_properties.get("defaultDatasetsConfiguration"),
+            "original_event_configuration": asset_properties.get("defaultEventsConfiguration"),
+            "original_mgmt_configuration": asset_properties.get("defaultManagementGroupsConfiguration"),
+            "original_streams_configuration": asset_properties.get("defaultStreamsConfiguration"),
+            "original_dataset_destinations": asset_properties.get("defaultDatasetsDestinations"),
+            "original_event_destinations": asset_properties.get("defaultEventsDestinations"),
+            "original_stream_destinations": asset_properties.get("defaultStreamsDestinations"),
+        }
+        config_destinations = _process_configs(
+            asset_type=asset_type,
+            **original_configs,
+            **kwargs
+        )
+        # might need to do some processing in the future
+        properties.update(config_destinations)
+
         _update_asset_props(
             properties=properties,
-            # dataset
-            default_dataset_publishing_interval=default_dataset_publishing_interval,
-            default_dataset_sampling_interval=default_dataset_sampling_interval,
-            default_dataset_queue_size=default_dataset_queue_size,
-            default_dataset_key_frame_count=default_dataset_key_frame_count,
-            default_dataset_start_instance=default_dataset_start_instance,
-            default_datasets_custom_configuration=default_datasets_custom_configuration,
-            default_datasets_destinations=default_datasets_destinations,
-            # event
-            default_events_destinations=default_events_destinations,
-            default_events_publishing_interval=default_events_publishing_interval,
-            default_events_queue_size=default_events_queue_size,
-            default_events_start_instance=default_events_start_instance,
-            default_events_filter_type=default_events_filter_type,
-            default_events_filter_clauses=default_events_filter_clauses,
-            default_events_custom_configuration=default_events_custom_configuration,
-            # mgmt
-            default_mgmtg_custom_configuration=default_mgmtg_custom_configuration,
-            # streams
-            default_streams_custom_configuration=default_streams_custom_configuration,
-            default_streams_destinations=default_streams_destinations,
-            # other
             asset_type_refs=asset_type_refs,
             attributes=attributes,
             description=description,
@@ -343,6 +288,7 @@ class NamespaceAssets(Queryable):
             discovered_asset_refs=discovered_asset_refs,
             display_name=display_name,
             documentation_uri=documentation_uri,
+            external_asset_id=external_asset_id,
             hardware_revision=hardware_revision,
             manufacturer=manufacturer,
             manufacturer_uri=manufacturer_uri,
@@ -365,21 +311,110 @@ class NamespaceAssets(Queryable):
             return wait_for_terminal_state(poller, **kwargs)
 
 
-def process_dataset_configurations(
-    original_configuration: Optional[str] = None,
+def _process_configs(
+    asset_type: str,
+    **kwargs
+) -> dict:
+    """Main function to process all of the config + destination args based on asset type.
+
+    Destination and custom configuration arguments will be treated as an overwrite rather than update.
+    For destinations, currently only one destination is supported but there may be more than one in the future.
+    """
+    # TODO: add in functionality so we can reuse this for individual datasets, events, etc
+    result = {}
+    if asset_type == DeviceEndpointType.OPCUA.value.lower():
+        # allowed: datasets, events, mgmt groups, destinations must be mqtt
+        # not allowed: streams
+        # still waiting on opcua mgmt group schemas
+        result = {
+            "defaultDatasetsConfiguration": _process_opcua_dataset_configurations(
+                **kwargs
+            ),
+            "defaultEventsConfiguration": _process_opcua_event_configurations(
+                **kwargs
+            ),
+            "defaultDatasetsDestinations": _build_destination(
+                destination_args=kwargs.get("default_datasets_destinations", []),
+                allowed_types=["Mqtt"]
+            ),
+            "defaultEventsDestinations": _build_destination(
+                destination_args=kwargs.get("default_events_destinations", []),
+                allowed_types=["Mqtt"]
+            ),
+        }
+    elif asset_type == DeviceEndpointType.ONVIF.value.lower():
+        # allowed: events, mgmt groups, destinations must be mqtt
+        # not allowed: datasets, streams
+        # still waiting on onvif schemas
+        result = {
+            "defaultEventsConfiguration": process_additional_configuration(
+                additional_configuration=kwargs.get("default_events_custom_configuration"),
+                config_type="event"
+            ),
+            "defaultEventsDestinations": _build_destination(
+                destination_args=kwargs.get("default_events_destinations", []),
+                allowed_types=["Mqtt"]
+            )
+        }
+    elif asset_type == DeviceEndpointType.MEDIA.value.lower():
+        # allowed: streams, destinations can be mqtt or storage
+        # not allowed: datasets, events, mgmt groups
+        result = {
+            "defaultStreamsConfiguration": process_additional_configuration(
+                additional_configuration=kwargs.get("default_streams_custom_configuration"),
+                config_type="stream"
+            ),
+            "defaultStreamsDestinations": _build_destination(
+                destination_args=kwargs.get("default_streams_destinations", []),
+                allowed_types=["Storage", "Mqtt"]
+            )
+        }
+    else:
+        # Custom - treat everything as an overwrite
+        result = {
+            "defaultDatasetsConfiguration": process_additional_configuration(
+                additional_configuration=kwargs.get("default_datasets_custom_configuration"),
+                config_type="dataset"
+            ),
+            "defaultEventsConfiguration": process_additional_configuration(
+                additional_configuration=kwargs.get("default_events_custom_configuration"),
+                config_type="event"
+            ),
+            "defaultManagementGroupsConfiguration": process_additional_configuration(
+                additional_configuration=kwargs.get("default_mgmt_custom_configuration"),
+                config_type="management group"
+            ),
+            "defaultStreamsConfiguration": process_additional_configuration(
+                additional_configuration=kwargs.get("default_streams_custom_configuration"),
+                config_type="stream"
+            ),
+            "defaultDatasetsDestinations": _build_destination(
+                destination_args=kwargs.get("default_datasets_destinations", []),
+            ),
+            "defaultEventsDestinations": _build_destination(
+                destination_args=kwargs.get("default_events_destinations", []),
+            ),
+            "defaultStreamsDestinations": _build_destination(
+                destination_args=kwargs.get("default_streams_destinations", []),
+            )
+        }
+
+    # pop empty values:
+    result = {k: v for k, v in result.items() if v}
+    return result
+
+
+def _process_opcua_dataset_configurations(
+    original_dataset_configuration: Optional[str] = None,
     publishing_interval: Optional[int] = None,
     sampling_interval: Optional[int] = None,
     queue_size: Optional[int] = None,
     key_frame_count: Optional[int] = None,
     start_instance: Optional[str] = None,
-    custom_configuration: Optional[str] = None,
+    **_
 ) -> str:
-    # custom configuration takes precidence over other parameters
-    if custom_configuration:
-        # TODO: change process add config to return more generic messages
-        return _process_additional_configuration(custom_configuration)
-
-    result = json.loads(original_configuration) if original_configuration else {}
+    from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA
+    result = json.loads(original_dataset_configuration) if original_dataset_configuration else {}
     if publishing_interval is not None:
         result["publishingInterval"] = publishing_interval
     if sampling_interval is not None:
@@ -391,24 +426,25 @@ def process_dataset_configurations(
     if start_instance is not None:
         result["startInstance"] = start_instance
 
-    # TODO: spec check (min/max)
+    ensure_schema_structure(
+        schema=NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA,
+        input_data=result
+    )
     return json.dumps(result)
 
 
-def process_event_configurations(
-    original_configuration: Optional[str] = None,
+def _process_opcua_event_configurations(
+    original_event_configuration: Optional[str] = None,
     publishing_interval: Optional[int] = None,
     queue_size: Optional[int] = None,
     start_instance: Optional[str] = None,
     filter_type: Optional[str] = None,
-    filter_clauses: Optional[List[str]] = None,  # path (req), type, field
-    custom_configuration: Optional[str] = None,
+    filter_clauses: Optional[List[List[str]]] = None,  # path (req), type, field
+    **_
 ) -> str:
-    # custom configuration takes precidence over other parameters
-    if custom_configuration:
-        return _process_additional_configuration(custom_configuration)
+    from .specs import NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA
 
-    result = json.loads(original_configuration) if original_configuration else {}
+    result = json.loads(original_event_configuration) if original_event_configuration else {}
     if publishing_interval is not None:
         result["publishingInterval"] = publishing_interval
     if queue_size is not None:
@@ -436,36 +472,39 @@ def process_event_configurations(
                 formatted_clause["fieldId"] = clause.get("field")
             result["eventFilter"]["selectClauses"].append(formatted_clause)
 
-    # TODO: spec check (min/max)
+    ensure_schema_structure(
+        schema=NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA,
+        input_data=result
+    )
     return json.dumps(result)
 
 
-def build_destination(
+def _build_destination(
     destination_args: List[str],
     allowed_types: Optional[List[str]] = None
 ) -> List[dict]:
     """
     Builds a destination dictionary for use in assets. The result will be one of the following formats:
 
-    {
+    [{
         "target": "BrokerStateStore",
         "configuration": {
             "key": "defaultValue"
         }
-    }
+    }]
 
     or
 
-    {
+    [{
         "target": "Storage",
         "configuration": {
             "path": "/tmp"
         }
-    }
+    }]
 
     or
 
-    {
+    [{
         "target": "Mqtt",
         "configuration": {
             "topic": "/contoso/test",
@@ -473,7 +512,9 @@ def build_destination(
             "qos": "Qos0",
             "ttl": 3600
         }
-    }
+    }]
+
+    or [] if no arguments are provided
     """
     destination = {}
     destination_args = parse_kvp_nargs(destination_args)
@@ -492,7 +533,9 @@ def build_destination(
                 "path": destination_args.pop("path")
             }
         }
-    else:
+    elif any(
+        key in destination_args for key in ["topic", "retain", "qos", "ttl"]
+    ):
         if not all(
             key in destination_args for key in ["topic", "retain", "qos", "ttl"]
         ):
@@ -508,6 +551,8 @@ def build_destination(
                 "ttl": int(destination_args.pop("ttl"))
             }
         }
+    else:
+        return []
     if allowed_types and destination["target"] not in allowed_types:
         raise InvalidArgumentValueError(
             f"Destination type '{destination['target']}' is not allowed. "
@@ -524,31 +569,10 @@ def build_destination(
     return [destination]
 
 
-def _update_asset_props(  # noqa: C901
+def _update_asset_props(
     properties: dict,
     asset_type_refs: Optional[List[str]] = None,
     attributes: Optional[List[str]] = None,
-    # default dataset configurations
-    default_dataset_publishing_interval: Optional[int] = None,
-    default_dataset_sampling_interval: Optional[int] = None,
-    default_dataset_queue_size: Optional[int] = None,
-    default_dataset_key_frame_count: Optional[int] = None,
-    default_dataset_start_instance: Optional[str] = None,
-    default_datasets_custom_configuration: Optional[str] = None,
-    default_datasets_destinations: Optional[str] = None,
-    # default events configurations
-    default_events_publishing_interval: Optional[int] = None,
-    default_events_queue_size: Optional[int] = None,
-    default_events_start_instance: Optional[str] = None,
-    default_events_filter_type: Optional[str] = None,
-    default_events_filter_clauses: Optional[List[str]] = None,  # path (req), type, field
-    default_events_custom_configuration: Optional[str] = None,
-    default_events_destinations: Optional[str] = None,
-    # default management groups configurations
-    default_mgmtg_custom_configuration: Optional[str] = None,
-    # default streams configurations
-    default_streams_custom_configuration: Optional[str] = None,
-    default_streams_destinations: Optional[str] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
     discovered_asset_refs: Optional[List[str]] = None,
@@ -567,20 +591,6 @@ def _update_asset_props(  # noqa: C901
         properties["assetTypeRefs"] = asset_type_refs
     if attributes:
         properties["attributes"] = parse_kvp_nargs(attributes)
-    if default_datasets_destinations:
-        properties["defaultDatasetsDestinations"] = build_destination(default_datasets_destinations)
-    if default_events_destinations:
-        properties["defaultEventsDestinations"] = build_destination(default_events_destinations)
-    if default_mgmtg_custom_configuration:
-        properties["defaultManagementGroupsConfiguration"] = _process_additional_configuration(
-            default_mgmtg_custom_configuration
-        )
-    if default_streams_custom_configuration:
-        properties["defaultStreamsConfiguration"] = _process_additional_configuration(
-            default_streams_custom_configuration
-        )
-    if default_streams_destinations:
-        properties["defaultStreamsDestinations"] = build_destination(default_streams_destinations)
     if description:
         properties["description"] = description
     if disabled is not None:
@@ -608,36 +618,3 @@ def _update_asset_props(  # noqa: C901
     if software_revision:
         properties["softwareRevision"] = software_revision
 
-    if any([
-        default_dataset_publishing_interval,
-        default_dataset_sampling_interval,
-        default_dataset_queue_size,
-        default_dataset_key_frame_count,
-        default_dataset_start_instance,
-        default_datasets_custom_configuration
-    ]):
-        properties["defaultDatasetsConfiguration"] = process_dataset_configurations(
-            custom_configuration=default_datasets_custom_configuration,
-            publishing_interval=default_dataset_publishing_interval,
-            sampling_interval=default_dataset_sampling_interval,
-            queue_size=default_dataset_queue_size,
-            key_frame_count=default_dataset_key_frame_count,
-            start_instance=default_dataset_start_instance
-        )
-
-    if any([
-        default_events_publishing_interval,
-        default_events_queue_size,
-        default_events_start_instance,
-        default_events_filter_type,
-        default_events_filter_clauses,
-        default_events_custom_configuration
-    ]):
-        properties["defaultEventsConfiguration"] = process_event_configurations(
-            custom_configuration=default_events_custom_configuration,
-            publishing_interval=default_events_publishing_interval,
-            queue_size=default_events_queue_size,
-            start_instance=default_events_start_instance,
-            filter_type=default_events_filter_type,
-            filter_clauses=default_events_filter_clauses
-        )

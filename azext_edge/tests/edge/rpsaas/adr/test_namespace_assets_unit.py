@@ -4,23 +4,35 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from copy import deepcopy
 from typing import Optional
 import json
 import pytest
 import responses
 
 from azext_edge.edge.commands_namespaces import (
+    create_namespace_custom_asset,
+    create_namespace_media_asset,
+    create_namespace_onvif_asset,
+    create_namespace_opcua_asset,
     show_namespace_asset,
     delete_namespace_asset,
-    update_namespace_asset,
+    update_namespace_custom_asset,
+    update_namespace_media_asset,
+    update_namespace_onvif_asset,
+    update_namespace_opcua_asset,
+    query_namespace_assets
 )
+from azext_edge.edge.providers.rpsaas.adr.namespace_assets import _process_configs
+from azext_edge.edge.util.common import parse_kvp_nargs
 
+from .test_namespace_devices_unit import get_namespace_device_record, get_namespace_device_mgmt_uri
 from .conftest import get_namespace_mgmt_uri
 from ....generators import BASE_URL, generate_random_string
 
-
+# TODO: consolidate all these ADR refresh apis
 NAMESPACE_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces/assets"
-RESOURCE_API_VERSION = "2024-03-01"
+ADR_REFRESH_API_VERSION = "2025-07-01-preview"
 
 
 def get_namespace_asset_mgmt_uri(
@@ -33,7 +45,7 @@ def get_namespace_asset_mgmt_uri(
         namespace_name=namespace_name, namespace_resource_group=resource_group_name
     )
     base_uri += "/assets" + (f"/{asset_name}" if asset_name else "")
-    return f"{base_uri}?api-version={RESOURCE_API_VERSION}"
+    return f"{base_uri}?api-version={ADR_REFRESH_API_VERSION}"
 
 
 def get_namespace_asset_record(
@@ -60,6 +72,161 @@ def get_namespace_asset_record(
             "provisioningState": "Succeeded"
         }
     }
+
+
+@pytest.mark.parametrize("reqs", [
+    {},
+    {
+        "asset_type_refs": ["testTypeRef1", "testTypeRef2"],
+        "attributes": ["key1=value1", "key2=value2"],
+        "description": "Test description",
+        "disabled": True,
+        "display_name": "Test Display Name",
+        "documentation_uri": "http://test-docs.com",
+        "external_asset_id": "external-id-123",
+        "hardware_revision": "HW-Rev-1",
+        "manufacturer": "Test Manufacturer",
+        "manufacturer_uri": "http://manufacturer.com",
+        "model": "TestModel",
+        "product_code": "PROD-123",
+        "serial_number": "SN12345",
+        "software_revision": "SW-Rev-1",
+        "tags": {"tag1": "value1", "tag2": "value2"},
+    },
+    {
+        "disabled": False,
+        "asset_type_refs": ["type1", "type2"],
+    }
+])
+@pytest.mark.parametrize("asset_type, unique_reqs", [
+    ["custom", {}],
+    ["media", {}],
+    ["onvif", {}],
+    ["opcua", {}],
+    [
+        "custom", {
+            "default_datasets_custom_configuration": json.dumps({"testConfig": "value"}),
+            "default_datasets_destinations": json.dumps({"testDest": "value"}),
+            "default_events_custom_configuration": json.dumps({"eventsConfig": "value"}),
+            "default_events_destinations": json.dumps({"eventsDest": "value"}),
+            "default_mgmtg_custom_configuration": json.dumps({"mgmtgConfig": "value"}),
+            "default_streams_custom_configuration": json.dumps({"streamsConfig": "value"}),
+            "default_streams_destinations": json.dumps({"streamsDest": "value"})
+        }
+    ],
+    [
+        "opcua", {
+            "default_dataset_publishing_interval": 2000,
+            "default_dataset_sampling_interval": 1000,
+            "default_dataset_queue_size": 2,
+            "default_dataset_key_frame_count": 3,
+            "default_dataset_start_instance": "test-instance",
+            "default_datasets_destinations": json.dumps({"testDest": "value"}),
+            "default_events_publishing_interval": 1500,
+            "default_events_queue_size": 4,
+            "default_events_start_instance": "event-instance",
+            "default_events_filter_type": "test-filter-type",
+            "default_events_filter_clauses": [["path=test", "type=test", "field=test"]],
+            "default_events_destinations": json.dumps({"eventsDest": "value"})
+        }
+    ]
+])
+def test_create_namespace_asset(
+    mocked_cmd, mocked_responses: responses, reqs: dict, asset_type: str, unique_reqs: dict
+):
+    """
+    Test the create_namespace_asset function for different asset types.
+    Only tests success cases with various parameter combinations.
+    """
+    # Setup variables
+    asset_name = generate_random_string()
+    namespace_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    device_name = generate_random_string()
+    device_endpoint_name = generate_random_string()
+
+    # Merge shared and unique requirements
+    all_reqs = {**reqs, **unique_reqs}
+
+    # Create mock device response for the GET call
+    mock_device_record = get_namespace_device_record(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+    mock_device_record["properties"]["endpoints"]["inbound"] = {
+        device_endpoint_name: {"endpointType": f"Microsoft.{asset_type}"}
+    }
+
+    # Add mock device response
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_device_mgmt_uri(
+            device_name=device_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=mock_device_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Create mock asset record
+    mock_asset_record = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+
+    # Add mock asset creation response
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=mock_asset_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    type_to_command = {
+        "custom": create_namespace_custom_asset,
+        "media": create_namespace_media_asset,
+        "onvif": create_namespace_onvif_asset,
+        "opcua": create_namespace_opcua_asset
+    }
+    result = type_to_command[asset_type](
+        cmd=mocked_cmd,
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        device_name=device_name,
+        device_endpoint_name=device_endpoint_name,
+        wait_sec=0,
+        **all_reqs
+    )
+
+    # Verify result matches mock response
+    assert result == mock_asset_record
+
+    # Ensure we've made the expected API calls
+    assert len(mocked_responses.calls) == 2  # GET for device + PUT for asset
+
+    # Verify request payload in the second call (PUT)
+    put_request = mocked_responses.calls[1].request
+    request_body = json.loads(put_request.body)
+
+    # Verify required properties
+    assert request_body["properties"]["deviceRef"]["deviceName"] == device_name
+    assert request_body["properties"]["deviceRef"]["endpointName"] == device_endpoint_name
+
+    # Use the helper function to verify properties in the request
+    all_reqs["asset_type"] = f"Microsoft.{asset_type}"
+    assert request_body.get("tags") == all_reqs.get("tags")
+
+    assert_asset_properties(request_body["properties"], all_reqs)
 
 
 @pytest.mark.parametrize("response_status", [202, 404])
@@ -101,7 +268,7 @@ def test_delete_namespace_asset(mocked_cmd, mocked_responses: responses, respons
         return
 
     # Test delete_namespace_asset for success case
-    result = delete_namespace_asset(
+    delete_namespace_asset(
         cmd=mocked_cmd,
         asset_name=asset_name,
         namespace_name=namespace_name,
@@ -110,7 +277,6 @@ def test_delete_namespace_asset(mocked_cmd, mocked_responses: responses, respons
     )
 
     # Verify result matches mock response
-    assert result == mock_response
     assert len(mocked_responses.calls) == 1
 
 
@@ -139,7 +305,7 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
         ),
-        json=mock_asset_record if response_status == 200 else {"error": {"code": "NotFound", "message": "Asset not found"}},
+        json=mock_asset_record if response_status == 200 else {"error": "NotFound"},
         status=response_status,
         content_type="application/json",
     )
@@ -166,72 +332,141 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
     assert len(mocked_responses.calls) == 1
 
 
-@pytest.mark.parametrize("response_status", [200, 404])
-@pytest.mark.parametrize("req", [
-    # Test with minimal parameters
+@pytest.mark.parametrize("reqs", [
     {},
-    # Test with several properties
     {
-        "display_name": "Updated Asset Name",
+        "asset_type_refs": ["testTypeRef1", "testTypeRef2"],
+        "attributes": ["key1=value1", "key2=value2"],
         "description": "Updated description",
-        "documentation_uri": "https://example.com/docs",
-        "tags": {"tag1": "value1", "tag2": "value2"},
-    },
-    # Test with different set of properties
-    {
         "disabled": True,
-        "hardware_revision": "2.0",
-        "manufacturer": "Test Manufacturer",
+        "display_name": "Updated Display Name",
+        "documentation_uri": "http://updated-docs.com",
+        "external_asset_id": "updated-external-id-123",
+        "hardware_revision": "Updated-HW-Rev-1",
+        "manufacturer": "Updated Manufacturer",
+        "manufacturer_uri": "http://updated-manufacturer.com",
+        "model": "UpdatedTestModel",
+        "product_code": "UPDATED-PROD-123",
+        "serial_number": "UPDATED-SN12345",
+        "software_revision": "Updated-SW-Rev-1",
+        "tags": {"updated_tag1": "value1", "updated_tag2": "value2"},
     },
+    {
+        "disabled": False,
+        "asset_type_refs": ["updated_type1", "updated_type2"],
+    }
+])
+@pytest.mark.parametrize("asset_type, unique_reqs", [
+    ["custom", {}],
+    ["media", {}],
+    ["onvif", {}],
+    ["opcua", {}],
+    [
+        "custom", {
+            "default_datasets_custom_configuration": json.dumps({"updatedConfig": "value"}),
+            "default_datasets_destinations": json.dumps({"updatedDest": "value"}),
+            "default_events_custom_configuration": json.dumps({"updatedEventsConfig": "value"}),
+            "default_events_destinations": json.dumps({"updatedEventsDest": "value"}),
+            "default_mgmtg_custom_configuration": json.dumps({"updatedMgmtgConfig": "value"}),
+            "default_streams_custom_configuration": json.dumps({"updatedStreamsConfig": "value"}),
+            "default_streams_destinations": json.dumps({"updatedStreamsDest": "value"})
+        }
+    ],
+    [
+        "opcua", {
+            "default_dataset_publishing_interval": 3000,
+            "default_dataset_sampling_interval": 1500,
+            "default_dataset_queue_size": 3,
+            "default_dataset_key_frame_count": 4,
+            "default_dataset_start_instance": "updated-test-instance",
+            "default_datasets_destinations": json.dumps({"updatedTestDest": "value"}),
+            "default_events_publishing_interval": 2500,
+            "default_events_queue_size": 5,
+            "default_events_start_instance": "updated-event-instance",
+            "default_events_filter_type": "updated-test-filter-type",
+            "default_events_filter_clauses": [["path=updated", "type=updated", "field=updated"]],
+            "default_events_destinations": json.dumps({"updatedEventsDest": "value"})
+        }
+    ]
+])
+@pytest.mark.parametrize("original_properties", [
+    {},
+    {
+        "asset_type_refs": ["original_type1", "original_type2"],
+        "attributes": {"original_key": "original_value"},
+        "description": "Original description",
+        "enabled": True,
+        "display_name": "Original Display Name",
+        "documentation_uri": "http://original-docs.com",
+        "external_asset_id": "original-external-id",
+        "hardware_revision": "Original-HW-Rev",
+        "manufacturer": "Original Manufacturer",
+        "manufacturer_uri": "http://original-manufacturer.com",
+        "model": "OriginalModel",
+        "product_code": "ORIG-PROD",
+        "serial_number": "ORIG-SN",
+        "software_revision": "Original-SW-Rev",
+        "default_datasets_configuration": json.dumps({"originalConfig": "value"}),
+        "default_datasets_destinations": [{"target": "Storage", "configuration": {"path": "original/path"}}],
+        "default_events_configuration": json.dumps({"originalEventsConfig": "value"}),
+        "default_events_destinations": [{"target": "BrokerStateStore", "configuration": {"key": "original/key"}}],
+        "default_management_groups_configuration": json.dumps({"originalMgmtgConfig": "value"}),
+        "default_streams_configuration": json.dumps({"originalStreamsConfig": "value"}),
+        "default_streams_destinations": [
+            {
+                "target": "Mqtt", "configuration": {
+                    "topic": "/contoso/test",
+                    "retain": "Never",
+                    "qos": "Qos0",
+                    "ttl": 3600
+                }
+            }
+        ]
+    }
 ])
 def test_update_namespace_asset(
-    mocked_cmd,
-    mocked_responses: responses,
-    req: dict,
-    response_status: int
+    mocked_cmd, mocked_responses: responses, reqs: dict, asset_type: str, unique_reqs: dict, original_properties: dict
 ):
     """
-    Test the update_namespace_asset function.
+    Test the update_namespace_asset function for different asset types.
+    Only tests success cases with various parameter combinations.
+    Parameterized by shared parameters (reqs), asset-type specific parameters (unique_reqs),
+    and original asset state (empty or filled with properties).
     """
     # Setup variables
     asset_name = generate_random_string()
     namespace_name = generate_random_string()
     resource_group_name = generate_random_string()
 
-    # Create mock original asset record
-    mock_original_asset = get_namespace_asset_record(
+    # Merge shared and unique requirements
+    all_reqs = {**reqs, **unique_reqs}
+
+    # Create the original asset properties based on the original_asset_state
+    original_asset = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name
     )
+    original_asset["properties"].update(original_properties)
 
-    # Create updated record for successful response
-    mock_updated_asset = mock_original_asset.copy()
+    # Add mock GET response for the show operation that happens before update
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=original_asset,
+        status=200,
+        content_type="application/json",
+    )
 
-    # Update properties based on request
-    if "display_name" in req:
-        mock_updated_asset["properties"]["displayName"] = req["display_name"]
+    # Create mock updated asset record and make sure it is different from original_asset
+    updated_asset = deepcopy(original_asset)
+    updated_asset["properties"]["description"] = "new updated description"
 
-    if "description" in req:
-        mock_updated_asset["properties"]["description"] = req["description"]
-
-    if "documentation_uri" in req:
-        mock_updated_asset["properties"]["documentationUri"] = req["documentation_uri"]
-
-    if "disabled" in req:
-        mock_updated_asset["properties"]["disabled"] = req["disabled"]
-
-    if "hardware_revision" in req:
-        mock_updated_asset["properties"]["hardwareRevision"] = req["hardware_revision"]
-
-    if "manufacturer" in req:
-        mock_updated_asset["properties"]["manufacturer"] = req["manufacturer"]
-
-    if "tags" in req:
-        mock_updated_asset["tags"] = req["tags"]
-
-    # Add mock response
-    error_response = {"error": {"code": "NotFound", "message": "Asset not found"}}
+    # Add mock PATCH response
     mocked_responses.add(
         method=responses.PATCH,
         url=get_namespace_asset_mgmt_uri(
@@ -239,69 +474,138 @@ def test_update_namespace_asset(
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
         ),
-        json=mock_updated_asset if response_status == 200 else error_response,
-        status=response_status,
+        json=updated_asset,
+        status=200,
         content_type="application/json",
     )
 
-    # Execute test based on status code
-    if response_status != 200:
-        with pytest.raises(Exception):
-            update_namespace_asset(
-                cmd=mocked_cmd,
-                asset_name=asset_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
-                wait_sec=0,
-                **req
-            )
-        return
+    # Map asset types to their update commands
+    type_to_command = {
+        "custom": update_namespace_custom_asset,
+        "media": update_namespace_media_asset,
+        "onvif": update_namespace_onvif_asset,
+        "opcua": update_namespace_opcua_asset
+    }
 
-    # Test update_namespace_asset for success case
-    result = update_namespace_asset(
+    # Execute the update command
+    result = type_to_command[asset_type](
         cmd=mocked_cmd,
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
         wait_sec=0,
-        **req
+        **all_reqs
     )
 
     # Verify result matches mock response
-    assert result == mock_updated_asset
+    assert result == updated_asset
 
-    # Verify API call was made correctly
-    assert len(mocked_responses.calls) == 1
-    assert mocked_responses.calls[0].request.method == "PATCH"
+    # Ensure we've made the expected API calls
+    assert len(mocked_responses.calls) == 2  # GET to fetch original asset + PATCH to update it
 
-    # Verify request body contains expected values
-    if req:
-        call_body = json.loads(mocked_responses.calls[0].request.body)
+    # Verify request payload in the second call (PATCH)
+    patch_request = mocked_responses.calls[1].request
+    request_body = json.loads(patch_request.body)
 
-        # Check properties updates
-        props_keys = ["display_name", "description", "documentation_uri",
-                      "disabled", "hardware_revision", "manufacturer"]
-        if any(key in req for key in props_keys):
-            assert "properties" in call_body
+    # Use the helper function to verify properties in the request
+    all_reqs["asset_type"] = f"Microsoft.{asset_type}"
+    assert request_body.get("tags") == all_reqs.get("tags")
 
-            if "display_name" in req:
-                assert call_body["properties"].get("displayName") == req["display_name"]
+    # Only check properties key if it exists in the request body
+    if "properties" in request_body:
+        assert_asset_properties(request_body["properties"], all_reqs)
 
-            if "description" in req:
-                assert call_body["properties"].get("description") == req["description"]
 
-            if "documentation_uri" in req:
-                assert call_body["properties"].get("documentationUri") == req["documentation_uri"]
+@pytest.mark.parametrize("reqs", [
+    {},
+    {
+        "asset_name": generate_random_string(),
+        "resource_group_name": generate_random_string(),
+        "device_name": generate_random_string(),
+        "device_endpoint_name": generate_random_string(),
+    },
+    {
+        "custom_query": "| where resouceGroupName == 'test-rg' | project name, type",
+    },
+    {
+        "resource_group_name": generate_random_string(),
+        "custom_query": "| where resouceGroupName == 'test-rg' | project name, type",
+    }
+])
+def test_query_namespace_assets(mocked_cmd, mocker, reqs):
+    """
+    Test the query_namespace_assets function in commands_namespaces.py.
+    Tests that:
+    1. The function calls NamespaceAssets.query with the right Kusto query
+    2. Custom queries override other parameter filters
+    """
+    return_value = [{"id": "asset1"}, {"id": "asset2"}]
+    # Mock the query method from the Queryable class
+    mock_query = mocker.patch(
+        "azext_edge.edge.util.queryable.Queryable.query",
+        return_value=return_value
+    )
 
-            if "disabled" in req:
-                assert call_body["properties"].get("disabled") == req["disabled"]
+    # Call the command under test
+    result = query_namespace_assets(mocked_cmd, **reqs)
 
-            if "hardware_revision" in req:
-                assert call_body["properties"].get("hardwareRevision") == req["hardware_revision"]
+    # Verify the function returns the mocked query result
+    assert result == return_value
 
-            if "manufacturer" in req:
-                assert call_body["properties"].get("manufacturer") == req["manufacturer"]
+    # Assert that the query method was called
+    assert mock_query.call_count == 1
 
-        # Check tags update
-        if "tags" in req:
-            assert call_body.get("tags") == req["tags"]
+    # Check the query string that was passed to the query method
+    query = mock_query.call_args[1]["query"]
+
+    # Assert that the query starts with the expected base
+    assert query.startswith("Resources | where type =~ 'Microsoft.DeviceRegistry/namespaces/assets'")
+
+    custom = "custom_query" in reqs
+    # If a custom query was specified, verify it overrides other parameters
+    if custom:
+        assert reqs["custom_query"] in query
+
+    # Check that each specified parameter is included in the query if the quesy is not custom
+    # otherwise, the specified parameter should not be there
+    if "asset_name" in reqs:
+        assert (f'| where name =~ "{reqs["asset_name"]}"' in query) is not custom
+    if "resource_group_name" in reqs:
+        assert (f'| where resourceGroup =~ "{reqs["resource_group_name"]}"' in query) is not custom
+    if "device_name" in reqs:
+        assert (f'| where properties.deviceRef.deviceName =~ "{reqs["device_name"]}"' in query) is not custom
+    if "device_endpoint_name" in reqs:
+        assert (f'| where properties.deviceRef.endpointName =~ "{reqs["device_endpoint_name"]}"' in query) is not custom
+
+    # Verify the standard projection part is included
+    assert ("| project id, customLocation, location, name, resourceGroup, provisioningState" in query) is not custom
+
+
+def assert_asset_properties(result_props: dict, expected: dict):
+    """
+    Helper function to assert asset properties in the result.
+    """
+    assert result_props.get("assetTypeRefs") == expected.get("asset_type_refs")
+    assert result_props.get("description") == expected.get("description")
+    assert result_props.get("discoveredAssetRefs") == expected.get("discovered_asset_refs")
+    assert result_props.get("displayName") == expected.get("display_name")
+    assert result_props.get("documentationUri") == expected.get("documentation_uri")
+    assert result_props.get("externalAssetId") == expected.get("external_asset_id")
+    assert result_props.get("hardwareRevision") == expected.get("hardware_revision")
+    assert result_props.get("manufacturer") == expected.get("manufacturer")
+    assert result_props.get("manufacturerUri") == expected.get("manufacturer_uri")
+    assert result_props.get("model") == expected.get("model")
+    assert result_props.get("productCode") == expected.get("product_code")
+    assert result_props.get("serialNumber") == expected.get("serial_number")
+    assert result_props.get("softwareRevision") == expected.get("software_revision")
+
+    if "attributes" in expected:
+        assert result_props["attributes"] == parse_kvp_nargs(expected["attributes"])
+    if "disabled" in expected:
+        assert result_props["enabled"] is not expected["disabled"]
+
+    # Destinations and configurations
+    expected_configs = _process_configs(**expected)
+    for key in expected_configs:
+        assert key in result_props
+        assert result_props[key] == expected_configs[key]

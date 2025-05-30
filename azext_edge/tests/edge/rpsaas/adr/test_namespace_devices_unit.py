@@ -42,11 +42,9 @@ def get_namespace_device_mgmt_uri(namespace_name: str, resource_group_name: str,
         f"{BASE_URL}/subscriptions/{get_zeroed_subscription()}/resourceGroups/{resource_group_name}"
         f"/providers/Microsoft.DeviceRegistry/namespaces/{namespace_name}/devices"
     )
-
     if device_name:
-        return f"{base_uri}/{device_name}?api-version={ADR_REFRESH_API_VERSION}"
-    else:
-        return f"{base_uri}?api-version={ADR_REFRESH_API_VERSION}"
+        base_uri += f"/{device_name}"
+    return f"{base_uri}?api-version={ADR_REFRESH_API_VERSION}"
 
 
 def get_namespace_device_record(device_name: str, namespace_name: str, resource_group_name: str) -> Dict:
