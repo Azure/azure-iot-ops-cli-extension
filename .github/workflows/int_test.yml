@@ -177,7 +177,7 @@ jobs:
       - name: "Build and install local IoT Ops extension from source"
         run: |
           pip install -r dev_requirements.txt
-          python -m setup bdist_wheel -d dist
+          python -m build
           wheel=$(find ./dist/*.whl)
           az extension add --source $wheel -y
       - name: "Create k3s cluster"
@@ -295,6 +295,19 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Create Storage and Schema Registry for init tests"
+        id: "init_reqs"
+        run: |
+          # Remove -'s and limit name length to 20 chars for storage accounts
+          storage_account_name=$(echo "initstore${{ env.CLUSTER_NAME }}" | tr -d '-' | cut -c 1-20)
+          storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n $storage_account_name --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny -o tsv --query id)
+          echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
+
+          # limit both names - 30 for registry, 20 for namespace
+          schema_registy_name=$(echo "init-registry${{ env.CLUSTER_NAME }}" | cut -c 1-30)
+          schema_namespace=$(echo "init-ns-${{ env.CLUSTER_NAME }}" | cut -c 1-20)
+          registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n $schema_registy_name --rn $schema_namespace --sa-resource-id $storage_id -o tsv --query id)
+          echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
       - name: "OIDC Token exchange service"
         run: |
           while true; do
@@ -314,6 +327,7 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
           azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
+          azext_edge_schema_registry_id: ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}
         run: |
           tox r -e python-init-int --skip-pkg-install -- --durations=0
       - name: "Tox Edge Integration Tests"
@@ -444,7 +458,17 @@ jobs:
         if: ${{ always() }}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
-      - name: "Delete connected cluster"
+      - name: "Delete connected cluster and resources"
         if: ${{ always() }}
         run: |
-          az resource delete  -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
+          az resource delete -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
+          if [ "${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}" ]; then
+            az resource delete -v --id ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }} --verbose
+          else
+            echo "No schema registry to delete"
+          fi
+          if [ "${{ steps.init_reqs.outputs.STORAGE_ID }}" ]; then
+            az resource delete -v --id ${{ steps.init_reqs.outputs.STORAGE_ID }} --verbose
+          else
+            echo "No storage account to delete"
+          fi
