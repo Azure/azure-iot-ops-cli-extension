@@ -736,16 +736,16 @@ class DataFlowEndpoints(Queryable):
             latency_ms,
         ]):
             settings["batching"] = settings.get("batching", {})
-            if latency:
+            if latency is not None:
                 settings["batching"]["latencySeconds"] = latency
-            if latency_ms:
+            if latency_ms is not None:
                 settings["batching"]["latencyMs"] = latency_ms
-            if message_count:
+            if message_count is not None:
                 settings["batching"]["maxMessages"] = message_count
-            if batching_disabled:
+            if batching_disabled is not None:
                 settings["batching"]["mode"] = OperationalModeType.DISABLED.value \
                     if batching_disabled else OperationalModeType.ENABLED.value
-            if max_bytes:
+            if max_bytes is not None:
                 settings["batching"]["maxBytes"] = max_bytes
 
     def _set_names_settings(
@@ -824,7 +824,7 @@ class DataFlowEndpoints(Queryable):
             settings["oneLakePathType"] = path_type
         if group_id:
             settings["consumerGroupId"] = group_id
-        if copy_broker_props_disabled:
+        if copy_broker_props_disabled is not None:
             settings["copyMqttProperties"] = OperationalModeType.DISABLED.value \
                 if copy_broker_props_disabled else OperationalModeType.ENABLED.value
         if compression:
@@ -846,15 +846,15 @@ class DataFlowEndpoints(Queryable):
             settings["clientIdPrefix"] = client_id_prefix
         if protocol:
             settings["protocol"] = protocol
-        if keep_alive:
+        if keep_alive is not None:
             settings["keepAliveSeconds"] = keep_alive
-        if retain:
+        if retain is not None:
             settings["retain"] = retain
-        if max_inflight_messages:
+        if max_inflight_messages is not None:
             settings["maxInflightMessages"] = max_inflight_messages
-        if qos:
+        if qos is not None:
             settings["qos"] = qos
-        if session_expiry:
+        if session_expiry is not None:
             settings["sessionExpirySeconds"] = session_expiry
 
         return

@@ -358,7 +358,7 @@ def test_dataflow_endpoint_create_eventgrid_with_error(
                 "scope": "https://eventgrid.azure.net/.default",
                 "max_inflight_messages": 200,
                 "protocol": "Websocket",
-                "qos": 2,
+                "qos": 0,
                 "retain": "Never",
                 "session_expiry": 7200,
             },
@@ -405,7 +405,7 @@ def test_dataflow_endpoint_create_eventgrid_with_error(
                     "keepAliveSeconds": 61,
                     "maxInflightMessages": 200,
                     "protocol": "Websocket",
-                    "qos": 2,
+                    "qos": 0,
                     "retain": "Never",
                     "sessionExpirySeconds": 7200,
                     "tls": {
