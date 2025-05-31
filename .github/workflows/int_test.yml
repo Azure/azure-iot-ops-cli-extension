@@ -119,6 +119,7 @@ jobs:
           python-version: "3.12"
       - name: "Run unit tests"
         run: |
+          python -m pip install tox
           tox r -vv --skip-pkg-install -- --durations=0
       - name: "Upload coverage report"
         if: ${{ always() }}
