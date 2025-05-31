@@ -138,6 +138,36 @@ def load_iotops_commands(self, _):
         cmd_group.command("list", "list_dataflow_endpoints")
 
     with self.command_group(
+        "iot ops dataflow endpoint create",
+        command_type=dataflow_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("adx", "create_dataflow_endpoint_adx")
+        cmd_group.command("adls", "create_dataflow_endpoint_adls")
+        cmd_group.command("fabric-onelake", "create_dataflow_endpoint_fabric_onelake")
+        cmd_group.command("eventhub", "create_dataflow_endpoint_eventhub")
+        cmd_group.command("fabric-realtime", "create_dataflow_endpoint_fabric_realtime")
+        cmd_group.command("custom-kafka", "create_dataflow_endpoint_custom_kafka")
+        cmd_group.command("local-storage", "create_dataflow_endpoint_localstorage")
+        cmd_group.command("local-mqtt", "create_dataflow_endpoint_aio")
+        cmd_group.command("eventgrid", "create_dataflow_endpoint_eventgrid")
+        cmd_group.command("custom-mqtt", "create_dataflow_endpoint_custom_mqtt")
+
+    with self.command_group(
+        "iot ops dataflow endpoint update",
+        command_type=dataflow_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("adx", "update_dataflow_endpoint_adx")
+        cmd_group.command("adls", "update_dataflow_endpoint_adls")
+        cmd_group.command("fabric-onelake", "update_dataflow_endpoint_fabric_onelake")
+        cmd_group.command("eventhub", "update_dataflow_endpoint_eventhub")
+        cmd_group.command("fabric-realtime", "update_dataflow_endpoint_fabric_realtime")
+        cmd_group.command("custom-kafka", "update_dataflow_endpoint_custom_kafka")
+        cmd_group.command("local-storage", "update_dataflow_endpoint_localstorage")
+        cmd_group.command("local-mqtt", "update_dataflow_endpoint_aio")
+        cmd_group.command("eventgrid", "update_dataflow_endpoint_eventgrid")
+        cmd_group.command("custom-mqtt", "update_dataflow_endpoint_custom_mqtt")
+
+    with self.command_group(
         "iot ops asset",
         command_type=asset_resource_ops,
     ) as cmd_group:

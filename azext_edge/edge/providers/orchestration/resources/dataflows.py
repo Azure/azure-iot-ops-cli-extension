@@ -9,19 +9,26 @@ from typing import TYPE_CHECKING, Iterable, Optional
 from knack.log import get_logger
 from rich.console import Console
 
-from azure.core.exceptions import ResourceNotFoundError
 from azure.cli.core.azclierror import InvalidArgumentValueError
-
-from azext_edge.edge.providers.orchestration.common import (
-    DATAFLOW_ENDPOINT_TYPE_SETTINGS,
-    DATAFLOW_OPERATION_TYPE_SETTINGS,
-    DataflowEndpointType,
-    DataflowOperationType,
-)
+from azure.core.exceptions import ResourceNotFoundError
 
 from ....util.common import should_continue_prompt
 from ....util.az_client import wait_for_terminal_state
 from ....util.queryable import Queryable
+from ..common import (
+    ADLS_ENDPOINT_USER_ASSIGNED_DEFAULT_SCOPE,
+    AUTHENTICATION_TYPE_REQUIRED_PARAMS,
+    AUTHENTICATION_TYPE_REQUIRED_PARAMS_TEXT_MAP,
+    DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP,
+    DATAFLOW_ENDPOINT_TYPE_SETTINGS,
+    DATAFLOW_OPERATION_TYPE_SETTINGS,
+    KAFKA_ENDPOINT_TYPE,
+    MQTT_ENDPOINT_TYPE,
+    DataflowEndpointType,
+    DataflowOperationType,
+    OperationalModeType,
+    DataflowEndpointAuthenticationType,
+)
 from .instances import Instances
 from .reskit import GetInstanceExtLoc, get_file_config
 
@@ -275,15 +282,15 @@ class DataFlows:
         # validate source endpoint type
         source_endpoint_type = source_endpoint_obj.get("properties", {}).get("endpointType", "")
         if source_endpoint_type not in [
-            DataflowEndpointType.KAFKA.value,
-            DataflowEndpointType.MQTT.value,
+            KAFKA_ENDPOINT_TYPE,
+            MQTT_ENDPOINT_TYPE,
         ]:
             raise InvalidArgumentValueError(
                 f"'{source_endpoint_type}' is not a valid type for source dataflow endpoint."
             )
 
         # if Kafka endpoint, validate consumer group id
-        if source_endpoint_type == DataflowEndpointType.KAFKA.value:
+        if source_endpoint_type == KAFKA_ENDPOINT_TYPE:
             group_id = source_endpoint_obj.get("properties", {}).get("kafkaSettings", {}).get("consumerGroupId", "")
             if not group_id:
                 raise InvalidArgumentValueError(
@@ -325,9 +332,9 @@ class DataFlows:
         destination_endpoint_host = desination_endpoint_obj.get("properties", {}).get(
             DATAFLOW_ENDPOINT_TYPE_SETTINGS[destination_endpoint_type], {}).get("host", "")
         is_source_local_mqtt = LOCAL_MQTT_HOST_PREFIX in source_endpoint_host and\
-            source_endpoint_type == DataflowEndpointType.MQTT.value
+            source_endpoint_type == MQTT_ENDPOINT_TYPE
         is_destination_local_mqtt = LOCAL_MQTT_HOST_PREFIX in destination_endpoint_host and\
-            destination_endpoint_type == DataflowEndpointType.MQTT.value
+            destination_endpoint_type == MQTT_ENDPOINT_TYPE
         if not is_source_local_mqtt and not is_destination_local_mqtt:
             raise InvalidArgumentValueError(
                 "Either source or destination endpoint must be an Azure IoT Operations Local "
@@ -384,6 +391,121 @@ class DataFlowEndpoints(Queryable):
         self.iotops_mgmt_client = self.instances.iotops_mgmt_client
         self.ops: "DataflowEndpointOperations" = self.iotops_mgmt_client.dataflow_endpoint
 
+    def create(
+        self,
+        name: str,
+        instance_name: str,
+        resource_group_name: str,
+        endpoint_type: DataflowEndpointType,
+        show_config: Optional[bool] = None,
+        **kwargs
+    ) -> dict:
+        extended_location = self.instances.get_ext_loc(
+            name=instance_name,
+            resource_group_name=resource_group_name,
+        )
+        settings = {}
+
+        # format the endpoint host
+        host = self._get_endpoint_host(
+            endpoint_type=endpoint_type,
+            **kwargs
+        )
+
+        self._process_authentication_type(
+            endpoint_type=endpoint_type,
+            settings=settings,
+            **kwargs
+        )
+
+        if host and kwargs.get("host"):
+            del kwargs["host"]
+        self._process_endpoint_properties(
+            endpoint_type=endpoint_type,
+            settings=settings,
+            host=host,
+            **kwargs
+        )
+
+        actual_endpoint_type = endpoint_type
+
+        if endpoint_type in [
+            DataflowEndpointType.FABRICREALTIME.value,
+            DataflowEndpointType.EVENTHUB.value,
+            DataflowEndpointType.CUSTOMKAFKA.value,
+        ]:
+            actual_endpoint_type = KAFKA_ENDPOINT_TYPE
+        elif endpoint_type in [
+            DataflowEndpointType.AIOLOCALMQTT.value,
+            DataflowEndpointType.EVENTGRID.value,
+            DataflowEndpointType.CUSTOMMQTT.value,
+        ]:
+            actual_endpoint_type = MQTT_ENDPOINT_TYPE
+
+        resource = {
+            "extendedLocation": extended_location,
+            "properties": {
+                "endpointType": actual_endpoint_type,
+                DATAFLOW_ENDPOINT_TYPE_SETTINGS[endpoint_type]: settings,
+            }
+        }
+
+        if show_config:
+            return resource["properties"]
+
+        with console.status("Working..."):
+            poller = self.ops.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_endpoint_name=name,
+                resource=resource,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
+
+    def update(
+        self,
+        name: str,
+        instance_name: str,
+        resource_group_name: str,
+        endpoint_type: DataflowEndpointType,
+        show_config: Optional[bool] = None,
+        **kwargs
+    ) -> dict:
+        extended_location = self.instances.get_ext_loc(
+            name=instance_name,
+            resource_group_name=resource_group_name,
+        )
+
+        # get the original endpoint
+        original_endpoint = self.ops.get(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            dataflow_endpoint_name=name,
+        )
+
+        self._update_properties(
+            properties=original_endpoint["properties"],
+            endpoint_type=endpoint_type,
+            **kwargs
+        )
+
+        resource = {
+            "extendedLocation": extended_location,
+            "properties": original_endpoint["properties"],
+        }
+
+        if show_config:
+            return resource["properties"]
+
+        with console.status("Working..."):
+            poller = self.ops.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                dataflow_endpoint_name=name,
+                resource=resource,
+            )
+            return wait_for_terminal_state(poller)
+
     def apply(
         self,
         name: str,
@@ -394,8 +516,10 @@ class DataFlowEndpoints(Queryable):
     ) -> dict:
         resource = {}
         endpoint_config = get_file_config(config_file)
-        self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group_name)
-        resource["extendedLocation"] = self.instance["extendedLocation"]
+        resource["extendedLocation"] = self.instances.get_ext_loc(
+            name=instance_name,
+            resource_group_name=resource_group_name,
+        )
         resource["properties"] = endpoint_config
 
         with console.status("Working..."):
@@ -414,10 +538,8 @@ class DataFlowEndpoints(Queryable):
         resource_group_name: str,
         confirm_yes: bool = False,
         **kwargs
-    ):
-        should_bail = not should_continue_prompt(
-            confirm_yes=confirm_yes,
-        )
+    ) -> dict:
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
         if should_bail:
             return
 
@@ -438,3 +560,353 @@ class DataFlowEndpoints(Queryable):
 
     def list(self, instance_name: str, resource_group_name: str) -> Iterable[dict]:
         return self.ops.list_by_resource_group(resource_group_name=resource_group_name, instance_name=instance_name)
+
+    def _get_endpoint_host(
+        self,
+        endpoint_type: DataflowEndpointType,
+        host: Optional[str] = None,
+        storage_account_name: Optional[str] = None,
+        eventhub_namespace: Optional[str] = None,
+        hostname: Optional[str] = None,
+        port: Optional[str] = None,
+        **_
+    ) -> str:
+        processed_host = ""
+        if endpoint_type in [
+            DataflowEndpointType.DATAEXPLORER.value,
+            DataflowEndpointType.FABRICREALTIME.value,
+        ]:
+            processed_host = host
+        elif endpoint_type == DataflowEndpointType.DATALAKESTORAGE.value:
+            processed_host = f"https://{storage_account_name}.blob.core.windows.net"
+        elif endpoint_type == DataflowEndpointType.FABRICONELAKE.value:
+            processed_host = "https://onelake.dfs.fabric.microsoft.com"
+        elif endpoint_type == DataflowEndpointType.EVENTHUB.value:
+            processed_host = f"{eventhub_namespace}.servicebus.windows.net:9093"
+        elif endpoint_type in [
+            DataflowEndpointType.CUSTOMKAFKA.value,
+            DataflowEndpointType.AIOLOCALMQTT.value,
+            DataflowEndpointType.EVENTGRID.value,
+            DataflowEndpointType.CUSTOMMQTT.value,
+        ]:
+            processed_host = f"{hostname}:{port}"
+
+        return processed_host
+
+    def _process_authentication_type(
+        self,
+        endpoint_type: DataflowEndpointType,
+        settings: dict,
+        authentication_type: Optional[str] = None,
+        **kwargs
+    ):
+        # TODO: reduce usage of kwargs
+        # No authentication method required for local storage
+        if endpoint_type == DataflowEndpointType.LOCALSTORAGE.value:
+            return
+
+        if authentication_type:
+            authentication_method = authentication_type
+        else:
+            # Identify authentication method using the provided kwargs
+            authentication_method = self._identify_authentication_method(
+                **kwargs
+            )
+
+        should_check_missing_params = False
+        original_auth_method = settings.get("authentication", {}).get("method")
+        if not original_auth_method:
+            should_check_missing_params = True
+        elif original_auth_method and original_auth_method != authentication_method:
+            should_check_missing_params = True
+            settings["authentication"] = {
+                "method": authentication_method,
+            }
+
+        # Check if authentication method is allowed for the given endpoint type
+        if authentication_method not in DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type]:
+            supported_auths = sorted(DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP[endpoint_type])
+
+            # Remove ANONYMOUS from the --auth-type avaliable options to be displayed in the error message
+            if DataflowEndpointAuthenticationType.ANONYMOUS.value in supported_auths:
+                supported_auths.remove(DataflowEndpointAuthenticationType.ANONYMOUS.value)
+            raise InvalidArgumentValueError(
+                f"Authentication method '{authentication_method}' is not allowed for endpoint type '{endpoint_type}'. "
+                f"Allowed methods are: {supported_auths}."
+            )
+
+        if should_check_missing_params:
+            # Check required properties for authentication method
+            required_params = AUTHENTICATION_TYPE_REQUIRED_PARAMS.get(authentication_method, [])
+            missing_params = sorted([param for param in required_params if param not in kwargs or not kwargs[param]])
+
+            if missing_params:
+                missing_params_texts = [
+                    AUTHENTICATION_TYPE_REQUIRED_PARAMS_TEXT_MAP[param] for param in missing_params
+                ]
+                raise InvalidArgumentValueError(
+                    "Missing required parameters for authentication method "
+                    f"'{authentication_method}': {', '.join(missing_params_texts)}."
+                )
+
+        settings["authentication"] = settings.get("authentication", {
+            "method": authentication_method,
+        })
+
+        if authentication_method == DataflowEndpointAuthenticationType.ANONYMOUS.value:
+            return
+
+        auth_settings = {}
+        for param_name, property_name in [
+            ("sat_audience", "audience"),
+            ("sami_audience", "audience"),
+            ("audience", "audience"),
+            ("client_id", "clientId"),
+            ("tenant_id", "tenantId"),
+            ("scope", "scope"),
+            ("at_secret_name", "secretRef"),
+            ("sasl_secret_name", "secretRef"),
+            ("x509_secret_name", "secretRef"),
+            ("secret_name", "secretRef"),
+            ("sasl_type", "saslType"),
+        ]:
+            if kwargs.get(param_name):
+                auth_settings[property_name] = kwargs[param_name]
+
+        # when endpoint type is ADLS, and user assigned identity is used,
+        # set scope to default value if not provided
+        if (endpoint_type == DataflowEndpointType.DATALAKESTORAGE.value) and \
+                authentication_method == DataflowEndpointAuthenticationType.USERASSIGNED.value and \
+                not kwargs.get("scope"):
+            auth_settings["scope"] = ADLS_ENDPOINT_USER_ASSIGNED_DEFAULT_SCOPE
+
+        # lower the first letter of the authentication method
+        auth_setting_name = authentication_method[0].lower() + authentication_method[1:] + "Settings"
+        if auth_setting_name not in settings["authentication"]:
+            settings["authentication"][auth_setting_name] = auth_settings
+        else:
+            settings["authentication"][auth_setting_name].update(auth_settings)
+
+        return
+
+    def _identify_authentication_method(
+        self,
+        no_auth: Optional[bool] = None,
+        client_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        scope: Optional[str] = None,
+        sat_audience: Optional[str] = None,
+        x509_secret_name: Optional[str] = None,
+        sasl_type: Optional[str] = None,
+        sasl_secret_name: Optional[str] = None,
+        at_secret_name: Optional[str] = None,
+        **_
+    ) -> str:
+        # Check for the presence of authentication-related parameters in kwargs
+        if no_auth:
+            return DataflowEndpointAuthenticationType.ANONYMOUS.value
+        elif client_id or tenant_id or scope:
+            return DataflowEndpointAuthenticationType.USERASSIGNED.value
+        elif sat_audience:
+            return DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value
+        elif x509_secret_name:
+            return DataflowEndpointAuthenticationType.X509.value
+        elif sasl_type or sasl_secret_name:
+            return DataflowEndpointAuthenticationType.SASL.value
+        elif at_secret_name:
+            return DataflowEndpointAuthenticationType.ACCESSTOKEN.value
+        else:
+            return DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value
+
+    def _set_batching_settings(
+        self,
+        settings: dict,
+        latency: Optional[int] = None,
+        message_count: Optional[int] = None,
+        batching_disabled: Optional[bool] = None,
+        max_bytes: Optional[int] = None,
+        latency_ms: Optional[int] = None,
+        **_
+    ):
+        if any([
+            latency,
+            message_count,
+            batching_disabled,
+            max_bytes,
+            latency_ms,
+        ]):
+            settings["batching"] = settings.get("batching", {})
+            if latency is not None:
+                settings["batching"]["latencySeconds"] = latency
+            if latency_ms is not None:
+                settings["batching"]["latencyMs"] = latency_ms
+            if message_count is not None:
+                settings["batching"]["maxMessages"] = message_count
+            if batching_disabled is not None:
+                settings["batching"]["mode"] = OperationalModeType.DISABLED.value \
+                    if batching_disabled else OperationalModeType.ENABLED.value
+            if max_bytes is not None:
+                settings["batching"]["maxBytes"] = max_bytes
+
+    def _set_names_settings(
+        self,
+        settings: dict,
+        lakehouse_name: Optional[str] = None,
+        workspace_name: Optional[str] = None,
+        **_
+    ):
+        if lakehouse_name or workspace_name:
+            settings["names"] = settings.get("names", {})
+            if lakehouse_name:
+                settings["names"]["lakehouseName"] = lakehouse_name
+            if workspace_name:
+                settings["names"]["workspaceName"] = workspace_name
+
+    def _set_tls_settings(
+        self,
+        settings: dict,
+        endpoint_type: DataflowEndpointType,
+        tls_disabled: Optional[bool] = None,
+        config_map_reference: Optional[str] = None,
+        **_
+    ):
+        if tls_disabled is not None or config_map_reference:
+            settings["tls"] = settings.get("tls", {})
+            if tls_disabled is not None:
+                settings["tls"]["mode"] = OperationalModeType.DISABLED.value \
+                    if tls_disabled else OperationalModeType.ENABLED.value
+            if config_map_reference:
+                settings["tls"]["trustedCaCertificateConfigMapRef"] = config_map_reference
+
+        # for eventhub and eventgrid, tls mode is always enabled
+        if endpoint_type in [
+            DataflowEndpointType.EVENTHUB.value,
+            DataflowEndpointType.EVENTGRID.value,
+        ]:
+            if settings.get("tls"):
+                settings["tls"]["mode"] = OperationalModeType.ENABLED.value
+            else:
+                settings["tls"] = {"mode": OperationalModeType.ENABLED.value}
+
+    def _process_endpoint_properties(
+        self,
+        endpoint_type: DataflowEndpointType,
+        settings: dict,
+        host: Optional[str] = None,
+        database_name: Optional[str] = None,
+        path_type: Optional[str] = None,
+        group_id: Optional[str] = None,
+        copy_broker_props_disabled: Optional[bool] = None,
+        compression: Optional[str] = None,
+        acks: Optional[str] = None,
+        partition_strategy: Optional[str] = None,
+        cloud_event_attribute: Optional[str] = None,
+        pvc_reference: Optional[str] = None,
+        client_id_prefix: Optional[str] = None,
+        protocol: Optional[str] = None,
+        keep_alive: Optional[int] = None,
+        retain: Optional[bool] = None,
+        max_inflight_messages: Optional[int] = None,
+        qos: Optional[int] = None,
+        session_expiry: Optional[int] = None,
+        **kwargs
+    ):
+        if host:
+            settings["host"] = host
+        if database_name:
+            settings["database"] = database_name
+        self._set_batching_settings(
+            settings=settings,
+            **kwargs
+        )
+        self._set_names_settings(settings=settings, **kwargs)
+        if path_type:
+            settings["oneLakePathType"] = path_type
+        if group_id:
+            settings["consumerGroupId"] = group_id
+        if copy_broker_props_disabled is not None:
+            settings["copyMqttProperties"] = OperationalModeType.DISABLED.value \
+                if copy_broker_props_disabled else OperationalModeType.ENABLED.value
+        if compression:
+            settings["compression"] = compression
+        if acks:
+            settings["kafkaAcks"] = acks
+        if partition_strategy:
+            settings["partitionStrategy"] = partition_strategy
+        self._set_tls_settings(
+            settings=settings,
+            endpoint_type=endpoint_type,
+            **kwargs
+        )
+        if cloud_event_attribute:
+            settings["cloudEventAttributes"] = cloud_event_attribute
+        if pvc_reference:
+            settings["persistentVolumeClaimRef"] = pvc_reference
+        if client_id_prefix:
+            settings["clientIdPrefix"] = client_id_prefix
+        if protocol:
+            settings["protocol"] = protocol
+        if keep_alive is not None:
+            settings["keepAliveSeconds"] = keep_alive
+        if retain is not None:
+            settings["retain"] = retain
+        if max_inflight_messages is not None:
+            settings["maxInflightMessages"] = max_inflight_messages
+        if qos is not None:
+            settings["qos"] = qos
+        if session_expiry is not None:
+            settings["sessionExpirySeconds"] = session_expiry
+
+        return
+
+    def _update_properties(
+        self,
+        properties: dict,
+        endpoint_type: DataflowEndpointType,
+        **kwargs
+    ):
+        settings = properties.get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[endpoint_type], {})
+        if any([
+            kwargs.get("host"),
+            kwargs.get("storage_account_name"),
+            kwargs.get("eventhub_namespace"),
+            kwargs.get("hostname"),
+            kwargs.get("port")
+        ]):
+            host = self._get_endpoint_host(
+                endpoint_type=endpoint_type,
+                **kwargs
+            )
+
+            if host and host is not settings["host"]:
+                settings["host"] = host
+
+        if any([
+            kwargs.get("authentication_type"),
+            kwargs.get("client_id"),
+            kwargs.get("tenant_id"),
+            kwargs.get("scope"),
+            kwargs.get("sami_audience"),
+            kwargs.get("sat_audience"),
+            kwargs.get("x509_secret_name"),
+            kwargs.get("sasl_type"),
+            kwargs.get("sasl_secret_name"),
+            kwargs.get("at_secret_name"),
+            kwargs.get("no_auth"),
+        ]):
+            self._process_authentication_type(
+                endpoint_type=endpoint_type,
+                settings=settings,
+                **kwargs
+            )
+
+        # Preventing host parameter from duplication
+        if settings.get("host") and "host" in kwargs:
+            del kwargs["host"]
+
+        self._process_endpoint_properties(
+            endpoint_type=endpoint_type,
+            settings=settings,
+            host=settings.get("host"),
+            **kwargs
+        )

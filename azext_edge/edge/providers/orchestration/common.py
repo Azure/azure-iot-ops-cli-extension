@@ -21,6 +21,7 @@ EXTENDED_LOCATION_ROLE_BINDING = "AzureArc-Microsoft.ExtendedLocation-RP-RoleBin
 ARC_CONFIG_MAP = "azure-clusterconfig"
 ARC_NAMESPACE = "azure-arc"
 
+AIO_MQTT_DEFAULT_CONFIG_MAP = "azure-iot-operations-aio-ca-trust-bundle"
 PROVISIONING_STATE_SUCCESS = "Succeeded"
 
 # Key Vault KPIs
@@ -32,6 +33,11 @@ CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
 AIO_INSECURE_LISTENER_NAME = "default-insecure"
 AIO_INSECURE_LISTENER_SERVICE_NAME = "aio-broker-insecure"
 AIO_INSECURE_LISTENER_SERVICE_PORT = 1883
+
+KAFKA_ENDPOINT_TYPE = "Kafka"
+MQTT_ENDPOINT_TYPE = "Mqtt"
+
+ADLS_ENDPOINT_USER_ASSIGNED_DEFAULT_SCOPE = "https://storage.azure.com/.default"
 
 TRUST_ISSUER_KIND_KEY = "issuerKind"
 TRUST_SETTING_KEYS = ["issuerName", TRUST_ISSUER_KIND_KEY, "configMapName", "configMapKey"]
@@ -160,9 +166,13 @@ class DataflowEndpointType(Enum):
     DATAEXPLORER = "DataExplorer"
     DATALAKESTORAGE = "DataLakeStorage"
     FABRICONELAKE = "FabricOneLake"
-    KAFKA = "Kafka"
     LOCALSTORAGE = "LocalStorage"
-    MQTT = "Mqtt"
+    AIOLOCALMQTT = "AIOLocalMqtt"
+    EVENTGRID = "EventGrid"
+    CUSTOMMQTT = "CustomMqtt"
+    EVENTHUB = "EventHub"
+    FABRICREALTIME = "FabricRealTime"
+    CUSTOMKAFKA = "CustomKafka"
 
 
 class DataflowEndpointAuthenticationType(Enum):
@@ -175,9 +185,50 @@ class DataflowEndpointAuthenticationType(Enum):
     X509 = "X509Certificate"
 
 
+class OperationalModeType(Enum):
+    ENABLED = "Enabled"
+    DISABLED = "Disabled"
+
+
 class DataflowEndpointFabricPathType(Enum):
     FILES = "Files"
     TABLES = "Tables"
+
+
+class DataflowEndpointKafkaAcksType(Enum):
+    ZERO = "Zero"
+    ONE = "One"
+    ALL = "All"
+
+
+class KafkaCloudEventAttributeType(Enum):
+    PROPAGATE = "Propagate"
+    CREATEORREMAP = "CreateOrRemap"
+
+
+class KafkaCompressionType(Enum):
+    NONE = "None"
+    GZIP = "Gzip"
+    LZ4 = "Lz4"
+    SNAPPY = "Snappy"
+
+
+class KafkaPartitionStrategyType(Enum):
+    DEFAULT = "Default"
+    STATIC = "Static"
+    TOPIC = "Topic"
+    PROPERTY = "Property"
+
+
+class AuthenticationSaslType(Enum):
+    PLAIN = "Plain"
+    SCRAMSHA256 = "ScramSha256"
+    SCRAMSHA512 = "ScramSha512"
+
+
+class MqttRetainType(Enum):
+    KEEP = "Keep"
+    NEVER = "Never"
 
 
 DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
@@ -194,46 +245,75 @@ DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
     },
-    DataflowEndpointType.KAFKA.value: {
-        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
-        DataflowEndpointAuthenticationType.USERASSIGNED.value,
-        DataflowEndpointAuthenticationType.SASL.value,
+    DataflowEndpointType.AIOLOCALMQTT.value: {
+        DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
         DataflowEndpointAuthenticationType.X509.value,
         DataflowEndpointAuthenticationType.ANONYMOUS.value,
     },
-    DataflowEndpointType.MQTT.value: {
+    DataflowEndpointType.EVENTGRID.value: {
+        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+        DataflowEndpointAuthenticationType.X509.value,
+    },
+    DataflowEndpointType.CUSTOMMQTT.value: {
         DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
         DataflowEndpointAuthenticationType.USERASSIGNED.value,
         DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
         DataflowEndpointAuthenticationType.X509.value,
         DataflowEndpointAuthenticationType.ANONYMOUS.value,
     },
-}
-
-DATAFLOW_ENDPOINT_TYPE_REQUIRED_PARAMS = {
-    DataflowEndpointType.DATAEXPLORER.value: {"database_name", "host"},
-    DataflowEndpointType.DATALAKESTORAGE.value: {"host"},
-    DataflowEndpointType.FABRICONELAKE.value: {"lakehouse_name", "workspace_name", "path_type", "host"},
-    DataflowEndpointType.KAFKA.value: {"host"},
-    DataflowEndpointType.LOCALSTORAGE.value: {"pvc_reference"},
-    DataflowEndpointType.MQTT.value: {"host"},
+    DataflowEndpointType.EVENTHUB.value: {
+        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+        DataflowEndpointAuthenticationType.SASL.value,
+    },
+    DataflowEndpointType.FABRICREALTIME.value: {
+        DataflowEndpointAuthenticationType.SASL.value,
+        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+    },
+    DataflowEndpointType.CUSTOMKAFKA.value: {
+        DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value,
+        DataflowEndpointAuthenticationType.USERASSIGNED.value,
+        DataflowEndpointAuthenticationType.SASL.value,
+        DataflowEndpointAuthenticationType.ANONYMOUS.value,
+    },
 }
 
 DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
     DataflowEndpointType.DATAEXPLORER.value: "dataExplorerSettings",
     DataflowEndpointType.DATALAKESTORAGE.value: "dataLakeStorageSettings",
     DataflowEndpointType.FABRICONELAKE.value: "fabricOneLakeSettings",
-    DataflowEndpointType.KAFKA.value: "kafkaSettings",
+    DataflowEndpointType.EVENTHUB.value: "kafkaSettings",
+    DataflowEndpointType.FABRICREALTIME.value: "kafkaSettings",
+    DataflowEndpointType.CUSTOMKAFKA.value: "kafkaSettings",
     DataflowEndpointType.LOCALSTORAGE.value: "localStorageSettings",
-    DataflowEndpointType.MQTT.value: "mqttSettings",
+    DataflowEndpointType.AIOLOCALMQTT.value: "mqttSettings",
+    DataflowEndpointType.EVENTGRID.value: "mqttSettings",
+    DataflowEndpointType.CUSTOMMQTT.value: "mqttSettings",
+    KAFKA_ENDPOINT_TYPE: "kafkaSettings",
+    MQTT_ENDPOINT_TYPE: "mqttSettings",
 }
 
 AUTHENTICATION_TYPE_REQUIRED_PARAMS = {
+    DataflowEndpointAuthenticationType.ACCESSTOKEN.value: {"at_secret_name"},
+    DataflowEndpointAuthenticationType.SASL.value: {"sasl_secret_name", "sasl_type"},
     DataflowEndpointAuthenticationType.SYSTEMASSIGNED.value: {},
-    DataflowEndpointAuthenticationType.USERASSIGNED.value: {"client_Id", "tenant_id"},
-    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value: {"audience"},
-    DataflowEndpointAuthenticationType.X509.value: {"secret_name"},
+    DataflowEndpointAuthenticationType.USERASSIGNED.value: {"client_id", "tenant_id"},
+    DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value: {"sat_audience"},
+    DataflowEndpointAuthenticationType.X509.value: {"x509_secret_name"},
     DataflowEndpointAuthenticationType.ANONYMOUS.value: {},
+}
+
+AUTHENTICATION_TYPE_REQUIRED_PARAMS_TEXT_MAP = {
+    "client_id": "--client-id",
+    "tenant_id": "--tenant-id",
+    "audience": "--audience",
+    "at_secret_name": "--secret-name",
+    "sasl_secret_name": "--secret-name",
+    "x509_secret_name": "--secret-name",
+    "sasl_type": "--sasl-type",
+    "sat_audience": "--audience",
 }
 
 DATAFLOW_OPERATION_TYPE_SETTINGS = {
