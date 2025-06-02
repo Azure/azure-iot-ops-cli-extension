@@ -781,6 +781,706 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow endpoint create"
+    ] = """
+        type: group
+        short-summary: Create or replace a dataflow endpoint resource.
+    """
+
+    helps[
+        "iot ops dataflow endpoint create adls"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for Azure Data Lake Storage Gen2.
+        long-summary: |
+          For more information on Azure Data Lake Storage Gen2 dataflow endpoint, see
+          https://aka.ms/adlsv2.
+          Note: When using user assigned managed identity authentication method,
+          scope will default to 'https://storage.azure.com/.default' if not
+          specified by `--scope`.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create adls
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --storage-account mystorageaccount
+        - name: Create or replace a dataflow endpoint resource using user assigned managed identity authentication method.
+          text: >
+            az iot ops dataflow endpoint create adls
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --storage-account mystorageaccount
+            --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
+            --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
+            --scope "https://storage.azure.com/.default"
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create adls
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --storage-account mystorageaccount
+            --latency 70
+            --message-count 100
+            --secret-name mysecret
+            --show-config
+    """
+
+    helps[
+        "iot ops dataflow endpoint create adx"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for Azure Data Explorer.
+        long-summary: For more information on Azure Data Explorer dataflow endpoint, see https://aka.ms/aio-adx.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create adx
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --database mydatabase
+            --host "https://cluster.region.kusto.windows.net"
+        - name: Create or replace a dataflow endpoint resource using user assigned managed identity authentication method.
+          text: >
+            az iot ops dataflow endpoint create adx
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --database mydatabase
+            --host "https://cluster.region.kusto.windows.net"
+            --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
+            --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create adx
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --database mydatabase
+            --host "https://cluster.region.kusto.windows.net"
+            --latency 70
+            --message-count 100
+            --audience myaudience
+            --show-config
+    """
+
+    helps[
+        "iot ops dataflow endpoint create custom-kafka"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for custom kafka broker.
+        long-summary: For more information on custom kafka dataflow endpoint, see https://aka.ms/aio-custom-kafka.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create custom-kafka
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname mykafkabroker
+            --port 9092
+        - name: Create or replace a dataflow endpoint resource using SASL authentication method.
+          text: >
+            az iot ops dataflow endpoint create custom-kafka
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname mykafkabroker
+            --port 9092
+            --sasl-type ScramSha256
+            --secret-name mysecret
+        - name: Create or replace a dataflow endpoint resource with no auth.
+          text: >
+            az iot ops dataflow endpoint create custom-kafka
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname mykafkabroker
+            --port 9092
+            --no-auth
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create custom-kafka
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname mykafkabroker
+            --port 9092
+            --disable-batching
+            --latency 70
+            --max-bytes 200000
+            --message-count 100
+            --audience myaudience
+            --config-map-ref myconfigmap
+            --disable-tls
+            --show-config
+    """
+
+    helps[
+        "iot ops dataflow endpoint create custom-mqtt"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for custom MQTT broker.
+        long-summary: For more information on custom MQTT dataflow endpoint, see https://aka.ms/aio-custom-mqtt.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create custom-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname mymqttbroker
+            --port 9092
+        - name: Create or replace a dataflow endpoint resource using Kubernetes Service Account Token authentication method.
+          text: >
+            az iot ops dataflow endpoint create custom-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname mymqttbroker
+            --port 9092
+            --sat-audience myaudience
+            --secret-name mysecret
+        - name: Create or replace a dataflow endpoint resource with no auth.
+          text: >
+            az iot ops dataflow endpoint create custom-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname mymqttbroker
+            --port 9092
+            --no-auth
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create custom-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname mymqttbroker
+            --port 9092
+            --client-id-prefix myclientprefix
+            --keep-alive 100
+            --max-inflight-msg 60
+            --protocol WebSockets
+            --qos 1
+            --retain Never
+            --session-expiry 100
+            --cloud-event-attribute CreateOrRemap
+            --secret-name mysecret
+            --disable-tls
+            --show-config
+    """
+
+    helps[
+        "iot ops dataflow endpoint create eventgrid"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for Azure Event Grid.
+        long-summary: For more information on Azure Event Grid dataflow endpoint, see https://aka.ms/aio-eventgrid.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create eventgrid
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname "namespace.region-1.ts.eventgrid.azure.net"
+            --port 9092
+        - name: Create or replace a dataflow endpoint resource using X509 authentication method.
+          text: >
+            az iot ops dataflow endpoint create eventgrid
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname "namespace.region-1.ts.eventgrid.azure.net"
+            --port 9092
+            --secret-name mysecret
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create eventgrid
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname "namespace.region-1.ts.eventgrid.azure.net"
+            --port 9092
+            --client-id-prefix myclientprefix
+            --keep-alive 100
+            --max-inflight-msg 60
+            --protocol WebSockets
+            --qos 1
+            --retain Never
+            --session-expiry 100
+            --cloud-event-attribute CreateOrRemap
+            --secret-name mysecret
+            --config-map-ref myconfigmap
+            --show-config
+    """
+
+    helps[
+        "iot ops dataflow endpoint create eventhub"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for kafka-enabled Azure Event Hubs namespace.
+        long-summary: For more information on Azure Event Hubs dataflow endpoint, see https://aka.ms/aio-eventhub.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create eventhub
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --eventhub-namespace myeventhubnamespace
+        - name: Create or replace a dataflow endpoint resource using user assigned managed identity authentication method.
+          text: >
+            az iot ops dataflow endpoint create eventhub
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --eventhub-namespace myeventhubnamespace
+            --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
+            --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
+            --scope "https://eventhubs.azure.net/.default"
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create eventhub
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --eventhub-namespace myeventhubnamespace
+            --acks One
+            --compression Gzip
+            --disable-broker-props-copy
+            --group-id mygroupid
+            --partition-strategy Static
+            --max-bytes 200000
+            --message-count 100
+            --latency 70
+            --cloud-event-attribute CreateOrRemap
+            --sasl-type ScramSha256
+            --secret-name mysecret
+            --config-map-ref myconfigmap
+            --show-config
+    """
+
+    helps[
+        "iot ops dataflow endpoint create fabric-onelake"
+    ] = """
+        type: command
+        short-summary: Create or replace a dataflow endpoint resource for Microsoft Fabric OneLake.
+        long-summary: For more information on Microsoft Fabric OneLake dataflow endpoint, see https://aka.ms/fabric-onelake.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create fabric-onelake
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --lakehouse mylakehouse
+            --workspace myworkspace
+            --path-type Files
+        - name: Create or replace a dataflow endpoint resource using user assigned managed identity authentication method.
+          text: >
+            az iot ops dataflow endpoint create fabric-onelake
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --lakehouse mylakehouse
+            --workspace myworkspace
+            --path-type Files
+            --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
+            --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create fabric-onelake
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --lakehouse mylakehouse
+            --workspace myworkspace
+            --path-type Files
+            --latency 70
+            --message-count 100
+            --audience myaudience
+            --show-config
+    """
+
+    helps[
+        "iot ops dataflow endpoint create fabric-realtime"
+    ] = """
+        type: command
+        short-summary: Create or replace a Microsoft Fabric Real-Time Intelligence data flow endpoint.
+        long-summary: For more information on Microsoft Fabric Real-Time Intelligence dataflow endpoint, see https://aka.ms/aio-fabric-real-time.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create fabric-realtime
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --host "fabricrealtime.servicebus.windows.net:9093"
+        - name: Create or replace a dataflow endpoint resource using SASL authentication method.
+          text: >
+            az iot ops dataflow endpoint create fabric-realtime
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --host "fabricrealtime.servicebus.windows.net:9093"
+            --sasl-type ScramSha256
+            --secret-name mysecret
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create fabric-realtime
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --host "fabricrealtime.servicebus.windows.net:9093"
+            --acks One
+            --compression Gzip
+            --group-id mygroupid
+            --partition-strategy Static
+            --max-bytes 200000
+            --cloud-event-attribute CreateOrRemap
+            --disable-tls
+            --show-config
+    """
+
+    helps[
+        "iot ops dataflow endpoint create local-mqtt"
+    ] = """
+        type: command
+        short-summary: Create or replace a Azure IoT Operations Local MQTT dataflow endpoint.
+        long-summary: For more information on Azure IoT Operations Local MQTT dataflow endpoint, see https://aka.ms/local-mqtt-broker.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create local-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname aio-broker
+            --port 1883
+        - name: Create or replace a dataflow endpoint resource using X509 authentication method.
+          text: >
+            az iot ops dataflow endpoint create local-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname aio-broker
+            --port 1883
+            --secret-name mysecret
+        - name: Create or replace a dataflow endpoint resource with no auth.
+          text: >
+            az iot ops dataflow endpoint create local-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname aio-broker
+            --port 1883
+            --no-auth
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create local-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname aio-broker
+            --port 1883
+            --client-id-prefix myclientprefix
+            --keep-alive 100
+            --max-inflight-msg 70
+            --protocol WebSockets
+            --qos 0
+            --retain Never
+            --show-config
+    """
+
+    helps[
+        "iot ops dataflow endpoint create local-storage"
+    ] = """
+        type: command
+        short-summary: Create or replace a local storage dataflow endpoint.
+        long-summary: For more information on local storage dataflow endpoint, see https://aka.ms/local-storage-endpoint.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create local-storage
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --pvc-ref mypvc
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create local-storage
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --pvc-ref mypvc
+            --show-config
+    """
+
+    helps[
+        "iot ops dataflow endpoint update"
+    ] = """
+        type: group
+        short-summary: Update the properties of an existing dataflow endpoint resource.
+    """
+
+    helps[
+        "iot ops dataflow endpoint update adls"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing dataflow endpoint resource for Azure Data Lake Storage Gen2.
+        long-summary: For more information on Azure Data Lake Storage Gen2 dataflow endpoint, see https://aka.ms/adlsv2.
+
+        examples:
+        - name: Update the storage account name of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update adls
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --storage-account newstorageaccount
+        - name: Update to use user assigned managed identity authentication method of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update adls
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --client-id 425cb1e9-1247-4cbc-8cdb-1aac9b429696
+            --tenant-id bca45660-49a2-4bad-862a-0b9459b4b836
+            --scope "https://storage.azure.com/.default"
+    """
+
+    helps[
+        "iot ops dataflow endpoint update adx"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing dataflow endpoint resource for Azure Data Explorer.
+        long-summary: For more information on Azure Data Explorer dataflow endpoint, see https://aka.ms/aio-adx.
+
+        examples:
+        - name: Update the batching configurations of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update adx
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --latency 70
+            --message-count 100
+        - name: Update to use system assigned managed identity authentication method of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update adx
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --auth-type SystemAssignedManagedIdentity
+    """
+
+    helps[
+        "iot ops dataflow endpoint update custom-kafka"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing dataflow endpoint resource for custom kafka broker.
+        long-summary: For more information on custom kafka dataflow endpoint, see https://aka.ms/aio-custom-kafka.
+
+        examples:
+        - name: Update the hostname of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update custom-kafka
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname newkafkabroker
+        - name: Update to use SASL authentication method of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update custom-kafka
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --sasl-type ScramSha256
+            --secret-name mysecret
+    """
+
+    helps[
+        "iot ops dataflow endpoint update custom-mqtt"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing dataflow endpoint resource for custom MQTT broker.
+        long-summary: For more information on custom MQTT dataflow endpoint, see https://aka.ms/aio-custom-mqtt.
+
+        examples:
+        - name: Update the cloud event setting type of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update custom-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --cloud-event-attribute CreateOrRemap
+        - name: Update to use X509 authentication method of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update custom-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --auth-type X509Certificate
+            --secret-name mysecret
+    """
+
+    helps[
+        "iot ops dataflow endpoint update eventgrid"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing dataflow endpoint resource for Azure Event Grid.
+        long-summary: For more information on Azure Event Grid dataflow endpoint, see https://aka.ms/aio-eventgrid.
+
+        examples:
+        - name: Update the session expiry interval of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update eventgrid
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --session-expiry 100
+        - name: Update to use X509 authentication method of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update eventgrid
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --secret-name mysecret
+    """
+
+    helps[
+        "iot ops dataflow endpoint update eventhub"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing dataflow endpoint resource for kafka-enabled Azure Event Hubs namespace.
+        long-summary: For more information on Azure Event Hubs dataflow endpoint, see https://aka.ms/aio-eventhub.
+
+        examples:
+        - name: Update the compression type of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update eventhub
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --compression Gzip
+        - name: Update to use SASL authentication method of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update eventhub
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --sasl-type ScramSha256
+            --secret-name mysecret
+    """
+
+    helps[
+        "iot ops dataflow endpoint update fabric-onelake"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing dataflow endpoint resource for Microsoft Fabric OneLake.
+        long-summary: For more information on Microsoft Fabric OneLake dataflow endpoint, see https://aka.ms/fabric-onelake.
+
+        examples:
+        - name: Update the lakehouse name of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update fabric-onelake
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --lakehouse newlakehouse
+        - name: Update to use system assigned managed identity authentication method of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update fabric-onelake
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --audience newaudience
+    """
+
+    helps[
+        "iot ops dataflow endpoint update fabric-realtime"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing Microsoft Fabric Real-Time Intelligence data flow endpoint.
+        long-summary: For more information on Microsoft Fabric Real-Time Intelligence dataflow endpoint, see https://aka.ms/aio-fabric-real-time.
+
+        examples:
+        - name: Update the partition strategy of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update fabric-realtime
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --partition-strategy Static
+        - name: Update to use SASL authentication method of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update fabric-realtime
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --sasl-type ScramSha256
+            --secret-name mysecret
+    """
+
+    helps[
+        "iot ops dataflow endpoint update local-mqtt"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing Azure IoT Operations Local MQTT data flow endpoint.
+        long-summary: For more information on Azure IoT Operations Local MQTT dataflow endpoint, see https://aka.ms/local-mqtt-broker.
+
+        examples:
+        - name: Update the config map reference for trusted CA certificate of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update local-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --config-map-ref mynewconfigmap
+        - name: Update to use Kubernetes Service Account Token authentication method of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update local-mqtt
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --auth-type ServiceAccountToken
+            --audience myaudience
+    """
+
+    helps[
+        "iot ops dataflow endpoint update local-storage"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing local storage data flow endpoint.
+        long-summary: For more information on local storage dataflow endpoint, see https://aka.ms/local-storage-endpoint.
+
+        examples:
+        - name: Update the PVC reference of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update local-storage
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --pvc-ref newpvc
+    """
+
+    helps[
         "iot ops dataflow endpoint apply"
     ] = """
         type: command
