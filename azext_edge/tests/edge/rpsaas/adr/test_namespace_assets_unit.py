@@ -103,10 +103,12 @@ def get_namespace_asset_record(
     }
 ])
 @pytest.mark.parametrize("asset_type, unique_reqs", [
+    # Empty
     ["custom", {}],
     ["media", {}],
     ["onvif", {}],
     ["opcua", {}],
+    # CUSTOM
     [
         "custom", {
             "default_datasets_custom_configuration": json.dumps({"testConfig": "value"}),
@@ -118,6 +120,43 @@ def get_namespace_asset_record(
             "default_streams_destinations": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
+    # Media task type: snapshot-to-mqtt with all allowed parameters
+    [
+        "media", {
+            "default_streams_custom_configuration": json.dumps({
+                "taskType": "snapshot-to-mqtt",
+                "format": "jpeg",
+                "snapshotsPerSecond": 1
+            }),
+            "default_streams_destinations": ["topic=/contoso/snapshots", "retain=Never", "qos=Qos0", "ttl=3600"]
+        }
+    ],
+    # Media task type: clip-to-fs with all allowed parameters
+    [
+        "media", {
+            "default_streams_custom_configuration": json.dumps({
+                "taskType": "clip-to-fs",
+                "format": "mp4",
+                "duration": 60,
+                "path": "/data/clips"
+            }),
+            "default_streams_destinations": ["path=/contoso/clips"]
+        }
+    ],
+    # Media task type: stream-to-rtsp with all allowed parameters
+    [
+        "media", {
+            "default_streams_custom_configuration": json.dumps({
+                "taskType": "stream-to-rtsp",
+                "mediaServerAddress": "media-server.svc.cluster.local",
+                "mediaServerPort": 8554,
+                "mediaServerPath": "/live/stream1",
+                "mediaServerUsernameRef": "streamuser",
+                "mediaServerPasswordRef": "streampassword"
+            })
+        }
+    ],
+    # OPCUA
     [
         "opcua", {
             "default_dataset_publishing_interval": 2000,
@@ -439,10 +478,12 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
     }
 ])
 @pytest.mark.parametrize("asset_type, unique_reqs", [
+    # Empty
     ["custom", {}],
     ["media", {}],
     ["onvif", {}],
     ["opcua", {}],
+    # Custom
     [
         "custom", {
             "default_datasets_custom_configuration": json.dumps({"testConfig": "value"}),
@@ -454,6 +495,43 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
             "default_streams_destinations": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
+    # Media task type: snapshot-to-mqtt with all allowed parameters
+    [
+        "media", {
+            "default_streams_custom_configuration": json.dumps({
+                "taskType": "snapshot-to-mqtt",
+                "format": "jpeg",
+                "snapshotsPerSecond": 1
+            }),
+            "default_streams_destinations": ["topic=/contoso/snapshots", "retain=Never", "qos=Qos0", "ttl=3600"]
+        }
+    ],
+    # Media task type: clip-to-fs with all allowed parameters
+    [
+        "media", {
+            "default_streams_custom_configuration": json.dumps({
+                "taskType": "clip-to-fs",
+                "format": "mp4",
+                "duration": 60,
+                "path": "/data/clips"
+            }),
+            "default_streams_destinations": ["path=/contoso/clips"]
+        }
+    ],
+    # Media task type: stream-to-rtsp with all allowed parameters
+    [
+        "media", {
+            "default_streams_custom_configuration": json.dumps({
+                "taskType": "stream-to-rtsp",
+                "mediaServerAddress": "media-server.svc.cluster.local",
+                "mediaServerPort": 8554,
+                "mediaServerPath": "/live/stream1",
+                "mediaServerUsernameRef": "streamuser",
+                "mediaServerPasswordRef": "streampassword"
+            })
+        }
+    ],
+    # Opcua
     [
         "opcua", {
             "default_dataset_publishing_interval": 2000,

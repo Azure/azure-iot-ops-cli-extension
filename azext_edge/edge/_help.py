@@ -2637,3 +2637,353 @@ def load_iotops_help():
           text: >
             az iot ops namespace device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --run-asset-discovery
     """
+
+    helps[
+        "iot ops namespace asset"
+    ] = """
+        type: group
+        short-summary: Manage assets in Device Registry namespaces.
+    """
+
+    helps[
+        "iot ops namespace asset create"
+    ] = """
+        type: group
+        short-summary: Create assets in Device Registry namespaces.
+    """
+
+    helps[
+        "iot ops namespace asset create custom"
+    ] = """
+        type: command
+        short-summary: Create a custom asset in a Device Registry namespace.
+        long-summary: Create a custom asset with configurable datasets, events, management, and streams.
+
+        examples:
+        - name: Create a basic custom asset
+          text: >
+            az iot ops namespace asset create custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            --device myDevice --endpoint-name myEndpoint
+
+        - name: Create a custom asset with additional metadata
+          text: >
+            az iot ops namespace asset create custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            --device myDevice --endpoint-name myEndpoint --description "Factory sensor" --display-name "Temperature Sensor"
+            --model "TempSensor-X1" --manufacturer "Contoso" --serial-number "SN12345"
+
+        - name: Create a custom asset with dataset and events configuration using JSON
+          text: >
+            az iot ops namespace asset create custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            --device myDevice --endpoint-name myEndpoint --datasets-config "{\\\"publishingInterval\\\": 1000}"
+            --events-config "{\\\"queueSize\\\": 5}"
+
+        - name: Create a custom asset with MQTT destinations for datasets and events
+          text: >
+            az iot ops namespace asset create custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            --device myDevice --endpoint-name myEndpoint
+            --datasets-destination topic="factory/sensors/temperature" qos=1 retain=true ttl=3600
+            --events-destination topic="factory/events/temperature" qos=1 retain=false ttl=3600
+    """
+
+    helps[
+        "iot ops namespace asset create media"
+    ] = """
+        type: command
+        short-summary: Create a media asset in a Device Registry namespace.
+        long-summary: The device endpoint must be of type Microsoft.Media.
+
+        examples:
+        - name: Create a basic media asset
+          text: >
+            az iot ops namespace asset create media --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            --device myCamera --endpoint-name myCameraEndpoint
+
+        - name: Create a media asset for MQTT snapshots
+          text: >
+            az iot ops namespace asset create media --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            --device myCamera --endpoint-name myCameraEndpoint --task-type snapshot-to-mqtt
+            --task-format jpeg --snapshots-per-second 1
+            --streams-destinations topic="factory/cameras/snapshots" qos=1 retain=false ttl=60
+
+        - name: Create a media asset for file system snapshots
+          text: >
+            az iot ops namespace asset create media --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            --device myCamera --endpoint-name myCameraEndpoint --task-type snapshot-to-fs
+            --task-format png --snapshots-per-second 0.5 --path "/data/snapshots"
+
+        - name: Create a media asset for file system clips
+          text: >
+            az iot ops namespace asset create media --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            --device myCamera --endpoint-name myCameraEndpoint --task-type clip-to-fs
+            --task-format mp4 --duration 300 --path "/data/clips"
+
+        - name: Create a media asset for RTSP streaming
+          text: >
+            az iot ops namespace asset create media --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            --device myCamera --endpoint-name myCameraEndpoint --task-type stream-to-rtsp
+            --media-server-address "media-server.media-server.svc.cluster.local"
+            --media-server-port 8554 --media-server-path "myCamera/stream"
+    """
+
+    helps[
+        "iot ops namespace asset create onvif"
+    ] = """
+        type: command
+        short-summary: Create an ONVIF asset in a Device Registry namespace.
+        long-summary: The device endpoint must be of type Microsoft.Onvif.
+
+        examples:
+        - name: Create a basic ONVIF asset
+          text: >
+            az iot ops namespace asset create onvif --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            --device myCamera --endpoint-name myOnvifEndpoint
+
+        - name: Create an ONVIF asset with additional metadata
+          text: >
+            az iot ops namespace asset create onvif --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            --device myCamera --endpoint-name myOnvifEndpoint --description "Surveillance Camera"
+            --display-name "Entry Camera" --model "SecureCam Pro" --manufacturer "SecurityCo"
+            --serial-number "CAM-12345" --documentation-uri "https://example.com/docs/camera"
+
+        - name: Create an ONVIF asset with custom attributes
+          text: >
+            az iot ops namespace asset create onvif --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            --device myCamera --endpoint-name myOnvifEndpoint --attribute location=entrance
+            --attribute resolution=1080p --attribute ptz=true
+    """
+
+    helps[
+        "iot ops namespace asset create opcua"
+    ] = """
+        type: command
+        short-summary: Create an OPC UA asset in a Device Registry namespace.
+        long-summary: The device endpoint must be of type Microsoft.OpcUa.
+
+        examples:
+        - name: Create a basic OPC UA asset
+          text: >
+            az iot ops namespace asset create opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint
+
+        - name: Create an OPC UA asset with dataset configuration
+          text: >
+            az iot ops namespace asset create opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --dataset-publish-interval 1000
+            --dataset-sampling-interval 500 --dataset-queue-size 5 --dataset-key-frame-count 1
+            --dataset-start-instance "ns=1;i=1234"
+
+        - name: Create an OPC UA asset with event configuration
+          text: >
+            az iot ops namespace asset create opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --events-publish-interval 2000
+            --events-queue-size 10 --events-start-instance "ns=1;i=5678"
+            --events-filter-clause path="ns=1;i=1000" type="String" field="Temperature"
+
+        - name: Create an OPC UA asset with MQTT destinations for datasets and events
+          text: >
+            az iot ops namespace asset create opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint
+            --datasets-destinations topic="factory/opcua/data" retain=true qos=1 ttl=3600
+            --events-destinations topic="factory/opcua/events" retain=false qos=1 ttl=3600
+    """
+
+    helps[
+        "iot ops namespace asset update"
+    ] = """
+        type: group
+        short-summary: Update assets in Device Registry namespaces.
+    """
+
+    helps[
+        "iot ops namespace asset update custom"
+    ] = """
+        type: command
+        short-summary: Update a custom asset in a Device Registry namespace.
+        long-summary: Update properties, configurations, and destinations for a custom asset.
+
+        examples:
+        - name: Update a custom asset's basic properties
+          text: >
+            az iot ops namespace asset update custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            --description "Updated factory sensor" --display-name "Temperature Sensor v2"
+
+        - name: Update a custom asset with additional metadata
+          text: >
+            az iot ops namespace asset update custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            --model "TempSensor-X2" --manufacturer "Contoso" --serial-number "SN98765" --disable
+
+        - name: Update a custom asset's dataset and events configuration
+          text: >
+            az iot ops namespace asset update custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            --datasets-config "{\\\"publishingInterval\\\": 2000}" --events-config "{\\\"queueSize\\\": 10}"
+
+        - name: Update a custom asset's destination configurations
+          text: >
+            az iot ops namespace asset update custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            --datasets-destination topic="factory/sensors/temperature/updated" qos=1 retain=true ttl=7200
+            --events-destination topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
+
+        - name: Update a custom asset's custom attributes
+          text: >
+            az iot ops namespace asset update custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            --attribute location=building2 floor=3 zone=production
+    """
+
+    helps[
+        "iot ops namespace asset update media"
+    ] = """
+        type: command
+        short-summary: Update a media asset in a Device Registry namespace.
+        long-summary: The device endpoint must be of type Microsoft.Media.
+
+        examples:
+        - name: Update a media asset's basic properties
+          text: >
+            az iot ops namespace asset update media --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            --description "Updated surveillance camera" --display-name "Entry Camera HD"
+
+        - name: Change a media asset from MQTT snapshots to file system snapshots
+          text: >
+            az iot ops namespace asset update media --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            --task-type snapshot-to-fs --task-format png --path "/data/snapshots/hd"
+
+        - name: Update a media asset's clip configuration
+          text: >
+            az iot ops namespace asset update media --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            --task-type clip-to-fs --duration 600 --path "/data/clips/extended"
+
+        - name: Update a media asset's RTSP streaming configuration
+          text: >
+            az iot ops namespace asset update media --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            --task-type stream-to-rtsp --media-server-address "new-media-server.local"
+            --media-server-port 8555 --media-server-path "cameras/main/stream"
+
+        - name: Update a media asset's destination and metadata
+          text: >
+            az iot ops namespace asset update media --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            --streams-destinations topic="security/cameras/main" qos=1 retain=false ttl=300
+            --manufacturer "SecureCam Inc." --model "HD-8000" --serial-number "CAM9876"
+    """
+
+    helps[
+        "iot ops namespace asset update onvif"
+    ] = """
+        type: command
+        short-summary: Update an ONVIF asset in a Device Registry namespace.
+        long-summary: The device endpoint must be of type Microsoft.Onvif.
+
+        examples:
+        - name: Update an ONVIF asset's basic properties
+          text: >
+            az iot ops namespace asset update onvif --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            --description "Updated surveillance camera" --display-name "Main Entrance Camera"
+
+        - name: Update an ONVIF asset's metadata
+          text: >
+            az iot ops namespace asset update onvif --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            --model "SecureCam Pro X1" --manufacturer "SecurityCo" --serial-number "CAM-67890"
+            --documentation-uri "https://example.com/docs/camera/v2"
+
+        - name: Update an ONVIF asset's custom attributes
+          text: >
+            az iot ops namespace asset update onvif --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            --attribute location=main-entrance resolution=4K ptz=true night-vision=true
+
+        - name: Disable an ONVIF asset and update its reference information
+          text: >
+            az iot ops namespace asset update onvif --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            --disable --external-asset-id "CAM-MAIN-01" --hardware-revision "v2.1"
+    """
+
+    helps[
+        "iot ops namespace asset update opcua"
+    ] = """
+        type: command
+        short-summary: Update an OPC UA asset in a Device Registry namespace.
+        long-summary: The device endpoint must be of type Microsoft.OpcUa.
+
+        examples:
+        - name: Update an OPC UA asset's basic properties
+          text: >
+            az iot ops namespace asset update opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            --description "Updated factory PLC" --display-name "Production Line Controller"
+
+        - name: Update an OPC UA asset's dataset configuration
+          text: >
+            az iot ops namespace asset update opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            --dataset-publish-interval 500 --dataset-sampling-interval 250
+            --dataset-queue-size 10 --dataset-key-frame-count 2
+
+        - name: Update an OPC UA asset's event configuration
+          text: >
+            az iot ops namespace asset update opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            --events-publish-interval 1000 --events-queue-size 5
+            --events-filter-clause path="ns=1;i=2000" type="String" field="Alarm"
+
+        - name: Update an OPC UA asset's destination configurations
+          text: >
+            az iot ops namespace asset update opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            --datasets-destinations topic="factory/opcua/data/updated" retain=true qos=1 ttl=7200
+            --events-destinations topic="factory/opcua/events/updated" retain=false qos=1 ttl=3600
+
+        - name: Update an OPC UA asset's metadata and attributes
+          text: >
+            az iot ops namespace asset update opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            --manufacturer "Automation Corp" --model "PLC-2000" --serial-number "PLC87654"
+            --attribute location=factory-floor zone=production line
+    """
+
+    helps[
+        "iot ops namespace asset delete"
+    ] = """
+        type: command
+        short-summary: Delete an asset from a Device Registry namespace.
+
+        examples:
+        - name: Delete an asset with confirmation prompt
+          text: >
+            az iot ops namespace asset delete --name myAsset --namespace myNamespace -g myResourceGroup
+
+        - name: Delete an asset and skip the confirmation prompt
+          text: >
+            az iot ops namespace asset delete --name myAsset --namespace myNamespace -g myResourceGroup -y
+    """
+
+    helps[
+        "iot ops namespace asset query"
+    ] = """
+        type: command
+        short-summary: Query assets in Device Registry namespaces.
+        long-summary: |
+          Query assets across namespaces based on various search criteria including asset name,
+          device name, endpoint name and more.
+
+        examples:
+        - name: Query for a specific asset by name
+          text: >
+            az iot ops namespace asset query --name myAsset -g myResourceGroup
+
+        - name: Query for assets associated with a specific device and endpoint
+          text: >
+            az iot ops namespace asset query --device myDevice --endpoint-name myEndpoint -g myResourceGroup
+
+        - name: Query for disabled assets in a resource group
+          text: >
+            az iot ops namespace asset query --disabled -g myResourceGroup
+
+        - name: Use a custom query to search for assets
+          text: >
+            az iot ops namespace asset query --custom-query "where tags.environment=='production'" -g myResourceGroup
+    """
+
+    helps[
+        "iot ops namespace asset show"
+    ] = """
+        type: command
+        short-summary: Show details of an asset in a Device Registry namespace.
+
+        examples:
+        - name: Show details of an asset
+          text: >
+            az iot ops namespace asset show --name myAsset --namespace myNamespace -g myResourceGroup
+    """

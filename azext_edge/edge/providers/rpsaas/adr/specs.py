@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import Enum
+from ....common import ListableEnum
 
 
 # DEVICE
@@ -465,7 +466,7 @@ class MediaTaskType(Enum):
         return mapping[self.value]
 
 
-class MediaFormat(Enum):
+class MediaFormat(ListableEnum):
     """
     Enum for all media formats specified in NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA.
     """
