@@ -386,7 +386,10 @@ def load_iotops_arguments(self, _):
         context.argument(
             "acks",
             options_list=["--acks"],
-            arg_type=get_enum_type(DataflowEndpointKafkaAcksType, default=DataflowEndpointKafkaAcksType.ALL.value),
+            arg_type=get_enum_type(
+                DataflowEndpointKafkaAcksType,
+                default=DataflowEndpointKafkaAcksType.ALL.value
+            ),
             help="Level of acknowledgment from the Kafka broker to "
             "ensure that the message sent by producer is successfully "
             "written to the topic and replicated across the Kafka cluster.",
@@ -419,7 +422,10 @@ def load_iotops_arguments(self, _):
         context.argument(
             "compression",
             options_list=["--compression"],
-            arg_type=get_enum_type(KafkaCompressionType, default=KafkaCompressionType.NONE.value),
+            arg_type=get_enum_type(
+                KafkaCompressionType,
+                default=KafkaCompressionType.NONE.value
+            ),
             help="Compression type for the messages sent to Kafka topics.",
         )
         context.argument(
@@ -439,12 +445,16 @@ def load_iotops_arguments(self, _):
         context.argument(
             "group_id",
             options_list=["--group-id", "--gid"],
-            help="ID of consumer group that the data flow uses to read messages " "from the Kafka topic.",
+            help="ID of consumer group that the data flow uses to read messages "
+            "from the Kafka topic."
         )
         context.argument(
             "partition_strategy",
             options_list=["--partition-strategy", "--ps"],
-            arg_type=get_enum_type(KafkaPartitionStrategyType, default=KafkaPartitionStrategyType.DEFAULT.value),
+            arg_type=get_enum_type(
+                KafkaPartitionStrategyType,
+                default=KafkaPartitionStrategyType.DEFAULT.value
+            ),
             help="The partition handling strategy controls how messages are "
             "assigned to Kafka partitions when sending them to Kafka topics.",
         )
@@ -480,7 +490,8 @@ def load_iotops_arguments(self, _):
         context.argument(
             "max_inflight_messages",
             options_list=["--max-inflight-msg", "--mim"],
-            help="The maximum number of inflight messages that the data flow MQTT client can have. Min value: 0.",
+            help="the maximum number of inflight messages that the data "
+            "flow MQTT client can have. Min value: 0.",
             type=int,
         )
         context.argument(
@@ -506,11 +517,15 @@ def load_iotops_arguments(self, _):
         context.argument(
             "session_expiry",
             options_list=["--session-expiry"],
-            help="The session expiry interval in seconds for the data flow MQTT client. " "Min value: 0.",
+            help="The session expiry interval in seconds for the data flow MQTT client. "
+            "Min value: 0.",
             type=int,
         )
 
-    for cmd_space in ["iot ops dataflow endpoint create adx", "iot ops dataflow endpoint update adx"]:
+    for cmd_space in [
+        "iot ops dataflow endpoint create adx",
+        "iot ops dataflow endpoint update adx"
+    ]:
         with self.argument_context(cmd_space) as context:
             context.argument(
                 "database_name",
