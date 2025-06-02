@@ -81,7 +81,7 @@ from .resources.test_custom_locations_unit import (
     get_custom_location_endpoint,
     get_mock_custom_location_record,
 )
-from .resources.test_dataflow_endpoints_unit import (
+from .resources.dataflow_endpoint.conftest import (
     get_dataflow_endpoint_endpoint,
     get_mock_dataflow_endpoint_record,
 )
