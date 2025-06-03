@@ -15,6 +15,7 @@ from azext_edge.edge.providers.check.common import (
     MIN_NODE_MEMORY,
     MIN_NODE_STORAGE,
     MIN_NODE_VCPU,
+    NODE_CONTROL_PLANE_LABEL,
 )
 
 from .....edge.util.machinery import scoped_semver_import
@@ -30,8 +31,10 @@ def mocked_node_client(mocked_client, mocker, request):
         arch = node_params.pop("architecture", generate_random_string(size=5))
         # Too annoying to make a valid one
         node_info = mocker.Mock(architecture=arch, kernel_version=node_params.pop("kernel_version", "0.0.0"))
+        control_plane = node_params.pop("control_plane", False)
+        labels = {NODE_CONTROL_PLANE_LABEL: ""} if control_plane else None
         node = V1Node(
-            metadata=V1ObjectMeta(name=generate_random_string()),
+            metadata=V1ObjectMeta(name=generate_random_string(), labels=labels),
             status=V1NodeStatus(allocatable=node_params, node_info=node_info),
         )
         nodes.append(node)
@@ -72,8 +75,12 @@ def mocked_node_client(mocked_client, mocker, request):
                 "architecture": "arm64",
             },
         ],
+        [
+            {"control_plane": True, "architecture": "amd64", "cpu": 1, "memory": "2G", "ephemeral-storage": "5G"},
+            {"architecture": "amd64", "cpu": 4, "memory": "16G", "ephemeral-storage": "30G"},
+        ],
     ],
-    ids=["none", "min reqs", "storage", "memory", "cpu", "architecture", "multi-node"],
+    ids=["none", "min reqs", "storage", "memory", "cpu", "architecture", "multi-node", "control-plane-multinode"],
     indirect=True,
 )
 @pytest.mark.parametrize(
@@ -144,6 +151,7 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
     for i in range(len(nodes)):
         node = nodes[i]
         name = node.metadata.name
+        control_plane_node = node.metadata.labels and NODE_CONTROL_PLANE_LABEL in node.metadata.labels
         # first row is to show expected
         i = i + 1
         assert name in unpacked_cols[name_idx][i]
@@ -172,12 +180,20 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
 
         arch_status = arch in AIO_SUPPORTED_ARCHITECTURES
         assert result_node["conditions"][arch_col] == f"info.architecture in ({','.join(AIO_SUPPORTED_ARCHITECTURES)})"
-        assert result_node["evaluations"][arch_col]["status"] == bool_to_status(arch_status)
+        assert (
+            result_node["evaluations"][arch_col]["status"] == "skipped"
+            if control_plane_node
+            else bool_to_status(arch_status)
+        )
         assert result_node["evaluations"][arch_col]["value"]["info.architecture"] == arch
 
         cpu_status = cpu >= int(MIN_NODE_VCPU)
         assert result_node["conditions"][cpu_col] == f"allocatable.cpu>={MIN_NODE_VCPU}"
-        assert result_node["evaluations"][cpu_col]["status"] == bool_to_status(cpu_status)
+        assert (
+            result_node["evaluations"][cpu_col]["status"] == "skipped"
+            if control_plane_node
+            else bool_to_status(cpu_status)
+        )
         assert result_node["evaluations"][cpu_col]["value"]["allocatable.cpu"] == cpu
 
         kernel_status = False
@@ -186,7 +202,11 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
             kernel_version = ".".join(node.status.node_info.kernel_version.split(".")[:3])
             kernel_status = semver.parse(kernel_version, True) >= semver.parse(ACSA_MIN_NODE_KERNEL_VERSION, True)
             assert result_node["conditions"][kernel_col] == f"info.kernel_version>={ACSA_MIN_NODE_KERNEL_VERSION}"
-            assert result_node["evaluations"][kernel_col]["status"] == bool_to_status(kernel_status)
+            assert (
+                result_node["evaluations"][kernel_col]["status"] == "skipped"
+                if control_plane_node
+                else bool_to_status(kernel_status)
+            )
             assert (
                 result_node["evaluations"][kernel_col]["value"]["info.kernel_version"]
                 == node.status.node_info.kernel_version
@@ -196,7 +216,11 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
         if storage_space_check:
             storage_status = parse_quantity(storage) >= parse_quantity(MIN_NODE_STORAGE)
             assert result_node["conditions"][storage_col] == f"allocatable.ephemeral-storage>={MIN_NODE_STORAGE}"
-            assert result_node["evaluations"][storage_col]["status"] == bool_to_status(storage_status)
+            assert (
+                result_node["evaluations"][storage_col]["status"] == "skipped"
+                if control_plane_node
+                else bool_to_status(storage_status)
+            )
             assert (
                 result_node["evaluations"][storage_col]["value"]["allocatable.ephemeral-storage"]
                 == f"{int(parse_quantity(storage) / DISPLAY_BYTES_PER_GIGABYTE)}G"
@@ -204,7 +228,11 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
 
         memory_status = parse_quantity(memory) >= parse_quantity(MIN_NODE_MEMORY)
         assert result_node["conditions"][memory_col] == f"allocatable.memory>={MIN_NODE_MEMORY}"
-        assert result_node["evaluations"][memory_col]["status"] == bool_to_status(memory_status)
+        assert (
+            result_node["evaluations"][memory_col]["status"] == "skipped"
+            if control_plane_node
+            else bool_to_status(memory_status)
+        )
         assert (
             result_node["evaluations"][memory_col]["value"]["allocatable.memory"]
             == f"{int(parse_quantity(memory) / DISPLAY_BYTES_PER_GIGABYTE)}G"
@@ -219,7 +247,7 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
                 memory_status,
             ]
         )
-        assert result_node["status"] == bool_to_status(overall_status)
+        assert result_node["status"] == "skipped" if control_plane_node else bool_to_status(overall_status)
 
 
 def bool_to_status(status: bool):

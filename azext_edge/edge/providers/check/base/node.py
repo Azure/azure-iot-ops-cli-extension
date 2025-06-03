@@ -21,6 +21,7 @@ from ..common import (
     MIN_NODE_MEMORY,
     MIN_NODE_STORAGE,
     MIN_NODE_VCPU,
+    NODE_CONTROL_PLANE_LABEL,
 )
 from .check_manager import CheckManager
 from .user_strings import NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
@@ -112,9 +113,14 @@ def _generate_node_table(
             ]
         ]
     )
+    single_node = len(nodes.items) == 1
     node: V1Node
     for node in nodes.items:
         node_name = node.metadata.name
+
+        # skip control plane node checks if not single node
+        is_control_plane_node = node.metadata.labels and NODE_CONTROL_PLANE_LABEL in node.metadata.labels
+        control_plane_only_node = is_control_plane_node and not single_node
 
         # check_manager target for node
         node_target = f"cluster/nodes/{node_name}"
@@ -173,30 +179,42 @@ def _generate_node_table(
             if condition == "info.architecture":
                 condition_str = f"{condition} in ({','.join(expected)})"
                 if actual not in expected:
-                    row_status = cell_status = CheckTaskStatus.error
+                    cell_status = CheckTaskStatus.error
             elif condition == "info.kernel_version":
                 # fix for kernel versions with a 4th version specifier
                 truncated_kernel_ver = ".".join(actual.split(".")[:3])
                 if semver.parse(truncated_kernel_ver, optional_minor_and_patch=True) < semver.parse(
                     expected, optional_minor_and_patch=True
                 ):
-                    row_status = cell_status = CheckTaskStatus.error
+                    cell_status = CheckTaskStatus.error
 
             else:
                 displayed = _get_display_number(displayed, expected)
                 expected = parse_quantity(expected)
                 if actual < expected:
-                    row_status = cell_status = CheckTaskStatus.error
+                    cell_status = CheckTaskStatus.error
                 actual = int(actual)
                 # display as "xxG"
                 if condition in ["allocatable.memory", "allocatable.ephemeral-storage"]:
                     actual = f"{int(actual / DISPLAY_BYTES_PER_GIGABYTE)}G"
 
+            # if control plane only node, mark as skipped
+            if control_plane_only_node:
+                cell_status = CheckTaskStatus.skipped
+                displayed = f"[dim]{displayed}[/dim]"
+
+            # row status is error if any cell is error
+            if cell_status == CheckTaskStatus.error:
+                row_status = CheckTaskStatus.error
+
             check_manager.add_target_conditions(target_name=node_target, conditions=[condition_str])
             check_manager.add_target_eval(target_name=node_target, status=cell_status.value, value={condition: actual})
             row_cells.append(COLOR_STR_FORMAT.format(color=cell_status.color, value=displayed))
 
-        # overall node name color
+        # skip whole node table row if control_plane_only_node
+        if control_plane_only_node:
+            row_status = CheckTaskStatus.skipped
+            node_name = f"[dim]{node_name}[/dim]"
         table.add_row(COLOR_STR_FORMAT.format(color=row_status.color, value=node_name), *row_cells)
     return table
 
