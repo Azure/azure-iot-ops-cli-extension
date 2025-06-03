@@ -18,7 +18,6 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
     custom_location = require_init["customLocationId"]
     namespace_name = f"ns-{generate_random_string(8)}"
     device_name_1 = f"dev-{generate_random_string(8)}"
-    device_template_id = "dtmi:sample:device;1"
     endpoint_name_onvif = f"onvif-{generate_random_string(8)}"
     endpoint_name_opcua = f"opcua-{generate_random_string(8)}"
     endpoint_name_media = f"media-{generate_random_string(8)}"
@@ -39,7 +38,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
     # Create Device
     result = run(
         f"az iot ops namespace device create --name {device_name_1} --namespace {namespace_name} "
-        f"-g {resource_group} --instance {instance_name} --template-id {device_template_id}"
+        f"-g {resource_group} --instance {instance_name} --template-id dtmi:sample:device;1"
     )
 
     # Create device endpoints
@@ -72,7 +71,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
         endpoint=endpoint_name_onvif,
         description="ONVIF Camera",
         display_name="Entrance Camera",
-        asset_type="Microsoft.Onvif"
+        custom_location=custom_location
     )
 
     # 2. Create OPCUA asset with maximum inputs
@@ -97,7 +96,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
         endpoint=endpoint_name_opcua,
         description="OPC UA Sensor",
         display_name="Temperature Sensor",
-        asset_type="Microsoft.OpcUa"
+        custom_location=custom_location
     )
 
     # 3. Create Media asset with maximum inputs
@@ -118,7 +117,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
         endpoint=endpoint_name_media,
         description="Media Camera",
         display_name="Monitoring Camera",
-        asset_type="Microsoft.Media"
+        custom_location=custom_location
     )
 
     # 4. Create Custom asset with maximum inputs
@@ -141,7 +140,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
         endpoint=endpoint_name_custom,
         description="Custom Device",
         display_name="Multi-Sensor",
-        asset_type="custom"
+        custom_location=custom_location
     )
 
     # Test show operation for an asset
@@ -157,10 +156,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
         endpoint=endpoint_name_onvif,
         description="ONVIF Camera",
         display_name="Entrance Camera",
-        asset_type="Microsoft.Onvif"
     )
-
-    print("Testing asset 'update' operations...")
 
     # Test update operation for each asset type
     # 1. Update ONVIF asset
@@ -175,7 +171,6 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
         name=asset_name_onvif,
         description="Updated ONVIF Camera",
         display_name="Main Entrance Camera",
-        asset_type="Microsoft.Onvif"
     )
 
     # 2. Update OPCUA asset
@@ -189,7 +184,6 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
         updated_opcua,
         name=asset_name_opcua,
         description="Updated OPC UA Sensor",
-        asset_type="Microsoft.OpcUa"
     )
 
     # 3. Update Media asset
@@ -201,7 +195,6 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
     assert_asset_properties(
         updated_media,
         name=asset_name_media,
-        asset_type="Microsoft.Media"
     )
 
     # 4. Update Custom asset
@@ -214,7 +207,6 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
     assert_asset_properties(
         updated_custom,
         name=asset_name_custom,
-        asset_type="custom"
     )
 
     # Test query operation
@@ -247,28 +239,55 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # Verify deletion by querying - should return no results
     deleted_query = run(
-        f"az iot ops namespace asset query -g {resource_group} --name {asset_name_custom}"
+        f"az iot ops namespace asset query -g {resource_group}"
     )
 
-    assert len(deleted_query) == 0
+    asset_names = [asset["name"] for asset in deleted_query]
+    assert asset_name_custom not in asset_names
+    assert asset_name_onvif in asset_names
+    assert asset_name_opcua in asset_names
+    assert asset_name_media in asset_names
 
 
 def assert_asset_properties(result, **expected):
-    """Verify asset properties match expected values"""
+    """Verify asset properties match expected values
+
+    Note that the unit tests have coverage for all properties, so this function
+    is used to assert general properties.
+    """
 
     assert result["name"] == expected["name"]
+    # Check custom location
+    if "custom_location" in expected:
+        assert result["properties"]["extendedLocation"]["name"] == expected["custom_location"]
 
+    result_props = result["properties"]
+
+    if "attributes" in expected:
+        assert result_props["attributes"] == parse_kvp_nargs(expected["attributes"])
+    if "disabled" in expected:
+        assert result_props["enabled"] is not expected["disabled"]
+    if "displayName" in expected:
+        assert result_props["displayName"] == expected["display_name"]
     if "device" in expected:
-        assert result["properties"]["device"]["name"] == expected["device"]
-
+        assert result_props["deviceRef"]["deviceName"] == expected["device"]
     if "endpoint" in expected:
-        assert result["properties"]["endpoint"]["name"] == expected["endpoint"]
-
-    if "description" in expected:
-        assert result["properties"]["description"] == expected["description"]
-
-    if "display_name" in expected:
-        assert result["properties"]["displayName"] == expected["display_name"]
-
-    if "asset_type" in expected:
-        assert result["properties"]["assetType"] == expected["asset_type"]
+        assert result_props["deviceRef"]["endpointName"] == expected["endpoint"]
+    if "documentation_uri" in expected:
+        assert result_props["documentationUri"] == expected["documentation_uri"]
+    if "external_asset_id" in expected:
+        assert result_props["externalAssetId"] == expected["external_asset_id"]
+    if "hardware_revision" in expected:
+        assert result_props["hardwareRevision"] == expected["hardware_revision"]
+    if "manufacturer" in expected:
+        assert result_props["manufacturer"] == expected["manufacturer"]
+    if "manufacturer_uri" in expected:
+        assert result_props["manufacturerUri"] == expected["manufacturer_uri"]
+    if "model" in expected:
+        assert result_props["model"] == expected["model"]
+    if "product_code" in expected:
+        assert result_props["productCode"] == expected["product_code"]
+    if "serial_number" in expected:
+        assert result_props["serialNumber"] == expected["serial_number"]
+    if "software_revision" in expected:
+        assert result_props["softwareRevision"] == expected["software_revision"]
