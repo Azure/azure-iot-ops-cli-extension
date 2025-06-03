@@ -44,7 +44,6 @@ CLASSIFIERS = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -56,7 +55,7 @@ short_description = "The Azure IoT Operations extension for Azure CLI."
 setup(
     name=PACKAGE_NAME,
     version=VERSION,
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     description=short_description,
     long_description="{} Intended for power users and/or automation of Azure IoT Operations solutions at scale.".format(
         short_description
