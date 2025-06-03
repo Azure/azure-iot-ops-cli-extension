@@ -338,7 +338,6 @@ def test_schema_registry_create(
     )
 
     get_role_response = None
-    create_role_response = None
     if not skip_role_assignments:
         get_role_response = mocked_responses.add(
             method=responses.GET,
