@@ -75,6 +75,7 @@ class SchemaRegistries(Queryable):
         **kwargs,
     ) -> dict:
         from ..rp_namespace import ADR_PROVIDER, register_providers
+
         with console.status("Working...") as c:
             # Register the schema (ADR) provider
             register_providers(self.default_subscription_id, ADR_PROVIDER)
@@ -133,17 +134,17 @@ class SchemaRegistries(Queryable):
             )
             result = wait_for_terminal_state(poller, **kwargs)
 
-            target_role_def = custom_role_id or ROLE_DEF_FORMAT_STR.format(
-                subscription_id=storage_id_container.subscription_id, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
-            )
             if not skip_role_assignments:
+                target_role_def = custom_role_id or ROLE_DEF_FORMAT_STR.format(
+                    subscription_id=storage_id_container.subscription_id, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
+                )
                 permission_manager = PermissionManager(storage_id_container.subscription_id)
                 try:
                     permission_manager.apply_role_assignment(
                         scope=blob_container["id"],
                         principal_id=result["identity"]["principalId"],
                         role_def_id=target_role_def,
-                        principal_type=PrincipalType.SERVICE_PRINCIPAL.value
+                        principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
                     )
                 except Exception as e:
                     c.stop()
@@ -199,7 +200,7 @@ class Schemas(Queryable):
         schema_version: int = 1,
         description: Optional[str] = None,
         display_name: Optional[str] = None,
-        schema_version_description: Optional[str] = None
+        schema_version_description: Optional[str] = None,
     ) -> dict:
         with console.status("Working...") as c:
             schema_type = SchemaType[schema_type].full_value
@@ -216,7 +217,7 @@ class Schemas(Queryable):
                 resource_group_name=resource_group_name,
                 schema_registry_name=schema_registry_name,
                 schema_name=name,
-                resource=resource
+                resource=resource,
             )
             logger.info(f"Created schema {name}.")
             # TODO: maybe add in an exception catch for auth errors
@@ -227,16 +228,14 @@ class Schemas(Queryable):
                 schema_registry_name=schema_registry_name,
                 resource_group_name=resource_group_name,
                 description=schema_version_description,
-                current_console=c
+                current_console=c,
             )
             logger.info(f"Added version {schema_version} to schema {name}.")
             return schema
 
     def show(self, name: str, schema_registry_name: str, resource_group_name: str) -> dict:
         return self.ops.get(
-            resource_group_name=resource_group_name,
-            schema_registry_name=schema_registry_name,
-            schema_name=name
+            resource_group_name=resource_group_name, schema_registry_name=schema_registry_name, schema_name=name
         )
 
     def list(self, schema_registry_name: str, resource_group_name: str) -> Iterable[dict]:
@@ -256,9 +255,7 @@ class Schemas(Queryable):
 
         with console.status("Working..."):
             return self.ops.delete(
-                resource_group_name=resource_group_name,
-                schema_registry_name=schema_registry_name,
-                schema_name=name
+                resource_group_name=resource_group_name, schema_registry_name=schema_registry_name, schema_name=name
             )
 
     def add_version(
@@ -296,7 +293,7 @@ class Schemas(Queryable):
                     schema_registry_name=schema_registry_name,
                     schema_name=schema_name,
                     schema_version_name=name,
-                    resource=resource
+                    resource=resource,
                 )
         except HttpResponseError as e:
             if e.status_code == 412:
@@ -320,13 +317,9 @@ class Schemas(Queryable):
             schema_version_name=name,
         )
 
-    def list_versions(
-        self, schema_name: str, schema_registry_name: str, resource_group_name: str
-    ) -> Iterable[dict]:
+    def list_versions(self, schema_name: str, schema_registry_name: str, resource_group_name: str) -> Iterable[dict]:
         return self.version_ops.list_by_schema(
-            resource_group_name=resource_group_name,
-            schema_registry_name=schema_registry_name,
-            schema_name=schema_name
+            resource_group_name=resource_group_name, schema_registry_name=schema_registry_name, schema_name=schema_name
         )
 
     def remove_version(
@@ -350,9 +343,10 @@ class Schemas(Queryable):
         resource_group_name: str,
         schema_name: Optional[str] = None,
         schema_version: Optional[int] = None,
-        latest: bool = False
+        latest: bool = False,
     ) -> dict:
         from collections import OrderedDict
+
         # note temporary until dataflow create is added.
         versions_map = {}
         with console.status("Fetching version info..."):
@@ -365,14 +359,12 @@ class Schemas(Queryable):
                         schema_name=schema_name,
                         schema_registry_name=schema_registry_name,
                         resource_group_name=resource_group_name,
-                        latest=latest
+                        latest=latest,
                     )
                 )
             elif schema_version:
                 # TODO: maybe do the weird
-                raise InvalidArgumentValueError(
-                    "Please provide the schema name if schema versions is used."
-                )
+                raise InvalidArgumentValueError("Please provide the schema name if schema versions is used.")
             else:
                 schema_list = self.list(
                     schema_registry_name=schema_registry_name, resource_group_name=resource_group_name
@@ -383,7 +375,7 @@ class Schemas(Queryable):
                             schema_name=schema["name"],
                             schema_registry_name=schema_registry_name,
                             resource_group_name=resource_group_name,
-                            latest=latest
+                            latest=latest,
                         )
                     )
 
@@ -401,9 +393,7 @@ class Schemas(Queryable):
         self, schema_name: str, schema_registry_name: str, resource_group_name: str, latest: bool = False
     ) -> dict:
         version_list = self.list_versions(
-            schema_name=schema_name,
-            schema_registry_name=schema_registry_name,
-            resource_group_name=resource_group_name
+            schema_name=schema_name, schema_registry_name=schema_registry_name, resource_group_name=resource_group_name
         )
         version_list = [int(ver["name"]) for ver in version_list]
         if latest:
