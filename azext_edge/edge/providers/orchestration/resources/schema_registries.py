@@ -70,6 +70,7 @@ class SchemaRegistries(Queryable):
         description: Optional[str] = None,
         display_name: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
+        skip_role_assignments: Optional[bool] = None,
         custom_role_id: Optional[str] = None,
         **kwargs,
     ) -> dict:
@@ -135,23 +136,24 @@ class SchemaRegistries(Queryable):
             target_role_def = custom_role_id or ROLE_DEF_FORMAT_STR.format(
                 subscription_id=storage_id_container.subscription_id, role_id=STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID
             )
-            permission_manager = PermissionManager(storage_id_container.subscription_id)
-            try:
-                permission_manager.apply_role_assignment(
-                    scope=blob_container["id"],
-                    principal_id=result["identity"]["principalId"],
-                    role_def_id=target_role_def,
-                    principal_type=PrincipalType.SERVICE_PRINCIPAL.value
-                )
-            except Exception as e:
-                c.stop()
-                raise AzureResponseError(
-                    get_user_msg_warn_ra(
-                        prefix=f"Role assignment failed with:\n{str(e)}",
-                        principal_id=result["identity"]["principalId"],
+            if not skip_role_assignments:
+                permission_manager = PermissionManager(storage_id_container.subscription_id)
+                try:
+                    permission_manager.apply_role_assignment(
                         scope=blob_container["id"],
+                        principal_id=result["identity"]["principalId"],
+                        role_def_id=target_role_def,
+                        principal_type=PrincipalType.SERVICE_PRINCIPAL.value
                     )
-                )
+                except Exception as e:
+                    c.stop()
+                    raise AzureResponseError(
+                        get_user_msg_warn_ra(
+                            prefix=f"Role assignment failed with:\n{str(e)}",
+                            principal_id=result["identity"]["principalId"],
+                            scope=blob_container["id"],
+                        )
+                    )
 
             return result
 

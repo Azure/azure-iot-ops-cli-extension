@@ -24,6 +24,7 @@ def create_registry(
     description: Optional[str] = None,
     display_name: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
+    skip_role_assignments: Optional[bool] = None,
     custom_role_id: Optional[str] = None,
     **kwargs
 ) -> dict:
@@ -37,6 +38,7 @@ def create_registry(
         description=description,
         display_name=display_name,
         tags=tags,
+        skip_role_assignments=skip_role_assignments,
         custom_role_id=custom_role_id,
         **kwargs,
     )

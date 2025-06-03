@@ -217,6 +217,10 @@ def test_schema_registry_delete(mocked_cmd, mocked_responses: responses, status:
     [200, 403],
 )
 @pytest.mark.parametrize(
+    "skip_role_assignments",
+    [None, True],
+)
+@pytest.mark.parametrize(
     "display_name,description,tags,custom_role_id",
     [
         (None, None, None, None),
@@ -236,6 +240,7 @@ def test_schema_registry_create(
     container_fetch_code: int,
     create_role_assignment_code: int,
     custom_role_id: Optional[str],
+    skip_role_assignments: Optional[bool],
 ):
     registery_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -282,6 +287,7 @@ def test_schema_registry_create(
         "description": description,
         "tags": tags,
         "custom_role_id": custom_role_id,
+        "skip_role_assignments": skip_role_assignments,
         "wait_sec": 0,
     }
     if not is_hns_enabled:
@@ -331,36 +337,40 @@ def test_schema_registry_create(
         status=200,
     )
 
-    get_role_response = mocked_responses.add(
-        method=responses.GET,
-        url=get_authz_endpoint_pattern(),
-        json={"value": []},
-        status=200,
-    )
-    create_role_response = mocked_responses.add(
-        method=responses.PUT,
-        url=get_authz_endpoint_pattern(),
-        json={},
-        status=create_role_assignment_code,
-    )
+    get_role_response = None
+    create_role_response = None
+    if not skip_role_assignments:
+        get_role_response = mocked_responses.add(
+            method=responses.GET,
+            url=get_authz_endpoint_pattern(),
+            json={"value": []},
+            status=200,
+        )
+        create_role_response = mocked_responses.add(
+            method=responses.PUT,
+            url=get_authz_endpoint_pattern(),
+            json={},
+            status=create_role_assignment_code,
+        )
 
-    if create_role_assignment_code not in [200, 201]:
-        with pytest.raises(AzureResponseError) as error:
-            create_registry(**create_registry_kwargs)
-        assert str(error.value).startswith("Role assignment failed")
-        return
+        if create_role_assignment_code not in [200, 201]:
+            with pytest.raises(AzureResponseError) as error:
+                create_registry(**create_registry_kwargs)
+            assert str(error.value).startswith("Role assignment failed")
+            return
 
     create_result = create_registry(**create_registry_kwargs)
     mocked_register_providers.assert_called_with(ZEROED_SUBSCRIPTION, ADR_PROVIDER)
 
-    assert get_role_response.calls[0].request.url.endswith(
-        f"?$filter=principalId%20eq%20'{mock_registry_record['identity']['principalId']}'&api-version=2022-04-01"
-    )
+    if get_role_response:
+        assert get_role_response.calls[0].request.url.endswith(
+            f"?$filter=principalId%20eq%20'{mock_registry_record['identity']['principalId']}'&api-version=2022-04-01"
+        )
 
-    create_role_request_json = json.loads(create_role_response.calls[0].request.body)
-    assert create_role_request_json["properties"]["roleDefinitionId"] == target_role_id
-    assert create_role_request_json["properties"]["principalId"] == mock_registry_record["identity"]["principalId"]
-    assert create_role_request_json["properties"]["principalType"] == "ServicePrincipal"
+        create_role_request_json = json.loads(create_role_response.calls[0].request.body)
+        assert create_role_request_json["properties"]["roleDefinitionId"] == target_role_id
+        assert create_role_request_json["properties"]["principalId"] == mock_registry_record["identity"]["principalId"]
+        assert create_role_request_json["properties"]["principalType"] == "ServicePrincipal"
 
     assert create_result == mock_registry_record
     schema_registry_create_payload = json.loads(sr_create_response.calls[0].request.body)
