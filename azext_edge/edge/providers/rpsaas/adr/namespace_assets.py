@@ -417,25 +417,25 @@ def _process_configs(
 # maybe move the config processing functions to specs?
 def _process_opcua_dataset_configurations(
     original_dataset_configuration: Optional[str] = None,
-    dataset_publishing_interval: Optional[int] = None,
-    dataset_sampling_interval: Optional[int] = None,
-    dataset_queue_size: Optional[int] = None,
-    dataset_key_frame_count: Optional[int] = None,
-    dataset_start_instance: Optional[str] = None,
+    opcua_dataset_publishing_interval: Optional[int] = None,
+    opcua_dataset_sampling_interval: Optional[int] = None,
+    opcua_dataset_queue_size: Optional[int] = None,
+    opcua_dataset_key_frame_count: Optional[int] = None,
+    opcua_dataset_start_instance: Optional[str] = None,
     **_
 ) -> str:
     from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA
     result = json.loads(original_dataset_configuration) if original_dataset_configuration else {}
-    if dataset_publishing_interval is not None:
-        result["publishingInterval"] = dataset_publishing_interval
-    if dataset_sampling_interval is not None:
-        result["samplingInterval"] = dataset_sampling_interval
-    if dataset_queue_size is not None:
-        result["queueSize"] = dataset_queue_size
-    if dataset_key_frame_count is not None:
-        result["keyFrameCount"] = dataset_key_frame_count
-    if dataset_start_instance is not None:
-        result["startInstance"] = dataset_start_instance
+    if opcua_dataset_publishing_interval is not None:
+        result["publishingInterval"] = opcua_dataset_publishing_interval
+    if opcua_dataset_sampling_interval is not None:
+        result["samplingInterval"] = opcua_dataset_sampling_interval
+    if opcua_dataset_queue_size is not None:
+        result["queueSize"] = opcua_dataset_queue_size
+    if opcua_dataset_key_frame_count is not None:
+        result["keyFrameCount"] = opcua_dataset_key_frame_count
+    if opcua_dataset_start_instance is not None:
+        result["startInstance"] = opcua_dataset_start_instance
 
     ensure_schema_structure(
         schema=NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA,
@@ -446,30 +446,30 @@ def _process_opcua_dataset_configurations(
 
 def _process_opcua_event_configurations(
     original_event_configuration: Optional[str] = None,
-    event_publishing_interval: Optional[int] = None,
-    event_queue_size: Optional[int] = None,
-    event_start_instance: Optional[str] = None,
-    event_filter_type: Optional[str] = None,
-    event_filter_clauses: Optional[List[List[str]]] = None,  # path (req), type, field
+    opcua_event_publishing_interval: Optional[int] = None,
+    opcua_event_queue_size: Optional[int] = None,
+    opcua_event_start_instance: Optional[str] = None,
+    opcua_event_filter_type: Optional[str] = None,
+    opcua_event_filter_clauses: Optional[List[List[str]]] = None,  # path (req), type, field
     **_
 ) -> str:
     from .specs import NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA
 
     result = json.loads(original_event_configuration) if original_event_configuration else {}
-    if event_publishing_interval is not None:
-        result["publishingInterval"] = event_publishing_interval
-    if event_queue_size is not None:
-        result["queueSize"] = event_queue_size
-    if event_start_instance is not None:
-        result["startInstance"] = event_start_instance
+    if opcua_event_publishing_interval is not None:
+        result["publishingInterval"] = opcua_event_publishing_interval
+    if opcua_event_queue_size is not None:
+        result["queueSize"] = opcua_event_queue_size
+    if opcua_event_start_instance is not None:
+        result["startInstance"] = opcua_event_start_instance
 
-    if event_filter_type or event_filter_clauses:
+    if opcua_event_filter_type or opcua_event_filter_clauses:
         result["eventFilter"] = {}
-    if event_filter_type is not None:
-        result["eventFilter"]["typeDefinitionId"] = event_filter_type
-    if event_filter_clauses:
+    if opcua_event_filter_type is not None:
+        result["eventFilter"]["typeDefinitionId"] = opcua_event_filter_type
+    if opcua_event_filter_clauses:
         result["eventFilter"]["selectClauses"] = []
-        for clause in event_filter_clauses or []:
+        for clause in opcua_event_filter_clauses or []:
             clause = parse_kvp_nargs(clause)
             if "path" not in clause:
                 logger.warning(
@@ -504,7 +504,7 @@ def _process_media_stream_configurations(
     media_server_password: Optional[str] = None,
     **_
 ) -> str:
-    from .specs import NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA, MediaFormat, MediaTaskType
+    from .specs import NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA, MediaFormat, MediaTaskType
     result = json.loads(original_stream_configuration) if original_stream_configuration else {}
 
     task_type = task_type or result.get("taskType")
@@ -570,7 +570,7 @@ def _process_media_stream_configurations(
     result["taskType"] = MediaTaskType(task_type).value
     # Final schema validation
     ensure_schema_structure(
-        schema=NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA,
+        schema=NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA,
         input_data=result
     )
     return json.dumps(result)

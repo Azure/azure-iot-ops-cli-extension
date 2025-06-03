@@ -121,11 +121,11 @@ def test_build_destination_error(test_case: dict):
     {
         "original": None,
         "params": {
-            "dataset_publishing_interval": 1000,
-            "dataset_sampling_interval": 500,
-            "dataset_queue_size": 50,
-            "dataset_key_frame_count": 5,
-            "dataset_start_instance": "test-instance"
+            "opcua_dataset_publishing_interval": 1000,
+            "opcua_dataset_sampling_interval": 500,
+            "opcua_dataset_queue_size": 50,
+            "opcua_dataset_key_frame_count": 5,
+            "opcua_dataset_start_instance": "test-instance"
         },
         "expected_values": {
             "publishingInterval": 1000,
@@ -139,8 +139,8 @@ def test_build_destination_error(test_case: dict):
     {
         "original": None,
         "params": {
-            "dataset_publishing_interval": 1000,
-            "dataset_queue_size": 50
+            "opcua_dataset_publishing_interval": 1000,
+            "opcua_dataset_queue_size": 50
         },
         "expected_values": {
             "publishingInterval": 1000,
@@ -150,7 +150,7 @@ def test_build_destination_error(test_case: dict):
     # Update existing configuration
     {
         "original": json.dumps({"publishingInterval": 1000, "samplingInterval": 500}),
-        "params": {"dataset_queue_size": 50, "dataset_key_frame_count": 5},
+        "params": {"opcua_dataset_queue_size": 50, "opcua_dataset_key_frame_count": 5},
         "expected_values": {
             "publishingInterval": 1000,
             "samplingInterval": 500,
@@ -161,7 +161,7 @@ def test_build_destination_error(test_case: dict):
     # Override existing configuration
     {
         "original": json.dumps({"publishingInterval": 1000, "samplingInterval": 500}),
-        "params": {"dataset_publishing_interval": 2000},
+        "params": {"opcua_dataset_publishing_interval": 2000},
         "expected_values": {"publishingInterval": 2000, "samplingInterval": 500}
     }
 ])
@@ -193,13 +193,13 @@ def test_process_opcua_dataset_configurations(test_case):
     # Set filter clauses with path only
     {
         "original": None,
-        "params": {"event_filter_clauses": [["path=/path/to/node"]]},
+        "params": {"opcua_event_filter_clauses": [["path=/path/to/node"]]},
         "expected_values": {"eventFilter": {"selectClauses": [{"browsePath": "/path/to/node"}]}},
     },
     # Set filter clauses with path, type, and field
     {
         "original": None,
-        "params": {"event_filter_clauses": [["path=/path/to/node", "type=TestType", "field=TestField"]]},
+        "params": {"opcua_event_filter_clauses": [["path=/path/to/node", "type=TestType", "field=TestField"]]},
         "expected_values": {
             "eventFilter": {
                 "selectClauses": [
@@ -215,15 +215,15 @@ def test_process_opcua_dataset_configurations(test_case):
     # Set filter clauses without path (should be skipped)
     {
         "original": None,
-        "params": {"event_filter_clauses": [["type=TestType", "field=TestField"]]},
+        "params": {"opcua_event_filter_clauses": [["type=TestType", "field=TestField"]]},
         "expected_values": {},
     },
     # Set both filter type and clauses
     {
         "original": None,
         "params": {
-            "event_filter_type": "test-type",
-            "event_filter_clauses": [["path=/path/to/node"]]
+            "opcua_event_filter_type": "test-type",
+            "opcua_event_filter_clauses": [["path=/path/to/node"]]
         },
         "expected_values": {
             "eventFilter": {
@@ -235,16 +235,16 @@ def test_process_opcua_dataset_configurations(test_case):
     # Update existing configuration
     {
         "original": json.dumps({"publishingInterval": 1000}),
-        "params": {"event_queue_size": 50},
+        "params": {"opcua_event_queue_size": 50},
         "expected_values": {"publishingInterval": 1000, "queueSize": 50}
     },
     # Update existing configuration with filter clauses
     {
         "original": json.dumps({"publishingInterval": 1000, "startInstance": "test-instance"}),
         "params": {
-            "event_queue_size": 50,
-            "event_start_instance": "new-instance",
-            "event_filter_clauses": [["path=/new/path", "type=NewType", "field=NewField"]]
+            "opcua_event_queue_size": 50,
+            "opcua_event_start_instance": "new-instance",
+            "opcua_event_filter_clauses": [["path=/new/path", "type=NewType", "field=NewField"]]
         },
         "expected_values": {
             "publishingInterval": 1000,
@@ -265,11 +265,11 @@ def test_process_opcua_dataset_configurations(test_case):
     {
         "original": None,
         "params": {
-            "event_publishing_interval": 1000,
-            "event_queue_size": 50,
-            "event_start_instance": "test-instance",
-            "event_filter_type": "test-type",
-            "event_filter_clauses": [["path=/path/to/node", "type=TestType", "field=TestField"]]
+            "opcua_event_publishing_interval": 1000,
+            "opcua_event_queue_size": 50,
+            "opcua_event_start_instance": "test-instance",
+            "opcua_event_filter_type": "test-type",
+            "opcua_event_filter_clauses": [["path=/path/to/node", "type=TestType", "field=TestField"]]
         },
         "expected_values": {
             "publishingInterval": 1000,

@@ -1086,7 +1086,7 @@ def load_adr_arguments(self, _):
         context.argument(
             "streams_destinations",
             options_list=["--streams-destinations", "--st-dest"],
-            help="Key=value pairs representing the destination for streams."
+            help="Key=value pairs representing the destination for streams. "
             "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
             "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
             arg_group="Default Destination",

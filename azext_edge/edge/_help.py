@@ -2671,18 +2671,20 @@ def load_iotops_help():
             --device myDevice --endpoint-name myEndpoint --description "Factory sensor" --display-name "Temperature Sensor"
             --model "TempSensor-X1" --manufacturer "Contoso" --serial-number "SN12345"
 
-        - name: Create a custom asset with dataset and events configuration using JSON
+        - name: Create a custom asset with dataset and events configuration using inline JSON
           text: >
             az iot ops namespace asset create custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
             --device myDevice --endpoint-name myEndpoint --datasets-config "{\\\"publishingInterval\\\": 1000}"
             --events-config "{\\\"queueSize\\\": 5}"
 
-        - name: Create a custom asset with MQTT destinations for datasets and events
+        - name: Create a custom asset with datasets use a BrokerStateStore destination, events use a Mqtt destination, and streams use a Storage destination.
           text: >
             az iot ops namespace asset create custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
-            --device myDevice --endpoint-name myEndpoint
-            --datasets-destination topic="factory/sensors/temperature" qos=1 retain=true ttl=3600
-            --events-destination topic="factory/events/temperature" qos=1 retain=false ttl=3600
+            --datasets-destination key="myKey"
+            --events-destination topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
+            --streams-destination path="my/storage/path"
+
+
     """
 
     helps[
@@ -2817,11 +2819,12 @@ def load_iotops_help():
             az iot ops namespace asset update custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
             --datasets-config "{\\\"publishingInterval\\\": 2000}" --events-config "{\\\"queueSize\\\": 10}"
 
-        - name: Update a custom asset's destination configurations
+        - name: Update a custom asset's destinations so the datasets use a BrokerStateStore destination, events use a Mqtt destination, and streams use a Storage destination.
           text: >
             az iot ops namespace asset update custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
-            --datasets-destination topic="factory/sensors/temperature/updated" qos=1 retain=true ttl=7200
+            --datasets-destination key="myKey"
             --events-destination topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
+            --streams-destination path="my/storage/path"
 
         - name: Update a custom asset's custom attributes
           text: >

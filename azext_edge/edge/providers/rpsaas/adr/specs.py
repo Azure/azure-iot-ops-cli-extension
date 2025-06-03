@@ -274,7 +274,7 @@ NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA = {
 }
 
 
-NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA = {
+NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
     "$id": "https://azure.com/aio/media-connector/datapoint.schema.json",
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "description": "Asset.dataPoint.dataPointConfiguration schema",
@@ -440,7 +440,7 @@ NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA = {
 
 class MediaTaskType(Enum):
     """
-    Enum for media task types in NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA.
+    Enum for media task types in NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA.
     """
     snapshot_to_mqtt = "snapshot-to-mqtt"
     snapshot_to_fs = "snapshot-to-fs"
@@ -468,7 +468,7 @@ class MediaTaskType(Enum):
 
 class MediaFormat(ListableEnum):
     """
-    Enum for all media formats specified in NAMESPACE_ASSET_MEDIA_SCHEMA_CONFIGURATION_SCHEMA.
+    Enum for all media formats specified in NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA.
     """
     png = "png"
     bmp = "bmp"
