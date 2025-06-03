@@ -4,7 +4,7 @@ pytest-cov
 pytest-env
 responses
 black
-setuptools==70.0.0
+setuptools==78.1.1
 wheel==0.30.0
 pre-commit
 pylint==3.0.3
