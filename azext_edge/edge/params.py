@@ -150,6 +150,12 @@ def load_iotops_arguments(self, _):
             help="Fully qualified role definition Id in the following format: "
             "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
         )
+        context.argument(
+            "skip_role_assignments",
+            options_list=["--skip-ra"],
+            arg_type=get_three_state_flag(),
+            help="When used the role assignment step of the operation will be skipped.",
+        )
 
     with self.argument_context("iot ops identity") as context:
         context.argument(
@@ -1365,12 +1371,6 @@ def load_iotops_arguments(self, _):
             options_list=["--spc"],
             help="The default secret provider class name for secret sync enablement. "
             "The default pattern is 'spc-ops-{hash}'.",
-        )
-        context.argument(
-            "skip_role_assignments",
-            options_list=["--skip-ra"],
-            arg_type=get_three_state_flag(),
-            help="When used the role assignment step of the operation will be skipped.",
         )
         context.argument(
             "instance_name",

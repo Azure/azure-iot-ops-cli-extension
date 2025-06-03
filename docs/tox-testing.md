@@ -9,7 +9,7 @@ Our [current tox config](../tox.ini) contains the following environments, and ca
 - **lint**: Runs `flake8` and `pylint` for linting the code.
   - Command: `flake8 azext_edge/`, `pylint azext_edge/`
 
-- **python, py38, py39, py310, py311, py312**: Runs unit tests using a specific python version. `python` will run the default version from your `PATH`
+- **python, py3\***: Runs unit tests using a specific python version. `python` will run the default version from your `PATH`
   - Command: `pytest -k _unit ./azext_edge/tests`
 
 - **python-{init,e2e,rpsaas,wlif,edge,all}-int**: Runs integration tests for specific scenarios.
@@ -22,8 +22,10 @@ Our [current tox config](../tox.ini) contains the following environments, and ca
     - `python-all-int`: All non-init related tests.
   - Command: `pytest -k "_int.py" -m {SCENARIO}` (uses pytest markers to determine tests)
 
-- **coverage**: Generates code coverage reports in JSON, HTML, and terminal formats.
-  - Command: `pytest -k _unit --cov --cov-report=json --cov-report=html --cov-report=term:skip-covered`
+- **report**: Generates code coverage reports in JSON, HTML, and terminal formats.
+  - Use **tox -e clean** to reset local coverage files, as most tests run with `--cov-append` by default
+  - Tox installs `coverage` and runs `coverage report`
+  - Pytest version: `pytest -k _unit --cov --cov-report=json --cov-report=html --cov-report=term:skip-covered`
 
 ## Running Tox Locally
 In order to run tox testing environments as currently configured, you must install tox, either as part of the dev requirements (`pip -r dev_requirements.txt`) or on your machine / virtualenv with `pip install tox`.

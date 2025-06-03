@@ -42,7 +42,7 @@ def process_template(input_template_path: str, output_format: str = "json"):
         elif output_format == "python":
             write_file.write(str(data))
             write_file.close()
-            run(f"black {output_template_path} --line-length=119 --target-version=py38", check=True)
+            run(f"black {output_template_path} --line-length=119 --target-version=py39", check=True)
 
     # Test serialized content
     with open(output_template_path, "r") as read_file:
