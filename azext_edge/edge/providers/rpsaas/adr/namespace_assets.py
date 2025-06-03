@@ -7,7 +7,7 @@
 from copy import deepcopy
 import json
 from rich.console import Console
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 from knack.log import get_logger
 
 from azure.cli.core.azclierror import (
@@ -80,28 +80,13 @@ class NamespaceAssets(Queryable):
         # TODO: future, Add in options to import from files for datasets, events, streams, and mgmt groups
 
         # use the device to get the location, extended location, and check type and endpoint
-        device = self.device_ops.get(
+        device, _ = self._check_device_props(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
-            device_name=device_name
+            asset_type=asset_type,
+            device_name=device_name,
+            device_endpoint_name=device_endpoint_name
         )
-        device_endpoint = device["properties"].get("endpoints", {}).get("inbound", {}).get(device_endpoint_name)
-        if not device_endpoint:
-            raise InvalidArgumentValueError(
-                f"Device endpoint '{device_endpoint_name}' not found in device '{device_name}'."
-            )
-
-        # asset type must be the same as endpoint type unless either is custom
-        device_type_list = [d.lower() for d in DeviceEndpointType.list()]
-        if (
-            asset_type.lower() in device_type_list
-            and device_endpoint["endpointType"].lower() in device_type_list
-            and asset_type.lower() != device_endpoint["endpointType"].lower()
-        ):
-            raise InvalidArgumentValueError(
-                f"Device endpoint '{device_endpoint_name}' is of type '{device_endpoint['endpointType']}', "
-                f"but expected '{asset_type}'."
-            )
 
         # Initialize properties dictionary
         properties = {
@@ -316,6 +301,57 @@ class NamespaceAssets(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
+    def _check_device_props(
+        self,
+        resource_group_name: str,
+        namespace_name: str,
+        asset_type: str,
+        asset_name: Optional[str] = None,
+        device_name: Optional[str] = None,
+        device_endpoint_name: Optional[str] = None,
+    ) -> Tuple[dict, Optional[dict]]:
+        """
+        Checks the device properties to ensure the endpoint type matches the asset operation's type.
+
+        If asset_name is provided (in the case of the asset is already created), it will retrieve the
+        asset to populate the device_name and device_endpoint_name.
+        Returns a tuple consisting of the device and asset (if asset_name is provided)
+        """
+        asset = None
+        if asset_name:
+            # get the asset to populate the other optional args
+            asset = self.ops.get(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name
+            )
+            device_name = asset["properties"]["deviceRef"]["deviceName"]
+            device_endpoint_name = asset["properties"]["deviceRef"]["endpointName"]
+
+        device = self.device_ops.get(
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
+            device_name=device_name
+        )
+        device_endpoint = device["properties"].get("endpoints", {}).get("inbound", {}).get(device_endpoint_name)
+        if not device_endpoint:
+            raise InvalidArgumentValueError(
+                f"Device endpoint '{device_endpoint_name}' not found in device '{device_name}'."
+            )
+
+        # asset type must be the same as endpoint type unless either is custom
+        device_type_list = [d.lower() for d in DeviceEndpointType.list()]
+        if (
+            asset_type.lower() in device_type_list
+            and device_endpoint["endpointType"].lower() in device_type_list
+            and asset_type.lower() != device_endpoint["endpointType"].lower()
+        ):
+            raise InvalidArgumentValueError(
+                f"Device endpoint '{device_endpoint_name}' is of type '{device_endpoint['endpointType']}', "
+                f"but expected '{asset_type}'."
+            )
+        return device, asset
+
 
 # Helpers
 def _process_configs(
@@ -327,7 +363,7 @@ def _process_configs(
     Destination and custom configuration arguments will be treated as an overwrite rather than update.
     For destinations, currently only one destination is supported but there may be more than one in the future.
     """
-    # TODO: add in functionality so we can reuse this for individual datasets, events, etc
+    # TODO: future, add in functionality so we can reuse this for individual datasets, events, etc
     result = {}
     if asset_type == DeviceEndpointType.OPCUA.value.lower():
         # allowed: datasets, events, mgmt groups, destinations must be mqtt

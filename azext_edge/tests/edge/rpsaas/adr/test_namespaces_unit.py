@@ -24,7 +24,7 @@ from azext_edge.edge.util.common import parse_kvp_nargs
 from ...orchestration.resources.conftest import get_base_endpoint
 
 from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
-# TODO: remove once public
+# TODO: remove ADR_BASE_URL once service is public
 ADR_BASE_URL = "https://eastus2euap.management.azure.com"
 
 

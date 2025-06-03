@@ -32,7 +32,7 @@ from azext_edge.edge.util.common import parse_kvp_nargs
 
 # Import necessary modules
 from .test_namespaces_unit import get_namespace_mgmt_uri
-# TODO: once public
+# TODO: once service is public
 # from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
 from ....generators import generate_random_string, get_zeroed_subscription
 BASE_URL = "https://eastus2euap.management.azure.com"

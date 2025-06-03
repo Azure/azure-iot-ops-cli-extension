@@ -2674,17 +2674,15 @@ def load_iotops_help():
         - name: Create a custom asset with dataset and events configuration using inline JSON
           text: >
             az iot ops namespace asset create custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
-            --device myDevice --endpoint-name myEndpoint --datasets-config "{\\\"publishingInterval\\\": 1000}"
-            --events-config "{\\\"queueSize\\\": 5}"
+            --device myDevice --endpoint-name myEndpoint --dataset-config "{\\\"publishingInterval\\\": 1000}"
+            --event-config "{\\\"queueSize\\\": 5}"
 
         - name: Create a custom asset with datasets use a BrokerStateStore destination, events use a Mqtt destination, and streams use a Storage destination.
           text: >
             az iot ops namespace asset create custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
-            --datasets-destination key="myKey"
-            --events-destination topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
-            --streams-destination path="my/storage/path"
-
-
+            --dataset-dest key="myKey"
+            --event-dest topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
+            --stream-dest path="my/storage/path"
     """
 
     helps[
@@ -2700,12 +2698,12 @@ def load_iotops_help():
             az iot ops namespace asset create media --name myCameraAsset --namespace myNamespace -g myResourceGroup
             --device myCamera --endpoint-name myCameraEndpoint
 
-        - name: Create a media asset for MQTT snapshots
+        - name: Create a media asset for MQTT snapshots with an MQTT destination
           text: >
             az iot ops namespace asset create media --name myCameraAsset --namespace myNamespace -g myResourceGroup
             --device myCamera --endpoint-name myCameraEndpoint --task-type snapshot-to-mqtt
             --task-format jpeg --snapshots-per-second 1
-            --streams-destinations topic="factory/cameras/snapshots" qos=1 retain=false ttl=60
+            --stream-dest topic="factory/cameras/snapshots" qos=1 retain=false ttl=60
 
         - name: Create a media asset for file system snapshots
           text: >
@@ -2770,23 +2768,23 @@ def load_iotops_help():
         - name: Create an OPC UA asset with dataset configuration
           text: >
             az iot ops namespace asset create opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
-            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --dataset-publish-interval 1000
-            --dataset-sampling-interval 500 --dataset-queue-size 5 --dataset-key-frame-count 1
-            --dataset-start-instance "ns=1;i=1234"
+            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --dataset-publish-int 1000
+            --dataset-sampling-int 500 --dataset-queue-size 5 --dataset-key-frame-count 1
+            --dataset-start-inst "ns=1;i=1234"
 
         - name: Create an OPC UA asset with event configuration
           text: >
             az iot ops namespace asset create opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
-            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --events-publish-interval 2000
-            --events-queue-size 10 --events-start-instance "ns=1;i=5678"
-            --events-filter-clause path="ns=1;i=1000" type="String" field="Temperature"
+            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --event-publish-int 2000
+            --event-queue-size 10 --event-start-inst "ns=1;i=5678"
+            --event-filter-clause path="ns=1;i=1000" type="String" field="Temperature"
 
         - name: Create an OPC UA asset with MQTT destinations for datasets and events
           text: >
             az iot ops namespace asset create opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
             --device myOpcuaDevice --endpoint-name myOpcuaEndpoint
-            --datasets-destinations topic="factory/opcua/data" retain=true qos=1 ttl=3600
-            --events-destinations topic="factory/opcua/events" retain=false qos=1 ttl=3600
+            --dataset-dest topic="factory/opcua/data" retain=true qos=1 ttl=3600
+            --event-dest topic="factory/opcua/events" retain=false qos=1 ttl=3600
     """
 
     helps[
@@ -2817,14 +2815,14 @@ def load_iotops_help():
         - name: Update a custom asset's dataset and events configuration
           text: >
             az iot ops namespace asset update custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
-            --datasets-config "{\\\"publishingInterval\\\": 2000}" --events-config "{\\\"queueSize\\\": 10}"
+            --dataset-config "{\\\"publishingInterval\\\": 2000}" --event-config "{\\\"queueSize\\\": 10}"
 
         - name: Update a custom asset's destinations so the datasets use a BrokerStateStore destination, events use a Mqtt destination, and streams use a Storage destination.
           text: >
             az iot ops namespace asset update custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
-            --datasets-destination key="myKey"
-            --events-destination topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
-            --streams-destination path="my/storage/path"
+            --dataset-dest key="myKey"
+            --event-dest topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
+            --stream-dest path="my/storage/path"
 
         - name: Update a custom asset's custom attributes
           text: >
@@ -2864,7 +2862,7 @@ def load_iotops_help():
         - name: Update a media asset's destination and metadata
           text: >
             az iot ops namespace asset update media --name myCameraAsset --namespace myNamespace -g myResourceGroup
-            --streams-destinations topic="security/cameras/main" qos=1 retain=false ttl=300
+            --stream-dest topic="security/cameras/main" qos=1 retain=false ttl=300
             --manufacturer "SecureCam Inc." --model "HD-8000" --serial-number "CAM9876"
     """
 
@@ -2920,14 +2918,14 @@ def load_iotops_help():
         - name: Update an OPC UA asset's event configuration
           text: >
             az iot ops namespace asset update opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
-            --events-publish-interval 1000 --events-queue-size 5
-            --events-filter-clause path="ns=1;i=2000" type="String" field="Alarm"
+            --event-publish-interval 1000 --event-queue-size 5
+            --event-filter-clause path="ns=1;i=2000" type="String" field="Alarm"
 
         - name: Update an OPC UA asset's destination configurations
           text: >
             az iot ops namespace asset update opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
-            --datasets-destinations topic="factory/opcua/data/updated" retain=true qos=1 ttl=7200
-            --events-destinations topic="factory/opcua/events/updated" retain=false qos=1 ttl=3600
+            --dataset-dest topic="factory/opcua/data/updated" retain=true qos=1 ttl=7200
+            --event-dest topic="factory/opcua/events/updated" retain=false qos=1 ttl=3600
 
         - name: Update an OPC UA asset's metadata and attributes
           text: >

@@ -196,7 +196,7 @@ def ensure_schema_structure(schema: dict, input_data: dict):
                             f"Invalid value for {key}: the value must be at most {schema_value['maximum']}, "
                             f"instead got {value}"
                         )
-            # maybe add poping keys that are not there?
+            # maybe add popping keys that are not there?
 
     _recursive_check(schema["properties"], input_data)
     if invalid_items:
