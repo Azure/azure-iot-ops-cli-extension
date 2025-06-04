@@ -109,15 +109,6 @@ def build_mock_cert(
 
 
 @pytest.fixture
-def mocked_load_x509_cert(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.decode_der_certificate",
-        return_value=build_mock_cert(),
-    )
-    yield patched
-
-
-@pytest.fixture
 def mocked_get_resource_client(mocker):
     patched = mocker.patch(
         "azext_edge.edge.util.queryable.get_resource_client",
@@ -128,7 +119,7 @@ def mocked_get_resource_client(mocker):
 @pytest.fixture
 def mocked_decode_certificate(mocker):
     patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.decode_certificates",
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.decode_x509_files",
         return_value=[build_mock_cert()],
     )
     yield patched

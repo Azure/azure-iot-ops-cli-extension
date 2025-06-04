@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import os
 import re
 from cryptography import x509
-from typing import List, Optional, Tuple, cast
+from typing import List, Optional, Tuple, Union, cast
 
 from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
 from azure.core.pipeline.transport import HttpTransport
@@ -17,7 +17,7 @@ from knack.log import get_logger
 from rich.console import Console
 import yaml
 
-from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS
+from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS, X509FileExtension
 from ...instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from .....orchestration.upgrade2 import calculate_config_delta
 from ......util.file_operations import read_file_content, validate_file_extension
@@ -28,7 +28,7 @@ from ......util.az_client import (
     wait_for_terminal_state,
 )
 from ......util.common import should_continue_prompt
-from ......util.x509 import decode_certificates
+from ......util.x509 import decode_x509_files
 
 logger = get_logger(__name__)
 
@@ -68,11 +68,12 @@ class OpcUACerts(Queryable):
         secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
 
         # get file extension
+        # TODO: replace this usage of os.path with pathlib
         file_name = os.path.basename(file)
         cert_extension, _ = self._process_cert_content(
             file_path=file,
             file_name=file_name,
-            expected_exts=[".der", ".crt"],
+            expected_exts={X509FileExtension.DER.value, X509FileExtension.CRT.value},
         )
 
         # get properties from default spc
@@ -147,12 +148,15 @@ class OpcUACerts(Queryable):
         cert_extension, cert = self._process_cert_content(
             file_path=file,
             file_name=file_name,
-            expected_exts=[".der", ".crt", ".crl"],
+            expected_exts={X509FileExtension.DER.value, X509FileExtension.CRT.value, X509FileExtension.CRL.value},
         )
 
         # see if should check if cert is CA if version is v3 and extension is .der or .crt
+        # since there is no BasicConstraints if x509 version is not v3
         should_raise_ca_error = False
-        if cert_extension in [".der", ".crt"] and cert.version == x509.Version.v3:
+        if cert_extension in {
+            X509FileExtension.DER.value, X509FileExtension.CRT.value
+        } and cert.version == x509.Version.v3:
             should_raise_ca_error = not self._is_ca_cert(cert)
         if should_raise_ca_error:
             raise InvalidArgumentValueError(
@@ -175,7 +179,7 @@ class OpcUACerts(Queryable):
             resource_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         )
 
-        if cert_extension == ".crl":
+        if cert_extension == X509FileExtension.CRL.value:
             matched_names = []
             if opcua_secret_sync:
                 secret_mapping = opcua_secret_sync[0].get("properties", {}).get("objectSecretMapping", [])
@@ -465,7 +469,7 @@ class OpcUACerts(Queryable):
         _, cert = self._process_cert_content(
             file_path=public_key_file,
             file_name=os.path.basename(public_key_file),
-            expected_exts=[".der"],
+            expected_exts={X509FileExtension.DER.value},
         )
 
         # warn if the certificate is not self-signed
@@ -476,7 +480,7 @@ class OpcUACerts(Queryable):
                 "added to issuer list."
             )
         # validate private key file end with .pem
-        validate_file_extension(private_key_file, [".pem"])
+        validate_file_extension(private_key_file, {X509FileExtension.PEM.value})
 
         # validate public key and private key has matching file name without extension
         public_key_name = os.path.basename(public_key_file)
@@ -587,9 +591,9 @@ class OpcUACerts(Queryable):
     def _upload_to_key_vault(self, keyvault_name: str, secret_name: str, file_path: str, cert_extension: str):
         with console.status(f"Uploading certificate to keyvault as secret {secret_name}..."):
             content = read_file_content(file_path=file_path, read_as_binary=True).hex()
-            if cert_extension == ".crl":
+            if cert_extension == X509FileExtension.CRL.value:
                 content_type = "application/pkix-crl"
-            elif cert_extension == ".der":
+            elif cert_extension == X509FileExtension.DER.value:
                 content_type = "application/pkix-cert"
             else:
                 content_type = "application/x-pem-file"
@@ -866,7 +870,7 @@ class OpcUACerts(Queryable):
 
         der_data = read_file_content(file_path=public_key_file, read_as_binary=True)
         file_extension = os.path.splitext(public_key_file)[1].lower()
-        certificate = decode_certificates(der_data, "DER", file_extension).pop()
+        certificate = decode_x509_files(der_data, "DER", file_extension).pop()
 
         if not certificate:
             raise InvalidArgumentValueError(
@@ -933,15 +937,20 @@ class OpcUACerts(Queryable):
         self,
         file_path: str,
         file_name: str,
-        expected_exts: List[str],
-    ) -> Tuple[str, x509.Certificate]:
+        expected_exts: set[str],
+    ) -> Tuple[str, Union[x509.Certificate, x509.CertificateRevocationList]]:
+        """
+        Process the certificate content from the file, validate its extension,
+        content format and if certificate expired, and return the certificate
+        extension and decoded certificate object.
+        """
         cert_extension = validate_file_extension(
             file_name,
             expected_exts,
         )
         # validate file content format by extension
-        expected_content_format = "PEM" if cert_extension == ".crt" else "DER"
-        certs = decode_certificates(
+        expected_content_format = "PEM" if cert_extension == X509FileExtension.CRT.value else "DER"
+        certs = decode_x509_files(
             read_file_content(file_path, read_as_binary=True),
             expected_content_format,
             cert_extension
@@ -962,7 +971,7 @@ class OpcUACerts(Queryable):
         cert = certs.pop()
 
         # check for certificate expiry
-        if not cert_extension == ".crl":
+        if not cert_extension == X509FileExtension.CRL.value:
             # check if the certificate is expired
             expiry_date = cert.not_valid_after_utc
             if expiry_date < datetime.now(timezone.utc):

@@ -116,9 +116,9 @@ def deserialize_file_content(file_path: str) -> Any:
     raise FileOperationError(f"File contents for {file_path} cannot be read.")
 
 
-def validate_file_extension(file_name: str, expected_exts: List[str]) -> str:
+def validate_file_extension(file_name: str, expected_exts: set[str]) -> str:
     ext = os.path.splitext(file_name)[1]
-    lowercased_exts = [ext.lower() for ext in expected_exts]
+    lowercased_exts = {ext.lower() for ext in expected_exts}
     if ext.lower() not in lowercased_exts:
         exts_text = ", ".join(expected_exts)
         raise InvalidArgumentValueError(

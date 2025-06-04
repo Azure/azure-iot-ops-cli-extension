@@ -9,7 +9,7 @@ x509: certificate utilities.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from cryptography import x509
@@ -79,12 +79,12 @@ def generate_self_signed_cert(valid_days: int = DEFAULT_VALID_DAYS) -> Tuple[byt
     return (cert.public_bytes(serialization.Encoding.PEM), key_bytes)
 
 
-def decode_certificates(
+def decode_x509_files(
     cert_data: bytes,
     content_format: str,
     extension: str
-) -> Optional[List[x509.Certificate]]:
-    # Decodes an X.509 certificate from PEM or DER format.
+) -> Optional[List[Union[x509.Certificate, x509.CertificateRevocationList]]]:
+    # Decodes an X.509 file from PEM or DER format.
     certs: List = []
     try:
         if content_format == 'PEM':
@@ -101,23 +101,3 @@ def decode_certificates(
         raise InvalidArgumentValueError(
             f"Failed to decode certificate data. Ensure the data is in {content_format} format. Error: {e}"
         )
-
-
-def decode_der_certificate(der_data: bytes) -> Optional[x509.Certificate]:
-    # Decodes a DER-encoded X.509 certificate.
-    try:
-        cert = x509.load_der_x509_certificate(der_data, default_backend())
-        return cert
-    except Exception as e:
-        logger.debug(f"Error decoding DER certificate: {e}")
-        return
-
-
-def decode_pem_certificates(pem_data: bytes) -> Optional[List[x509.Certificate]]:
-    # Decodes one or more PEM-encoded X.509 certificates.
-    try:
-        certs = x509.load_pem_x509_certificates(pem_data)
-        return certs
-    except Exception as e:
-        logger.debug(f"Error decoding PEM certificate: {e}")
-        return
