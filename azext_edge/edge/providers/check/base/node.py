@@ -181,7 +181,7 @@ def _generate_node_table(
                 if actual not in expected:
                     cell_status = CheckTaskStatus.error
             elif condition == "info.kernel_version":
-                # fix for kernel versions with a 4th version specifier
+                # Only check major and minor versions
                 truncated_actual = ".".join(actual.split(".")[:2])
                 parsed_actual = semver.parse(truncated_actual, optional_minor_and_patch=True)
                 parsed_expected = semver.parse(expected, optional_minor_and_patch=True)
