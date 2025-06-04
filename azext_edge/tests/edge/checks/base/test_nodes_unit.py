@@ -56,7 +56,7 @@ def mocked_node_client(mocked_client, mocker, request):
                 "cpu": 5,
                 "memory": "10G",
                 "ephemeral-storage": "30G",
-                "kernel_version": "6.0.0-azure-test",
+                "kernel_version": "5.15.0-000-alpha",
             },
         ],
         [
@@ -65,7 +65,7 @@ def mocked_node_client(mocked_client, mocker, request):
                 "cpu": 3,
                 "memory": "20G",
                 "ephemeral-storage": "30G",
-                "kernel_version": "5.15.1.1-test1.2",
+                "kernel_version": "5.14.9-test-2",
             }
         ],
         [{"architecture": "x86", "cpu": 3, "memory": "20G", "ephemeral-storage": "30G"}],
