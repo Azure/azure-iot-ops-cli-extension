@@ -22,20 +22,20 @@ def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
     # Create a minimal namespace
     namespace_name1 = "testns" + generate_random_string(force_lower=True)[:4]
     min_namespace = run(
-        f"az iot ops namespace create -n {namespace_name1} -g {rg}"
+        f"az iot ops ns create -n {namespace_name1} -g {rg}"
     )
     tracked_resources.append(min_namespace["id"])
     assert_namespace_properties(result=min_namespace, name=namespace_name1, identity_type="None")
 
     # Show namespace
     namespace = run(
-        f"az iot ops namespace show -n {namespace_name1} -g {rg}"
+        f"az iot ops ns show -n {namespace_name1} -g {rg}"
     )
     assert_namespace_properties(result=namespace, name=namespace_name1, identity_type="None")
 
     # Update namespace with system identity
     namespace = run(
-        f"az iot ops namespace update -n {namespace_name1} -g {rg} --mi-system-assigned "
+        f"az iot ops ns update -n {namespace_name1} -g {rg} --mi-system-assigned "
     )
     assert_namespace_properties(result=namespace, name=namespace_name1, identity_type="SystemAssigned")
 
@@ -44,7 +44,7 @@ def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
     tags = {"key1": "value1", "key2": "value2"}
     tags_str = " ".join([f"{k}={v}" for k, v in tags.items()])
     namespace = run(
-        f"az iot ops namespace create -n {namespace_name2} -g {rg} --mi-system-assigned "
+        f"az iot ops ns create -n {namespace_name2} -g {rg} --mi-system-assigned "
         f"--tags {tags_str}"
     )
     tracked_resources.append(namespace["id"])
@@ -57,7 +57,7 @@ def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
 
     # List namespaces
     namespaces = run(
-        f"az iot ops namespace list -g {rg}"
+        f"az iot ops ns list -g {rg}"
     )
     namespace_names = [ns["name"] for ns in namespaces]
     assert namespace_name1 in namespace_names

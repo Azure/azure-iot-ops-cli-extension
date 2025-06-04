@@ -600,7 +600,7 @@ def load_adr_arguments(self, _):
         )
 
     # ADR REFRESH
-    with self.argument_context("iot ops namespace") as context:
+    with self.argument_context("iot ops ns") as context:
         context.argument(
             "namespace_name",
             options_list=["--name", "-n"],
@@ -613,14 +613,14 @@ def load_adr_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
 
-    with self.argument_context("iot ops namespace endpoint") as context:
+    with self.argument_context("iot ops ns endpoint") as context:
         context.argument(
             "namespace_name",
             options_list=["--namespace", "--ns"],
             help="Namespace name.",
         )
 
-    with self.argument_context("iot ops namespace device") as context:
+    with self.argument_context("iot ops ns device") as context:
         context.argument(
             "namespace_name",
             options_list=["--namespace", "--ns"],
@@ -662,7 +662,7 @@ def load_adr_arguments(self, _):
             arg_type=tags_type,
         )
 
-    with self.argument_context("iot ops namespace device create") as context:
+    with self.argument_context("iot ops ns device create") as context:
         context.argument(
             "instance_name",
             options_list=["--instance", "--inst"],
@@ -701,7 +701,7 @@ def load_adr_arguments(self, _):
             help="The device operating system.",
         )
 
-    with self.argument_context("iot ops namespace device endpoint") as context:
+    with self.argument_context("iot ops ns device endpoint") as context:
         context.argument(
             "device_name",
             options_list=["--device", "-d"],
@@ -746,7 +746,7 @@ def load_adr_arguments(self, _):
             help="List of trusted certificates for the endpoint.",
         )
 
-    with self.argument_context("iot ops namespace device endpoint list") as context:
+    with self.argument_context("iot ops ns device endpoint list") as context:
         context.argument(
             "inbound",
             options_list=["--inbound"],
@@ -754,7 +754,7 @@ def load_adr_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
 
-    with self.argument_context("iot ops namespace device endpoint remove") as context:
+    with self.argument_context("iot ops ns device endpoint remove") as context:
         context.argument(
             "endpoint_names",
             options_list=["--endpoint"],
@@ -763,7 +763,7 @@ def load_adr_arguments(self, _):
             action="extend",
         )
 
-    with self.argument_context("iot ops namespace device endpoint inbound add custom") as context:
+    with self.argument_context("iot ops ns device endpoint inbound add custom") as context:
         context.argument(
             "endpoint_type",
             options_list=["--endpoint-type", "--type"],
@@ -775,7 +775,7 @@ def load_adr_arguments(self, _):
             help="Additional configuration for the custom endpoint in JSON format.",
         )
 
-    with self.argument_context("iot ops namespace device endpoint inbound add onvif") as context:
+    with self.argument_context("iot ops ns device endpoint inbound add onvif") as context:
         context.argument(
             "accept_invalid_hostnames",
             options_list=["--accept-invalid-hostnames", "--aih"],
@@ -791,7 +791,7 @@ def load_adr_arguments(self, _):
             arg_group="ONVIF Configuration",
         )
 
-    with self.argument_context("iot ops namespace device endpoint inbound add opcua") as context:
+    with self.argument_context("iot ops ns device endpoint inbound add opcua") as context:
         context.argument(
             "application_name",
             options_list=["--application-name", "--app"],

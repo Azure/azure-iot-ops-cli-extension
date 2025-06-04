@@ -2,7 +2,7 @@
 [run]
 branch = True
 source = azext_edge/edge
-omit = 
+omit =
     # ignore all tests
     azext_edge/tests/*
     # ignore vendor
@@ -10,3 +10,5 @@ omit =
     # skip params and command map
     azext_edge/edge/params.py
     azext_edge/edge/command_map.py
+    # skip params and command map
+    azext_edge/edge/providers/rpsaas/adr/params.py
