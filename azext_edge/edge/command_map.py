@@ -207,14 +207,6 @@ def load_iotops_commands(self, _):
         cmd_group.command("update", "update_namespace")
 
     with self.command_group(
-        "iot ops namespace endpoint",
-        command_type=namespace_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("add", "add_namespace_endpoint")
-        cmd_group.command("list", "list_namespace_endpoints")
-        cmd_group.command("remove", "remove_namespace_endpoint")
-
-    with self.command_group(
         "iot ops namespace device",
         command_type=namespace_resource_ops,
     ) as cmd_group:

@@ -607,15 +607,6 @@ def load_adr_arguments(self, _):
             help="Namespace name.",
         )
         context.argument(
-            "endpoints",
-            options_list=["--endpoint"],
-            help="Space-separated key=value pairs corresponding to properties of the endpoint to create. "
-            "The following key values are supported: `id` (required), `name`. Can be used more than once. "
-            "Currently only Event Grid Topic endpoints are supported.",
-            nargs="+",
-            action="append",
-        )
-        context.argument(
             "mi_system_identity",
             options_list=["--mi-system-assigned"],
             help="Enable system-assigned managed identity for the namespace.",
@@ -627,15 +618,6 @@ def load_adr_arguments(self, _):
             "namespace_name",
             options_list=["--namespace", "--ns"],
             help="Namespace name.",
-        )
-
-    with self.argument_context("iot ops namespace endpoint remove") as context:
-        context.argument(
-            "endpoint_names",
-            options_list=["--endpoint"],
-            help="Space-separated list of endpoint names to remove to the namespace.",
-            nargs="+",
-            action="extend",
         )
 
     with self.argument_context("iot ops namespace device") as context:
@@ -763,6 +745,7 @@ def load_adr_arguments(self, _):
             options_list=["--trust-list"],
             help="List of trusted certificates for the endpoint.",
         )
+
     with self.argument_context("iot ops namespace device endpoint list") as context:
         context.argument(
             "inbound",

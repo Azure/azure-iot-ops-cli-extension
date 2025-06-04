@@ -230,11 +230,9 @@ def test_process_additional_configuration_error(mocker):
     },
 ])
 def test_process_authentication(
-    mocker, original_props, req
+    mocked_logger, original_props, req
 ):
     from azext_edge.edge.providers.rpsaas.adr.helpers import process_authentication
-    # remove logger warnings
-    mocker.patch("azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles.logger")
     result = process_authentication(
         auth_props=original_props,
         **req

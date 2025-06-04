@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from ..vendor.clients.deviceregistrymgmt import (
         MicrosoftDeviceRegistryManagementService,
     )
-    from ..vendor.clients.deviceregistryrefreshmgmt import (
+    from ..vendor.clients.deviceregistrymgmt_v2 import (
         MicrosoftDeviceRegistryManagementService as MicrosoftDeviceRegistryRefreshManagementService
     )
     from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
@@ -148,7 +148,7 @@ REGISTRY_API_VERSION = "2024-11-01"
 def get_registry_refresh_mgmt_client(
     subscription_id: str, **kwargs
 ) -> "MicrosoftDeviceRegistryRefreshManagementService":
-    from ..vendor.clients.deviceregistryrefreshmgmt import (
+    from ..vendor.clients.deviceregistrymgmt_v2 import (
         MicrosoftDeviceRegistryManagementService,
     )
 

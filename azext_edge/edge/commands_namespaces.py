@@ -18,7 +18,6 @@ def create_namespace(
     cmd,
     namespace_name: str,
     resource_group_name: str,
-    endpoints: Optional[List[List[str]]] = None,
     location: Optional[str] = None,
     mi_system_identity: Optional[bool] = None,
     tags: Optional[Dict[str, str]] = None,
@@ -27,7 +26,6 @@ def create_namespace(
     return Namespaces(cmd).create(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
-        endpoints=endpoints,
         mi_system_identity=mi_system_identity,
         location=location,
         tags=tags,
@@ -67,47 +65,6 @@ def update_namespace(
         resource_group_name=resource_group_name,
         mi_system_identity=mi_system_identity,
         tags=tags,
-        **kwargs
-    )
-
-
-def add_namespace_endpoint(
-    cmd,
-    namespace_name: str,
-    resource_group_name: str,
-    endpoints: List[List[str]],
-    **kwargs
-):
-    return Namespaces(cmd).add_endpoint(
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
-        endpoints=endpoints,
-        **kwargs
-    )
-
-
-def list_namespace_endpoints(
-    cmd,
-    namespace_name: str,
-    resource_group_name: str,
-):
-    return Namespaces(cmd).list_endpoints(
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
-    )
-
-
-def remove_namespace_endpoint(
-    cmd,
-    namespace_name: str,
-    resource_group_name: str,
-    endpoint_names: List[str],
-    **kwargs
-):
-    return Namespaces(cmd).remove_endpoint(
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
-        endpoint_names=endpoint_names,
         **kwargs
     )
 
