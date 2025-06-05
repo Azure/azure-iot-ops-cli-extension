@@ -688,12 +688,14 @@ def delete_namespace_asset(
     asset_name: str,
     namespace_name: str,
     resource_group_name: str,
+    confirm_yes: bool = False,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).delete(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
+        confirm_yes=confirm_yes,
         **kwargs
     )
 

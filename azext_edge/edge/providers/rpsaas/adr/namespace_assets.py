@@ -16,7 +16,7 @@ from azure.cli.core.azclierror import (
     RequiredArgumentMissingError,
 )
 
-from ....util.common import parse_kvp_nargs
+from ....util.common import parse_kvp_nargs, should_continue_prompt
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.queryable import Queryable
 from .helpers import process_additional_configuration, ensure_schema_structure
@@ -80,7 +80,7 @@ class NamespaceAssets(Queryable):
         # TODO: future, Add in options to import from files for datasets, events, streams, and mgmt groups
 
         # use the device to get the location, extended location, and check type and endpoint
-        device, _ = self._check_device_props(
+        device = self._check_device_props(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
             asset_type=asset_type,
@@ -145,8 +145,12 @@ class NamespaceAssets(Queryable):
         asset_name: str,
         namespace_name: str,
         resource_group_name: str,
+        confirm_yes: bool = False,
         **kwargs
     ):
+        # should bail prompt
+        if not should_continue_prompt(confirm_yes):
+            return
         with console.status(f"Deleting asset {asset_name}..."):
             poller = self.ops.begin_delete(
                 resource_group_name=resource_group_name,
@@ -182,6 +186,7 @@ class NamespaceAssets(Queryable):
         query = "Resources | where type =~ '{}'".format(NAMESPACE_ASSET_RESOURCE_TYPE)
 
         # for now, keep it simple
+        # later on, add namespace (needs id parsing), location, device endpoint type (will need to add joins)
         def _build_query_body(
             asset_name: Optional[str] = None,
             resource_group_name: Optional[str] = None,
@@ -239,10 +244,11 @@ class NamespaceAssets(Queryable):
         **kwargs
     ) -> dict:
         # need original asset default configurations to update
-        asset_properties = self.show(
-            asset_name=asset_name,
+        asset_properties = self._check_device_props(
+            resource_group_name=resource_group_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            asset_type=asset_type,
+            asset_name=asset_name
         )["properties"]
 
         # update payload
@@ -309,17 +315,18 @@ class NamespaceAssets(Queryable):
         asset_name: Optional[str] = None,
         device_name: Optional[str] = None,
         device_endpoint_name: Optional[str] = None,
-    ) -> Tuple[dict, Optional[dict]]:
+    ) -> dict:
         """
         Checks the device properties to ensure the endpoint type matches the asset operation's type.
+        Returns the asset if the asset name is provided, otherwise the device
+        (device name and device endpoint name must be provided).
 
         If asset_name is provided (in the case of the asset is already created), it will retrieve the
         asset to populate the device_name and device_endpoint_name.
-        Returns a tuple consisting of the device and asset (if asset_name is provided)
         """
         asset = None
         if asset_name:
-            # get the asset to populate the other optional args
+            # get the asset to populate the device name and endpoint name
             asset = self.ops.get(
                 resource_group_name=resource_group_name,
                 namespace_name=namespace_name,
@@ -350,7 +357,8 @@ class NamespaceAssets(Queryable):
                 f"Device endpoint '{device_endpoint_name}' is of type '{device_endpoint['endpointType']}', "
                 f"but expected '{asset_type}'."
             )
-        return device, asset
+
+        return asset if asset_name else device
 
 
 # Helpers

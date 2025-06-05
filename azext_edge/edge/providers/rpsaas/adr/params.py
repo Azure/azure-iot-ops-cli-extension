@@ -1058,7 +1058,7 @@ def load_adr_arguments(self, _):
             context.argument(
                 "datasets_destinations",
                 options_list=["--dataset-dest", "--dsd"],
-                help="Key=value pairs representing the destination for dataset."
+                help="Key=value pairs representing the destination for dataset. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
                 "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
                 arg_group="Default Destination",
@@ -1072,7 +1072,7 @@ def load_adr_arguments(self, _):
             context.argument(
                 "events_destinations",
                 options_list=["--event-dest", "--evd"],
-                help="Key=value pairs representing the destination for events."
+                help="Key=value pairs representing the destination for events. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
                 "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
                 arg_group="Default Destination",
@@ -1188,7 +1188,7 @@ def load_adr_arguments(self, _):
             context.argument(
                 "streams_destinations",
                 options_list=["--stream-dest", "--std"],
-                help="Key=value pairs representing the destination for streams."
+                help="Key=value pairs representing the destination for streams. "
                 "Allowed arguments include: `path` for Storage; or "
                 "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
                 arg_group="Default Stream Destination",
@@ -1232,7 +1232,7 @@ def load_adr_arguments(self, _):
             context.argument(
                 "datasets_destinations",
                 options_list=["--dataset-dest", "--dsd"],
-                help="Key=value pairs representing the destination for datasets."
+                help="Key=value pairs representing the destination for datasets. "
                 "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. ",
                 arg_group="Default Dataset",
             )

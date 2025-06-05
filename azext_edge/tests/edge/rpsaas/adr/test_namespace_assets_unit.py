@@ -68,14 +68,49 @@ def get_namespace_asset_record(
         "type": NAMESPACE_ASSET_RESOURCE_TYPE,
         "properties": {
             "deviceRef": {
-                "deviceName": "testDevice",
-                "endpointName": "testEndpoint"
+                "deviceName": f"test{generate_random_string()}",
+                "endpointName": f"test{generate_random_string()}"
             },
             "description": "Test asset description",
             "displayName": "Test Asset",
             "provisioningState": "Succeeded"
         }
     }
+
+
+def add_device_get_call(
+    mocked_responses: responses,
+    device_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    endpoint_name: str,
+    endpoint_type: str
+):
+    """Add a mock GET call for a namespace device.
+
+    Required for any asset operation that validates the device and endpoint."""
+    # Create mock device record
+    mock_device_record = get_namespace_device_record(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+    # Add the endpoint with valid type
+    mock_device_record["properties"]["endpoints"]["inbound"] = {
+        endpoint_name: {"endpointType": f"Microsoft.{endpoint_type}"}
+    }
+    # Add mock device response
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_device_mgmt_uri(
+            device_name=device_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=mock_device_record,
+        status=200,
+        content_type="application/json",
+    )
 
 
 @pytest.mark.parametrize("reqs", [
@@ -191,27 +226,13 @@ def test_create_namespace_asset(
     # Merge shared and unique requirements
     all_reqs = {**reqs, **unique_reqs}
 
-    # Create mock device response for the GET call
-    mock_device_record = get_namespace_device_record(
+    add_device_get_call(
+        mocked_responses=mocked_responses,
         device_name=device_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
-    )
-    mock_device_record["properties"]["endpoints"]["inbound"] = {
-        device_endpoint_name: {"endpointType": f"Microsoft.{asset_type}"}
-    }
-
-    # Add mock device response
-    mocked_responses.add(
-        method=responses.GET,
-        url=get_namespace_device_mgmt_uri(
-            device_name=device_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name
-        ),
-        json=mock_device_record,
-        status=200,
-        content_type="application/json",
+        endpoint_name=device_endpoint_name,
+        endpoint_type=asset_type
     )
 
     # Create mock asset record
@@ -384,6 +405,7 @@ def test_delete_namespace_asset(mocked_cmd, mocked_responses: responses, respons
                 asset_name=asset_name,
                 namespace_name=namespace_name,
                 resource_group_name=resource_group_name,
+                confirm_yes=True,
                 wait_sec=0
             )
         return
@@ -394,6 +416,7 @@ def test_delete_namespace_asset(mocked_cmd, mocked_responses: responses, respons
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
+        confirm_yes=True,
         wait_sec=0
     )
 
@@ -609,6 +632,16 @@ def test_update_namespace_asset(
     )
     original_asset["properties"].update(original_properties)
 
+    # GET device call for validation
+    add_device_get_call(
+        mocked_responses=mocked_responses,
+        device_name=original_asset["properties"]["deviceRef"]["deviceName"],
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        endpoint_name=original_asset["properties"]["deviceRef"]["endpointName"],
+        endpoint_type=asset_type
+    )
+
     # Add mock GET response for the show operation that happens before update
     mocked_responses.add(
         method=responses.GET,
@@ -661,10 +694,11 @@ def test_update_namespace_asset(
     assert result == updated_asset
 
     # Ensure we've made the expected API calls
-    assert len(mocked_responses.calls) == 2  # GET to fetch original asset + PATCH to update it
+    # GET to fetch the device + GET to fetch original asset + PATCH to update it
+    assert len(mocked_responses.calls) == 3
 
     # Verify request payload in the second call (PATCH)
-    patch_request = mocked_responses.calls[1].request
+    patch_request = mocked_responses.calls[2].request
     request_body = json.loads(patch_request.body)
 
     # Use the helper function to verify properties in the request

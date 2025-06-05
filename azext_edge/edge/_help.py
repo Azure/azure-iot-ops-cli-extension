@@ -2657,7 +2657,6 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create a custom asset in a Device Registry namespace.
-        long-summary: Create a custom asset with configurable datasets, events, management, and streams.
 
         examples:
         - name: Create a basic custom asset
@@ -2799,7 +2798,6 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update a custom asset in a Device Registry namespace.
-        long-summary: Update properties, configurations, and destinations for a custom asset.
 
         examples:
         - name: Update a custom asset's basic properties
