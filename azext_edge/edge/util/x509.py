@@ -19,7 +19,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 from knack.log import get_logger
 
-from azext_edge.edge.providers.orchestration.common import X509FileExtension
+from ..providers.orchestration.common import X509FileExtension
 
 # aka prime256v1
 DEFAULT_EC_ALGO = ec.SECP256R1()
