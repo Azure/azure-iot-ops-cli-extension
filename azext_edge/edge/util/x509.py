@@ -19,6 +19,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 from knack.log import get_logger
 
+from azext_edge.edge.providers.orchestration.common import X509FileExtension
+
 # aka prime256v1
 DEFAULT_EC_ALGO = ec.SECP256R1()
 DEFAULT_VALID_DAYS = 365
@@ -87,14 +89,14 @@ def decode_x509_files(
     # Decodes an X.509 file from PEM or DER format.
     certs: List = []
     try:
-        if content_format == 'PEM':
+        if content_format == X509FileExtension.PEM.name:
             # PEM format
             certs = x509.load_pem_x509_certificates(cert_data)
-        elif content_format == 'DER':
+        elif content_format == X509FileExtension.DER.name:
             # DER format
-            if extension and extension.lower() == '.der':
+            if extension and extension.lower() == X509FileExtension.DER.value:
                 certs = [x509.load_der_x509_certificate(cert_data, default_backend())]
-            elif extension and extension.lower() == '.crl':
+            elif extension and extension.lower() == X509FileExtension.CRL.value:
                 certs = [x509.load_der_x509_crl(cert_data, default_backend())]
         return certs
     except Exception as e:

@@ -878,7 +878,7 @@ class OpcUACerts(Queryable):
 
         der_data = read_file_content(file_path=public_key_file, read_as_binary=True)
         file_extension = os.path.splitext(public_key_file)[1].lower()
-        certificate = decode_x509_files(der_data, "DER", file_extension).pop()
+        certificate = decode_x509_files(der_data, X509FileExtension.DER.name, file_extension).pop()
 
         if not certificate:
             raise InvalidArgumentValueError(
