@@ -148,7 +148,11 @@ class OpcUACerts(Queryable):
         cert_extension, cert = self._process_cert_content(
             file_path=file,
             file_name=file_name,
-            expected_exts={X509FileExtension.DER.value, X509FileExtension.CRT.value, X509FileExtension.CRL.value},
+            expected_exts={
+                X509FileExtension.DER.value,
+                X509FileExtension.CRT.value,
+                X509FileExtension.CRL.value
+            },
         )
 
         # see if should check if cert is CA if version is v3 and extension is .der or .crt
@@ -183,14 +187,18 @@ class OpcUACerts(Queryable):
             matched_names = []
             if opcua_secret_sync:
                 secret_mapping = opcua_secret_sync[0].get("properties", {}).get("objectSecretMapping", [])
-                possible_file_names = [f"{cert_name}.crt", f"{cert_name}.der"]
+                possible_file_names = [
+                    f"{cert_name}{X509FileExtension.CRT.value}",
+                    f"{cert_name}{X509FileExtension.DER.value}"
+                ]
                 matched_names = [
                     mapping["targetKey"] for mapping in secret_mapping if mapping["targetKey"] in possible_file_names
                 ]
 
             if not opcua_secret_sync or not matched_names:
                 raise InvalidArgumentValueError(
-                    f"Cannot add .crl {file_name} without corresponding .crt or .der file."
+                    f"Cannot add {X509FileExtension.CRL.value} {file_name} without corresponding "
+                    f"{X509FileExtension.CRT.value} or {X509FileExtension.DER.value} file."
                 )
 
         secret_name = secret_name if secret_name else file_name.replace(".", "-")
@@ -949,7 +957,8 @@ class OpcUACerts(Queryable):
             expected_exts,
         )
         # validate file content format by extension
-        expected_content_format = "PEM" if cert_extension == X509FileExtension.CRT.value else "DER"
+        expected_content_format = X509FileExtension.PEM.name if cert_extension == X509FileExtension.CRT.value\
+            else X509FileExtension.DER.name
         certs = decode_x509_files(
             read_file_content(file_path, read_as_binary=True),
             expected_content_format,
@@ -963,7 +972,7 @@ class OpcUACerts(Queryable):
             )
 
         # Only one certificate is expected in the PEM format.
-        if expected_content_format == "PEM" and len(certs) > 1:
+        if expected_content_format == X509FileExtension.PEM.name and len(certs) > 1:
             raise InvalidArgumentValueError(
                 f"Multiple certificates detected in file '{file_name}' in {expected_content_format} format. "
                 f"Please provide a file with only one {expected_content_format} certificate."
