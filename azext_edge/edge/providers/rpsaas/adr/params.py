@@ -727,7 +727,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "namespace_name",
-            options_list=["--namespace", "-n"],
+            options_list=["--namespace", "--ns"],
             help="Namespace name.",
         )
         context.argument(
@@ -932,7 +932,7 @@ def load_adr_arguments(self, _):
     with self.argument_context("iot ops namespace asset") as context:
         context.argument(
             "asset_name",
-            options_list=["--name", "-s"],
+            options_list=["--name", "-n"],
             help="Name of the asset.",
         )
         context.argument(
@@ -942,7 +942,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "namespace_name",
-            options_list=["--namespace", "-n"],
+            options_list=["--namespace", "--ns"],
             help="Namespace name.",
         )
         context.argument(
@@ -1061,6 +1061,7 @@ def load_adr_arguments(self, _):
                 help="Key=value pairs representing the destination for dataset. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
                 "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                nargs="+",
                 arg_group="Default Destination",
             )
             context.argument(
@@ -1075,6 +1076,7 @@ def load_adr_arguments(self, _):
                 help="Key=value pairs representing the destination for events. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
                 "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                nargs="+",
                 arg_group="Default Destination",
             )
             context.argument(
@@ -1095,6 +1097,7 @@ def load_adr_arguments(self, _):
                 help="Key=value pairs representing the destination for streams. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
                 "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                nargs="+",
                 arg_group="Default Destination",
             )
 
@@ -1173,16 +1176,23 @@ def load_adr_arguments(self, _):
             )
             context.argument(
                 "media_server_username",
-                options_list=["--media-server-username", "--ms-user"],
-                help=f"Media server username. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                options_list=["--media-server-user", "--ms-user"],
+                help=f"Media server username reference. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
                 f"and {MediaTaskType.stream_to_rtsps.value}.",
                 arg_group="Default Stream Configuration",
             )
             context.argument(
                 "media_server_password",
-                options_list=["--media-server-password", "--ms-pass"],
-                help=f"Media server password. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                options_list=["--media-server-pass", "--ms-pass"],
+                help=f"Media server password reference. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
                 f"and {MediaTaskType.stream_to_rtsps.value}.",
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "media_server_certificate",
+                options_list=["--media-server-cert", "--ms-cert"],
+                help="Media server certificate reference. Only allowed for only "
+                f"{MediaTaskType.stream_to_rtsps.value}.",
                 arg_group="Default Stream Configuration",
             )
             context.argument(
@@ -1191,6 +1201,7 @@ def load_adr_arguments(self, _):
                 help="Key=value pairs representing the destination for streams. "
                 "Allowed arguments include: `path` for Storage; or "
                 "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                nargs="+",
                 arg_group="Default Stream Destination",
             )
 
@@ -1234,6 +1245,7 @@ def load_adr_arguments(self, _):
                 options_list=["--dataset-dest", "--dsd"],
                 help="Key=value pairs representing the destination for datasets. "
                 "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. ",
+                nargs="+",
                 arg_group="Default Dataset",
             )
             context.argument(
@@ -1276,5 +1288,6 @@ def load_adr_arguments(self, _):
                 options_list=["--event-dest", "--evd"],
                 help="Key=value pairs representing the destination for events. "
                 "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
+                nargs="+",
                 arg_group="Default Event",
             )

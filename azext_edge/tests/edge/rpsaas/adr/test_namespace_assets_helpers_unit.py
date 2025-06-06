@@ -397,7 +397,8 @@ def test_process_opcua_event_configurations(test_case, mocked_logger):
             "media_server_port": 443,
             "media_server_path": "/secure/stream",
             "media_server_username": "username",
-            "media_server_password": "password"
+            "media_server_password": "password",
+            "media_server_certificate": "certificate"
         },
         "expected_values": {
             "taskType": "stream-to-rtsps",
@@ -405,7 +406,8 @@ def test_process_opcua_event_configurations(test_case, mocked_logger):
             "mediaServerPort": 443,
             "mediaServerPath": "/secure/stream",
             "mediaServerUsernameRef": "username",
-            "mediaServerPasswordRef": "password"
+            "mediaServerPasswordRef": "password",
+            "mediaServerCertificateRef": "certificate"
         }
     },
     # Update existing configuration
@@ -469,3 +471,44 @@ def test_process_media_stream_configurations(test_case):
     # Check that all properties in the result are allowed for this task type
     for property_name in result:
         assert property_name in allowed_properties, f"Property {property_name} is not allowed for task type {task_type}"
+
+
+@pytest.mark.parametrize("test_case", [
+    # Missing task type with other parameters provided
+    {
+        "original": None,
+        "params": {"snapshots_per_second": 1, "task_format": "png"},
+        "expected_error": RequiredArgumentMissingError,
+        "expected_msg": "Task type via --task-type must be provided when configuring media stream properties."
+    },
+    # Invalid property for task type
+    {
+        "original": None,
+        "params": {"task_type": "snapshot-to-mqtt", "path": "/data/snapshots"},
+        "expected_error": InvalidArgumentValueError,
+        "expected_msg": "Property 'path' is not allowed for task type 'snapshot-to-mqtt'."
+    },
+    # Invalid format for clip tasks
+    {
+        "original": None,
+        "params": {"task_type": "clip-to-fs", "task_format": "png", "path": "/data/clips"},
+        "expected_error": InvalidArgumentValueError,
+        "expected_msg": "Invalid format for clip task:"
+    },
+    # Invalid format for snapshot tasks
+    {
+        "original": None,
+        "params": {"task_type": "snapshot-to-mqtt", "task_format": "mp4"},
+        "expected_error": InvalidArgumentValueError,
+        "expected_msg": "Invalid format for snapshot task:"
+    }
+])
+def test_process_media_stream_configurations_error(test_case):
+    """Test error conditions when processing media stream configurations."""
+    with pytest.raises(test_case["expected_error"]) as excinfo:
+        _process_media_stream_configurations(
+            original_stream_configuration=test_case["original"],
+            **test_case["params"]
+        )
+
+    assert test_case["expected_msg"] in str(excinfo.value)

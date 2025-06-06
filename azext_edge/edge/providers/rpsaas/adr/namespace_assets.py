@@ -7,7 +7,7 @@
 from copy import deepcopy
 import json
 from rich.console import Console
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional
 from knack.log import get_logger
 
 from azure.cli.core.azclierror import (
@@ -373,6 +373,7 @@ def _process_configs(
     """
     # TODO: future, add in functionality so we can reuse this for individual datasets, events, etc
     result = {}
+    asset_type = asset_type.lower()
     if asset_type == DeviceEndpointType.OPCUA.value.lower():
         # allowed: datasets, events, mgmt groups, destinations must be mqtt
         # not allowed: streams
@@ -546,17 +547,29 @@ def _process_media_stream_configurations(
     media_server_port: Optional[int] = None,
     media_server_username: Optional[str] = None,
     media_server_password: Optional[str] = None,
+    media_server_certificate: Optional[str] = None,
     **_
 ) -> str:
     from .specs import NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA, MediaFormat, MediaTaskType
     result = json.loads(original_stream_configuration) if original_stream_configuration else {}
 
     task_type = task_type or result.get("taskType")
+    if not task_type:
+        if not any([
+            task_format, snapshots_per_second, path, duration,
+            media_server_address, media_server_path, media_server_port,
+            media_server_username, media_server_password, media_server_certificate
+        ]):
+            return original_stream_configuration
+        else:
+            raise RequiredArgumentMissingError(
+                "Task type via --task-type must be provided when configuring media stream properties."
+            )
     allowed_properties = MediaTaskType(task_type).allowed_properties
 
     # empty result if changing task type
-    if task_type != result.get("taskType"):
-        logger.warning("Chaning Media Stream Configuration task type, resetting configuration.")
+    if result.get("taskType") and task_type != result.get("taskType"):
+        logger.warning("Changing Media Stream Configuration task type, resetting configuration.")
         result = {}
 
     # Process provided parameters and update result
@@ -570,6 +583,7 @@ def _process_media_stream_configurations(
         "mediaServerPort": media_server_port,
         "mediaServerUsernameRef": media_server_username,
         "mediaServerPasswordRef": media_server_password,
+        "mediaServerCertificateRef": media_server_certificate
     }.items():
         # Skip None values
         if param_value is None:

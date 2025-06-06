@@ -2701,14 +2701,14 @@ def load_iotops_help():
           text: >
             az iot ops namespace asset create media --name myCameraAsset --namespace myNamespace -g myResourceGroup
             --device myCamera --endpoint-name myCameraEndpoint --task-type snapshot-to-mqtt
-            --task-format jpeg --snapshots-per-second 1
+            --task-format jpeg --snapshots-per-sec 1
             --stream-dest topic="factory/cameras/snapshots" qos=1 retain=false ttl=60
 
         - name: Create a media asset for file system snapshots
           text: >
             az iot ops namespace asset create media --name myCameraAsset --namespace myNamespace -g myResourceGroup
             --device myCamera --endpoint-name myCameraEndpoint --task-type snapshot-to-fs
-            --task-format png --snapshots-per-second 0.5 --path "/data/snapshots"
+            --task-format png --snapshots-per-sec 5 --path "/data/snapshots"
 
         - name: Create a media asset for file system clips
           text: >
@@ -2910,13 +2910,13 @@ def load_iotops_help():
         - name: Update an OPC UA asset's dataset configuration
           text: >
             az iot ops namespace asset update opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
-            --dataset-publish-interval 500 --dataset-sampling-interval 250
+            --dataset-publish-int 500 --dataset-sampling-int 250
             --dataset-queue-size 10 --dataset-key-frame-count 2
 
         - name: Update an OPC UA asset's event configuration
           text: >
             az iot ops namespace asset update opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
-            --event-publish-interval 1000 --event-queue-size 5
+            --event-publish-int 1000 --event-queue-size 5
             --event-filter-clause path="ns=1;i=2000" type="String" field="Alarm"
 
         - name: Update an OPC UA asset's destination configurations
@@ -2929,7 +2929,7 @@ def load_iotops_help():
           text: >
             az iot ops namespace asset update opcua --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
             --manufacturer "Automation Corp" --model "PLC-2000" --serial-number "PLC87654"
-            --attribute location=factory-floor zone=production line
+            --attribute location=factory-floor zone="production line"
     """
 
     helps[
