@@ -64,8 +64,8 @@ def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
     assert namespace_name2 in namespace_names
 
     # Delete namespace
-    run(f"az iot ops asset namespace delete -n {namespace_name1} -g {rg}")
-    run(f"az iot ops asset namespace delete -n {namespace_name2} -g {rg}")
+    run(f"az iot ops ns delete -n {namespace_name1} -g {rg}")
+    run(f"az iot ops ns delete -n {namespace_name2} -g {rg}")
     tracked_resources.remove(namespace["id"])
     tracked_resources.remove(min_namespace["id"])
 
