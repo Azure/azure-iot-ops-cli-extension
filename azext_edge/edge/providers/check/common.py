@@ -193,10 +193,11 @@ AIO_OPCUA_PREFIX = "aio-opc-"
 
 # Pre-deployment KPIs
 
-MIN_K8S_VERSION = "1.29"
+MIN_K8S_VERSION = "1.28"
 
 # Node prerequisite constants
 
+NODE_CONTROL_PLANE_LABEL = "node-role.kubernetes.io/control-plane"
 MIN_NODE_MEMORY = "16G"
 MIN_NODE_VCPU = "4"
 MIN_NODE_STORAGE = "30G"
