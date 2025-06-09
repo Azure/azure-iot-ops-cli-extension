@@ -73,6 +73,11 @@ def mocked_logger(mocker):
     yield mocker.patch("azext_edge.edge.providers.orchestration.resources.sync_rules.logger", autospec=True)
 
 
+@pytest.fixture
+def mocked_logger_queryable(mocker):
+    yield mocker.patch("azext_edge.edge.util.queryable.logger", autospec=True)
+
+
 @pytest.mark.parametrize(
     "role_assignment_scenario",
     [{}, {"sp_lookup_code": 401}, {"k8_bridge_sp_oid": generate_uuid()}, {"skip_role_assignments": True}],
@@ -96,6 +101,7 @@ def mocked_logger(mocker):
 def test_sync_rules_enable(
     mocked_cmd,
     mocked_logger: Mock,
+    mocked_logger_queryable: Mock,
     mocked_responses: responses,
     tags: Optional[dict],
     role_assignment_scenario: dict,
@@ -225,6 +231,8 @@ def test_sync_rules_enable(
         assert_ra_flow = True
         if not user_k8_bridge_sp_oid:
             assert sp_get.call_count == 1
+            mocked_logger_queryable.debug.call_args_list[0].assert_called_once_with(
+                "Using aud: https://graph.microsoft.com")
             if sp_lookup_code != 200:
                 mocked_logger.warning.assert_called_once_with(
                     "Unable to query K8 Bridge service principal and OID not provided via parameter. "

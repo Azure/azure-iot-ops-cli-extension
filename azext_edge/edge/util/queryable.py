@@ -44,13 +44,14 @@ class Queryable:
     def get_resource_group(self, name: str) -> dict:
         return self.resource_client.resource_groups.get(resource_group_name=name)
 
-    def get_sp_id(self, app_id: str, token_resource: str = "https://graph.windows.net/", **kwargs) -> Optional[str]:
+    def get_sp_id(self, app_id: str, token_resource: str = "https://graph.microsoft.com", **kwargs) -> Optional[str]:
         """
         Attempts to fetch the service principal Id by app Id from the Microsoft Graph API.
         """
         from azure.cli.core.util import send_raw_request
 
         # See if we can fetch the RP OID.
+        logger.debug(f"Using aud: {token_resource}")
         try:
             sp_response = send_raw_request(
                 cli_ctx=self.cmd.cli_ctx,
