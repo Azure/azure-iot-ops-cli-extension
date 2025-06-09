@@ -347,3 +347,10 @@ class CloneTemplateParams(Enum):
     RESOURCE_SLUG = "resourceSlug"
     LOCATION = "location"
     APPLY_ROLE_ASSIGNMENTS = "applyRoleAssignments"
+
+
+class X509FileExtension(Enum):
+    PEM = ".pem"
+    DER = ".der"
+    CRL = ".crl"
+    CRT = ".crt"
