@@ -1690,7 +1690,7 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "k8_bridge_sp_oid",
-            options_list=["--k8-bridge-oid"],
+            options_list=["--k8-bridge-sp-oid"],
             help="Provide an explicit K8 Bridge service principal OID for the custom location role assignment. "
             "This is useful if the logged-in principal does not have permission to query apps from MS Graph.",
         )
