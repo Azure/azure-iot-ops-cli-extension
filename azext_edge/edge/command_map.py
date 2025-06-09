@@ -247,6 +247,32 @@ def load_iotops_commands(self, _):
         cmd_group.command("opcua", "add_inbound_opcua_device_endpoint")
 
     with self.command_group(
+        "iot ops namespace asset",
+        command_type=namespace_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("delete", "delete_namespace_asset")
+        cmd_group.command("query", "query_namespace_assets")
+        cmd_group.show_command("show", "show_namespace_asset")
+
+    with self.command_group(
+        "iot ops namespace asset create",
+        command_type=namespace_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("custom", "create_namespace_custom_asset")
+        cmd_group.command("media", "create_namespace_media_asset")
+        cmd_group.command("onvif", "create_namespace_onvif_asset")
+        cmd_group.command("opcua", "create_namespace_opcua_asset")
+
+    with self.command_group(
+        "iot ops namespace asset update",
+        command_type=namespace_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("custom", "update_namespace_custom_asset")
+        cmd_group.command("media", "update_namespace_media_asset")
+        cmd_group.command("onvif", "update_namespace_onvif_asset")
+        cmd_group.command("opcua", "update_namespace_opcua_asset")
+
+    with self.command_group(
         "iot ops schema",
         command_type=schema_resource_ops,
         is_preview=True,

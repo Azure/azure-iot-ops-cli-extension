@@ -113,6 +113,7 @@ class Namespaces(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
+    # TODO: remove - not supported for AIO
     def add_endpoint(
         self,
         namespace_name: str,

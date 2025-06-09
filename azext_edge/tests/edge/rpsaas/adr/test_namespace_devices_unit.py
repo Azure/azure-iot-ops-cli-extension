@@ -31,8 +31,11 @@ from azext_edge.edge.providers.rpsaas.adr.specs import SecurityMode, SecurityPol
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 # Import necessary modules
-from .conftest import get_namespace_mgmt_uri
-from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
+from .test_namespaces_unit import get_namespace_mgmt_uri
+# TODO: once service is public
+# from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
+from ....generators import generate_random_string, get_zeroed_subscription
+BASE_URL = "https://eastus2euap.management.azure.com"
 
 ADR_REFRESH_API_VERSION = "2025-07-01-preview"
 
@@ -42,11 +45,9 @@ def get_namespace_device_mgmt_uri(namespace_name: str, resource_group_name: str,
         f"{BASE_URL}/subscriptions/{get_zeroed_subscription()}/resourceGroups/{resource_group_name}"
         f"/providers/Microsoft.DeviceRegistry/namespaces/{namespace_name}/devices"
     )
-
     if device_name:
-        return f"{base_uri}/{device_name}?api-version={ADR_REFRESH_API_VERSION}"
-    else:
-        return f"{base_uri}?api-version={ADR_REFRESH_API_VERSION}"
+        base_uri += f"/{device_name}"
+    return f"{base_uri}?api-version={ADR_REFRESH_API_VERSION}"
 
 
 def get_namespace_device_record(device_name: str, namespace_name: str, resource_group_name: str) -> Dict:
@@ -135,7 +136,7 @@ def test_create_namespace_device(
         method=responses.GET,
         url=get_namespace_mgmt_uri(
             namespace_name=namespace_name,
-            namespace_resource_group=resource_group_name
+            resource_group_name=resource_group_name
         ),
         json={"location": namespace_location},
         status=200,

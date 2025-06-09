@@ -82,19 +82,6 @@ def mocked_check_cluster_connectivity(mocker):
     )
 
 
-def get_namespace_id(
-    namespace_name: Optional[str] = None,
-    namespace_resource_group: Optional[str] = None,
-    namespace_subscription: Optional[str] = None,
-) -> str:
-    namespace_subscription = namespace_subscription or get_zeroed_subscription()
-    namespace_resource_group = f"/resourceGroups/{namespace_resource_group}" if namespace_resource_group else ""
-    namespace_name = f"/{namespace_name}" if namespace_name else ""
-
-    return f"/subscriptions/{namespace_subscription}{namespace_resource_group}/providers/"\
-        f"Microsoft.DeviceRegistry/namespaces{namespace_name}"
-
-
 def get_asset_id(
     asset_name: Optional[str] = None,
     asset_resource_group: Optional[str] = None,
@@ -129,19 +116,6 @@ def get_mgmt_uri(resource_id: str):
     return f"https://management.azure.com{resource_id}"
 
 
-def get_namespace_mgmt_uri(
-    namespace_name: Optional[str] = None,
-    namespace_resource_group: Optional[str] = None,
-    namespace_subscription: Optional[str] = None,
-) -> str:
-    namespace_id = get_namespace_id(
-        namespace_name=namespace_name,
-        namespace_resource_group=namespace_resource_group,
-        namespace_subscription=namespace_subscription
-    )
-    return f"https://management.azure.com{namespace_id}"
-
-
 def get_asset_mgmt_uri(
     asset_name: Optional[str] = None,
     asset_resource_group: Optional[str] = None,
@@ -155,20 +129,6 @@ def get_asset_mgmt_uri(
         discovered=discovered
     )
     return f"https://management.azure.com{asset_id}"
-
-
-def get_namespace_record(
-    namespace_name: str,
-    namespace_resource_group: str,
-    namespace_subscription: Optional[str] = None,
-    full: bool = True,
-) -> dict:
-    namespace_id = get_namespace_id(namespace_name, namespace_resource_group, namespace_subscription)
-    namespace = deepcopy(FULL_NAMESPACE) if full else deepcopy(MINIMUM_NAMESPACE)
-    namespace["name"] = namespace_name
-    namespace["resourceGroup"] = namespace_resource_group
-    namespace["id"] = namespace_id
-    return namespace
 
 
 def get_asset_record(
@@ -209,45 +169,6 @@ def get_profile_record(
 ASSETS_PATH = "azext_edge.edge.providers.rpsaas.adr.assets"
 
 # Generic objects
-# Namespace
-# TODO: confirm with real life examples
-MINIMUM_NAMESPACE = {
-    "type": "Microsoft.DeviceRegistry/namespaces",
-    "location": "westus3",
-    "properties": {
-        "uuid": generate_random_string(),
-        "messaging": {
-            "endpoints": {}
-        },
-        "provisioningState": "Succeeded"
-    }
-}
-FULL_NAMESPACE = {
-    "type": "Microsoft.DeviceRegistry/namespaces",
-    "location": "westus3",
-    "identity": {
-        "principalId": generate_random_string(),
-        "tenantId": generate_random_string(),
-        "type": "SystemAssigned"
-    },
-    "properties": {
-        "uuid": generate_random_string(),
-        "messaging": {
-            "endpoints": {
-                "myPrimaryEventGridEndpoint": {
-                    "address": "https://myeventgridtopic1.westeurope-1.eventgrid.azure.net",
-                    "endpointType": "Microsoft.EventGrid"
-                },
-                "mySecondaryEventGridEndpoint": {
-                    "address": "https://myeventgridtopic2.westeurope-1.eventgrid.azure.net",
-                    "endpointType": "Microsoft.EventGrid"
-                }
-            }
-        },
-        "provisioningState": "Succeeded"
-    }
-}
-
 # Assets
 MINIMUM_ASSET = {
     "extendedLocation": {
