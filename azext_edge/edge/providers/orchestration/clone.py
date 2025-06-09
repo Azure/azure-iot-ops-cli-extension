@@ -703,7 +703,7 @@ class CloneManager:
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
         self.version_guru = VersionGuru(self.instance_record)
-        self.custom_location = self.instances._get_associated_cl(self.instance_record)
+        self.custom_location = self.instances.get_associated_cl(self.instance_record)
 
         self.resource_map = self.instances.get_resource_map(self.instance_record)
         self.resouce_graph = self.resource_map.connected_cluster.resource_graph

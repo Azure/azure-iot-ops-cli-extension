@@ -38,6 +38,15 @@ def load_iotops_commands(self, _):
         cmd_group.command("clone", "clone_instance", is_preview=True)
 
     with self.command_group(
+        "iot ops rsync",
+        command_type=edge_resource_ops,
+        is_preview=True,
+    ) as cmd_group:
+        cmd_group.command("enable", "enable_rsync")
+        cmd_group.command("disable", "disable_rsync")
+        cmd_group.command("list", "list_rsync")
+
+    with self.command_group(
         "iot ops identity",
         command_type=edge_resource_ops,
     ) as cmd_group:
