@@ -112,8 +112,8 @@ def test_sync_rules_enable(
     sp_lookup_code = role_assignment_scenario.get("sp_lookup_code", 200)
     target_k8_bridge_sp_oid = user_k8_bridge_sp_oid or default_k8_bridge_sp_oid
 
-    rule_adr_pri = rule_pri_map.get("adr")
-    rule_ops_pri = rule_pri_map.get("ops")
+    rule_adr_pri = rule_pri_map.get("adr", 200)
+    rule_ops_pri = rule_pri_map.get("ops", 400)
     rule_adr_name = rule_name_map.get("adr")
     rule_ops_name = rule_name_map.get("ops")
 
@@ -246,13 +246,13 @@ def test_sync_rules_enable(
     assert sync_rule_adr_put_json["properties"]["targetResourceGroup"] == (
         f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}"
     )
-    assert sync_rule_adr_put_json["properties"]["priority"] == rule_adr_pri or 200
+    assert sync_rule_adr_put_json["properties"]["priority"] == rule_adr_pri
 
     sync_rule_ops_put_json = json.loads(sync_rule_ops_put.calls[0].request.body)
     assert sync_rule_ops_put_json["properties"]["targetResourceGroup"] == (
         f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}"
     )
-    assert sync_rule_ops_put_json["properties"]["priority"] == rule_ops_pri or 400
+    assert sync_rule_ops_put_json["properties"]["priority"] == rule_ops_pri
     if tags:
         assert sync_rule_ops_put_json["tags"] == tags
         assert sync_rule_adr_put_json["tags"] == tags
@@ -294,7 +294,7 @@ def test_sync_rules_list(mocked_cmd, mocked_responses: responses, rules_count: i
     )
 
     rules_payload = []
-    for i in range(rules_count):
+    for _ in range(rules_count):
         rules_payload.append(
             get_mock_sync_rule_record(
                 name=generate_random_string(),
