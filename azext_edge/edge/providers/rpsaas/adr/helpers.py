@@ -196,6 +196,7 @@ def ensure_schema_structure(schema: dict, input_data: dict):
                             f"Invalid value for {key}: the value must be at most {schema_value['maximum']}, "
                             f"instead got {value}"
                         )
+            # maybe add popping keys that are not there?
 
     _recursive_check(schema["properties"], input_data)
     if invalid_items:
@@ -205,6 +206,7 @@ def ensure_schema_structure(schema: dict, input_data: dict):
 
 def process_additional_configuration(
     additional_configuration: Optional[str] = None,
+    config_type: str = "additional",
     **kwargs
 ) -> Optional[str]:
     """
@@ -218,20 +220,20 @@ def process_additional_configuration(
         return
 
     try:
-        logger.debug("Processing additional configuration.")
+        logger.debug(f"Processing {config_type} configuration.")
         additional_configuration = read_file_content(additional_configuration)
         if not additional_configuration:
             raise InvalidArgumentValueError("Given file is empty.")
     except FileOperationError:
         inline_json = True
-        logger.debug("Given additional configuration is not a file.")
+        logger.debug(f"Given {config_type} configuration is not a file.")
 
     # make sure it is an actual json
     try:
         json.loads(additional_configuration)
         return additional_configuration
     except json.JSONDecodeError as e:
-        error_msg = "Additional configuration is not a valid JSON. "
+        error_msg = f"{config_type.capitalize()} configuration is not a valid JSON. "
         if inline_json:
             error_msg += "For examples of valid JSON formating, please see https://aka.ms/inline-json-examples "
         raise InvalidArgumentValueError(

@@ -19,11 +19,13 @@ from azext_edge.edge.commands_namespaces import (
 )
 from ...orchestration.resources.conftest import get_base_endpoint
 
-from .conftest import get_namespace_mgmt_uri, get_namespace_record
-from ....generators import generate_random_string
+from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
+# TODO: remove ADR_BASE_URL once service is public
+ADR_BASE_URL = "https://eastus2euap.management.azure.com"
 
 
 RESOURCES_API_VERSION = "2024-03-01"
+ADR_REFRESH_API_VERSION = "2025-07-01-preview"
 EVENTGRIDTOPIC_API_VERSION = "2025-02-15"
 EVENTGRIDTOPIC_RESOURCE_TYPE = "Microsoft.EventGrid/topics"
 
@@ -33,6 +35,62 @@ def convert_dict_to_nargs(input_dict: Dict[str, str]) -> List[str]:
     Converts a dictionary to a list of key=value strings.
     """
     return [f"{key}={value}" for key, value in input_dict.items()]
+
+
+def get_namespace_mgmt_uri(
+    namespace_name: Optional[str] = None,
+    resource_group_name: Optional[str] = None,
+    subscription: Optional[str] = None,
+    include_api: bool = True
+) -> str:
+    resource_group_name = f"/resourceGroups/{resource_group_name}" if resource_group_name else ""
+    namespace_name = f"/{namespace_name}" if namespace_name else ""
+
+    namespace_id = (
+        f"/subscriptions/{subscription or get_zeroed_subscription()}{resource_group_name}/providers/"
+        f"Microsoft.DeviceRegistry/namespaces{namespace_name}"
+    )
+    if include_api:
+        namespace_id += f"?api-version={ADR_REFRESH_API_VERSION}"
+    return f"{ADR_BASE_URL}{namespace_id}"
+
+
+def get_namespace_record(
+    namespace_name: str,
+    resource_group_name: str,
+    subscription: Optional[str] = None,
+) -> dict:
+    namespace = {
+        "id": get_namespace_mgmt_uri(
+            namespace_name, resource_group_name, subscription, include_api=False
+        )[len(ADR_BASE_URL) :],
+        "name": namespace_name,
+        "resourceGroup": resource_group_name,
+        "type": "Microsoft.DeviceRegistry/namespaces",
+        "location": "westus3",
+        "identity": {
+            "principalId": generate_random_string(),
+            "tenantId": generate_random_string(),
+            "type": "SystemAssigned"
+        },
+        "properties": {
+            "uuid": generate_random_string(),
+            "messaging": {
+                "endpoints": {
+                    "myPrimaryEventGridEndpoint": {
+                        "address": "https://myeventgridtopic1.westeurope-1.eventgrid.azure.net",
+                        "endpointType": "Microsoft.EventGrid"
+                    },
+                    "mySecondaryEventGridEndpoint": {
+                        "address": "https://myeventgridtopic2.westeurope-1.eventgrid.azure.net",
+                        "endpointType": "Microsoft.EventGrid"
+                    }
+                }
+            },
+            "provisioningState": "Succeeded"
+        }
+    }
+    return namespace
 
 
 @pytest.fixture()
@@ -76,13 +134,13 @@ def test_namespace_create(
 
     # Create mock response
     mock_namespace_record = get_namespace_record(
-        namespace_name=namespace_name, namespace_resource_group=resource_group_name
+        namespace_name=namespace_name, resource_group_name=resource_group_name
     )
 
     # Add mock response
     mocked_responses.add(
         method=responses.PUT,
-        url=get_namespace_mgmt_uri(namespace_name=namespace_name, namespace_resource_group=resource_group_name),
+        url=get_namespace_mgmt_uri(namespace_name=namespace_name, resource_group_name=resource_group_name),
         json=mock_namespace_record if response_status == 200 else {"error": "BadRequest"},
         status=response_status,
         content_type="application/json",
@@ -137,7 +195,7 @@ def test_namespace_delete(mocked_cmd, mocked_responses: responses, response_stat
     # Mock the delete call with the parameterized status code
     mocked_responses.add(
         method=responses.DELETE,
-        url=get_namespace_mgmt_uri(namespace_name=namespace_name, namespace_resource_group=resource_group_name),
+        url=get_namespace_mgmt_uri(namespace_name=namespace_name, resource_group_name=resource_group_name),
         status=response_status,
         content_type="application/json",
     )
@@ -176,7 +234,7 @@ def test_namespace_list(
         "value": [
             get_namespace_record(
                 namespace_name=generate_random_string(),
-                namespace_resource_group=resource_group_name,
+                resource_group_name=resource_group_name,
             )
             for _ in range(records)
         ]
@@ -184,7 +242,7 @@ def test_namespace_list(
 
     mocked_responses.add(
         method=responses.GET,
-        url=get_namespace_mgmt_uri(namespace_resource_group=resource_group_name),
+        url=get_namespace_mgmt_uri(resource_group_name=resource_group_name),
         json=mock_namespace_records,
         status=response_status,
         content_type="application/json",
@@ -212,13 +270,13 @@ def test_namespace_show(mocked_cmd, mocked_responses: responses, response_status
     # Create a mock namespace record for successful response
     mock_namespace_record = get_namespace_record(
         namespace_name=namespace_name,
-        namespace_resource_group=resource_group_name
+        resource_group_name=resource_group_name
     )
 
     # Configure mock response for GET request
     mocked_responses.add(
         method=responses.GET,
-        url=get_namespace_mgmt_uri(namespace_name=namespace_name, namespace_resource_group=resource_group_name),
+        url=get_namespace_mgmt_uri(namespace_name=namespace_name, resource_group_name=resource_group_name),
         json=mock_namespace_record if response_status == 200 else {"error": "Namespace not found"},
         status=response_status,
         content_type="application/json",
@@ -279,7 +337,7 @@ def test_namespace_update(
     # Create mock namespace records for PATCH responses
     mock_original_namespace = get_namespace_record(
         namespace_name=namespace_name,
-        namespace_resource_group=resource_group_name
+        resource_group_name=resource_group_name
     )
     # Add identity and tags to original namespace for testing update logic
     mock_original_namespace["identity"] = {"type": "SystemAssigned"}
@@ -295,7 +353,7 @@ def test_namespace_update(
     # Add mock PATCH response for update operation
     mocked_responses.add(
         method=responses.PATCH,
-        url=get_namespace_mgmt_uri(namespace_name=namespace_name, namespace_resource_group=resource_group_name),
+        url=get_namespace_mgmt_uri(namespace_name=namespace_name, resource_group_name=resource_group_name),
         json=mock_updated_namespace,
         status=response_status,
         content_type="application/json",

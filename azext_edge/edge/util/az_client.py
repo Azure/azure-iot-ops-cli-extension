@@ -159,6 +159,8 @@ def get_registry_refresh_mgmt_client(
         credential=AZURE_CLI_CREDENTIAL,
         subscription_id=subscription_id,
         user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
+        # TODO: remove once public
+        endpoint="https://eastus2euap.management.azure.com",
         **kwargs,
     )
 

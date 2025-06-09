@@ -14,7 +14,7 @@ from ....common import (
     FileType,
     TopicRetain,
 )
-from .specs import SecurityPolicy, SecurityMode
+from .specs import MediaFormat, MediaTaskType, SecurityPolicy, SecurityMode
 
 
 def load_adr_arguments(self, _):
@@ -709,7 +709,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "namespace_name",
-            options_list=["--namespace", "-n"],
+            options_list=["--namespace", "--ns"],
             help="Namespace name.",
         )
         context.argument(
@@ -754,7 +754,7 @@ def load_adr_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
 
-    with self.argument_context("iot ops ns device endpoint remove") as context:
+    with self.argument_context("iot ops ns device endpoint inbound remove") as context:
         context.argument(
             "endpoint_names",
             options_list=["--endpoint"],
@@ -910,3 +910,366 @@ def load_adr_arguments(self, _):
             arg_type=get_three_state_flag(),
             arg_group="Configuration",
         )
+
+    with self.argument_context("iot ops namespace asset") as context:
+        context.argument(
+            "asset_name",
+            options_list=["--name", "-n"],
+            help="Name of the asset.",
+        )
+        context.argument(
+            "device_name",
+            options_list=["--device", "-d"],
+            help="Device name.",
+        )
+        context.argument(
+            "namespace_name",
+            options_list=["--namespace", "--ns"],
+            help="Namespace name.",
+        )
+        context.argument(
+            "device_endpoint_name",
+            options_list=["--endpoint-name", "--endpoint", "--ep"],
+            help="Device endpoint name.",
+        )
+        context.argument(
+            "asset_type_refs",
+            options_list=["--asset-type-ref", "--type-ref"],
+            help="Space-separated list of asset type references.",
+            nargs="+",
+            action="extend",
+        )
+        context.argument(
+            "attributes",
+            options_list=["--attribute", "--attr"],
+            help="Space-separated key=value pairs for custom asset attributes.",
+            nargs="+",
+            action="extend",
+            arg_group="Additional Info"
+        )
+        context.argument(
+            "description",
+            options_list=["--description"],
+            help="Description of the asset.",
+        )
+        context.argument(
+            "disabled",
+            options_list=["--disable"],
+            help="Disable the asset.",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "display_name",
+            options_list=["--display-name", "--dn"],
+            help="Display name for the asset.",
+        )
+        context.argument(
+            "documentation_uri",
+            options_list=["--documentation-uri", "--doc-uri"],
+            help="Documentation URI for the asset.",
+            arg_group="Additional Info"
+        )
+        context.argument(
+            "external_asset_id",
+            options_list=["--external-asset-id", "--eid"],
+            help="External asset ID.",
+            arg_group="Additional Info"
+        )
+        context.argument(
+            "hardware_revision",
+            options_list=["--hardware-revision", "--hw-rev"],
+            help="Hardware revision information.",
+            arg_group="Additional Info"
+        )
+        context.argument(
+            "manufacturer",
+            options_list=["--manufacturer"],
+            help="Manufacturer name.",
+            arg_group="Additional Info"
+        )
+        context.argument(
+            "manufacturer_uri",
+            options_list=["--manufacturer-uri", "--mfr-uri"],
+            help="Manufacturer URI.",
+            arg_group="Additional Info"
+        )
+        context.argument(
+            "model",
+            options_list=["--model"],
+            help="Model name or number.",
+            arg_group="Additional Info"
+        )
+        context.argument(
+            "product_code",
+            options_list=["--product-code", "--pc"],
+            help="Product code.",
+            arg_group="Additional Info"
+        )
+        context.argument(
+            "serial_number",
+            options_list=["--serial-number", "--sn"],
+            help="Serial number.",
+            arg_group="Additional Info"
+        )
+        context.argument(
+            "software_revision",
+            options_list=["--software-revision", "--sw-rev"],
+            help="Software revision information.",
+            arg_group="Additional Info"
+        )
+        context.argument(
+            "tags",
+            options_list=["--tags"],
+            help="Space-separated tags in 'key[=value]' format.",
+            arg_type=tags_type,
+        )
+        context.argument(
+            "custom_query",
+            options_list=["--custom-query", "--cq"],
+            help="Custom query to use. All other query arguments will be ignored.",
+        )
+
+    for command in ("create", "update"):
+        with self.argument_context(f"iot ops namespace asset {command} custom") as context:
+            context.argument(
+                "datasets_custom_configuration",
+                options_list=["--dataset-config", "--dsc"],
+                help="File path containing or inline json containing custom configuration for datasets.",
+                arg_group="Default Configuration",
+            )
+            context.argument(
+                "datasets_destinations",
+                options_list=["--dataset-dest", "--dsd"],
+                help="Key=value pairs representing the destination for dataset. "
+                "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+                "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                nargs="+",
+                arg_group="Default Destination",
+            )
+            context.argument(
+                "events_custom_configuration",
+                options_list=["--event-config", "--evc"],
+                help="File path containing or inline json containing custom configuration for events.",
+                arg_group="Default Configuration",
+            )
+            context.argument(
+                "events_destinations",
+                options_list=["--event-dest", "--evd"],
+                help="Key=value pairs representing the destination for events. "
+                "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+                "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                nargs="+",
+                arg_group="Default Destination",
+            )
+            context.argument(
+                "mgmt_custom_configuration",
+                options_list=["--mgmt-config", "--mgc"],
+                help="File path containing or inline json containing custom configuration for management.",
+                arg_group="Default Configuration",
+            )
+            context.argument(
+                "streams_custom_configuration",
+                options_list=["--stream-config", "--stc"],
+                help="File path containing or inline json containing custom configuration for streams.",
+                arg_group="Default Configuration",
+            )
+            context.argument(
+                "streams_destinations",
+                options_list=["--stream-dest", "--std"],
+                help="Key=value pairs representing the destination for streams. "
+                "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+                "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                nargs="+",
+                arg_group="Default Destination",
+            )
+
+        with self.argument_context(f"iot ops namespace asset {command} media") as context:
+            context.argument(
+                "task_type",
+                options_list=["--task-type"],
+                help="Media task type.",
+                arg_type=get_enum_type(MediaTaskType),
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "task_format",
+                options_list=["--task-format", "--format"],
+                help="Media format. Only allowed for only " + (
+                    ', '.join([
+                        MediaTaskType.snapshot_to_mqtt.value,
+                        MediaTaskType.snapshot_to_fs.value,
+                        MediaTaskType.clip_to_fs.value
+                    ])
+                ) + ". For snapshots, only " + (
+                    ', '.join([
+                        mf.value for mf in MediaFormat if mf.allowed_for_snapshot
+                    ])
+                ) + " are allowed. For clips, only " + (
+                    ', '.join([
+                        mf.value for mf in MediaFormat if mf.allowed_for_clip
+                    ])
+                ) + " are allowed.",
+                arg_type=get_enum_type(MediaFormat),  # should I remove this to clutter the param help less
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "snapshots_per_second",
+                options_list=["--snapshots-per-sec", "--sps"],
+                help=f"Number of snapshots per second. Only allowed for only {MediaTaskType.snapshot_to_mqtt.value} "
+                f"and {MediaTaskType.snapshot_to_fs.value}. Minimum: 0",
+                type=int,
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "path",
+                options_list=["--path", "-p"],
+                help="File system path for snapshots or clips. Only allowed for only "
+                f"{MediaTaskType.snapshot_to_fs.value} and {MediaTaskType.clip_to_fs.value}.",
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "duration",
+                options_list=["--duration"],
+                help=f"Duration of clip in seconds. Only allowed for only {MediaTaskType.clip_to_fs.value}. Minimum: 0",
+                type=int,
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "media_server_address",
+                options_list=["--media-server-address", "--ms-addr"],
+                help=f"Media server address for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                f"and {MediaTaskType.stream_to_rtsps.value}.",
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "media_server_path",
+                options_list=["--media-server-path", "--ms-path"],
+                help=f"Media server path for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                f"and {MediaTaskType.stream_to_rtsps.value}.",
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "media_server_port",
+                options_list=["--media-server-port", "--ms-port"],
+                help=f"Media server port for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                f"and {MediaTaskType.stream_to_rtsps.value}. Minimum: 1",
+                type=int,
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "media_server_username",
+                options_list=["--media-server-user", "--ms-user"],
+                help=f"Media server username reference. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                f"and {MediaTaskType.stream_to_rtsps.value}.",
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "media_server_password",
+                options_list=["--media-server-pass", "--ms-pass"],
+                help=f"Media server password reference. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                f"and {MediaTaskType.stream_to_rtsps.value}.",
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "media_server_certificate",
+                options_list=["--media-server-cert", "--ms-cert"],
+                help="Media server certificate reference. Only allowed for only "
+                f"{MediaTaskType.stream_to_rtsps.value}.",
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "streams_destinations",
+                options_list=["--stream-dest", "--std"],
+                help="Key=value pairs representing the destination for streams. "
+                "Allowed arguments include: `path` for Storage; or "
+                "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                nargs="+",
+                arg_group="Default Stream Destination",
+            )
+
+        with self.argument_context(f"iot ops namespace asset {command} opcua") as context:
+            context.argument(
+                "dataset_publishing_interval",
+                options_list=["--dataset-publish-int", "--dspi"],
+                help="Publishing interval for datasets in milliseconds. Minimum: -1.",
+                type=int,
+                arg_group="Default Dataset",
+            )
+            context.argument(
+                "dataset_sampling_interval",
+                options_list=["--dataset-sampling-int", "--dssi"],
+                help="Sampling interval for datasets in milliseconds. Minimum: -1.",
+                type=int,
+                arg_group="Default Dataset",
+            )
+            context.argument(
+                "dataset_queue_size",
+                options_list=["--dataset-queue-size", "--dsqs"],
+                help="Queue size for datasets. Minimum: 0.",
+                type=int,
+                arg_group="Default Dataset",
+            )
+            context.argument(
+                "dataset_key_frame_count",
+                options_list=["--dataset-key-frame-count", "--dskfc"],
+                help="Key frame count for datasets. Minimum: 0.",
+                type=int,
+                arg_group="Default Dataset",
+            )
+            context.argument(
+                "dataset_start_instance",
+                options_list=["--dataset-start-inst", "--dss"],
+                help="Start instance for datasets.",
+                arg_group="Default Dataset",
+            )
+            context.argument(
+                "datasets_destinations",
+                options_list=["--dataset-dest", "--dsd"],
+                help="Key=value pairs representing the destination for datasets. "
+                "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. ",
+                nargs="+",
+                arg_group="Default Dataset",
+            )
+            context.argument(
+                "events_publishing_interval",
+                options_list=["--event-publish-int", "--evpi"],
+                help="Publishing interval for events in milliseconds. Minimum: -1.",
+                type=int,
+                arg_group="Default Event",
+            )
+            context.argument(
+                "events_queue_size",
+                options_list=["--event-queue-size", "--evqs"],
+                help="Queue size for events. Minimum: 0.",
+                type=int,
+                arg_group="Default Event",
+            )
+            context.argument(
+                "events_start_instance",
+                options_list=["--event-start-inst", "--evs"],
+                help="Start instance for events.",
+                arg_group="Default Event",
+            )
+            context.argument(
+                "events_filter_type",
+                options_list=["--event-filter-type", "--evft"],
+                help="Filter type for events.",
+                arg_group="Default Event",
+            )
+            context.argument(
+                "events_filter_clauses",
+                options_list=["--event-filter-clause", "--evf"],
+                help="Space-separated key=value pairs for event filter clauses. Allowed keys are `path` (required), "
+                "`type`, and `field`.",
+                nargs="+",
+                action="append",
+                arg_group="Default Event",
+            )
+            context.argument(
+                "events_destinations",
+                options_list=["--event-dest", "--evd"],
+                help="Key=value pairs representing the destination for events. "
+                "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
+                nargs="+",
+                arg_group="Default Event",
+            )
