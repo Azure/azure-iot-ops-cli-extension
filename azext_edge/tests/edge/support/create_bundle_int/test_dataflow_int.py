@@ -23,7 +23,7 @@ DATAFLOW_PREFIXES = ["aio-dataflow"]
 DATAFLOW_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service"]
 
 
-def test_create_bundle_dataflow(cluster_connection, tracked_files):
+def test_create_bundle_dataflow(cluster_connection, bundle_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS dataflow."""
     ops_service = OpsServiceType.dataflow.value
     pre_bundle_workload_items = get_multi_kubectl_workload_items(

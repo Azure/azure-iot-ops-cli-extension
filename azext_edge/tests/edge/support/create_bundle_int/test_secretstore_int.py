@@ -23,7 +23,7 @@ SSC_PREFIXES = ["secrets-store-sync-controller-manager", "manager-metrics-servic
 SSC_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service"]
 
 
-def test_create_bundle_ssc(cluster_connection, tracked_files):
+def test_create_bundle_ssc(cluster_connection, bundle_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.secretstore.value
 

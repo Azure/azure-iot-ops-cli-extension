@@ -18,7 +18,7 @@ META_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service"]
 META_OPTIONAL_WORKLOAD_TYPES = ["job"]
 
 
-def test_create_bundle_meta(cluster_connection, tracked_files):
+def test_create_bundle_meta(cluster_connection, bundle_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS meta."""
     pre_bundle_workload_items = get_multi_kubectl_workload_items(
         expected_workload_types=META_WORKLOAD_TYPES,

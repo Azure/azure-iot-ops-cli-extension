@@ -25,7 +25,7 @@ MQ_LABEL = ("app.kubernetes.io/name", "microsoft-iotoperations-mqttbroker")
 
 
 @pytest.mark.parametrize("mq_traces", [False, True])
-def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
+def test_create_bundle_mq(cluster_connection, bundle_setup, tracked_files, mq_traces):
     """Test for ensuring file names and content. ONLY CHECKS mq."""
     mq_traces = True
 

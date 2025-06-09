@@ -34,11 +34,12 @@ def support_bundle(
     include_mq_traces: Optional[bool] = None,
     context_name: Optional[str] = None,
     ops_services: Optional[List[str]] = None,
+    suffix: str = "aio",
 ) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.support_bundle import build_bundle
 
-    bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir)
+    bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir, system_name=suffix)
     return build_bundle(
         ops_services=ops_services,
         bundle_path=str(bundle_path),

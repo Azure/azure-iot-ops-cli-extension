@@ -8,6 +8,7 @@
 CLI parameter definitions.
 """
 
+import os
 from azure.cli.core.commands.parameters import (
     get_enum_type,
     get_three_state_flag,
@@ -203,6 +204,14 @@ def load_iotops_arguments(self, _):
             help="Include mqtt broker traces in the support bundle. "
             "Usage may add considerable size to the produced bundle.",
         )
+        if os.environ.get("AIO_SUPPORT_BUNDLE_INT_TEST"):
+            context.argument(
+                "suffix",
+                options_list=["--suffix"],
+                deprecate_info=context.deprecate(hide=True),
+                help="The suffix for the support bundle zip file. "
+                "Format: 'support_bundle_{timestamp}_{suffix}.zip'",
+            )
 
     with self.argument_context("iot ops check") as context:
         context.argument(

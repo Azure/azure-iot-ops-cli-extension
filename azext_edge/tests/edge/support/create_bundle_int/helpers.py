@@ -20,6 +20,7 @@ from ....helpers import (
     get_kubectl_workload_items,
     run,
 )
+from ....generators import generate_random_string
 
 
 logger = get_logger(__name__)
@@ -488,6 +489,8 @@ def run_bundle_command(
     command: str,
     tracked_files: List[str],
 ) -> Tuple[Dict[str, Dict[str, List[str]]], str]:
+    # add in a suffix for more uniqueness
+    command += f" --suffix {generate_random_string(size=8)}"
     result = run(command)
     if not result:
         pytest.skip("No bundle was created.")

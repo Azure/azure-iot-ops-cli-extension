@@ -17,7 +17,7 @@ AKRI_PREFIXES = ["aio-akri"]
 AKRI_WORKLOAD_TYPES = ["deployment", "pod", "replicaset"]
 
 
-def test_create_bundle_akri(cluster_connection, tracked_files):
+def test_create_bundle_akri(cluster_connection, bundle_setup, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS AKRI."""
     ops_service = OpsServiceType.akri.value
 
