@@ -9,6 +9,7 @@ from .clusters import ConnectedClusters
 from .dataflows import DataFlowEndpoints, DataFlowProfiles
 from .instances import Instances
 from .schema_registries import SchemaRegistries, Schemas
+from .sync_rules import SyncRules
 
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "Instances",
     "SchemaRegistries",
     "Schemas",
+    "SyncRules",
 ]

@@ -9,49 +9,14 @@ from typing import Tuple
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
 
-from ..k8s.cluster_role_binding import get_bindings
 from ..k8s.config_map import get_config_map
 from .common import (
     ARC_CONFIG_MAP,
     ARC_NAMESPACE,
-    CUSTOM_LOCATIONS_RP_APP_ID,
-    EXTENDED_LOCATION_ROLE_BINDING,
-    GRAPH_V1_SP_ENDPOINT,
 )
 from .connected_cluster import ConnectedCluster
 
 logger = get_logger(__name__)
-
-
-def verify_custom_locations_enabled(cmd):
-    from azure.cli.core.util import send_raw_request
-
-    target_bindings = get_bindings(field_selector=f"metadata.name=={EXTENDED_LOCATION_ROLE_BINDING}")
-    if not target_bindings or (target_bindings and not target_bindings.get("items")):
-        raise ValidationError(
-            "The custom-locations feature is required but not enabled on the cluster. For guidance refer to:\n"
-            "https://aka.ms/ArcK8sCustomLocationsDocsEnableFeature"
-        )
-
-    # See if we can verify the RP OID.
-    try:
-        cl_sp_response = send_raw_request(
-            cli_ctx=cmd.cli_ctx,
-            method="GET",
-            url=f"{GRAPH_V1_SP_ENDPOINT}(appId='{CUSTOM_LOCATIONS_RP_APP_ID}')",
-        ).json()
-        cl_oid = cl_sp_response["id"].lower()
-    except Exception:
-        # If not, bail without throwing.
-        return
-
-    # We are expecting one binding. Field selector pattern is used due to AKS-EE issue.
-    target_binding: dict = target_bindings["items"][0]
-    for subject in target_binding.get("subjects", []):
-        if "name" in subject and subject["name"].lower() == cl_oid:
-            return
-
-    raise ValidationError(f"Invalid OID used for custom locations feature enablement. Use '{cl_oid}'.")
 
 
 # TODO: @digimaun - can be useful for cluster side checks.
