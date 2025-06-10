@@ -29,14 +29,6 @@ def mocked_permission_manager(mocker):
     yield patched
 
 
-@pytest.fixture
-def mocked_verify_custom_locations_enabled(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.base.verify_custom_locations_enabled", autospec=True
-    )
-    yield patched
-
-
 ##
 
 
