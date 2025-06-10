@@ -92,6 +92,8 @@ jobs:
   setup:
     name: "Check Inputs"
     runs-on: ubuntu-22.04
+    # Run on dispatch, or ensure scheduled runs only on dev branch
+    if: github.event_name != 'schedule' || (github.repository == 'azure/azure-iot-ops-cli-extension' && github.ref == 'refs/heads/dev')
     outputs:
       create_args: ${{ steps.custom_input.outputs.CREATE_ARG }}
       init_args: ${{ steps.custom_input.outputs.INIT_ARG }}
