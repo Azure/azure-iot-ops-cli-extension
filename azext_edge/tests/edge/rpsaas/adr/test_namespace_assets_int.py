@@ -12,6 +12,9 @@ from ....helpers import run
 
 
 def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: List[str]):
+    # TODO: remove when service is ready
+    location = "eastus2euap"
+
     # Setup test variables
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
@@ -32,7 +35,10 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
     common_attrs = ["location=building1", "floor=3"]
 
     # Create namespace
-    result = run(f"az iot ops ns create -n {namespace_name} -g {resource_group} --mi-system-assigned")
+    result = run(
+        f"az iot ops ns create -n {namespace_name} -g {resource_group} --mi-system-assigned"
+        f"--location {location}"
+    )
     tracked_resources.append(result["id"])  # only track namespace - deletion of it should delete devices too
 
     # Create Device

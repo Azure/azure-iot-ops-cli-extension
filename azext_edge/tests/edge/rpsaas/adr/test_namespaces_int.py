@@ -17,12 +17,15 @@ pytestmark = pytest.mark.rpsaas
 
 
 def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
+    # TODO: remove when service is ready
+    location = "eastus2euap"
     rg = settings_with_rg.env.azext_edge_rg
 
     # Create a minimal namespace
     namespace_name1 = "testns" + generate_random_string(force_lower=True)[:4]
     min_namespace = run(
-        f"az iot ops ns create -n {namespace_name1} -g {rg}"
+        f"az iot ops ns create -n {namespace_name1} -g {rg} "
+        f"--location {location}"
     )
     tracked_resources.append(min_namespace["id"])
     assert_namespace_properties(result=min_namespace, name=namespace_name1, identity_type="None")
@@ -45,7 +48,7 @@ def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
     tags_str = " ".join([f"{k}={v}" for k, v in tags.items()])
     namespace = run(
         f"az iot ops ns create -n {namespace_name2} -g {rg} --mi-system-assigned "
-        f"--tags {tags_str}"
+        f"--tags {tags_str} --location {location}"
     )
     tracked_resources.append(namespace["id"])
     assert_namespace_properties(
@@ -64,8 +67,8 @@ def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
     assert namespace_name2 in namespace_names
 
     # Delete namespace
-    run(f"az iot ops ns delete -n {namespace_name1} -g {rg}")
-    run(f"az iot ops ns delete -n {namespace_name2} -g {rg}")
+    run(f"az iot ops ns delete -n {namespace_name1} -g {rg} -y")
+    run(f"az iot ops ns delete -n {namespace_name2} -g {rg} -y")
     tracked_resources.remove(namespace["id"])
     tracked_resources.remove(min_namespace["id"])
 
