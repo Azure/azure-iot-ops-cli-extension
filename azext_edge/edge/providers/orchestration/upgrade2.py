@@ -152,7 +152,6 @@ class UpgradeManager:
                     cluster_name=self.resource_map.connected_cluster.cluster_name,
                     extension_name=ext.extension["name"],
                     update_payload=ext.get_patch(),
-                    retry_total=0,
                     headers=headers,
                 )
                 return_payload.append(updated)
