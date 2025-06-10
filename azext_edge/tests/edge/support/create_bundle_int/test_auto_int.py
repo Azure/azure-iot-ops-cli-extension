@@ -35,7 +35,7 @@ def generate_bundle_test_cases() -> List[Tuple[str, bool, Optional[str]]]:
 
 
 @pytest.mark.parametrize("ops_service, mq_traces, bundle_dir", generate_bundle_test_cases())
-def test_create_bundle(cluster_connection, bundle_setup, ops_service, bundle_dir, mq_traces, tracked_files):
+def test_create_bundle(cluster_connection, ops_service, bundle_dir, mq_traces, tracked_files):
     """Test to focus on ops_service param."""
 
     # skip arccontainerstorage and azuremonitor for aio namespace check

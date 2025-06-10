@@ -18,7 +18,7 @@ SCHEMA_WORKLOAD_TYPES = ["configmap", "pod", "service", "statefulset", "pvc"]
 SCHEMA_LABEL = ("app.kubernetes.io/name", "microsoft-iotoperations-schemas")
 
 
-def test_create_bundle_schemas(cluster_connection, bundle_setup, tracked_files):
+def test_create_bundle_schemas(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.schemaregistry.value
     pre_bundle_workload_items = get_multi_kubectl_workload_items(

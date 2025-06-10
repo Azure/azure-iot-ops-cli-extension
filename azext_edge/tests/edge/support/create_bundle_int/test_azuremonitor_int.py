@@ -23,7 +23,7 @@ AZUREMONITOR_PREFIXES = ["diagnostics-operator", "diagnostics-v1"]
 AZUREMONITOR_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "statefulset", "configmap"]
 
 
-def test_create_bundle_azuremonitor(cluster_connection, bundle_setup, tracked_files):
+def test_create_bundle_azuremonitor(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.azuremonitor.value
 

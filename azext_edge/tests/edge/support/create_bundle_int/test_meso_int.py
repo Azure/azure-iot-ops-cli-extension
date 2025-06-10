@@ -18,7 +18,7 @@ MESO_PREFIXES = ["aio-observability"]
 MESO_WORKLOAD_TYPES = ["clusterrole", "configmap", "clusterrolebinding", "deployment", "pod", "replicaset", "service"]
 
 
-def test_create_bundle_meso(cluster_connection, bundle_setup, tracked_files):
+def test_create_bundle_meso(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS meta."""
     ops_service = OpsServiceType.meso.value
 

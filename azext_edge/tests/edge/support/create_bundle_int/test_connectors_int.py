@@ -23,7 +23,7 @@ CONNECTOR_WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "replicaset", "ser
 CONNECTOR_OPTIONAL_WORKLOAD_TYPES = ["podmetric"]  # note: not an actual type
 
 
-def test_create_bundle_connectors(cluster_connection, bundle_setup, tracked_files):
+def test_create_bundle_connectors(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS connectors."""
     ops_service = OpsServiceType.connectors.value
     pre_bundle_workload_items = get_multi_kubectl_workload_items(

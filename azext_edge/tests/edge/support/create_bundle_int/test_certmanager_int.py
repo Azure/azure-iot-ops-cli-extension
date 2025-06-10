@@ -17,7 +17,7 @@ CERTMGMT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "config
 USER_CERTMGMT_PREFIXES = ["cert-manager", "trust-manager"]
 
 
-def test_create_bundle_certmanager(cluster_connection, bundle_setup, tracked_files):
+def test_create_bundle_certmanager(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.certmanager.value
     pre_bundle_workload_items = get_multi_kubectl_workload_items(

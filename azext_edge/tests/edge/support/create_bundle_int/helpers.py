@@ -489,8 +489,8 @@ def run_bundle_command(
     command: str,
     tracked_files: List[str],
 ) -> Tuple[Dict[str, Dict[str, List[str]]], str]:
-    # add in a suffix for more uniqueness
-    command += f" --suffix {generate_random_string(size=8)}"
+    # add in a name for more uniqueness
+    command += f" --bundle-name test_bundle_{generate_random_string(size=8)}"
     result = run(command)
     if not result:
         pytest.skip("No bundle was created.")

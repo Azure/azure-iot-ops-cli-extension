@@ -33,7 +33,7 @@ AGENT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset"]
 AGENT_SERVICE_WORKLOAD_TYPES = AGENT_WORKLOAD_TYPES[:] + ["service"]
 
 
-def test_create_bundle_arcagents(cluster_connection, bundle_setup, tracked_files):
+def test_create_bundle_arcagents(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arcagents."""
     ops_service = OpsServiceType.akri.value
     agent_map = {}

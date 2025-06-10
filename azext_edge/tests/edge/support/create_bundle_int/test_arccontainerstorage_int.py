@@ -52,7 +52,7 @@ ACSTOR_PREFIXES = [
 ACSTOR_WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "replicaset", "service", "configmap"]
 
 
-def test_create_bundle_arccontainerstorage(cluster_connection, bundle_setup, tracked_files):
+def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
     """Test for ensuring file names and content. ONLY CHECKS arccontainerstorage."""
     ops_service = OpsServiceType.arccontainerstorage.value
 
