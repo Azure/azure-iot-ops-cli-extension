@@ -51,7 +51,7 @@ pip install -U --target ~/.azure/cliextensions/azure-iot-ops .
 # setup tox environment dependencies in parallel, but don't run tests
 echo "Creating local tox environments..."
 python -m pip install tox
-tox -np -e lint,python,coverage
+tox -np
 
 # Run the following to connect your cluster to ARC
 # RESOURCE_GROUP=[your_cluster_resource_group]
