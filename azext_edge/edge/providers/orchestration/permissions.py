@@ -22,6 +22,17 @@ VALID_PERM_FORMS = frozenset(
 ROLE_DEF_FORMAT_STR = "/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/{role_id}"
 
 
+def get_ra_user_error_msg(error_str: str, sp_name: str, sp_id: str, expected_role: str, scope: str):
+    return (
+        "Role assignment failed with:"
+        f"\n\n{error_str}\n\n"
+        f"The '{sp_name}' service principal '{sp_id}' needs\n"
+        f"'{expected_role}' or equivalent role against scope:\n"
+        f"'{scope}'\n\n"
+        "Please handle this step before continuing."
+    )
+
+
 # TODO: one-off for time, make generic
 def verify_write_permission_against_rg(subscription_id: str, resource_group_name: str):
     for permission in get_principal_permissions_for_group(

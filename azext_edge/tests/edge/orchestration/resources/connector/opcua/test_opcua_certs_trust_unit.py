@@ -21,6 +21,7 @@ from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs imp
     OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
 )
 from azext_edge.tests.edge.orchestration.resources.connector.opcua.conftest import (
+    build_mock_cert,
     generate_ssc_object_string,
     get_mock_spc_record,
     get_mock_secretsync_record,
@@ -67,6 +68,7 @@ def test_trust_add(
     mocked_cl_resources: Mock,
     mocked_logger: Mock,
     mocked_read_file_content: Mock,
+    mocked_decode_certificate: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     trust_list_spc: dict,
@@ -148,7 +150,7 @@ def test_trust_add(
 
 @pytest.mark.parametrize(
     "expected_resources_map, trust_list_spc, trust_list_secretsync,"
-    "file_name, secret_name, expected_error_type, expected_error_text",
+    "file_name, secret_name, mocked_cert, expected_error_type, expected_error_text",
     [
         (
             {
@@ -159,6 +161,7 @@ def test_trust_add(
             {},
             "/fake/path/certificate1.crt",
             None,
+            [build_mock_cert()],
             ResourceNotFoundError,
             "Please enable secret sync before adding certificate.",
         ),
@@ -180,23 +183,166 @@ def test_trust_add(
             ),
             "/fake/path/certificate.der",
             "mock_secret",
+            [build_mock_cert()],
             InvalidArgumentValueError,
             "Secret name mock_secret is invalid. Secret name must be alphanumeric and can contain hyphens. "
             "Please provide a valid secret name via --secret-name.",
         ),
+        # expired certificate
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
+                "extensions": [generate_ops_resource()],
+            },
+            get_mock_spc_record(spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=["mock-secret"],
+            ),
+            "/fake/path/certificate.der",
+            "new-secret",
+            [build_mock_cert(expired=True)],
+            InvalidArgumentValueError,
+            "Certificate in file 'certificate.der' is expired. Please provide a valid certificate.",
+        ),
+        # more than one certificate in .crt file
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
+                "extensions": [generate_ops_resource()],
+            },
+            get_mock_spc_record(spc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=["mock-secret"],
+            ),
+            "/fake/path/certificate.crt",
+            "new-secret",
+            [build_mock_cert(), build_mock_cert()],
+            InvalidArgumentValueError,
+            "Multiple certificates detected in file 'certificate.crt' in PEM format. "
+            "Please provide a file with only one PEM certificate.",
+        ),
     ],
 )
-def test_trust_add_error(
+def test_trust_add_content_error(
     mocker,
     mocked_cmd,
     mocked_cl_resources: Mock,
     mocked_read_file_content: Mock,
+    mocked_decode_certificate: Mock,
     mocked_sleep: Mock,
     expected_resources_map: dict,
     trust_list_spc: dict,
     trust_list_secretsync: dict,
     file_name: str,
     secret_name: str,
+    mocked_cert: list,
+    expected_error_type: Exception,
+    expected_error_text: str,
+    mocked_responses: responses,
+):
+    file_content = b"\x00\x01\x02\x03"
+    instance_name = generate_random_string()
+    rg_name = "mock-rg"
+    mocked_cl_resources.return_value = expected_resources_map["resources"]
+    mocked_read_file_content.return_value = file_content
+    mocked_decode_certificate.return_value = mocked_cert
+
+    if expected_resources_map["resources"]:
+        # get default spc
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
+            json=expected_resources_map["resources"][0],
+            status=200,
+            content_type="application/json",
+        )
+
+    if trust_list_spc and not ("expired" in expected_error_text) and not (
+        "PEM" in expected_error_text
+    ):
+
+        setup_mock_common_responses(
+            mocked_responses=mocked_responses,
+            spc=trust_list_spc,
+            secretsync=trust_list_secretsync,
+            opcua_secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+            rg_name=rg_name,
+            secret_name=secret_name,
+        )
+
+    with pytest.raises(expected_error_type) as e:
+        add_connector_opcua_trust(
+            cmd=mocked_cmd,
+            instance_name=instance_name,
+            resource_group=rg_name,
+            file=file_name,
+            secret_name=secret_name,
+            overwrite_secret=True,
+        )
+    assert expected_error_text in e.value.args[0]
+
+
+@pytest.mark.parametrize(
+    "expected_resources_map, file_name, expected_error_type, expected_error_text",
+    [
+        # invalid format for .der file
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
+                "extensions": [generate_ops_resource()],
+            },
+            "/fake/path/certificate.der",
+            InvalidArgumentValueError,
+            "Failed to decode certificate data. Ensure the data is in DER format. Error: error parsing "
+            "asn1 value: ParseError { kind: UnexpectedTag { actual: Tag { value: 0, constructed: false, "
+            "class: Universal } } }",
+        ),
+        # invalid format for .crt file
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
+                    ),
+                ],
+                "extensions": [generate_ops_resource()],
+            },
+            "/fake/path/certificate.crt",
+            InvalidArgumentValueError,
+            "Failed to decode certificate data. Ensure the data is in PEM format. Error: Unable to load "
+            "PEM file. See https://cryptography.io/en/latest/faq/#why-can-t-i-import-my-pem-file for more "
+            "details. MalformedFraming",
+        ),
+    ],
+)
+def test_trust_add_format_error(
+    mocker,
+    mocked_cmd,
+    mocked_cl_resources: Mock,
+    mocked_read_file_content: Mock,
+    mocked_sleep: Mock,
+    expected_resources_map: dict,
+    file_name: str,
     expected_error_type: Exception,
     expected_error_text: str,
     mocked_responses: responses,
@@ -217,24 +363,13 @@ def test_trust_add_error(
             content_type="application/json",
         )
 
-    if trust_list_spc:
-
-        setup_mock_common_responses(
-            mocked_responses=mocked_responses,
-            spc=trust_list_spc,
-            secretsync=trust_list_secretsync,
-            opcua_secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
-            rg_name=rg_name,
-            secret_name=secret_name,
-        )
-
     with pytest.raises(expected_error_type) as e:
         add_connector_opcua_trust(
             cmd=mocked_cmd,
             instance_name=instance_name,
             resource_group=rg_name,
             file=file_name,
-            secret_name=secret_name,
+            secret_name="new-secret",
             overwrite_secret=True,
         )
     assert expected_error_text in e.value.args[0]

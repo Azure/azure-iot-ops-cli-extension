@@ -2903,3 +2903,61 @@ def load_iotops_help():
           text: >
             az iot ops clone -n myinstance -g myresourcegroup --to-dir . --no-progress -y
     """
+
+    helps[
+        "iot ops rsync"
+    ] = """
+        type: group
+        short-summary: Resource sync rules management.
+    """
+
+    helps[
+        "iot ops rsync enable"
+    ] = """
+        type: command
+        short-summary: Enable edge to cloud hydration by creating resource sync rules for the instance.
+        long-summary: |
+          This operation will create two resource sync rules. One for IoT Operations and one for
+          Device Registry. It will then apply a role assignment between the K8 Bridge service
+          principal and the IoT Operations instance custom location.
+
+        examples:
+        - name: Enable resource sync for the instance.
+          text: >
+            az iot ops rsync enable -n myinstance -g myresourcegroup
+        - name: Enable resource sync for the instance but skip the role assignment step.
+          text: >
+            az iot ops rsync enable -n myinstance -g myresourcegroup --skip-ra
+        - name: Enable resource sync for the instance and explictly provide the K8 Bridge principal OID.
+          text: >
+            az iot ops rsync enable -n myinstance -g myresourcegroup --k8-bridge-sp-oid $TENANT_K8_BRIDGE_SP_OID
+        - name: Enable resource sync for the instance with some customization.
+          text: >
+            az iot ops rsync enable -n myinstance -g myresourcegroup
+            --rule-adr-name myadrsync --rule-ops-name myopsync
+            --rule-adr-pri 100 --rule-ops-pri 200
+    """
+
+    helps[
+        "iot ops rsync list"
+    ] = """
+        type: command
+        short-summary: List resource sync rules associated with the instance.
+
+        examples:
+        - name: List resource sync rules associated with the instance.
+          text: >
+            az iot ops rsync list -n myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops rsync disable"
+    ] = """
+        type: command
+        short-summary: Disable edge to cloud hydration by deleting instance associated resource sync rules.
+
+        examples:
+        - name: Disable resource sync for the target instance.
+          text: >
+            az iot ops rsync disable -n myinstance -g myresourcegroup
+    """
