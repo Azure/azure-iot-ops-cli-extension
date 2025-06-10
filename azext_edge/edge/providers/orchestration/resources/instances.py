@@ -120,13 +120,13 @@ class Instances(Queryable):
             resource_map.refresh_resource_state()
         print(resource_map.build_tree(category_color="cyan"))
 
-    def _get_associated_cl(self, instance: dict) -> dict:
+    def get_associated_cl(self, instance: dict) -> dict:
         return self.resource_client.resources.get_by_id(
             resource_id=instance["extendedLocation"]["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
         )
 
     def get_resource_map(self, instance: dict) -> IoTOperationsResourceMap:
-        custom_location = self._get_associated_cl(instance)
+        custom_location = self.get_associated_cl(instance)
         resource_id_container = parse_resource_id(custom_location["properties"]["hostResourceId"])
 
         return IoTOperationsResourceMap(
@@ -181,7 +181,7 @@ class Instances(Queryable):
 
         # TODO - @digimaun
         # cluster_resource = self.get_resource_map(instance).connected_cluster.resource
-        # custom_location = self._get_associated_cl(instance)
+        # custom_location = self.get_associated_cl(instance)
         # namespace = custom_location["properties"]["namespace"]
         # oidc_issuer = self._ensure_oidc_issuer(cluster_resource)
 
@@ -231,7 +231,7 @@ class Instances(Queryable):
         instance = self.show(name=name, resource_group_name=resource_group_name)
         cluster_resource = self.get_resource_map(instance).connected_cluster.resource
         oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
-        custom_location = self._get_associated_cl(instance)
+        custom_location = self.get_associated_cl(instance)
         namespace = custom_location["properties"]["namespace"]
         cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
 
@@ -294,7 +294,7 @@ class Instances(Queryable):
             instance = self.show(name=name, resource_group_name=resource_group_name)
             resource_map = self.get_resource_map(instance)
             cluster_resource = resource_map.connected_cluster.resource
-            custom_location = self._get_associated_cl(instance)
+            custom_location = self.get_associated_cl(instance)
             namespace = custom_location["properties"]["namespace"]
             cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_SECRETSYNC)
             oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)

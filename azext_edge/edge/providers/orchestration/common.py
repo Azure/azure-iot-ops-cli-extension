@@ -9,9 +9,6 @@ from enum import Enum
 # Urls
 ARM_ENDPOINT = "https://management.azure.com/"
 MCR_ENDPOINT = "https://mcr.microsoft.com/"
-GRAPH_ENDPOINT = "https://graph.microsoft.com/"
-GRAPH_V1_ENDPOINT = f"{GRAPH_ENDPOINT}v1.0"
-GRAPH_V1_SP_ENDPOINT = f"{GRAPH_V1_ENDPOINT}/servicePrincipals"
 
 CUSTOM_LOCATIONS_RP_APP_ID = "bc313c14-388c-4e7d-a58e-70017303ee3b"
 
@@ -350,3 +347,10 @@ class CloneTemplateParams(Enum):
     RESOURCE_SLUG = "resourceSlug"
     LOCATION = "location"
     APPLY_ROLE_ASSIGNMENTS = "applyRoleAssignments"
+
+
+class X509FileExtension(Enum):
+    PEM = ".pem"
+    DER = ".der"
+    CRL = ".crl"
+    CRT = ".crt"

@@ -309,14 +309,14 @@ def load_iotops_arguments(self, _):
             "profile_instances",
             type=int,
             options_list=["--profile-instances"],
-            help="The number of pods that run associated dataflows. Min value: 1, max value: 20."
+            help="The number of pods that run associated dataflows. Min value: 1, max value: 20.",
         )
         context.argument(
             "log_level",
             options_list=["--log-level"],
             help="The level of detail given in diagnostic logs. "
             "Levels: 'error', 'warn', 'info', 'debug', 'trace', 'off'. "
-            "For advanced usage you can specify a comma-separated list of module=level pairs. "
+            "For advanced usage you can specify a comma-separated list of module=level pairs.",
         )
 
     with self.argument_context("iot ops dataflow endpoint") as context:
@@ -389,10 +389,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "acks",
             options_list=["--acks"],
-            arg_type=get_enum_type(
-                DataflowEndpointKafkaAcksType,
-                default=DataflowEndpointKafkaAcksType.ALL.value
-            ),
+            arg_type=get_enum_type(DataflowEndpointKafkaAcksType, default=DataflowEndpointKafkaAcksType.ALL.value),
             help="Level of acknowledgment from the Kafka broker to "
             "ensure that the message sent by producer is successfully "
             "written to the topic and replicated across the Kafka cluster.",
@@ -425,10 +422,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "compression",
             options_list=["--compression"],
-            arg_type=get_enum_type(
-                KafkaCompressionType,
-                default=KafkaCompressionType.NONE.value
-            ),
+            arg_type=get_enum_type(KafkaCompressionType, default=KafkaCompressionType.NONE.value),
             help="Compression type for the messages sent to Kafka topics.",
         )
         context.argument(
@@ -448,16 +442,12 @@ def load_iotops_arguments(self, _):
         context.argument(
             "group_id",
             options_list=["--group-id", "--gid"],
-            help="ID of consumer group that the data flow uses to read messages "
-            "from the Kafka topic."
+            help="ID of consumer group that the data flow uses to read messages " "from the Kafka topic.",
         )
         context.argument(
             "partition_strategy",
             options_list=["--partition-strategy", "--ps"],
-            arg_type=get_enum_type(
-                KafkaPartitionStrategyType,
-                default=KafkaPartitionStrategyType.DEFAULT.value
-            ),
+            arg_type=get_enum_type(KafkaPartitionStrategyType, default=KafkaPartitionStrategyType.DEFAULT.value),
             help="The partition handling strategy controls how messages are "
             "assigned to Kafka partitions when sending them to Kafka topics.",
         )
@@ -493,8 +483,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "max_inflight_messages",
             options_list=["--max-inflight-msg", "--mim"],
-            help="the maximum number of inflight messages that the data "
-            "flow MQTT client can have. Min value: 0.",
+            help="The maximum number of inflight messages that the data flow MQTT client can have. Min value: 0.",
             type=int,
         )
         context.argument(
@@ -520,15 +509,11 @@ def load_iotops_arguments(self, _):
         context.argument(
             "session_expiry",
             options_list=["--session-expiry"],
-            help="The session expiry interval in seconds for the data flow MQTT client. "
-            "Min value: 0.",
+            help="The session expiry interval in seconds for the data flow MQTT client. " "Min value: 0.",
             type=int,
         )
 
-    for cmd_space in [
-        "iot ops dataflow endpoint create adx",
-        "iot ops dataflow endpoint update adx"
-    ]:
+    for cmd_space in ["iot ops dataflow endpoint create adx", "iot ops dataflow endpoint update adx"]:
         with self.argument_context(cmd_space) as context:
             context.argument(
                 "database_name",
@@ -1683,4 +1668,38 @@ def load_iotops_arguments(self, _):
             help="Use the self-hosted oidc issuer for federation. Only applicable if "
             "user-assigned managed identities are associated to the model instance.",
             arg_group="Cluster Target",
+        )
+
+    with self.argument_context("iot ops rsync") as context:
+        context.argument(
+            "rule_ops_name",
+            options_list=["--rule-ops-name"],
+            help="The desired name of the resource sync rule to create for IoT Operations.",
+            arg_group="Custom Rule",
+        )
+        context.argument(
+            "rule_adr_name",
+            options_list=["--rule-adr-name"],
+            help="The desired name of the resource sync rule to create for Device Registry.",
+            arg_group="Custom Rule",
+        )
+        context.argument(
+            "rule_ops_pri",
+            type=int,
+            options_list=["--rule-ops-pri"],
+            help="The desired priority of the resource sync rule to create for IoT Operations.",
+            arg_group="Custom Rule",
+        )
+        context.argument(
+            "rule_adr_pri",
+            type=int,
+            options_list=["--rule-adr-pri"],
+            help="The desired priority of the resource sync rule to create for Device Registry.",
+            arg_group="Custom Rule",
+        )
+        context.argument(
+            "k8_bridge_sp_oid",
+            options_list=["--k8-bridge-sp-oid"],
+            help="Provide an explicit K8 Bridge service principal OID for the custom location role assignment. "
+            "This is useful if the logged-in principal does not have permission to query apps from MS Graph.",
         )
