@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-import os
 from pathlib import PurePath
 from typing import Any, Dict, Iterable, List, Optional, Union
 
@@ -35,42 +34,18 @@ def support_bundle(
     include_mq_traces: Optional[bool] = None,
     context_name: Optional[str] = None,
     ops_services: Optional[List[str]] = None,
-    **kwargs
+    bundle_name: Optional[str] = None,
 ) -> Union[Dict[str, Any], None]:
     load_config_context(context_name=context_name)
     from .providers.support_bundle import build_bundle
 
-    suffix = kwargs.get("suffix", "aio")
-    bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir, system_name=suffix)
+    bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir, bundle_name=bundle_name)
     return build_bundle(
         ops_services=ops_services,
         bundle_path=str(bundle_path),
         log_age_seconds=log_age_seconds,
         include_mq_traces=include_mq_traces,
     )
-
-
-# there is no neat way to add in the parameter only in some situations
-if os.environ.get("AIO_SUPPORT_BUNDLE_INT_TEST"):
-    def support_bundle(  # noqa: F811, pylint: disable=function-redefined
-        cmd,
-        log_age_seconds: int = 60 * 60 * 24,
-        bundle_dir: Optional[str] = None,
-        include_mq_traces: Optional[bool] = None,
-        context_name: Optional[str] = None,
-        ops_services: Optional[List[str]] = None,
-        suffix: str = "aio"
-    ) -> Union[Dict[str, Any], None]:
-        load_config_context(context_name=context_name)
-        from .providers.support_bundle import build_bundle
-
-        bundle_path: PurePath = get_bundle_path(bundle_dir=bundle_dir, system_name=suffix)
-        return build_bundle(
-            ops_services=ops_services,
-            bundle_path=str(bundle_path),
-            log_age_seconds=log_age_seconds,
-            include_mq_traces=include_mq_traces,
-        )
 
 
 def check(
