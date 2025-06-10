@@ -911,7 +911,7 @@ def load_adr_arguments(self, _):
             arg_group="Configuration",
         )
 
-    with self.argument_context("iot ops namespace asset") as context:
+    with self.argument_context("iot ops ns asset") as context:
         context.argument(
             "asset_name",
             options_list=["--name", "-n"],
@@ -1030,7 +1030,7 @@ def load_adr_arguments(self, _):
         )
 
     for command in ("create", "update"):
-        with self.argument_context(f"iot ops namespace asset {command} custom") as context:
+        with self.argument_context(f"iot ops ns asset {command} custom") as context:
             context.argument(
                 "datasets_custom_configuration",
                 options_list=["--dataset-config", "--dsc"],
@@ -1083,7 +1083,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Destination",
             )
 
-        with self.argument_context(f"iot ops namespace asset {command} media") as context:
+        with self.argument_context(f"iot ops ns asset {command} media") as context:
             context.argument(
                 "task_type",
                 options_list=["--task-type"],
@@ -1187,7 +1187,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Stream Destination",
             )
 
-        with self.argument_context(f"iot ops namespace asset {command} opcua") as context:
+        with self.argument_context(f"iot ops ns asset {command} opcua") as context:
             context.argument(
                 "dataset_publishing_interval",
                 options_list=["--dataset-publish-int", "--dspi"],

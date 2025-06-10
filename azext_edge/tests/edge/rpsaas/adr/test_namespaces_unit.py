@@ -19,7 +19,7 @@ from azext_edge.edge.commands_namespaces import (
 )
 from ...orchestration.resources.conftest import get_base_endpoint
 
-from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
+from ....generators import generate_random_string, get_zeroed_subscription
 # TODO: remove ADR_BASE_URL once service is public
 ADR_BASE_URL = "https://eastus2euap.management.azure.com"
 

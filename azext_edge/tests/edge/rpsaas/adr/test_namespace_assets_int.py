@@ -32,12 +32,12 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
     common_attrs = ["location=building1", "floor=3"]
 
     # Create namespace
-    result = run(f"az iot ops namespace create -n {namespace_name} -g {resource_group} --mi-system-assigned")
+    result = run(f"az iot ops ns create -n {namespace_name} -g {resource_group} --mi-system-assigned")
     tracked_resources.append(result["id"])  # only track namespace - deletion of it should delete devices too
 
     # Create Device
     result = run(
-        f"az iot ops namespace device create --name {device_name_1} --namespace {namespace_name} "
+        f"az iot ops ns device create --name {device_name_1} --namespace {namespace_name} "
         f"-g {resource_group} --instance {instance_name} --template-id dtmi:sample:device;1"
     )
 
@@ -49,13 +49,13 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
         (endpoint_name_custom, "custom")
     ]:
         run(
-            f"az iot ops namespace device endpoint create --name {endpoint_name} --namespace {namespace_name} "
+            f"az iot ops ns device endpoint create --name {endpoint_name} --namespace {namespace_name} "
             f"-g {resource_group} --instance {instance_name} --device {device_name_1} --type {endpoint_type}"
         )
 
     # 1. Create ONVIF asset with maximum inputs
     asset_onvif = run(
-        f"az iot ops namespace asset create onvif --name {asset_name_onvif} --namespace {namespace_name} "
+        f"az iot ops ns asset create onvif --name {asset_name_onvif} --namespace {namespace_name} "
         f"-g {resource_group} --device {device_name_1} --endpoint-name {endpoint_name_onvif} "
         f"--description 'ONVIF Camera' --display-name 'Entrance Camera' --model 'Camera-X1' "
         f"--manufacturer 'SecurityCo' --serial-number 'CAM123456' "
@@ -76,7 +76,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # 2. Create OPCUA asset with maximum inputs
     asset_opcua = run(
-        f"az iot ops namespace asset create opcua --name {asset_name_opcua} --namespace {namespace_name} "
+        f"az iot ops ns asset create opcua --name {asset_name_opcua} --namespace {namespace_name} "
         f"-g {resource_group} --device {device_name_1} --endpoint-name {endpoint_name_opcua} "
         f"--description 'OPC UA Sensor' --display-name 'Temperature Sensor' --model 'Sensor-T2000' "
         f"--manufacturer 'Contoso' --serial-number 'OPCUA987654' "
@@ -101,7 +101,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # 3. Create Media asset with maximum inputs
     asset_media = run(
-        f"az iot ops namespace asset create media --name {asset_name_media} --namespace {namespace_name} "
+        f"az iot ops ns asset create media --name {asset_name_media} --namespace {namespace_name} "
         f"-g {resource_group} --device {device_name_1} --endpoint-name {endpoint_name_media} "
         f"--description 'Media Camera' --display-name 'Monitoring Camera' --model 'MediaCam-4K' "
         f"--manufacturer 'MediaCorp' --serial-number 'MEDIA567890' "
@@ -122,7 +122,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # 4. Create Custom asset with maximum inputs
     asset_custom = run(
-        f"az iot ops namespace asset create custom --name {asset_name_custom} --namespace {namespace_name} "
+        f"az iot ops ns asset create custom --name {asset_name_custom} --namespace {namespace_name} "
         f"-g {resource_group} --device {device_name_1} --endpoint-name {endpoint_name_custom} "
         f"--description 'Custom Device' --display-name 'Multi-Sensor' --model 'Custom-MS100' "
         f"--manufacturer 'CustomDevices' --serial-number 'CUST123456' "
@@ -145,7 +145,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # Test show operation for an asset
     shown_asset = run(
-        f"az iot ops namespace asset show --name {asset_name_onvif} --namespace {namespace_name} "
+        f"az iot ops ns asset show --name {asset_name_onvif} --namespace {namespace_name} "
         f"-g {resource_group}"
     )
 
@@ -161,7 +161,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
     # Test update operation for each asset type
     # 1. Update ONVIF asset
     updated_onvif = run(
-        f"az iot ops namespace asset update onvif --name {asset_name_onvif} --namespace {namespace_name} "
+        f"az iot ops ns asset update onvif --name {asset_name_onvif} --namespace {namespace_name} "
         f"-g {resource_group} --description 'Updated ONVIF Camera' --display-name 'Main Entrance Camera' "
         f"--attribute location=entrance resolution=4K"
     )
@@ -175,7 +175,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # 2. Update OPCUA asset
     updated_opcua = run(
-        f"az iot ops namespace asset update opcua --name {asset_name_opcua} --namespace {namespace_name} "
+        f"az iot ops ns asset update opcua --name {asset_name_opcua} --namespace {namespace_name} "
         f"-g {resource_group} --description 'Updated OPC UA Sensor' "
         f"--dataset-publish-interval 500 --dataset-sampling-interval 250"
     )
@@ -188,7 +188,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # 3. Update Media asset
     updated_media = run(
-        f"az iot ops namespace asset update media --name {asset_name_media} --namespace {namespace_name} "
+        f"az iot ops ns asset update media --name {asset_name_media} --namespace {namespace_name} "
         f"-g {resource_group} --task-type 'snapshot-to-fs' --task-format 'png' --path '/data/snapshots'"
     )
 
@@ -199,7 +199,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # 4. Update Custom asset
     updated_custom = run(
-        f"az iot ops namespace asset update custom --name {asset_name_custom} --namespace {namespace_name} "
+        f"az iot ops ns asset update custom --name {asset_name_custom} --namespace {namespace_name} "
         f"-g {resource_group} --datasets-config \"{{\\\"publishingInterval\\\": 2000}}\" "
         f"--events-config \"{{\\\"queueSize\\\": 10}}\""
     )
@@ -211,21 +211,21 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # Test query operation
     queried_assets = run(
-        f"az iot ops namespace asset query -g {resource_group}"
+        f"az iot ops ns asset query -g {resource_group}"
     )
 
     assert len(queried_assets) >= 4
 
     # Query by specific device
     device_assets = run(
-        f"az iot ops namespace asset query -g {resource_group} --device {device_name_1}"
+        f"az iot ops ns asset query -g {resource_group} --device {device_name_1}"
     )
 
     assert len(device_assets) >= 4
 
     # Query by asset name
     named_asset = run(
-        f"az iot ops namespace asset query -g {resource_group} --name {asset_name_onvif}"
+        f"az iot ops ns asset query -g {resource_group} --name {asset_name_onvif}"
     )
 
     assert len(named_asset) == 1
@@ -233,13 +233,13 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # Test delete operation
     run(
-        f"az iot ops namespace asset delete --name {asset_name_custom} --namespace {namespace_name} "
+        f"az iot ops ns asset delete --name {asset_name_custom} --namespace {namespace_name} "
         f"-g {resource_group} -y"
     )
 
     # Verify deletion by querying - should return no results
     deleted_query = run(
-        f"az iot ops namespace asset query -g {resource_group}"
+        f"az iot ops ns asset query -g {resource_group}"
     )
 
     asset_names = [asset["name"] for asset in deleted_query]
