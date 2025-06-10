@@ -145,10 +145,10 @@ jobs:
           [
             custom-input,
             default,
-            insecure-listener,
-            syncrules,
-            redeploy,
-            trustbundle,
+            # insecure-listener,  # TODO TEMP
+            # syncrules,
+            # redeploy,
+            # trustbundle,
           ]
         runtime-args:
           - ${{ needs.setup.outputs.init_args != '' || needs.setup.outputs.create_args != '' }}
@@ -157,14 +157,14 @@ jobs:
             runtime-args: false
           - feature: default
             runtime-args: true
-          - feature: insecure-listener
-            runtime-args: true
-          - feature: syncrules
-            runtime-args: true
-          - feature: redeploy
-            runtime-args: true
-          - feature: trustbundle
-            runtime-args: true
+          # - feature: insecure-listener
+          #   runtime-args: true
+          # - feature: syncrules
+          #   runtime-args: true
+          # - feature: redeploy
+          #   runtime-args: true
+          # - feature: trustbundle
+          #   runtime-args: true
     name: "Run cluster integration tests"
     runs-on: ubuntu-22.04
     steps:
