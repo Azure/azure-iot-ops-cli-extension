@@ -1096,7 +1096,9 @@ def load_iotops_arguments(self, _):
                 "enable_rsync_rules",
                 options_list=["--enable-rsync"],
                 arg_type=get_three_state_flag(),
-                help="Resource sync rules will be included in the IoT Operations deployment.",
+                deprecate_info=context.deprecate(),
+                help="Resource sync rules will be included in the IoT Operations deployment. **Attention**: this flag "
+                "has been deprecated in favor of the `az iot ops rsync enable` command.",
             )
             context.argument(
                 "ensure_latest",
