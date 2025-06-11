@@ -177,8 +177,6 @@ jobs:
           if [[ ${{ matrix.feature }} == "insecure-listener" ]]; then
             echo "CREATE_ARG=--add-insecure-listener" >> $GITHUB_OUTPUT
             echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "syncrules" ]]; then
-            echo "CREATE_ARG=--enable-rsync" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "custom-input" ]]; then
             echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
             echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
