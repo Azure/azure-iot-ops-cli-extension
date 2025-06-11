@@ -12,19 +12,26 @@ from unittest.mock import Mock
 
 import pytest
 import responses
-from azure.cli.core.azclierror import InvalidArgumentValueError
+from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
 
 from azext_edge.edge.commands_edge import list_instances, show_instance, update_instance
 from azext_edge.edge.commands_secretsync import secretsync_enable
 from azext_edge.edge.providers.orchestration.resources import Instances
 from azext_edge.edge.providers.orchestration.resources.instances import (
+    KEYVAULT_ROLE_ID_READER,
+    KEYVAULT_ROLE_ID_SECRETS_USER,
     SERVICE_ACCOUNT_SECRETSYNC,
     get_fc_name,
-    parse_feature_kvp_nargs,
     get_spc_name,
+    parse_feature_kvp_nargs,
 )
 
-from ....generators import generate_random_string, generate_resource_id, generate_uuid
+from ....generators import (
+    generate_random_string,
+    generate_resource_id,
+    generate_role_def_id,
+    generate_uuid,
+)
 from .conftest import (
     ARG_ENDPOINT,
     BASE_URL,
@@ -457,28 +464,22 @@ def test_parse_feature_kvp_nargs(feature_scenario: Optional[dict]):
 )
 @pytest.mark.parametrize(
     "skip_role_assignments",
-    [None],
+    [None, True],
 )
 @pytest.mark.parametrize(
     "use_self_hosted_issuer",
-    [None],
+    [None, True],
 )
 @pytest.mark.parametrize(
     "custom_role_id",
-    [None],
+    [
+        None,
+        "/custom/role/id",
+    ],
 )
 @pytest.mark.parametrize(
     "tags",
-    [None],
-)
-@pytest.mark.parametrize(
-    "oidc_issuer_def",
-    [
-        {
-            "oidcIssuerProfile": {"enabled": True, "selfHostedIssuerUrl": None, "issuerUrl": "https://test.test"},
-            "securityProfile": {"workloadIdentity": {"enabled": True}},
-        }
-    ],
+    [None, {generate_random_string(): generate_random_string(), generate_random_string(): generate_random_string()}],
 )
 def test_secretsync_enable(
     mocked_cmd,
@@ -488,12 +489,18 @@ def test_secretsync_enable(
     use_self_hosted_issuer: Optional[bool],
     custom_role_id: Optional[str],
     tags: Optional[dict],
-    oidc_issuer_def: Optional[dict],
     mocked_get_tenant_id: Mock,
 ):
-    resource_group_name = generate_random_string()
+    oidc_issuer_def = {
+        "oidcIssuerProfile": {
+            "enabled": True,
+            "selfHostedIssuerUrl": "https://localhost.selfHostedIssuer",
+            "issuerUrl": "https://localhost.systemIssuer",
+        },
+        "securityProfile": {"workloadIdentity": {"enabled": True}},
+    }
 
-    # TODO: @digimaun test is work in progress.
+    resource_group_name = generate_random_string()
 
     # Instance fetch mock
     instance_name = generate_random_string()
@@ -545,27 +552,29 @@ def test_secretsync_enable(
     )
 
     # Role assignment fetch mock
-    ra_get_endpoint = append_role_assignment_endpoint(
-        resource_endpoint=kv_endpoint, filter_query=f"principalId eq '{principal_id}'"
-    )
-    mocked_responses.add(
-        method=responses.GET,
-        url=ra_get_endpoint,
-        json={"value": []},
-        status=200,
-        content_type="application/json",
-    )
+    # TODO: assert when role assignment exists.
+    if not skip_role_assignments:
+        ra_get_endpoint = append_role_assignment_endpoint(
+            resource_endpoint=kv_endpoint, filter_query=f"principalId eq '{principal_id}'"
+        )
+        mocked_responses.add(
+            method=responses.GET,
+            url=ra_get_endpoint,
+            json={"value": []},
+            status=200,
+            content_type="application/json",
+        )
 
-    ra_put_endpoint = append_role_assignment_endpoint(resource_endpoint=kv_endpoint, ra_name=".*")
-    mocked_responses.add(
-        method=responses.PUT,
-        url=re.compile(ra_put_endpoint),
-        json={},
-        status=200,
-        content_type="application/json",
-    )
+        ra_put_endpoint = append_role_assignment_endpoint(resource_endpoint=kv_endpoint, ra_name=".*")
+        ra_put = mocked_responses.add(
+            method=responses.PUT,
+            url=re.compile(ra_put_endpoint),
+            json={},
+            status=200,
+            content_type="application/json",
+        )
 
-    # Custom role fetch mock
+    # Custom location fetch mock
     cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
     cl_payload = get_mock_custom_location_record(
         name=generate_random_string(), resource_group_name=resource_group_name
@@ -609,6 +618,7 @@ def test_secretsync_enable(
     )
 
     # Federation fetch
+    # TODO: assert when already federated.
     mocked_responses.add(
         method=responses.GET,
         url=get_federated_creds_url(uami_rg_name=resource_group_name, uami_name=uami_name),
@@ -617,9 +627,11 @@ def test_secretsync_enable(
         content_type="application/json",
     )
     # Federation PUT
-    oidc_issuer = oidc_issuer_def["oidcIssuerProfile"].get("issuerUrl") or oidc_issuer_def["oidcIssuerProfile"].get(
-        "selfHostedIssuerUrl"
-    )
+    if use_self_hosted_issuer:
+        oidc_issuer = oidc_issuer_def["oidcIssuerProfile"].get("selfHostedIssuerUrl")
+    else:
+        oidc_issuer = oidc_issuer_def["oidcIssuerProfile"].get("issuerUrl")
+
     subject = f"system:serviceaccount:{cl_payload['properties']['namespace']}:{SERVICE_ACCOUNT_SECRETSYNC}"
     mocked_responses.add(
         method=responses.PUT,
@@ -654,6 +666,7 @@ def test_secretsync_enable(
         content_type="application/json",
     )
 
+    # TODO: assert when already enabled.
     result = secretsync_enable(
         cmd=mocked_cmd,
         instance_name=instance_name,
@@ -674,5 +687,207 @@ def test_secretsync_enable(
     assert spc_create_request["properties"]["clientId"] == client_id
     assert spc_create_request["properties"]["keyvaultName"] == kv_name
     assert spc_create_request["properties"]["tenantId"]
+    if tags:
+        assert spc_create_request["tags"] == tags
 
     mocked_get_tenant_id.assert_called_once()
+
+    if not skip_role_assignments:
+        role_ids = []
+        if custom_role_id:
+            assert len(ra_put.calls) == 1
+            role_ids.append(custom_role_id)
+        else:
+            assert len(ra_put.calls) == 2
+            role_ids.append(generate_role_def_id(role_id=KEYVAULT_ROLE_ID_SECRETS_USER))
+            role_ids.append(generate_role_def_id(role_id=KEYVAULT_ROLE_ID_READER))
+
+        for i in range(len(role_ids)):
+            ra_put_request = json.loads(ra_put.calls[i].request.body)
+            assert ra_put_request["properties"]["roleDefinitionId"] == role_ids[i]
+            assert ra_put_request["properties"]["principalId"] == principal_id
+            assert ra_put_request["properties"]["principalType"] == "ServicePrincipal"
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        {
+            "description": "No issuer url.",
+            "profileDef": {
+                "oidcIssuerProfile": {
+                    "enabled": True,
+                    "selfHostedIssuerUrl": "https://localhost.selfHostedIssuer",
+                    "issuerUrl": None,
+                },
+                "securityProfile": {"workloadIdentity": {"enabled": True}},
+            },
+            "useSelfHostedIssuer": None,
+            "error": "No issuerUrl is available. Check cluster config.",
+        },
+        {
+            "description": "No self hosted issuer url.",
+            "profileDef": {
+                "oidcIssuerProfile": {
+                    "enabled": True,
+                    "selfHostedIssuerUrl": None,
+                    "issuerUrl": "https://localhost.systemIssuer",
+                },
+                "securityProfile": {"workloadIdentity": {"enabled": True}},
+            },
+            "useSelfHostedIssuer": True,
+            "error": "No selfHostedIssuerUrl is available. Check cluster config.",
+        },
+        {
+            "description": "OIDC issuer not enabled.",
+            "profileDef": {
+                "oidcIssuerProfile": {
+                    "enabled": False,
+                },
+                "securityProfile": {"workloadIdentity": {"enabled": True}},
+            },
+            "useSelfHostedIssuer": None,
+            "error": (
+                "The connected cluster '{}' is not enabled as an oidc issuer.\n"
+                "Please enable with 'az connectedk8s update -n {} -g {} --enable-oidc-issuer'."
+            ),
+        },
+        {
+            "description": "Identity federation not enabled.",
+            "profileDef": {
+                "oidcIssuerProfile": {
+                    "enabled": True,
+                },
+                "securityProfile": {"workloadIdentity": {"enabled": False}},
+            },
+            "useSelfHostedIssuer": None,
+            "error": (
+                "The connected cluster '{}' is not enabled for workload identity federation.\n"
+                "Please enable with 'az connectedk8s update -n {} -g {} --enable-workload-identity'."
+            ),
+        },
+        {
+            "description": "Identity federation not enabled.",
+            "profileDef": {
+                "oidcIssuerProfile": {
+                    "enabled": False,
+                },
+                "securityProfile": {"workloadIdentity": {"enabled": False}},
+            },
+            "useSelfHostedIssuer": None,
+            "error": (
+                "The connected cluster '{}' is not enabled as an oidc issuer or for workload identity federation.\n"
+                "Please enable with 'az connectedk8s update -n {} -g {} "
+                "--enable-oidc-issuer --enable-workload-identity'."
+            ),
+        },
+    ],
+)
+def test_secretsync_enable_issuer_error(
+    mocked_cmd,
+    mocked_responses: responses,
+    scenario: dict,
+):
+    resource_group_name = generate_random_string()
+
+    # Instance fetch mock
+    instance_name = generate_random_string()
+    instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
+    instance_record = get_mock_instance_record(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+    mocked_responses.add(
+        method=responses.GET,
+        url=instance_endpoint,
+        json=instance_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    # KV fetch mock
+    kv_name = generate_random_string()
+    kv_endpoint = get_kv_endpoint(resource_group_name=resource_group_name, kv_name=kv_name)
+    mocked_responses.add(
+        method=responses.GET,
+        url=kv_endpoint,
+        json={},
+        status=200,
+        content_type="application/json",
+    )
+    keyvault_resource_id = generate_resource_id(
+        resource_group_name=resource_group_name,
+        resource_provider="Microsoft.KeyVault",
+        resource_path=f"/keyvaults/{kv_name}",
+    )
+
+    # UAMI fetch mock
+    uami_name = generate_random_string()
+    uami_endpoint = get_uami_endpoint(resource_group_name=resource_group_name, uami_name=uami_name)
+    uami_resource_id = generate_resource_id(
+        resource_group_name=resource_group_name,
+        resource_provider="Microsoft.ManagedIdentity",
+        resource_path=f"/userAssignedIdentities/{uami_name}",
+    )
+    client_id = generate_uuid()
+    principal_id = generate_uuid()
+    mocked_responses.add(
+        method=responses.GET,
+        url=uami_endpoint,
+        json={"properties": {"clientId": client_id, "principalId": principal_id}},
+        status=200,
+        content_type="application/json",
+    )
+
+    # Custom location fetch mock
+    cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
+    cl_payload = get_mock_custom_location_record(
+        name=generate_random_string(), resource_group_name=resource_group_name
+    )
+    mocked_responses.add(
+        method=responses.GET,
+        url=re.compile(cl_endpoint),
+        json=cl_payload,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Cluster fetch mock
+    cluster_location = generate_random_string()
+    cluster_name = generate_random_string()
+    cluster_endpoint = get_cluster_url(cluster_rg=".*", cluster_name=".*")
+    mocked_responses.add(
+        method=responses.GET,
+        url=re.compile(cluster_endpoint),
+        json={
+            "id": generate_resource_id(
+                resource_group_name=resource_group_name,
+                resource_provider="Microsoft.Kubernetes",
+                resource_path=f"/connectedClusters/{cluster_name}",
+            ),
+            "name": cluster_name,
+            "properties": {**scenario["profileDef"]},
+            "location": cluster_location,
+        },
+        status=200,
+        content_type="application/json",
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        secretsync_enable(
+            cmd=mocked_cmd,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+            mi_user_assigned=uami_resource_id,
+            keyvault_resource_id=keyvault_resource_id,
+            skip_role_assignments=True,
+            use_self_hosted_issuer=scenario["useSelfHostedIssuer"],
+        )
+    assert isinstance(exc.value, ValidationError)
+    error_str: str = scenario["error"]
+    error_str = error_str.format(
+        cluster_name,
+        cluster_name,
+        resource_group_name,
+    )
+    assert str(exc.value) == error_str

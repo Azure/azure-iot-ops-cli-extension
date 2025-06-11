@@ -138,6 +138,7 @@ class UpgradeScenario:
                     "version": vers,
                     "releaseTrain": train,
                     "configurationSettings": {},
+                    "provisioningState": "Succeeded",
                 },
                 "name": EXTENSION_TYPE_TO_MONIKER_MAP[ext_type],
             }
@@ -157,22 +158,39 @@ class UpgradeScenario:
         return self
 
     def set_extension(
-        self: T, ext_type: str, ext_vers: Optional[str] = None, ext_train: Optional[str] = None, remove: bool = False
+        self: T,
+        ext_type: str,
+        ext_vers: Optional[str] = None,
+        ext_train: Optional[str] = None,
+        provisioning_state: Optional[str] = None,
+        remove: bool = False,
     ) -> T:
         if remove:
             del self.extensions[ext_type]
             self.expect_exception = ValidationError
             return self
         if ext_vers:
+            if ext_vers == BUILT_IN_VALUE:
+                ext_vers = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"]
             self.extensions[ext_type]["properties"]["version"] = ext_vers
         if ext_train:
             self.extensions[ext_type]["properties"]["releaseTrain"] = ext_train
+        if provisioning_state:
+            self.extensions[ext_type]["properties"]["provisioningState"] = provisioning_state
         return self
 
-    def set_response_on_patch(self: T, ext_type: str, code: int = 200, body: Optional[dict] = None) -> T:
+    def set_response_on_patch(
+        self: T, ext_type: str, code: int = 200, body: Optional[dict] = None, headers: Optional[dict] = None
+    ) -> T:
         if code not in (200, 202):
             self.expect_exception = HttpResponseError
-        self.ext_type_response_map[ext_type] = (code, body)
+        if not headers:
+            headers = {}
+        self.ext_type_response_map[ext_type] = (code, body, headers)
+        return self
+
+    def set_auxiliary_kwargs(self: T, **kwargs):
+        self.aux_kwargs = kwargs
         return self
 
     def set_instance_mock(self: T, mocked_responses: responses, instance_name: str, resource_group_name: str):
@@ -225,14 +243,16 @@ class UpgradeScenario:
         assert_upgrade_headers(request.headers)
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
             if EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] == ext_moniker:
-                status_code, response_body = self.ext_type_response_map.get(ext_type) or (
+                status_code, response_body, headers = self.ext_type_response_map.get(ext_type) or (
                     200,
                     json.loads(request.body),
+                    {},
                 )
-                if "properties" in response_body:
+                if response_body and "properties" in response_body:
                     response_body["properties"]["extensionType"] = ext_type
                 self.patch_record[ext_type] = response_body
-                return (status_code, STANDARD_HEADERS, json.dumps(response_body))
+                response_headers = dict(STANDARD_HEADERS, **headers)
+                return (status_code, response_headers, json.dumps(response_body))
 
         return (502, STANDARD_HEADERS, json.dumps({"error": "server error"}))
 
@@ -421,6 +441,29 @@ class UpgradeScenario:
             .set_user_kwargs(plat_version="1.0.0"),
             {EXTENSION_TYPE_PLATFORM: {"properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": "1.0.0"}}},
         ),
+        (
+            UpgradeScenario(
+                "Failed provisioning state by default means inclusion of the same version in the next upgrade run."
+            ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=BUILT_IN_VALUE, provisioning_state="Failed"),
+            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": BUILT_IN_VALUE}}},
+        ),
+        (
+            UpgradeScenario("Failed provisioning state against multiple extensions.")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=BUILT_IN_VALUE, provisioning_state="Failed")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers=BUILT_IN_VALUE, provisioning_state="Failed"),
+            {
+                EXTENSION_TYPE_PLATFORM: {
+                    "properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": BUILT_IN_VALUE}
+                },
+                EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": BUILT_IN_VALUE}},
+            },
+        ),
+        (
+            UpgradeScenario("Failed provisioning state but overriding version.")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", provisioning_state="Failed")
+            .set_user_kwargs(ops_version="1.1.0"),
+            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "1.1.0"}}},
+        ),
     ],
 )
 def test_ops_upgrade(
@@ -474,6 +517,78 @@ def test_ops_upgrade(
     assert_patch_order(upgrade_result, expected_patched_ext_types)
     assert_result(target_scenario, upgrade_result, expected_patched_ext_types)
     assert_displays(spy_upgrade_displays, no_progress, patched_ext_types=expected_patched_ext_types)
+
+
+@pytest.mark.parametrize(
+    "target_scenario",
+    [
+        UpgradeScenario("Retry test")
+        .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="0.5.0")
+        .set_response_on_patch(
+            ext_type=EXTENSION_TYPE_PLATFORM,
+            code=503,
+            body={"error": "temporary problems"},
+        ),
+        UpgradeScenario("Retry test from async header")
+        .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="0.5.0")
+        .set_response_on_patch(
+            ext_type=EXTENSION_TYPE_PLATFORM,
+            code=202,
+            headers={"Azure-AsyncOperation": "https://localhost/async-operation"},
+        )
+        .set_auxiliary_kwargs(
+            async_endpoint="https://localhost/async-operation", async_code=503, async_method=responses.GET
+        )
+        .set_expected_exception(HttpResponseError),
+    ],
+)
+def test_ops_upgrade_retry_assertion(
+    mocked_cmd: Mock,
+    mocked_responses: responses,
+    target_scenario: UpgradeScenario,
+    mocked_logger: Mock,
+    mocked_sleep: Mock,
+    spy_upgrade_displays: Dict[str, Mock],
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+
+    resource_group_name = generate_random_string()
+    instance_name = generate_random_string()
+
+    target_scenario.set_instance_mock(
+        mocked_responses=mocked_responses, instance_name=instance_name, resource_group_name=resource_group_name
+    )
+    call_kwargs = {
+        "cmd": mocked_cmd,
+        "resource_group_name": resource_group_name,
+        "instance_name": instance_name,
+        "no_progress": True,
+        "confirm_yes": True,
+    }
+    patch_status_code = target_scenario.ext_type_response_map[EXTENSION_TYPE_PLATFORM][0]
+    if patch_status_code == 202:
+        # TODO Cheap pattern. Improve later.
+        mocked_responses.add(
+            method=target_scenario.aux_kwargs["async_method"],
+            url=target_scenario.aux_kwargs["async_endpoint"],
+            status=target_scenario.aux_kwargs["async_code"],
+        )
+
+    with pytest.raises(target_scenario.expect_exception) as err:
+        upgrade_instance(**call_kwargs)
+
+    mock_response = mocked_responses.registered()[-1]
+    if patch_status_code == 503:
+        # Assert ext patch call retries
+        error_status_code = patch_status_code
+        assert mock_response.method == responses.PATCH
+    if patch_status_code == 202:
+        # Assert async op fetch retries
+        error_status_code = target_scenario.aux_kwargs["async_code"]
+        assert mock_response.method == target_scenario.aux_kwargs["async_method"]
+
+    assert err.value.status_code == error_status_code, f"Expected {error_status_code} but got {err.value.status_code}"
+    assert len(mock_response.calls) == 4  # Default retry logic should retry 3 times
 
 
 def assert_result(

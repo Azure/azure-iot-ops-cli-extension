@@ -11,8 +11,10 @@ shared: Define shared data types(enums) and constant strings for IoT Operations 
 
 from enum import Enum
 from typing import List, NamedTuple
-from ...common import CheckTaskStatus, ListableEnum
+
 from rich.padding import Padding
+
+from ...common import CheckTaskStatus, ListableEnum
 
 
 class ResourceOutputDetailLevel(ListableEnum):
@@ -171,6 +173,12 @@ class PodStatusConditionResult(NamedTuple):
 # Akri runtime attributes
 AKRI_PREFIX = "aio-akri-"
 
+# Check common constants
+NON_ERROR_STATUSES = [
+    CheckTaskStatus.success.value,
+    CheckTaskStatus.skipped.value,
+]
+
 # MQ runtime attributes
 AIO_BROKER_DIAGNOSTICS_PROBE_PREFIX = "aio-broker-diagnostics-probe"
 AIO_BROKER_FRONTEND_PREFIX = "aio-broker-frontend"
@@ -185,14 +193,16 @@ AIO_OPCUA_PREFIX = "aio-opc-"
 
 # Pre-deployment KPIs
 
-MIN_K8S_VERSION = "1.20"
+MIN_K8S_VERSION = "1.28"
 
 # Node prerequisite constants
 
+NODE_CONTROL_PLANE_LABEL = "node-role.kubernetes.io/control-plane"
 MIN_NODE_MEMORY = "16G"
-MIN_NODE_STORAGE = "30G"
 MIN_NODE_VCPU = "4"
+MIN_NODE_STORAGE = "30G"
 AIO_SUPPORTED_ARCHITECTURES = ["amd64"]  # someday arm64
+ACSA_MIN_NODE_KERNEL_VERSION = "5.15"
 
 DISPLAY_BYTES_PER_GIGABYTE = 10**9
 

@@ -9,14 +9,17 @@ x509: certificate utilities.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 from knack.log import get_logger
+
+from ..providers.orchestration.common import X509FileExtension
 
 # aka prime256v1
 DEFAULT_EC_ALGO = ec.SECP256R1()
@@ -78,11 +81,25 @@ def generate_self_signed_cert(valid_days: int = DEFAULT_VALID_DAYS) -> Tuple[byt
     return (cert.public_bytes(serialization.Encoding.PEM), key_bytes)
 
 
-def decode_der_certificate(der_data: bytes) -> Optional[x509.Certificate]:
-    # Decodes a DER-encoded X.509 certificate.
+def decode_x509_files(
+    cert_data: bytes,
+    content_format: str,
+    extension: str
+) -> Optional[List[Union[x509.Certificate, x509.CertificateRevocationList]]]:
+    # Decodes an X.509 file from PEM or DER format.
+    certs: List = []
     try:
-        cert = x509.load_der_x509_certificate(der_data, default_backend())
-        return cert
+        if content_format == X509FileExtension.PEM.name:
+            # PEM format
+            certs = x509.load_pem_x509_certificates(cert_data)
+        elif content_format == X509FileExtension.DER.name:
+            # DER format
+            if extension and extension.lower() == X509FileExtension.DER.value:
+                certs = [x509.load_der_x509_certificate(cert_data, default_backend())]
+            elif extension and extension.lower() == X509FileExtension.CRL.value:
+                certs = [x509.load_der_x509_crl(cert_data, default_backend())]
+        return certs
     except Exception as e:
-        logger.debug(f"Error decoding DER certificate: {e}")
-        return
+        raise InvalidArgumentValueError(
+            f"Failed to decode certificate data. Ensure the data is in {content_format} format. Error: {e}"
+        )

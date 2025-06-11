@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from unittest.mock import Mock
 import pytest
@@ -57,6 +58,9 @@ def mocked_read_file_content(mocker):
 def build_mock_cert(
     subject_name: str = "subjectname",
     uri: str = "uri",
+    expired: bool = False,
+    ca_cert: bool = False,
+    version: str = "V1",
 ):
     mock_cert = Mock(spec=x509.Certificate)
 
@@ -77,22 +81,46 @@ def build_mock_cert(
     mock_san_extension.value = mock_san_general_names
     mock_cert.extensions.get_extension_for_oid.return_value = mock_san_extension
 
+    if expired:
+        # Set up a mock for not valid after
+        mock_cert.not_valid_after_utc = datetime.now(timezone.utc) - timedelta(days=1)
+    else:
+        # Set up a mock for not valid after
+        mock_cert.not_valid_after_utc = datetime.now(timezone.utc) + timedelta(days=1)
+
+    if ca_cert:
+        # Set up a mock for basic constraints
+        mock_basic_constraints = Mock(spec=x509.BasicConstraints)
+        mock_value = Mock()
+        mock_value.ca = True
+        mock_value.path_length = None
+
+        # assign the mock value to the correct attribute
+        mock_basic_constraints.value = mock_value
+        mock_cert.extensions.get_extension_for_oid.return_value = mock_basic_constraints
+
+    # Set up a mock for version
+    if version == "V1":
+        mock_cert.version = x509.Version.v1
+    elif version == "V3":
+        mock_cert.version = x509.Version.v3
+
     return mock_cert
-
-
-@pytest.fixture
-def mocked_load_x509_cert(mocker):
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.decode_der_certificate",
-        return_value=build_mock_cert(),
-    )
-    yield patched
 
 
 @pytest.fixture
 def mocked_get_resource_client(mocker):
     patched = mocker.patch(
         "azext_edge.edge.util.queryable.get_resource_client",
+    )
+    yield patched
+
+
+@pytest.fixture
+def mocked_decode_certificate(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.decode_x509_files",
+        return_value=[build_mock_cert()],
     )
     yield patched
 

@@ -4,11 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Optional
 from unittest.mock import Mock
 
 import pytest
-from azure.cli.core.azclierror import HTTPError, ValidationError
+from azure.cli.core.azclierror import ValidationError
 
 from azext_edge.edge.providers.orchestration.connected_cluster import ConnectedCluster
 
@@ -21,84 +20,6 @@ ZEROED_SUB = get_zeroed_subscription()
 @pytest.fixture
 def mocked_get_tenant_id(mocker):
     yield mocker.patch(f"{BASE_PATH}.get_tenant_id", return_value=generate_random_string())
-
-
-@pytest.mark.parametrize(
-    "response_payload",
-    [
-        {
-            "id": "oid_1",
-        },
-        {
-            "id": "oid_2",
-        },
-        HTTPError(error_msg="Unauthorized", response=None),
-    ],
-)
-@pytest.mark.parametrize(
-    "role_bindings",
-    [
-        None,
-        {
-            "apiVersion": "rbac.authorization.k8s.io/v1",
-            "items": [],
-            "kind": "ClusterRoleBindingList",
-            "metadata": {"resourceVersion": "1"},
-        },
-        {
-            "apiVersion": "rbac.authorization.k8s.io/v1",
-            "items": [
-                {
-                    "metadata": {"name": "AzureArc-Microsoft.ExtendedLocation-RP-RoleBinding", "namespace": "az"},
-                    "subjects": [{"name": "oid_1"}],
-                }
-            ],
-            "kind": "ClusterRoleBindingList",
-            "metadata": {"resourceVersion": "2"},
-        },
-    ],
-)
-def test_verify_custom_locations_enabled(mocked_cmd: Mock, mocker, role_bindings: Optional[dict], response_payload):
-    get_binding_patch = mocker.patch(f"{BASE_PATH}.get_bindings", return_value=role_bindings)
-    from azext_edge.edge.providers.orchestration.base import (
-        CUSTOM_LOCATIONS_RP_APP_ID,
-        verify_custom_locations_enabled,
-    )
-
-    mocked_send_raw_request: Mock = mocker.patch("azure.cli.core.util.send_raw_request")
-
-    mismatched_oid = False
-    if issubclass(type(response_payload), Exception):
-        mocked_send_raw_request.side_effect = response_payload
-    else:
-        mocked_send_raw_request.return_value.json.return_value = response_payload
-        if response_payload["id"] == "oid_2" and (role_bindings and role_bindings["items"]):
-            mismatched_oid = True
-
-    if not role_bindings or (role_bindings and not role_bindings["items"]) or mismatched_oid:
-        with pytest.raises(ValidationError) as ve:
-            verify_custom_locations_enabled(mocked_cmd)
-        get_binding_patch.assert_called_once()
-
-        error_msg = str(ve.value)
-        if mismatched_oid:
-            assert error_msg == "Invalid OID used for custom locations feature enablement. Use 'oid_2'."
-        else:
-            assert error_msg == (
-                "The custom-locations feature is required but not enabled on the cluster. "
-                "For guidance refer to:\nhttps://aka.ms/ArcK8sCustomLocationsDocsEnableFeature"
-            )
-
-        return
-
-    verify_custom_locations_enabled(mocked_cmd)
-    get_binding_patch.assert_called_once()
-
-    mocked_send_raw_request.assert_called_once_with(
-        cli_ctx=mocked_cmd.cli_ctx,
-        method="GET",
-        url=f"https://graph.microsoft.com/v1.0/servicePrincipals(appId='{CUSTOM_LOCATIONS_RP_APP_ID}')",
-    )
 
 
 @pytest.mark.parametrize(

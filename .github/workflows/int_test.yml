@@ -1,5 +1,7 @@
 name: Integration tests
 on:
+  schedule:
+    - cron: "0 9 * * *" # Run daily at 1:00 AM Pacific Time (9:00 AM UTC)
   workflow_call:
     inputs:
       resource-group:
@@ -11,32 +13,27 @@ on:
         description: Additional INIT arguments (beyond cluster name, resource group, schema registry).
         type: string
         required: false
-        default: ''
+        default: ""
       runtime-create-args:
         description: Additional CREATE arguments (beyond cluster name, resource group, instance name).
         type: string
         required: false
-        default: ''
+        default: ""
       custom-locations-oid:
         description: Custom Locations OID
         type: string
         required: false
-        default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+        default: "51dfe1e8-70c6-4de5-a08e-e18aff23d815"
       init-continue-on-error:
         description: Continue on error for init integration tests
         type: boolean
         required: false
         default: true
       keep-on-failure:
-          description: Number of minutes to keep the cluster(s) active on failure (max 240 min).
-          type: number
-          required: false
-          default: 0
-      use-container:
-        description: Build container image for tests
-        type: boolean
+        description: Number of minutes to keep the cluster(s) active on failure (max 240 min).
+        type: number
         required: false
-        default: false
+        default: 0
     secrets:
       # required for az login
       AZURE_CLIENT_ID:
@@ -56,51 +53,47 @@ on:
         description: Object ID of Custom Locations RP
         type: string
         required: false
-        default: '51dfe1e8-70c6-4de5-a08e-e18aff23d815'
+        default: "51dfe1e8-70c6-4de5-a08e-e18aff23d815"
       runtime-init-args:
         description: Additional INIT arguments (beyond cluster name, resource group, schema registry).
         type: string
         required: false
-        default: ''
+        default: ""
       runtime-create-args:
         description: Additional CREATE arguments (beyond cluster name, resource group, instance name).
         type: string
         required: false
-        default: ''
+        default: ""
       init-continue-on-error:
         description: Continue on error for init integration tests
         type: boolean
         required: false
         default: true
       keep-on-failure:
-          description: Number of minutes to keep the cluster(s) active on failure (max 240 min).
-          type: number
-          required: false
-          default: 0
-      use-container:
-        description: Build container image for tests
-        type: boolean
+        description: Number of minutes to keep the cluster(s) active on failure (max 240 min).
+        type: number
         required: false
-        default: false
+        default: 0
 
 permissions:
   # required for OpenID federation
-  contents: 'read'
-  id-token: 'write'
+  contents: "read"
+  id-token: "write"
 
 env:
-  RESOURCE_GROUP: "${{ inputs.resource-group }}"
-  K3S_VERSION: "v1.28.5+k3s1"
-  CUSTOM_LOCATIONS_OID: "${{ inputs.custom-locations-oid }}"
-  KEEP_ALIVE: ${{ inputs.keep-on-failure }}
-  RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args }}"
+  RESOURCE_GROUP: "${{ inputs.resource-group || 'ops-cli-int-test-rg' }}"
+  K3S_VERSION: "v1.29.15+k3s1"
+  CUSTOM_LOCATIONS_OID: "${{ inputs.custom-locations-oid || '51dfe1e8-70c6-4de5-a08e-e18aff23d815' }}"
+  KEEP_ALIVE: ${{ inputs.keep-on-failure || 0 }}
+  RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args  }}"
   RUNTIME_INIT_ARGS: "${{ inputs.runtime-init-args }}"
-
 
 jobs:
   setup:
     name: "Check Inputs"
     runs-on: ubuntu-22.04
+    # Run on dispatch, or ensure scheduled runs only on dev branch
+    if: github.event_name != 'schedule' || (github.repository == 'azure/azure-iot-ops-cli-extension' && github.ref == 'refs/heads/dev')
     outputs:
       create_args: ${{ steps.custom_input.outputs.CREATE_ARG }}
       init_args: ${{ steps.custom_input.outputs.INIT_ARG }}
@@ -116,7 +109,30 @@ jobs:
         run: |
           echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
           echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
-  test:
+  unit-test:
+    name: "Run linter and unit tests"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Checkout Source"
+        uses: actions/checkout@v4
+      - name: "Setup python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: "Setup test suite"
+        run: |
+          python -m pip install tox
+          tox r -vv --notest
+      - name: "Run test suite"
+        run: tox r --skip-pkg-install
+      - name: "Upload coverage report"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: ./.coverage
+          include-hidden-files: true
+  int-test:
     needs: setup
     env:
       CLUSTER_NAME: "opt${{ github.run_number }}${{ matrix.feature }}"
@@ -127,7 +143,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        feature: [custom-input, default, insecure-listener, syncrules, redeploy, trustbundle]
+        feature:
+          [
+            custom-input,
+            default,
+            insecure-listener,
+            syncrules,
+            redeploy,
+            trustbundle,
+          ]
         runtime-args:
           - ${{ needs.setup.outputs.init_args != '' || needs.setup.outputs.create_args != '' }}
         exclude:
@@ -143,7 +167,7 @@ jobs:
             runtime-args: true
           - feature: trustbundle
             runtime-args: true
-    name: "Run cluster tests"
+    name: "Run cluster integration tests"
     runs-on: ubuntu-22.04
     steps:
       - name: "Determine Init Args"
@@ -153,8 +177,6 @@ jobs:
           if [[ ${{ matrix.feature }} == "insecure-listener" ]]; then
             echo "CREATE_ARG=--add-insecure-listener" >> $GITHUB_OUTPUT
             echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
-          elif [[ ${{ matrix.feature }} == "syncrules" ]]; then
-            echo "CREATE_ARG=--enable-rsync" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "custom-input" ]]; then
             echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
             echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
@@ -177,7 +199,7 @@ jobs:
       - name: "Build and install local IoT Ops extension from source"
         run: |
           pip install -r dev_requirements.txt
-          python -m setup bdist_wheel -d dist
+          python -m build
           wheel=$(find ./dist/*.whl)
           az extension add --source $wheel -y
       - name: "Create k3s cluster"
@@ -265,15 +287,15 @@ jobs:
           python -m pip install tox
           tox r -vv -e python-init-int --notest
       - name: "Tox test environment setup for edge integration tests"
-        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'default' }}
         run: |
           tox r -vv -e "python-edge-int" --notest
       - name: "Tox test environment setup for cloud integration tests"
-        if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'syncrules' }}
         run: |
           tox r -vv -e "python-rpsaas-int" --notest
       - name: "Tox test environment setup for Workload Identity integration tests"
-        if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'trustbundle' }}
         run: |
           tox r -vv -e "python-wlif-int" --notest
       - name: "Az CLI login"
@@ -295,6 +317,19 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: "Create Storage and Schema Registry for init tests"
+        id: "init_reqs"
+        run: |
+          # Remove -'s and limit name length to 20 chars for storage accounts
+          storage_account_name=$(echo "initstore${{ env.CLUSTER_NAME }}" | tr -d '-' | cut -c 1-20)
+          storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n $storage_account_name --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny -o tsv --query id)
+          echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
+
+          # limit both names - 30 for registry, 20 for namespace
+          schema_registy_name=$(echo "init-registry${{ env.CLUSTER_NAME }}" | cut -c 1-30)
+          schema_namespace=$(echo "init-ns-${{ env.CLUSTER_NAME }}" | cut -c 1-20)
+          registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n $schema_registy_name --rn $schema_namespace --sa-resource-id $storage_id -o tsv --query id)
+          echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
       - name: "OIDC Token exchange service"
         run: |
           while true; do
@@ -314,74 +349,51 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
           azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
+          azext_edge_schema_registry_id: ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}
         run: |
           tox r -e python-init-int --skip-pkg-install -- --durations=0
+          tox r -e report
       - name: "Tox Edge Integration Tests"
-        if: ${{ matrix.feature == 'default' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'default' }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
         run: |
           tox r -e "python-edge-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
-          coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
-          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+          tox r -e report
+      - name: "Az CLI login"
+        if: ${{ matrix.feature == 'syncrules' }}
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "Tox Cloud Integration Tests"
-        if: ${{ matrix.feature == 'syncrules' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'syncrules' }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
         run: |
           tox r -e "python-rpsaas-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
-          coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
-          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
+          tox r -e report
       - name: "Tox Workload Identity Integration Tests"
-        if: ${{ matrix.feature == 'trustbundle' && !inputs.use-container }}
+        if: ${{ matrix.feature == 'trustbundle' }}
         env:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
         run: |
           tox r -e "python-wlif-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
-          coverage=$(jq .totals.percent_covered coverage.json | cut -c1-4)
-          echo "Code coverage: $coverage%" >> $GITHUB_STEP_SUMMARY
-      - name: "Containerized tests"
-        if: ${{ matrix.feature == 'default' && inputs.use-container }}
-        env:
-          azext_edge_skip_init: true  # skip init tests in container
-          azext_edge_init_redeployment: false  # ensure no redeployment in container
-          AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
-          azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
-          azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
-          azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
-        run: |
-          # volume mounts
-          azure_dir=$(realpath ~/.azure)
-          kubeconfig=$(realpath ~/.kube/config)
-          kubeconfig_mount=/root/.kube/config
-          tempLog=$(mktemp -d)
-
-          # env vars
-          envVars=()
-          envVars+=("-e" "azext_edge_skip_init=$azext_edge_skip_init")
-          envVars+=("-e" "azext_edge_init_redeployment=$azext_edge_init_redeployment")
-          envVars+=("-e" "AIO_CLI_INIT_PREFLIGHT_DISABLED=$AIO_CLI_INIT_PREFLIGHT_DISABLED")
-          envVars+=("-e" "azext_edge_rg=$azext_edge_rg")
-          envVars+=("-e" "azext_edge_cluster=$azext_edge_cluster")
-          envVars+=("-e" "azext_edge_instance=$azext_edge_instance")
-          envVars+=("-e" "KUBECONFIG=$kubeconfig_mount")
-
-          # Run tests
-          set +e
-          docker run \
-            --rm \
-            "${envVars[@]}" \
-            -v "$kubeconfig:$kubeconfig_mount:ro" \
-            -v "${azure_dir}:/root/.azure" \
-            -v "${tempLog}:/usr/src/azure-iot-ops/junit" \
-            --network host \
-            $(docker build . -q)
+          tox r -e report
+      - name: "Upload coverage artifacts"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.feature }}
+          path: ./.coverage
+          include-hidden-files: true
       - name: "Run smoke tests"
         run: |
           az iot ops support create-bundle
@@ -437,7 +449,41 @@ jobs:
         if: ${{ always() }}
         run: |
           az iot ops delete --cluster ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} -y
-      - name: "Delete connected cluster"
+      - name: "Delete connected cluster and resources"
         if: ${{ always() }}
         run: |
-          az resource delete  -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
+          az resource delete -v --name ${{ env.CLUSTER_NAME }} -g ${{ env.RESOURCE_GROUP }} --resource-type Microsoft.Kubernetes/connectedClusters --verbose
+          if [ "${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}" ]; then
+            az resource delete -v --id ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }} --verbose
+          else
+            echo "No schema registry to delete"
+          fi
+          if [ "${{ steps.init_reqs.outputs.STORAGE_ID }}" ]; then
+            az resource delete -v --id ${{ steps.init_reqs.outputs.STORAGE_ID }} --verbose
+          else
+            echo "No storage account to delete"
+          fi
+  combine-coverage:
+    name: "Combine coverage reports"
+    if: ${{ always() }}
+    needs: [unit-test, int-test]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Checkout source"
+        uses: actions/checkout@v4
+      - name: "Download all coverage artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: ./coverage_parts
+      - name: "Combine coverage and generate report"
+        run: |
+          pip install coverage
+          coverage combine ./coverage_parts/*/.coverage
+          coverage report
+          coverage html --directory ./htmlcov --title "AIO CLI Combined Coverage Report"
+      - name: "Upload combined coverage artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: combined-coverage
+          path: ./htmlcov

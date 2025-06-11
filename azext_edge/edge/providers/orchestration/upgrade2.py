@@ -152,7 +152,6 @@ class UpgradeManager:
                     cluster_name=self.resource_map.connected_cluster.cluster_name,
                     extension_name=ext.extension["name"],
                     update_payload=ext.get_patch(),
-                    retry_total=0,
                     headers=headers,
                 )
                 return_payload.append(updated)
@@ -174,6 +173,7 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):
             f"{ext.moniker}",
             f"{ext.current_version[0]} \\[{ext.current_version[1]}]",
             f"{ext.desired_version[0]} \\[{ext.desired_version[1]}]",
+            f"{ext.provisioning_state}",
             patch_payload,
         )
         table.add_section()
@@ -290,12 +290,17 @@ class ExtensionUpgradeState:
     def moniker(self) -> str:
         return EXTENSION_TYPE_TO_MONIKER_MAP[self.extension["properties"]["extensionType"].lower()]
 
+    @property
+    def provisioning_state(self) -> str:
+        return self.extension["properties"]["provisioningState"]
+
     def can_upgrade(self) -> bool:
         return any(
             [
                 self._has_delta_in_version(),
                 self._has_delta_in_train(),
                 self._has_delta_in_config(),
+                self._has_non_success_state(),
             ]
         )
 
@@ -307,7 +312,7 @@ class ExtensionUpgradeState:
             "properties": {},
         }
 
-        if self._has_delta_in_version():
+        if self._has_delta_in_version() or self._has_non_success_state():
             self._throw_on_downgrade()
             payload["properties"]["version"] = self.desired_version[0]
         if self._has_delta_in_train():
@@ -343,6 +348,12 @@ class ExtensionUpgradeState:
             )
         return bool(self.override.config) or bool(self.config_delta)
 
+    def _has_non_success_state(self) -> bool:
+        """
+        Determines if the extension has a non-success provisioning state.
+        """
+        return self.provisioning_state.lower() not in {"succeeded"}
+
     def _throw_on_downgrade(self):
         if self.force:
             return
@@ -361,11 +372,10 @@ def get_default_table() -> Table:
         title="The Upgrade Story",
         min_width=79,
     )
-    table.add_column(
-        "Extension",
-    )
+    table.add_column("Extension")
     table.add_column("Current Version")
     table.add_column("Desired Version")
+    table.add_column("Provisioning State")
     table.add_column("Patch Payload")
 
     return table

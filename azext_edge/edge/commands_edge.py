@@ -100,7 +100,9 @@ def init(
     cmd,
     cluster_name: str,
     resource_group_name: str,
+    context_name: Optional[str] = None,
     enable_fault_tolerance: Optional[bool] = None,
+    check_cluster: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     user_trust: Optional[bool] = None,
@@ -125,8 +127,10 @@ def init(
         show_progress=not no_progress,
         pre_flight=not no_pre_flight,
         cluster_name=cluster_name,
+        context_name=context_name,
         resource_group_name=resource_group_name,
         enable_fault_tolerance=enable_fault_tolerance,
+        check_cluster=check_cluster,
         user_trust=user_trust,
         acs_config=acs_config,
         acs_version=acs_version,
@@ -441,3 +445,50 @@ def clone_instance(
         confirm_yes=confirm_yes,
         force=force,
     )
+
+
+def enable_rsync(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    skip_role_assignments: Optional[bool] = None,
+    custom_role_id: Optional[str] = None,
+    k8_bridge_sp_oid: Optional[str] = None,
+    rule_ops_name: Optional[str] = None,
+    rule_adr_name: Optional[str] = None,
+    rule_ops_pri: Optional[int] = None,
+    rule_adr_pri: Optional[int] = None,
+    tags: Optional[dict] = None,
+    **kwargs,
+):
+    from .providers.orchestration.resources import SyncRules
+
+    return SyncRules(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).enable(
+        skip_role_assignments=skip_role_assignments,
+        custom_role_id=custom_role_id,
+        k8_bridge_sp_oid=k8_bridge_sp_oid,
+        rule_ops_name=rule_ops_name,
+        rule_adr_name=rule_adr_name,
+        rule_ops_pri=rule_ops_pri,
+        rule_adr_pri=rule_adr_pri,
+        tags=tags,
+        **kwargs,
+    )
+
+
+def disable_rsync(cmd, instance_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None):
+    from .providers.orchestration.resources import SyncRules
+
+    return SyncRules(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).disable(
+        confirm_yes=confirm_yes
+    )
+
+
+def list_rsync(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+) -> List[dict]:
+    from .providers.orchestration.resources import SyncRules
+
+    return SyncRules(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).list()
