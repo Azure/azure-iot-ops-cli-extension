@@ -1665,6 +1665,11 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops rsync") as context:
         context.argument(
+            "instance_name",
+            options_list=["--instance", "-i", "-n"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
             "rule_ops_name",
             options_list=["--rule-ops-name"],
             help="The desired name of the resource sync rule to create for IoT Operations.",
