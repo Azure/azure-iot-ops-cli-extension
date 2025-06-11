@@ -1632,6 +1632,9 @@ def load_iotops_help():
                       The result of the command nets an IoT Operations instance with
                       a set of default resources configured for cohesive function.
 
+                      To enable edge to cloud resource hydration please use the
+                      `az iot ops rsync enable` command post instance creation.
+
         examples:
         - name: Create the target instance with minimum input.
           text: >
