@@ -12,6 +12,8 @@ from ....helpers import run
 
 
 def test_namespace_device_lifecycle_operations(require_init, tracked_resources: List[str]):
+    # TODO: remove when service is ready
+    location = "eastus2euap"
     # Setup test variables
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
@@ -26,12 +28,15 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     endpoint_name_custom = f"custom-{generate_random_string(8)}"
 
     # Create namespace
-    result = run(f"az iot ops namespace create -n {namespace_name} -g {resource_group} --mi-system-assigned")
+    result = run(
+        f"az iot ops ns create -n {namespace_name} -g {resource_group} --mi-system-assigned"
+        f"--location {location}"
+    )
     tracked_resources.append(result["id"])  # only track namespace - deletion of it should delete devices too
 
     # Create 1st device with minimal inputs
     result = run(
-        f"az iot ops namespace device create --name {device_name_1} --namespace {namespace_name} "
+        f"az iot ops ns device create --name {device_name_1} --namespace {namespace_name} "
         f"-g {resource_group} --instance {instance_name} --template-id {device_template_id}"
     )
     assert_namespace_device_properties(
@@ -44,7 +49,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
 
     # Show device
     result = run(
-        f"az iot ops namespace device show --name {device_name_1} --namespace {namespace_name} "
+        f"az iot ops ns device show --name {device_name_1} --namespace {namespace_name} "
         f"-g {resource_group}"
     )
     assert_namespace_device_properties(
@@ -57,7 +62,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
 
     # List devices
     result = run(
-        f"az iot ops namespace device list --namespace {namespace_name} -g {resource_group}"
+        f"az iot ops ns device list --namespace {namespace_name} -g {resource_group}"
     )
     assert len(result) == 1
     assert device_name_1 in [d["name"] for d in result]
@@ -66,7 +71,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     custom_attrs = ["location=building1", "department=manufacturing"]
     tags = ["env=test", "criticality=high"]
     result = run(
-        f"az iot ops namespace device update --name {device_name_1} --namespace {namespace_name} "
+        f"az iot ops ns device update --name {device_name_1} --namespace {namespace_name} "
         f"-g {resource_group} --attr {' '.join(custom_attrs)} --device-group-id critical-devices "
         f"--os-version 2.0 --tags {' '.join(tags)} --disabled"
     )
@@ -86,7 +91,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     custom_attrs = ["floor=3", "building=HQ"]
     tags = ["environment=prod", "priority=p1"]
     result = run(
-        f"az iot ops namespace device create --name {device_name_2} --namespace {namespace_name} "
+        f"az iot ops ns device create --name {device_name_2} --namespace {namespace_name} "
         f"-g {resource_group} --instance {instance_name} --template-id {device_template_id} "
         f"--device-group-id production-devices --attr {' '.join(custom_attrs)} --manufacturer Contoso "
         f"--model Gateway-X5 --os Linux --os-version 4.15 --tags {' '.join(tags)} --disabled"
@@ -112,7 +117,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     username_reference = "secretRef:username"
     password_reference = "secretRef:password"
     result = run(
-        f"az iot ops namespace device endpoint inbound add onvif --device {device_name_2} "
+        f"az iot ops ns device endpoint inbound add onvif --device {device_name_2} "
         f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_onvif} "
         f"--endpoint-address {endpoint_address} "
         f"--accept-invalid-hostnames true --accept-invalid-certificates true "
@@ -133,7 +138,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     # Add Media endpoint
     endpoint_address = "rtsp://192.168.1.100:554/stream"
     result = run(
-        f"az iot ops namespace device endpoint inbound add media --device {device_name_2} "
+        f"az iot ops ns device endpoint inbound add media --device {device_name_2} "
         f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_media} "
         f"--endpoint-address rtsp://192.168.1.100:554/stream "
         f"--user-ref {username_reference} --pass-ref {password_reference} "
@@ -165,7 +170,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     security_mode = "SignAndEncrypt"
 
     result = run(
-        f"az iot ops namespace device endpoint inbound add opcua --device {device_name_2} "
+        f"az iot ops ns device endpoint inbound add opcua --device {device_name_2} "
         f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_opcua} "
         f"--endpoint-address {endpoint_address} --application-name {application_name} "
         f"--keep-alive {keep_alive} --publishing-interval {publishing_interval} "
@@ -209,7 +214,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     certificate_reference = "secretRef:certificate"
     trust_list = "cert1"
     result = run(
-        f"az iot ops namespace device endpoint inbound add custom --device {device_name_2} "
+        f"az iot ops ns device endpoint inbound add custom --device {device_name_2} "
         f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_custom} "
         f"--endpoint-type {endpoint_type} --endpoint-address {endpoint_address} "
         f"--additional-config \"{{\\\"customSetting\\\": \\\"value\\\"}}\""
@@ -228,7 +233,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
 
     # List (all) endpoints
     result = run(
-        f"az iot ops namespace device endpoint list --device {device_name_2} "
+        f"az iot ops ns device endpoint list --device {device_name_2} "
         f"--namespace {namespace_name} -g {resource_group} --all"
     )
     assert len(result["inbound"]) == 4
@@ -239,13 +244,13 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
 
     # List inbound endpoints option a
     result_1 = run(
-        f"az iot ops namespace device endpoint list --device {device_name_2} "
+        f"az iot ops ns device endpoint list --device {device_name_2} "
         f"--namespace {namespace_name} -g {resource_group} --inbound"
     )
 
     # List inbound endpoints option b
     result_2 = run(
-        f"az iot ops namespace device endpoint inbound list --device {device_name_2} "
+        f"az iot ops ns device endpoint inbound list --device {device_name_2} "
         f"--namespace {namespace_name} -g {resource_group}"
     )
     assert len(result_1) == len(result_2) == 4
@@ -257,7 +262,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
 
     # Remove endpoints
     result = run(
-        f"az iot ops namespace device endpoint inbound remove --device {device_name_2} "
+        f"az iot ops ns device endpoint inbound remove --device {device_name_2} "
         f"--namespace {namespace_name} -g {resource_group} "
         f"--endpoint {endpoint_name_onvif} {endpoint_name_media}"
     )
@@ -269,20 +274,20 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
 
     # Delete devices
     run(
-        f"az iot ops namespace device delete --name {device_name_1} --namespace {namespace_name} "
+        f"az iot ops ns device delete --name {device_name_1} --namespace {namespace_name} "
         f"-g {resource_group} -y"
     )
     run(
-        f"az iot ops namespace device delete --name {device_name_2} --namespace {namespace_name} "
+        f"az iot ops ns device delete --name {device_name_2} --namespace {namespace_name} "
         f"-g {resource_group} -y"
     )
     result = run(
-        f"az iot ops namespace device list --namespace {namespace_name} -g {resource_group}"
+        f"az iot ops ns device list --namespace {namespace_name} -g {resource_group}"
     )
     assert len(result) == 0
 
     # Cleanup: Delete namespace
-    run(f"az iot ops namespace delete -n {namespace_name} -g {resource_group} -y")
+    run(f"az iot ops ns delete -n {namespace_name} -g {resource_group} -y")
     tracked_resources.remove(result["id"])
 
 

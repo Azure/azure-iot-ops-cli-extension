@@ -28,7 +28,7 @@ iot ops asset endpoint query:
     instance_resource_group:
       rule_exclusions:
       - parameter_should_not_end_in_resource_group
-iot ops namespace device create:
+iot ops ns device create:
   parameters:
     instance_resource_group:
       rule_exclusions:

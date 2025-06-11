@@ -197,7 +197,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("opcua", "create_opcua_asset_endpoint_profile")
 
     with self.command_group(
-        "iot ops namespace",
+        "iot ops ns",
         command_type=namespace_resource_ops,
     ) as cmd_group:
         cmd_group.command("create", "create_namespace")
@@ -207,15 +207,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("update", "update_namespace")
 
     with self.command_group(
-        "iot ops namespace endpoint",
-        command_type=namespace_resource_ops,
-    ) as cmd_group:
-        cmd_group.command("add", "add_namespace_endpoint")
-        cmd_group.command("list", "list_namespace_endpoints")
-        cmd_group.command("remove", "remove_namespace_endpoint")
-
-    with self.command_group(
-        "iot ops namespace device",
+        "iot ops ns device",
         command_type=namespace_resource_ops,
     ) as cmd_group:
         cmd_group.command("create", "create_namespace_device")
@@ -225,20 +217,20 @@ def load_iotops_commands(self, _):
         cmd_group.command("update", "update_namespace_device")
 
     with self.command_group(
-        "iot ops namespace device endpoint",
+        "iot ops ns device endpoint",
         command_type=namespace_resource_ops,
     ) as cmd_group:
         cmd_group.command("list", "list_namespace_device_endpoints")
 
     with self.command_group(
-        "iot ops namespace device endpoint inbound",
+        "iot ops ns device endpoint inbound",
         command_type=namespace_resource_ops,
     ) as cmd_group:
         cmd_group.command("list", "list_inbound_device_endpoints")
         cmd_group.command("remove", "remove_inbound_device_endpoints")
 
     with self.command_group(
-        "iot ops namespace device endpoint inbound add",
+        "iot ops ns device endpoint inbound add",
         command_type=namespace_resource_ops,
     ) as cmd_group:
         cmd_group.command("custom", "add_inbound_custom_device_endpoint")
@@ -247,7 +239,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("opcua", "add_inbound_opcua_device_endpoint")
 
     with self.command_group(
-        "iot ops namespace asset",
+        "iot ops ns asset",
         command_type=namespace_resource_ops,
     ) as cmd_group:
         cmd_group.command("delete", "delete_namespace_asset")
@@ -255,7 +247,7 @@ def load_iotops_commands(self, _):
         cmd_group.show_command("show", "show_namespace_asset")
 
     with self.command_group(
-        "iot ops namespace asset create",
+        "iot ops ns asset create",
         command_type=namespace_resource_ops,
     ) as cmd_group:
         cmd_group.command("custom", "create_namespace_custom_asset")
@@ -264,7 +256,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("opcua", "create_namespace_opcua_asset")
 
     with self.command_group(
-        "iot ops namespace asset update",
+        "iot ops ns asset update",
         command_type=namespace_resource_ops,
     ) as cmd_group:
         cmd_group.command("custom", "update_namespace_custom_asset")
