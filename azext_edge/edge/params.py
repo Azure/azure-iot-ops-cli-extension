@@ -206,7 +206,6 @@ def load_iotops_arguments(self, _):
         context.argument(
             "bundle_name",
             options_list=["--bundle-name", "--bn"],
-            # deprecate_info=context.deprecate(hide=True),
             help="The file name for the support bundle zip file. "
             "If not provided, the following format will be used: 'support_bundle_{timestamp}_aio'",
         )
