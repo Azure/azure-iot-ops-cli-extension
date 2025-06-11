@@ -84,6 +84,10 @@ def load_iotops_help():
           text: >
             az iot ops support create-bundle --ops-service connectors --bundle-dir ~/ops
 
+        - name: Produce the bundle in a custom output directory and use a custom name.
+          text: >
+            az iot ops support create-bundle --bundle-name mybundle --bundle-dir ~/ops
+
         - name: Specify a custom container log age in seconds.
           text: >
             az iot ops support create-bundle --ops-service broker --log-age 172800
