@@ -203,6 +203,12 @@ def load_iotops_arguments(self, _):
             help="Include mqtt broker traces in the support bundle. "
             "Usage may add considerable size to the produced bundle.",
         )
+        context.argument(
+            "bundle_name",
+            options_list=["--bundle-name", "--bn"],
+            help="The file name for the support bundle zip file. "
+            "If not provided, the following format will be used: 'support_bundle_{timestamp}_aio'",
+        )
 
     with self.argument_context("iot ops check") as context:
         context.argument(

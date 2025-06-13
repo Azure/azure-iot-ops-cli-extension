@@ -778,22 +778,24 @@ def assert_zipfile_write(mocked_zipfile, zinfo: Union[str, ZipInfo], data: str):
     assert called_with_expected_zipinfo
 
 
-def test_get_bundle_path(mocked_os_makedirs):
-    path = get_bundle_path("~/test")
-    expected = f"{join(expanduser('~'), 'test', 'support_bundle_')}"
-    assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
+@pytest.mark.parametrize("path", ["~/test", "./test/", "test/thing", None])
+@pytest.mark.parametrize("bundle_name", [None, generate_random_string()])
+def test_get_bundle_path(mocked_os_makedirs, path: Optional[str], bundle_name: Optional[str]):
+    # split up the path to use os join
+    expected = path.strip("/").split("/") if path else ["."]
+    # get the beggining of the expected path
+    expected[0] = expanduser("~") if expected[0] == "~" else abspath(expected[0])
+    # add the bundle file (or at least prefix)
+    expected.append(f"{bundle_name}.zip" if bundle_name else "support_bundle_")
+    # regjoin to form expected path with os safe seperators
+    expected = f"{join(*expected)}"
 
-    path = get_bundle_path("./test/")
-    expected = f"{join(abspath('.'), 'test', 'support_bundle_')}"
-    assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
+    result_path = get_bundle_path(path, bundle_name=bundle_name)
+    assert str(result_path).startswith(expected)
 
-    path = get_bundle_path("test/thing")
-    expected = f"{join(abspath('test/thing'), 'support_bundle_')}"
-    assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
-
-    path = get_bundle_path()
-    expected = f"{join(abspath('.'), 'support_bundle_')}"
-    assert str(path).startswith(expected) and str(path).endswith("_aio.zip")
+    # if no bundle name, there will be a time stamp in the middle. Just check the end
+    if not bundle_name:
+        assert str(result_path).endswith("_aio.zip")
 
 
 @pytest.mark.parametrize(
