@@ -496,16 +496,15 @@ def load_iotops_adr_help():
     ] = """
         type: command
         short-summary: Create a Device Registry namespace.
-        long-summary: Enabled system identity is required for the namespace to function correctly.
 
         examples:
         - name: Create a namespace with minimal configuration.
           text: >
             az iot ops ns create -n myNamespace -g myResourceGroup
 
-        - name: Create a namespace with system-assigned managed identity enabled, custom location, and tags
+        - name: Create a namespace with custom location and tags
           text: >
-            az iot ops ns create -n myNamespace -g myResourceGroup --mi-system-assigned
+            az iot ops ns create -n myNamespace -g myResourceGroup
             --location "eastus" --tags env=prod department=operations
     """
 
@@ -556,10 +555,6 @@ def load_iotops_adr_help():
         short-summary: Update a Device Registry namespace.
 
         examples:
-        - name: Enable system-assigned managed identity for a namespace
-          text: >
-            az iot ops ns update -n myNamespace -g myResourceGroup --mi-system-assigned
-
         - name: Update tags for a namespace
           text: >
             az iot ops ns update -n myNamespace -g myResourceGroup --tags env=test department=iot

@@ -103,11 +103,7 @@ def mocked_logger(mocker):
     {},
     {
         "location": "westus",
-        "mi_system_identity": True,
         "tags": {"tag1": "value1", "tag2": "value2"},
-    },
-    {
-        "mi_system_identity": False,
     },
 ])
 def test_namespace_create(
@@ -173,11 +169,6 @@ def test_namespace_create(
 
     # Verify request body contains expected values
     call_body = json.loads(mocked_responses.calls[-1].request.body)
-
-    # Check identity
-    if "mi_system_identity" in req:
-        expected_identity_type = "SystemAssigned" if req["mi_system_identity"] else "None"
-        assert call_body["identity"]["type"] == expected_identity_type
 
     # Check location
     expected_location = req.get("location", mock_resource_group["location"])
@@ -311,16 +302,7 @@ def test_namespace_show(mocked_cmd, mocked_responses: responses, response_status
     {},
     # Test with all parameters
     {
-        "mi_system_identity": True,
         "tags": {"tag1": "value1", "tag2": "value2"},
-    },
-    # Test with just identity change
-    {
-        "mi_system_identity": False,
-    },
-    # Test with just tags change
-    {
-        "tags": {"environment": "test"},
     }
 ])
 def test_namespace_update(
@@ -340,15 +322,12 @@ def test_namespace_update(
         resource_group_name=resource_group_name
     )
     # Add identity and tags to original namespace for testing update logic
-    mock_original_namespace["identity"] = {"type": "SystemAssigned"}
     mock_original_namespace["tags"] = {"original": "tag"}
 
     # Create updated record for successful response
     mock_updated_namespace = deepcopy(mock_original_namespace)
     if "tags" in req:
         mock_updated_namespace["tags"] = req["tags"]
-    if "mi_system_identity" in req:
-        mock_updated_namespace["identity"]["type"] = "SystemAssigned" if req["mi_system_identity"] else "None"
 
     # Add mock PATCH response for update operation
     mocked_responses.add(
@@ -392,8 +371,3 @@ def test_namespace_update(
 
     # Check tags update
     assert call_body.get("tags") == req.get("tags")
-
-    # Check identity update
-    if "mi_system_identity" in req:
-        expected_identity_type = "SystemAssigned" if req["mi_system_identity"] else "None"
-        assert call_body["identity"]["type"] == expected_identity_type

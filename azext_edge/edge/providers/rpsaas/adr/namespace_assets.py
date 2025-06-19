@@ -23,7 +23,7 @@ from .helpers import process_additional_configuration, ensure_schema_structure
 from .namespace_devices import DeviceEndpointType
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistryrefreshmgmt.operations import (
+    from ....vendor.clients.deviceregistrymgmt_v2.operations import (
         NamespaceAssetsOperations, NamespaceDevicesOperations
     )
     from ....vendor.clients.resourcesmgmt.operations import ResourcesOperations

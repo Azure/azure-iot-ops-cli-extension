@@ -606,19 +606,6 @@ def load_adr_arguments(self, _):
             options_list=["--name", "-n"],
             help="Namespace name.",
         )
-        context.argument(
-            "mi_system_identity",
-            options_list=["--mi-system-assigned"],
-            help="Enable system-assigned managed identity for the namespace.",
-            arg_type=get_three_state_flag(),
-        )
-
-    with self.argument_context("iot ops ns endpoint") as context:
-        context.argument(
-            "namespace_name",
-            options_list=["--namespace", "--ns"],
-            help="Namespace name.",
-        )
 
     with self.argument_context("iot ops ns device") as context:
         context.argument(
