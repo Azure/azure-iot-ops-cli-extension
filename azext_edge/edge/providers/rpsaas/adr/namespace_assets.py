@@ -7,7 +7,7 @@
 from copy import deepcopy
 import json
 from rich.console import Console
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 from knack.log import get_logger
 
 from azure.cli.core.azclierror import (
@@ -19,11 +19,11 @@ from azure.cli.core.azclierror import (
 from ....util.common import parse_kvp_nargs, should_continue_prompt
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.queryable import Queryable
-from .helpers import process_additional_configuration, ensure_schema_structure
+from .helpers import check_cluster_connectivity, process_additional_configuration, ensure_schema_structure
 from .namespace_devices import DeviceEndpointType
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistryrefreshmgmt.operations import (
+    from ....vendor.clients.deviceregistrymgmt_v2.operations import (
         NamespaceAssetsOperations, NamespaceDevicesOperations
     )
     from ....vendor.clients.resourcesmgmt.operations import ResourcesOperations
@@ -307,11 +307,602 @@ class NamespaceAssets(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
+    # DATASETS - only allowed for opcua and custom assets
+    def add_dataset(
+        self,
+        asset_name: str,
+        namespace_name: str,
+        resource_group_name: str,
+        dataset_name: str,
+        dataset_data_source: str,
+        datasets_destinations: Optional[List[str]] = None,
+        # TODO: future pr, import datapoints from file
+        **kwargs
+    ):
+        if dataset_name != "default":
+            raise InvalidArgumentValueError(
+                "Currently only one dataset with the name 'default' is supported. "
+                "Please use 'default' as the dataset name."
+            )
+        expected_type = "custom" if kwargs.get("datasets_custom_configuration") else DeviceEndpointType.OPCUA.value
+        asset = self._check_device_props(
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
+            asset_type=expected_type,
+            asset_name=asset_name
+        )
+        # get the datasets from the asset
+        datasets = asset["properties"].get("datasets", [])
+
+        # current restriction to one dataset
+        if datasets:
+            raise InvalidArgumentValueError(
+                "Currently only one dataset with the name 'default' is supported. "
+                "Please use 'default' as the dataset name. If you want to update the dataset properties, "
+                "please use the update command."
+            )
+
+        # create the dataset
+        processed_configs = _process_configs(
+            asset_type=expected_type,
+            default=False,
+            datasets_destinations=datasets_destinations,
+            **kwargs
+        )
+        datasets.append(
+            {
+                "name": dataset_name,
+                "dataSource": dataset_data_source,
+                "datasetConfiguration": processed_configs.get("datasetsConfiguration"),
+                "destinations": processed_configs.get("datasetsDestinations", []),
+                "datapoints": [],  # TODO: future pr, add datapoints
+            }
+        )
+
+        update_payload = {
+            "properties": {
+                "datasets": datasets
+            }
+        }
+        with console.status(f"Adding dataset {dataset_name} to asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            datasets = wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]
+            return next([dset for dset in datasets if dset["name"] == dataset_name])
+
+    def list_datasets(self, asset_name: str, namespace_name: str, resource_group_name: str) -> List[dict]:
+        asset = self.show(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        )
+        return asset["properties"].get("datasets", [])
+
+    def show_dataset(
+        self, asset_name: str, namespace_name: str, resource_group_name: str, dataset_name: str
+    ) -> dict:
+        asset = self.show(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        )
+        return _get_dataset(asset, dataset_name)
+
+    def update_dataset(
+        self,
+        asset_name: str,
+        namespace_name: str,
+        resource_group_name: str,
+        dataset_name: str,
+        # TODO: what should be updatable?
+        dataset_data_source: Optional[str] = None,
+        dataset_type_ref: Optional[str] = None,
+        datasets_destinations: Optional[List[str]] = None,
+        **kwargs
+    ):
+        expected_type = "custom" if kwargs.get("datasets_custom_configuration") else DeviceEndpointType.OPCUA.value
+        asset = self._check_device_props(
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
+            asset_type=expected_type,
+            asset_name=asset_name
+        )
+        # get the datasets from the asset
+        datasets = asset["properties"].get("datasets", [])
+        # check if dataset exists
+        dataset = [dset for dset in datasets if dset["name"] == dataset_name]
+        if not dataset:
+            raise InvalidArgumentValueError(
+                f"Dataset '{dataset_name}' not found in asset '{asset_name}'. "
+            )
+        dataset = dataset[0]
+
+        # process the configs + destinations
+        processed_configs = _process_configs(
+            asset_type=expected_type,
+            default=False,
+            original_dataset_configuration=dataset.get("datasetConfiguration"),
+            datasets_destinations=datasets_destinations,
+            **kwargs
+        )
+
+        # update the dataset properties
+        dataset["datasetConfiguration"] = processed_configs["datasetsConfiguration"]
+        if dataset_data_source:
+            dataset["dataSource"] = dataset_data_source
+        if dataset_type_ref:
+            dataset["typeRef"] = dataset_type_ref
+        if datasets_destinations:
+            dataset["destinations"] = processed_configs.get("datasetsDestinations", [])
+
+        update_payload = {
+            "properties": {
+                "datasets": datasets
+            }
+        }
+        with console.status(f"Updating dataset {dataset_name} to asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            datasets = wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]
+            return next([dset for dset in datasets if dset["name"] == dataset_name])
+
+    def remove_dataset(
+        self, asset_name: str, namespace_name: str, resource_group_name: str, dataset_name: str, **kwargs
+    ) -> dict:
+        asset = self.show(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        )
+
+        # ensure cluster is connected for the update
+        check_cluster_connectivity(self.cmd, asset)
+
+        datasets = asset["properties"].get("datasets", [])
+        # note that delete should be ok with dataset not there
+        remaining_datasets = [dset for dset in datasets if dset["name"] != dataset_name]
+        update_payload = {
+            "properties": {
+                "datasets": remaining_datasets
+            }
+        }
+        with console.status(f"Removing dataset {dataset_name} from asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            return wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]
+
+    def add_dataset_datapoint(
+        self,
+        asset_name: str,
+        namespace_name: str,
+        resource_group_name: str,
+        dataset_name: str,
+        datapoint_name: str,
+        data_source: str,
+        # Custom
+        custom_configuration: Optional[str] = None,
+        # OPCUA specific
+        queue_size: Optional[int] = None,
+        sampling_interval: Optional[int] = None,
+        replace: bool = False,
+        **kwargs
+    ) -> List[dict]:
+        # note that for now, we will not expose typeref for dataset datapoints
+        asset = self._check_device_props(
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
+            asset_type=[DeviceEndpointType.OPCUA.value, "custom"],
+            asset_name=asset_name
+        )
+        dataset = _get_dataset(asset, dataset_name, create_if_none=True)
+
+        # get the datapoints
+        datapoints = dataset["dataPoints"]
+        non_matched_points = [point for point in datapoints if point["name"] != datapoint_name]
+        if len(non_matched_points) < len(datapoints) and not replace:
+            raise InvalidArgumentValueError(
+                f"Datapoint '{datapoint_name}' already exists in dataset '{dataset_name}' of asset '{asset_name}'. "
+                "Use --replace to overwrite the existing datapoint."
+            )
+
+        # create the datapoint
+        datapoint = _create_datapoint(
+            datapoint_name=datapoint_name,
+            data_source=data_source,
+            queue_size=queue_size,
+            sampling_interval=sampling_interval,
+            custom_configuration=custom_configuration
+        )
+        non_matched_points.append(datapoint)
+        dataset["dataPoints"] = non_matched_points
+
+        update_payload = {
+            "properties": {
+                "datasets": asset["properties"]["datasets"]
+            }
+        }
+
+        with console.status(f"Updating asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name,
+                namespace_name,
+                asset_name,
+                update_payload
+            )
+            asset = wait_for_terminal_state(poller, **kwargs)
+            return _get_dataset(asset, dataset_name)["dataPoints"]
+
+    def list_dataset_datapoints(
+        self, asset_name: str, namespace_name: str, resource_group_name: str, dataset_name: str
+    ) -> List[dict]:
+        asset = self.show(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        )
+        return _get_dataset(asset, dataset_name)["datapoints"]
+
+    def remove_dataset_datapoint(
+        self,
+        asset_name: str,
+        namespace_name: str,
+        resource_group_name: str,
+        dataset_name: str,
+        datapoint_name: str,
+        **kwargs
+    ) -> dict:
+        asset = self.show(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        )
+
+        # ensure cluster is connected for the update
+        check_cluster_connectivity(self.cmd, asset)
+
+        dataset = _get_dataset(asset, dataset_name)
+        datapoints = dataset.get("datapoints", [])
+        # note that delete should be ok with datapoint not there
+        dataset["datapoints"] = [dp for dp in datapoints if dp["name"] != datapoint_name]
+        update_payload = {
+            "properties": {
+                "datasets": asset["properties"]["datasets"]
+            }
+        }
+        with console.status(
+            f"Removing datapoint {datapoint_name} from dataset {dataset_name} in asset {asset_name}..."
+        ):
+            poller = self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            return wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]["datapoints"]
+
+    # EVENTS - allowed for opcua, onvif, and custom assets
+    def add_event(
+        self,
+        asset_name: str,
+        namespace_name: str,
+        resource_group_name: str,
+        event_name: str,
+        event_notifier: str,
+        event_destinations: Optional[List[str]] = None,  # this can go into kwargs
+        replace: bool = False,
+        # TODO: future pr, add datapoints
+        **kwargs
+    ) -> dict:
+        expected_type = "custom" if kwargs.get("events_custom_configuration") else [
+            DeviceEndpointType.OPCUA.value, DeviceEndpointType.ONVIF.value
+        ]
+        asset = self._check_device_props(
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
+            asset_type=expected_type,
+            asset_name=asset_name
+        )
+        events = asset["properties"].get("events", [])
+        # remove event if it exists
+        unmatched_events = [event for event in events if event["name"] != event_name]
+        if len(unmatched_events) < len(events) and not replace:
+            raise InvalidArgumentValueError(
+                f"Event '{event_name}' already exists in asset '{asset_name}'. "
+                "Use --replace to overwrite the existing event."
+            )
+
+        # create the event
+        processed_configs = _process_configs(
+            asset_type=expected_type,
+            default=False,
+            event_destinations=event_destinations,
+            **kwargs
+        )
+        unmatched_events.append(
+            {
+                "name": event_name,
+                "notifier": event_notifier,
+                "eventConfiguration": processed_configs.get("eventsConfiguration"),
+                "destinations": processed_configs.get("eventsDestinations", []),
+                "datapoints": []  # TODO: future pr, add datapoints
+            }
+        )
+
+        update_payload = {
+            "properties": {
+                "events": unmatched_events
+            }
+        }
+        with console.status(f"Adding event {event_name} to asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
+            return next([event for event in events if event["name"] == event_name])
+
+    def list_events(self, asset_name: str, namespace_name: str, resource_group_name: str) -> List[dict]:
+        asset = self.show(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        )
+        return asset["properties"].get("events", [])
+
+    def show_event(
+        self, asset_name: str, namespace_name: str, resource_group_name: str, event_name: str
+    ) -> dict:
+        asset = self.show(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        )
+        return _get_event(asset, event_name)
+
+    def remove_event(
+        self, asset_name: str, namespace_name: str, resource_group_name: str, event_name: str, **kwargs
+    ) -> dict:
+        asset = self.show(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        )
+
+        # ensure cluster is connected for the update
+        check_cluster_connectivity(self.cmd, asset)
+
+        events = asset["properties"].get("events", [])
+        # note that delete should be ok with event not there
+        remaining_events = [event for event in events if event["name"] != event_name]
+
+        # if the event is not found, we should not update
+        if len(remaining_events) == len(events):
+            logger.info(f"Event '{event_name}' not found in asset '{asset_name}'.")
+            return events
+
+        update_payload = {
+            "properties": {
+                "events": remaining_events
+            }
+        }
+        with console.status(f"Removing event {event_name} from asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            return wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
+
+    def update_event(
+        self,
+        asset_name: str,
+        namespace_name: str,
+        resource_group_name: str,
+        event_name: str,
+        event_notifier: Optional[str] = None,
+        type_ref: Optional[str] = None,
+        event_destinations: Optional[List[str]] = None,
+        **kwargs
+    ):
+        asset_type = "custom" if kwargs.get("events_custom_configuration") else [
+            DeviceEndpointType.OPCUA.value, DeviceEndpointType.ONVIF.value
+        ]
+        asset = self._check_device_props(
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
+            asset_type=asset_type,
+            asset_name=asset_name
+        )
+        # check if event exists
+        event = _get_event(asset, event_name)
+
+        # process the configs + destinations
+        processed_configs = _process_configs(
+            asset_type=asset_type,
+            default=False,
+            original_event_configuration=event.get("eventConfiguration"),
+            event_destinations=event_destinations,
+            **kwargs
+        )
+
+        # update the event properties
+        event["eventConfiguration"] = processed_configs["eventsConfiguration"]
+        if event_notifier:
+            event["notifier"] = event_notifier
+        if type_ref:
+            event["typeRef"] = type_ref
+        if event_destinations:
+            event["destinations"] = processed_configs.get("eventsDestinations", [])
+
+        # get the events from the asset
+        events = asset["properties"].get("events", [])
+        update_payload = {
+            "properties": {
+                "events": events
+            }
+        }
+        with console.status(f"Updating event {event_name} in asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
+            return next([event for event in events if event["name"] == event_name])
+
+    def add_event_datapoint(
+        self,
+        asset_name: str,
+        namespace_name: str,
+        resource_group_name: str,
+        event_name: str,
+        datapoint_name: str,
+        data_source: str,
+        # Custom
+        custom_configuration: Optional[str] = None,
+        # OPCUA specific
+        queue_size: Optional[int] = None,
+        sampling_interval: Optional[int] = None,
+        replace: bool = False,
+        **kwargs
+    ) -> dict:
+        # note that event datapoints do not have type-refs
+        asset_type = "custom" if kwargs.get("events_custom_configuration") else [
+            DeviceEndpointType.OPCUA.value, DeviceEndpointType.ONVIF.value
+        ]
+        asset = self._check_device_props(
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
+            asset_type=asset_type,
+            asset_name=asset_name
+        )
+
+        # check if event exists
+        event = _get_event(asset, event_name)
+
+        # get the datapoints
+        datapoints = event.get("datapoints", [])
+        non_matched_points = [point for point in datapoints if point["name"] != datapoint_name]
+        if len(non_matched_points) < len(datapoints) and not replace:
+            raise InvalidArgumentValueError(
+                f"Datapoint '{datapoint_name}' already exists in event '{event_name}' of asset '{asset_name}'. "
+                "Use --replace to overwrite the existing datapoint."
+            )
+
+        # create the datapoint
+        datapoint = _create_datapoint(
+            datapoint_name=datapoint_name,
+            data_source=data_source,
+            queue_size=queue_size,
+            sampling_interval=sampling_interval,
+            custom_configuration=custom_configuration,
+        )
+        non_matched_points.append(datapoint)
+        event["datapoints"] = non_matched_points
+
+        # get the events from the asset
+        events = asset["properties"].get("events", [])
+        update_payload = {
+            "properties": {
+                "events": events
+            }
+        }
+        with console.status(f"Adding datapoint {datapoint_name} to event {event_name} in asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
+            # note that we return a list of datapoints
+            return next(event for event in events if event["name"] == event_name)["dataPoints"]
+
+    def list_event_datapoints(
+        self, asset_name: str, namespace_name: str, resource_group_name: str, event_name: str
+    ):
+        event = self.show_event(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            event_name=event_name
+        )
+        return event.get("dataPoints", [])
+
+    def remove_event_datapoint(
+        self,
+        asset_name: str,
+        namespace_name: str,
+        resource_group_name: str,
+        event_name: str,
+        datapoint_name: str,
+        **kwargs
+    ):
+        asset = self.show(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        )
+        # ensure cluster is connected for the update
+        check_cluster_connectivity(self.cmd, asset)
+
+        event = _get_event(asset, event_name)
+        datapoints = event.get("dataPoints", [])
+        # note that delete should be ok with datapoint not there
+        event["dataPoints"] = [dp for dp in datapoints if dp["name"] != datapoint_name]
+
+        # no need for update if the datapoint is not found
+        if len(event["dataPoints"]) == len(datapoints):
+            logger.info(
+                f"Datapoint '{datapoint_name}' not found in event '{event_name}' of asset '{asset_name}'."
+            )
+            return event["dataPoints"]
+
+        events = asset["properties"].get("events", [])
+        update_payload = {
+            "properties": {
+                "events": events
+            }
+        }
+        with console.status(
+            f"Removing datapoint {datapoint_name} from event {event_name} in asset {asset_name}..."
+        ):
+            poller = self.ops.begin_update(
+                resource_group_name=resource_group_name,
+                namespace_name=namespace_name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
+            # note that we return a list of datapoints
+            return next(event for event in events if event["name"] == event_name)["dataPoints"]
+
+    # TODO: future pr
+    # STREAMS - allowed for media and custom assets
+    # Management Groups - allowed for opcua, onvif, and custom assets
+
+    # TODO: update unit tests to have asset types as list
     def _check_device_props(
         self,
         resource_group_name: str,
         namespace_name: str,
-        asset_type: str,
+        asset_type: Union[List[str], str],  # change to list
         asset_name: Optional[str] = None,
         device_name: Optional[str] = None,
         device_endpoint_name: Optional[str] = None,
@@ -320,6 +911,8 @@ class NamespaceAssets(Queryable):
         Checks the device properties to ensure the endpoint type matches the asset operation's type.
         Returns the asset if the asset name is provided, otherwise the device
         (device name and device endpoint name must be provided).
+
+        This also includes the cluster connectivity check.
 
         If asset_name is provided (in the case of the asset is already created), it will retrieve the
         asset to populate the device_name and device_endpoint_name.
@@ -340,30 +933,129 @@ class NamespaceAssets(Queryable):
             namespace_name=namespace_name,
             device_name=device_name
         )
+
+        # use the device to check cluster connectivity
+        check_cluster_connectivity(self.cmd, device)
+
+        # ensure device has the endpoint
         device_endpoint = device["properties"].get("endpoints", {}).get("inbound", {}).get(device_endpoint_name)
         if not device_endpoint:
             raise InvalidArgumentValueError(
                 f"Device endpoint '{device_endpoint_name}' not found in device '{device_name}'."
             )
 
+        if isinstance(asset_type, str):
+            asset_type = [asset_type]
         # asset type must be the same as endpoint type unless either is custom
         device_type_list = [d.lower() for d in DeviceEndpointType.list()]
-        if (
-            asset_type.lower() in device_type_list
-            and device_endpoint["endpointType"].lower() in device_type_list
-            and asset_type.lower() != device_endpoint["endpointType"].lower()
-        ):
+        allowed = True
+        for at in asset_type:
+            if (
+                at.lower() in device_type_list
+                and device_endpoint["endpointType"].lower() in device_type_list
+                and at.lower() != device_endpoint["endpointType"].lower()
+            ):
+                allowed = False
+                break
+
+        # we could also change this to a y/n warning prompt
+        if not allowed:
             raise InvalidArgumentValueError(
                 f"Device endpoint '{device_endpoint_name}' is of type '{device_endpoint['endpointType']}', "
-                f"but expected '{asset_type}'."
+                f"but expected '{' or '.join(asset_type)}'."
             )
 
         return asset if asset_name else device
 
 
 # Helpers
+def _get_dataset(asset: dict, dataset_name: str, create_if_none: bool = False):
+    """
+    Temporary helper function to get a dataset from an asset.
+
+    If the dataset is not found but it has the name 'default' and create_if_none is True,
+    it will create a new dataset with that name that is added to the asset's datasets.
+
+    Will raise errors if the dataset is not found and create_if_none is False, or
+    if the dataset name is not 'default' and create_if_none is True.
+    """
+    # ensure datasets will get populated if not there
+    asset["properties"]["datasets"] = asset["properties"].get("datasets", [])
+    datasets = asset["properties"]["datasets"]
+    matched_datasets = [dset for dset in datasets if dset["name"] == dataset_name]
+    # Temporary convert empty names to default
+    if not matched_datasets and dataset_name == "default":
+        matched_datasets = [dset for dset in datasets if dset["name"] == ""]
+    # create if add or import (and no datasets yet)
+    if not matched_datasets and create_if_none:
+        if dataset_name != "default":
+            raise InvalidArgumentValueError("Currently only one dataset with the name default is supported.")
+        matched_datasets = [{}]
+        datasets.extend(matched_datasets)
+    elif not matched_datasets:
+        raise InvalidArgumentValueError(f"Dataset {dataset_name} not found in asset {asset['name']}.")
+    # note: right now we can have datasets with the same name but this will not be allowed later
+    # part of the temporary convert
+    matched_datasets[0]["name"] = dataset_name
+    return matched_datasets[0]
+
+
+def _get_event(asset: dict, event_name: str) -> dict:
+    """Helper function to get an event from an asset.
+
+    Raises InvalidArgumentValueError if the event is not found.
+    """
+    events = asset["properties"].get("events", [])
+    matched_events = [event for event in events if event["name"] == event_name]
+    if not matched_events:
+        raise InvalidArgumentValueError(f"Event '{event_name}' not found in asset '{asset['name']}'.")
+    return matched_events[0]
+
+
+# TODO: unit test
+def _create_datapoint(
+    datapoint_name: str,
+    data_source: str,
+    type_ref: Optional[str] = None,
+    queue_size: Optional[int] = None,
+    sampling_interval: Optional[int] = None,
+    custom_configuration: Optional[str] = None,
+) -> dict:
+    """Helper function to create a datapoint dictionary."""
+    datapoint = {
+        "name": datapoint_name,
+        "dataSource": data_source,
+    }
+    if type_ref:
+        datapoint["typeRef"] = type_ref
+
+    # if custom configuration is provided, process it and return early
+    if custom_configuration:
+        datapoint["additionalConfiguration"] = process_additional_configuration(
+            additional_configuration=custom_configuration,
+            config_type="datapoint"
+        )
+        return datapoint
+
+    # otherwise process opcua specific configurations if provided
+    additional_configuration = {}
+    if queue_size is not None:
+        additional_configuration["queueSize"] = queue_size
+    if sampling_interval is not None:
+        additional_configuration["samplingInterval"] = sampling_interval
+    if additional_configuration:
+        from .specs import NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA
+        ensure_schema_structure(
+            NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA, input_data=additional_configuration
+        )
+        datapoint["additionalConfiguration"] = json.dumps(additional_configuration)
+    # process configurations
+    return datapoint
+
+
 def _process_configs(
     asset_type: str,
+    default: bool = True,
     **kwargs
 ) -> dict:
     """Main function to process all of the config + destination args based on asset type.
@@ -371,7 +1063,7 @@ def _process_configs(
     Destination and custom configuration arguments will be treated as an overwrite rather than update.
     For destinations, currently only one destination is supported but there may be more than one in the future.
     """
-    # TODO: future, add in functionality so we can reuse this for individual datasets, events, etc
+    # TODO: unit test new functionality
     result = {}
     asset_type = asset_type.lower()
     if asset_type == DeviceEndpointType.OPCUA.value.lower():
@@ -379,21 +1071,21 @@ def _process_configs(
         # not allowed: streams
         # still waiting on opcua mgmt group schemas
         result = {
-            "defaultDatasetsConfiguration": _process_opcua_dataset_configurations(
+            "datasetsConfiguration": _process_opcua_dataset_configurations(
                 **kwargs
             ),
-            "defaultEventsConfiguration": _process_opcua_event_configurations(
+            "eventsConfiguration": _process_opcua_event_configurations(
                 **kwargs
             ),
-            "defaultManagementGroupsConfiguration": process_additional_configuration(
+            "managementGroupsConfiguration": process_additional_configuration(
                 additional_configuration=kwargs.get("mgmt_custom_configuration"),
                 config_type="management group"
             ),
-            "defaultDatasetsDestinations": _build_destination(
+            "datasetsDestinations": _build_destination(
                 destination_args=kwargs.get("datasets_destinations", []),
                 allowed_types=["Mqtt"]
             ),
-            "defaultEventsDestinations": _build_destination(
+            "eventsDestinations": _build_destination(
                 destination_args=kwargs.get("events_destinations", []),
                 allowed_types=["Mqtt"]
             ),
@@ -403,11 +1095,15 @@ def _process_configs(
         # not allowed: datasets, streams
         # still waiting on onvif schemas
         result = {
-            "defaultEventsConfiguration": process_additional_configuration(
+            "eventsConfiguration": process_additional_configuration(
                 additional_configuration=kwargs.get("events_custom_configuration"),
                 config_type="event"
             ),
-            "defaultEventsDestinations": _build_destination(
+            "managementGroupsConfiguration": process_additional_configuration(
+                additional_configuration=kwargs.get("mgmt_custom_configuration"),
+                config_type="management group"
+            ),
+            "eventsDestinations": _build_destination(
                 destination_args=kwargs.get("events_destinations", []),
                 allowed_types=["Mqtt"]
             )
@@ -416,10 +1112,10 @@ def _process_configs(
         # allowed: streams, destinations can be mqtt or storage
         # not allowed: datasets, events, mgmt groups
         result = {
-            "defaultStreamsConfiguration": _process_media_stream_configurations(
+            "streamsConfiguration": _process_media_stream_configurations(
                 **kwargs
             ),
-            "defaultStreamsDestinations": _build_destination(
+            "streamsDestinations": _build_destination(
                 destination_args=kwargs.get("streams_destinations", []),
                 allowed_types=["Storage", "Mqtt"]
             )
@@ -427,32 +1123,39 @@ def _process_configs(
     else:
         # Custom - treat everything as an overwrite
         result = {
-            "defaultDatasetsConfiguration": process_additional_configuration(
+            "datasetsConfiguration": process_additional_configuration(
                 additional_configuration=kwargs.get("datasets_custom_configuration"),
                 config_type="dataset"
             ),
-            "defaultEventsConfiguration": process_additional_configuration(
+            "eventsConfiguration": process_additional_configuration(
                 additional_configuration=kwargs.get("events_custom_configuration"),
                 config_type="event"
             ),
-            "defaultManagementGroupsConfiguration": process_additional_configuration(
+            "managementGroupsConfiguration": process_additional_configuration(
                 additional_configuration=kwargs.get("mgmt_custom_configuration"),
                 config_type="management group"
             ),
-            "defaultStreamsConfiguration": process_additional_configuration(
+            "streamsConfiguration": process_additional_configuration(
                 additional_configuration=kwargs.get("streams_custom_configuration"),
                 config_type="stream"
             ),
-            "defaultDatasetsDestinations": _build_destination(
+            "datasetsDestinations": _build_destination(
                 destination_args=kwargs.get("datasets_destinations", []),
             ),
-            "defaultEventsDestinations": _build_destination(
+            "eventsDestinations": _build_destination(
                 destination_args=kwargs.get("events_destinations", []),
             ),
-            "defaultStreamsDestinations": _build_destination(
+            "streamsDestinations": _build_destination(
                 destination_args=kwargs.get("streams_destinations", []),
             )
         }
+
+    # if default, captalize and add in "default" to key
+    if default:
+        for key in list(result.keys()):
+            # Capitalize the first letter of OG key
+            new_key = "default" + key[0].upper() + key[1:]
+            result[new_key] = result.pop(key)
 
     # pop empty values:
     result = {k: v for k, v in result.items() if v}
@@ -745,6 +1448,7 @@ def _update_asset_props(
     serial_number: Optional[str] = None,
     software_revision: Optional[str] = None,
 ):
+    # TODO: currently max num of asset type ref is 1
     if asset_type_refs:
         properties["assetTypeRefs"] = asset_type_refs
     if attributes:

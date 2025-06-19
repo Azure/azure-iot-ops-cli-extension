@@ -197,7 +197,7 @@ def ensure_schema_structure(schema: dict, input_data: dict):
                             f"instead got {value}"
                         )
             # maybe add popping keys that are not there?
-
+    properties = schema.get("properties", {})
     _recursive_check(schema["properties"], input_data)
     if invalid_items:
         error_msg = ', \n'.join(invalid_items)
@@ -207,7 +207,7 @@ def ensure_schema_structure(schema: dict, input_data: dict):
 def process_additional_configuration(
     additional_configuration: Optional[str] = None,
     config_type: str = "additional",
-    **kwargs
+    **_
 ) -> Optional[str]:
     """
     Checks that the custom configuration is a valid JSON and returns the stringified JSON.

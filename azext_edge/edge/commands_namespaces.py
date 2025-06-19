@@ -921,3 +921,573 @@ def query_namespace_assets(
         device_name=device_name,
         device_endpoint_name=device_endpoint_name
     )
+
+
+# ASSET DATASET COMMANDS
+def add_namespace_custom_asset_dataset(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    dataset_name: str,
+    dataset_data_source: str,
+    dataset_configuration: Optional[str] = None,
+    dataset_destinations: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_dataset(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name,
+        # dataset_type="custom",
+        dataset_data_source=dataset_data_source,
+        datasets_custom_configuration=dataset_configuration,
+        dataset_destinations=dataset_destinations,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_opcua_asset_dataset(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    dataset_name: str,
+    dataset_data_source: str,
+    dataset_destinations: Optional[str] = None,
+    opcua_dataset_publishing_interval: Optional[int] = None,
+    opcua_dataset_sampling_interval: Optional[int] = None,
+    opcua_dataset_queue_size: Optional[int] = None,
+    opcua_dataset_key_frame_count: Optional[int] = None,
+    opcua_dataset_start_instance: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_dataset(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name,
+        # dataset_type=DeviceEndpointType.OPCUA.value,
+        dataset_data_source=dataset_data_source,
+        dataset_destinations=dataset_destinations,
+        opcua_dataset_publishing_interval=opcua_dataset_publishing_interval,
+        opcua_dataset_sampling_interval=opcua_dataset_sampling_interval,
+        opcua_dataset_queue_size=opcua_dataset_queue_size,
+        opcua_dataset_key_frame_count=opcua_dataset_key_frame_count,
+        opcua_dataset_start_instance=opcua_dataset_start_instance,
+        replace=replace,
+        **kwargs
+    )
+
+
+def list_namespace_asset_datasets(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str
+) -> List[dict]:
+    return NamespaceAssets(cmd).list_datasets(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+
+
+def show_namespace_asset_dataset(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    dataset_name: str
+) -> dict:
+    return NamespaceAssets(cmd).show_dataset(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name
+    )
+
+
+def update_namespace_custom_asset_dataset(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    dataset_name: str,
+    dataset_data_source: Optional[str] = None,
+    dataset_configuration: Optional[str] = None,
+    dataset_destinations: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_dataset(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name,
+        # dataset_type="custom",
+        dataset_data_source=dataset_data_source,
+        datasets_custom_configuration=dataset_configuration,
+        dataset_destinations=dataset_destinations,
+        **kwargs
+    )
+
+
+def update_namespace_opcua_asset_dataset(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    dataset_name: str,
+    dataset_data_source: Optional[str] = None,
+    dataset_destinations: Optional[str] = None,
+    opcua_dataset_publishing_interval: Optional[int] = None,
+    opcua_dataset_sampling_interval: Optional[int] = None,
+    opcua_dataset_queue_size: Optional[int] = None,
+    opcua_dataset_key_frame_count: Optional[int] = None,
+    opcua_dataset_start_instance: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_dataset(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name,
+        # dataset_type=DeviceEndpointType.OPCUA.value,
+        dataset_data_source=dataset_data_source,
+        dataset_destinations=dataset_destinations,
+        opcua_dataset_publishing_interval=opcua_dataset_publishing_interval,
+        opcua_dataset_sampling_interval=opcua_dataset_sampling_interval,
+        opcua_dataset_queue_size=opcua_dataset_queue_size,
+        opcua_dataset_key_frame_count=opcua_dataset_key_frame_count,
+        opcua_dataset_start_instance=opcua_dataset_start_instance,
+        **kwargs
+    )
+
+
+def remove_namespace_asset_dataset(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    dataset_name: str,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).remove_dataset(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name,
+        **kwargs
+    )
+
+
+# ASSET DATASET DATAPOINT COMMANDS
+def add_namespace_custom_asset_dataset_point(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    dataset_name: str,
+    datapoint_name: str,
+    data_source: str,
+    custom_configuration: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_dataset_datapoint(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name,
+        # datapoint_type="custom",
+        datapoint_name=datapoint_name,
+        data_source=data_source,
+        custom_configuration=custom_configuration,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_opcua_asset_dataset_point(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    dataset_name: str,
+    datapoint_name: str,
+    data_source: str,
+    queue_size: Optional[int] = None,
+    sampling_interval: Optional[int] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_dataset_datapoint(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name,
+        # datapoint_type=DeviceEndpointType.OPCUA.value,
+        datapoint_name=datapoint_name,
+        data_source=data_source,
+        opcua_queue_size=queue_size,
+        opcua_sampling_interval=sampling_interval,
+        replace=replace,
+        **kwargs
+    )
+
+
+def list_namespace_asset_dataset_points(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    dataset_name: str
+) -> List[dict]:
+    return NamespaceAssets(cmd).list_dataset_datapoints(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name
+    )
+
+
+def remove_namespace_asset_dataset_point(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    dataset_name: str,
+    datapoint_name: str,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).remove_dataset_datapoint(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        dataset_name=dataset_name,
+        datapoint_name=datapoint_name,
+        **kwargs
+    )
+
+
+# ASSET EVENT COMMANDS
+def add_namespace_custom_asset_event(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    event_notifier: str,
+    event_configuration: Optional[str] = None,
+    event_destinations: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_event(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        # event_type="custom",
+        event_notifier=event_notifier,
+        events_custom_configuration=event_configuration,
+        events_destinations=event_destinations,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_opcua_asset_event(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    event_notifier: str,
+    event_destinations: Optional[str] = None,
+    opcua_event_publishing_interval: Optional[int] = None,
+    opcua_event_queue_size: Optional[int] = None,
+    opcua_event_filter_type: Optional[str] = None,
+    opcua_event_filter_clauses: Optional[List[List[str]]] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_event(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        # event_type=DeviceEndpointType.OPCUA.value,
+        event_notifier=event_notifier,
+        events_destinations=event_destinations,
+        opcua_event_publishing_interval=opcua_event_publishing_interval,
+        opcua_event_queue_size=opcua_event_queue_size,
+        opcua_event_filter_type=opcua_event_filter_type,
+        opcua_event_filter_clauses=opcua_event_filter_clauses,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_onvif_asset_event(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    event_notifier: str,
+    event_destinations: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_event(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        # event_type=DeviceEndpointType.ONVIF.value,
+        event_notifier=event_notifier,
+        events_destinations=event_destinations,
+        replace=replace,
+        **kwargs
+    )
+
+
+def list_namespace_asset_events(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str
+) -> List[dict]:
+    return NamespaceAssets(cmd).list_events(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name
+    )
+
+
+def show_namespace_asset_event(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str
+) -> dict:
+    return NamespaceAssets(cmd).show_event(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name
+    )
+
+
+def update_namespace_custom_asset_event(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    event_notifier: Optional[str] = None,
+    event_configuration: Optional[str] = None,
+    event_destinations: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_event(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        # event_type="custom",
+        event_notifier=event_notifier,
+        events_custom_configuration=event_configuration,
+        events_destinations=event_destinations,
+        **kwargs
+    )
+
+
+def update_namespace_opcua_asset_event(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    event_notifier: Optional[str] = None,
+    event_destinations: Optional[str] = None,
+    opcua_event_publishing_interval: Optional[int] = None,
+    opcua_event_queue_size: Optional[int] = None,
+    opcua_event_start_instance: Optional[str] = None,
+    opcua_event_filter_type: Optional[str] = None,
+    opcua_event_filter_clauses: Optional[List[List[str]]] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_event(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        # event_type=DeviceEndpointType.OPCUA.value,
+        event_notifier=event_notifier,
+        events_destinations=event_destinations,
+        opcua_event_publishing_interval=opcua_event_publishing_interval,
+        opcua_event_queue_size=opcua_event_queue_size,
+        opcua_event_start_instance=opcua_event_start_instance,
+        opcua_event_filter_type=opcua_event_filter_type,
+        opcua_event_filter_clauses=opcua_event_filter_clauses,
+        **kwargs
+    )
+
+
+def update_namespace_onvif_asset_event(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    event_notifier: Optional[str] = None,
+    event_destinations: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_event(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        # event_type=DeviceEndpointType.ONVIF.value,
+        event_notifier=event_notifier,
+        events_destinations=event_destinations,
+        **kwargs
+    )
+
+
+def remove_namespace_asset_event(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).remove_event(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        **kwargs
+    )
+
+
+# ASSET EVENT DATAPOINT COMMANDS
+def add_namespace_custom_asset_event_point(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    datapoint_name: str,
+    data_source: str,
+    custom_configuration: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_event_datapoint(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        # datapoint_type="custom",
+        datapoint_name=datapoint_name,
+        data_source=data_source,
+        custom_configuration=custom_configuration,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_opcua_asset_event_point(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    datapoint_name: str,
+    data_source: str,
+    queue_size: Optional[int] = None,
+    sampling_interval: Optional[int] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_event_datapoint(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        # datapoint_type=DeviceEndpointType.OPCUA.value,
+        datapoint_name=datapoint_name,
+        data_source=data_source,
+        opcua_queue_size=queue_size,
+        opcua_sampling_interval=sampling_interval,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_onvif_asset_event_point(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    datapoint_name: str,
+    data_source: str,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_event_datapoint(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        # datapoint_type=DeviceEndpointType.ONVIF.value,
+        datapoint_name=datapoint_name,
+        data_source=data_source,
+        replace=replace,
+        **kwargs
+    )
+
+
+def list_namespace_asset_event_points(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str
+) -> List[dict]:
+    return NamespaceAssets(cmd).list_event_datapoints(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name
+    )
+
+
+def remove_namespace_asset_event_point(
+    cmd,
+    asset_name: str,
+    namespace_name: str,
+    resource_group_name: str,
+    event_name: str,
+    datapoint_name: str,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).remove_event_datapoint(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+        event_name=event_name,
+        datapoint_name=datapoint_name,
+        **kwargs
+    )

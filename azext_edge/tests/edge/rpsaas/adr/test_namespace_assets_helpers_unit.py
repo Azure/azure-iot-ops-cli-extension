@@ -15,11 +15,14 @@ from azure.cli.core.azclierror import (
 
 from azext_edge.edge.providers.rpsaas.adr.namespace_assets import (
     _build_destination,
+    _create_datapoint,
+    _get_event,
     _process_opcua_dataset_configurations,
     _process_opcua_event_configurations,
     _process_media_stream_configurations
 )
 from azext_edge.edge.util.common import parse_kvp_nargs
+from ....generators import generate_random_string
 
 
 @pytest.fixture()
@@ -501,7 +504,18 @@ def test_process_media_stream_configurations(test_case):
         "params": {"task_type": "snapshot-to-mqtt", "task_format": "mp4"},
         "expected_error": InvalidArgumentValueError,
         "expected_msg": "Invalid format for snapshot task:"
-    }
+    },
+    # Invalid numbers
+    {
+        "original": None,
+        "params": {
+            "task_type": "snapshot-to-mqtt",
+            "task_format": "png",
+            "snapshots_per_second": -1
+        },
+        "expected_error": InvalidArgumentValueError,
+        "expected_msg": "Invalid input data:"
+    },
 ])
 def test_process_media_stream_configurations_error(test_case):
     """Test error conditions when processing media stream configurations."""
@@ -512,3 +526,188 @@ def test_process_media_stream_configurations_error(test_case):
         )
 
     assert test_case["expected_msg"] in str(excinfo.value)
+
+
+@pytest.mark.parametrize("test_case", [
+    # Basic datapoint with only required parameters
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1"
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1"
+        }
+    },
+    # Datapoint with type reference
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "type_ref": "dtmi:contoso:datatype:temperature;1"
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "typeRef": "dtmi:contoso:datatype:temperature;1"
+        }
+    },
+    # Datapoint with custom configuration
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "custom_configuration": '{"customSetting": "value"}'
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "additionalConfiguration": '{"customSetting": "value"}'
+        }
+    },
+    # Datapoint with OPC UA configuration (queue_size only)
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "queue_size": 10
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "additionalConfiguration": '{"queueSize": 10}'
+        }
+    },
+    # Datapoint with OPC UA configuration (sampling_interval only)
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "sampling_interval": 500
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "additionalConfiguration": '{"samplingInterval": 500}'
+        }
+    },
+    # Datapoint with OPC UA configuration (both queue_size and sampling_interval)
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "queue_size": 10,
+            "sampling_interval": 500
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "additionalConfiguration": '{"queueSize": 10, "samplingInterval": 500}'
+        }
+    },
+    # Datapoint with all parameters
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "type_ref": "dtmi:contoso:datatype:temperature;1",
+            "queue_size": 10,
+            "sampling_interval": 500,
+            "custom_configuration": "myconfig.json"
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "typeRef": "dtmi:contoso:datatype:temperature;1",
+            "additionalConfiguration": '{"customSetting": "value"}'
+        }
+    }
+])
+def test_create_datapoint(test_case, mocker):
+    # Setup mocks if needed
+    mocker.patch(
+        "azext_edge.edge.providers.rpsaas.adr.namespace_assets.process_additional_configuration",
+        return_value='{"customSetting": "value"}'
+    )
+
+    # Call the function under test
+    result = _create_datapoint(**test_case["params"])
+
+    # Verify expected results
+    assert result["name"] == test_case["expected"]["name"]
+    assert result["dataSource"] == test_case["expected"]["dataSource"]
+
+    # Check optional fields
+    if "typeRef" in test_case["expected"]:
+        assert result["typeRef"] == test_case["expected"]["typeRef"]
+    else:
+        assert "typeRef" not in result
+
+    if "additionalConfiguration" in test_case["expected"]:
+        # For additionalConfiguration, we need to compare parsed JSON since the string order might be different
+        test_config = json.loads(test_case["expected"]["additionalConfiguration"])
+        assert json.loads(result["additionalConfiguration"]) == test_config
+    else:
+        assert "additionalConfiguration" not in result or result["additionalConfiguration"] == "{}"
+
+
+@pytest.mark.parametrize("num_events", [1, 5, 10])
+def test_get_event(num_events: int):
+    from .test_namespace_asset_events_unit import generate_event
+    test_event = generate_random_string()
+    asset = {
+        "name": "testAsset",
+        "properties": {
+            "events": []
+        }
+    }
+
+    for i in range(num_events):
+        asset["properties"]["events"].append(generate_event(f"testEvent{i}"))
+
+    # Set up events in asset properties
+    asset["properties"]["events"].append(generate_event(test_event))
+
+    # Test success case
+    result = _get_event(asset, test_event)
+    assert result["name"] == test_event
+    # lazy way cause the event is last
+    assert result == asset["properties"]["events"][-1]
+
+
+@pytest.mark.parametrize("test_case", [
+    {
+        "event_name": generate_random_string(),
+        "events": [
+            {
+                "name": f"another{generate_random_string()}",
+                "eventNotifier": "nsu=test;s=FastUInt456",
+            }
+        ],
+    },
+    {
+        "event_name": generate_random_string(),
+        "events": [],
+    },
+    {
+        "event_name": generate_random_string(),
+        "events": None,
+    }
+])
+def test_get_event_error(test_case):
+    """Test error handling when an event is not found in an asset."""
+    asset = {
+        "name": "testAsset",
+        "properties": {}
+    }
+
+    # Set up events in asset properties if provided
+    if test_case["events"] is not None:
+        asset["properties"]["events"] = test_case["events"]
+
+    # Test error cases
+    with pytest.raises(InvalidArgumentValueError) as ex:
+        _get_event(asset, test_case["event_name"])
+    error_msg = f"Event '{test_case['event_name']}' not found in asset '{asset['name']}'."
+    assert error_msg in str(ex.value)

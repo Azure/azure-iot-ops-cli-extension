@@ -15,7 +15,7 @@ from ....util.queryable import Queryable
 from ....common import ListableEnum
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistryrefreshmgmt.operations import NamespacesOperations, NamespaceDevicesOperations
+    from ....vendor.clients.deviceregistrymgmt_v2.operations import NamespacesOperations, NamespaceDevicesOperations
     from ....vendor.clients.resourcesmgmt.operations import ResourcesOperations
 
 

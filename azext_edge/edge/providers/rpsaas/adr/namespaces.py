@@ -14,7 +14,7 @@ from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistryrefreshmgmt.operations import NamespacesOperations
+    from ....vendor.clients.deviceregistrymgmt_v2.operations import NamespacesOperations
     from ....vendor.clients.resourcesmgmt.operations import ResourcesOperations
 
 

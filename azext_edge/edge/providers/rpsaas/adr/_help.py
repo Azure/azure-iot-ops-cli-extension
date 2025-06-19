@@ -503,10 +503,10 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns create -n myNamespace -g myResourceGroup
 
-        - name: Create a namespace with system-assigned managed identity enabled, custom location, and tags
+        - name: Create a namespace with system-assigned managed identity enabled and tags
           text: >
             az iot ops ns create -n myNamespace -g myResourceGroup --mi-system-assigned
-            --location "eastus" --tags env=prod department=operations
+            --tags env=prod department=operations
     """
 
     helps[
