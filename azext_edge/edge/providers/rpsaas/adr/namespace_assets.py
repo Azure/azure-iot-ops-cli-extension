@@ -19,7 +19,7 @@ from azure.cli.core.azclierror import (
 from ....util.common import parse_kvp_nargs, should_continue_prompt
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.queryable import Queryable
-from .helpers import check_cluster_connectivity, process_additional_configuration, ensure_schema_structure
+from .helpers import process_additional_configuration, ensure_schema_structure
 from .namespace_devices import DeviceEndpointType
 
 if TYPE_CHECKING:
@@ -163,13 +163,19 @@ class NamespaceAssets(Queryable):
         self,
         asset_name: str,
         namespace_name: str,
-        resource_group_name: str
+        resource_group_name: str,
+        check_cluster: bool = False
     ) -> dict:
-        return self.ops.get(
+        asset = self.ops.get(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
             asset_name=asset_name
         )
+        if check_cluster:
+            from .helpers import check_cluster_connectivity
+            check_cluster_connectivity(self.cmd, asset)
+
+        return asset
 
     # note the usage of Azure Resource Graph over the list api
     def query_assets(
@@ -313,29 +319,31 @@ class NamespaceAssets(Queryable):
         asset_name: str,
         namespace_name: str,
         resource_group_name: str,
+        asset_type: str,
         dataset_name: str,
         dataset_data_source: str,
         datasets_destinations: Optional[List[str]] = None,
+        replace: bool = False,
         # TODO: future pr, import datapoints from file
         **kwargs
     ):
+        # TODO: future, multi data support
         if dataset_name != "default":
             raise InvalidArgumentValueError(
                 "Currently only one dataset with the name 'default' is supported. "
                 "Please use 'default' as the dataset name."
             )
-        expected_type = "custom" if kwargs.get("datasets_custom_configuration") else DeviceEndpointType.OPCUA.value
         asset = self._check_device_props(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
-            asset_type=expected_type,
+            asset_type=asset_type,
             asset_name=asset_name
         )
         # get the datasets from the asset
         datasets = asset["properties"].get("datasets", [])
 
         # current restriction to one dataset
-        if datasets:
+        if datasets and not replace:
             raise InvalidArgumentValueError(
                 "Currently only one dataset with the name 'default' is supported. "
                 "Please use 'default' as the dataset name. If you want to update the dataset properties, "
@@ -344,12 +352,12 @@ class NamespaceAssets(Queryable):
 
         # create the dataset
         processed_configs = _process_configs(
-            asset_type=expected_type,
+            asset_type=asset_type,
             default=False,
             datasets_destinations=datasets_destinations,
             **kwargs
         )
-        datasets.append(
+        datasets = [
             {
                 "name": dataset_name,
                 "dataSource": dataset_data_source,
@@ -357,7 +365,7 @@ class NamespaceAssets(Queryable):
                 "destinations": processed_configs.get("datasetsDestinations", []),
                 "datapoints": [],  # TODO: future pr, add datapoints
             }
-        )
+        ]
 
         update_payload = {
             "properties": {
@@ -372,7 +380,7 @@ class NamespaceAssets(Queryable):
                 properties=update_payload
             )
             datasets = wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]
-            return next([dset for dset in datasets if dset["name"] == dataset_name])
+            return next(dset for dset in datasets if dset["name"] == dataset_name)
 
     def list_datasets(self, asset_name: str, namespace_name: str, resource_group_name: str) -> List[dict]:
         asset = self.show(
@@ -397,18 +405,17 @@ class NamespaceAssets(Queryable):
         asset_name: str,
         namespace_name: str,
         resource_group_name: str,
+        asset_type: str,
         dataset_name: str,
-        # TODO: what should be updatable?
         dataset_data_source: Optional[str] = None,
         dataset_type_ref: Optional[str] = None,
         datasets_destinations: Optional[List[str]] = None,
         **kwargs
     ):
-        expected_type = "custom" if kwargs.get("datasets_custom_configuration") else DeviceEndpointType.OPCUA.value
         asset = self._check_device_props(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
-            asset_type=expected_type,
+            asset_type=asset_type,
             asset_name=asset_name
         )
         # get the datasets from the asset
@@ -423,7 +430,7 @@ class NamespaceAssets(Queryable):
 
         # process the configs + destinations
         processed_configs = _process_configs(
-            asset_type=expected_type,
+            asset_type=asset_type,
             default=False,
             original_dataset_configuration=dataset.get("datasetConfiguration"),
             datasets_destinations=datasets_destinations,
@@ -452,7 +459,7 @@ class NamespaceAssets(Queryable):
                 properties=update_payload
             )
             datasets = wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]
-            return next([dset for dset in datasets if dset["name"] == dataset_name])
+            return next(dset for dset in datasets if dset["name"] == dataset_name)
 
     def remove_dataset(
         self, asset_name: str, namespace_name: str, resource_group_name: str, dataset_name: str, **kwargs
@@ -460,11 +467,9 @@ class NamespaceAssets(Queryable):
         asset = self.show(
             asset_name=asset_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            resource_group_name=resource_group_name,
+            check_cluster=True
         )
-
-        # ensure cluster is connected for the update
-        check_cluster_connectivity(self.cmd, asset)
 
         datasets = asset["properties"].get("datasets", [])
         # note that delete should be ok with dataset not there
@@ -488,6 +493,7 @@ class NamespaceAssets(Queryable):
         asset_name: str,
         namespace_name: str,
         resource_group_name: str,
+        asset_type: str,
         dataset_name: str,
         datapoint_name: str,
         data_source: str,
@@ -503,7 +509,7 @@ class NamespaceAssets(Queryable):
         asset = self._check_device_props(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
-            asset_type=[DeviceEndpointType.OPCUA.value, "custom"],
+            asset_type=asset_type,
             asset_name=asset_name
         )
         dataset = _get_dataset(asset, dataset_name, create_if_none=True)
@@ -566,11 +572,9 @@ class NamespaceAssets(Queryable):
         asset = self.show(
             asset_name=asset_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            resource_group_name=resource_group_name,
+            check_cluster=True
         )
-
-        # ensure cluster is connected for the update
-        check_cluster_connectivity(self.cmd, asset)
 
         dataset = _get_dataset(asset, dataset_name)
         datapoints = dataset.get("datapoints", [])
@@ -598,6 +602,7 @@ class NamespaceAssets(Queryable):
         asset_name: str,
         namespace_name: str,
         resource_group_name: str,
+        asset_type: str,
         event_name: str,
         event_notifier: str,
         event_destinations: Optional[List[str]] = None,  # this can go into kwargs
@@ -605,13 +610,10 @@ class NamespaceAssets(Queryable):
         # TODO: future pr, add datapoints
         **kwargs
     ) -> dict:
-        expected_type = "custom" if kwargs.get("events_custom_configuration") else [
-            DeviceEndpointType.OPCUA.value, DeviceEndpointType.ONVIF.value
-        ]
         asset = self._check_device_props(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
-            asset_type=expected_type,
+            asset_type=asset_type,
             asset_name=asset_name
         )
         events = asset["properties"].get("events", [])
@@ -625,7 +627,7 @@ class NamespaceAssets(Queryable):
 
         # create the event
         processed_configs = _process_configs(
-            asset_type=expected_type,
+            asset_type=asset_type,
             default=False,
             event_destinations=event_destinations,
             **kwargs
@@ -633,7 +635,7 @@ class NamespaceAssets(Queryable):
         unmatched_events.append(
             {
                 "name": event_name,
-                "notifier": event_notifier,
+                "eventNotifier": event_notifier,
                 "eventConfiguration": processed_configs.get("eventsConfiguration"),
                 "destinations": processed_configs.get("eventsDestinations", []),
                 "datapoints": []  # TODO: future pr, add datapoints
@@ -653,7 +655,7 @@ class NamespaceAssets(Queryable):
                 properties=update_payload
             )
             events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
-            return next([event for event in events if event["name"] == event_name])
+            return next(event for event in events if event["name"] == event_name)
 
     def list_events(self, asset_name: str, namespace_name: str, resource_group_name: str) -> List[dict]:
         asset = self.show(
@@ -679,11 +681,9 @@ class NamespaceAssets(Queryable):
         asset = self.show(
             asset_name=asset_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            resource_group_name=resource_group_name,
+            check_cluster=True
         )
-
-        # ensure cluster is connected for the update
-        check_cluster_connectivity(self.cmd, asset)
 
         events = asset["properties"].get("events", [])
         # note that delete should be ok with event not there
@@ -713,15 +713,13 @@ class NamespaceAssets(Queryable):
         asset_name: str,
         namespace_name: str,
         resource_group_name: str,
+        asset_type: str,
         event_name: str,
         event_notifier: Optional[str] = None,
         type_ref: Optional[str] = None,
         event_destinations: Optional[List[str]] = None,
         **kwargs
     ):
-        asset_type = "custom" if kwargs.get("events_custom_configuration") else [
-            DeviceEndpointType.OPCUA.value, DeviceEndpointType.ONVIF.value
-        ]
         asset = self._check_device_props(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
@@ -764,13 +762,14 @@ class NamespaceAssets(Queryable):
                 properties=update_payload
             )
             events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
-            return next([event for event in events if event["name"] == event_name])
+            return next(event for event in events if event["name"] == event_name)
 
     def add_event_datapoint(
         self,
         asset_name: str,
         namespace_name: str,
         resource_group_name: str,
+        asset_type: str,
         event_name: str,
         datapoint_name: str,
         data_source: str,
@@ -783,9 +782,6 @@ class NamespaceAssets(Queryable):
         **kwargs
     ) -> dict:
         # note that event datapoints do not have type-refs
-        asset_type = "custom" if kwargs.get("events_custom_configuration") else [
-            DeviceEndpointType.OPCUA.value, DeviceEndpointType.ONVIF.value
-        ]
         asset = self._check_device_props(
             resource_group_name=resource_group_name,
             namespace_name=namespace_name,
@@ -857,10 +853,9 @@ class NamespaceAssets(Queryable):
         asset = self.show(
             asset_name=asset_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            resource_group_name=resource_group_name,
+            check_cluster=True
         )
-        # ensure cluster is connected for the update
-        check_cluster_connectivity(self.cmd, asset)
 
         event = _get_event(asset, event_name)
         datapoints = event.get("dataPoints", [])
@@ -905,7 +900,7 @@ class NamespaceAssets(Queryable):
         asset_type: Union[List[str], str],  # change to list
         asset_name: Optional[str] = None,
         device_name: Optional[str] = None,
-        device_endpoint_name: Optional[str] = None,
+        device_endpoint_name: Optional[str] = None
     ) -> dict:
         """
         Checks the device properties to ensure the endpoint type matches the asset operation's type.
@@ -917,10 +912,12 @@ class NamespaceAssets(Queryable):
         If asset_name is provided (in the case of the asset is already created), it will retrieve the
         asset to populate the device_name and device_endpoint_name.
         """
+        from azext_edge.edge.providers.rpsaas.adr.helpers import check_cluster_connectivity
+
         asset = None
         if asset_name:
             # get the asset to populate the device name and endpoint name
-            asset = self.ops.get(
+            asset = self.show(
                 resource_group_name=resource_group_name,
                 namespace_name=namespace_name,
                 asset_name=asset_name
@@ -1366,8 +1363,8 @@ def _build_destination(
         "target": "Mqtt",
         "configuration": {
             "topic": "/contoso/test",
-            "retain": "Never",
-            "qos": "Qos0",
+            "retain": "Never",  # TODO: enum for this, Keep
+            "qos": "Qos0",  # TODO: enum for this, Qos1
             "ttl": 3600
         }
     }]

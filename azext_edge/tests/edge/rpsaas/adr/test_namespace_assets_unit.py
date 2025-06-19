@@ -84,7 +84,7 @@ def add_device_get_call(
     namespace_name: str,
     resource_group_name: str,
     endpoint_name: str,
-    endpoint_type: str
+    endpoint_type: Optional[str] = "custom"
 ):
     """Add a mock GET call for a namespace device.
 

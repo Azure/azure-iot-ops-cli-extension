@@ -27,7 +27,10 @@ from azext_edge.edge.commands_namespaces import (
     list_namespace_asset_event_points,
     remove_namespace_asset_event_point
 )
-from .test_namespace_assets_unit import get_namespace_asset_mgmt_uri, get_namespace_asset_record
+
+from .test_namespace_assets_unit import (
+    get_namespace_asset_mgmt_uri, get_namespace_asset_record, add_device_get_call
+)
 from ....generators import generate_random_string
 
 
@@ -74,34 +77,26 @@ def generate_event(event_name: Optional[str] = None, num_data_points: int = 0) -
     return event
 
 
-def _check_event_configuration(added_event: dict, config_params: dict):
+def _check_event_configuration(added_event: dict, expected_event: dict):
     """Helper function to check event configuration."""
-    if not config_params:
-        return
-
-    if "event_configuration" in config_params:  # custom
-        assert added_event["eventConfiguration"] == config_params["event_configuration"]
-    elif "opcua_event_publishing_interval" in config_params:  # opcua
-        config = json.loads(added_event["eventConfiguration"])
-        assert config["publishingInterval"] == config_params["opcua_event_publishing_interval"]
-        assert config["queueSize"] == config_params["opcua_event_queue_size"]
-        assert config["startInstance"] == config_params["opcua_event_start_instance"]
-        assert config["filter"]["type"] == config_params["opcua_event_filter_type"]
+    if expected_event and "eventConfiguration" in expected_event:  # custom
+        assert added_event["eventConfiguration"] == expected_event["eventConfiguration"]
 
 
 def _check_event_destinations(added_event: dict, expected_event: Optional[dict] = None):
     """Helper function to check event destinations."""
-    if not expected_event:
+    if not expected_event or "destinations" not in expected_event:
         return
 
     added_destinations = added_event.get("destinations", [])
-    assert len(added_destinations) == 1
+    assert len(added_destinations) == len(expected_event["destinations"])
     destination = added_destinations[0]
-    assert destination.get("target") == expected_event.get("target")
+    expected_destination = expected_event["destinations"][0]
+    assert destination.get("target") == expected_destination.get("target")
 
     if destination.get("target") == "Mqtt":
         result_config = destination.get("configuration", {})
-        expected_config = expected_event.get("configuration", {})
+        expected_config = expected_destination.get("configuration", {})
         assert result_config.get("topic") == expected_config.get("topic")
         assert result_config.get("retain") == expected_config.get("retain")
         assert result_config.get("qos") == expected_config.get("qos")
@@ -156,16 +151,27 @@ def test_add_namespace_asset_event(
                 "priority": "high"
             })
         elif asset_type == "opcua":
+            clause = {"path": "test", "type": "SimpleEvents", "field": "testField"}
             config_params["opcua_event_publishing_interval"] = 1000
             config_params["opcua_event_queue_size"] = 5
             config_params["opcua_event_start_instance"] = "i=2253"
             config_params["opcua_event_filter_type"] = "SimpleEvents"
+            config_params["opcua_event_filter_clauses"] = [[
+                f"{key}={value}" for key, value in clause.items()
+            ]]
             expected_event["eventConfiguration"] = json.dumps({
                 "publishingInterval": config_params["opcua_event_publishing_interval"],
                 "queueSize": config_params["opcua_event_queue_size"],
                 "startInstance": config_params["opcua_event_start_instance"],
-                "filter": {
-                    "type": config_params["opcua_event_filter_type"]
+                "eventFilter": {
+                    "typeDefinitionId": config_params["opcua_event_filter_type"],
+                    "selectClauses": [
+                        {
+                            "browsePath": clause["path"],
+                            "typeDefinitionId": clause["type"],
+                            "fieldId": clause["field"]
+                        }
+                    ]
                 }
             })
 
@@ -176,26 +182,12 @@ def test_add_namespace_asset_event(
             "configuration": {
                 "topic": "/contoso/events/test",
                 "retain": "Keep",
-                "qos": 0,
+                "qos": "Qos0",
                 "ttl": 3600
             }
         }
         expected_event["destinations"] = [mqtt_dest]
         config_params["event_destinations"] = [f"{key}={value}" for key, value in mqtt_dest["configuration"].items()]
-
-    # Add destination if present
-    if has_destinations:
-        expected_event["destinations"] = [
-            {
-                "target": "Mqtt",
-                "configuration": {
-                    "topic": "/contoso/events/test",
-                    "retain": "Keep",
-                    "qos": "Qos0",
-                    "ttl": 3600
-                }
-            }
-        ]
 
     # Generate mock asset
     mocked_asset = get_namespace_asset_record(
@@ -203,20 +195,25 @@ def test_add_namespace_asset_event(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
+    add_device_get_call(
+        mocked_responses,
+        resource_group_name=resource_group_name,
+        namespace_name=namespace_name,
+        device_name=mocked_asset["properties"]["deviceRef"]["deviceName"],
+        endpoint_name=mocked_asset["properties"]["deviceRef"]["endpointName"],
+        endpoint_type=asset_type
+    )
 
     # Add previous events if needed for the test case
-    previous_events = []
     if has_previous_events:
         # Add 2 existing events
-        previous_events = [
+        mocked_asset["properties"]["events"] = [
             generate_event(num_data_points=randint(0, 2)) for _ in range(2)
         ]
 
         # If testing replace, add an event with the same name to be replaced
         if replace_event:
-            previous_events.append(generate_event(event_name=event_name))
-
-        mocked_asset["properties"]["events"] = previous_events
+            mocked_asset["properties"]["events"].append(generate_event(event_name=event_name))
 
     # Mock GET request to get the asset
     mocked_responses.add(
@@ -232,11 +229,13 @@ def test_add_namespace_asset_event(
 
     # Create updated asset for mock response
     updated_asset = deepcopy(mocked_asset)
-    updated_asset["properties"]["events"] = []
+    updated_asset["properties"]["events"] = updated_asset["properties"].get("events", [])
 
     # If replacing, keep only non-matching events
     if replace_event:
-        updated_asset["properties"]["events"] = [e for e in previous_events if e["name"] != event_name]
+        updated_asset["properties"]["events"] = [
+            e for e in mocked_asset["properties"]["events"] if e["name"] != event_name
+        ]
 
     updated_asset["properties"]["events"].append(expected_event)
 
@@ -260,23 +259,29 @@ def test_add_namespace_asset_event(
         resource_group_name=resource_group_name,
         event_name=event_name,
         event_notifier=event_notifier,
+        replace=replace_event,
+        wait_sec=0,
         **config_params
     )
 
+    # Verify the result matches the event we added
+    assert result == expected_event
+
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 2
+    assert len(mocked_responses.calls) == 3
     assert mocked_responses.calls[0].request.method == "GET"
-    assert mocked_responses.calls[1].request.method == "PATCH"
+    assert mocked_responses.calls[1].request.method == "GET"
+    assert mocked_responses.calls[2].request.method == "PATCH"
 
     # Verify the PATCH request body contains the expected event structure
-    patch_body = json.loads(mocked_responses.calls[1].request.body)
+    patch_body = json.loads(mocked_responses.calls[2].request.body)
 
     # Events should be in the properties section
     assert "events" in patch_body["properties"]
     events = patch_body["properties"]["events"]
 
     # Count should match expected
-    assert len(events) == len(previous_events)
+    assert len(events) == len(updated_asset["properties"]["events"])
 
     # Find our event in the list
     added_event = next((e for e in events if e["name"] == event_name), None)
@@ -285,25 +290,13 @@ def test_add_namespace_asset_event(
     assert added_event["eventNotifier"] == event_notifier
 
     # Check configuration and destinations using helper functions
-    _check_event_configuration(added_event, asset_type, config_params, has_config)
-    _check_event_destinations(added_event, has_destinations)
+    _check_event_configuration(added_event, expected_event)
+    _check_event_destinations(added_event, expected_event)
 
-    # Verify all other events are preserved (unless replacing)
-    if has_previous_events and not replace_event:
-        for prev_event in previous_events:
-            found = any(e["name"] == prev_event["name"] for e in events)
-            assert found
-
-    # If replacing, verify the old event with the same name is gone
-    if has_previous_events and replace_event:
-        matching_events = [e for e in events if e["name"] == event_name]
-        # Only one event with this name should exist now
-        assert len(matching_events) == 1
-        # And it should be our new event
-        assert matching_events[0]["eventNotifier"] == event_notifier
-
-    # Verify the result matches the event we added
-    assert result == expected_event
+    # Verify all other events are preserved
+    event_map = {e["name"]: e for e in updated_asset["properties"].get("events", [])}
+    for event in events:
+        assert event["name"] in event_map, f"Event {event['name']} not found in updated asset"
 
 
 def test_add_namespace_asset_event_error(

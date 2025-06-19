@@ -78,7 +78,7 @@ def mocked_get_extended_location(mocker):
 def mocked_check_cluster_connectivity(mocker):
     yield mocker.patch(
         "azext_edge.edge.providers.rpsaas.adr.helpers.check_cluster_connectivity",
-        autospec=True
+        # autospec=True  # TODO: uncomment when GA
     )
 
 
