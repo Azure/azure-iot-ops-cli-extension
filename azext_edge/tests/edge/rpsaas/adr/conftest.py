@@ -116,7 +116,6 @@ def get_mgmt_uri(resource_id: str):
     return f"https://management.azure.com{resource_id}"
 
 
-# TODO: clean up
 def get_asset_mgmt_uri(
     asset_name: Optional[str] = None,
     asset_resource_group: Optional[str] = None,
@@ -176,7 +175,6 @@ MINIMUM_ASSET = {
         "name": generate_random_string(),
         "type": generate_random_string(),
     },
-    "id": generate_random_string(),
     "location": "westus3",
     "name": "props-test-min",
     "properties": {
@@ -194,13 +192,11 @@ MINIMUM_ASSET = {
     "resourceGroup": generate_random_string(),
     "type": "microsoft.deviceregistry/assets"
 }
-# TODO: update to have datatsets
 FULL_ASSET = {
     "extendedLocation": {
         "name": generate_random_string(),
         "type": generate_random_string(),
     },
-    "id": generate_random_string(),
     "location": "westus3",
     "name": "props-test-max",
     "properties": {

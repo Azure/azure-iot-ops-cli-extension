@@ -4,8 +4,22 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
 import pytest
 import responses
+from azure.cli.core.azclierror import (
+    CLIError,
+    FileOperationError,
+    InvalidArgumentValueError,
+    MutuallyExclusiveArgumentError,
+    RequiredArgumentMissingError,
+)
+
+from azext_edge.edge.common import ADRAuthModes
+from azext_edge.edge.providers.rpsaas.adr.specs import (
+    NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA,
+    NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA,
+)
 from ....generators import generate_random_string, BASE_URL, generate_resource_id
 
 CONNECTED_CLUSTER_API = "2024-07-15-preview"
@@ -133,3 +147,445 @@ def test_get_extended_location(
     assert result["name"] == resource['extendedLocation']['name']
     assert result["cluster_location"] == location
     assert mocked_logger.warning.called is not connected
+
+
+@pytest.mark.parametrize("configuration", [
+    "",
+    json.dumps({generate_random_string(): generate_random_string()}),
+])
+@pytest.mark.parametrize("is_file", [True, False])
+def test_process_additional_configuration(
+    mocker, configuration, is_file
+):
+    from azext_edge.edge.providers.rpsaas.adr.helpers import process_additional_configuration
+    patched_read_file = mocker.patch("azext_edge.edge.util.read_file_content")
+    file_name = None
+    if is_file:
+        patched_read_file.return_value = configuration
+        file_name = generate_random_string()
+    else:
+        patched_read_file.side_effect = FileOperationError("Not a file.")
+
+    if is_file and not configuration:
+        with pytest.raises(InvalidArgumentValueError):
+            process_additional_configuration(file_name)
+        return
+
+    result = process_additional_configuration(file_name if is_file else configuration)
+    if configuration == "":
+        assert result is None
+    else:
+        assert result == configuration
+
+
+def test_process_additional_configuration_error(mocker):
+    from azext_edge.edge.providers.rpsaas.adr.helpers import process_additional_configuration
+    configuration = json.dumps({generate_random_string(): generate_random_string()})
+    configuration = configuration[-2:-1]  # remove the } to make invalid
+    file_name = generate_random_string
+
+    # file
+    patched_read_file = mocker.patch("azext_edge.edge.util.read_file_content")
+    patched_read_file.return_value = configuration
+    with pytest.raises(InvalidArgumentValueError):
+        process_additional_configuration(file_name)
+
+    # in-line
+    patched_read_file.side_effect = FileOperationError("Not a file.")
+    with pytest.raises(InvalidArgumentValueError):
+        process_additional_configuration(configuration)
+
+
+@pytest.mark.parametrize("original_props", [
+    None,
+    {
+        "method": generate_random_string(),
+        "x509Credentials": {"certificateSecretName": generate_random_string()},
+        "usernamePasswordCredentials": {
+            "usernameSecretName": generate_random_string(),
+            "passwordSecretName": generate_random_string(),
+        },
+    }
+])
+@pytest.mark.parametrize("req", [
+    {},
+    {
+        "auth_mode": ADRAuthModes.anonymous.value
+    },
+    {
+        "auth_mode": ADRAuthModes.certificate.value,
+        "certificate_reference": generate_random_string()
+    },
+    {
+        "certificate_reference": generate_random_string()
+    },
+    {
+        "auth_mode": ADRAuthModes.userpass.value,
+        "password_reference": generate_random_string(),
+        "username_reference": generate_random_string()
+    },
+    {
+        "password_reference": generate_random_string(),
+        "username_reference": generate_random_string()
+    },
+])
+def test_process_authentication(
+    mocked_logger, original_props, req
+):
+    from azext_edge.edge.providers.rpsaas.adr.helpers import process_authentication
+    result = process_authentication(
+        auth_props=original_props,
+        **req
+    )
+
+    if original_props is None:
+        original_props = {}
+    expected_auth = req.get("auth_mode") or original_props.get("method")
+    if expected_auth is None and req.get("certificate_reference"):
+        expected_auth = ADRAuthModes.certificate.value
+    elif expected_auth is None and req.get("password_reference"):
+        expected_auth = ADRAuthModes.userpass.value
+    elif not req and not original_props:
+        expected_auth = ADRAuthModes.anonymous.value
+    assert result.get("method") == expected_auth
+
+    if result.get("method") == ADRAuthModes.anonymous.value:
+        assert result.get("x509Credentials") is None
+        assert result.get("usernamePasswordCredentials") is None
+    elif result.get("method") == ADRAuthModes.certificate.value:
+        assert result["x509Credentials"]["certificateSecretName"] == req["certificate_reference"]
+        assert result.get("usernamePasswordCredentials") is None
+    elif result.get("method") == ADRAuthModes.userpass.value:
+        assert result.get("x509Credentials") is None
+        assert result["usernamePasswordCredentials"]["passwordSecretName"] == req["password_reference"]
+        assert result["usernamePasswordCredentials"]["usernameSecretName"] == req["username_reference"]
+    else:
+        assert result == original_props
+
+
+@pytest.mark.parametrize("req", [
+    # Anonymous auth mode with other params
+    {
+        "auth_mode": ADRAuthModes.anonymous.value,
+        "certificate_reference": generate_random_string()
+    },
+    {
+        "auth_mode": ADRAuthModes.anonymous.value,
+        "password_reference": generate_random_string(),
+    },
+    {
+        "auth_mode": ADRAuthModes.anonymous.value,
+        "username_reference": generate_random_string()
+    },
+    # certificate authmode with no params
+    {
+        "auth_mode": ADRAuthModes.certificate.value,
+    },
+    # certificate authmode with userpass params
+    {
+        "auth_mode": ADRAuthModes.certificate.value,
+        "password_reference": generate_random_string(),
+    },
+    {
+        "auth_mode": ADRAuthModes.certificate.value,
+        "username_reference": generate_random_string()
+    },
+    # userpass with no params
+    {
+        "auth_mode": ADRAuthModes.userpass.value,
+    },
+    # userpass with certificate params
+    {
+        "auth_mode": ADRAuthModes.userpass.value,
+        "certificate_reference": generate_random_string()
+    },
+    # userpass with only one of the params
+    {
+        "auth_mode": ADRAuthModes.userpass.value,
+        "password_reference": generate_random_string(),
+    },
+    {
+        "auth_mode": ADRAuthModes.userpass.value,
+        "username_reference": generate_random_string(),
+    },
+    {
+        "password_reference": generate_random_string(),
+    },
+    {
+        "username_reference": generate_random_string(),
+    },
+])
+def test_process_authentication_error(
+    req
+):
+    from azext_edge.edge.providers.rpsaas.adr.helpers import process_authentication
+    with pytest.raises(CLIError) as e:
+        process_authentication(
+            auth_props=None,
+            **req
+        )
+
+    if req.get("auth_mode") in [None, ADRAuthModes.userpass.value] and any(
+        [req.get("username_reference"), req.get("password_reference")]
+    ):
+        assert isinstance(e.value, RequiredArgumentMissingError)
+    else:
+        assert isinstance(e.value, MutuallyExclusiveArgumentError)
+
+
+@pytest.mark.parametrize("schema, data", [
+    # Simple schema with basic data types
+    (
+        {
+            "properties": {
+                "name": {"type": "string"},
+                "age": {"type": "integer", "minimum": 0, "maximum": 150},
+                "settings": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "value": {"type": "integer", "minimum": 1, "maximum": 100}
+                    }
+                }
+            }
+        },
+        {
+            "name": "Test User",
+            "age": 30,
+            "settings": {
+                "enabled": True,
+                "value": 50
+            }
+        }
+    ),
+    # Simple schema with minimum and maximum value exactly at boundary
+    (
+        {
+            "properties": {
+                "count": {"type": "integer", "minimum": 0},
+                "percentage": {"type": "integer", "maximum": 100}
+            }
+        },
+        {
+            "count": 0,
+            "percentage": 100
+        }
+    ),
+    # Schema with nested objects
+    (
+        {
+            "properties": {
+                "name": {"type": "string"},
+                "settings": {
+                    "type": "object",
+                    "properties": {
+                        "security": {
+                            "type": "object",
+                            "properties": {
+                                "mode": {"type": "string"}
+                            }
+                        },
+                        "enabled": {"type": "boolean"},
+                        "value": {"type": "integer", "minimum": 1, "maximum": 100},
+                        "display": {
+                            "type": "object",
+                            "properties": {
+                                "width": {"type": "integer", "minimum": 0},
+                                "color": {
+                                    "type": "object",
+                                    "properties": {
+                                        "red": {"type": "integer", "minimum": 0, "maximum": 255},
+                                        "green": {"type": "integer", "minimum": 0, "maximum": 255},
+                                        "blue": {"type": "integer", "minimum": 0, "maximum": 255}
+                                    }
+                                },
+                                "height": {"type": "integer", "minimum": 0}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "Test User",
+            "settings": {
+                "security": {
+                    "mode": "secure"
+                },
+                "enabled": True,
+                "display": {
+                    "color": {
+                        "red": 255,
+                        "green": 0,
+                        "blue": 0
+                    },
+                    "width": 1920,
+                    "height": 1080
+                },
+                "value": 50,
+            }
+        }
+    ),
+    # OPCUA endpoint schema with minimal data
+    (
+        NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA,
+        {
+            "applicationName": "Test OPCUA App",
+            "keepAliveMilliseconds": 10000,
+            "defaults": {
+                "publishingIntervalMilliseconds": 1000,
+                "samplingIntervalMilliseconds": 1000,
+                "queueSize": 1,
+                "keyFrameCount": 0
+            },
+            "session": {
+                "timeoutMilliseconds": 60000,
+                "keepAliveIntervalMilliseconds": 10000,
+                "reconnectPeriodMilliseconds": 2000,
+                "reconnectExponentialBackOffMilliseconds": 10000,
+                "enableTracingHeaders": False
+            },
+            "subscription": {
+                "maxItems": 1000,
+                "lifeTimeMilliseconds": 60000
+            },
+            "security": {
+                "autoAcceptUntrustedServerCertificates": False,
+                "securityPolicy": None,
+                "securityMode": None
+            },
+            "runAssetDiscovery": False
+        }
+    ),
+    # ONVIF endpoint schema
+    (
+        NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA,
+        {
+            "acceptInvalidHostnames": True,
+            "acceptInvalidCertificates": False
+        }
+    ),
+    # Test with null values in schema
+    (
+        {
+            "properties": {
+                "required_string": {"type": "string"},
+                "optional_value": {"type": ["integer", "null"]}
+            }
+        },
+        {
+            "required_string": "test",
+            "optional_value": None
+        }
+    ),
+    # Test with null values in OPCUA security settings
+    (
+        NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA,
+        {
+            "applicationName": "Test App",
+            "keepAliveMilliseconds": 10000,
+            "defaults": {
+                "publishingIntervalMilliseconds": 1000,
+                "samplingIntervalMilliseconds": 1000,
+                "queueSize": 1,
+                "keyFrameCount": 0
+            },
+            "session": {
+                "timeoutMilliseconds": 60000,
+                "keepAliveIntervalMilliseconds": None,
+                "reconnectPeriodMilliseconds": 2000,
+                "reconnectExponentialBackOffMilliseconds": 10000,
+                "enableTracingHeaders": False
+            },
+            "subscription": {
+                "maxItems": 1000,
+                "lifeTimeMilliseconds": 60000
+            },
+            "security": {
+                "autoAcceptUntrustedServerCertificates": False,
+                "securityPolicy": None,
+                "securityMode": None
+            },
+            "runAssetDiscovery": False
+        }
+    )
+])
+def test_ensure_schema_structure_valid(schema, data):
+    """
+    Test ensure_schema_structure with valid inputs that don't trigger validation errors.
+    """
+    from azext_edge.edge.providers.rpsaas.adr.helpers import ensure_schema_structure
+
+    # This should not raise any exceptions for valid data
+    ensure_schema_structure(schema, data)
+
+    # Test passes if no exception is raised
+
+
+@pytest.mark.parametrize("schema, data, expected_error", [
+    # Test with value below minimum
+    (
+        {
+            "properties": {
+                "age": {"type": "integer", "minimum": 18}
+            }
+        },
+        {
+            "age": 15
+        },
+        "Invalid value for age: the value must be at least 18, instead got 15"
+    ),
+    # Test with value above maximum
+    (
+        {
+            "properties": {
+                "percentage": {"type": "integer", "maximum": 100}
+            }
+        },
+        {
+            "percentage": 120
+        },
+        "Invalid value for percentage: the value must be at most 100, instead got 120"
+    ),
+    # Test with value outside of both min and max
+    (
+        {
+            "properties": {
+                "score": {"type": "integer", "minimum": 0, "maximum": 10}
+            }
+        },
+        {
+            "score": 15
+        },
+        "Invalid value for score: the value must be between 0 and 10 inclusive, instead got 15"
+    ),
+    # Test with nested object having invalid value
+    (
+        {
+            "properties": {
+                "settings": {
+                    "type": "object",
+                    "properties": {
+                        "threshold": {"type": "integer", "minimum": 5, "maximum": 50}
+                    }
+                }
+            }
+        },
+        {
+            "settings": {
+                "threshold": 2
+            }
+        },
+        "Invalid value for threshold: the value must be between 5 and 50 inclusive, instead got 2"
+    )
+])
+def test_ensure_schema_structure_invalid(schema, data, expected_error):
+    """
+    Test ensure_schema_structure with invalid inputs that should trigger validation errors.
+    """
+    from azext_edge.edge.providers.rpsaas.adr.helpers import ensure_schema_structure
+
+    with pytest.raises(InvalidArgumentValueError) as exc:
+        ensure_schema_structure(schema, data)
+
+    assert expected_error in str(exc.value)

@@ -5,5 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from ._help import load_iotops_help
+from .providers.rpsaas.adr._help import load_iotops_adr_help
 
 load_iotops_help()
+load_iotops_adr_help()
