@@ -77,6 +77,7 @@ class ExpectedAPIVersion(Enum):
     SCHEMA_REGISTRY = "2024-09-01-preview"
     AUTHORIZATION = "2022-04-01"
     CUSTOM_LOCATION = "2021-08-31-preview"
+    GRAPH = "2022-10-01"
 
 
 class CallKey(Enum):
@@ -87,6 +88,7 @@ class CallKey(Enum):
     DEPLOY_INIT = "deployInit"
     GET_SCHEMA_REGISTRY = "getSchemaRegistry"
     GET_CLUSTER_EXTENSIONS = "getClusterExtensions"
+    GET_EXISTING_DEPLOYMENTS = "getExistingDeployments"
     GET_SCHEMA_REGISTRY_RA = "getSchemaRegistryRoleAssignments"
     PUT_SCHEMA_REGISTRY_RA = "putSchemaRegistryRoleAssignment"
     DEPLOY_CREATE_WHATIF = "deployCreateWhatIf"
@@ -297,6 +299,14 @@ class ServiceGenerator:
 
                 return (api_control["code"], STANDARD_HEADERS, json.dumps(api_control["body"]))
 
+        if request_kpis.method == responses.POST:
+            if request_kpis.path_url == "/providers/Microsoft.ResourceGraph/resources":
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.GRAPH.value
+                self.call_map[CallKey.GET_EXISTING_DEPLOYMENTS].append(request_kpis)
+                api_control = self.scenario["apiControl"][CallKey.GET_EXISTING_DEPLOYMENTS]
+
+                return (api_control["code"], STANDARD_HEADERS, json.dumps(api_control["body"]))
+
     def _get_extension_identity(self, extension_type: str = EXTENSION_TYPE_OPS) -> Optional[dict]:
         for ext in self.scenario["cluster"]["extensions"]["value"]:
             if ext["properties"]["extensionType"] == extension_type:
@@ -389,6 +399,7 @@ def build_target_scenario(
             CallKey.DEPLOY_INIT_WHATIF: {"code": 200, "body": {"status": PROVISIONING_STATE_SUCCESS}},
             CallKey.DEPLOY_CREATE_WHATIF: {"code": 200, "body": {"status": PROVISIONING_STATE_SUCCESS}},
             CallKey.PUT_SCHEMA_REGISTRY_RA: {"code": 200, "body": {}},
+            CallKey.GET_EXISTING_DEPLOYMENTS: {"code": 200, "body": {"data": []}},
         },
     }
     if "cluster_properties" in kwargs:
@@ -703,6 +714,16 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             apiControl={CallKey.PUT_SCHEMA_REGISTRY_RA: {"code": 400, "body": {"status": "Failed"}}},
             warnings=[(0, "Role assignment failed with:\nOperation returned an invalid status 'Bad Request'")],
         ),
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_EXISTING_DEPLOYMENTS: {"code": 200, "body": {"data": [{"name": "location-12345"}]}}
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg="IoT Operations is detected on the cluster.",
+            ),
+            omit_http_methods=frozenset([responses.PUT]),
+        ),
     ],
 )
 def test_iot_ops_create(
@@ -714,9 +735,7 @@ def test_iot_ops_create(
     spy_work_displays: Dict[str, Mock],
     target_scenario: Dict[str, Union[bool, dict]],
 ):
-    servgen = ServiceGenerator(
-        scenario=target_scenario, mocked_responses=mocked_responses, omit_http_methods=frozenset([responses.POST])
-    )
+    servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses)
     from azext_edge.edge.commands_edge import create_instance
 
     create_call_kwargs = {
@@ -774,6 +793,7 @@ def test_iot_ops_create(
         CallKey.GET_CLUSTER: 1,
         CallKey.GET_SCHEMA_REGISTRY: 1,
         CallKey.GET_CLUSTER_EXTENSIONS: 2,
+        CallKey.GET_EXISTING_DEPLOYMENTS: 1,
         CallKey.GET_SCHEMA_REGISTRY_RA: 1,
         CallKey.PUT_SCHEMA_REGISTRY_RA: 1,
         CallKey.CREATE_CUSTOM_LOCATION: 2,
