@@ -580,7 +580,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "azure-iot-operations"}},
             "VERSIONS": {"iotOperations": "1.1.59"},
-            "TRAINS": {"iotOperations": "integration"},
+            "TRAINS": {"iotOperations": "stable"},
             "MQTT_SETTINGS": {
                 "brokerListenerServiceName": "aio-broker",
                 "brokerListenerPort": 18883,

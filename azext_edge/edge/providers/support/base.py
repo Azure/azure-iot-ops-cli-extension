@@ -561,15 +561,16 @@ def assemble_crd_work(
     return result
 
 
-def get_bundle_path(bundle_dir: Optional[str] = None, system_name: str = "aio") -> PurePath:
+def get_bundle_path(bundle_dir: Optional[str] = None, bundle_name: Optional[str] = None) -> PurePath:
     from ...util import normalize_dir
 
     bundle_dir_pure_path = normalize_dir(bundle_dir)
-    bundle_pure_path = bundle_dir_pure_path.joinpath(default_bundle_name(system_name))
+    bundle_name = f"{bundle_name}.zip" if bundle_name else default_bundle_name()
+    bundle_pure_path = bundle_dir_pure_path.joinpath(bundle_name)
     return bundle_pure_path
 
 
-def default_bundle_name(system_name: str) -> str:
+def default_bundle_name(system_name: str = "aio") -> str:
     timestamp = get_timestamp_now_utc(format="%Y%m%dT%H%M%S")
     return f"support_bundle_{timestamp}_{system_name}.zip"
 
