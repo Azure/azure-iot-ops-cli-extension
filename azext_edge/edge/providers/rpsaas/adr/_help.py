@@ -496,16 +496,15 @@ def load_iotops_adr_help():
     ] = """
         type: command
         short-summary: Create a Device Registry namespace.
-        long-summary: Enabled system identity is required for the namespace to function correctly.
 
         examples:
         - name: Create a namespace with minimal configuration.
           text: >
             az iot ops ns create -n myNamespace -g myResourceGroup
 
-        - name: Create a namespace with system-assigned managed identity enabled, custom location, and tags
+        - name: Create a namespace with custom location and tags
           text: >
-            az iot ops ns create -n myNamespace -g myResourceGroup --mi-system-assigned
+            az iot ops ns create -n myNamespace -g myResourceGroup
             --location "eastus" --tags env=prod department=operations
     """
 
@@ -556,10 +555,6 @@ def load_iotops_adr_help():
         short-summary: Update a Device Registry namespace.
 
         examples:
-        - name: Enable system-assigned managed identity for a namespace
-          text: >
-            az iot ops ns update -n myNamespace -g myResourceGroup --mi-system-assigned
-
         - name: Update tags for a namespace
           text: >
             az iot ops ns update -n myNamespace -g myResourceGroup --tags env=test department=iot
@@ -875,6 +870,7 @@ def load_iotops_adr_help():
         - name: Create a custom asset with datasets use a BrokerStateStore destination, events use a Mqtt destination, and streams use a Storage destination.
           text: >
             az iot ops ns asset create custom --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            --device myDevice --endpoint-name myEndpoint
             --dataset-dest key="myKey"
             --event-dest topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
             --stream-dest path="my/storage/path"
@@ -1161,10 +1157,6 @@ def load_iotops_adr_help():
         - name: Query for assets associated with a specific device and endpoint
           text: >
             az iot ops ns asset query --device myDevice --endpoint-name myEndpoint -g myResourceGroup
-
-        - name: Query for disabled assets in a resource group
-          text: >
-            az iot ops ns asset query --disabled -g myResourceGroup
 
         - name: Use a custom query to search for assets
           text: >
