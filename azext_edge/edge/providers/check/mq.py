@@ -155,7 +155,7 @@ def evaluate_broker_listeners(
             namespace: str = namespace or listener["metadata"]["namespace"]
             listener_name: str = listener["metadata"]["name"]
             listener_spec = listener["spec"]
-            listener_spec_service_name: str = listener_spec["serviceName"]
+            listener_spec_service_name: str = listener_spec.get("serviceName")
             listener_status_state = listener.get("status", {})
 
             listener_eval_value = {}
@@ -343,6 +343,7 @@ def evaluate_broker_listeners(
             if listener_spec_service_name not in processed_services:
                 _evaluate_listener_service(
                     check_manager=check_manager,
+                    listener_name=listener_name,
                     listener_spec=listener_spec,
                     processed_services=processed_services,
                     target_listeners=target_listeners,
@@ -969,13 +970,35 @@ def _evaluate_broker_reference(
 
 def _evaluate_listener_service(
     check_manager: CheckManager,
+    listener_name: str,
     listener_spec: dict,
     processed_services: dict,
     target_listeners: str,
     namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
-    listener_spec_service_name: str = listener_spec["serviceName"]
+    listener_spec_service_name: str = listener_spec.get("serviceName")
+
+    # skip following check if service name is not specified
+    if not listener_spec_service_name:
+        listener_service_eval_status = CheckTaskStatus.error.value
+        check_manager.add_display(
+            target_name=target_listeners,
+            namespace=namespace,
+            display=Padding(
+                f"\n{colorize_string(color='red', value='Invalid')} service name {{{colorize_string(color='red', value=listener_spec.get('name'))}}} for listener.",
+                (0, 0, 0, 12),
+            ),
+        )
+        check_manager.add_target_eval(
+            target_name=target_listeners,
+            namespace=namespace,
+            status=listener_service_eval_status,
+            value={"spec.serviceName": listener_spec_service_name},
+            resource_name=listener_name,
+        )
+        return
+
     listener_spec_service_type: str = listener_spec["serviceType"]
     target_listener_service = f"service/{listener_spec_service_name}"
     listener_service_eval_status = CheckTaskStatus.success.value
