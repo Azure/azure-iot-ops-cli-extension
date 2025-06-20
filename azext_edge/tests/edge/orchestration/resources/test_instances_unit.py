@@ -640,7 +640,7 @@ def test_secretsync_enable(
         oidc_issuer = oidc_issuer_def["oidcIssuerProfile"].get("issuerUrl")
 
     subject = f"system:serviceaccount:{cl_payload['properties']['namespace']}:{SERVICE_ACCOUNT_SECRETSYNC}"
-    mocked_responses.add(
+    federation_capture = mocked_responses.add(
         method=responses.PUT,
         url=get_federated_creds_url(
             uami_rg_name=resource_group_name,
@@ -698,6 +698,11 @@ def test_secretsync_enable(
         assert spc_create_request["tags"] == tags
 
     mocked_get_tenant_id.assert_called_once()
+
+    federation_payload: dict = json.loads(federation_capture.calls[0].request.body)
+    assert federation_payload["properties"]["subject"] == subject
+    assert federation_payload["properties"]["issuer"] == oidc_issuer
+    assert federation_payload["properties"]["audiences"] == ["api://AzureADTokenExchange"]
 
     if not skip_role_assignments:
         role_ids = []
