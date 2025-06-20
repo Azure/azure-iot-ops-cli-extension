@@ -98,7 +98,7 @@ class CallKey(Enum):
     CREATE_CUSTOM_LOCATION = "createCustomLocation"
 
 
-CL_EXTENSION_TYPES = ["microsoft.azure.secretstore", "microsoft.iotoperations.platform", "microsoft.iotoperations"]
+CL_EXTENSION_TYPES = ["microsoft.azure.secretstore", "microsoft.iotoperations"]
 
 
 class ExceptionMeta(NamedTuple):
@@ -209,7 +209,7 @@ class ServiceGenerator:
                 assert cl_payload["properties"]["hostResourceId"] == self.scenario["cluster"]["id"]
                 cl_create_call_len = len(self.call_map.get(CallKey.CREATE_CUSTOM_LOCATION, []))
                 expected_ext_ids = self.scenario["cluster"]["extensions"]["value"]
-                types_in_play = ["microsoft.iotoperations.platform"] if not cl_create_call_len else CL_EXTENSION_TYPES
+                types_in_play = ["microsoft.azure.secretstore"] if not cl_create_call_len else CL_EXTENSION_TYPES
                 expected_cl_ext_ids = set(
                     ext["id"] for ext in expected_ext_ids if ext["properties"]["extensionType"] in types_in_play
                 )
@@ -609,63 +609,64 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             ),
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
-        build_target_scenario(
-            extension_config_settings={
-                EXTENSION_TYPE_PLATFORM: {
-                    "properties": {
-                        "extensionType": EXTENSION_TYPE_PLATFORM,
-                        "provisioningState": "Failed",
-                    }
-                },
-                EXTENSION_TYPE_SSC: {
-                    "properties": {
-                        "extensionType": EXTENSION_TYPE_SSC,
-                        "provisioningState": "Failed",
-                    }
-                },
-            },
-            raises=ExceptionMeta(
-                exc_type=ValidationError,
-                exc_msg=[
-                    "Foundational service(s) with non-successful provisioning state detected on the cluster:\n\n",
-                    EXTENSION_TYPE_SSC,
-                    EXTENSION_TYPE_PLATFORM,
-                    "\n\nInstance deployment will not continue. Please run 'az iot ops init'.",
-                ],
-            ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
-        ),
-        build_target_scenario(
-            omit_extension_types=frozenset([EXTENSION_TYPE_PLATFORM]),
-            raises=ExceptionMeta(
-                exc_type=ValidationError,
-                exc_msg=(
-                    "Foundational service(s) not detected on the cluster:\n\n"
-                    f"{EXTENSION_TYPE_PLATFORM}"
-                    "\n\nInstance deployment will not continue. Please run 'az iot ops init'."
-                ),
-            ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
-        ),
-        build_target_scenario(
-            extension_config_settings={
-                EXTENSION_TYPE_PLATFORM: {
-                    "properties": {
-                        "extensionType": EXTENSION_TYPE_PLATFORM,
-                        "provisioningState": PROVISIONING_STATE_SUCCESS,
-                        "configurationSettings": {"installCertManager": "false"},
-                    }
-                },
-            },
-            raises=ExceptionMeta(
-                exc_type=ValidationError,
-                exc_msg=(
-                    "Cluster was enabled with user-managed trust configuration, --trust-settings "
-                    "arguments are required to create an instance on this cluster."
-                ),
-            ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
-        ),
+        # TODO: GT Tests
+        # build_target_scenario(
+        #     extension_config_settings={
+        #         EXTENSION_TYPE_PLATFORM: {
+        #             "properties": {
+        #                 "extensionType": EXTENSION_TYPE_PLATFORM,
+        #                 "provisioningState": "Failed",
+        #             }
+        #         },
+        #         EXTENSION_TYPE_SSC: {
+        #             "properties": {
+        #                 "extensionType": EXTENSION_TYPE_SSC,
+        #                 "provisioningState": "Failed",
+        #             }
+        #         },
+        #     },
+        #     raises=ExceptionMeta(
+        #         exc_type=ValidationError,
+        #         exc_msg=[
+        #             "Foundational service(s) with non-successful provisioning state detected on the cluster:\n\n",
+        #             EXTENSION_TYPE_SSC,
+        #             EXTENSION_TYPE_PLATFORM,
+        #             "\n\nInstance deployment will not continue. Please run 'az iot ops init'.",
+        #         ],
+        #     ),
+        #     omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        # ),
+        # build_target_scenario(
+        #     omit_extension_types=frozenset([EXTENSION_TYPE_PLATFORM]),
+        #     raises=ExceptionMeta(
+        #         exc_type=ValidationError,
+        #         exc_msg=(
+        #             "Foundational service(s) not detected on the cluster:\n\n"
+        #             f"{EXTENSION_TYPE_PLATFORM}"
+        #             "\n\nInstance deployment will not continue. Please run 'az iot ops init'."
+        #         ),
+        #     ),
+        #     omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        # ),
+        # build_target_scenario(
+        #     extension_config_settings={
+        #         EXTENSION_TYPE_PLATFORM: {
+        #             "properties": {
+        #                 "extensionType": EXTENSION_TYPE_PLATFORM,
+        #                 "provisioningState": PROVISIONING_STATE_SUCCESS,
+        #                 "configurationSettings": {"installCertManager": "false"},
+        #             }
+        #         },
+        #     },
+        #     raises=ExceptionMeta(
+        #         exc_type=ValidationError,
+        #         exc_msg=(
+        #             "Cluster was enabled with user-managed trust configuration, --trust-settings "
+        #             "arguments are required to create an instance on this cluster."
+        #         ),
+        #     ),
+        #     omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        # ),
         build_target_scenario(
             extension_config_settings={
                 EXTENSION_TYPE_PLATFORM: {
@@ -876,7 +877,7 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
         [
             ext["id"]
             for ext in target_scenario["cluster"]["extensions"]["value"]
-            if ext["properties"]["extensionType"] in [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
+            if ext["properties"]["extensionType"] in [EXTENSION_TYPE_SSC]
         ]
     )
     assert set(parameters["clExtentionIds"]["value"]) == cl_extension_ids

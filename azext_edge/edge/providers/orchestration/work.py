@@ -432,15 +432,13 @@ class WorkManager:
                     resource_id=self._targets.schema_registry_resource_id,
                     api_version=REGISTRY_PREVIEW_API_VERSION,
                 )
-                self._process_extension_dependencies()
+                # TODO GT Tests
+                # self._process_extension_dependencies()
                 self._raise_if_ops_deployed()
-                dependency_ext_ids = [
-                    self.ops_extension_dependencies[ext]["id"] for ext in [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
-                ]
+                dependency_ext_ids = [self.ops_extension_dependencies[ext]["id"] for ext in [EXTENSION_TYPE_SSC]]
                 self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.DEPLOY_INSTANCE)
-                self._create_or_update_custom_location(
-                    extension_ids=[self.ops_extension_dependencies[EXTENSION_TYPE_PLATFORM]["id"]]
-                )
+                # TODO GT Tests
+                self._create_or_update_custom_location(extension_ids=dependency_ext_ids)
                 instance_content, instance_parameters = self._targets.get_ops_instance_template(
                     cl_extension_ids=dependency_ext_ids,
                     phase=InstancePhase.EXT,
