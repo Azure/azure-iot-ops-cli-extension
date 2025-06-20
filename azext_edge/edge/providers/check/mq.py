@@ -155,7 +155,7 @@ def evaluate_broker_listeners(
             namespace: str = namespace or listener["metadata"]["namespace"]
             listener_name: str = listener["metadata"]["name"]
             listener_spec = listener["spec"]
-            listener_spec_service_name: str = listener_spec["serviceName"]
+            listener_spec_service_name: str = listener_spec.get("serviceName")
             listener_status_state = listener.get("status", {})
 
             listener_eval_value = {}
@@ -975,7 +975,28 @@ def _evaluate_listener_service(
     namespace: str,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
-    listener_spec_service_name: str = listener_spec["serviceName"]
+    listener_spec_service_name: str = listener_spec.get("serviceName")
+
+    # skip following check if service name is not specified
+    if not listener_spec_service_name:
+        listener_service_eval_status = CheckTaskStatus.error.value
+        check_manager.add_display(
+            target_name=target_listeners,
+            namespace=namespace,
+            display=Padding(
+                f"\n{colorize_string(color='red', value='Invalid')} service name {{{colorize_string(color='red', value=listener_spec.get('name'))}}} for listener.",
+                (0, 0, 0, 12),
+            ),
+        )
+        check_manager.add_target_eval(
+            target_name=target_listeners,
+            namespace=namespace,
+            status=listener_service_eval_status,
+            value={"listener_service": "Unable to fetch service name."},
+            resource_name=f"service/{listener_spec_service_name}",
+        )
+        return
+
     listener_spec_service_type: str = listener_spec["serviceType"]
     target_listener_service = f"service/{listener_spec_service_name}"
     listener_service_eval_status = CheckTaskStatus.success.value
