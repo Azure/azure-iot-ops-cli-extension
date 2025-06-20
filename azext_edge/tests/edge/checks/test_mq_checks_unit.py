@@ -543,8 +543,8 @@ def test_broker_checks(
                 ],
                 [
                     ("status", "error"),
-                    ("name", "service/None"),
-                    ("value/listener_service", "Unable to fetch service name."),
+                    ("name", "mock-name"),
+                    ("value/spec.serviceName", None),
                 ],
             ],
             # service conditions str

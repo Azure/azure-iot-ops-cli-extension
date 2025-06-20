@@ -343,6 +343,7 @@ def evaluate_broker_listeners(
             if listener_spec_service_name not in processed_services:
                 _evaluate_listener_service(
                     check_manager=check_manager,
+                    listener_name=listener_name,
                     listener_spec=listener_spec,
                     processed_services=processed_services,
                     target_listeners=target_listeners,
@@ -969,6 +970,7 @@ def _evaluate_broker_reference(
 
 def _evaluate_listener_service(
     check_manager: CheckManager,
+    listener_name: str,
     listener_spec: dict,
     processed_services: dict,
     target_listeners: str,
@@ -992,8 +994,8 @@ def _evaluate_listener_service(
             target_name=target_listeners,
             namespace=namespace,
             status=listener_service_eval_status,
-            value={"listener_service": "Unable to fetch service name."},
-            resource_name=f"service/{listener_spec_service_name}",
+            value={"spec.serviceName": listener_spec_service_name},
+            resource_name=listener_name,
         )
         return
 
