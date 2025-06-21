@@ -610,12 +610,6 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
 def test_update_namespace_asset(
     mocked_cmd, mocked_responses: responses, reqs: dict, asset_type: str, unique_reqs: dict, original_properties: dict
 ):
-    """
-    Test the update_namespace_asset function for different asset types.
-    Only tests success cases with various parameter combinations.
-    Parameterized by shared parameters (reqs), asset-type specific parameters (unique_reqs),
-    and original asset state (empty or filled with properties).
-    """
     # Setup variables
     asset_name = generate_random_string()
     namespace_name = generate_random_string()

@@ -1183,7 +1183,7 @@ def add_namespace_custom_asset_event(
     event_name: str,
     event_notifier: str,
     event_configuration: Optional[str] = None,
-    event_destinations: Optional[str] = None,
+    events_destinations: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -1195,7 +1195,7 @@ def add_namespace_custom_asset_event(
         asset_type="custom",
         event_notifier=event_notifier,
         events_custom_configuration=event_configuration,
-        events_destinations=event_destinations,
+        events_destinations=events_destinations,
         replace=replace,
         **kwargs
     )
@@ -1208,7 +1208,7 @@ def add_namespace_opcua_asset_event(
     resource_group_name: str,
     event_name: str,
     event_notifier: str,
-    event_destinations: Optional[str] = None,
+    events_destinations: Optional[str] = None,
     opcua_event_publishing_interval: Optional[int] = None,
     opcua_event_queue_size: Optional[int] = None,
     opcua_event_filter_type: Optional[str] = None,
@@ -1223,7 +1223,7 @@ def add_namespace_opcua_asset_event(
         event_name=event_name,
         asset_type=DeviceEndpointType.OPCUA.value,
         event_notifier=event_notifier,
-        events_destinations=event_destinations,
+        events_destinations=events_destinations,
         opcua_event_publishing_interval=opcua_event_publishing_interval,
         opcua_event_queue_size=opcua_event_queue_size,
         opcua_event_filter_type=opcua_event_filter_type,
@@ -1240,7 +1240,7 @@ def add_namespace_onvif_asset_event(
     resource_group_name: str,
     event_name: str,
     event_notifier: str,
-    event_destinations: Optional[str] = None,
+    events_destinations: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -1251,7 +1251,7 @@ def add_namespace_onvif_asset_event(
         event_name=event_name,
         asset_type=DeviceEndpointType.ONVIF.value,
         event_notifier=event_notifier,
-        events_destinations=event_destinations,
+        events_destinations=events_destinations,
         replace=replace,
         **kwargs
     )
@@ -1293,7 +1293,7 @@ def update_namespace_custom_asset_event(
     event_name: str,
     event_notifier: Optional[str] = None,
     event_configuration: Optional[str] = None,
-    event_destinations: Optional[str] = None,
+    events_destinations: Optional[str] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_event(
@@ -1304,7 +1304,7 @@ def update_namespace_custom_asset_event(
         asset_type="custom",
         event_notifier=event_notifier,
         events_custom_configuration=event_configuration,
-        events_destinations=event_destinations,
+        events_destinations=events_destinations,
         **kwargs
     )
 
@@ -1316,10 +1316,9 @@ def update_namespace_opcua_asset_event(
     resource_group_name: str,
     event_name: str,
     event_notifier: Optional[str] = None,
-    event_destinations: Optional[str] = None,
+    events_destinations: Optional[str] = None,
     opcua_event_publishing_interval: Optional[int] = None,
     opcua_event_queue_size: Optional[int] = None,
-    opcua_event_start_instance: Optional[str] = None,
     opcua_event_filter_type: Optional[str] = None,
     opcua_event_filter_clauses: Optional[List[List[str]]] = None,
     **kwargs
@@ -1331,10 +1330,9 @@ def update_namespace_opcua_asset_event(
         event_name=event_name,
         asset_type=DeviceEndpointType.OPCUA.value,
         event_notifier=event_notifier,
-        events_destinations=event_destinations,
+        events_destinations=events_destinations,
         opcua_event_publishing_interval=opcua_event_publishing_interval,
         opcua_event_queue_size=opcua_event_queue_size,
-        opcua_event_start_instance=opcua_event_start_instance,
         opcua_event_filter_type=opcua_event_filter_type,
         opcua_event_filter_clauses=opcua_event_filter_clauses,
         **kwargs
@@ -1348,7 +1346,7 @@ def update_namespace_onvif_asset_event(
     resource_group_name: str,
     event_name: str,
     event_notifier: Optional[str] = None,
-    event_destinations: Optional[str] = None,
+    events_destinations: Optional[str] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_event(
@@ -1356,9 +1354,9 @@ def update_namespace_onvif_asset_event(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
         event_name=event_name,
-        # event_type=DeviceEndpointType.ONVIF.value,
+        asset_type=DeviceEndpointType.ONVIF.value,
         event_notifier=event_notifier,
-        events_destinations=event_destinations,
+        events_destinations=events_destinations,
         **kwargs
     )
 

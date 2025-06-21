@@ -717,7 +717,6 @@ class NamespaceAssets(Queryable):
         event_name: str,
         event_notifier: Optional[str] = None,
         type_ref: Optional[str] = None,
-        event_destinations: Optional[List[str]] = None,
         **kwargs
     ):
         asset = self._check_device_props(
@@ -734,18 +733,18 @@ class NamespaceAssets(Queryable):
             asset_type=asset_type,
             default=False,
             original_event_configuration=event.get("eventConfiguration"),
-            event_destinations=event_destinations,
             **kwargs
         )
 
         # update the event properties
-        event["eventConfiguration"] = processed_configs["eventsConfiguration"]
+        if "eventsConfiguration" in processed_configs:
+            event["eventConfiguration"] = processed_configs["eventsConfiguration"]
         if event_notifier:
-            event["notifier"] = event_notifier
+            event["eventNotifier"] = event_notifier
         if type_ref:
             event["typeRef"] = type_ref
-        if event_destinations:
-            event["destinations"] = processed_configs.get("eventsDestinations", [])
+        if "eventsDestinations" in processed_configs:
+            event["destinations"] = processed_configs["eventsDestinations"]
 
         # get the events from the asset
         events = asset["properties"].get("events", [])
@@ -1009,7 +1008,6 @@ def _get_event(asset: dict, event_name: str) -> dict:
     return matched_events[0]
 
 
-# TODO: unit test
 def _create_datapoint(
     datapoint_name: str,
     data_source: str,
