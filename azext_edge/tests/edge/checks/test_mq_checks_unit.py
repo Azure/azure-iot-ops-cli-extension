@@ -506,6 +506,61 @@ def test_broker_checks(
                 ],
             ],
         ),
+        # check error when service name is None
+        (
+            # listener
+            generate_resource_stub(
+                spec={
+                    "serviceName": None,
+                    "serviceType": "loadbalancer",
+                    "port": 8080,
+                    "authenticationEnabled": "True",
+                },
+                status={"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
+            ),
+            # service obj
+            generate_resource_stub(
+                status={"loadBalancer": {"ingress": [{"ip": "127.0.0.1"}]}},
+                spec={"clusterIP": "127.0.0.1"},
+            ),
+            # listener conditions str
+            [
+                "len(brokerlisteners)>=1",
+                "status",
+                "spec",
+                "spec.serviceName",
+                "status",
+            ],
+            # listener evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("name", "mock-name"),
+                    (
+                        "value/status",
+                        {"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
+                    ),
+                ],
+                [
+                    ("status", "error"),
+                    ("name", "mock-name"),
+                    ("value/spec.serviceName", None),
+                ],
+            ],
+            # service conditions str
+            [
+                "listener_service",
+                "status",
+                "len(status.loadBalancer.ingress[*].ip)>=1",
+            ],
+            # service evaluations
+            [
+                [
+                    ("status", "error"),
+                    ("value/listener_service", "service/name"),
+                ],
+            ],
+        ),
     ],
 )
 def test_broker_listener_checks(
@@ -551,12 +606,14 @@ def test_broker_listener_checks(
 
     # check service target
     service_name = listener["spec"]["serviceName"]
-    assert namespace in result["targets"][f"service/{service_name}"]
-    target = result["targets"][f"service/{service_name}"][namespace]
 
-    # conditions
-    assert_conditions(target, service_conditions)
-    assert_evaluations(target, service_evaluations)
+    if service_name:
+        assert namespace in result["targets"][f"service/{service_name}"]
+        target = result["targets"][f"service/{service_name}"][namespace]
+
+        # conditions
+        assert_conditions(target, service_conditions)
+        assert_evaluations(target, service_evaluations)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
