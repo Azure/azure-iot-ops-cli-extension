@@ -6,6 +6,8 @@
 
 from typing import Iterable, Optional
 
+from providers.orchestration.resources import RegistryEndpoints
+
 from .providers.orchestration.common import (
     AIO_MQTT_DEFAULT_CONFIG_MAP,
     DataflowEndpointKafkaAcksType,
@@ -1115,17 +1117,36 @@ def list_dataflow_graphs(cmd, instance_name: str, resource_group_name: str):
     pass
 
 
-def list_dataflow_graph_registries(cmd, instance_name: str, resource_group_name: str):
-    pass
-
-
-def create_dataflow_graph_registry(
-    cmd,
-    registry_name: str,
-    endpoint_url: str,
-    instance_name: str,
-    credentials: str,
-    resource_group_name: str,
-    description: Optional[str] = None,
+# TODO - params
+def add_dataflow_graph_registry(
+    cmd, registry_name: str, instance_name: str, resource_group_name: str, registry_endpoint: dict
 ):
-    pass
+    return RegistryEndpoints(cmd).add(
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        registry_endpoint_name=registry_name,
+        registry_endpoint=registry_endpoint,
+    )
+
+
+def show_dataflow_graph_registry(cmd, registry_name: str, instance_name: str, resource_group_name: str):
+    return RegistryEndpoints(cmd).show(
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        registry_endpoint_name=registry_name,
+    )
+
+
+def list_dataflow_graph_registries(cmd, instance_name: str, resource_group_name: str):
+    return RegistryEndpoints(cmd).list(
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+
+
+def remove_dataflow_graph_registry(cmd, registry_name: str, instance_name: str, resource_group_name: str) -> None:
+    return RegistryEndpoints(cmd).remove(
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        registry_endpoint_name=registry_name,
+    )

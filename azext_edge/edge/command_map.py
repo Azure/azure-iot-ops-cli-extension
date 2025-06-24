@@ -187,7 +187,9 @@ def load_iotops_commands(self, _):
         command_type=dataflow_resource_ops,
     ) as cmd_group:
         cmd_group.command("list", "list_dataflow_graph_registries")
-        cmd_group.command("create", "create_dataflow_graph_registry")
+        cmd_group.command("add", "add_dataflow_graph_registry")
+        cmd_group.command("remove", "remove_dataflow_graph_registry")
+        cmd_group.command("show", "show_dataflow_graph_registry")
 
     with self.command_group(
         "iot ops asset",
