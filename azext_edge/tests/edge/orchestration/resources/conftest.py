@@ -183,3 +183,7 @@ def append_role_assignment_endpoint(
         endpoint += f"$filter={filter_query}&"
 
     return f"{endpoint}api-version={ROLE_ASSIGNMENT_API_VERSION}"
+
+
+def echo_callback(request: requests.PreparedRequest) -> tuple[int, dict, Optional[dict]]:
+    return (200, {"Content-Type": "application/json"}, request.body)

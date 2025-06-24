@@ -28,7 +28,7 @@ from ....util.common import (
     url_safe_hash_phrase,
 )
 from ....util.queryable import Queryable
-from ..common import CUSTOM_LOCATIONS_API_VERSION, KEYVAULT_CLOUD_API_VERSION
+from ..common import CUSTOM_LOCATIONS_API_VERSION, KEYVAULT_CLOUD_API_VERSION, IdentityUsageType
 from ..permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from ..resource_map import IoTOperationsResourceMap
 
@@ -41,8 +41,10 @@ SPC_RESOURCE_TYPE = "microsoft.secretsynccontroller/azurekeyvaultsecretproviderc
 SECRET_SYNC_RESOURCE_TYPE = "microsoft.secretsynccontroller/secretsyncs"
 SERVICE_ACCOUNT_DATAFLOW = "aio-dataflow"
 SERVICE_ACCOUNT_SECRETSYNC = "aio-ssc-sa"
+SERVICE_ACCOUNT_SCHEMA = "adr-schema-registry"
 KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
+MANAGED_IDENTITY_API_VERSION = "2023-01-31"
 
 COMPAT_FEAT_KEY_SET = {"connectors.settings.preview"}
 
@@ -219,6 +221,7 @@ class Instances(Queryable):
         name: str,
         resource_group_name: str,
         mi_user_assigned: str,
+        usage_type: str,
         federated_credential_name: Optional[str] = None,
         use_self_hosted_issuer: Optional[bool] = None,
         **kwargs,
@@ -226,14 +229,20 @@ class Instances(Queryable):
         """
         Responsible for federating and building the instance identity object.
         """
-        kwargs.pop("usage_type", None)  # TODO - @digimaun, unused atm.
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
+        self.resource_client.resources.get_by_id(
+            resource_id=mi_resource_id_container.resource_id, api_version=MANAGED_IDENTITY_API_VERSION
+        )
+
         instance = self.show(name=name, resource_group_name=resource_group_name)
         cluster_resource = self.get_resource_map(instance).connected_cluster.resource
         oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
         custom_location = self.get_associated_cl(instance)
         namespace = custom_location["properties"]["namespace"]
-        cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
+        service_account_name = (
+            SERVICE_ACCOUNT_SCHEMA if usage_type == IdentityUsageType.SCHEMA.value else SERVICE_ACCOUNT_DATAFLOW
+        )
+        cred_subject = get_cred_subject(namespace=namespace, service_account_name=service_account_name)
 
         if not federated_credential_name:
             federated_credential_name = get_fc_name(

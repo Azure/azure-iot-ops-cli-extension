@@ -374,7 +374,7 @@ def instance_identity_assign(
     resource_group_name: str,
     mi_user_assigned: str,
     federated_credential_name: Optional[str] = None,
-    usage_type: IdentityUsageType = IdentityUsageType.dataflow.value,
+    usage_type: str = IdentityUsageType.DATAFLOW.value,
     use_self_hosted_issuer: Optional[bool] = None,
     **kwargs,
 ) -> dict:
