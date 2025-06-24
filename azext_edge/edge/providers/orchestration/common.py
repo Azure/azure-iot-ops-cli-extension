@@ -293,6 +293,7 @@ DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
     MQTT_ENDPOINT_TYPE: "mqttSettings",
 }
 
+
 AUTHENTICATION_TYPE_REQUIRED_PARAMS = {
     DataflowEndpointAuthenticationType.ACCESSTOKEN.value: {"at_secret_name"},
     DataflowEndpointAuthenticationType.SASL.value: {"sasl_secret_name", "sasl_type"},
@@ -355,3 +356,50 @@ class X509FileExtension(Enum):
     DER = ".der"
     CRL = ".crl"
     CRT = ".crt"
+
+
+class RegistryEndpointAuthenticationType(Enum):
+    ANONYMOUS = "Anonymous"
+    ARTIFACTPULLSECRET = "ArtifactPullSecret"
+    SYSTEMASSIGNED = "SystemAssignedManagedIdentity"
+    USERASSIGNED = "UserAssignedManagedIdentity"
+
+
+class TrustedSigningKeyType(Enum):
+    CONFIGMAP = "ConfigMap"
+    # TODO - Secret?
+
+
+# Registry Endpoint Authentication Configuration
+REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS = {
+    RegistryEndpointAuthenticationType.ANONYMOUS.value: "anonymousSettings",
+    RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value: "artifactPullSecretSettings",
+    RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value: "systemAssignedManagedIdentitySettings",
+    RegistryEndpointAuthenticationType.USERASSIGNED.value: "userAssignedManagedIdentitySettings",
+}
+
+REGISTRY_ENDPOINT_AUTHENTICATION_REQUIRED_PARAMS = {
+    RegistryEndpointAuthenticationType.ANONYMOUS.value: set(),
+    RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value: {"secret_ref"},
+    RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value: set(),
+    RegistryEndpointAuthenticationType.USERASSIGNED.value: {"client_id", "tenant_id"},
+}
+
+REGISTRY_ENDPOINT_AUTHENTICATION_OPTIONAL_PARAMS = {
+    RegistryEndpointAuthenticationType.ANONYMOUS.value: set(),
+    RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value: set(),
+    RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value: {"audience"},
+    RegistryEndpointAuthenticationType.USERASSIGNED.value: {"scope"},
+}
+
+REGISTRY_ENDPOINT_AUTHENTICATION_PARAM_TEXT_MAP = {
+    "secret_ref": "--secret-ref",
+    "client_id": "--client-id",
+    "tenant_id": "--tenant-id",
+    "audience": "--audience",
+    "scope": "--scope",
+}
+
+DATAFLOW_GRAPH_MEDIA_TYPE = "application/vnd.microsoft.dataflow.graph.v1+json"
+DATAFLOW_GRAPH_ANNOTATION_DISPLAY_NAME = "org.opencontainers.artifact.displayName"
+DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION = "org.opencontainers.artifact.description"

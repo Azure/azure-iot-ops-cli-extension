@@ -4,10 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from collections import defaultdict
 from typing import Iterable, Optional
 
-from providers.orchestration.resources import RegistryEndpoints
-
+from .common import DEFAULT_DATAFLOW_PROFILE
 from .providers.orchestration.common import (
     AIO_MQTT_DEFAULT_CONFIG_MAP,
     DataflowEndpointKafkaAcksType,
@@ -17,9 +17,9 @@ from .providers.orchestration.common import (
     KafkaPartitionStrategyType,
     ListenerProtocol,
     MqttRetainType,
+    RegistryEndpointAuthenticationType,
 )
-from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles
-from .common import DEFAULT_DATAFLOW_PROFILE
+from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles, RegistryEndpoints
 
 
 def create_dataflow_profile(
@@ -1113,19 +1113,66 @@ def list_dataflow_endpoints(cmd, instance_name: str, resource_group_name: str) -
     return DataFlowEndpoints(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
 
 
-def list_dataflow_graphs(cmd, instance_name: str, resource_group_name: str):
-    pass
+def list_dataflow_graphs(cmd, instance_name: str, resource_group_name: str) -> dict[str, list[dict]]:
+    return RegistryEndpoints(cmd).list_dataflow_graphs(
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+    )
 
 
-# TODO - params
+# TODO - support for trusted_signing_key / configmap property
 def add_dataflow_graph_registry(
-    cmd, registry_name: str, instance_name: str, resource_group_name: str, registry_endpoint: dict
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    registry_endpoint_name: str,
+    host: str,
+    auth_type: Optional[RegistryEndpointAuthenticationType] = None,
+    secret_ref: Optional[str] = None,
+    audience: Optional[str] = None,
+    client_id: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    scope: Optional[str] = None,
 ):
     return RegistryEndpoints(cmd).add(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_name,
-        registry_endpoint=registry_endpoint,
+        registry_endpoint_name=registry_endpoint_name,
+        host=host,
+        auth_type=auth_type,
+        secret_ref=secret_ref,
+        audience=audience,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+    )
+
+
+# TODO - support for trusted_signing_key / configmap property
+def update_dataflow_graph_registry(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    registry_endpoint_name: str,
+    host: Optional[str] = None,
+    auth_type: Optional[RegistryEndpointAuthenticationType] = None,
+    secret_ref: Optional[str] = None,
+    audience: Optional[str] = None,
+    client_id: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    scope: Optional[str] = None,
+):
+    return RegistryEndpoints(cmd).update(
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        registry_endpoint_name=registry_endpoint_name,
+        host=host,
+        auth_type=auth_type,
+        secret_ref=secret_ref,
+        audience=audience,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
     )
 
 
@@ -1144,9 +1191,18 @@ def list_dataflow_graph_registries(cmd, instance_name: str, resource_group_name:
     )
 
 
-def remove_dataflow_graph_registry(cmd, registry_name: str, instance_name: str, resource_group_name: str) -> None:
+def remove_dataflow_graph_registry(
+    cmd,
+    registry_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    confirm_yes: Optional[bool] = None,
+    **kwargs,
+) -> None:
     return RegistryEndpoints(cmd).remove(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         registry_endpoint_name=registry_name,
+        confirm_yes=confirm_yes,
+        **kwargs,
     )

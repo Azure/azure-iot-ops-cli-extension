@@ -177,13 +177,13 @@ def load_iotops_commands(self, _):
         cmd_group.command("custom-mqtt", "update_dataflow_endpoint_custom_mqtt")
 
     with self.command_group(
-        f"iot ops dataflow graph",
+        "iot ops dataflow graph",
         command_type=dataflow_resource_ops,
     ) as cmd_group:
         cmd_group.command("list", "list_dataflow_graphs")
 
     with self.command_group(
-        f"iot ops dataflow graph registry",
+        "iot ops dataflow graph registry",
         command_type=dataflow_resource_ops,
     ) as cmd_group:
         cmd_group.command("list", "list_dataflow_graph_registries")

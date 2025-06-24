@@ -8,25 +8,15 @@
 CLI parameter definitions.
 """
 
-from azure.cli.core.commands.parameters import (
-    get_enum_type,
-    get_three_state_flag,
-    tags_type,
-)
+from azure.cli.core.commands.parameters import get_enum_type, get_three_state_flag, tags_type
 from knack.arguments import CaseInsensitiveList
 
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
-from ._validators import (
-    validate_namespace,
-    validate_resource_name,
-)
+from ._validators import validate_namespace, validate_resource_name
 from .common import OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.edge_api import (
-    DeviceRegistryResourceKinds,
-    MqResourceKinds,
-)
+from .providers.edge_api import DeviceRegistryResourceKinds, MqResourceKinds
 from .providers.orchestration.common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     TRUST_SETTING_KEYS,
@@ -48,6 +38,7 @@ from .providers.orchestration.common import (
     MqMemoryProfile,
     MqServiceType,
     MqttRetainType,
+    RegistryEndpointAuthenticationType,
     SchemaFormat,
     SchemaType,
     TlsKeyAlgo,
@@ -873,28 +864,54 @@ def load_iotops_arguments(self, _):
                 ),
             )
 
-    with self.argument_context(f"iot ops dataflow graph registry") as context:
+    with self.argument_context("iot ops dataflow graph registry") as context:
         context.argument(
-            "registry_name",
+            "registry_endpoint_name",
             options_list=["--name", "-n"],
-            help="Dataflow graph registry name.",
+            help="Dataflow graph registry endpoint name.",
         )
         context.argument(
-            "endpoint_url",
-            options_list=["--endpoint-url", "--url"],
-            help="The URL endpoint of the dataflow graph registry.",
+            "host",
+            options_list=["--host"],
+            help="The URL endpoint of the dataflow graph registry endpoint.",
         )
         context.argument(
-            "description",
-            options_list=["--description", "--desc"],
-            help="Description for this dataflow graph registry.",
+            "auth_type",
+            options_list=["--auth-type"],
+            arg_type=get_enum_type(RegistryEndpointAuthenticationType, default=None),
+            help="The authentication type for the registry endpoint. If not provided, "
+            "the authentication type will be determined based on the provided authentication parameters.",
         )
         context.argument(
-            "credentials",
-            options_list=["--credentials", "--creds"],
-            help="Credentials for authenticating to the graph registry.",
+            "secret_ref",
+            options_list=["--secret-ref"],
+            help="Reference to the secret for ArtifactPullSecret authentication.",
+            arg_group="Artifact Pull Secret",
         )
-
+        context.argument(
+            "audience",
+            options_list=["--audience", "--aud"],
+            help="Audience for SystemAssignedManagedIdentity authentication.",
+            arg_group="System-assigned Identity",
+        )
+        context.argument(
+            "client_id",
+            options_list=["--client-id", "--cid"],
+            help="Client ID for UserAssignedManagedIdentity authentication.",
+            arg_group="User-assigned Identity",
+        )
+        context.argument(
+            "tenant_id",
+            options_list=["--tenant-id", "--tid"],
+            help="Tenant ID for UserAssignedManagedIdentity authentication.",
+            arg_group="User-assigned Identity",
+        )
+        context.argument(
+            "scope",
+            options_list=["--scope"],
+            help="Scope for UserAssignedManagedIdentity authentication.",
+            arg_group="User-assigned Identity",
+        )
 
     with self.argument_context("iot ops broker") as context:
         context.argument(
