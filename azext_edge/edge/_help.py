@@ -1795,9 +1795,12 @@ def load_iotops_help():
             This operation includes federation of the identity.
 
         examples:
-        - name: Assign and federate a desired user-assigned managed identity.
+        - name: Assign and federate a desired user-assigned managed identity for use with dataflows.
           text: >
             az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID
+        - name: Assign and federate a desired user-assigned managed identity for use with schema registry.
+          text: >
+            az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID --usage schema
     """
 
     helps[
