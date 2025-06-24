@@ -8,6 +8,7 @@ from .brokers import Brokers
 from .clusters import ConnectedClusters
 from .dataflows import DataFlowEndpoints, DataFlowProfiles
 from .instances import Instances
+from .registryendpoints import RegistryEndpoints
 from .schema_registries import SchemaRegistries, Schemas
 from .sync_rules import SyncRules
 
@@ -18,6 +19,7 @@ __all__ = [
     "DataFlowEndpoints",
     "DataFlowProfiles",
     "Instances",
+    "RegistryEndpoints",
     "SchemaRegistries",
     "Schemas",
     "SyncRules",
