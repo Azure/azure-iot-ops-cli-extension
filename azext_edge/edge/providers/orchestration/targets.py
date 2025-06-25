@@ -17,13 +17,12 @@ from ...common import (
     DEFAULT_DATAFLOW_PROFILE,
 )
 from ...util import parse_kvp_nargs, url_safe_hash_phrase
-from ...util.az_client import parse_resource_id
+from ...util.id_tools import is_valid_resource_id, parse_resource_id
 from ..orchestration.common import (
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
 )
 from ..orchestration.resources.instances import parse_feature_kvp_nargs
-from .common import KubernetesDistroType
 from .template import (
     TEMPLATE_BLUEPRINT_ENABLEMENT,
     TEMPLATE_BLUEPRINT_INSTANCE,
@@ -56,6 +55,7 @@ class InitTargets:
         cluster_name: str,
         resource_group_name: str,
         schema_registry_resource_id: Optional[str] = None,
+        adr_namespace_resource_id: Optional[str] = None,
         cluster_namespace: str = "azure-iot-operations",
         location: Optional[str] = None,
         custom_location_name: Optional[str] = None,
@@ -87,9 +87,6 @@ class InitTargets:
         broker_frontend_workers: Optional[int] = None,
         broker_frontend_replicas: Optional[int] = None,
         add_insecure_listener: Optional[bool] = None,
-        # Akri
-        kubernetes_distro: str = KubernetesDistroType.k8s.value,
-        container_runtime_socket: Optional[str] = None,
         # User Trust Config
         user_trust: Optional[bool] = None,
         trust_settings: Optional[List[str]] = None,
@@ -97,10 +94,8 @@ class InitTargets:
     ):
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
-        # TODO - @digimaun
-        if schema_registry_resource_id:
-            parse_resource_id(schema_registry_resource_id)
-        self.schema_registry_resource_id = schema_registry_resource_id
+        self.schema_registry_resource_id = ensure_resource_id(schema_registry_resource_id)
+        self.adr_namespace_resource_id = ensure_resource_id(adr_namespace_resource_id)
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
         if not custom_location_name:
@@ -148,10 +143,6 @@ class InitTargets:
         self.broker_frontend_replicas = self._sanitize_int(broker_frontend_replicas)
         self.broker_config = self.get_broker_config_target_map()
         self.custom_broker_config = custom_broker_config
-
-        # Akri
-        self.kubernetes_distro = kubernetes_distro
-        self.container_runtime_socket = container_runtime_socket
 
     def _sanitize_k8s_name(self, name: Optional[str]) -> Optional[str]:
         if not name:
@@ -243,8 +234,6 @@ class InitTargets:
                 "clusterName": self.cluster_name,
                 "clusterNamespace": self.cluster_namespace,
                 "clusterLocation": self.location,
-                "kubernetesDistro": self.kubernetes_distro,
-                "containerRuntimeSocket": self.container_runtime_socket,
                 "customLocationName": self.custom_location_name,
                 "clExtentionIds": cl_extension_ids,
                 "deployResourceSyncRules": self.deploy_resource_sync_rules,
@@ -453,3 +442,11 @@ def get_default_instance_config(description: Optional[str] = None, features: Opt
         "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},
         "features": features,
     }
+
+
+def ensure_resource_id(resource_id: Optional[str]) -> Optional[str]:
+    if not resource_id:
+        return
+    if is_valid_resource_id(resource_id):
+        return resource_id
+    raise InvalidArgumentValueError(f"Invalid resource ID: {resource_id}")
