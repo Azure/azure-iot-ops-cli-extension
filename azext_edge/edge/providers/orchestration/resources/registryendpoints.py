@@ -5,17 +5,14 @@
 # ----------------------------------------------------------------------------------------------
 
 from collections import defaultdict
-from shlex import split
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from azure.cli.core.azclierror import MutuallyExclusiveArgumentError, RequiredArgumentMissingError, AzCLIError
+from azure.cli.core.azclierror import AzCLIError, MutuallyExclusiveArgumentError, RequiredArgumentMissingError
 from knack.log import get_logger
 from rich.console import Console
 
-from azext_edge.edge.util.embedded_cli import EmbeddedCLI
-
 from ....util.az_client import wait_for_terminal_state
-from ....util.common import run_host_command, should_continue_prompt
+from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
 from ..common import (
     DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION,
@@ -82,91 +79,102 @@ class RegistryEndpoints(Queryable):
         """
         List available images from a specific registry endpoint.
 
-        :param cmd: Command context.
-        :param registry_name: Name of the registry endpoint to query.
         :param instance_name: Name of the IoT Operations instance.
         :param resource_group_name: Name of the resource group.
         :return: Iterable of image dictionaries.
         """
+        from azure.containerregistry import ContainerRegistryClient
 
-        # get all endpoints
         endpoints = (
-            self.registry_endpoints.list_by_instance_resource(
-                resource_group_name=resource_group_name,
-                instance_name=instance_name,
-            )
-            or []
+            # self.registry_endpoints.list_by_instance_resource(
+            #     resource_group_name=resource_group_name,
+            #     instance_name=instance_name,
+            # )
+            # or []
             # Placeholder for testing
-            # [{"properties": {"host": "https://aziotops.azurecr.io"}, "name": "azure iot operations registry"}]
+            [{"properties": {"host": "https://rkessler.azurecr.io"}, "name": "azure iot operations registry"}]
         )
         graphs = defaultdict(list)
-        embedded_cli = EmbeddedCLI(capture_stderr=True)
+        with console.status("Working...") as ctx:
+            for registry_endpoint in endpoints:
+                endpoint_name = registry_endpoint.get("name", "unknown")
+                host = registry_endpoint.get("properties", {}).get("host")
+                # Cannot process registry endpoint without a valid host
+                if not host:
+                    logger.warning(f"Registry endpoint '{endpoint_name}' does not have a valid host.")
+                    continue
 
-        # loop through each registry endpoint to get images
-        for registry_endpoint in endpoints:
-            # Extract host from registry endpoint properties
-            host = registry_endpoint.get("properties", {}).get("host")
-            # print(f"Processing registry endpoint: {registry_endpoint['name']} with host: {host}")
+                hostname = host.replace("https://", "")
+                # We only support Azure Container Registry (ACR) endpoints
+                if not hostname.endswith(".azurecr.io"):
+                    logger.warning(f"Invalid ACR host format: {host}")
+                    continue
 
-            # Parse the registry name from the host URL
-            # Expected format: <registry-name>.azurecr.io or https://<registry-name>.azurecr.io
-            registry_host = host.replace("https://", "").replace("http://", "")
-            acr_name = registry_host.split(".")[0]
+                try:
+                    # Create Container Registry client
+                    registry_url = f"https://{hostname}"
+                    from azure.cli.core._profile import Profile
 
-            # Execute az acr repository list command
-            repository_list_command = f"acr repository list -n '{acr_name}'"
-            # print(f"Running command: {repository_list_command}")
-            repositories_result = embedded_cli.invoke(
-                command=repository_list_command,
-            )
-            if repositories_result.success():
-                repositories = repositories_result.as_json()
-                repository_result = {}
-                for repository in repositories:
-                    # print(f"Processing repository: {repository} in registry: {acr_name}")
-                    image_tags_command = f"acr repository show-tags --repository '{repository}' -n '{acr_name}'"
-                    # print(f"Running command: {image_tags_command}")
-                    image_tags_result = embedded_cli.invoke(
-                        command=image_tags_command,
-                    )
-                    if image_tags_result.success():
-                        tags = image_tags_result.as_json()
-                        for tag in tags:
-                            # print(f"Processing tag: {tag} for image: {repository} in registry: {acr_name}")
-                            # command is in preview so don't show warning output
-                            manifest_command = f"acr manifest show -r '{acr_name}' -n '{repository}:{tag}'"
-                            # print(f"Running command: {manifest_command}")
-                            manifest_result = embedded_cli.invoke(
-                                command=manifest_command,
-                                capture_stderr=True,  # Capture stderr to avoid printing warnings
+                    profile = Profile(cli_ctx=self.cmd.cli_ctx)
+                    credential, _, _ = profile.get_login_credentials()
+
+                    # Create the client
+                    client = ContainerRegistryClient(endpoint=registry_url, credential=credential)
+
+                    # Get repositories (images)
+                    repositories = []
+                    for repo in client.list_repository_names():
+                        repositories.append(repo)
+                    repository_result = {}
+
+                    for repository in repositories:
+                        ctx.update(f"Processing repository '{repository}' in registry '{host}'...")
+                        try:
+                            # Get tags for the repository
+                            tags = []
+                            for tag in client.list_tag_properties(repository):
+                                tags.append(tag.name)
+                            for tag_name in tags:
+                                try:
+                                    # Get the actual manifest content to check media type
+                                    manifest = client.get_manifest(repository, tag_name)
+
+                                    # Check if this is a dataflow graph by config media type, default to manifest value if no config
+                                    manifest_obj = manifest.manifest
+                                    manifest_config = manifest_obj.get("config", {})
+                                    media_type = manifest_config.get("mediaType", manifest.media_type)
+                                    if media_type == DATAFLOW_GRAPH_MEDIA_TYPE:
+                                        annotations = manifest_obj.get("annotations", {})
+                                        repository_result.setdefault(repository, []).append(
+                                            f"{tag_name}"
+                                            # {
+                                            #     "tag": tag_name,
+                                            #     "name": annotations.get(
+                                            #         DATAFLOW_GRAPH_ANNOTATION_DISPLAY_NAME, ""
+                                            #     ),
+                                            #     "description": annotations.get(
+                                            #         DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION, ""
+                                            #     ),
+                                            # }
+                                        )
+                                except Exception as e:
+                                    logger.warning(f"Failed to get manifest for {repository}:{tag_name} in {host}: {e}")
+                                    continue
+
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to list tags for repository '{repository}' in registry '{host}': {e}"
                             )
-                            if manifest_result.success():
-                                manifest = manifest_result.as_json()
-                                # print(f"Manifest for tag {tag} in repository {repository}: {manifest}")
-                                if manifest.get("config", {}).get("mediaType") == DATAFLOW_GRAPH_MEDIA_TYPE:
-                                    # print(f"Found dataflow graph for {repository}:{tag} in {acr_name}")
-                                    repository_result.setdefault(repository, []).append(
-                                        {
-                                            "tag": tag,
-                                            "name": manifest.get("annotations", {}).get(
-                                                DATAFLOW_GRAPH_ANNOTATION_DISPLAY_NAME, ""
-                                            ),
-                                            "description": manifest.get("annotations", {}).get(
-                                                DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION, ""
-                                            ),
-                                        }
-                                    )
+                            continue
 
-                    else:
-                        logger.warning(
-                            f"Failed to list tags for image '{repository}' in registry '{acr_name}': {image_tags_result.error_message()}"
-                        )
+                    graphs[hostname] = repository_result
 
-                graphs[acr_name] = repository_result
-            else:
-                raise AzCLIError(
-                    f"Failed to list images for registry endpoint '{registry_endpoint['name']}': {repositories_result.error_message()}"
-                )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to list repositories for registry endpoint '{registry_endpoint.get('name', 'unknown')}': {e}"
+                    )
+                    continue
+
         return graphs
 
     def _process_registry_endpoint_authentication(
