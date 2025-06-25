@@ -12,12 +12,13 @@ import pytest
 import requests
 
 from ....generators import generate_random_string, get_zeroed_subscription
+from azext_edge.edge.util.az_client import IoTOpsMgmtApiVersion
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 BASE_URL = "https://management.azure.com"
 RESOURCE_PROVIDER = "Microsoft.IoTOperations"
 QUALIFIED_INSTANCE_TYPE = f"{RESOURCE_PROVIDER}/instances"
-INSTANCES_API_VERSION = "2025-04-01"
+INSTANCES_API_VERSION = IoTOpsMgmtApiVersion.V20250701_preview.value
 CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
 CONNECTED_CLUSTER_API_VERSION = "2024-07-15-preview"
 CLUSTER_EXTENSIONS_API_VERSION = "2023-05-01"
