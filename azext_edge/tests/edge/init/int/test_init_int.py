@@ -115,7 +115,6 @@ def test_init_scenario(init_test_setup, tracked_files):
 
     # Missing:
     # init
-    # --kubernetes-distro + runtime-socket
     # --enable-fault-tolerance
     # --trust-source (one param)
     # create
