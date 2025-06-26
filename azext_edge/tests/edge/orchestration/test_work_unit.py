@@ -46,7 +46,6 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
-    KubernetesDistroType,
 )
 from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET
 from azext_edge.edge.providers.orchestration.targets import (
@@ -59,7 +58,7 @@ from azext_edge.edge.providers.orchestration.work import (
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
 
-from ...generators import generate_random_string, get_zeroed_subscription
+from ...generators import generate_random_string, get_zeroed_subscription, generate_resource_id
 from .resources.conftest import RequestKPIs, get_request_kpis
 from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS
 
@@ -98,7 +97,7 @@ class CallKey(Enum):
     CREATE_CUSTOM_LOCATION = "createCustomLocation"
 
 
-CL_EXTENSION_TYPES = ["microsoft.azure.secretstore", "microsoft.iotoperations.platform", "microsoft.iotoperations"]
+CL_EXTENSION_TYPES = ["microsoft.azure.secretstore", "microsoft.iotoperations"]
 
 
 class ExceptionMeta(NamedTuple):
@@ -209,7 +208,7 @@ class ServiceGenerator:
                 assert cl_payload["properties"]["hostResourceId"] == self.scenario["cluster"]["id"]
                 cl_create_call_len = len(self.call_map.get(CallKey.CREATE_CUSTOM_LOCATION, []))
                 expected_ext_ids = self.scenario["cluster"]["extensions"]["value"]
-                types_in_play = ["microsoft.iotoperations.platform"] if not cl_create_call_len else CL_EXTENSION_TYPES
+                types_in_play = ["microsoft.azure.secretstore"] if not cl_create_call_len else CL_EXTENSION_TYPES
                 expected_cl_ext_ids = set(
                     ext["id"] for ext in expected_ext_ids if ext["properties"]["extensionType"] in types_in_play
                 )
@@ -325,6 +324,7 @@ def build_target_scenario(
     **kwargs,
 ) -> dict:
     schema_registry_name: str = generate_random_string()
+    adr_namespace_name: str = generate_random_string()
     resource_group_name = generate_random_string()
 
     expected_extension_types: List[str] = list(OPS_EXTENSION_DEPS)
@@ -379,12 +379,21 @@ def build_target_scenario(
         "check_cluster": None,
         "ensureLatest": None,
         "schemaRegistry": {
-            "id": (
-                f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}"
-                f"/providers/microsoft.deviceregistry/schemaRegistries/{schema_registry_name}"
+            "id": generate_resource_id(
+                resource_group_name=resource_group_name,
+                resource_provider="microsoft.deviceregistry",
+                resource_path=f"/schemaRegistries/{schema_registry_name}",
             ),
             "name": schema_registry_name,
             "roleAssignments": {"value": []},
+        },
+        "deviceRegistryNamespace": {
+            "id": generate_resource_id(
+                resource_group_name=resource_group_name,
+                resource_provider="microsoft.deviceregistry",
+                resource_path=f"/namespaces/{adr_namespace_name}",
+            ),
+            "name": adr_namespace_name,
         },
         "dataflow": {"profileInstances": None},
         "akri": {
@@ -744,6 +753,7 @@ def test_iot_ops_create(
         "resource_group_name": target_scenario["resourceGroup"],
         "instance_name": target_scenario["instance"]["name"],
         "schema_registry_resource_id": target_scenario["schemaRegistry"]["id"],
+        "adr_namespace_resource_id": target_scenario["deviceRegistryNamespace"]["id"],
     }
     if target_scenario["instance"]["namespace"]:
         create_call_kwargs["cluster_namespace"] = target_scenario["instance"]["namespace"]
@@ -876,20 +886,15 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
         [
             ext["id"]
             for ext in target_scenario["cluster"]["extensions"]["value"]
-            if ext["properties"]["extensionType"] in [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
+            if ext["properties"]["extensionType"] in [EXTENSION_TYPE_SSC]
         ]
     )
     assert set(parameters["clExtentionIds"]["value"]) == cl_extension_ids
     assert parameters["schemaRegistryId"]["value"] == target_scenario["schemaRegistry"]["id"]
     assert parameters["deployResourceSyncRules"]["value"] == bool(target_scenario["enableRsyncRules"])
 
-    assert (
-        parameters["kubernetesDistro"]["value"] == target_scenario["akri"]["kubernetesDistro"]
-        or KubernetesDistroType.k8s.value
-    )
-
-    if target_scenario["akri"]["containerRuntimeSocket"]:
-        assert parameters["containerRuntimeSocket"]["value"] == target_scenario["akri"]["containerRuntimeSocket"]
+    assert "kubernetesDistro" not in parameters
+    assert "containerRuntimeSocket" not in parameters
 
     expected_profile_instances = target_scenario.get("dataflow", {}).get("profileInstances") or 1
     assert parameters["defaultDataflowinstanceCount"]["value"] == expected_profile_instances

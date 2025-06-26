@@ -152,6 +152,7 @@ def create_instance(
     resource_group_name: str,
     instance_name: str,
     schema_registry_resource_id: str,
+    adr_namespace_resource_id: str,
     cluster_namespace: str = DEFAULT_NAMESPACE,
     location: Optional[str] = None,
     custom_location_name: Optional[str] = None,
@@ -160,7 +161,7 @@ def create_instance(
     instance_features: Optional[List[str]] = None,
     dataflow_profile_instances: int = 1,
     trust_settings: Optional[List[str]] = None,
-    # Akri
+    # Akri [Deprecated]
     container_runtime_socket: Optional[str] = None,
     kubernetes_distro: str = KubernetesDistroType.k8s.value,
     # Ops Extension
@@ -192,6 +193,9 @@ def create_instance(
 
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
+    _ = container_runtime_socket
+    _ = kubernetes_distro
+
     # TODO - @digimaun
     custom_broker_config = None
     if custom_broker_config_file:
@@ -221,6 +225,7 @@ def create_instance(
         resource_group_name=resource_group_name,
         cluster_namespace=cluster_namespace,
         schema_registry_resource_id=schema_registry_resource_id,
+        adr_namespace_resource_id=adr_namespace_resource_id,
         location=location,
         custom_location_name=custom_location_name,
         enable_rsync_rules=enable_rsync_rules,
@@ -231,8 +236,6 @@ def create_instance(
         dataflow_profile_instances=dataflow_profile_instances,
         trust_settings=trust_settings,
         # Ops extension
-        container_runtime_socket=container_runtime_socket,
-        kubernetes_distro=kubernetes_distro,
         ops_config=ops_config,
         ops_version=ops_version,
         ops_train=ops_train,

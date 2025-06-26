@@ -1126,6 +1126,12 @@ def load_iotops_arguments(self, _):
                 options_list=["--sr-resource-id"],
                 help="The schema registry resource Id to use with IoT Operations.",
             )
+            # Schema Registry
+            context.argument(
+                "adr_namespace_resource_id",
+                options_list=["--ns-resource-id"],
+                help="The device registry namespace resource Id to use with IoT Operations.",
+            )
             # Akri
             context.argument(
                 "container_runtime_socket",
@@ -1133,6 +1139,7 @@ def load_iotops_arguments(self, _):
                 help="The default node path of the container runtime socket. If not provided (default), the "
                 "socket path is determined by --kubernetes-distro.",
                 arg_group="Akri",
+                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 "kubernetes_distro",
@@ -1141,6 +1148,7 @@ def load_iotops_arguments(self, _):
                 help="The Kubernetes distro to use for Akri configuration. The selected distro implies the "
                 "default container runtime socket path when no --runtime-socket value is provided.",
                 arg_group="Akri",
+                deprecate_info=context.deprecate(hide=True),
             )
             # Broker
             context.argument(

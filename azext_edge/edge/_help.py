@@ -1639,33 +1639,25 @@ def load_iotops_help():
         - name: Create the target instance with minimum input.
           text: >
             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+            --ns-resource-id $NAMESPACE_RESOURCE_ID
         - name: The following example adds customization to the default broker instance resource
             as well as an instance description and tags.
           text: >
              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --broker-mem-profile High --broker-backend-workers 4 --description 'Contoso Factory'
+             --ns-resource-id $NAMESPACE_RESOURCE_ID --broker-mem-profile High --broker-backend-workers 4 --description 'Contoso Factory'
              --tags tier=testX1
         - name: This example shows deploying an additional insecure (no authn or authz) broker listener
             configured for port 1883 of service type load balancer. Useful for testing and/or demos.
             Do not use the insecure option in production.
           text: >
              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --add-insecure-listener
-        - name: This form shows how to enable resource sync for the instance deployment.
-            To enable resource sync role assignment write is necessary on the target resource group.
-          text: >
-             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --enable-rsync
+             --ns-resource-id $NAMESPACE_RESOURCE_ID --add-insecure-listener
         - name: This example highlights trust settings for a user provided cert-manager config.
             Note that the cluster must have been initialized with `--user-trust` and a user cert-manager deployment must be present.
           text: >
               az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-              --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem
+              --ns-resource-id $NAMESPACE_RESOURCE_ID --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem
               issuerKind=ClusterIssuer issuerName=trust-manager-selfsigned-issuer
-        - name: To configure component features such as preview settings, use the --feature option.
-          text: >
-              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-              --feature connectors.settings.preview=Enabled
     """
 
     helps[
