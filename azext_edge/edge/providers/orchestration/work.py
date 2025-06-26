@@ -687,7 +687,7 @@ class WorkManager:
         if self._resource_map.connected_cluster.get_aio_custom_locations():
             raise ValidationError(
                 "IoT Operations is detected on the cluster.\n"
-                "Re-deployment or multiple instances are not supported at this time.\n\n"
-                f"Please run 'az iot ops delete -n {self._targets.instance_name} -g {self._targets.cluster_name}'\n"
+                "Re-deployment or multiple instances are not supported at this time. Please run:\n\n"
+                f"'az iot ops delete --cluster {self._targets.cluster_name} -g {self._targets.resource_group_name}'\n"
                 "to uninstall the existing deployment prior to running ops create."
             )

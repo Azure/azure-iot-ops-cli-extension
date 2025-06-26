@@ -287,9 +287,6 @@ def upgrade_instance(
     force: Optional[bool] = None,
     **kwargs,
 ) -> Optional[List[dict]]:
-    logger.warning("Upgrade is not supported in this preview release.")
-    return
-
     from .providers.orchestration.upgrade2 import upgrade_ops_instance
 
     return upgrade_ops_instance(

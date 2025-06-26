@@ -448,5 +448,12 @@ def ensure_resource_id(resource_id: Optional[str]) -> Optional[str]:
     if not resource_id:
         return
     if is_valid_resource_id(resource_id):
-        return resource_id
-    raise InvalidArgumentValueError(f"Invalid resource ID: {resource_id}")
+        parsed_id = parse_resource_id(resource_id)  # Validate the resource ID format
+        resource_name = parsed_id.get("name")
+        if resource_name:
+            return resource_id
+    raise InvalidArgumentValueError(
+        f"Malformed resource Id '{resource_id}'. An Azure resource Id has the form:\n"
+        "/subscription/{subscriptionId}/resourceGroups/{resourceGroup}"
+        "/providers/Microsoft.Provider/{resourcePath}/{resourceName}"
+    )
