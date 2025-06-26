@@ -81,8 +81,9 @@ class RegistryEndpoints(Queryable):
 
         :param instance_name: Name of the IoT Operations instance.
         :param resource_group_name: Name of the resource group.
-        :return: Iterable of image dictionaries.
-        """
+        :return: Iterable of image dictionaries."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
         from azure.containerregistry import ContainerRegistryClient
 
         endpoints = (
@@ -94,11 +95,21 @@ class RegistryEndpoints(Queryable):
             # Placeholder for testing
             [{"properties": {"host": "https://rkessler.azurecr.io"}, "name": "azure iot operations registry"}]
         )
-        graphs = defaultdict(list)
+
+        # Pre-fetch credentials once to avoid repeated calls
+        from azure.cli.core._profile import Profile
+
+        profile = Profile(cli_ctx=self.cmd.cli_ctx)
+        credential, _, _ = profile.get_login_credentials()
+
+        graphs = defaultdict(dict)
+
         with console.status("Working...") as ctx:
             for registry_endpoint in endpoints:
                 endpoint_name = registry_endpoint.get("name", "unknown")
                 host = registry_endpoint.get("properties", {}).get("host")
+                ctx.update(f"Collecting images from endpoint {endpoint_name}")
+
                 # Cannot process registry endpoint without a valid host
                 if not host:
                     logger.warning(f"Registry endpoint '{endpoint_name}' does not have a valid host.")
@@ -113,66 +124,72 @@ class RegistryEndpoints(Queryable):
                 try:
                     # Create Container Registry client
                     registry_url = f"https://{hostname}"
-                    from azure.cli.core._profile import Profile
-
-                    profile = Profile(cli_ctx=self.cmd.cli_ctx)
-                    credential, _, _ = profile.get_login_credentials()
-
-                    # Create the client
                     client = ContainerRegistryClient(endpoint=registry_url, credential=credential)
 
-                    # Get repositories (images)
-                    repositories = []
-                    for repo in client.list_repository_names():
-                        repositories.append(repo)
+                    # Get all repositories at once using list comprehension (faster than append loop)
+                    repositories = list(client.list_repository_names())
+
                     repository_result = {}
 
-                    for repository in repositories:
-                        ctx.update(f"Processing repository '{repository}' in registry '{host}'...")
+                    def process_tag_manifest(args):
+                        """Process a single tag manifest - for parallel execution"""
+                        repository, tag_name = args
                         try:
-                            # Get tags for the repository
-                            tags = []
-                            for tag in client.list_tag_properties(repository):
-                                tags.append(tag.name)
+                            # Get the actual manifest content to check media type
+                            manifest = client.get_manifest(repository, tag_name)
+
+                            # Check if this is a dataflow graph by config media type
+                            manifest_obj = manifest.manifest
+                            manifest_config = manifest_obj.get("config", {})
+                            media_type = manifest_config.get("mediaType", manifest.media_type)
+
+                            if media_type == DATAFLOW_GRAPH_MEDIA_TYPE:
+                                annotations = manifest_obj.get("annotations", {})
+                                return repository, {
+                                    "tag": tag_name,
+                                    "name": annotations.get(DATAFLOW_GRAPH_ANNOTATION_DISPLAY_NAME, ""),
+                                    "description": annotations.get(DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION, ""),
+                                }
+                            return repository, None
+                        except Exception as e:
+                            logger.warning(f"Failed to get manifest for {repository}:{tag_name} in {host}: {e}")
+                            return repository, None
+
+                    # Collect all repository:tag combinations first
+                    all_tag_tasks = []
+                    for repository in repositories:
+                        try:
+                            ctx.update(f"Collecting images from endpoint {endpoint_name}: {repository}")
+                            tags = [tag.name for tag in client.list_tag_properties(repository)]
+                            # Create tasks for all tags in this repository
                             for tag_name in tags:
-                                try:
-                                    # Get the actual manifest content to check media type
-                                    manifest = client.get_manifest(repository, tag_name)
-
-                                    # Check if this is a dataflow graph by config media type, default to manifest value if no config
-                                    manifest_obj = manifest.manifest
-                                    manifest_config = manifest_obj.get("config", {})
-                                    media_type = manifest_config.get("mediaType", manifest.media_type)
-                                    if media_type == DATAFLOW_GRAPH_MEDIA_TYPE:
-                                        annotations = manifest_obj.get("annotations", {})
-                                        repository_result.setdefault(repository, []).append(
-                                            f"{tag_name}"
-                                            # {
-                                            #     "tag": tag_name,
-                                            #     "name": annotations.get(
-                                            #         DATAFLOW_GRAPH_ANNOTATION_DISPLAY_NAME, ""
-                                            #     ),
-                                            #     "description": annotations.get(
-                                            #         DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION, ""
-                                            #     ),
-                                            # }
-                                        )
-                                except Exception as e:
-                                    logger.warning(f"Failed to get manifest for {repository}:{tag_name} in {host}: {e}")
-                                    continue
-
+                                all_tag_tasks.append((repository, tag_name))
                         except Exception as e:
                             logger.warning(
                                 f"Failed to list tags for repository '{repository}' in registry '{host}': {e}"
                             )
                             continue
 
-                    graphs[hostname] = repository_result
+                    # Process manifests in parallel with limited concurrency to avoid overwhelming the registry
+                    ctx.update("Parsing manifests for dataflow graphs...")
+                    with ThreadPoolExecutor(max_workers=8) as executor:
+                        tag_futures = {executor.submit(process_tag_manifest, task): task for task in all_tag_tasks}
+
+                        for future in as_completed(tag_futures):
+                            repository, result = future.result()
+
+                            if result:
+                                if repository not in repository_result:
+                                    repository_result[repository] = []
+                                repository_result[repository].append(result)
+
+                    if repository_result:
+                        graphs[hostname] = repository_result
+                    else:
+                        logger.info(f"No dataflow graphs found in registry {hostname}")
 
                 except Exception as e:
-                    logger.error(
-                        f"Failed to list repositories for registry endpoint '{registry_endpoint.get('name', 'unknown')}': {e}"
-                    )
+                    logger.error(f"Failed to list repositories for registry endpoint '{endpoint_name}': {e}")
                     continue
 
         return graphs
