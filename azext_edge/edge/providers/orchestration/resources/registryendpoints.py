@@ -4,10 +4,11 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import asyncio
 from collections import defaultdict
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from azure.cli.core.azclierror import AzCLIError, MutuallyExclusiveArgumentError, RequiredArgumentMissingError
+from azure.cli.core.azclierror import MutuallyExclusiveArgumentError, RequiredArgumentMissingError
 from knack.log import get_logger
 from rich.console import Console
 
@@ -82,114 +83,123 @@ class RegistryEndpoints(Queryable):
         :param instance_name: Name of the IoT Operations instance.
         :param resource_group_name: Name of the resource group.
         :return: Iterable of image dictionaries."""
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-
-        from azure.containerregistry import ContainerRegistryClient
-
-        endpoints = (
-            # self.registry_endpoints.list_by_instance_resource(
-            #     resource_group_name=resource_group_name,
-            #     instance_name=instance_name,
-            # )
-            # or []
-            # Placeholder for testing
-            [{"properties": {"host": "https://rkessler.azurecr.io"}, "name": "azure iot operations registry"}]
-        )
-
-        # Pre-fetch credentials once to avoid repeated calls
         from azure.cli.core._profile import Profile
+        from azure.containerregistry import ContainerRegistryClient
 
         profile = Profile(cli_ctx=self.cmd.cli_ctx)
         credential, _, _ = profile.get_login_credentials()
 
+        # Get the registry endpoints for the instance
+        endpoints = self.registry_endpoints.list_by_instance_resource(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+        )
         graphs = defaultdict(dict)
 
         with console.status("Working...") as ctx:
             for registry_endpoint in endpoints:
                 endpoint_name = registry_endpoint.get("name", "unknown")
                 host = registry_endpoint.get("properties", {}).get("host")
-                ctx.update(f"Collecting images from endpoint {endpoint_name}")
-
-                # Cannot process registry endpoint without a valid host
                 if not host:
                     logger.warning(f"Registry endpoint '{endpoint_name}' does not have a valid host.")
                     continue
 
+                # Validate host format
                 hostname = host.replace("https://", "")
-                # We only support Azure Container Registry (ACR) endpoints
                 if not hostname.endswith(".azurecr.io"):
                     logger.warning(f"Invalid ACR host format: {host}")
                     continue
 
                 try:
+                    ctx.update(f"Collecting images from {hostname}...")
+
                     # Create Container Registry client
                     registry_url = f"https://{hostname}"
                     client = ContainerRegistryClient(endpoint=registry_url, credential=credential)
 
-                    # Get all repositories at once using list comprehension (faster than append loop)
-                    repositories = list(client.list_repository_names())
+                    # Get all images in the container registry
+                    images = list(client.list_repository_names())
 
-                    repository_result = {}
+                    async def find_dataflow_images():
 
-                    def process_tag_manifest(args):
-                        """Process a single tag manifest - for parallel execution"""
-                        repository, tag_name = args
-                        try:
-                            # Get the actual manifest content to check media type
-                            manifest = client.get_manifest(repository, tag_name)
+                        # Check if each tag manifest is a dataflow graph
+                        async def process_tag_manifest_async(image, tag):
+                            """Process a single tag manifest asynchronously"""
+                            try:
+                                # Get the actual manifest content to check media type
+                                manifest = await asyncio.to_thread(client.get_manifest, image, tag)
 
-                            # Check if this is a dataflow graph by config media type
-                            manifest_obj = manifest.manifest
-                            manifest_config = manifest_obj.get("config", {})
-                            media_type = manifest_config.get("mediaType", manifest.media_type)
+                                # Check if this is a dataflow graph by config media type
+                                manifest_obj = manifest.manifest
+                                manifest_config = manifest_obj.get("config", {})
+                                media_type = manifest_config.get("mediaType", manifest.media_type)
 
-                            if media_type == DATAFLOW_GRAPH_MEDIA_TYPE:
-                                annotations = manifest_obj.get("annotations", {})
-                                return repository, {
-                                    "tag": tag_name,
-                                    "name": annotations.get(DATAFLOW_GRAPH_ANNOTATION_DISPLAY_NAME, ""),
-                                    "description": annotations.get(DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION, ""),
-                                }
-                            return repository, None
-                        except Exception as e:
-                            logger.warning(f"Failed to get manifest for {repository}:{tag_name} in {host}: {e}")
-                            return repository, None
+                                if media_type == DATAFLOW_GRAPH_MEDIA_TYPE:
+                                    # annotations = manifest_obj.get("annotations", {})
+                                    return {
+                                        "host": host,
+                                        "digest": manifest.digest,
+                                        "manifest": manifest_obj,
+                                        "image": f"{image}:{tag}",
+                                        # "name": annotations.get(DATAFLOW_GRAPH_ANNOTATION_DISPLAY_NAME, ""),
+                                        # "description": annotations.get(DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION, ""),
+                                    }
+                                return None
+                            except Exception as e:
+                                logger.warning(f"Failed to get manifest for {image}:{tag} in {host}: {e}")
+                                return None
 
-                    # Collect all repository:tag combinations first
-                    all_tag_tasks = []
-                    for repository in repositories:
-                        try:
-                            ctx.update(f"Collecting images from endpoint {endpoint_name}: {repository}")
-                            tags = [tag.name for tag in client.list_tag_properties(repository)]
-                            # Create tasks for all tags in this repository
-                            for tag_name in tags:
-                                all_tag_tasks.append((repository, tag_name))
-                        except Exception as e:
-                            logger.warning(
-                                f"Failed to list tags for repository '{repository}' in registry '{host}': {e}"
-                            )
-                            continue
+                        # Get all tags for an image
+                        async def get_tags_for_image(image):
+                            try:
+                                tags = await asyncio.to_thread(
+                                    lambda: [tag.name for tag in client.list_tag_properties(image)]
+                                )
+                                return [(image, tag_name) for tag_name in tags]
+                            except Exception as e:
+                                logger.warning(f"Failed to list tags for image '{image}' in registry '{host}': {e}")
+                                return []
 
-                    # Process manifests in parallel with limited concurrency to avoid overwhelming the registry
-                    ctx.update("Parsing manifests for dataflow graphs...")
-                    with ThreadPoolExecutor(max_workers=8) as executor:
-                        tag_futures = {executor.submit(process_tag_manifest, task): task for task in all_tag_tasks}
+                        tag_lists = await asyncio.gather(
+                            *[get_tags_for_image(image) for image in images], return_exceptions=True
+                        )
 
-                        for future in as_completed(tag_futures):
-                            repository, result = future.result()
+                        all_tag_tasks = []
+                        for tag_list in tag_lists:
+                            if isinstance(tag_list, Exception):
+                                logger.warning(f"Failed to collect tags: {tag_list}")
+                                continue
+                            all_tag_tasks.extend(tag_list)
 
-                            if result:
-                                if repository not in repository_result:
-                                    repository_result[repository] = []
-                                repository_result[repository].append(result)
+                        if not all_tag_tasks:
+                            logger.info(f"No tags found for any images in registry {hostname}")
+                            return {}
 
-                    if repository_result:
-                        graphs[hostname] = repository_result
-                    else:
+                        dataflow_image_results = await asyncio.gather(
+                            *[process_tag_manifest_async(image, tag) for image, tag in all_tag_tasks],
+                            return_exceptions=True,
+                        )
+
+                        dataflow_images = []
+                        for dataflow_image in dataflow_image_results:
+                            if isinstance(dataflow_image, Exception):
+                                logger.warning(f"Task failed with exception: {dataflow_image}")
+                                continue
+
+                            if dataflow_image:
+                                dataflow_images.append(dataflow_image)
+
+                        return dataflow_images
+
+                    images = asyncio.run(find_dataflow_images())
+
+                    if not images:
                         logger.info(f"No dataflow graphs found in registry {hostname}")
+                        continue
+                    graphs[hostname] = images
 
                 except Exception as e:
-                    logger.error(f"Failed to list repositories for registry endpoint '{endpoint_name}': {e}")
+                    logger.error(f"Failed to list images for registry endpoint '{endpoint_name}': {e}")
                     continue
 
         return graphs
