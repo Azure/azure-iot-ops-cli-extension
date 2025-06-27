@@ -6,7 +6,7 @@
 
 from copy import deepcopy
 from random import randint
-from typing import Optional
+from typing import Dict, Optional
 import pytest
 import responses
 import json
@@ -31,6 +31,7 @@ from azext_edge.edge.commands_namespaces import (
 from .test_namespace_assets_unit import (
     get_namespace_asset_mgmt_uri, get_namespace_asset_record, add_device_get_call
 )
+from .namespace_helpers import check_event_configuration, check_destinations
 from ....generators import generate_random_string
 
 
@@ -80,57 +81,52 @@ def generate_event(
     return event
 
 
-def _check_event_configuration(added_event: dict, expected_event: dict):
-    """Helper function to check event configuration."""
-    if expected_event and "eventConfiguration" in expected_event:  # custom
-        assert added_event["eventConfiguration"] == expected_event["eventConfiguration"]
-
-
-def _check_event_destinations(added_event: dict, expected_event: Optional[dict] = None):
-    """Helper function to check event destinations."""
-    if not expected_event or "destinations" not in expected_event:
-        return
-
-    added_destinations = added_event.get("destinations", [])
-    assert len(added_destinations) == len(expected_event["destinations"])
-    destination = added_destinations[0]
-    expected_destination = expected_event["destinations"][0]
-    assert destination.get("target") == expected_destination.get("target")
-
-    if destination.get("target") == "Mqtt":
-        result_config = destination.get("configuration", {})
-        expected_config = expected_destination.get("configuration", {})
-        assert result_config.get("topic") == expected_config.get("topic")
-        assert result_config.get("retain") == expected_config.get("retain")
-        assert result_config.get("qos") == expected_config.get("qos")
-        assert result_config.get("ttl") == expected_config.get("ttl")
-
-
-@pytest.mark.parametrize("asset_type, command_func", [
-    ("custom", add_namespace_custom_asset_event),
-    ("opcua", add_namespace_opcua_asset_event),
-    ("onvif", add_namespace_onvif_asset_event)
+@pytest.mark.parametrize("asset_type, command_func, config_params", [
+    # Custom asset dataset with configuration
+    ("custom", add_namespace_custom_asset_event, {
+        "event_configuration": json.dumps({
+            "customSetting": "test",
+            "priority": "high"
+        })
+    }),
+    # Custom asset dataset with minimal config
+    ("custom", add_namespace_custom_asset_event, {}),
+    # OPCUA asset dataset with full parameters
+    ("opcua", add_namespace_opcua_asset_event, {
+        "opcua_event_publishing_interval": 1500,
+        "opcua_event_queue_size": 100,
+        "opcua_event_filter_type": "SimpleEvents",
+        # filter clauses will be set in the test
+    }),
+    # OPCUA asset dataset with minimal config
+    ("opcua", add_namespace_opcua_asset_event, {}),
+    # ONVIF asset dataset with minimal config
+    ("onvif", add_namespace_onvif_asset_event, {})
+])
+@pytest.mark.parametrize("destination_params", [
+    {},  # No destinations
+    # Single destination
+    {
+        "topic": "/contoso/events/test",
+        "retain": "Keep",
+        "qos": "Qos0",
+        "ttl": 3600
+    },
 ])
 @pytest.mark.parametrize("has_previous_events, replace_event", [
     (False, False),  # No previous events, no replace
     (True, False),   # Has previous events, no replace
     (True, True)     # Has previous events, with replace
 ])
-@pytest.mark.parametrize("has_config, has_destinations", [
-    (False, False),  # No config, no destinations
-    (True, False),   # Has config, no destinations
-    (False, True),   # No config, has destinations
-    (True, True)     # Has config and destinations
-])
 def test_add_namespace_asset_event(
     mocked_cmd,
     mocked_responses: responses,
     asset_type: str,
     command_func,
+    config_params: dict,
+    destination_params: Dict[str, str],
     has_previous_events: bool,
     replace_event: bool,
-    has_config: bool,
-    has_destinations: bool,
     mocked_check_cluster_connectivity
 ):
     asset_name = "testAsset"
@@ -138,26 +134,19 @@ def test_add_namespace_asset_event(
     resource_group_name = "testResourceGroup"
     event_name = f"testEvent{generate_random_string(5)}"
     event_notifier = f"nsu=test;s=FastUInt{randint(1, 1000)}"
-    config_params = {}
 
+    # Create the expected event
     expected_event = {
         "name": event_name,
         "eventNotifier": event_notifier,
         "dataPoints": []
     }
 
+    config_params = deepcopy(config_params)
     # Add optional configuration parameters based on test case
-    if has_config:
-        if asset_type == "custom":
-            expected_event["eventConfiguration"] = config_params["event_configuration"] = json.dumps({
-                "customSetting": generate_random_string(10),
-                "priority": "high"
-            })
-        elif asset_type == "opcua":
+    if config_params:
+        if asset_type == "opcua":
             clause = {"path": "test", "type": "SimpleEvents", "field": "testField"}
-            config_params["opcua_event_publishing_interval"] = 1000
-            config_params["opcua_event_queue_size"] = 5
-            config_params["opcua_event_filter_type"] = "SimpleEvents"
             config_params["opcua_event_filter_clauses"] = [[
                 f"{key}={value}" for key, value in clause.items()
             ]]
@@ -175,20 +164,16 @@ def test_add_namespace_asset_event(
                     ]
                 }
             })
+        elif asset_type == "custom":
+            expected_event["eventConfiguration"] = config_params.get("event_configuration")
 
     # Add optional destination parameters based on test case
-    if has_destinations:
-        mqtt_dest = {
-            "target": "Mqtt",
-            "configuration": {
-                "topic": "/contoso/events/test",
-                "retain": "Keep",
-                "qos": "Qos0",
-                "ttl": 3600
-            }
-        }
-        expected_event["destinations"] = [mqtt_dest]
-        config_params["events_destinations"] = [f"{key}={value}" for key, value in mqtt_dest["configuration"].items()]
+    if destination_params:
+        dest = {}
+        if "topic" in destination_params:
+            dest = {"target": "Mqtt", "configuration": destination_params}
+        expected_event["destinations"] = [dest]
+        config_params["events_destinations"] = [f"{key}={value}" for key, value in dest["configuration"].items()]
 
     # Generate mock asset
     mocked_asset = get_namespace_asset_record(
@@ -290,8 +275,8 @@ def test_add_namespace_asset_event(
     assert added_event["eventNotifier"] == event_notifier
 
     # Check configuration and destinations using helper functions
-    _check_event_configuration(added_event, expected_event)
-    _check_event_destinations(added_event, expected_event)
+    check_event_configuration(added_event, expected_event)
+    check_destinations(added_event, expected_event)
 
     # Verify all other events are preserved
     event_map = {e["name"]: e for e in updated_asset["properties"].get("events", [])}
@@ -315,9 +300,7 @@ def test_add_namespace_asset_event_error(
 
     Tests the following scenarios:
     - Mismatch between asset type and device endpoint type
-    - Asset not found (404 response)
     - Event exists but replace flag not set
-    - PATCH operation fails with error
     """
     asset_name = "testAsset"
     namespace_name = "testNamespace"
@@ -369,7 +352,7 @@ def test_add_namespace_asset_event_error(
         with pytest.raises(InvalidArgumentValueError) as excinfo:
             command_func(**base_params)
 
-        assert f" is of type 'microsoft.media' but expected 'microsoft.{asset_type}'." in str(excinfo.value).lower()
+        assert f" is of type 'microsoft.media', but expected 'microsoft.{asset_type}'." in str(excinfo.value).lower()
 
     mocked_responses.reset()
 
@@ -565,6 +548,9 @@ def test_remove_namespace_asset_event(
     )
 
     if event_deleted:
+        # Mock the PATCH request to update the asset
+        updated_asset = deepcopy(mocked_asset)
+        updated_asset["properties"]["events"] = expected_events
         mocked_responses.add(
             responses.PATCH,
             get_namespace_asset_mgmt_uri(
@@ -572,7 +558,7 @@ def test_remove_namespace_asset_event(
                 namespace_name=namespace_name,
                 asset_name=asset_name
             ),
-            json=mocked_asset,
+            json=updated_asset,
             status=200
         )
 
@@ -586,7 +572,7 @@ def test_remove_namespace_asset_event(
     )
 
     # Verify result matches the mock updated namespace
-    assert result_events == mocked_asset["properties"].get("events", [])
+    assert result_events == expected_events
 
     # Verify API calls were made correctly
     assert len(mocked_responses.calls) == (2 if event_deleted else 1)
@@ -797,8 +783,8 @@ def test_update_namespace_asset_event(
     assert patch_event["eventNotifier"] == expected_event["eventNotifier"]
 
     # Check configuration and destinations using helper functions
-    _check_event_configuration(patch_event, expected_event)
-    _check_event_destinations(patch_event, expected_event)
+    check_event_configuration(patch_event, expected_event)
+    check_destinations(patch_event, expected_event)
 
     # Check data points preservation
     assert len(patch_event["dataPoints"]) == len(initial_event["dataPoints"])
@@ -1106,6 +1092,10 @@ def test_remove_namespace_asset_event_point(
 
     if point_deleted:
         # Mock the PATCH request to update the asset
+        updated_asset = deepcopy(mocked_asset)
+        updated_event = updated_asset["properties"]["events"][0]
+        updated_event["dataPoints"] = expected_datapoints
+
         mocked_responses.add(
             responses.PATCH,
             get_namespace_asset_mgmt_uri(
@@ -1113,7 +1103,7 @@ def test_remove_namespace_asset_event_point(
                 namespace_name=namespace_name,
                 asset_name=asset_name
             ),
-            json=mocked_asset,
+            json=updated_asset,
             status=200
         )
 
@@ -1129,7 +1119,7 @@ def test_remove_namespace_asset_event_point(
     )
 
     # Verify the result is the updated datapoints list
-    assert result == mocked_asset["properties"]["events"][0].get("dataPoints", [])
+    assert result == expected_datapoints
 
     # Verify API calls were made correctly
     assert len(mocked_responses.calls) == (2 if point_deleted else 1)

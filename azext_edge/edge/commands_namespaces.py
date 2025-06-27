@@ -1133,8 +1133,8 @@ def add_namespace_opcua_asset_dataset_point(
         asset_type=DeviceEndpointType.OPCUA.value,
         datapoint_name=datapoint_name,
         data_source=data_source,
-        opcua_queue_size=queue_size,
-        opcua_sampling_interval=sampling_interval,
+        queue_size=queue_size,
+        sampling_interval=sampling_interval,
         replace=replace,
         **kwargs
     )
@@ -1426,8 +1426,8 @@ def add_namespace_opcua_asset_event_point(
         asset_type=DeviceEndpointType.OPCUA.value,
         datapoint_name=datapoint_name,
         data_source=data_source,
-        opcua_queue_size=queue_size,
-        opcua_sampling_interval=sampling_interval,
+        queue_size=queue_size,
+        sampling_interval=sampling_interval,
         replace=replace,
         **kwargs
     )

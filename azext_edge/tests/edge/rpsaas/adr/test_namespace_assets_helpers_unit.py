@@ -4,7 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List, Optional
+from random import choice
+from typing import Callable, List, Optional
 import json
 import pytest
 from azure.cli.core.azclierror import (
@@ -13,10 +14,12 @@ from azure.cli.core.azclierror import (
     RequiredArgumentMissingError,
 )
 
+from azext_edge.edge.providers.rpsaas.adr.namespace_devices import DeviceEndpointType
 from azext_edge.edge.providers.rpsaas.adr.namespace_assets import (
     _build_destination,
     _create_datapoint,
     _get_event,
+    _process_configs,
     _process_opcua_dataset_configurations,
     _process_opcua_event_configurations,
     _process_media_stream_configurations
@@ -111,6 +114,330 @@ def test_build_destination_error(test_case: dict):
 
     for msg in test_case["expected_msg"]:
         assert msg in str(excinfo.value)
+
+
+@pytest.mark.parametrize("test_case", [
+    # Basic datapoint with only required parameters
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1"
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1"
+        }
+    },
+    # Datapoint with type reference
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "type_ref": "dtmi:contoso:datatype:temperature;1"
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "typeRef": "dtmi:contoso:datatype:temperature;1"
+        }
+    },
+    # Datapoint with custom configuration
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "custom_configuration": '{"customSetting": "value"}'
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "dataPointConfiguration": '{"customSetting": "value"}'
+        }
+    },
+    # Datapoint with OPC UA configuration (queue_size only)
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "queue_size": 10
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "dataPointConfiguration": '{"queueSize": 10}'
+        }
+    },
+    # Datapoint with OPC UA configuration (sampling_interval only)
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "sampling_interval": 500
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "dataPointConfiguration": '{"samplingInterval": 500}'
+        }
+    },
+    # Datapoint with OPC UA configuration (both queue_size and sampling_interval)
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "queue_size": 10,
+            "sampling_interval": 500
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "dataPointConfiguration": '{"queueSize": 10, "samplingInterval": 500}'
+        }
+    },
+    # Datapoint with all parameters
+    {
+        "params": {
+            "datapoint_name": "test_datapoint",
+            "data_source": "nsu=test;s=Source1",
+            "type_ref": "dtmi:contoso:datatype:temperature;1",
+            "queue_size": 10,
+            "sampling_interval": 500,
+            "custom_configuration": "myconfig.json"
+        },
+        "expected": {
+            "name": "test_datapoint",
+            "dataSource": "nsu=test;s=Source1",
+            "typeRef": "dtmi:contoso:datatype:temperature;1",
+            "dataPointConfiguration": '{"customSetting": "value"}'
+        }
+    }
+])
+def test_create_datapoint(test_case, mocker):
+    # Setup mocks if needed
+    mocker.patch(
+        "azext_edge.edge.providers.rpsaas.adr.namespace_assets.process_additional_configuration",
+        return_value='{"customSetting": "value"}'
+    )
+
+    # Call the function under test
+    result = _create_datapoint(**test_case["params"])
+
+    # Verify expected results
+    assert result["name"] == test_case["expected"]["name"]
+    assert result["dataSource"] == test_case["expected"]["dataSource"]
+
+    # Check optional fields
+    if "typeRef" in test_case["expected"]:
+        assert result["typeRef"] == test_case["expected"]["typeRef"]
+    else:
+        assert "typeRef" not in result
+
+    if "dataPointConfiguration" in test_case["expected"]:
+        # For dataPointConfiguration, we need to compare parsed JSON since the string order might be different
+        test_config = json.loads(test_case["expected"]["dataPointConfiguration"])
+        assert json.loads(result["dataPointConfiguration"]) == test_config
+    else:
+        assert "dataPointConfiguration" not in result or result["dataPointConfiguration"] == "{}"
+
+
+@pytest.mark.parametrize(
+    "asset_type, test_case",
+    [
+        # Test OPCUA
+        (
+            DeviceEndpointType.OPCUA.value,
+            {
+                "opcua_dataset_values": {"test": "dataset_value"},
+                "opcua_event_values": {"test": "event_value"},
+                "mgmt_custom_configuration": '{"test": "mgmt_value"}',
+                "datasets_destinations": ["topic=/test/topic"],
+                "events_destinations": ["topic=/test/event"]
+            },
+        ),
+        # Test ONVIF
+        (
+            DeviceEndpointType.ONVIF.value,
+            {
+                "mgmt_custom_configuration": '{"test": "mgmt_value"}',
+                "events_destinations": ["topic=/test/event"]
+            },
+        ),
+        # Test MEDIA
+        (
+            DeviceEndpointType.MEDIA.value,
+            {
+                "media_stream_values": {"test": "stream_value"},
+                "streams_destinations": ["topic=/test/stream", "path=/data/test"]
+            },
+        ),
+        # Test Custom
+        (
+            "Custom",
+            {
+                "datasets_custom_configuration": '{"test": "dataset_value"}',
+                "events_custom_configuration": '{"test": "event_value"}',
+                "mgmt_custom_configuration": '{"test": "mgmt_value"}',
+                "streams_custom_configuration": '{"test": "stream_value"}',
+                "datasets_destinations": ["topic=/test/dataset"],
+                "events_destinations": ["topic=/test/event"],
+                "streams_destinations": ["path=/data/test"]
+            },
+        ),
+        # Test Custom with no params
+        (
+            "Custom", {}
+        ),
+        # Test OPCUA with some params
+        (
+            DeviceEndpointType.OPCUA.value,
+            {
+                "opcua_dataset_values": {"test": "dataset_value"},
+                "datasets_destinations": ["topic=/test/topic"],
+            },
+        ),
+    ]
+)
+@pytest.mark.parametrize("default", [True, False])
+@pytest.mark.parametrize("null_values", [True, False])
+def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool, null_values: bool):
+    # Set up mocks for all the helper functions
+    mocks = {}
+    for func_name in [
+        "_process_opcua_dataset_configurations",
+        "_process_opcua_event_configurations",
+        "_process_media_stream_configurations",
+        "process_additional_configuration",
+        "_build_destination"
+    ]:
+        # ensure we can test all possible null values
+        return_value = choice(["", [], None]) if null_values else generate_random_string()
+        mocks[func_name] = mocker.patch(
+            f"azext_edge.edge.providers.rpsaas.adr.namespace_assets.{func_name}",
+            return_value=return_value
+        )
+
+    # Call the function
+    result = _process_configs(asset_type=asset_type, default=default, **test_case)
+
+    # will build up expected_result as we check the mock calls
+    expected_result = {}
+
+    # Get all the expected arguments for the functions to be called
+    # note that we use the arguments from the test case to determine which functions should be called
+    asset_type_to_args = {
+        DeviceEndpointType.OPCUA.value: [
+            "opcua_dataset_values",
+            "opcua_event_values",
+            "mgmt_custom_configuration",
+            "datasets_destinations",
+            "events_destinations"
+        ],
+        DeviceEndpointType.ONVIF.value: [
+            "mgmt_custom_configuration",
+            "events_destinations"
+        ],
+        DeviceEndpointType.MEDIA.value: [
+            "media_stream_values",
+            "streams_destinations"
+        ]
+    }
+    expected_args = asset_type_to_args.get(asset_type, [
+        "datasets_custom_configuration",
+        "events_custom_configuration",
+        "mgmt_custom_configuration",
+        "streams_custom_configuration",
+        "datasets_destinations",
+        "events_destinations",
+        "streams_destinations"
+    ])
+
+    # map the test case args to the expected keys
+    args_to_key = {
+        # custom configurations
+        "datasets_custom_configuration": "datasetsConfiguration",
+        "events_custom_configuration": "eventsConfiguration",
+        "mgmt_custom_configuration": "managementGroupsConfiguration",
+        "streams_custom_configuration": "streamsConfiguration",
+        # specific type configurations
+        "opcua_dataset_values": "datasetsConfiguration",
+        "opcua_event_values": "eventsConfiguration",
+        "media_stream_values": "streamsConfiguration",
+        # destinations
+        "datasets_destinations": "datasetsDestinations",
+        "events_destinations": "eventsDestinations",
+        "streams_destinations": "streamsDestinations",
+    }
+    if default:
+        # If default is True, we prefix the keys with 'default' + capatilize first letter
+        args_to_key = {k: f"default{v[0].upper()}{v[1:]}" for k, v in args_to_key.items()}
+
+    def _add_expected_key(func: Callable, arg: str):
+        """Build up the expected result based on the function call."""
+        expected_key = args_to_key[arg]
+        if func.return_value:
+            expected_result[expected_key] = func.return_value
+
+    def _assert_any_call(mock_func, **kwargs):
+        """Assert that the mock was called with any of the provided arguments."""
+        assert any(
+            mock_func.call_args_list[i].kwargs == kwargs for i in range(mock_func.call_count)
+        ), f"Mock {mock_func} was not called with {kwargs}"
+
+    # custom configurations
+    custom_func = mocks["process_additional_configuration"]
+    for arg, config_type in [
+        ("datasets_custom_configuration", "dataset"),
+        ("events_custom_configuration", "event"),
+        ("mgmt_custom_configuration", "management group"),
+        ("streams_custom_configuration", "stream")
+    ]:
+        if arg in expected_args:
+            # check that the function was called with the right parameters
+            _assert_any_call(
+                custom_func,
+                additional_configuration=test_case.get(arg),
+                config_type=config_type
+            )
+            _add_expected_key(custom_func, arg)
+
+    # specific configurations
+    for arg, func in [
+        ("opcua_dataset_values", "_process_opcua_dataset_configurations"),
+        ("opcua_event_values", "_process_opcua_event_configurations"),
+        ("media_stream_values", "_process_media_stream_configurations")
+    ]:
+        if arg in expected_args:
+            # check that the function was called with the right parameters
+            mock_func = mocks[func]
+            # note that everything is passed as kwargs
+            mock_func.assert_called_once_with(
+                **test_case
+            )
+
+            _add_expected_key(mock_func, arg)
+
+    # destinations
+    dest_func = mocks["_build_destination"]
+    # map asset type to another mapping of expected arguments (with corresponding allowed destination types)
+    asset_to_dest_args = {
+        DeviceEndpointType.OPCUA.value: {"datasets_destinations": ["Mqtt"], "events_destinations": ["Mqtt"]},
+        DeviceEndpointType.ONVIF.value: {"events_destinations": ["Mqtt"]},
+        DeviceEndpointType.MEDIA.value: {"streams_destinations": ["Storage", "Mqtt"]},
+    }
+    expected_dest_args = asset_to_dest_args.get(asset_type, {
+        "datasets_destinations": None,
+        "events_destinations": None,
+        "streams_destinations": None
+    })
+    for arg, allowed_dest_types in expected_dest_args.items():
+        if arg in expected_args:
+            kwargs = {"destination_args": test_case.get(arg, [])}
+            if allowed_dest_types:
+                kwargs["allowed_types"] = allowed_dest_types
+            _assert_any_call(dest_func, **kwargs)
+            _add_expected_key(dest_func, arg)
+
+    assert result == expected_result
 
 
 @pytest.mark.parametrize("test_case", [
@@ -335,12 +662,12 @@ def test_process_opcua_event_configurations(test_case, mocked_logger):
         "params": {
             "task_type": "snapshot-to-mqtt",
             "task_format": "png",
-            "snapshots_per_second": 1
+            "snapshots_per_second": 0.01
         },
         "expected_values": {
             "taskType": "snapshot-to-mqtt",
             "format": "png",
-            "snapshotsPerSecond": 1
+            "snapshotsPerSecond": 0.01
         }
     },
     # Set parameters for snapshot-to-fs
@@ -479,35 +806,30 @@ def test_process_media_stream_configurations(test_case):
 @pytest.mark.parametrize("test_case", [
     # Missing task type with other parameters provided
     {
-        "original": None,
         "params": {"snapshots_per_second": 1, "task_format": "png"},
         "expected_error": RequiredArgumentMissingError,
         "expected_msg": "Task type via --task-type must be provided when configuring media stream properties."
     },
     # Invalid property for task type
     {
-        "original": None,
         "params": {"task_type": "snapshot-to-mqtt", "path": "/data/snapshots"},
         "expected_error": InvalidArgumentValueError,
         "expected_msg": "Property 'path' is not allowed for task type 'snapshot-to-mqtt'."
     },
     # Invalid format for clip tasks
     {
-        "original": None,
         "params": {"task_type": "clip-to-fs", "task_format": "png", "path": "/data/clips"},
         "expected_error": InvalidArgumentValueError,
         "expected_msg": "Invalid format for clip task:"
     },
     # Invalid format for snapshot tasks
     {
-        "original": None,
         "params": {"task_type": "snapshot-to-mqtt", "task_format": "mp4"},
         "expected_error": InvalidArgumentValueError,
         "expected_msg": "Invalid format for snapshot task:"
     },
     # Invalid numbers
     {
-        "original": None,
         "params": {
             "task_type": "snapshot-to-mqtt",
             "task_format": "png",
@@ -521,135 +843,11 @@ def test_process_media_stream_configurations_error(test_case):
     """Test error conditions when processing media stream configurations."""
     with pytest.raises(test_case["expected_error"]) as excinfo:
         _process_media_stream_configurations(
-            original_stream_configuration=test_case["original"],
+            original_stream_configuration=None,
             **test_case["params"]
         )
 
     assert test_case["expected_msg"] in str(excinfo.value)
-
-
-@pytest.mark.parametrize("test_case", [
-    # Basic datapoint with only required parameters
-    {
-        "params": {
-            "datapoint_name": "test_datapoint",
-            "data_source": "nsu=test;s=Source1"
-        },
-        "expected": {
-            "name": "test_datapoint",
-            "dataSource": "nsu=test;s=Source1"
-        }
-    },
-    # Datapoint with type reference
-    {
-        "params": {
-            "datapoint_name": "test_datapoint",
-            "data_source": "nsu=test;s=Source1",
-            "type_ref": "dtmi:contoso:datatype:temperature;1"
-        },
-        "expected": {
-            "name": "test_datapoint",
-            "dataSource": "nsu=test;s=Source1",
-            "typeRef": "dtmi:contoso:datatype:temperature;1"
-        }
-    },
-    # Datapoint with custom configuration
-    {
-        "params": {
-            "datapoint_name": "test_datapoint",
-            "data_source": "nsu=test;s=Source1",
-            "custom_configuration": '{"customSetting": "value"}'
-        },
-        "expected": {
-            "name": "test_datapoint",
-            "dataSource": "nsu=test;s=Source1",
-            "additionalConfiguration": '{"customSetting": "value"}'
-        }
-    },
-    # Datapoint with OPC UA configuration (queue_size only)
-    {
-        "params": {
-            "datapoint_name": "test_datapoint",
-            "data_source": "nsu=test;s=Source1",
-            "queue_size": 10
-        },
-        "expected": {
-            "name": "test_datapoint",
-            "dataSource": "nsu=test;s=Source1",
-            "additionalConfiguration": '{"queueSize": 10}'
-        }
-    },
-    # Datapoint with OPC UA configuration (sampling_interval only)
-    {
-        "params": {
-            "datapoint_name": "test_datapoint",
-            "data_source": "nsu=test;s=Source1",
-            "sampling_interval": 500
-        },
-        "expected": {
-            "name": "test_datapoint",
-            "dataSource": "nsu=test;s=Source1",
-            "additionalConfiguration": '{"samplingInterval": 500}'
-        }
-    },
-    # Datapoint with OPC UA configuration (both queue_size and sampling_interval)
-    {
-        "params": {
-            "datapoint_name": "test_datapoint",
-            "data_source": "nsu=test;s=Source1",
-            "queue_size": 10,
-            "sampling_interval": 500
-        },
-        "expected": {
-            "name": "test_datapoint",
-            "dataSource": "nsu=test;s=Source1",
-            "additionalConfiguration": '{"queueSize": 10, "samplingInterval": 500}'
-        }
-    },
-    # Datapoint with all parameters
-    {
-        "params": {
-            "datapoint_name": "test_datapoint",
-            "data_source": "nsu=test;s=Source1",
-            "type_ref": "dtmi:contoso:datatype:temperature;1",
-            "queue_size": 10,
-            "sampling_interval": 500,
-            "custom_configuration": "myconfig.json"
-        },
-        "expected": {
-            "name": "test_datapoint",
-            "dataSource": "nsu=test;s=Source1",
-            "typeRef": "dtmi:contoso:datatype:temperature;1",
-            "additionalConfiguration": '{"customSetting": "value"}'
-        }
-    }
-])
-def test_create_datapoint(test_case, mocker):
-    # Setup mocks if needed
-    mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr.namespace_assets.process_additional_configuration",
-        return_value='{"customSetting": "value"}'
-    )
-
-    # Call the function under test
-    result = _create_datapoint(**test_case["params"])
-
-    # Verify expected results
-    assert result["name"] == test_case["expected"]["name"]
-    assert result["dataSource"] == test_case["expected"]["dataSource"]
-
-    # Check optional fields
-    if "typeRef" in test_case["expected"]:
-        assert result["typeRef"] == test_case["expected"]["typeRef"]
-    else:
-        assert "typeRef" not in result
-
-    if "additionalConfiguration" in test_case["expected"]:
-        # For additionalConfiguration, we need to compare parsed JSON since the string order might be different
-        test_config = json.loads(test_case["expected"]["additionalConfiguration"])
-        assert json.loads(result["additionalConfiguration"]) == test_config
-    else:
-        assert "additionalConfiguration" not in result or result["additionalConfiguration"] == "{}"
 
 
 @pytest.mark.parametrize("num_events", [1, 5, 10])

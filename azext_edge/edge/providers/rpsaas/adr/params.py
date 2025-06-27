@@ -1117,7 +1117,7 @@ def load_adr_arguments(self, _):
                 options_list=["--snapshots-per-sec", "--sps"],
                 help=f"Number of snapshots per second. Only allowed for only {MediaTaskType.snapshot_to_mqtt.value} "
                 f"and {MediaTaskType.snapshot_to_fs.value}. Minimum: 0",
-                type=int,
+                type=float,
                 arg_group="Default Stream Configuration",
             )
             context.argument(

@@ -210,7 +210,12 @@ def add_device_get_call(
     ]
 ])
 def test_create_namespace_asset(
-    mocked_cmd, mocked_responses: responses, reqs: dict, asset_type: str, unique_reqs: dict
+    mocked_cmd,
+    mocked_responses: responses,
+    reqs: dict,
+    asset_type: str,
+    unique_reqs: dict,
+    mocked_check_cluster_connectivity
 ):
     """
     Test the create_namespace_asset function for different asset types.
@@ -299,7 +304,11 @@ def test_create_namespace_asset(
     ["opcua", create_namespace_opcua_asset]
 ])
 def test_create_namespace_asset_error(
-    mocked_cmd, mocked_responses: responses, asset_type: str, create_command
+    mocked_cmd,
+    mocked_responses: responses,
+    asset_type: str,
+    create_command,
+    mocked_check_cluster_connectivity
 ):
     # Setup variables
     asset_name = generate_random_string()
@@ -608,7 +617,13 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
     }
 ])
 def test_update_namespace_asset(
-    mocked_cmd, mocked_responses: responses, reqs: dict, asset_type: str, unique_reqs: dict, original_properties: dict
+    mocked_cmd,
+    mocked_responses: responses,
+    reqs: dict,
+    asset_type: str,
+    unique_reqs: dict,
+    original_properties: dict,
+    mocked_check_cluster_connectivity
 ):
     # Setup variables
     asset_name = generate_random_string()

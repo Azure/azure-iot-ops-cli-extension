@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from copy import deepcopy
 import json
 import pytest
 import responses
@@ -19,6 +20,7 @@ from azext_edge.edge.common import ADRAuthModes
 from azext_edge.edge.providers.rpsaas.adr.specs import (
     NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA,
     NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA,
+    NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA,
 )
 from ....generators import generate_random_string, BASE_URL, generate_resource_id
 
@@ -147,6 +149,43 @@ def test_get_extended_location(
     assert result["name"] == resource['extendedLocation']['name']
     assert result["cluster_location"] == location
     assert mocked_logger.warning.called is not connected
+
+
+@pytest.mark.parametrize("datasets", [
+    [{"name": "", "dataPoints": generate_random_string()}],
+    [{"name": "default", "dataPoints": generate_random_string()}],
+])
+@pytest.mark.parametrize("dataset_name", ["default", generate_random_string()])
+def test_get_default_dataset(datasets, dataset_name):
+    from azext_edge.edge.providers.rpsaas.adr.helpers import get_default_dataset
+    expected = deepcopy(datasets[0])
+    if dataset_name != "default":
+        expected = {"name": dataset_name, "dataPoints": generate_random_string()}
+        datasets.append(expected)
+    result = get_default_dataset(
+        asset={"properties": {"datasets": datasets}},
+        dataset_name=dataset_name
+    )
+    assert result["name"] == dataset_name
+    assert result["dataPoints"] == expected["dataPoints"]
+
+
+@pytest.mark.parametrize("dataset_name", ["default", generate_random_string()])
+def test_get_default_dataset_error(dataset_name):
+    from azext_edge.edge.providers.rpsaas.adr.helpers import get_default_dataset
+    with pytest.raises(InvalidArgumentValueError):
+        get_default_dataset(
+            asset={"name": generate_random_string(), "properties": {}},
+            dataset_name=dataset_name
+        )
+    with pytest.raises(InvalidArgumentValueError):
+        get_default_dataset(
+            asset={
+                "name": generate_random_string(),
+                "properties": {"datasets": [{"name": generate_random_string()}]}
+            },
+            dataset_name=dataset_name
+        )
 
 
 @pytest.mark.parametrize("configuration", [
@@ -465,6 +504,16 @@ def test_process_authentication_error(
             "acceptInvalidCertificates": False
         }
     ),
+    # Media stream configuration schema - has oneof
+    (
+        NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA,
+        {
+            "tasKType": "stream-to-rtsp",
+            "mediaServerAddress": "rtsp://example.com/stream",
+            "mediaServerPort": 554,
+            "mediaServerPath": "/live",
+        }
+    ),
     # Test with null values in schema
     (
         {
@@ -535,17 +584,20 @@ def test_ensure_schema_structure_valid(schema, data):
         },
         "Invalid value for age: the value must be at least 18, instead got 15"
     ),
-    # Test with value above maximum
+    # Test with two values above maximum
     (
         {
             "properties": {
-                "percentage": {"type": "integer", "maximum": 100}
+                "percentage": {"type": "integer", "maximum": 100},
+                "error": {"type": "integer", "maximum": 10}
             }
         },
         {
-            "percentage": 120
+            "percentage": 120,
+            "error": 12
         },
-        "Invalid value for percentage: the value must be at most 100, instead got 120"
+        "Invalid value for percentage: the value must be at most 100, instead got 120\n"
+        "Invalid value for error: the value must be at most 10, instead got 12"
     ),
     # Test with value outside of both min and max
     (
@@ -577,6 +629,30 @@ def test_ensure_schema_structure_valid(schema, data):
             }
         },
         "Invalid value for threshold: the value must be between 5 and 50 inclusive, instead got 2"
+    ),
+    # Test with oneOf schema with invalid data
+    (
+        {
+            "oneOf": [
+                {
+                    "properties": {
+                        "yellowCount": {"type": "integer", "minimum": 0, "maximum": 255},
+                        "blueCount": {"type": "integer", "minimum": 0, "maximum": 255},
+                    },
+                },
+                {
+                    "properties": {
+                        "redCount": {"type": "integer", "minimum": 0, "maximum": 255},
+                        "greenCount": {"type": "integer", "minimum": 0, "maximum": 255},
+                    },
+                }
+            ]
+        },
+        {
+            "redCount": 300,
+            "greenCount": 100
+        },
+        "Invalid value for redCount: the value must be between 0 and 255 inclusive, instead got 300"
     )
 ])
 def test_ensure_schema_structure_invalid(schema, data, expected_error):
@@ -588,4 +664,5 @@ def test_ensure_schema_structure_invalid(schema, data, expected_error):
     with pytest.raises(InvalidArgumentValueError) as exc:
         ensure_schema_structure(schema, data)
 
-    assert expected_error in str(exc.value)
+    for error in expected_error.split("\n"):
+        assert error in str(exc.value)

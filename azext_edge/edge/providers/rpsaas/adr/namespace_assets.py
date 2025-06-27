@@ -19,7 +19,7 @@ from azure.cli.core.azclierror import (
 from ....util.common import parse_kvp_nargs, should_continue_prompt
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.queryable import Queryable
-from .helpers import process_additional_configuration, ensure_schema_structure
+from .helpers import process_additional_configuration, ensure_schema_structure, get_default_dataset
 from .namespace_devices import DeviceEndpointType
 
 if TYPE_CHECKING:
@@ -322,6 +322,7 @@ class NamespaceAssets(Queryable):
         asset_type: str,
         dataset_name: str,
         dataset_data_source: str,
+        # TODO: singular dataset
         datasets_destinations: Optional[List[str]] = None,
         replace: bool = False,
         # TODO: future pr, import datapoints from file
@@ -363,7 +364,7 @@ class NamespaceAssets(Queryable):
                 "dataSource": dataset_data_source,
                 "datasetConfiguration": processed_configs.get("datasetsConfiguration"),
                 "destinations": processed_configs.get("datasetsDestinations", []),
-                "datapoints": [],  # TODO: future pr, add datapoints
+                "dataPoints": [],  # TODO: future pr, add datapoints
             }
         ]
 
@@ -398,7 +399,7 @@ class NamespaceAssets(Queryable):
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
         )
-        return _get_dataset(asset, dataset_name)
+        return get_default_dataset(asset, dataset_name)
 
     def update_dataset(
         self,
@@ -438,7 +439,8 @@ class NamespaceAssets(Queryable):
         )
 
         # update the dataset properties
-        dataset["datasetConfiguration"] = processed_configs["datasetsConfiguration"]
+        if "datasetsConfiguration" in processed_configs:
+            dataset["datasetConfiguration"] = processed_configs["datasetsConfiguration"]
         if dataset_data_source:
             dataset["dataSource"] = dataset_data_source
         if dataset_type_ref:
@@ -474,6 +476,11 @@ class NamespaceAssets(Queryable):
         datasets = asset["properties"].get("datasets", [])
         # note that delete should be ok with dataset not there
         remaining_datasets = [dset for dset in datasets if dset["name"] != dataset_name]
+
+        if len(remaining_datasets) == len(datasets):
+            logger.info(f"Dataset '{dataset_name}' not found in asset '{asset_name}'.")
+            return datasets  # no change, return the original datasets
+
         update_payload = {
             "properties": {
                 "datasets": remaining_datasets
@@ -512,7 +519,7 @@ class NamespaceAssets(Queryable):
             asset_type=asset_type,
             asset_name=asset_name
         )
-        dataset = _get_dataset(asset, dataset_name, create_if_none=True)
+        dataset = get_default_dataset(asset, dataset_name, create_if_none=True)
 
         # get the datapoints
         datapoints = dataset["dataPoints"]
@@ -548,7 +555,7 @@ class NamespaceAssets(Queryable):
                 update_payload
             )
             asset = wait_for_terminal_state(poller, **kwargs)
-            return _get_dataset(asset, dataset_name)["dataPoints"]
+            return get_default_dataset(asset, dataset_name)["dataPoints"]
 
     def list_dataset_datapoints(
         self, asset_name: str, namespace_name: str, resource_group_name: str, dataset_name: str
@@ -558,7 +565,7 @@ class NamespaceAssets(Queryable):
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
         )
-        return _get_dataset(asset, dataset_name)["datapoints"]
+        return get_default_dataset(asset, dataset_name)["dataPoints"]
 
     def remove_dataset_datapoint(
         self,
@@ -576,10 +583,17 @@ class NamespaceAssets(Queryable):
             check_cluster=True
         )
 
-        dataset = _get_dataset(asset, dataset_name)
-        datapoints = dataset.get("datapoints", [])
+        dataset = get_default_dataset(asset, dataset_name)
+        datapoints = dataset.get("dataPoints", [])
         # note that delete should be ok with datapoint not there
-        dataset["datapoints"] = [dp for dp in datapoints if dp["name"] != datapoint_name]
+        dataset["dataPoints"] = [dp for dp in datapoints if dp["name"] != datapoint_name]
+
+        if len(dataset["dataPoints"]) == len(datapoints):
+            logger.info(
+                f"Datapoint '{datapoint_name}' not found in dataset '{dataset_name}' of asset '{asset_name}'."
+            )
+            return dataset["dataPoints"]
+
         update_payload = {
             "properties": {
                 "datasets": asset["properties"]["datasets"]
@@ -594,7 +608,8 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            return wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]["datapoints"]
+            asset = wait_for_terminal_state(poller, **kwargs)
+            return get_default_dataset(asset, dataset_name)["dataPoints"]
 
     # EVENTS - allowed for opcua, onvif, and custom assets
     def add_event(
@@ -638,7 +653,7 @@ class NamespaceAssets(Queryable):
                 "eventNotifier": event_notifier,
                 "eventConfiguration": processed_configs.get("eventsConfiguration"),
                 "destinations": processed_configs.get("eventsDestinations", []),
-                "datapoints": []  # TODO: future pr, add datapoints
+                "dataPoints": []  # TODO: future pr, add datapoints
             }
         )
 
@@ -763,6 +778,7 @@ class NamespaceAssets(Queryable):
             events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
             return next(event for event in events if event["name"] == event_name)
 
+    # EVENT DATAPOINTS - allowed for opcua, onvif, and custom assets
     def add_event_datapoint(
         self,
         asset_name: str,
@@ -792,7 +808,7 @@ class NamespaceAssets(Queryable):
         event = _get_event(asset, event_name)
 
         # get the datapoints
-        datapoints = event.get("datapoints", [])
+        datapoints = event.get("dataPoints", [])
         non_matched_points = [point for point in datapoints if point["name"] != datapoint_name]
         if len(non_matched_points) < len(datapoints) and not replace:
             raise InvalidArgumentValueError(
@@ -809,7 +825,7 @@ class NamespaceAssets(Queryable):
             custom_configuration=custom_configuration,
         )
         non_matched_points.append(datapoint)
-        event["datapoints"] = non_matched_points
+        event["dataPoints"] = non_matched_points
 
         # get the events from the asset
         events = asset["properties"].get("events", [])
@@ -965,47 +981,97 @@ class NamespaceAssets(Queryable):
 
 
 # Helpers
-def _get_dataset(asset: dict, dataset_name: str, create_if_none: bool = False):
+def _build_destination(
+    destination_args: List[str],
+    allowed_types: Optional[List[str]] = None
+) -> List[dict]:
     """
-    Temporary helper function to get a dataset from an asset.
+    Builds a destination dictionary for use in assets. The result will be one of the following formats:
 
-    If the dataset is not found but it has the name 'default' and create_if_none is True,
-    it will create a new dataset with that name that is added to the asset's datasets.
+    [{
+        "target": "BrokerStateStore",
+        "configuration": {
+            "key": "defaultValue"
+        }
+    }]
 
-    Will raise errors if the dataset is not found and create_if_none is False, or
-    if the dataset name is not 'default' and create_if_none is True.
+    or
+
+    [{
+        "target": "Storage",
+        "configuration": {
+            "path": "/tmp"
+        }
+    }]
+
+    or
+
+    [{
+        "target": "Mqtt",
+        "configuration": {
+            "topic": "/contoso/test",
+            "retain": "Never",  # TODO: enum for this, Keep
+            "qos": "Qos0",  # TODO: enum for this, Qos1
+            "ttl": 3600
+        }
+    }]
+
+    or [] if no arguments are provided
+
+    Note that this will replace rather than update current destinations. Right now there is support
+    for only one destination at a time, but this may change in the future.
     """
-    # ensure datasets will get populated if not there
-    asset["properties"]["datasets"] = asset["properties"].get("datasets", [])
-    datasets = asset["properties"]["datasets"]
-    matched_datasets = [dset for dset in datasets if dset["name"] == dataset_name]
-    # Temporary convert empty names to default
-    if not matched_datasets and dataset_name == "default":
-        matched_datasets = [dset for dset in datasets if dset["name"] == ""]
-    # create if add or import (and no datasets yet)
-    if not matched_datasets and create_if_none:
-        if dataset_name != "default":
-            raise InvalidArgumentValueError("Currently only one dataset with the name default is supported.")
-        matched_datasets = [{}]
-        datasets.extend(matched_datasets)
-    elif not matched_datasets:
-        raise InvalidArgumentValueError(f"Dataset {dataset_name} not found in asset {asset['name']}.")
-    # note: right now we can have datasets with the same name but this will not be allowed later
-    # part of the temporary convert
-    matched_datasets[0]["name"] = dataset_name
-    return matched_datasets[0]
+    if not destination_args:
+        return []
+    destination = {}
+    destination_args = parse_kvp_nargs(destination_args)
+    destination_args_copy = deepcopy(destination_args)
+    if "key" in destination_args:
+        destination = {
+            "target": "BrokerStateStore",
+            "configuration": {
+                "key": destination_args.pop("key")
+            }
+        }
+    elif "path" in destination_args:
+        destination = {
+            "target": "Storage",
+            "configuration": {
+                "path": destination_args.pop("path")
+            }
+        }
+    elif any(
+        key in destination_args for key in ["topic", "retain", "qos", "ttl"]
+    ):
+        if not all(
+            key in destination_args for key in ["topic", "retain", "qos", "ttl"]
+        ):
+            raise RequiredArgumentMissingError(
+                "For MQTT destinations, 'topic', 'retain', 'qos', and 'ttl' must be provided."
+            )
+        destination = {
+            "target": "Mqtt",
+            "configuration": {
+                "topic": destination_args.pop("topic"),
+                "retain": destination_args.pop("retain"),
+                "qos": destination_args.pop("qos"),
+                "ttl": int(destination_args.pop("ttl"))
+            }
+        }
+    if allowed_types and destination["target"] not in allowed_types:
+        raise InvalidArgumentValueError(
+            f"Destination type '{destination['target']}' is not allowed. "
+            f"Allowed types are: {', '.join(allowed_types)}."
+        )
+    if destination_args:
+        raise MutuallyExclusiveArgumentError(
+            f"Conflicting arguments for destination: {', '.join(destination_args_copy.keys())}\n"
+            "For BrokerStateStore, only 'key' is allowed.\n"
+            "For Storage, only 'path' is allowed.\n"
+            "For Mqtt, all of 'topic', 'retain', 'qos', and 'ttl' are allowed and required."
+        )
 
-
-def _get_event(asset: dict, event_name: str) -> dict:
-    """Helper function to get an event from an asset.
-
-    Raises InvalidArgumentValueError if the event is not found.
-    """
-    events = asset["properties"].get("events", [])
-    matched_events = [event for event in events if event["name"] == event_name]
-    if not matched_events:
-        raise InvalidArgumentValueError(f"Event '{event_name}' not found in asset '{asset['name']}'.")
-    return matched_events[0]
+    return [destination]
 
 
 def _create_datapoint(
@@ -1026,7 +1092,7 @@ def _create_datapoint(
 
     # if custom configuration is provided, process it and return early
     if custom_configuration:
-        datapoint["additionalConfiguration"] = process_additional_configuration(
+        datapoint["dataPointConfiguration"] = process_additional_configuration(
             additional_configuration=custom_configuration,
             config_type="datapoint"
         )
@@ -1043,11 +1109,24 @@ def _create_datapoint(
         ensure_schema_structure(
             NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA, input_data=additional_configuration
         )
-        datapoint["additionalConfiguration"] = json.dumps(additional_configuration)
+    datapoint["dataPointConfiguration"] = json.dumps(additional_configuration)
     # process configurations
     return datapoint
 
 
+def _get_event(asset: dict, event_name: str) -> dict:
+    """Helper function to get an event from an asset.
+
+    Raises InvalidArgumentValueError if the event is not found.
+    """
+    events = asset["properties"].get("events", [])
+    matched_events = [event for event in events if event["name"] == event_name]
+    if not matched_events:
+        raise InvalidArgumentValueError(f"Event '{event_name}' not found in asset '{asset['name']}'.")
+    return matched_events[0]
+
+
+# maybe move the config processing functions to specs?
 def _process_configs(
     asset_type: str,
     default: bool = True,
@@ -1058,7 +1137,6 @@ def _process_configs(
     Destination and custom configuration arguments will be treated as an overwrite rather than update.
     For destinations, currently only one destination is supported but there may be more than one in the future.
     """
-    # TODO: unit test new functionality
     result = {}
     asset_type = asset_type.lower()
     if asset_type == DeviceEndpointType.OPCUA.value.lower():
@@ -1086,14 +1164,10 @@ def _process_configs(
             ),
         }
     elif asset_type == DeviceEndpointType.ONVIF.value.lower():
-        # allowed: events, mgmt groups, destinations must be mqtt
+        # allowed: events (no schema), mgmt groups, destinations must be mqtt
         # not allowed: datasets, streams
-        # still waiting on onvif schemas
+        # still waiting on onvif mgmt group schemas
         result = {
-            "eventsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("events_custom_configuration"),
-                config_type="event"
-            ),
             "managementGroupsConfiguration": process_additional_configuration(
                 additional_configuration=kwargs.get("mgmt_custom_configuration"),
                 config_type="management group"
@@ -1157,7 +1231,6 @@ def _process_configs(
     return result
 
 
-# maybe move the config processing functions to specs?
 def _process_opcua_dataset_configurations(
     original_dataset_configuration: Optional[str] = None,
     opcua_dataset_publishing_interval: Optional[int] = None,
@@ -1330,99 +1403,6 @@ def _process_media_stream_configurations(
         input_data=result
     )
     return json.dumps(result)
-
-
-def _build_destination(
-    destination_args: List[str],
-    allowed_types: Optional[List[str]] = None
-) -> List[dict]:
-    """
-    Builds a destination dictionary for use in assets. The result will be one of the following formats:
-
-    [{
-        "target": "BrokerStateStore",
-        "configuration": {
-            "key": "defaultValue"
-        }
-    }]
-
-    or
-
-    [{
-        "target": "Storage",
-        "configuration": {
-            "path": "/tmp"
-        }
-    }]
-
-    or
-
-    [{
-        "target": "Mqtt",
-        "configuration": {
-            "topic": "/contoso/test",
-            "retain": "Never",  # TODO: enum for this, Keep
-            "qos": "Qos0",  # TODO: enum for this, Qos1
-            "ttl": 3600
-        }
-    }]
-
-    or [] if no arguments are provided
-
-    Note that this will replace rather than update current destinations. Right now there is support
-    for only one destination at a time, but this may change in the future.
-    """
-    if not destination_args:
-        return []
-    destination = {}
-    destination_args = parse_kvp_nargs(destination_args)
-    destination_args_copy = deepcopy(destination_args)
-    if "key" in destination_args:
-        destination = {
-            "target": "BrokerStateStore",
-            "configuration": {
-                "key": destination_args.pop("key")
-            }
-        }
-    elif "path" in destination_args:
-        destination = {
-            "target": "Storage",
-            "configuration": {
-                "path": destination_args.pop("path")
-            }
-        }
-    elif any(
-        key in destination_args for key in ["topic", "retain", "qos", "ttl"]
-    ):
-        if not all(
-            key in destination_args for key in ["topic", "retain", "qos", "ttl"]
-        ):
-            raise RequiredArgumentMissingError(
-                "For MQTT destinations, 'topic', 'retain', 'qos', and 'ttl' must be provided."
-            )
-        destination = {
-            "target": "Mqtt",
-            "configuration": {
-                "topic": destination_args.pop("topic"),
-                "retain": destination_args.pop("retain"),
-                "qos": destination_args.pop("qos"),
-                "ttl": int(destination_args.pop("ttl"))
-            }
-        }
-    if allowed_types and destination["target"] not in allowed_types:
-        raise InvalidArgumentValueError(
-            f"Destination type '{destination['target']}' is not allowed. "
-            f"Allowed types are: {', '.join(allowed_types)}."
-        )
-    if destination_args:
-        raise MutuallyExclusiveArgumentError(
-            f"Conflicting arguments for destination: {', '.join(destination_args_copy.keys())}\n"
-            "For BrokerStateStore, only 'key' is allowed.\n"
-            "For Storage, only 'path' is allowed.\n"
-            "For Mqtt, all of 'topic', 'retain', 'qos', and 'ttl' are allowed and required."
-        )
-
-    return [destination]
 
 
 def _update_asset_props(
