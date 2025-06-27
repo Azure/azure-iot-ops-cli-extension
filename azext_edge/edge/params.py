@@ -471,7 +471,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "max_inflight_messages",
             options_list=["--max-inflight-msg", "--mim"],
-            help="the maximum number of inflight messages that the dataflow MQTT client can have. Min value: 0.",
+            help="The maximum number of inflight messages that the dataflow MQTT client can have. Min value: 0.",
             type=int,
         )
         context.argument(
