@@ -673,6 +673,15 @@ def test_secretsync_enable(
         content_type="application/json",
     )
 
+    # PUT Instance
+    instance_put = mocked_responses.add(
+        method=responses.PUT,
+        url=instance_endpoint,
+        json=instance_record,
+        status=200,
+        content_type="application/json",
+    )
+
     # TODO: assert when already enabled.
     result = secretsync_enable(
         cmd=mocked_cmd,
@@ -703,6 +712,9 @@ def test_secretsync_enable(
     assert federation_payload["properties"]["subject"] == subject
     assert federation_payload["properties"]["issuer"] == oidc_issuer
     assert federation_payload["properties"]["audiences"] == ["api://AzureADTokenExchange"]
+
+    instance_put_request = json.loads(instance_put.calls[0].request.body)
+    assert instance_put_request["properties"]["defaultSecretProviderClassRef"] == {"resourceId": spc_payload["id"]}
 
     if not skip_role_assignments:
         role_ids = []

@@ -149,6 +149,7 @@ class Instances(Queryable):
         **kwargs: dict,
     ) -> dict:
         instance = kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
+        status_text = kwargs.pop("status_text", "Working...")
 
         if description:
             instance["properties"]["description"] = description
@@ -162,7 +163,7 @@ class Instances(Queryable):
         if tags or tags == {}:
             instance["tags"] = tags
 
-        with console.status("Working..."):
+        with console.status(status_text):
             poller = self.iotops_mgmt_client.instance.begin_create_or_update(
                 instance_name=name,
                 resource_group_name=resource_group_name,
@@ -353,7 +354,15 @@ class Instances(Queryable):
                 },
             )
             result_spc = wait_for_terminal_state(spc_poller, **kwargs)
-            return result_spc
+        instance["properties"]["defaultSecretProviderClassRef"] = {"resourceId": result_spc["id"]}
+        self.update(
+            name=name,
+            resource_group_name=resource_group_name,
+            instance=instance,
+            status_text="Associating identity with instance...",
+            **kwargs,
+        )
+        return result_spc
 
     def list_secretsync(self, name: str, resource_group_name: str) -> Optional[dict]:
         # TODO: add unit test
@@ -380,45 +389,52 @@ class Instances(Queryable):
         if should_bail:
             return
 
+        instance: dict = self.show(name=name, resource_group_name=resource_group_name)
+        resource_map = self.get_resource_map(instance)
+        cl_resources = resource_map.connected_cluster.get_aio_resources(
+            custom_location_id=instance["extendedLocation"]["name"]
+        )
+        secretsync_spcs = self.find_existing_resources(cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE)
+        secretsyncs = self.find_existing_resources(cl_resources=cl_resources, resource_type=SECRET_SYNC_RESOURCE_TYPE)
+        if not secretsync_spcs:
+            logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
+            return
+
+        related_secretsyncs = []
         with console.status("Working..."):
-            instance = self.show(name=name, resource_group_name=resource_group_name)
-            resource_map = self.get_resource_map(instance)
-            cl_resources = resource_map.connected_cluster.get_aio_resources(
-                custom_location_id=instance["extendedLocation"]["name"]
-            )
-            secretsync_spcs = self.find_existing_resources(cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE)
-            secretsyncs = self.find_existing_resources(
-                cl_resources=cl_resources, resource_type=SECRET_SYNC_RESOURCE_TYPE
-            )
+            for secretsync_spc in secretsync_spcs:
+                spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_delete(
+                    resource_group_name=resource_group_name,
+                    azure_key_vault_secret_provider_class_name=secretsync_spc["name"],
+                )
+                wait_for_terminal_state(spc_poller, **kwargs)
 
-            related_secretsyncs = []
-            if secretsync_spcs:
-                for secretsync_spc in secretsync_spcs:
-                    spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_delete(
+                # get associated secret sync names
+                related_secretsyncs.extend(
+                    self._find_spc_related_secretsyncs(
+                        spc_name=secretsync_spc["name"],
+                        secretsync_resources=secretsyncs,
+                    )
+                )
+
+            # delete associated secret syncs
+            if related_secretsyncs:
+                for secretsync in related_secretsyncs:
+                    secretsync_poller = self.ssc_mgmt_client.secret_syncs.begin_delete(
                         resource_group_name=resource_group_name,
-                        azure_key_vault_secret_provider_class_name=secretsync_spc["name"],
+                        secret_sync_name=secretsync,
                     )
-                    wait_for_terminal_state(spc_poller, **kwargs)
+                    wait_for_terminal_state(secretsync_poller, **kwargs)
 
-                    # get associated secret sync names
-                    related_secretsyncs.extend(
-                        self._find_spc_related_secretsyncs(
-                            spc_name=secretsync_spc["name"],
-                            secretsync_resources=secretsyncs,
-                        )
-                    )
-
-                # delete associated secret syncs
-                if related_secretsyncs:
-                    for secretsync in related_secretsyncs:
-                        secretsync_poller = self.ssc_mgmt_client.secret_syncs.begin_delete(
-                            resource_group_name=resource_group_name,
-                            secret_sync_name=secretsync,
-                        )
-                        wait_for_terminal_state(secretsync_poller, **kwargs)
-
-                return
-        logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
+        # remove the default secret provider class reference
+        instance["properties"].pop("defaultSecretProviderClassRef", None)
+        self.update(
+            name=name,
+            resource_group_name=resource_group_name,
+            instance=instance,
+            status_text="Disassociating identity from instance...",
+            **kwargs,
+        )
 
     def find_existing_resources(
         self,
