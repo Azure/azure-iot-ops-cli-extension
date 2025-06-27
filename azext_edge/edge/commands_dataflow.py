@@ -4,7 +4,6 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from collections import defaultdict
 from typing import Iterable, Optional
 
 from .common import DEFAULT_DATAFLOW_PROFILE
