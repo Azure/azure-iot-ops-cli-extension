@@ -51,6 +51,12 @@ QUERIES = {
             or type startswith 'microsoft.secretsync'
         | project id, name, apiVersion, type
         """,
+    "get_cl_resources_by_type": """
+        resources
+        | where extendedLocation.name =~ '{custom_location_id}'
+        {where_clauses}
+        | project id, name, apiVersion, location, type, resourceGroup{projections}
+        """,
     "get_resource_sync_rules": """
         resources
         | where type =~ "microsoft.extendedlocation/customlocations/resourcesyncrules"
@@ -134,6 +140,30 @@ class ConnectedCluster:
 
         result = self.resource_graph.query_resources(query=query)
         return self._process_query_result(result)
+
+    def get_cl_resources_by_type(
+        self, custom_location_id: str, resource_types: Optional[set[str]] = None, show_properties: bool = False
+    ) -> dict[str, list[dict]]:
+        where_clauses = ""
+        projections = ""
+        if resource_types:
+            where_clauses = "| where type in ({})".format(", ".join(f"'{rt}'" for rt in resource_types))
+        if show_properties:
+            projections = ", properties, systemData, tags"
+        query = QUERIES["get_cl_resources_by_type"].format(
+            custom_location_id=custom_location_id, where_clauses=where_clauses, projections=projections
+        )
+
+        result_by_type: dict[str, list[dict]] = {}
+        result = self.resource_graph.query_resources(query=query)
+        processed = self._process_query_result(result)
+        if processed:
+            for p in processed:
+                resource_type = p.get("type", "").lower()
+                if resource_type and resource_type not in result_by_type:
+                    result_by_type[resource_type] = []
+                result_by_type[resource_type].append(p)
+        return result_by_type
 
     def get_resource_sync_rules(self, custom_location_id: str) -> Optional[List[dict]]:
         query = QUERIES["get_resource_sync_rules"].format(custom_location_id=custom_location_id)
