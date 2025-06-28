@@ -40,16 +40,17 @@ def secretsync_enable(
     )
 
 
-def secretsync_list(cmd, instance_name: str, resource_group_name: str) -> dict:
+def secretsync_list(cmd, instance_name: str, resource_group_name: str) -> Optional[list[dict]]:
     return Instances(cmd).list_secretsync(
         name=instance_name,
         resource_group_name=resource_group_name,
     )
 
 
-def secretsync_disable(cmd, instance_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None):
+def secretsync_disable(cmd, instance_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None, **kwargs):
     return Instances(cmd).disable_secretsync(
         name=instance_name,
         resource_group_name=resource_group_name,
         confirm_yes=confirm_yes,
+        **kwargs,
     )

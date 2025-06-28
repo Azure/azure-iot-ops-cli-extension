@@ -161,15 +161,13 @@ class IoTOpsMgmtApiVersion(Enum):
 
 
 def get_iotops_mgmt_client(
-    subscription_id: str, version: IoTOpsMgmtApiVersion = IoTOpsMgmtApiVersion.V20250701_preview, **kwargs
+    subscription_id: str, api_version: IoTOpsMgmtApiVersion = IoTOpsMgmtApiVersion.V20250701_preview, **kwargs
 ) -> "MicrosoftIoTOperationsManagementService":
-    if version == IoTOpsMgmtApiVersion.V20250401:
-        from ..vendor.clients.iotopsmgmt.v20250401 import MicrosoftIoTOperationsManagementService
-    else:
-        from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
+    from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
 
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
+    kwargs["api_version"] = api_version.value
 
     return MicrosoftIoTOperationsManagementService(
         credential=AZURE_CLI_CREDENTIAL,
