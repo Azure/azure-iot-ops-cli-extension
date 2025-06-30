@@ -20,7 +20,7 @@ from azext_edge.edge.commands_edge import (
     show_instance,
     update_instance,
 )
-from azext_edge.edge.commands_secretsync import secretsync_enable
+from azext_edge.edge.commands_secretsync import secretsync_enable, secretsync_disable
 from azext_edge.edge.providers.orchestration.common import IdentityUsageType
 from azext_edge.edge.providers.orchestration.resources import Instances
 from azext_edge.edge.providers.orchestration.resources.instances import (
@@ -56,6 +56,7 @@ from .test_custom_locations_unit import (
     get_mock_custom_location_record,
 )
 from .test_secretsync_spcs_unit import get_mock_spc_record, get_spc_endpoint
+from .test_secretsyncs_unit import get_mock_secretsync_record, get_secretsync_endpoint
 
 CONNECTED_CLUSTER_RP = "Microsoft.Kubernetes"
 KEYVAULT_RP = "Microsoft.KeyVault"
@@ -125,6 +126,7 @@ def get_mock_instance_record(
     schema_registry_name: Optional[str] = None,
     version: Optional[str] = None,
     identity_map: Optional[dict] = None,
+    default_spc_resource_id: Optional[str] = None,
 ) -> dict:
     properties = {
         "provisioningState": "Succeeded",
@@ -141,6 +143,8 @@ def get_mock_instance_record(
         properties["description"] = description
     if features:
         properties["features"] = features
+    if default_spc_resource_id:
+        properties["defaultSecretProviderClassRef"] = {"resourceId": default_spc_resource_id}
 
     kwargs = {}
     if cl_name:
@@ -619,7 +623,7 @@ def test_secretsync_enable(
     mocked_responses.add(
         method=responses.POST,
         url=ARG_ENDPOINT,
-        json={"data": [get_mock_custom_location_record(name="cl", resource_group_name=resource_group_name)]},
+        json={"data": []},
         status=200,
         content_type="application/json",
     )
@@ -673,6 +677,15 @@ def test_secretsync_enable(
         content_type="application/json",
     )
 
+    # PUT Instance
+    instance_put = mocked_responses.add(
+        method=responses.PUT,
+        url=instance_endpoint,
+        json=instance_record,
+        status=200,
+        content_type="application/json",
+    )
+
     # TODO: assert when already enabled.
     result = secretsync_enable(
         cmd=mocked_cmd,
@@ -703,6 +716,9 @@ def test_secretsync_enable(
     assert federation_payload["properties"]["subject"] == subject
     assert federation_payload["properties"]["issuer"] == oidc_issuer
     assert federation_payload["properties"]["audiences"] == ["api://AzureADTokenExchange"]
+
+    instance_put_request = json.loads(instance_put.calls[0].request.body)
+    assert instance_put_request["properties"]["defaultSecretProviderClassRef"] == {"resourceId": spc_payload["id"]}
 
     if not skip_role_assignments:
         role_ids = []
@@ -901,6 +917,118 @@ def test_secretsync_enable_issuer_error(
         resource_group_name,
     )
     assert str(exc.value) == error_str
+
+
+@pytest.mark.parametrize(
+    "default_spc_resource_id",
+    [None, get_mock_spc_record(resource_group_name="mygroup", name="myspc1")["id"]],
+)
+@pytest.mark.parametrize(
+    "existing_resources",
+    [
+        None,
+        [
+            {
+                "payload": get_mock_spc_record(resource_group_name="mygroup", name="myspc1"),
+                "endpoint": get_spc_endpoint(resource_group_name="mygroup", spc_name="myspc1"),
+            }
+        ],
+        [
+            {
+                "payload": get_mock_spc_record(resource_group_name="mygroup", name="myspc1"),
+                "endpoint": get_spc_endpoint(resource_group_name="mygroup", spc_name="myspc1"),
+            },
+            {
+                "payload": get_mock_spc_record(resource_group_name="mygroup", name="myspc2"),
+                "endpoint": get_spc_endpoint(resource_group_name="mygroup", spc_name="myspc2"),
+            },
+            {
+                "payload": get_mock_secretsync_record(resource_group_name="mygroup", name="secretsync1"),
+                "endpoint": get_secretsync_endpoint(resource_group_name="mygroup", spc_name="secretsync1"),
+            },
+            {
+                "payload": get_mock_secretsync_record(resource_group_name="mygroup", name="secretsync2"),
+                "endpoint": get_secretsync_endpoint(resource_group_name="mygroup", spc_name="secretsync2"),
+            },
+        ],
+    ],
+)
+def test_secretsync_disable(
+    mocked_cmd,
+    mocked_responses: responses,
+    default_spc_resource_id: Optional[str],
+    existing_resources: Optional[list[dict]],
+):
+    resource_group_name = generate_random_string()
+
+    # Instance fetch mock
+    instance_name = generate_random_string()
+    instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
+    instance_record = get_mock_instance_record(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        default_spc_resource_id=default_spc_resource_id,
+    )
+    mocked_responses.add(
+        method=responses.GET,
+        url=instance_endpoint,
+        json=instance_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Custom location fetch mock
+    cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
+    cl_payload = get_mock_custom_location_record(name=generate_random_string(), resource_group_name=resource_group_name)
+    mocked_responses.add(
+        method=responses.GET,
+        url=re.compile(cl_endpoint),
+        json=cl_payload,
+        status=200,
+        content_type="application/json",
+    )
+
+    arg_data = []
+    if existing_resources:
+        arg_data.extend(r["payload"] for r in existing_resources)
+        for r in existing_resources:
+            mocked_responses.add(
+                method=responses.DELETE,
+                url=r["endpoint"],
+                status=204,
+                content_type="application/json",
+            )
+
+    # Resource Graph POST
+    mocked_responses.add(
+        method=responses.POST,
+        url=ARG_ENDPOINT,
+        json={"data": arg_data},
+        status=200,
+        content_type="application/json",
+    )
+
+    if default_spc_resource_id:
+        # PUT Instance
+        instance_put = mocked_responses.add(
+            method=responses.PUT,
+            url=instance_endpoint,
+            json=instance_record,
+            status=200,
+            content_type="application/json",
+        )
+
+    secretsync_disable(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=True,
+        wait_sec=0.1,
+    )
+
+    if default_spc_resource_id:
+        instance_put_request = json.loads(instance_put.calls[0].request.body)
+        assert "defaultSecretProviderClassRef" not in instance_put_request["properties"]
 
 
 @pytest.mark.parametrize(
