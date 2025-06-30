@@ -33,6 +33,7 @@ def init_test_setup(settings, tracked_resources):
     settings.add_to_config(EnvironmentVariables.init_continue_on_error.value)
     settings.add_to_config(EnvironmentVariables.init_redeployment.value)
     settings.add_to_config(EnvironmentVariables.schema_registry_id.value)
+    settings.add_to_config(EnvironmentVariables.adr_namespace_id.value)
 
     cleanup = settings.env.azext_edge_aio_cleanup
     instance_name = settings.env.azext_edge_instance
@@ -59,6 +60,16 @@ def init_test_setup(settings, tracked_resources):
         if cleanup:
             tracked_resources.append(registry_id)
 
+    adr_ns_id = settings.env.azext_edge_adr_namespace_id
+    if not adr_ns_id:
+        ns_name = f"init-adr-ns-{generate_random_string(force_lower=True, size=6)}"
+        adr_ns_id = run(
+            f"az resource create -g {settings.env.azext_edge_rg} -n {ns_name} --api-version 2025-07-01-preview"
+            " --resource-type Microsoft.DeviceRegistry/namespaces --properties '{}'"
+        )["id"]
+        if cleanup:
+            tracked_resources.append(adr_ns_id)
+
     if not all([settings.env.azext_edge_cluster, settings.env.azext_edge_rg]):
         raise AssertionError(
             f"Cannot run init tests without a connected cluster and resource group. Current settings:\n {settings}"
@@ -68,6 +79,7 @@ def init_test_setup(settings, tracked_resources):
         "clusterName": settings.env.azext_edge_cluster,
         "resourceGroup": settings.env.azext_edge_rg,
         "schemaRegistryId": registry_id,
+        "adrNamespaceId": adr_ns_id,
         "instanceName": instance_name,
         "additionalCreateArgs": strip_quotes(settings.env.azext_edge_create_args),
         "additionalInitArgs": strip_quotes(settings.env.azext_edge_init_args),
@@ -92,6 +104,7 @@ def test_init_scenario(init_test_setup, tracked_files):
     cluster_name = init_test_setup["clusterName"]
     resource_group = init_test_setup["resourceGroup"]
     registry_id = init_test_setup["schemaRegistryId"]
+    adr_ns_id = init_test_setup["adrNamespaceId"]
     instance_name = init_test_setup["instanceName"]
     command = f"az iot ops init -g {resource_group} --cluster {cluster_name} --no-progress {additional_init_args} "
 
@@ -102,8 +115,8 @@ def test_init_scenario(init_test_setup, tracked_files):
 
     # create command
     create_command = (
-        f"az iot ops create -g {resource_group} --cluster {cluster_name} "
-        f"--sr-resource-id {registry_id}  -n {instance_name} "
+        f"az iot ops create -g {resource_group} --cluster {cluster_name} -n {instance_name} "
+        f"--sr-resource-id {registry_id} --ns-resource-id {adr_ns_id} "
         f"--no-progress {additional_create_args} "
     )
     # TODO: assert create when return be returning
@@ -181,6 +194,7 @@ def assert_aio_instance(
     cluster_name: str,
     resource_group: str,
     schema_registry_id: str,
+    adr_namespace_id: str,
     ops_config: Optional[str] = None,
     custom_location: Optional[str] = None,
     description: Optional[str] = None,
@@ -231,6 +245,7 @@ def assert_aio_instance(
     instance_props = instance_show["properties"]
     assert instance_props.get("description") == description
     assert instance_props["schemaRegistryRef"] == {"resourceId": schema_registry_id}
+    assert instance_props["adrNamespaceRef"] == {"resourceId": adr_namespace_id}
 
     tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
     # no resource sync rules if disable rsync rules
