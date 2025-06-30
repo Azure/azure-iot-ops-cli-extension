@@ -332,7 +332,7 @@ class RegistryEndpoints(Queryable):
                 resource_group_name=resource_group_name,
                 instance_name=instance_name,
                 registry_endpoint_name=registry_endpoint_name,
-                registry_endpoint=resource,
+                resource=resource,
             )
             return wait_for_terminal_state(poller, **kwargs)
 
@@ -512,7 +512,7 @@ class RegistryEndpoints(Queryable):
             )
 
         # Check for missing required parameters
-        parameter_delta = required_params - provided_params
+        parameter_delta = required_params - set(provided_params)
         if parameter_delta:
             missing_params = ", ".join(
                 [REGISTRY_ENDPOINT_AUTHENTICATION_PARAM_TEXT_MAP.get(param, param) for param in parameter_delta]

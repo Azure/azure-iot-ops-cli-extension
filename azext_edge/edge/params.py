@@ -851,51 +851,52 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops dataflow graph registry") as context:
         context.argument(
-            "registry_endpoint_name",
+            "registry_name",
             options_list=["--name", "-n"],
             help="Dataflow graph registry endpoint name.",
         )
         context.argument(
             "host",
             options_list=["--host"],
-            help="The URL endpoint of the dataflow graph registry endpoint.",
+            help="The URL endpoint of the Azure Container Registry.",
         )
         context.argument(
             "auth_type",
             options_list=["--auth-type"],
             arg_type=get_enum_type(RegistryEndpointAuthenticationType, default=None),
             help="The authentication type for the registry endpoint. If not provided, "
-            "the authentication type will be determined based on the provided authentication parameters.",
+            "the authentication type will be determined based on the provided authentication parameters. "
+            "If no authentication parameters are provided, anonymous authentication will be used.",
         )
         context.argument(
             "secret_ref",
             options_list=["--secret-ref"],
-            help="Reference to the secret for ArtifactPullSecret authentication.",
+            help="Kubernetes secret reference for registry authentication.",
             arg_group="Artifact Pull Secret",
         )
         context.argument(
             "audience",
             options_list=["--audience", "--aud"],
-            help="Audience for SystemAssignedManagedIdentity authentication.",
-            arg_group="System-assigned Identity",
+            help="Audience for system-assigned managed identity registry authentication.",
+            arg_group="System-Assigned Identity",
         )
         context.argument(
             "client_id",
             options_list=["--client-id", "--cid"],
-            help="Client ID for UserAssignedManagedIdentity authentication.",
-            arg_group="User-assigned Identity",
+            help="Client ID for user-assigned managed identity registry authentication.",
+            arg_group="User-Assigned Identity",
         )
         context.argument(
             "tenant_id",
             options_list=["--tenant-id", "--tid"],
-            help="Tenant ID for UserAssignedManagedIdentity authentication.",
-            arg_group="User-assigned Identity",
+            help="Tenant ID for user-assigned managed identity registry authentication.",
+            arg_group="User-Assigned Identity",
         )
         context.argument(
             "scope",
             options_list=["--scope"],
-            help="Scope for UserAssignedManagedIdentity authentication.",
-            arg_group="User-assigned Identity",
+            help="Scope for user-assigned managed identity registry authentication.",
+            arg_group="User-Assigned Identity",
         )
 
     with self.argument_context("iot ops broker") as context:

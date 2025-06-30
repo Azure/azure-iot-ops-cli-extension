@@ -704,6 +704,98 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow graph"
+    ] = """
+        type: group
+        short-summary: Dataflow graph and container registry endpoint management.
+    """
+
+    helps[
+        "iot ops dataflow graph list"
+    ] = """
+        type: command
+        short-summary: List available dataflow graph images from an instance's configured registry endpoints.
+        long-summary: |
+          Discover and list dataflow images available in container registries configured for the Azure IoT Operations instance.
+          The command searches through all configured registry endpoints for dataflow graph images.
+
+        examples:
+        - name: List all dataflow images from configured registries in the instance.
+          text: >
+            az iot ops dataflow graph list -i myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow graph registry"
+    ] = """
+        type: group
+        short-summary: Manage container registry endpoints.
+    """
+
+    helps[
+        "iot ops dataflow graph registry add"
+    ] = """
+        type: command
+        short-summary: Add a container registry endpoint for dataflow graph discovery.
+        long-summary: |
+          Add a new container registry endpoint that will be used when discovering dataflow images.
+          Only Azure Container Registry (ACR) endpoints are supported.
+
+        examples:
+        - name: Add a basic anonymous registry endpoint
+          text: >
+            az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+        - name: Add a registry endpoint with system-assigned managed identity and optional audience configuration
+          text: >
+            az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup 
+            --auth-type SystemAssignedManagedIdentity --aud myaudience
+        - name: Add a registry endpoint with kubernetes secret reference authentication
+          text: >
+            az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup 
+            --auth-type ArtifactPullSecret --secret-ref mysecret
+        - name: Add a registry endpoint with user-assigned managed identity configuration
+          text: >
+            az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup 
+            --auth-type UserAssignedManagedIdentity --scope myscope --cid myclientid --tid mytenantid
+    """
+
+    helps[
+        "iot ops dataflow graph registry list"
+    ] = """
+        type: command
+        short-summary: List configured container registry endpoints.
+
+        examples:
+        - name: List all registry endpoints for an instance.
+          text: >
+            az iot ops dataflow graph registry list -i myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow graph registry show"
+    ] = """
+        type: command
+        short-summary: Show details of a container registry endpoint.
+
+        examples:
+        - name: Show details of a registry endpoint.
+          text: >
+            az iot ops dataflow graph registry show -n myregistry -i myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops dataflow graph registry remove"
+    ] = """
+        type: command
+        short-summary: Remove a container registry endpoint.
+
+        examples:
+        - name: Remove a registry endpoint.
+          text: >
+            az iot ops dataflow graph registry remove -n myregistry -i myinstance -g myresourcegroup
+    """
+
+    helps[
         "iot ops dataflow profile"
     ] = """
         type: group
