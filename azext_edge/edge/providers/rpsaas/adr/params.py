@@ -1038,7 +1038,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Configuration",
             )
             context.argument(
-                "datasets_destinations",
+                "dataset_destinations",
                 options_list=["--dataset-dest", "--dsd"],
                 help="Key=value pairs representing the destination for dataset. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
@@ -1053,7 +1053,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Configuration",
             )
             context.argument(
-                "events_destinations",
+                "event_destinations",
                 options_list=["--event-dest", "--evd"],
                 help="Key=value pairs representing the destination for events. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
@@ -1074,7 +1074,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Configuration",
             )
             context.argument(
-                "streams_destinations",
+                "stream_destinations",
                 options_list=["--stream-dest", "--std"],
                 help="Key=value pairs representing the destination for streams. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
@@ -1178,7 +1178,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Stream Configuration",
             )
             context.argument(
-                "streams_destinations",
+                "stream_destinations",
                 options_list=["--stream-dest", "--std"],
                 help="Key=value pairs representing the destination for streams. "
                 "Allowed arguments include: `path` for Storage; or "
@@ -1223,7 +1223,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Dataset",
             )
             context.argument(
-                "datasets_destinations",
+                "dataset_destinations",
                 options_list=["--dataset-dest", "--dsd"],
                 help="Key=value pairs representing the destination for datasets. "
                 "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. ",
@@ -1266,7 +1266,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Event",
             )
             context.argument(
-                "events_destinations",
+                "event_destinations",
                 options_list=["--event-dest", "--evd"],
                 help="Key=value pairs representing the destination for events. "
                 "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
@@ -1356,37 +1356,37 @@ def load_adr_arguments(self, _):
             help="Data source for the dataset.",
         )
         context.argument(
-            "dataset_publishing_interval",
-            options_list=["--dataset-publish-int", "--dspi"],
+            "opcua_dataset_publishing_interval",
+            options_list=["--publish-int", "--pi"],
             help="Publishing interval for datasets in milliseconds. Minimum: -1.",
             type=int,
         )
         context.argument(
-            "dataset_sampling_interval",
-            options_list=["--dataset-sampling-int", "--dssi"],
+            "opcua_dataset_sampling_interval",
+            options_list=["--sampling-int", "--si"],
             help="Sampling interval for datasets in milliseconds. Minimum: -1.",
             type=int,
         )
         context.argument(
-            "dataset_queue_size",
-            options_list=["--dataset-queue-size", "--dsqs"],
+            "opcua_dataset_queue_size",
+            options_list=["--queue-size", "--qs"],
             help="Queue size for datasets. Minimum: 0.",
             type=int,
         )
         context.argument(
-            "dataset_key_frame_count",
-            options_list=["--dataset-key-frame-count", "--dskfc"],
+            "opcua_dataset_key_frame_count",
+            options_list=["--key-frame-count", "--kfc"],
             help="Key frame count for datasets. Minimum: 0.",
             type=int,
         )
         context.argument(
-            "dataset_start_instance",
-            options_list=["--dataset-start-inst", "--dss"],
+            "opcua_dataset_start_instance",
+            options_list=["--start-inst", "--start"],
             help="Start instance for datasets.",
         )
         context.argument(
-            "datasets_destinations",
-            options_list=["--dataset-dest", "--dsd"],
+            "dataset_destinations",
+            options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for datasets. "
             "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. ",
             nargs="+",
@@ -1463,7 +1463,7 @@ def load_adr_arguments(self, _):
             help="Custom event configuration as a JSON string or file path.",
         )
         context.argument(
-            "events_destinations",
+            "event_destinations",
             options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for events. "
             "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
@@ -1522,7 +1522,7 @@ def load_adr_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
         context.argument(
-            "events_destinations",
+            "event_destinations",
             options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for events. "
             "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
@@ -1548,219 +1548,34 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "opcua_event_publishing_interval",
-            options_list=["--event-publish-int", "--evpi"],
+            options_list=["--publish-int", "--evpi"],
             help="Publishing interval for events in milliseconds. Minimum: -1.",
             type=int,
         )
         context.argument(
             "opcua_event_queue_size",
-            options_list=["--event-queue-size", "--evqs"],
+            options_list=["--queue-size", "--evqs"],
             help="Queue size for events. Minimum: 0.",
             type=int,
         )
         context.argument(
             "opcua_event_filter_type",
-            options_list=["--event-filter-type", "--evft"],
+            options_list=["--filter-type", "--evft"],
             help="Filter type for events.",
         )
         context.argument(
             "opcua_event_filter_clauses",
-            options_list=["--event-filter-clause", "--evf"],
+            options_list=["--filter-clause", "--evf"],
             help="Space-separated key=value pairs for event filter clauses. Allowed keys are `path` (required), "
             "`type`, and `field`.",
             nargs="+",
             action="append",
         )
         context.argument(
-            "events_destinations",
-            options_list=["--event-dest", "--evd"],
-            help="Key=value pairs representing the destination for events. "
-            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
-            nargs="+",
-        )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the event if another event with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
-
-    with self.argument_context("iot ops ns asset opcua event point") as context:
-        context.argument(
-            "event_name",
-            options_list=["--event", "-e"],
-            help="Event name.",
-        )
-        context.argument(
-            "datapoint_name",
-            options_list=["--name"],
-            help="Data point name.",
-        )
-        context.argument(
-            "data_source",
-            options_list=["--data-source", "--ds"],
-            help="Data source for the OPC UA event data point.",
-        )
-        context.argument(
-            "sampling_interval",
-            options_list=["--sampling-int", "--si"],
-            help="Sampling interval in milliseconds. Minimum: -1.",
-            type=int,
-        )
-        context.argument(
-            "queue_size",
-            options_list=["--queue-size", "--qs"],
-            help="Queue size. Minimum: 0.",
-            type=int,
-        )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the data point if another point with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
-
-    with self.argument_context("iot ops ns asset custom event") as context:
-        context.argument(
-            "asset_name",
-            options_list=["--asset", "-a"],
-            help="Asset name.",
-        )
-        context.argument(
-            "event_name",
-            options_list=["--name"],
-            help="Event name.",
-        )
-        context.argument(
-            "event_notifier",
-            options_list=["--event-notifier", "--en"],
-            help="Event notifier.",
-        )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the event if another event with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
-        context.argument(
-            "event_configuration",
-            options_list=["--config"],
-            help="Custom event configuration as a JSON string or file path.",
-        )
-        context.argument(
-            "events_destinations",
+            "event_destinations",
             options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for events. "
             "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
-            action="append",
-            nargs="+",
-        )
-
-    with self.argument_context("iot ops ns asset custom event point") as context:
-        context.argument(
-            "event_name",
-            options_list=["--event", "-e"],
-            help="Event name.",
-        )
-        context.argument(
-            "datapoint_name",
-            options_list=["--name"],
-            help="Data point name.",
-        )
-        context.argument(
-            "data_source",
-            options_list=["--data-source", "--ds"],
-            help="Data source for the event data point.",
-        )
-        context.argument(
-            "custom_configuration",
-            options_list=["--config"],
-            help="Custom event data point configuration as a JSON string or file path.",
-        )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the data point if another point with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
-
-    with self.argument_context("iot ops ns asset onvif event") as context:
-        context.argument(
-            "asset_name",
-            options_list=["--asset", "-a"],
-            help="Asset name.",
-        )
-        context.argument(
-            "event_name",
-            options_list=["--name"],
-            help="Event name.",
-        )
-        context.argument(
-            "event_notifier",
-            options_list=["--event-notifier", "--en"],
-            help="Event notifier.",
-        )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the event if another event with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
-        context.argument(
-            "events_destinations",
-            options_list=["--destination", "--dest"],
-            help="Key=value pairs representing the destination for events. "
-            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
-            action="append",
-            nargs="+",
-        )
-
-    with self.argument_context("iot ops ns asset opcua event") as context:
-        context.argument(
-            "asset_name",
-            options_list=["--asset", "-a"],
-            help="Asset name.",
-        )
-        context.argument(
-            "event_name",
-            options_list=["--name"],
-            help="Event name.",
-        )
-        context.argument(
-            "event_notifier",
-            options_list=["--event-notifier", "--en"],
-            help="Event notifier.",
-        )
-        context.argument(
-            "opcua_event_publishing_interval",
-            options_list=["--event-publish-int", "--evpi"],
-            help="Publishing interval for events in milliseconds. Minimum: -1.",
-            type=int,
-        )
-        context.argument(
-            "opcua_event_queue_size",
-            options_list=["--event-queue-size", "--evqs"],
-            help="Queue size for events. Minimum: 0.",
-            type=int,
-        )
-        context.argument(
-            "opcua_event_filter_type",
-            options_list=["--event-filter-type", "--evft"],
-            help="Filter type for events.",
-        )
-        context.argument(
-            "opcua_event_filter_clauses",
-            options_list=["--event-filter-clause", "--evf"],
-            help="Space-separated key=value pairs for event filter clauses. Allowed keys are `path` (required), "
-            "`type`, and `field`.",
-            nargs="+",
-            action="append",
-        )
-        context.argument(
-            "events_destinations",
-            options_list=["--event-dest", "--evd"],
-            help="Key=value pairs representing the destination for events. "
-            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
             nargs="+",
         )
         context.argument(
@@ -1769,7 +1584,8 @@ def load_adr_arguments(self, _):
             help="Replace the event if another event with the same name is already present.",
             arg_type=get_three_state_flag(),
         )
-    # TODO: to be added in follow-up release
+
+    # TODO: future follow up release
     # with self.argument_context("iot ops ns asset opcua event point") as context:
     #     context.argument(
     #         "event_name",

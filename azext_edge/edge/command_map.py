@@ -300,7 +300,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("add", "add_namespace_custom_asset_dataset")
         cmd_group.command("list", "list_namespace_asset_datasets")
         cmd_group.command("remove", "remove_namespace_asset_dataset")
-        cmd_group.command("show", "show_namespace_asset_dataset")
+        cmd_group.show_command("show", "show_namespace_asset_dataset")
         cmd_group.command("update", "update_namespace_custom_asset_dataset")
 
     with self.command_group(
@@ -318,7 +318,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("add", "add_namespace_custom_asset_event")
         cmd_group.command("list", "list_namespace_asset_events")
         cmd_group.command("remove", "remove_namespace_asset_event")
-        cmd_group.command("show", "show_namespace_asset_event")
+        cmd_group.show_command("show", "show_namespace_asset_event")
         cmd_group.command("update", "update_namespace_custom_asset_event")
 
     with self.command_group(
@@ -350,7 +350,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("add", "add_namespace_onvif_asset_event")
         cmd_group.command("list", "list_namespace_asset_events")
         cmd_group.command("remove", "remove_namespace_asset_event")
-        cmd_group.command("show", "show_namespace_asset_event")
+        cmd_group.show_command("show", "show_namespace_asset_event")
         cmd_group.command("update", "update_namespace_onvif_asset_event")
 
     with self.command_group(
@@ -367,7 +367,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("add", "add_namespace_opcua_asset_dataset")
         cmd_group.command("list", "list_namespace_asset_datasets")
         cmd_group.command("remove", "remove_namespace_asset_dataset")
-        cmd_group.command("show", "show_namespace_asset_dataset")
+        cmd_group.show_command("show", "show_namespace_asset_dataset")
         cmd_group.command("update", "update_namespace_opcua_asset_dataset")
 
     with self.command_group(
@@ -385,7 +385,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("add", "add_namespace_opcua_asset_event")
         cmd_group.command("list", "list_namespace_asset_events")
         cmd_group.command("remove", "remove_namespace_asset_event")
-        cmd_group.command("show", "show_namespace_asset_event")
+        cmd_group.show_command("show", "show_namespace_asset_event")
         cmd_group.command("update", "update_namespace_opcua_asset_event")
 
     with self.command_group(

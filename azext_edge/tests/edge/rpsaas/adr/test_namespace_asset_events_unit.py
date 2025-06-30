@@ -172,7 +172,7 @@ def test_add_namespace_asset_event(
         if "topic" in destination_params:
             dest = {"target": "Mqtt", "configuration": destination_params}
         expected_event["destinations"] = [dest]
-        config_params["events_destinations"] = [f"{key}={value}" for key, value in dest["configuration"].items()]
+        config_params["event_destinations"] = [f"{key}={value}" for key, value in dest["configuration"].items()]
 
     # Generate mock asset
     mocked_asset = get_namespace_asset_record(
@@ -598,7 +598,7 @@ def test_remove_namespace_asset_event(
     {"event_notifier": "nsu=test5;s=FastUInt999"},
     # both notifier and event configuration
     {
-        "events_destinations": "",  # will be set in the test
+        "event_destinations": "",  # will be set in the test
         "event_notifier": "nsu=test3;s=FastUInt999",
     }
 ])
@@ -715,7 +715,7 @@ def test_update_namespace_asset_event(
             })
 
     # Update destinations if specified
-    if "events_destinations" in common_reqs:
+    if "event_destinations" in common_reqs:
         destination = {
             "target": "Mqtt",
             "configuration": {
@@ -726,7 +726,7 @@ def test_update_namespace_asset_event(
             }
         }
         expected_event["destinations"] = [destination]
-        common_reqs["events_destinations"] = [
+        common_reqs["event_destinations"] = [
             f"{key}={value}" for key, value in destination["configuration"].items()
         ]
 

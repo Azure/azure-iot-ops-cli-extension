@@ -250,8 +250,8 @@ def test_create_datapoint(test_case, mocker):
                 "opcua_dataset_values": {"test": "dataset_value"},
                 "opcua_event_values": {"test": "event_value"},
                 "mgmt_custom_configuration": '{"test": "mgmt_value"}',
-                "datasets_destinations": ["topic=/test/topic"],
-                "events_destinations": ["topic=/test/event"]
+                "dataset_destinations": ["topic=/test/topic"],
+                "event_destinations": ["topic=/test/event"]
             },
         ),
         # Test ONVIF
@@ -259,7 +259,7 @@ def test_create_datapoint(test_case, mocker):
             DeviceEndpointType.ONVIF.value,
             {
                 "mgmt_custom_configuration": '{"test": "mgmt_value"}',
-                "events_destinations": ["topic=/test/event"]
+                "event_destinations": ["topic=/test/event"]
             },
         ),
         # Test MEDIA
@@ -267,7 +267,7 @@ def test_create_datapoint(test_case, mocker):
             DeviceEndpointType.MEDIA.value,
             {
                 "media_stream_values": {"test": "stream_value"},
-                "streams_destinations": ["topic=/test/stream", "path=/data/test"]
+                "stream_destinations": ["topic=/test/stream", "path=/data/test"]
             },
         ),
         # Test Custom
@@ -278,9 +278,9 @@ def test_create_datapoint(test_case, mocker):
                 "events_custom_configuration": '{"test": "event_value"}',
                 "mgmt_custom_configuration": '{"test": "mgmt_value"}',
                 "streams_custom_configuration": '{"test": "stream_value"}',
-                "datasets_destinations": ["topic=/test/dataset"],
-                "events_destinations": ["topic=/test/event"],
-                "streams_destinations": ["path=/data/test"]
+                "dataset_destinations": ["topic=/test/dataset"],
+                "event_destinations": ["topic=/test/event"],
+                "stream_destinations": ["path=/data/test"]
             },
         ),
         # Test Custom with no params
@@ -292,7 +292,7 @@ def test_create_datapoint(test_case, mocker):
             DeviceEndpointType.OPCUA.value,
             {
                 "opcua_dataset_values": {"test": "dataset_value"},
-                "datasets_destinations": ["topic=/test/topic"],
+                "dataset_destinations": ["topic=/test/topic"],
             },
         ),
     ]
@@ -329,16 +329,16 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
             "opcua_dataset_values",
             "opcua_event_values",
             "mgmt_custom_configuration",
-            "datasets_destinations",
-            "events_destinations"
+            "dataset_destinations",
+            "event_destinations"
         ],
         DeviceEndpointType.ONVIF.value: [
             "mgmt_custom_configuration",
-            "events_destinations"
+            "event_destinations"
         ],
         DeviceEndpointType.MEDIA.value: [
             "media_stream_values",
-            "streams_destinations"
+            "stream_destinations"
         ]
     }
     expected_args = asset_type_to_args.get(asset_type, [
@@ -346,9 +346,9 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         "events_custom_configuration",
         "mgmt_custom_configuration",
         "streams_custom_configuration",
-        "datasets_destinations",
-        "events_destinations",
-        "streams_destinations"
+        "dataset_destinations",
+        "event_destinations",
+        "stream_destinations"
     ])
 
     # map the test case args to the expected keys
@@ -363,9 +363,9 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         "opcua_event_values": "eventsConfiguration",
         "media_stream_values": "streamsConfiguration",
         # destinations
-        "datasets_destinations": "datasetsDestinations",
-        "events_destinations": "eventsDestinations",
-        "streams_destinations": "streamsDestinations",
+        "dataset_destinations": "datasetsDestinations",
+        "event_destinations": "eventsDestinations",
+        "stream_destinations": "streamsDestinations",
     }
     if default:
         # If default is True, we prefix the keys with 'default' + capatilize first letter
@@ -420,14 +420,14 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
     dest_func = mocks["_build_destination"]
     # map asset type to another mapping of expected arguments (with corresponding allowed destination types)
     asset_to_dest_args = {
-        DeviceEndpointType.OPCUA.value: {"datasets_destinations": ["Mqtt"], "events_destinations": ["Mqtt"]},
-        DeviceEndpointType.ONVIF.value: {"events_destinations": ["Mqtt"]},
-        DeviceEndpointType.MEDIA.value: {"streams_destinations": ["Storage", "Mqtt"]},
+        DeviceEndpointType.OPCUA.value: {"dataset_destinations": ["Mqtt"], "event_destinations": ["Mqtt"]},
+        DeviceEndpointType.ONVIF.value: {"event_destinations": ["Mqtt"]},
+        DeviceEndpointType.MEDIA.value: {"stream_destinations": ["Storage", "Mqtt"]},
     }
     expected_dest_args = asset_to_dest_args.get(asset_type, {
-        "datasets_destinations": None,
-        "events_destinations": None,
-        "streams_destinations": None
+        "dataset_destinations": None,
+        "event_destinations": None,
+        "stream_destinations": None
     })
     for arg, allowed_dest_types in expected_dest_args.items():
         if arg in expected_args:

@@ -323,7 +323,7 @@ class NamespaceAssets(Queryable):
         dataset_name: str,
         dataset_data_source: str,
         # TODO: singular dataset
-        datasets_destinations: Optional[List[str]] = None,
+        dataset_destinations: Optional[List[str]] = None,
         replace: bool = False,
         # TODO: future pr, import datapoints from file
         **kwargs
@@ -355,7 +355,7 @@ class NamespaceAssets(Queryable):
         processed_configs = _process_configs(
             asset_type=asset_type,
             default=False,
-            datasets_destinations=datasets_destinations,
+            dataset_destinations=dataset_destinations,
             **kwargs
         )
         datasets = [
@@ -410,7 +410,7 @@ class NamespaceAssets(Queryable):
         dataset_name: str,
         dataset_data_source: Optional[str] = None,
         dataset_type_ref: Optional[str] = None,
-        datasets_destinations: Optional[List[str]] = None,
+        dataset_destinations: Optional[List[str]] = None,
         **kwargs
     ):
         asset = self._check_device_props(
@@ -434,7 +434,7 @@ class NamespaceAssets(Queryable):
             asset_type=asset_type,
             default=False,
             original_dataset_configuration=dataset.get("datasetConfiguration"),
-            datasets_destinations=datasets_destinations,
+            dataset_destinations=dataset_destinations,
             **kwargs
         )
 
@@ -445,7 +445,7 @@ class NamespaceAssets(Queryable):
             dataset["dataSource"] = dataset_data_source
         if dataset_type_ref:
             dataset["typeRef"] = dataset_type_ref
-        if datasets_destinations:
+        if dataset_destinations:
             dataset["destinations"] = processed_configs.get("datasetsDestinations", [])
 
         update_payload = {
@@ -1155,11 +1155,11 @@ def _process_configs(
                 config_type="management group"
             ),
             "datasetsDestinations": _build_destination(
-                destination_args=kwargs.get("datasets_destinations", []),
+                destination_args=kwargs.get("dataset_destinations", []),
                 allowed_types=["Mqtt"]
             ),
             "eventsDestinations": _build_destination(
-                destination_args=kwargs.get("events_destinations", []),
+                destination_args=kwargs.get("event_destinations", []),
                 allowed_types=["Mqtt"]
             ),
         }
@@ -1173,7 +1173,7 @@ def _process_configs(
                 config_type="management group"
             ),
             "eventsDestinations": _build_destination(
-                destination_args=kwargs.get("events_destinations", []),
+                destination_args=kwargs.get("event_destinations", []),
                 allowed_types=["Mqtt"]
             )
         }
@@ -1185,7 +1185,7 @@ def _process_configs(
                 **kwargs
             ),
             "streamsDestinations": _build_destination(
-                destination_args=kwargs.get("streams_destinations", []),
+                destination_args=kwargs.get("stream_destinations", []),
                 allowed_types=["Storage", "Mqtt"]
             )
         }
@@ -1209,13 +1209,13 @@ def _process_configs(
                 config_type="stream"
             ),
             "datasetsDestinations": _build_destination(
-                destination_args=kwargs.get("datasets_destinations", []),
+                destination_args=kwargs.get("dataset_destinations", []),
             ),
             "eventsDestinations": _build_destination(
-                destination_args=kwargs.get("events_destinations", []),
+                destination_args=kwargs.get("event_destinations", []),
             ),
             "streamsDestinations": _build_destination(
-                destination_args=kwargs.get("streams_destinations", []),
+                destination_args=kwargs.get("stream_destinations", []),
             )
         }
 

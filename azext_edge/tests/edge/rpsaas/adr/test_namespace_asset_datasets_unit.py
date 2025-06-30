@@ -158,7 +158,7 @@ def test_add_namespace_asset_dataset(
         if "topic" in destination_params:
             dest = {"target": "Mqtt", "configuration": destination_params}
         expected_dataset["destinations"] = [dest]
-        config_params["datasets_destinations"] = [f"{key}={value}" for key, value in dest["configuration"].items()]
+        config_params["dataset_destinations"] = [f"{key}={value}" for key, value in dest["configuration"].items()]
 
     # Create mock asset record
     mocked_asset = get_namespace_asset_record(
@@ -711,7 +711,7 @@ def test_update_namespace_asset_dataset(
             expected_dataset["datasetConfiguration"] = json.dumps(config)
 
     # Update destinations if specified
-    if "datasets_destinations" in common_reqs:
+    if "dataset_destinations" in common_reqs:
         destination = {
             "target": "Mqtt",
             "configuration": {
@@ -722,7 +722,7 @@ def test_update_namespace_asset_dataset(
             }
         }
         expected_dataset["destinations"] = [destination]
-        common_reqs["datasets_destinations"] = [
+        common_reqs["dataset_destinations"] = [
             f"{key}={value}" for key, value in destination["configuration"].items()
         ]
 

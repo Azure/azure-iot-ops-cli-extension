@@ -147,12 +147,12 @@ def add_device_get_call(
     [
         "custom", {
             "default_datasets_custom_configuration": json.dumps({"testConfig": "value"}),
-            "default_datasets_destinations": ["key=test-key"],
+            "default_dataset_destinations": ["key=test-key"],
             "default_events_custom_configuration": json.dumps({"eventsConfig": "value"}),
-            "default_events_destinations": ["path=/data/test"],
+            "default_event_destinations": ["path=/data/test"],
             "default_mgmtg_custom_configuration": json.dumps({"mgmtgConfig": "value"}),
             "default_streams_custom_configuration": json.dumps({"streamsConfig": "value"}),
-            "default_streams_destinations": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]
+            "default_stream_destinations": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
     # Media task type: snapshot-to-mqtt with all allowed parameters
@@ -163,7 +163,7 @@ def add_device_get_call(
                 "format": "jpeg",
                 "snapshotsPerSecond": 1
             }),
-            "default_streams_destinations": ["topic=/contoso/snapshots", "retain=Never", "qos=Qos0", "ttl=3600"]
+            "default_stream_destinations": ["topic=/contoso/snapshots", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
     # Media task type: clip-to-fs with all allowed parameters
@@ -175,7 +175,7 @@ def add_device_get_call(
                 "duration": 60,
                 "path": "/data/clips"
             }),
-            "default_streams_destinations": ["path=/contoso/clips"]
+            "default_stream_destinations": ["path=/contoso/clips"]
         }
     ],
     # Media task type: stream-to-rtsp with all allowed parameters
@@ -199,13 +199,13 @@ def add_device_get_call(
             "default_dataset_queue_size": 2,
             "default_dataset_key_frame_count": 3,
             "default_dataset_start_instance": "test-instance",
-            "default_datasets_destinations": ["topic=/contoso/test", "retain=Never", "qos=0", "ttl=3600"],
+            "default_dataset_destinations": ["topic=/contoso/test", "retain=Never", "qos=0", "ttl=3600"],
             "default_events_publishing_interval": 1500,
             "default_events_queue_size": 4,
             "default_events_start_instance": "event-instance",
             "default_events_filter_type": "test-filter-type",
             "default_events_filter_clauses": [["path=test", "type=test", "field=test"]],
-            "default_events_destinations": ["topic=/contoso/test2", "retain=Never", "qos=1", "ttl=400"]
+            "default_event_destinations": ["topic=/contoso/test2", "retain=Never", "qos=1", "ttl=400"]
         }
     ]
 ])
@@ -519,12 +519,12 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
     [
         "custom", {
             "default_datasets_custom_configuration": json.dumps({"testConfig": "value"}),
-            "default_datasets_destinations": ["key=test-key"],
+            "default_dataset_destinations": ["key=test-key"],
             "default_events_custom_configuration": json.dumps({"eventsConfig": "value"}),
-            "default_events_destinations": ["path=/data/test"],
+            "default_event_destinations": ["path=/data/test"],
             "default_mgmtg_custom_configuration": json.dumps({"mgmtgConfig": "value"}),
             "default_streams_custom_configuration": json.dumps({"streamsConfig": "value"}),
-            "default_streams_destinations": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]
+            "default_stream_destinations": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
     # Media task type: snapshot-to-mqtt with all allowed parameters
@@ -535,7 +535,7 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
                 "format": "jpeg",
                 "snapshotsPerSecond": 1
             }),
-            "default_streams_destinations": ["topic=/contoso/snapshots", "retain=Never", "qos=Qos0", "ttl=3600"]
+            "default_stream_destinations": ["topic=/contoso/snapshots", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
     # Media task type: clip-to-fs with all allowed parameters
@@ -547,7 +547,7 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
                 "duration": 60,
                 "path": "/data/clips"
             }),
-            "default_streams_destinations": ["path=/contoso/clips"]
+            "default_stream_destinations": ["path=/contoso/clips"]
         }
     ],
     # Media task type: stream-to-rtsp with all allowed parameters
@@ -571,13 +571,13 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
             "default_dataset_queue_size": 2,
             "default_dataset_key_frame_count": 3,
             "default_dataset_start_instance": "test-instance",
-            "default_datasets_destinations": ["topic=/contoso/test", "retain=Never", "qos=0", "ttl=3600"],
+            "default_dataset_destinations": ["topic=/contoso/test", "retain=Never", "qos=0", "ttl=3600"],
             "default_events_publishing_interval": 1500,
             "default_events_queue_size": 4,
             "default_events_start_instance": "event-instance",
             "default_events_filter_type": "test-filter-type",
             "default_events_filter_clauses": [["path=test", "type=test", "field=test"]],
-            "default_events_destinations": ["topic=/contoso/test2", "retain=Never", "qos=1", "ttl=400"]
+            "default_event_destinations": ["topic=/contoso/test2", "retain=Never", "qos=1", "ttl=400"]
         }
     ]
 ])
@@ -599,12 +599,12 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
         "serial_number": "ORIG-SN",
         "software_revision": "Original-SW-Rev",
         "default_datasets_configuration": json.dumps({"originalConfig": "value"}),
-        "default_datasets_destinations": [{"target": "Storage", "configuration": {"path": "original/path"}}],
+        "default_dataset_destinations": [{"target": "Storage", "configuration": {"path": "original/path"}}],
         "default_events_configuration": json.dumps({"originalEventsConfig": "value"}),
-        "default_events_destinations": [{"target": "BrokerStateStore", "configuration": {"key": "original/key"}}],
+        "default_event_destinations": [{"target": "BrokerStateStore", "configuration": {"key": "original/key"}}],
         "default_management_groups_configuration": json.dumps({"originalMgmtgConfig": "value"}),
         "default_streams_configuration": json.dumps({"originalStreamsConfig": "value"}),
-        "default_streams_destinations": [
+        "default_stream_destinations": [
             {
                 "target": "Mqtt", "configuration": {
                     "topic": "/contoso/test",
