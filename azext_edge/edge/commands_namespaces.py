@@ -191,6 +191,7 @@ def list_namespace_device_endpoints(
     )
 
 
+# later, might want to add in update
 def add_inbound_custom_device_endpoint(
     cmd,
     device_name: str,
@@ -958,11 +959,11 @@ def add_namespace_opcua_asset_dataset(
     dataset_name: str,
     dataset_data_source: str,
     dataset_destinations: Optional[str] = None,
-    opcua_dataset_publishing_interval: Optional[int] = None,
-    opcua_dataset_sampling_interval: Optional[int] = None,
-    opcua_dataset_queue_size: Optional[int] = None,
-    opcua_dataset_key_frame_count: Optional[int] = None,
-    opcua_dataset_start_instance: Optional[str] = None,
+    dataset_publishing_interval: Optional[int] = None,
+    dataset_sampling_interval: Optional[int] = None,
+    dataset_queue_size: Optional[int] = None,
+    dataset_key_frame_count: Optional[int] = None,
+    dataset_start_instance: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -974,11 +975,11 @@ def add_namespace_opcua_asset_dataset(
         asset_type=DeviceEndpointType.OPCUA.value,
         dataset_data_source=dataset_data_source,
         dataset_destinations=dataset_destinations,
-        opcua_dataset_publishing_interval=opcua_dataset_publishing_interval,
-        opcua_dataset_sampling_interval=opcua_dataset_sampling_interval,
-        opcua_dataset_queue_size=opcua_dataset_queue_size,
-        opcua_dataset_key_frame_count=opcua_dataset_key_frame_count,
-        opcua_dataset_start_instance=opcua_dataset_start_instance,
+        opcua_dataset_publishing_interval=dataset_publishing_interval,
+        opcua_dataset_sampling_interval=dataset_sampling_interval,
+        opcua_dataset_queue_size=dataset_queue_size,
+        opcua_dataset_key_frame_count=dataset_key_frame_count,
+        opcua_dataset_start_instance=dataset_start_instance,
         replace=replace,
         **kwargs
     )
@@ -1201,6 +1202,7 @@ def add_namespace_custom_asset_event(
     )
 
 
+# TODO: needs schema confirmation
 def add_namespace_opcua_asset_event(
     cmd,
     asset_name: str,
@@ -1405,6 +1407,7 @@ def add_namespace_custom_asset_event_point(
     )
 
 
+# note: not exposed for now but this will be supported in the near future
 def add_namespace_opcua_asset_event_point(
     cmd,
     asset_name: str,
@@ -1428,30 +1431,6 @@ def add_namespace_opcua_asset_event_point(
         data_source=data_source,
         queue_size=queue_size,
         sampling_interval=sampling_interval,
-        replace=replace,
-        **kwargs
-    )
-
-
-def add_namespace_onvif_asset_event_point(
-    cmd,
-    asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
-    event_name: str,
-    datapoint_name: str,
-    data_source: str,
-    replace: Optional[bool] = False,
-    **kwargs
-) -> dict:
-    return NamespaceAssets(cmd).add_event_datapoint(
-        asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
-        event_name=event_name,
-        asset_type=DeviceEndpointType.ONVIF.value,
-        datapoint_name=datapoint_name,
-        data_source=data_source,
         replace=replace,
         **kwargs
     )

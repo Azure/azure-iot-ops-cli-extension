@@ -22,7 +22,6 @@ from azext_edge.edge.commands_namespaces import (
     update_namespace_onvif_asset_event,
     update_namespace_opcua_asset_event,
     add_namespace_custom_asset_event_point,
-    add_namespace_onvif_asset_event_point,
     add_namespace_opcua_asset_event_point,
     list_namespace_asset_event_points,
     remove_namespace_asset_event_point
@@ -816,12 +815,6 @@ def test_update_namespace_asset_event(
     (
         "opcua",
         add_namespace_opcua_asset_event_point,
-        {}
-    ),
-    # ONVIF asset event point
-    (
-        "onvif",
-        add_namespace_onvif_asset_event_point,
         {}
     )
 ])

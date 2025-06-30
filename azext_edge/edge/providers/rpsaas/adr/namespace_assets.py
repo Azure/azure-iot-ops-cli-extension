@@ -611,7 +611,7 @@ class NamespaceAssets(Queryable):
             asset = wait_for_terminal_state(poller, **kwargs)
             return get_default_dataset(asset, dataset_name)["dataPoints"]
 
-    # EVENTS - allowed for opcua, onvif, and custom assets
+    # EVENTS - allowed for opcua, and custom assets
     def add_event(
         self,
         asset_name: str,
