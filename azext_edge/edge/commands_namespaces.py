@@ -1408,32 +1408,32 @@ def add_namespace_custom_asset_event_point(
 
 
 # note: not exposed for now but this will be supported in the near future
-def add_namespace_opcua_asset_event_point(
-    cmd,
-    asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
-    event_name: str,
-    datapoint_name: str,
-    data_source: str,
-    queue_size: Optional[int] = None,
-    sampling_interval: Optional[int] = None,
-    replace: Optional[bool] = False,
-    **kwargs
-) -> dict:
-    return NamespaceAssets(cmd).add_event_datapoint(
-        asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
-        event_name=event_name,
-        asset_type=DeviceEndpointType.OPCUA.value,
-        datapoint_name=datapoint_name,
-        data_source=data_source,
-        queue_size=queue_size,
-        sampling_interval=sampling_interval,
-        replace=replace,
-        **kwargs
-    )
+# def add_namespace_opcua_asset_event_point(
+#     cmd,
+#     asset_name: str,
+#     namespace_name: str,
+#     resource_group_name: str,
+#     event_name: str,
+#     datapoint_name: str,
+#     data_source: str,
+#     queue_size: Optional[int] = None,
+#     sampling_interval: Optional[int] = None,
+#     replace: Optional[bool] = False,
+#     **kwargs
+# ) -> dict:
+#     return NamespaceAssets(cmd).add_event_datapoint(
+#         asset_name=asset_name,
+#         namespace_name=namespace_name,
+#         resource_group_name=resource_group_name,
+#         event_name=event_name,
+#         asset_type=DeviceEndpointType.OPCUA.value,
+#         datapoint_name=datapoint_name,
+#         data_source=data_source,
+#         queue_size=queue_size,
+#         sampling_interval=sampling_interval,
+#         replace=replace,
+#         **kwargs
+#     )
 
 
 def list_namespace_asset_event_points(
