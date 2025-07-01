@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import List
+from typing import List, Optional
 import pytest
 from knack.log import get_logger
 from ....generators import generate_random_string
@@ -28,33 +28,32 @@ def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
         f"--location {location}"
     )
     tracked_resources.append(min_namespace["id"])
-    assert_namespace_properties(result=min_namespace, name=namespace_name1, identity_type="None")
+    assert_namespace_properties(result=min_namespace, name=namespace_name1)
 
     # Show namespace
     namespace = run(
         f"az iot ops ns show -n {namespace_name1} -g {rg}"
     )
-    assert_namespace_properties(result=namespace, name=namespace_name1, identity_type="None")
+    assert_namespace_properties(result=namespace, name=namespace_name1)
 
     # Update namespace with system identity
     namespace = run(
-        f"az iot ops ns update -n {namespace_name1} -g {rg} --mi-system-assigned "
+        f"az iot ops ns update -n {namespace_name1} -g {rg} "
     )
-    assert_namespace_properties(result=namespace, name=namespace_name1, identity_type="SystemAssigned")
+    assert_namespace_properties(result=namespace, name=namespace_name1)
 
     # Create a namespace with all parameters
     namespace_name2 = "testns" + generate_random_string(force_lower=True)[:4]
     tags = {"key1": "value1", "key2": "value2"}
     tags_str = " ".join([f"{k}={v}" for k, v in tags.items()])
     namespace = run(
-        f"az iot ops ns create -n {namespace_name2} -g {rg} --mi-system-assigned "
+        f"az iot ops ns create -n {namespace_name2} -g {rg} "
         f"--tags {tags_str} --location {location}"
     )
     tracked_resources.append(namespace["id"])
     assert_namespace_properties(
         result=namespace,
         name=namespace_name2,
-        identity_type="SystemAssigned",
         tags=tags
     )
 
@@ -73,8 +72,7 @@ def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
     tracked_resources.remove(min_namespace["id"])
 
 
-def assert_namespace_properties(result: dict, **expected):
-    assert result["name"] == expected["name"]
-    assert result["identity"]["type"] == expected["identity_type"]
-    if expected.get("tags"):
-        assert result["tags"] == expected["tags"]
+def assert_namespace_properties(result: dict, name: str, tags: Optional[dict] = None):
+    assert result["name"] == name
+    if tags:
+        assert result["tags"] == tags

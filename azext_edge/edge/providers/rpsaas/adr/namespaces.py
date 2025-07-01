@@ -8,7 +8,6 @@ from rich.console import Console
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 from knack.log import get_logger
 
-from ....common import IdentityType
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
@@ -39,7 +38,6 @@ class Namespaces(Queryable):
         namespace_name: str,
         resource_group_name: str,
         location: Optional[str] = None,
-        mi_system_identity: Optional[bool] = None,
         tags: Optional[Dict[str, str]] = None,
         **kwargs
     ):
@@ -47,7 +45,6 @@ class Namespaces(Queryable):
             location = self.get_resource_group(name=resource_group_name)["location"]
 
         namespace_body = {
-            "identity": _build_identity(system=mi_system_identity),
             "location": location,
             "properties": {},
             "tags": tags,
@@ -86,17 +83,12 @@ class Namespaces(Queryable):
         self,
         namespace_name: str,
         resource_group_name: str,
-        # Note for now, keep this here but will be moved once user identities are supported
-        mi_system_identity: Optional[bool] = None,
         tags: Optional[Dict[str, str]] = None,
         **kwargs
     ):
         update_payload = {}
         if tags:
             update_payload["tags"] = tags
-
-        if mi_system_identity is not None:
-            update_payload["identity"] = _build_identity(system=mi_system_identity)
 
         with console.status(f"Updating {namespace_name}..."):
             poller = self.ops.begin_update(
@@ -105,13 +97,3 @@ class Namespaces(Queryable):
                 update_payload
             )
             return wait_for_terminal_state(poller, **kwargs)
-
-
-def _build_identity(system: bool = False) -> dict:
-    if system:
-        identity_type = IdentityType.system_assigned.value
-    else:
-        identity_type = IdentityType.none.value
-        logger.warning("An identity type was not specified. The namespace may not function as expected.")
-
-    return {"type": identity_type}

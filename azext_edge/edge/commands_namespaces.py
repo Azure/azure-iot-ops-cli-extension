@@ -20,14 +20,12 @@ def create_namespace(
     namespace_name: str,
     resource_group_name: str,
     location: Optional[str] = None,
-    mi_system_identity: Optional[bool] = None,
     tags: Optional[Dict[str, str]] = None,
     **kwargs
 ):
     return Namespaces(cmd).create(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
-        mi_system_identity=mi_system_identity,
         location=location,
         tags=tags,
         **kwargs
@@ -57,14 +55,12 @@ def update_namespace(
     cmd,
     namespace_name: str,
     resource_group_name: str,
-    mi_system_identity: Optional[bool] = None,
     tags: Optional[Dict[str, str]] = None,
     **kwargs
 ):
     return Namespaces(cmd).update(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
-        mi_system_identity=mi_system_identity,
         tags=tags,
         **kwargs
     )
