@@ -1274,32 +1274,104 @@ def load_adr_arguments(self, _):
                 arg_group="Default Event",
             )
 
+    for asset_type in ("custom", "opcua", "onvif"):
+        with self.argument_context(f"iot ops ns asset {asset_type} dataset") as context:
+            context.argument(
+                "asset_name",
+                options_list=["--asset", "-a"],
+                help="Asset name.",
+            )
+            context.argument(
+                "dataset_name",
+                options_list=["--name"],
+                help="Dataset name.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the dataset if another dataset with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+            context.argument(
+                "dataset_data_source",
+                options_list=["--data-source", "--ds"],
+                help="Data source for the dataset.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} dataset point") as context:
+            context.argument(
+                "dataset_name",
+                options_list=["--dataset", "-d"],
+                help="Dataset name.",
+            )
+            context.argument(
+                "datapoint_name",
+                options_list=["--name"],
+                help="Data point name.",
+            )
+            context.argument(
+                "data_source",
+                options_list=["--data-source", "--ds"],
+                help="Data source for the data point.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the data point if another point with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} event") as context:
+            context.argument(
+                "asset_name",
+                options_list=["--asset", "-a"],
+                help="Asset name.",
+            )
+            context.argument(
+                "event_name",
+                options_list=["--name"],
+                help="Event name.",
+            )
+            context.argument(
+                "event_notifier",
+                options_list=["--event-notifier", "--en"],
+                help="Event notifier.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the event if another event with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} event point") as context:
+            context.argument(
+                "event_name",
+                options_list=["--event", "-e"],
+                help="Event name.",
+            )
+            context.argument(
+                "datapoint_name",
+                options_list=["--name"],
+                help="Data point name.",
+            )
+            context.argument(
+                "data_source",
+                options_list=["--data-source", "--ds"],
+                help="Data source for the event data point.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the data point if another point with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+
     with self.argument_context("iot ops ns asset custom dataset") as context:
-        context.argument(
-            "asset_name",
-            options_list=["--asset", "-a"],
-            help="Asset name.",
-        )
-        context.argument(
-            "dataset_name",
-            options_list=["--name"],
-            help="Dataset name.",
-        )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the dataset if another dataset with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
         context.argument(
             "dataset_configuration",
             options_list=["--config"],
             help="Custom dataset configuration as a JSON string or file path.",
-        )
-        context.argument(
-            "dataset_data_source",
-            options_list=["--data-source", "--ds"],
-            help="Data source for the dataset.",
         )
         context.argument(
             "dataset_destinations",
@@ -1313,48 +1385,12 @@ def load_adr_arguments(self, _):
 
     with self.argument_context("iot ops ns asset custom dataset point") as context:
         context.argument(
-            "dataset_name",
-            options_list=["--dataset", "-d"],
-            help="Dataset name.",
-        )
-        context.argument(
-            "datapoint_name",
-            options_list=["--name"],
-            help="Data point name.",
-        )
-        context.argument(
-            "data_source",
-            options_list=["--data-source", "--ds"],
-            help="Data source for the data point.",
-        )
-        context.argument(
             "custom_configuration",
             options_list=["--config"],
             help="Custom data point configuration as a JSON string or file path.",
         )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the data point if another point with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
 
     with self.argument_context("iot ops ns asset opcua dataset") as context:
-        context.argument(
-            "asset_name",
-            options_list=["--asset", "-a"],
-            help="Asset name.",
-        )
-        context.argument(
-            "dataset_name",
-            options_list=["--name"],
-            help="Dataset name.",
-        )
-        context.argument(
-            "dataset_data_source",
-            options_list=["--data-source", "--ds"],
-            help="Data source for the dataset.",
-        )
         context.argument(
             "opcua_dataset_publishing_interval",
             options_list=["--publish-int", "--pi"],
@@ -1391,29 +1427,8 @@ def load_adr_arguments(self, _):
             "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. ",
             nargs="+",
         )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the dataset if another dataset with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
 
     with self.argument_context("iot ops ns asset opcua dataset point") as context:
-        context.argument(
-            "dataset_name",
-            options_list=["--dataset", "-d"],
-            help="Dataset name.",
-        )
-        context.argument(
-            "datapoint_name",
-            options_list=["--name"],
-            help="Data point name.",
-        )
-        context.argument(
-            "data_source",
-            options_list=["--data-source", "--ds"],
-            help="Data source for the OPC UA data point.",
-        )
         context.argument(
             "sampling_interval",
             options_list=["--sampling-int", "--si"],
@@ -1428,35 +1443,8 @@ def load_adr_arguments(self, _):
             type=int,
             arg_group="Default Dataset",
         )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the data point if another point with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
 
     with self.argument_context("iot ops ns asset custom event") as context:
-        context.argument(
-            "asset_name",
-            options_list=["--asset", "-a"],
-            help="Asset name.",
-        )
-        context.argument(
-            "event_name",
-            options_list=["--name"],
-            help="Event name.",
-        )
-        context.argument(
-            "event_notifier",
-            options_list=["--event-notifier", "--en"],
-            help="Event notifier.",
-        )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the event if another event with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
         context.argument(
             "event_configuration",
             options_list=["--config"],
@@ -1466,61 +1454,20 @@ def load_adr_arguments(self, _):
             "event_destinations",
             options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for events. "
-            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
+            "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+            "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
             action="append",
             nargs="+",
         )
 
     with self.argument_context("iot ops ns asset custom event point") as context:
         context.argument(
-            "event_name",
-            options_list=["--event", "-e"],
-            help="Event name.",
-        )
-        context.argument(
-            "datapoint_name",
-            options_list=["--name"],
-            help="Data point name.",
-        )
-        context.argument(
-            "data_source",
-            options_list=["--data-source", "--ds"],
-            help="Data source for the event data point.",
-        )
-        context.argument(
             "custom_configuration",
             options_list=["--config"],
             help="Custom event data point configuration as a JSON string or file path.",
         )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the data point if another point with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
 
     with self.argument_context("iot ops ns asset onvif event") as context:
-        context.argument(
-            "asset_name",
-            options_list=["--asset", "-a"],
-            help="Asset name.",
-        )
-        context.argument(
-            "event_name",
-            options_list=["--name"],
-            help="Event name.",
-        )
-        context.argument(
-            "event_notifier",
-            options_list=["--event-notifier", "--en"],
-            help="Event notifier.",
-        )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the event if another event with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
         context.argument(
             "event_destinations",
             options_list=["--destination", "--dest"],
@@ -1531,21 +1478,6 @@ def load_adr_arguments(self, _):
         )
 
     with self.argument_context("iot ops ns asset opcua event") as context:
-        context.argument(
-            "asset_name",
-            options_list=["--asset", "-a"],
-            help="Asset name.",
-        )
-        context.argument(
-            "event_name",
-            options_list=["--name"],
-            help="Event name.",
-        )
-        context.argument(
-            "event_notifier",
-            options_list=["--event-notifier", "--en"],
-            help="Event notifier.",
-        )
         context.argument(
             "opcua_event_publishing_interval",
             options_list=["--publish-int", "--evpi"],
@@ -1578,30 +1510,9 @@ def load_adr_arguments(self, _):
             "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
             nargs="+",
         )
-        context.argument(
-            "replace",
-            options_list=["--replace"],
-            help="Replace the event if another event with the same name is already present.",
-            arg_type=get_three_state_flag(),
-        )
 
     # TODO: future follow up release
     # with self.argument_context("iot ops ns asset opcua event point") as context:
-    #     context.argument(
-    #         "event_name",
-    #         options_list=["--event", "-e"],
-    #         help="Event name.",
-    #     )
-    #     context.argument(
-    #         "datapoint_name",
-    #         options_list=["--name"],
-    #         help="Data point name.",
-    #     )
-    #     context.argument(
-    #         "data_source",
-    #         options_list=["--data-source", "--ds"],
-    #         help="Data source for the OPC UA event data point.",
-    #     )
     #     context.argument(
     #         "sampling_interval",
     #         options_list=["--sampling-int", "--si"],
@@ -1613,10 +1524,4 @@ def load_adr_arguments(self, _):
     #         options_list=["--queue-size", "--qs"],
     #         help="Queue size. Minimum: 0.",
     #         type=int,
-    #     )
-    #     context.argument(
-    #         "replace",
-    #         options_list=["--replace"],
-    #         help="Replace the data point if another point with the same name is already present.",
-    #         arg_type=get_three_state_flag(),
     #     )

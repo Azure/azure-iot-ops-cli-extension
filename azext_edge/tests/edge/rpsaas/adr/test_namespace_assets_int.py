@@ -30,7 +30,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
     asset_name_media = f"media-{generate_random_string(8)}"
     asset_name_custom = f"custom-{generate_random_string(8)}"
 
-# Tags and attributes
+    # Tags and attributes
     common_tags = {"env": "test", "purpose": "automation"}
     common_attrs = ["location=building1", "floor=3"]
 
