@@ -104,7 +104,7 @@ def test_init_scenario(init_test_setup, tracked_files):
     cluster_name = init_test_setup["clusterName"]
     resource_group = init_test_setup["resourceGroup"]
     registry_id = init_test_setup["schemaRegistryId"]
-    adr_ns_id = init_test_setup["adrNamespaceId"]
+    adr_namespace_id = init_test_setup["adrNamespaceId"]
     instance_name = init_test_setup["instanceName"]
     command = f"az iot ops init -g {resource_group} --cluster {cluster_name} --no-progress {additional_init_args} "
 
@@ -116,7 +116,7 @@ def test_init_scenario(init_test_setup, tracked_files):
     # create command
     create_command = (
         f"az iot ops create -g {resource_group} --cluster {cluster_name} -n {instance_name} "
-        f"--sr-resource-id {registry_id} --ns-resource-id {adr_ns_id} "
+        f"--sr-resource-id {registry_id} --ns-resource-id {adr_namespace_id} "
         f"--no-progress {additional_create_args} "
     )
     # TODO: assert create when return be returning
@@ -145,6 +145,7 @@ def test_init_scenario(init_test_setup, tracked_files):
                 cluster_name=cluster_name,
                 resource_group=resource_group,
                 schema_registry_id=registry_id,
+                adr_namespace_id=adr_namespace_id,
                 **create_arg_dict,
             )
     except Exception as e:  # pylint: disable=broad-except
