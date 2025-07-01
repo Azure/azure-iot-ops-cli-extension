@@ -747,15 +747,15 @@ def load_iotops_help():
             az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
         - name: Add a registry endpoint with system-assigned managed identity and optional audience configuration
           text: >
-            az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup 
+            az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type SystemAssignedManagedIdentity --aud myaudience
         - name: Add a registry endpoint with kubernetes secret reference authentication
           text: >
-            az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup 
+            az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type ArtifactPullSecret --secret-ref mysecret
         - name: Add a registry endpoint with user-assigned managed identity configuration
           text: >
-            az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup 
+            az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type UserAssignedManagedIdentity --scope myscope --cid myclientid --tid mytenantid
     """
 
