@@ -1126,7 +1126,7 @@ def add_dataflow_graph_registry(
     resource_group_name: str,
     registry_endpoint_name: str,
     host: str,
-    auth_type: Optional[RegistryEndpointAuthenticationType] = None,
+    auth_type: Optional[str] = None,
     secret_ref: Optional[str] = None,
     audience: Optional[str] = None,
     client_id: Optional[str] = None,
@@ -1154,7 +1154,7 @@ def update_dataflow_graph_registry(
     resource_group_name: str,
     registry_endpoint_name: str,
     host: Optional[str] = None,
-    auth_type: Optional[RegistryEndpointAuthenticationType] = None,
+    auth_type: Optional[str] = None,
     secret_ref: Optional[str] = None,
     audience: Optional[str] = None,
     client_id: Optional[str] = None,
@@ -1175,11 +1175,11 @@ def update_dataflow_graph_registry(
     )
 
 
-def show_dataflow_graph_registry(cmd, registry_name: str, instance_name: str, resource_group_name: str):
+def show_dataflow_graph_registry(cmd, registry_endpoint_name: str, instance_name: str, resource_group_name: str):
     return RegistryEndpoints(cmd).show(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_name,
+        registry_endpoint_name=registry_endpoint_name,
     )
 
 
@@ -1192,7 +1192,7 @@ def list_dataflow_graph_registries(cmd, instance_name: str, resource_group_name:
 
 def remove_dataflow_graph_registry(
     cmd,
-    registry_name: str,
+    registry_endpoint_name: str,
     instance_name: str,
     resource_group_name: str,
     confirm_yes: Optional[bool] = None,
@@ -1201,7 +1201,7 @@ def remove_dataflow_graph_registry(
     return RegistryEndpoints(cmd).remove(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_name,
+        registry_endpoint_name=registry_endpoint_name,
         confirm_yes=confirm_yes,
         **kwargs,
     )

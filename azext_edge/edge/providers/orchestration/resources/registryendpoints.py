@@ -208,7 +208,7 @@ class RegistryEndpoints(Queryable):
 
     def _process_registry_endpoint_authentication(
         self,
-        type: Optional[RegistryEndpointAuthenticationType] = None,
+        type: Optional[str] = None,
         secret_ref: Optional[str] = None,
         audience: Optional[str] = None,
         client_id: Optional[str] = None,
@@ -251,21 +251,21 @@ class RegistryEndpoints(Queryable):
         )
 
         # Build authentication configuration
-        auth_config = {"method": type.value}
+        auth_config = {"method": type}
 
         # Add type-specific settings
-        settings_key = REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS[type.value]
+        settings_key = REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS[type]
         auth_settings = {}
 
-        if type == RegistryEndpointAuthenticationType.ANONYMOUS:
+        if type == RegistryEndpointAuthenticationType.ANONYMOUS.value:
             # Anonymous settings is an empty object
             auth_settings = {}
-        elif type == RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET:
+        elif type == RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value:
             auth_settings = {"secretRef": secret_ref}
-        elif type == RegistryEndpointAuthenticationType.SYSTEMASSIGNED:
+        elif type == RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value:
             if audience:
                 auth_settings["audience"] = audience
-        elif type == RegistryEndpointAuthenticationType.USERASSIGNED:
+        elif type == RegistryEndpointAuthenticationType.USERASSIGNED.value:
             auth_settings["clientId"] = client_id
             auth_settings["tenantId"] = tenant_id
             if scope:
@@ -281,7 +281,7 @@ class RegistryEndpoints(Queryable):
         resource_group_name: str,
         registry_endpoint_name: str,
         host: str,
-        auth_type: Optional[RegistryEndpointAuthenticationType] = None,
+        auth_type: Optional[str] = None,
         secret_ref: Optional[str] = None,
         audience: Optional[str] = None,
         client_id: Optional[str] = None,
@@ -343,7 +343,7 @@ class RegistryEndpoints(Queryable):
         resource_group_name: str,
         registry_endpoint_name: str,
         host: Optional[str] = None,
-        auth_type: Optional[RegistryEndpointAuthenticationType] = None,
+        auth_type: Optional[str] = None,
         secret_ref: Optional[str] = None,
         audience: Optional[str] = None,
         client_id: Optional[str] = None,
@@ -394,7 +394,7 @@ class RegistryEndpoints(Queryable):
                 resource_group_name=resource_group_name,
                 instance_name=instance_name,
                 registry_endpoint_name=registry_endpoint_name,
-                registry_endpoint=existing_endpoint,
+                resource=existing_endpoint,
                 **kwargs,
             )
             return wait_for_terminal_state(poller)
@@ -436,7 +436,7 @@ class RegistryEndpoints(Queryable):
         client_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
         scope: Optional[str] = None,
-    ) -> RegistryEndpointAuthenticationType:
+    ) -> str:
         """
         Identify the authentication method based on provided parameters.
 
@@ -449,22 +449,22 @@ class RegistryEndpoints(Queryable):
         """
         # Check for ArtifactPullSecret parameters
         if secret_ref:
-            return RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET
+            return RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value
 
         # Check for UserAssignedManagedIdentity parameters
         if client_id or tenant_id or scope:
-            return RegistryEndpointAuthenticationType.USERASSIGNED
+            return RegistryEndpointAuthenticationType.USERASSIGNED.value
 
         # Check for SystemAssignedManagedIdentity parameters
         if audience:
-            return RegistryEndpointAuthenticationType.SYSTEMASSIGNED
+            return RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value
 
         # Default to Anonymous if no parameters provided
-        return RegistryEndpointAuthenticationType.ANONYMOUS
+        return RegistryEndpointAuthenticationType.ANONYMOUS.value
 
     def _validate_authentication_parameters(
         self,
-        auth_type: RegistryEndpointAuthenticationType,
+        auth_type: str,
         secret_ref: Optional[str] = None,
         audience: Optional[str] = None,
         client_id: Optional[str] = None,
@@ -495,8 +495,8 @@ class RegistryEndpoints(Queryable):
         if scope:
             provided_params.append("scope")
 
-        required_params = REGISTRY_ENDPOINT_AUTHENTICATION_REQUIRED_PARAMS[auth_type.value]
-        optional_params = REGISTRY_ENDPOINT_AUTHENTICATION_OPTIONAL_PARAMS[auth_type.value]
+        required_params = REGISTRY_ENDPOINT_AUTHENTICATION_REQUIRED_PARAMS[auth_type]
+        optional_params = REGISTRY_ENDPOINT_AUTHENTICATION_OPTIONAL_PARAMS[auth_type]
 
         # Construct valid parameter set for the given authentication type
         allowed_params = set(required_params) | set(optional_params)
@@ -508,7 +508,7 @@ class RegistryEndpoints(Queryable):
                 REGISTRY_ENDPOINT_AUTHENTICATION_PARAM_TEXT_MAP.get(param, param) for param in improper_params
             )
             raise MutuallyExclusiveArgumentError(
-                f"Parameters {improper_params_text} are not compatible with authentication type '{auth_type.value}'."
+                f"Parameters {improper_params_text} are not compatible with authentication type '{auth_type}'."
             )
 
         # Check for missing required parameters
@@ -518,5 +518,5 @@ class RegistryEndpoints(Queryable):
                 [REGISTRY_ENDPOINT_AUTHENTICATION_PARAM_TEXT_MAP.get(param, param) for param in parameter_delta]
             )
             raise RequiredArgumentMissingError(
-                f"Authentication type '{auth_type.value}' requires the following parameters: {missing_params}"
+                f"Authentication type '{auth_type}' requires the following parameters: {missing_params}"
             )

@@ -188,6 +188,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("list", "list_dataflow_graph_registries")
         cmd_group.command("add", "add_dataflow_graph_registry")
+        cmd_group.command("update", "update_dataflow_graph_registry")
         cmd_group.command("remove", "remove_dataflow_graph_registry")
         cmd_group.command("show", "show_dataflow_graph_registry")
 

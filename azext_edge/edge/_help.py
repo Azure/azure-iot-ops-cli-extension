@@ -736,9 +736,8 @@ def load_iotops_help():
         "iot ops dataflow graph registry add"
     ] = """
         type: command
-        short-summary: Add a container registry endpoint for dataflow graph discovery.
+        short-summary: Add a container registry endpoint to an instance.
         long-summary: |
-          Add a new container registry endpoint that will be used when discovering dataflow images.
           Only Azure Container Registry (ACR) endpoints are supported.
 
         examples:
@@ -757,6 +756,18 @@ def load_iotops_help():
           text: >
             az iot ops dataflow graph registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type UserAssignedManagedIdentity --scope myscope --cid myclientid --tid mytenantid
+    """
+
+    helps[
+        "iot ops dataflow graph registry update"
+    ] = """
+        type: command
+        short-summary: Update a container registry endpoint.
+
+        examples:
+        - name: Update an endpoint's hostname and auth-type to use a system-assigned managed identity
+          text: >
+            az iot ops dataflow graph registry update -n myregistry --host newregistry.azurecr.io -i myinstance -g myresourcegroup--auth-type SystemAssignedManagedIdentity
     """
 
     helps[
