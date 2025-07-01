@@ -238,6 +238,7 @@ class InitTargets:
                 "clExtentionIds": cl_extension_ids,
                 "deployResourceSyncRules": self.deploy_resource_sync_rules,
                 "schemaRegistryId": self.schema_registry_resource_id,
+                "adrNamespaceId": self.adr_namespace_resource_id,
                 "defaultDataflowinstanceCount": self.dataflow_profile_instances,
                 "brokerConfig": self.broker_config,
                 "trustConfig": self.trust_config,
@@ -263,7 +264,8 @@ class InitTargets:
         dataflow_endpoint = template.get_resource_by_key("dataflow_endpoint")
 
         instance["properties"] = get_default_instance_config(
-            description=self.instance_description, features=self.instance_features
+            description=self.instance_description,
+            features=self.instance_features,
         )
 
         if self.instance_name:
@@ -436,10 +438,14 @@ def get_default_ssc_config() -> Dict[str, str]:
     }
 
 
-def get_default_instance_config(description: Optional[str] = None, features: Optional[dict] = None) -> dict:
+def get_default_instance_config(
+    description: Optional[str] = None,
+    features: Optional[dict] = None,
+) -> dict:
     return {
-        "description": description,
         "schemaRegistryRef": {"resourceId": "[parameters('schemaRegistryId')]"},
+        "adrNamespaceRef": {"resourceId": "[parameters('adrNamespaceId')]"},
+        "description": description,
         "features": features,
     }
 

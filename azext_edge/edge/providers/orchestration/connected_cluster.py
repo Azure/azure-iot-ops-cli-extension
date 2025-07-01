@@ -55,7 +55,7 @@ QUERIES = {
         resources
         | where extendedLocation.name =~ '{custom_location_id}'
         {where_clauses}
-        | project id, name, apiVersion, location, type, resourceGroup{projections}
+        | project id, name, apiVersion, location, extendedLocation, type, resourceGroup{projections}
         """,
     "get_resource_sync_rules": """
         resources
