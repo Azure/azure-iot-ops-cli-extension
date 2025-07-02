@@ -21,8 +21,8 @@ from azext_edge.edge.providers.orchestration.common import (
 )
 from azext_edge.edge.providers.orchestration.resources import RegistryEndpoints
 
-from ....generators import generate_random_string
-from .conftest import get_base_endpoint, get_mock_resource
+from .....generators import generate_random_string
+from ..conftest import get_base_endpoint, get_mock_resource
 
 
 def get_registry_endpoint_endpoint(
