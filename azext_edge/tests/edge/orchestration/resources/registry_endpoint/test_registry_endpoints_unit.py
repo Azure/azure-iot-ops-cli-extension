@@ -11,18 +11,23 @@ import responses
 from azure.cli.core.azclierror import MutuallyExclusiveArgumentError, RequiredArgumentMissingError
 
 from azext_edge.edge.commands_dataflow import (
+    add_dataflow_graph_registry,
     list_dataflow_graph_registries,
     remove_dataflow_graph_registry,
     show_dataflow_graph_registry,
+    update_dataflow_graph_registry,
 )
 from azext_edge.edge.providers.orchestration.common import (
     REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS,
     RegistryEndpointAuthenticationType,
 )
 from azext_edge.edge.providers.orchestration.resources import RegistryEndpoints
-
-from .....generators import generate_random_string
-from ..conftest import get_base_endpoint, get_mock_resource
+from azext_edge.tests.edge.orchestration.resources.conftest import get_base_endpoint, get_mock_resource
+from azext_edge.tests.edge.orchestration.resources.test_instances_unit import (
+    get_instance_endpoint,
+    get_mock_instance_record,
+)
+from azext_edge.tests.generators import generate_random_string
 
 
 def get_registry_endpoint_endpoint(
@@ -267,7 +272,8 @@ class TestRegistryEndpointsAuthentication:
             )
 
     @pytest.mark.parametrize(
-        "auth_type,secret_ref,audience,client_id,tenant_id,scope,expected_method,expected_settings_key,expected_settings",
+        "auth_type,secret_ref,audience,client_id,tenant_id,scope,"
+        "expected_method,expected_settings_key,expected_settings",
         [
             # Anonymous - explicit type
             (
@@ -440,3 +446,372 @@ class TestRegistryEndpointsAuthentication:
         # Verify the expected structure
         expected = {"method": expected_method, expected_settings_key: expected_settings}
         assert result == expected
+
+
+def test_registry_endpoint_add_anonymous(mocked_cmd, mocked_responses: responses):
+    """Test adding a registry endpoint with Anonymous authentication."""
+    registry_endpoint_name = generate_random_string()
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    host = "myregistry.azurecr.io"
+
+    # Mock the instance record for extended location retrieval
+    mock_instance_record = get_mock_instance_record(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+
+    # Mock the GET call to retrieve instance for extended location
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_instance_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+        ),
+        json=mock_instance_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    mock_registry_record = get_mock_registry_endpoint_record(
+        registry_endpoint_name=registry_endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        host=host,
+    )
+
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_registry_endpoint_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            registry_endpoint_name=registry_endpoint_name,
+        ),
+        json=mock_registry_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    result = add_dataflow_graph_registry(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        registry_endpoint_name=registry_endpoint_name,
+        host=host,
+        wait_sec=0,
+    )
+
+    assert result == mock_registry_record
+    assert len(mocked_responses.calls) == 2  # GET instance + PUT registry
+
+
+@pytest.mark.parametrize(
+    "auth_type,secret_ref,audience,client_id,tenant_id,scope",
+    [
+        # ArtifactPullSecret
+        (RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value, "my-secret", None, None, None, None),
+        (None, "my-secret", None, None, None, None),  # Auto-detection
+        # SystemAssigned
+        (RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value, None, "my-audience", None, None, None),
+        (None, None, "my-audience", None, None, None),  # Auto-detection
+        # UserAssigned
+        (RegistryEndpointAuthenticationType.USERASSIGNED.value, None, None, "my-client", "my-tenant", None),
+        (RegistryEndpointAuthenticationType.USERASSIGNED.value, None, None, "my-client", "my-tenant", "my-scope"),
+        (None, None, None, "my-client", "my-tenant", "my-scope"),  # Auto-detection
+    ],
+)
+def test_registry_endpoint_add_with_auth(
+    mocked_cmd, mocked_responses: responses, auth_type, secret_ref, audience, client_id, tenant_id, scope
+):
+    """Test adding a registry endpoint with various authentication types."""
+    registry_endpoint_name = generate_random_string()
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    host = "myregistry.azurecr.io"
+
+    # Determine expected auth method
+    if secret_ref:
+        expected_method = RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value
+    elif client_id or tenant_id or scope:
+        expected_method = RegistryEndpointAuthenticationType.USERASSIGNED.value
+    elif audience:
+        expected_method = RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value
+    else:
+        expected_method = RegistryEndpointAuthenticationType.ANONYMOUS.value
+
+    # Mock the instance record for extended location retrieval
+    mock_instance_record = get_mock_instance_record(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+
+    # Mock the GET call to retrieve instance for extended location
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_instance_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+        ),
+        json=mock_instance_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    mock_registry_record = get_mock_registry_endpoint_record(
+        registry_endpoint_name=registry_endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        host=host,
+    )
+    # Update the authentication method in the mock
+    mock_registry_record["properties"]["authentication"]["method"] = expected_method
+
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_registry_endpoint_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            registry_endpoint_name=registry_endpoint_name,
+        ),
+        json=mock_registry_record,
+        status=200,  # PUT operations typically return 200
+        content_type="application/json",
+    )
+
+    result = add_dataflow_graph_registry(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        registry_endpoint_name=registry_endpoint_name,
+        host=host,
+        auth_type=auth_type,
+        secret_ref=secret_ref,
+        audience=audience,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+        wait_sec=0,
+    )
+
+    assert result == mock_registry_record
+    assert len(mocked_responses.calls) == 2  # GET instance + PUT registry
+
+
+def test_registry_endpoint_update_host_only(mocked_cmd, mocked_responses: responses):
+    """Test updating a registry endpoint with only host change."""
+    registry_endpoint_name = generate_random_string()
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    new_host = "newregistry.azurecr.io"
+
+    # Mock the GET call to retrieve existing endpoint
+    existing_record = get_mock_registry_endpoint_record(
+        registry_endpoint_name=registry_endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        host="oldregistry.azurecr.io",
+    )
+
+    # Mock the updated record
+    updated_record = get_mock_registry_endpoint_record(
+        registry_endpoint_name=registry_endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        host=new_host,
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_registry_endpoint_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            registry_endpoint_name=registry_endpoint_name,
+        ),
+        json=existing_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_registry_endpoint_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            registry_endpoint_name=registry_endpoint_name,
+        ),
+        json=updated_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    result = update_dataflow_graph_registry(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        registry_endpoint_name=registry_endpoint_name,
+        host=new_host,
+        wait_sec=0,
+    )
+
+    assert result == updated_record
+    assert len(mocked_responses.calls) == 2  # GET + PUT
+
+
+@pytest.mark.parametrize(
+    "auth_type,secret_ref,audience,client_id,tenant_id,scope",
+    [
+        # Update to ArtifactPullSecret
+        (RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value, "new-secret", None, None, None, None),
+        # Update to SystemAssigned
+        (RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value, None, "new-audience", None, None, None),
+        # Update to UserAssigned
+        (RegistryEndpointAuthenticationType.USERASSIGNED.value, None, None, "new-client", "new-tenant", "new-scope"),
+        # Auto-detection updates
+        (None, "auto-secret", None, None, None, None),
+        (None, None, "auto-audience", None, None, None),
+        (None, None, None, "auto-client", "auto-tenant", None),
+    ],
+)
+def test_registry_endpoint_update_auth(
+    mocked_cmd, mocked_responses: responses, auth_type, secret_ref, audience, client_id, tenant_id, scope
+):
+    """Test updating a registry endpoint with authentication changes."""
+    registry_endpoint_name = generate_random_string()
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    host = "myregistry.azurecr.io"
+
+    # Mock the GET call to retrieve existing endpoint
+    existing_record = get_mock_registry_endpoint_record(
+        registry_endpoint_name=registry_endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        host=host,
+    )
+
+    # Determine expected auth method
+    if secret_ref:
+        expected_method = RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value
+    elif client_id or tenant_id or scope:
+        expected_method = RegistryEndpointAuthenticationType.USERASSIGNED.value
+    elif audience:
+        expected_method = RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value
+    else:
+        expected_method = RegistryEndpointAuthenticationType.ANONYMOUS.value
+
+    # Mock the updated record
+    updated_record = get_mock_registry_endpoint_record(
+        registry_endpoint_name=registry_endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        host=host,
+    )
+    # Update the authentication method in the mock
+    updated_record["properties"]["authentication"]["method"] = expected_method
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_registry_endpoint_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            registry_endpoint_name=registry_endpoint_name,
+        ),
+        json=existing_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_registry_endpoint_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            registry_endpoint_name=registry_endpoint_name,
+        ),
+        json=updated_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    result = update_dataflow_graph_registry(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        registry_endpoint_name=registry_endpoint_name,
+        auth_type=auth_type,
+        secret_ref=secret_ref,
+        audience=audience,
+        client_id=client_id,
+        tenant_id=tenant_id,
+        scope=scope,
+        wait_sec=0,
+    )
+
+    assert result == updated_record
+    assert len(mocked_responses.calls) == 2  # GET + PUT
+
+
+def test_registry_endpoint_update_host_and_auth(mocked_cmd, mocked_responses: responses):
+    """Test updating a registry endpoint with both host and authentication changes."""
+    registry_endpoint_name = generate_random_string()
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    new_host = "newregistry.azurecr.io"
+    secret_ref = "new-secret"
+
+    # Mock the GET call to retrieve existing endpoint
+    existing_record = get_mock_registry_endpoint_record(
+        registry_endpoint_name=registry_endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        host="oldregistry.azurecr.io",
+    )
+
+    # Mock the updated record
+    updated_record = get_mock_registry_endpoint_record(
+        registry_endpoint_name=registry_endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        host=new_host,
+    )
+    # Update the authentication method in the mock
+    updated_record["properties"]["authentication"][
+        "method"
+    ] = RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_registry_endpoint_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            registry_endpoint_name=registry_endpoint_name,
+        ),
+        json=existing_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    mocked_responses.add(
+        method=responses.PUT,
+        url=get_registry_endpoint_endpoint(
+            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            registry_endpoint_name=registry_endpoint_name,
+        ),
+        json=updated_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    result = update_dataflow_graph_registry(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        registry_endpoint_name=registry_endpoint_name,
+        host=new_host,
+        secret_ref=secret_ref,
+        wait_sec=0,
+    )
+
+    assert result == updated_record
+    assert len(mocked_responses.calls) == 2  # GET + PUT

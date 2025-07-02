@@ -16,7 +16,6 @@ from .providers.orchestration.common import (
     KafkaPartitionStrategyType,
     ListenerProtocol,
     MqttRetainType,
-    RegistryEndpointAuthenticationType,
 )
 from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles, RegistryEndpoints
 
@@ -1132,6 +1131,7 @@ def add_dataflow_graph_registry(
     client_id: Optional[str] = None,
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
+    **kwargs,
 ):
     return RegistryEndpoints(cmd).add(
         instance_name=instance_name,
@@ -1144,6 +1144,7 @@ def add_dataflow_graph_registry(
         client_id=client_id,
         tenant_id=tenant_id,
         scope=scope,
+        **kwargs,
     )
 
 
@@ -1160,6 +1161,7 @@ def update_dataflow_graph_registry(
     client_id: Optional[str] = None,
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
+    **kwargs,
 ):
     return RegistryEndpoints(cmd).update(
         instance_name=instance_name,
@@ -1172,6 +1174,7 @@ def update_dataflow_graph_registry(
         client_id=client_id,
         tenant_id=tenant_id,
         scope=scope,
+        **kwargs,
     )
 
 

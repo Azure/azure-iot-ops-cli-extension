@@ -395,9 +395,8 @@ class RegistryEndpoints(Queryable):
                 instance_name=instance_name,
                 registry_endpoint_name=registry_endpoint_name,
                 resource=existing_endpoint,
-                **kwargs,
             )
-            return wait_for_terminal_state(poller)
+            return wait_for_terminal_state(poller, **kwargs)
 
     def remove(
         self,
