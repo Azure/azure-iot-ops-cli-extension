@@ -72,6 +72,74 @@ def get_extended_location(
     }
 
 
+def get_default_dataset(asset: dict, dataset_name: str, create_if_none: bool = False):
+    """
+    Temporary helper function to get a dataset from an asset.
+
+    If the dataset is not found but it has the name 'default' and create_if_none is True,
+    it will create a new dataset with that name that is added to the asset's datasets.
+
+    Will raise errors if the dataset is not found and create_if_none is False, or
+    if the dataset name is not 'default' and create_if_none is True.
+    """
+    # ensure datasets will get populated if not there
+    asset["properties"]["datasets"] = asset["properties"].get("datasets", [])
+    datasets = asset["properties"]["datasets"]
+    matched_datasets = [dset for dset in datasets if dset["name"] == dataset_name]
+    # Temporary convert empty names to default
+    if not matched_datasets and dataset_name == "default":
+        matched_datasets = [dset for dset in datasets if dset["name"] == ""]
+    # create if add or import (and no datasets yet)
+    if not matched_datasets and create_if_none:
+        if dataset_name != "default":
+            raise InvalidArgumentValueError("Currently only one dataset with the name default is supported.")
+        matched_datasets = [{}]
+        datasets.extend(matched_datasets)
+    elif not matched_datasets:
+        raise InvalidArgumentValueError(f"Dataset {dataset_name} not found in asset {asset['name']}.")
+    # note: right now we can have datasets with the same name but this will not be allowed later
+    # part of the temporary convert
+    matched_datasets[0]["name"] = dataset_name
+    return matched_datasets[0]
+
+
+def process_additional_configuration(
+    additional_configuration: Optional[str] = None,
+    config_type: str = "additional",
+    **_
+) -> Optional[str]:
+    """
+    Checks that the custom configuration is a valid JSON and returns the stringified JSON.
+    If it is a file, it will read the content.
+    """
+    from ....util import read_file_content
+    inline_json = False
+
+    if not additional_configuration:
+        return
+
+    try:
+        logger.debug(f"Processing {config_type} configuration.")
+        additional_configuration = read_file_content(additional_configuration)
+        if not additional_configuration:
+            raise InvalidArgumentValueError("Given file is empty.")
+    except FileOperationError:
+        inline_json = True
+        logger.debug(f"Given {config_type} configuration is not a file.")
+
+    # make sure it is an actual json
+    try:
+        json.loads(additional_configuration)
+        return additional_configuration
+    except json.JSONDecodeError as e:
+        error_msg = f"{config_type.capitalize()} configuration is not a valid JSON. "
+        if inline_json:
+            error_msg += "For examples of valid JSON formating, please see https://aka.ms/inline-json-examples "
+        raise InvalidArgumentValueError(
+            f"{error_msg}\n{e.msg}"
+        )
+
+
 def process_authentication(
     auth_mode: Optional[str] = None,
     auth_props: Optional[Dict[str, str]] = None,
@@ -147,95 +215,68 @@ def process_authentication(
 
 def ensure_schema_structure(schema: dict, input_data: dict):
     """
-    Quick and dirty alternative for using jsonschema (to avoid conflicts in other extensions). This partial
-    implementation focuses on checks not covered by azure core parameter checks:
-    - minimum and maximum checks for integers
+    Quick and dirty alternative for using jsonschema (to avoid conflicts in other extensions).
+
+    This partial implementation focuses on checks (in the current adr schemas) not covered by azure
+    core parameter checks: minimum and maximum checks for integers. This handles nested objects and
+    oneOf schemas.
 
     Not covered in this:
+    - required properties checks
     - type checks
     - enum checks
+    - array checks (cause the only schema with an array only has objects with string types)
     """
-    invalid_items = []
+    def _recursive_check(schema: dict, input_data: dict) -> list:
+        invalid_items = []
 
-    def _recursive_check(schema_properties: dict, input_data: dict):
-        for key, value in input_data.items():
-            if value is None:
-                # assume this is to clear the value
-                continue
+        # extract schemas from oneOf
+        schemas = schema.get("oneOf", [schema])
 
-            if key in schema_properties and ("type" in schema_properties[key]):
-                schema_value = schema_properties[key]
-                expected_type = schema_value["type"]
+        for sub_schema in schemas:
+            schema_properties = sub_schema.get("properties", {})
+            for key, value in input_data.items():
+                if value is None:
+                    # assume this is to clear the value
+                    continue
 
-                # go deeper if the expected type is an object
-                if expected_type == "object":
-                    _recursive_check(schema_value["properties"], value)
+                if key in schema_properties and ("type" in schema_properties[key]):
+                    schema_value = schema_properties[key]
+                    expected_type = schema_value["type"]
 
-                # lazy way of getting first item for now - assume that the second item is a null type
-                if isinstance(expected_type, list):
-                    expected_type = expected_type[0]
+                    # go deeper if the expected type is an object
+                    if expected_type == "object":
+                        invalid_items.extend(_recursive_check(schema_value, value))
 
-                # minimum and maximum checks for integers
-                if expected_type == "integer":
-                    if (
-                        "minimum" in schema_value
-                        and "maximum" in schema_value
-                        and not schema_value["minimum"] <= value <= schema_value["maximum"]
-                    ):
-                        invalid_items.append(
-                            f"Invalid value for {key}: the value must be between {schema_value['minimum']} and "
-                            f"{schema_value['maximum']} inclusive, instead got {value}"
-                        )
-                    elif "minimum" in schema_value and (value < schema_value["minimum"]):
-                        invalid_items.append(
-                            f"Invalid value for {key}: the value must be at least {schema_value['minimum']}, "
-                            f"instead got {value}"
-                        )
-                    elif "maximum" in schema_value and (value > schema_value["maximum"]):
-                        invalid_items.append(
-                            f"Invalid value for {key}: the value must be at most {schema_value['maximum']}, "
-                            f"instead got {value}"
-                        )
+                    # lazy way of getting first item for now - assume that the second item is a null type
+                    if isinstance(expected_type, list):
+                        expected_type = expected_type[0]
+
+                    # minimum and maximum checks for integers
+                    if expected_type in ["integer", "number"]:
+                        if (
+                            "minimum" in schema_value
+                            and "maximum" in schema_value
+                            and not schema_value["minimum"] <= value <= schema_value["maximum"]
+                        ):
+                            invalid_items.append(
+                                f"Invalid value for {key}: the value must be between {schema_value['minimum']} and "
+                                f"{schema_value['maximum']} inclusive, instead got {value}"
+                            )
+                        elif "minimum" in schema_value and (value < schema_value["minimum"]):
+                            invalid_items.append(
+                                f"Invalid value for {key}: the value must be at least {schema_value['minimum']}, "
+                                f"instead got {value}"
+                            )
+                        elif "maximum" in schema_value and (value > schema_value["maximum"]):
+                            invalid_items.append(
+                                f"Invalid value for {key}: the value must be at most {schema_value['maximum']}, "
+                                f"instead got {value}"
+                            )
             # maybe add popping keys that are not there?
+        return invalid_items
 
-    _recursive_check(schema["properties"], input_data)
+    invalid_items = _recursive_check(schema, input_data)
     if invalid_items:
-        error_msg = ', \n'.join(invalid_items)
+        error_msg = ', \n'.join(set(invalid_items))
         raise InvalidArgumentValueError(f"Invalid input data: {error_msg}")
-
-
-def process_additional_configuration(
-    additional_configuration: Optional[str] = None,
-    config_type: str = "additional",
-    **kwargs
-) -> Optional[str]:
-    """
-    Checks that the custom configuration is a valid JSON and returns the stringified JSON.
-    If it is a file, it will read the content.
-    """
-    from ....util import read_file_content
-    inline_json = False
-
-    if not additional_configuration:
-        return
-
-    try:
-        logger.debug(f"Processing {config_type} configuration.")
-        additional_configuration = read_file_content(additional_configuration)
-        if not additional_configuration:
-            raise InvalidArgumentValueError("Given file is empty.")
-    except FileOperationError:
-        inline_json = True
-        logger.debug(f"Given {config_type} configuration is not a file.")
-
-    # make sure it is an actual json
-    try:
-        json.loads(additional_configuration)
-        return additional_configuration
-    except json.JSONDecodeError as e:
-        error_msg = f"{config_type.capitalize()} configuration is not a valid JSON. "
-        if inline_json:
-            error_msg += "For examples of valid JSON formating, please see https://aka.ms/inline-json-examples "
-        raise InvalidArgumentValueError(
-            f"{error_msg}\n{e.msg}"
-        )

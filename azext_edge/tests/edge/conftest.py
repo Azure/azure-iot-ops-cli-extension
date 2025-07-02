@@ -187,9 +187,8 @@ def cluster_connection(settings):
         raise NotImplementedError("Local cluster creation for testing not fully implemented yet.")
 
 
-# TODO: change the check/support bundle tests to point to cluster connection instead
 @pytest.fixture(scope="session")
-def init_setup(request, cluster_connection, settings):
+def init_setup(request, settings):
     from ..settings import EnvironmentVariables
     settings.add_to_config(EnvironmentVariables.rg.value)
     settings.add_to_config(EnvironmentVariables.instance.value)

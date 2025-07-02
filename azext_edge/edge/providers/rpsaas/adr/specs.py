@@ -240,7 +240,7 @@ NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA = {
             "minimum" : 0,
             "default": 1
         },
-        "startInstance": {
+        "startInstance": {  # only used in asset default configuration
             "type": "string",
             "default": None
         },
@@ -435,6 +435,27 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
             }
         }
     ]
+}
+
+
+NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://azure-iot-operations/schemas/asset/datapointconfiguration/opcua/1.0.0.json",
+    "title": "AIO OPC UA Asset Data-Point Additional Configuration Schema",
+    "description": "Schema for the additional configuration of OPC UA asset data-point in Azure Industrial Operations",
+    "type": "object",
+    "properties": {
+        "samplingInterval": {
+            "type": "integer",
+            "minimum" : -1,
+            "default": 1000
+        },
+        "queueSize": {
+            "type": "integer",
+            "minimum" : 0,
+            "default": 1
+        }
+    }
 }
 
 

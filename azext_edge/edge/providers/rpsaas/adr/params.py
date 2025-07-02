@@ -1017,15 +1017,15 @@ def load_adr_arguments(self, _):
         )
 
     for command in ("create", "update"):
-        with self.argument_context(f"iot ops ns asset {command} custom") as context:
+        with self.argument_context(f"iot ops ns asset custom {command}") as context:
             context.argument(
-                "datasets_custom_configuration",
+                "dataset_custom_configuration",
                 options_list=["--dataset-config", "--dsc"],
                 help="File path containing or inline json containing custom configuration for datasets.",
                 arg_group="Default Configuration",
             )
             context.argument(
-                "datasets_destinations",
+                "dataset_destinations",
                 options_list=["--dataset-dest", "--dsd"],
                 help="Key=value pairs representing the destination for dataset. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
@@ -1034,13 +1034,13 @@ def load_adr_arguments(self, _):
                 arg_group="Default Destination",
             )
             context.argument(
-                "events_custom_configuration",
+                "event_custom_configuration",
                 options_list=["--event-config", "--evc"],
                 help="File path containing or inline json containing custom configuration for events.",
                 arg_group="Default Configuration",
             )
             context.argument(
-                "events_destinations",
+                "event_destinations",
                 options_list=["--event-dest", "--evd"],
                 help="Key=value pairs representing the destination for events. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
@@ -1061,7 +1061,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Configuration",
             )
             context.argument(
-                "streams_destinations",
+                "stream_destinations",
                 options_list=["--stream-dest", "--std"],
                 help="Key=value pairs representing the destination for streams. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
@@ -1070,7 +1070,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Destination",
             )
 
-        with self.argument_context(f"iot ops ns asset {command} media") as context:
+        with self.argument_context(f"iot ops ns asset media {command}") as context:
             context.argument(
                 "task_type",
                 options_list=["--task-type"],
@@ -1104,7 +1104,7 @@ def load_adr_arguments(self, _):
                 options_list=["--snapshots-per-sec", "--sps"],
                 help=f"Number of snapshots per second. Only allowed for only {MediaTaskType.snapshot_to_mqtt.value} "
                 f"and {MediaTaskType.snapshot_to_fs.value}. Minimum: 0",
-                type=int,
+                type=float,
                 arg_group="Default Stream Configuration",
             )
             context.argument(
@@ -1165,7 +1165,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Stream Configuration",
             )
             context.argument(
-                "streams_destinations",
+                "stream_destinations",
                 options_list=["--stream-dest", "--std"],
                 help="Key=value pairs representing the destination for streams. "
                 "Allowed arguments include: `path` for Storage; or "
@@ -1174,7 +1174,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Stream Destination",
             )
 
-        with self.argument_context(f"iot ops ns asset {command} opcua") as context:
+        with self.argument_context(f"iot ops ns asset opcua {command}") as context:
             context.argument(
                 "dataset_publishing_interval",
                 options_list=["--dataset-publish-int", "--dspi"],
@@ -1210,7 +1210,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Dataset",
             )
             context.argument(
-                "datasets_destinations",
+                "dataset_destinations",
                 options_list=["--dataset-dest", "--dsd"],
                 help="Key=value pairs representing the destination for datasets. "
                 "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. ",
@@ -1253,10 +1253,262 @@ def load_adr_arguments(self, _):
                 arg_group="Default Event",
             )
             context.argument(
-                "events_destinations",
+                "event_destinations",
                 options_list=["--event-dest", "--evd"],
                 help="Key=value pairs representing the destination for events. "
                 "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
                 nargs="+",
                 arg_group="Default Event",
             )
+
+    for asset_type in ("custom", "opcua", "onvif"):
+        with self.argument_context(f"iot ops ns asset {asset_type} dataset") as context:
+            context.argument(
+                "asset_name",
+                options_list=["--asset", "-a"],
+                help="Asset name.",
+            )
+            context.argument(
+                "dataset_name",
+                options_list=["--name"],
+                help="Dataset name.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the dataset if another dataset with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+            context.argument(
+                "dataset_data_source",
+                options_list=["--data-source", "--ds"],
+                help="Data source for the dataset.",
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} dataset point") as context:
+            context.argument(
+                "dataset_name",
+                options_list=["--dataset", "-d"],
+                help="Dataset name.",
+            )
+            context.argument(
+                "datapoint_name",
+                options_list=["--name"],
+                help="Data point name.",
+            )
+            context.argument(
+                "data_source",
+                options_list=["--data-source", "--ds"],
+                help="Data source for the data point.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the data point if another point with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} event") as context:
+            context.argument(
+                "asset_name",
+                options_list=["--asset", "-a"],
+                help="Asset name.",
+            )
+            context.argument(
+                "event_name",
+                options_list=["--name"],
+                help="Event name.",
+            )
+            context.argument(
+                "event_notifier",
+                options_list=["--event-notifier", "--en"],
+                help="Event notifier.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the event if another event with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} event point") as context:
+            context.argument(
+                "event_name",
+                options_list=["--event", "-e"],
+                help="Event name.",
+            )
+            context.argument(
+                "datapoint_name",
+                options_list=["--name"],
+                help="Data point name.",
+            )
+            context.argument(
+                "data_source",
+                options_list=["--data-source", "--ds"],
+                help="Data source for the event data point.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the data point if another point with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+
+    with self.argument_context("iot ops ns asset custom dataset") as context:
+        context.argument(
+            "dataset_custom_configuration",
+            options_list=["--config"],
+            help="Custom dataset configuration as a JSON string or file path.",
+        )
+        context.argument(
+            "dataset_destinations",
+            options_list=["--destination", "--dest"],
+            help="Key=value pairs representing the destination for dataset. "
+            "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+            "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+            action="append",
+            nargs="+",
+        )
+
+    with self.argument_context("iot ops ns asset custom dataset point") as context:
+        context.argument(
+            "custom_configuration",
+            options_list=["--config"],
+            help="Custom data point configuration as a JSON string or file path.",
+        )
+
+    with self.argument_context("iot ops ns asset opcua dataset") as context:
+        context.argument(
+            "opcua_dataset_publishing_interval",
+            options_list=["--publish-int", "--pi"],
+            help="Publishing interval for datasets in milliseconds. Minimum: -1.",
+            type=int,
+        )
+        context.argument(
+            "opcua_dataset_sampling_interval",
+            options_list=["--sampling-int", "--si"],
+            help="Sampling interval for datasets in milliseconds. Minimum: -1.",
+            type=int,
+        )
+        context.argument(
+            "opcua_dataset_queue_size",
+            options_list=["--queue-size", "--qs"],
+            help="Queue size for datasets. Minimum: 0.",
+            type=int,
+        )
+        context.argument(
+            "opcua_dataset_key_frame_count",
+            options_list=["--key-frame-count", "--kfc"],
+            help="Key frame count for datasets. Minimum: 0.",
+            type=int,
+        )
+        context.argument(
+            "opcua_dataset_start_instance",
+            options_list=["--start-inst", "--start"],
+            help="Start instance for datasets.",
+        )
+        context.argument(
+            "dataset_destinations",
+            options_list=["--destination", "--dest"],
+            help="Key=value pairs representing the destination for datasets. "
+            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. ",
+            nargs="+",
+        )
+
+    with self.argument_context("iot ops ns asset opcua dataset point") as context:
+        context.argument(
+            "sampling_interval",
+            options_list=["--sampling-int", "--si"],
+            help="Sampling interval in milliseconds. Minimum: -1.",
+            type=int,
+            arg_group="Default Dataset",
+        )
+        context.argument(
+            "queue_size",
+            options_list=["--queue-size", "--qs"],
+            help="Queue size. Minimum: 0.",
+            type=int,
+            arg_group="Default Dataset",
+        )
+
+    with self.argument_context("iot ops ns asset custom event") as context:
+        context.argument(
+            "event_custom_configuration",
+            options_list=["--config"],
+            help="Custom event configuration as a JSON string or file path.",
+        )
+        context.argument(
+            "event_destinations",
+            options_list=["--destination", "--dest"],
+            help="Key=value pairs representing the destination for events. "
+            "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+            "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+            action="append",
+            nargs="+",
+        )
+
+    with self.argument_context("iot ops ns asset custom event point") as context:
+        context.argument(
+            "custom_configuration",
+            options_list=["--config"],
+            help="Custom event data point configuration as a JSON string or file path.",
+        )
+
+    with self.argument_context("iot ops ns asset onvif event") as context:
+        context.argument(
+            "event_destinations",
+            options_list=["--destination", "--dest"],
+            help="Key=value pairs representing the destination for events. "
+            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
+            action="append",
+            nargs="+",
+        )
+
+    with self.argument_context("iot ops ns asset opcua event") as context:
+        context.argument(
+            "opcua_event_publishing_interval",
+            options_list=["--publish-int", "--evpi"],
+            help="Publishing interval for events in milliseconds. Minimum: -1.",
+            type=int,
+        )
+        context.argument(
+            "opcua_event_queue_size",
+            options_list=["--queue-size", "--evqs"],
+            help="Queue size for events. Minimum: 0.",
+            type=int,
+        )
+        context.argument(
+            "opcua_event_filter_type",
+            options_list=["--filter-type", "--evft"],
+            help="Filter type for events.",
+        )
+        context.argument(
+            "opcua_event_filter_clauses",
+            options_list=["--filter-clause", "--evf"],
+            help="Space-separated key=value pairs for event filter clauses. Allowed keys are `path` (required), "
+            "`type`, and `field`.",
+            nargs="+",
+            action="append",
+        )
+        context.argument(
+            "event_destinations",
+            options_list=["--destination", "--dest"],
+            help="Key=value pairs representing the destination for events. "
+            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
+            nargs="+",
+        )
+
+    # TODO: future follow up release
+    # with self.argument_context("iot ops ns asset opcua event point") as context:
+    #     context.argument(
+    #         "sampling_interval",
+    #         options_list=["--sampling-int", "--si"],
+    #         help="Sampling interval in milliseconds. Minimum: -1.",
+    #         type=int,
+    #     )
+    #     context.argument(
+    #         "queue_size",
+    #         options_list=["--queue-size", "--qs"],
+    #         help="Queue size. Minimum: 0.",
+    #         type=int,
+    #     )
