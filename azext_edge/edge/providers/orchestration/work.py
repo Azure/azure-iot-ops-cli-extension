@@ -430,7 +430,8 @@ class WorkManager:
                 # Ensure schema registry exists.
                 self.resource_client.resources.get_by_id(
                     resource_id=self._targets.schema_registry_resource_id,
-                    api_version=DeviceRegistryMgmtApiVersion.V20240901_preview.value,  # TODO: Is this preview version still necessary?
+                    # TODO: Is this preview version still necessary?
+                    api_version=DeviceRegistryMgmtApiVersion.V20240901_preview.value,
                 )
                 self._process_extension_dependencies()
                 self._raise_if_ops_deployed()
