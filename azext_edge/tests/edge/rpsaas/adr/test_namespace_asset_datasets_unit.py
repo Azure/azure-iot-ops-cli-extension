@@ -74,7 +74,7 @@ def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 
 @pytest.mark.parametrize("asset_type, command_func, config_params", [
     # Custom asset dataset with configuration
     ("custom", add_namespace_custom_asset_dataset, {
-        "dataset_configuration": json.dumps({
+        "dataset_custom_configuration": json.dumps({
             "customSetting": "test",
             "priority": "high"
         })
@@ -135,7 +135,7 @@ def test_add_namespace_asset_dataset(
     # Add configuration based on asset type
     if config_params:
         if asset_type == "custom":
-            expected_dataset["datasetConfiguration"] = config_params.get("dataset_configuration")
+            expected_dataset["datasetConfiguration"] = config_params.get("dataset_custom_configuration")
         elif asset_type == "opcua":
             config = {}
             if "opcua_dataset_publishing_interval" in config_params:
@@ -615,7 +615,7 @@ def test_show_namespace_asset_dataset(mocked_cmd, mocked_responses: responses):
     ("custom", update_namespace_custom_asset_dataset, {}),
     # Custom asset dataset with custom configuration
     ("custom", update_namespace_custom_asset_dataset, {
-        "dataset_configuration": json.dumps({
+        "dataset_custom_configuration": json.dumps({
             "customSetting": "updated",
             "priority": "critical"
         })
@@ -692,8 +692,8 @@ def test_update_namespace_asset_dataset(
 
     # Update configuration if specified
     if unique_reqs:
-        if asset_type == "custom" and "dataset_configuration" in unique_reqs:
-            expected_dataset["datasetConfiguration"] = unique_reqs["dataset_configuration"]
+        if asset_type == "custom" and "dataset_custom_configuration" in unique_reqs:
+            expected_dataset["datasetConfiguration"] = unique_reqs["dataset_custom_configuration"]
         elif asset_type == "opcua":
             config = json.loads(expected_dataset.get("datasetConfiguration", "{}"))
 

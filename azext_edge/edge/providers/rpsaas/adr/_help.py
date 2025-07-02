@@ -981,30 +981,30 @@ def load_iotops_adr_help():
         - name: Add a basic custom dataset
           text: >
             az iot ops ns asset custom dataset add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData --data-source "customDataSource"
+            -g myResourceGroup --name default --data-source "customDataSource"
 
         - name: Add a custom dataset with configuration
           text: >
             az iot ops ns asset custom dataset add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name pressureData --data-source "sensor/pressure"
-            --config "{\\"publishingInterval\\": 1000, \\"queueSize\\": 5}"
+            -g myResourceGroup --name default --data-source "sensor/pressure"
+            --config "{\\\"publishingInterval\\\": 1000, \\\"queueSize\\\": 5}"
 
         - name: Add a custom dataset with MQTT destination
           text: >
             az iot ops ns asset custom dataset add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData --data-source "sensor/temp"
+            -g myResourceGroup --name default --data-source "sensor/temp"
             --destination topic="factory/temperature" retain=true qos=1 ttl=3600
 
         - name: Add a custom dataset with BrokerStateStore destination
           text: >
             az iot ops ns asset custom dataset add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name stateData --data-source "device/state"
+            -g myResourceGroup --name default --data-source "device/state"
             --destination key="deviceState"
 
         - name: Add a custom dataset with Storage destination
           text: >
             az iot ops ns asset custom dataset add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name logData --data-source "device/logs"
+            -g myResourceGroup --name default --data-source "device/logs"
             --destination path="data/logs/device001"
     """
 
@@ -1031,7 +1031,7 @@ def load_iotops_adr_help():
         - name: Remove a dataset from a custom asset
           text: >
             az iot ops ns asset custom dataset remove --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData
+            -g myResourceGroup --name default
     """
 
     helps[
@@ -1044,7 +1044,7 @@ def load_iotops_adr_help():
         - name: Show dataset details
           text: >
             az iot ops ns asset custom dataset show --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData
+            -g myResourceGroup --name default
     """
 
     helps[
@@ -1057,13 +1057,13 @@ def load_iotops_adr_help():
         - name: Update dataset configuration
           text: >
             az iot ops ns asset custom dataset update --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData --data-source "updated/source"
-            --config "{\\"publishingInterval\\": 2000}"
+            -g myResourceGroup --name default --data-source "updated/source"
+            --config "{\\\"publishingInterval\\\": 2000}"
 
         - name: Update dataset destination to MQTT
           text: >
             az iot ops ns asset custom dataset update --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData
+            -g myResourceGroup --name default
             --destination topic="factory/updated/temperature" retain=false qos=2 ttl=7200
     """
 
@@ -1084,18 +1084,18 @@ def load_iotops_adr_help():
         - name: Add a basic data point
           text: >
             az iot ops ns asset custom dataset point add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --dataset temperatureData --name temp1 --data-source "sensor.temp1"
+            -g myResourceGroup --dataset default --name temp1 --data-source "sensor.temp1"
 
         - name: Add a data point with custom configuration
           text: >
             az iot ops ns asset custom dataset point add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --dataset pressureData --name pressure1 --data-source "sensor.pressure1"
-            --config "{\\"samplingInterval\\": 500, \\"priority\\": \\"high\\"}"
+            -g myResourceGroup --dataset default --name pressure1 --data-source "sensor.pressure1"
+            --config "{\\\"samplingInterval\\\": 500, \\\"priority\\\": \\\"high\\\"}"
 
         - name: Add a data point and replace existing one with same name
           text: >
             az iot ops ns asset custom dataset point add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --dataset temperatureData --name temp1 --data-source "sensor.temp1.v2"
+            -g myResourceGroup --dataset default --name temp1 --data-source "sensor.temp1.v2"
             --replace
     """
 
@@ -1109,7 +1109,7 @@ def load_iotops_adr_help():
         - name: List all data points for a dataset
           text: >
             az iot ops ns asset custom dataset point list --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --dataset temperatureData
+            -g myResourceGroup --dataset default
     """
 
     helps[
@@ -1122,7 +1122,7 @@ def load_iotops_adr_help():
         - name: Remove a data point from a dataset
           text: >
             az iot ops ns asset custom dataset point remove --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --dataset temperatureData --name temp1
+            -g myResourceGroup --dataset default --name temp1
     """
 
     helps[

@@ -83,7 +83,7 @@ def generate_event(
 @pytest.mark.parametrize("asset_type, command_func, config_params", [
     # Custom asset dataset with configuration
     ("custom", add_namespace_custom_asset_event, {
-        "event_configuration": json.dumps({
+        "event_custom_configuration": json.dumps({
             "customSetting": "test",
             "priority": "high"
         })
@@ -164,7 +164,7 @@ def test_add_namespace_asset_event(
                 }
             })
         elif asset_type == "custom":
-            expected_event["eventConfiguration"] = config_params.get("event_configuration")
+            expected_event["eventConfiguration"] = config_params.get("event_custom_configuration")
 
     # Add optional destination parameters based on test case
     if destination_params:
@@ -607,7 +607,7 @@ def test_remove_namespace_asset_event(
     ("custom", update_namespace_custom_asset_event, {}),
     # Custom asset event
     ("custom", update_namespace_custom_asset_event, {
-        "event_configuration": json.dumps({
+        "event_custom_configuration": json.dumps({
             "customSetting": "updated",
             "priority": "critical"
         })
@@ -693,7 +693,7 @@ def test_update_namespace_asset_event(
     # Update configuration if specified
     if unique_reqs:
         if asset_type == "custom":
-            expected_event["eventConfiguration"] = unique_reqs["event_configuration"]
+            expected_event["eventConfiguration"] = unique_reqs["event_custom_configuration"]
         elif asset_type == "opcua":
             clause = {"path": "test", "type": "SimpleEvents", "field": "testField"}
             unique_reqs["opcua_event_filter_clauses"] = [[

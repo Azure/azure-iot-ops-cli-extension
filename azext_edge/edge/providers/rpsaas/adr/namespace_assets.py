@@ -323,7 +323,6 @@ class NamespaceAssets(Queryable):
         dataset_name: str,
         dataset_data_source: str,
         # TODO: singular dataset
-        dataset_destinations: Optional[List[str]] = None,
         replace: bool = False,
         # TODO: future pr, import datapoints from file
         **kwargs
@@ -355,7 +354,6 @@ class NamespaceAssets(Queryable):
         processed_configs = _process_configs(
             asset_type=asset_type,
             default=False,
-            dataset_destinations=dataset_destinations,
             **kwargs
         )
         datasets = [
@@ -410,7 +408,6 @@ class NamespaceAssets(Queryable):
         dataset_name: str,
         dataset_data_source: Optional[str] = None,
         dataset_type_ref: Optional[str] = None,
-        dataset_destinations: Optional[List[str]] = None,
         **kwargs
     ):
         asset = self._check_device_props(
@@ -434,7 +431,6 @@ class NamespaceAssets(Queryable):
             asset_type=asset_type,
             default=False,
             original_dataset_configuration=dataset.get("datasetConfiguration"),
-            dataset_destinations=dataset_destinations,
             **kwargs
         )
 
@@ -445,8 +441,8 @@ class NamespaceAssets(Queryable):
             dataset["dataSource"] = dataset_data_source
         if dataset_type_ref:
             dataset["typeRef"] = dataset_type_ref
-        if dataset_destinations:
-            dataset["destinations"] = processed_configs.get("datasetsDestinations", [])
+        if "datasetsDestinations" in processed_configs:
+            dataset["destinations"] = processed_configs["datasetsDestinations"]
 
         update_payload = {
             "properties": {
@@ -620,7 +616,6 @@ class NamespaceAssets(Queryable):
         asset_type: str,
         event_name: str,
         event_notifier: str,
-        event_destinations: Optional[List[str]] = None,  # this can go into kwargs
         replace: bool = False,
         # TODO: future pr, add datapoints
         **kwargs
@@ -644,7 +639,6 @@ class NamespaceAssets(Queryable):
         processed_configs = _process_configs(
             asset_type=asset_type,
             default=False,
-            event_destinations=event_destinations,
             **kwargs
         )
         unmatched_events.append(
@@ -1193,11 +1187,11 @@ def _process_configs(
         # Custom - treat everything as an overwrite
         result = {
             "datasetsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("datasets_custom_configuration"),
+                additional_configuration=kwargs.get("dataset_custom_configuration"),
                 config_type="dataset"
             ),
             "eventsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("events_custom_configuration"),
+                additional_configuration=kwargs.get("event_custom_configuration"),
                 config_type="event"
             ),
             "managementGroupsConfiguration": process_additional_configuration(

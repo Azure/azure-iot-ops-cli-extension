@@ -274,8 +274,8 @@ def test_create_datapoint(test_case, mocker):
         (
             "Custom",
             {
-                "datasets_custom_configuration": '{"test": "dataset_value"}',
-                "events_custom_configuration": '{"test": "event_value"}',
+                "dataset_custom_configuration": '{"test": "dataset_value"}',
+                "event_custom_configuration": '{"test": "event_value"}',
                 "mgmt_custom_configuration": '{"test": "mgmt_value"}',
                 "streams_custom_configuration": '{"test": "stream_value"}',
                 "dataset_destinations": ["topic=/test/dataset"],
@@ -342,8 +342,8 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         ]
     }
     expected_args = asset_type_to_args.get(asset_type, [
-        "datasets_custom_configuration",
-        "events_custom_configuration",
+        "dataset_custom_configuration",
+        "event_custom_configuration",
         "mgmt_custom_configuration",
         "streams_custom_configuration",
         "dataset_destinations",
@@ -354,8 +354,8 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
     # map the test case args to the expected keys
     args_to_key = {
         # custom configurations
-        "datasets_custom_configuration": "datasetsConfiguration",
-        "events_custom_configuration": "eventsConfiguration",
+        "dataset_custom_configuration": "datasetsConfiguration",
+        "event_custom_configuration": "eventsConfiguration",
         "mgmt_custom_configuration": "managementGroupsConfiguration",
         "streams_custom_configuration": "streamsConfiguration",
         # specific type configurations
@@ -386,8 +386,8 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
     # custom configurations
     custom_func = mocks["process_additional_configuration"]
     for arg, config_type in [
-        ("datasets_custom_configuration", "dataset"),
-        ("events_custom_configuration", "event"),
+        ("dataset_custom_configuration", "dataset"),
+        ("event_custom_configuration", "event"),
         ("mgmt_custom_configuration", "management group"),
         ("streams_custom_configuration", "stream")
     ]:

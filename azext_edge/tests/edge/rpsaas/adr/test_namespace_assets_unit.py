@@ -146,9 +146,9 @@ def add_device_get_call(
     # CUSTOM
     [
         "custom", {
-            "default_datasets_custom_configuration": json.dumps({"testConfig": "value"}),
+            "default_dataset_custom_configuration": json.dumps({"testConfig": "value"}),
             "default_dataset_destinations": ["key=test-key"],
-            "default_events_custom_configuration": json.dumps({"eventsConfig": "value"}),
+            "default_event_custom_configuration": json.dumps({"eventsConfig": "value"}),
             "default_event_destinations": ["path=/data/test"],
             "default_mgmtg_custom_configuration": json.dumps({"mgmtgConfig": "value"}),
             "default_streams_custom_configuration": json.dumps({"streamsConfig": "value"}),
@@ -518,9 +518,9 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
     # Custom
     [
         "custom", {
-            "default_datasets_custom_configuration": json.dumps({"testConfig": "value"}),
+            "default_dataset_custom_configuration": json.dumps({"testConfig": "value"}),
             "default_dataset_destinations": ["key=test-key"],
-            "default_events_custom_configuration": json.dumps({"eventsConfig": "value"}),
+            "default_event_custom_configuration": json.dumps({"eventsConfig": "value"}),
             "default_event_destinations": ["path=/data/test"],
             "default_mgmtg_custom_configuration": json.dumps({"mgmtgConfig": "value"}),
             "default_streams_custom_configuration": json.dumps({"streamsConfig": "value"}),

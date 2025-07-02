@@ -372,9 +372,9 @@ def create_namespace_custom_asset(
     device_endpoint_name: str,
     asset_type_refs: Optional[List[str]] = None,
     attributes: Optional[List[str]] = None,
-    datasets_custom_configuration: Optional[str] = None,
+    dataset_custom_configuration: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
-    events_custom_configuration: Optional[str] = None,
+    event_custom_configuration: Optional[str] = None,
     event_destinations: Optional[str] = None,
     mgmt_custom_configuration: Optional[str] = None,
     streams_custom_configuration: Optional[str] = None,
@@ -403,9 +403,9 @@ def create_namespace_custom_asset(
         device_endpoint_name=device_endpoint_name,
         asset_type_refs=asset_type_refs,
         attributes=attributes,
-        datasets_custom_configuration=datasets_custom_configuration,
+        dataset_custom_configuration=dataset_custom_configuration,
         dataset_destinations=dataset_destinations,
-        events_custom_configuration=events_custom_configuration,
+        event_custom_configuration=event_custom_configuration,
         event_destinations=event_destinations,
         mgmt_custom_configuration=mgmt_custom_configuration,
         streams_custom_configuration=streams_custom_configuration,
@@ -663,9 +663,9 @@ def update_namespace_custom_asset(
     resource_group_name: str,
     asset_type_refs: Optional[List[str]] = None,
     attributes: Optional[List[str]] = None,
-    datasets_custom_configuration: Optional[str] = None,
+    dataset_custom_configuration: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
-    events_custom_configuration: Optional[str] = None,
+    event_custom_configuration: Optional[str] = None,
     event_destinations: Optional[str] = None,
     mgmt_custom_configuration: Optional[str] = None,
     streams_custom_configuration: Optional[str] = None,
@@ -692,9 +692,9 @@ def update_namespace_custom_asset(
         resource_group_name=resource_group_name,
         asset_type_refs=asset_type_refs,
         attributes=attributes,
-        datasets_custom_configuration=datasets_custom_configuration,
+        dataset_custom_configuration=dataset_custom_configuration,
         dataset_destinations=dataset_destinations,
-        events_custom_configuration=events_custom_configuration,
+        event_custom_configuration=event_custom_configuration,
         event_destinations=event_destinations,
         mgmt_custom_configuration=mgmt_custom_configuration,
         streams_custom_configuration=streams_custom_configuration,
@@ -928,7 +928,7 @@ def add_namespace_custom_asset_dataset(
     resource_group_name: str,
     dataset_name: str,
     dataset_data_source: str,
-    dataset_configuration: Optional[str] = None,
+    dataset_custom_configuration: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
@@ -940,7 +940,7 @@ def add_namespace_custom_asset_dataset(
         dataset_name=dataset_name,
         asset_type="custom",
         dataset_data_source=dataset_data_source,
-        datasets_custom_configuration=dataset_configuration,
+        dataset_custom_configuration=dataset_custom_configuration,
         dataset_destinations=dataset_destinations,
         replace=replace,
         **kwargs
@@ -1016,7 +1016,7 @@ def update_namespace_custom_asset_dataset(
     resource_group_name: str,
     dataset_name: str,
     dataset_data_source: Optional[str] = None,
-    dataset_configuration: Optional[str] = None,
+    dataset_custom_configuration: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
     **kwargs
 ) -> dict:
@@ -1027,7 +1027,7 @@ def update_namespace_custom_asset_dataset(
         dataset_name=dataset_name,
         asset_type="custom",
         dataset_data_source=dataset_data_source,
-        datasets_custom_configuration=dataset_configuration,
+        dataset_custom_configuration=dataset_custom_configuration,
         dataset_destinations=dataset_destinations,
         **kwargs
     )
@@ -1179,7 +1179,7 @@ def add_namespace_custom_asset_event(
     resource_group_name: str,
     event_name: str,
     event_notifier: str,
-    event_configuration: Optional[str] = None,
+    event_custom_configuration: Optional[str] = None,
     event_destinations: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
@@ -1191,7 +1191,7 @@ def add_namespace_custom_asset_event(
         event_name=event_name,
         asset_type="custom",
         event_notifier=event_notifier,
-        events_custom_configuration=event_configuration,
+        event_custom_configuration=event_custom_configuration,
         event_destinations=event_destinations,
         replace=replace,
         **kwargs
@@ -1290,7 +1290,7 @@ def update_namespace_custom_asset_event(
     resource_group_name: str,
     event_name: str,
     event_notifier: Optional[str] = None,
-    event_configuration: Optional[str] = None,
+    event_custom_configuration: Optional[str] = None,
     event_destinations: Optional[str] = None,
     **kwargs
 ) -> dict:
@@ -1301,7 +1301,7 @@ def update_namespace_custom_asset_event(
         event_name=event_name,
         asset_type="custom",
         event_notifier=event_notifier,
-        events_custom_configuration=event_configuration,
+        event_custom_configuration=event_custom_configuration,
         event_destinations=event_destinations,
         **kwargs
     )
@@ -1403,7 +1403,7 @@ def add_namespace_custom_asset_event_point(
     )
 
 
-# note: not exposed for now but this will be supported in the near future
+# TODO: not exposed for now but this will be supported in the near future
 def add_namespace_opcua_asset_event_point(
     cmd,
     asset_name: str,

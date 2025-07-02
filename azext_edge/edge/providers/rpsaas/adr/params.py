@@ -1019,7 +1019,7 @@ def load_adr_arguments(self, _):
     for command in ("create", "update"):
         with self.argument_context(f"iot ops ns asset custom {command}") as context:
             context.argument(
-                "datasets_custom_configuration",
+                "dataset_custom_configuration",
                 options_list=["--dataset-config", "--dsc"],
                 help="File path containing or inline json containing custom configuration for datasets.",
                 arg_group="Default Configuration",
@@ -1034,7 +1034,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Destination",
             )
             context.argument(
-                "events_custom_configuration",
+                "event_custom_configuration",
                 options_list=["--event-config", "--evc"],
                 help="File path containing or inline json containing custom configuration for events.",
                 arg_group="Default Configuration",
@@ -1356,7 +1356,7 @@ def load_adr_arguments(self, _):
 
     with self.argument_context("iot ops ns asset custom dataset") as context:
         context.argument(
-            "dataset_configuration",
+            "dataset_custom_configuration",
             options_list=["--config"],
             help="Custom dataset configuration as a JSON string or file path.",
         )
@@ -1433,7 +1433,7 @@ def load_adr_arguments(self, _):
 
     with self.argument_context("iot ops ns asset custom event") as context:
         context.argument(
-            "event_configuration",
+            "event_custom_configuration",
             options_list=["--config"],
             help="Custom event configuration as a JSON string or file path.",
         )
