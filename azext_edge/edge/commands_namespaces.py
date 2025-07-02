@@ -70,14 +70,10 @@ def update_namespace(
 def create_namespace_device(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
     instance_name: str,
-    device_template_id: str,
+    instance_resource_group: str,
     custom_attributes: Optional[List[str]] = None,
-    device_group_id: Optional[str] = None,
     disabled: Optional[bool] = None,
-    instance_resource_group: Optional[str] = None,
     instance_subscription: Optional[str] = None,
     manufacturer: Optional[str] = None,
     model: Optional[str] = None,
@@ -88,14 +84,10 @@ def create_namespace_device(
 ):
     return NamespaceDevices(cmd).create(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
         instance_name=instance_name,
-        device_group_id=device_group_id,
-        device_template_id=device_template_id,
+        instance_resource_group=instance_resource_group,
         custom_attributes=custom_attributes,
         disabled=disabled,
-        instance_resource_group=instance_resource_group,
         instance_subscription=instance_subscription,
         manufacturer=manufacturer,
         model=model,
@@ -106,29 +98,37 @@ def create_namespace_device(
     )
 
 
-def list_namespace_devices(
+def query_namespace_devices(
     cmd,
-    namespace_name: str,
-    resource_group_name: str
-) -> List[dict]:
-    return NamespaceDevices(cmd).list(
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+    device_name: Optional[str] = None,
+    custom_query: Optional[str] = None,
+    resource_group_name: Optional[str] = None,
+    manufacturer: Optional[str] = None,
+    model: Optional[str] = None,
+    operating_system: Optional[str] = None,
+) -> dict:
+    return NamespaceDevices(cmd).query_devices(
+        device_name=device_name,
+        custom_query=custom_query,
+        resource_group_name=resource_group_name,
+        manufacturer=manufacturer,
+        model=model,
+        operating_system=operating_system
     )
 
 
 def delete_namespace_device(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     confirm_yes: Optional[bool] = False,
     **kwargs
 ):
     NamespaceDevices(cmd).delete(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         confirm_yes=confirm_yes,
         **kwargs
     )
@@ -137,23 +137,22 @@ def delete_namespace_device(
 def show_namespace_device(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str
+    instance_name: str,
+    instance_resource_group: str,
 ) -> dict:
     return NamespaceDevices(cmd).show(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        instance_name=instance_name,
+        resource_group=instance_resource_group
     )
 
 
 def update_namespace_device(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     custom_attributes: Optional[List[str]] = None,
-    device_group_id: Optional[str] = None,
     disabled: Optional[bool] = None,
     operating_system_version: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
@@ -161,10 +160,9 @@ def update_namespace_device(
 ):
     return NamespaceDevices(cmd).update(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         custom_attributes=custom_attributes,
-        device_group_id=device_group_id,
         disabled=disabled,
         operating_system_version=operating_system_version,
         tags=tags,
@@ -175,14 +173,14 @@ def update_namespace_device(
 def list_namespace_device_endpoints(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     inbound: Optional[bool] = False
 ) -> dict:
     return NamespaceDevices(cmd).list_endpoints(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         inbound=inbound
     )
 
@@ -191,8 +189,8 @@ def list_namespace_device_endpoints(
 def add_inbound_custom_device_endpoint(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     endpoint_name: str,
     endpoint_type: str,
     endpoint_address: str,
@@ -205,8 +203,8 @@ def add_inbound_custom_device_endpoint(
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_type=endpoint_type,
         endpoint_address=endpoint_address,
@@ -222,8 +220,8 @@ def add_inbound_custom_device_endpoint(
 def add_inbound_media_device_endpoint(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     endpoint_name: str,
     endpoint_address: str,
     password_reference: Optional[str] = None,
@@ -232,8 +230,8 @@ def add_inbound_media_device_endpoint(
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.MEDIA.value,
         endpoint_address=endpoint_address,
@@ -246,8 +244,8 @@ def add_inbound_media_device_endpoint(
 def add_inbound_onvif_device_endpoint(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     endpoint_name: str,
     endpoint_address: str,
     accept_invalid_hostnames: Optional[bool] = False,
@@ -258,8 +256,8 @@ def add_inbound_onvif_device_endpoint(
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.ONVIF.value,
         endpoint_address=endpoint_address,
@@ -274,8 +272,8 @@ def add_inbound_onvif_device_endpoint(
 def add_inbound_opcua_device_endpoint(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     endpoint_name: str,
     endpoint_address: str,
     application_name: Optional[str] = "OPC UA Broker",
@@ -301,8 +299,8 @@ def add_inbound_opcua_device_endpoint(
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.OPCUA.value,
         endpoint_address=endpoint_address,
@@ -332,13 +330,13 @@ def add_inbound_opcua_device_endpoint(
 def list_inbound_device_endpoints(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str
+    instance_name: str,
+    instance_resource_group: str
 ) -> dict:
     return NamespaceDevices(cmd).list_endpoints(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         inbound=True
     )
 
@@ -346,16 +344,16 @@ def list_inbound_device_endpoints(
 def remove_inbound_device_endpoints(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     endpoint_names: List[str],
     confirm_yes: Optional[bool] = False,
     **kwargs
 ) -> dict:
     return NamespaceDevices(cmd).inbound_remove_endpoint(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_names=endpoint_names,
         confirm_yes=confirm_yes,
         **kwargs
