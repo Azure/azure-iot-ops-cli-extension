@@ -7,7 +7,7 @@
 from collections.abc import MutableMapping
 from enum import Enum
 from time import sleep
-from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple, Union
 
 from azure.cli.core.azclierror import ValidationError
 from knack.log import get_logger
@@ -135,17 +135,27 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
     )
 
 
-REGISTRY_PREVIEW_API_VERSION = "2024-09-01-preview"
-REGISTRY_API_VERSION = "2024-11-01"
+class DeviceRegistryMgmtApiVersion(Enum):
+    V20250701_preview = "2025-07-01-preview"
+    V20241101 = "2024-11-01"
+    V20240901_preview = "2024-09-01-preview"
 
 
-def get_registry_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftDeviceRegistryManagementService":
+def get_registry_mgmt_client(
+    subscription_id: str,
+    api_version: Union[DeviceRegistryMgmtApiVersion, str] = DeviceRegistryMgmtApiVersion.V20241101,
+    **kwargs,
+) -> "MicrosoftDeviceRegistryManagementService":
     from ..vendor.clients.deviceregistrymgmt import (
         MicrosoftDeviceRegistryManagementService,
     )
 
+    if isinstance(api_version, DeviceRegistryMgmtApiVersion):
+        api_version = api_version.value
+
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
+    kwargs["api_version"] = api_version
 
     return MicrosoftDeviceRegistryManagementService(
         credential=AZURE_CLI_CREDENTIAL,

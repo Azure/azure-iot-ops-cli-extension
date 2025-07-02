@@ -5,19 +5,28 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-from rich.console import Console
-from typing import TYPE_CHECKING, Dict, List, Iterable, Optional, Union
-from knack.log import get_logger
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Union
+
 from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     RequiredArgumentMissingError,
 )
+from knack.log import get_logger
+from rich.console import Console
 
-from .user_strings import DUPLICATE_EVENT_ERROR, DUPLICATE_POINT_ERROR, INVALID_OBSERVABILITY_MODE_ERROR
-from ....util import assemble_nargs_to_dict
 from ....common import FileType
-from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state, REGISTRY_API_VERSION
+from ....util import assemble_nargs_to_dict
+from ....util.az_client import (
+    DeviceRegistryMgmtApiVersion,
+    get_registry_mgmt_client,
+    wait_for_terminal_state,
+)
 from ....util.queryable import Queryable
+from .user_strings import (
+    DUPLICATE_EVENT_ERROR,
+    DUPLICATE_POINT_ERROR,
+    INVALID_OBSERVABILITY_MODE_ERROR,
+)
 
 if TYPE_CHECKING:
     from ....vendor.clients.deviceregistrymgmt.operations import AssetsOperations
@@ -35,7 +44,7 @@ class Assets(Queryable):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
             subscription_id=self.default_subscription_id,
-            api_version=REGISTRY_API_VERSION
+            api_version=DeviceRegistryMgmtApiVersion.V20241101
         )
         self.ops: "AssetsOperations" = self.deviceregistry_mgmt_client.assets
 

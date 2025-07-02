@@ -22,6 +22,7 @@ from ....util.az_client import (
     get_storage_mgmt_client,
     parse_resource_id,
     wait_for_terminal_state,
+    DeviceRegistryMgmtApiVersion,
 )
 from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
@@ -56,6 +57,7 @@ class SchemaRegistries(Queryable):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
             subscription_id=self.default_subscription_id,
+            api_version=DeviceRegistryMgmtApiVersion.V20240901_preview,  # TODO: Is this preview version still necessary?
         )
         self.ops: "SchemaRegistriesOperations" = self.registry_mgmt_client.schema_registries
 
@@ -185,6 +187,7 @@ class Schemas(Queryable):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
             subscription_id=self.default_subscription_id,
+            api_version=DeviceRegistryMgmtApiVersion.V20240901_preview,
         )
         self.ops: "SchemasOperations" = self.registry_mgmt_client.schemas
         self.version_ops: "SchemaVersionsOperations" = self.registry_mgmt_client.schema_versions

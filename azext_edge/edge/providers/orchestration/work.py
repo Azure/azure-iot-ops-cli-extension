@@ -26,7 +26,7 @@ from azext_edge.edge.providers.check.base.deployment import validate_cluster_pre
 from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_config
 
 from ...util.az_client import (
-    REGISTRY_PREVIEW_API_VERSION,
+    DeviceRegistryMgmtApiVersion,
     get_resource_client,
     parse_resource_id,
     wait_for_terminal_state,
@@ -430,7 +430,7 @@ class WorkManager:
                 # Ensure schema registry exists.
                 self.resource_client.resources.get_by_id(
                     resource_id=self._targets.schema_registry_resource_id,
-                    api_version=REGISTRY_PREVIEW_API_VERSION,
+                    api_version=DeviceRegistryMgmtApiVersion.V20240901_preview.value,  # TODO: Is this preview version still necessary?
                 )
                 self._process_extension_dependencies()
                 self._raise_if_ops_deployed()
