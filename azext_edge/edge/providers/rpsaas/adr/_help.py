@@ -370,7 +370,7 @@ def load_iotops_adr_help():
         long-summary: |
                       Certificate authentication is not supported yet for Onvif Connectors.
 
-                      For more information on how to create an Onvif connector, please see https://aka.ms/onvif-quickstart
+                      For more information on how to create an Onvif connector, please see https://aka.ms/aio-onvif-quickstart
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >
@@ -396,7 +396,7 @@ def load_iotops_adr_help():
                       For OPC UA connector arguments, a value of -1 means that parameter will not be used (ex: --session-reconnect-backoff -1 means that no exponential backoff should be used).
                       A value of 0 means use the fastest practical rate (ex: --default-sampling-int 0 means use the fastest sampling interval possible for the server).
 
-                      For more information on how to configure asset endpoints for the OPC UA connector, please see https://aka.ms/opcua-quickstart
+                      For more information on how to configure asset endpoints for the OPC UA connector, please see https://aka.ms/aio-opcua-quickstart
         examples:
         - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
           text: >
@@ -765,7 +765,7 @@ def load_iotops_adr_help():
         type: command
         short-summary: Add a media inbound endpoint to a device in a Device Registry namespace.
         long-summary: |
-          Media endpoints are used for media streaming devices like cameras.
+          For more information on media connectors, please see https://aka.ms/aio-media-quickstart
 
         examples:
         - name: Add a basic media endpoint to a device
@@ -783,7 +783,7 @@ def load_iotops_adr_help():
         type: command
         short-summary: Add an ONVIF inbound endpoint to a device in a Device Registry namespace.
         long-summary: |
-          ONVIF endpoints are used for devices that support the ONVIF standard protocol.
+          For more information on ONVIF connectors, please see https://aka.ms/aio-onvif-quickstart
 
         examples:
         - name: Add a basic ONVIF endpoint to a device
@@ -805,7 +805,7 @@ def load_iotops_adr_help():
         type: command
         short-summary: Add an OPC UA inbound endpoint to a device in a Device Registry namespace.
         long-summary: |
-          OPC UA endpoints are used for industrial automation devices that support the OPC UA protocol.
+          For more information on OPC UA connectors, please see https://aka.ms/aio-opcua-quickstart
 
         examples:
         - name: Add a basic OPC UA endpoint to a device
@@ -1272,6 +1272,7 @@ def load_iotops_adr_help():
     ] = """
         type: group
         short-summary: Manage assets that point to media device endpoints.
+        long-summary: For more information on media connectors, please see https://aka.ms/aio-media-quickstart
     """
 
     helps[
@@ -1355,6 +1356,7 @@ def load_iotops_adr_help():
     ] = """
         type: group
         short-summary: Manage assets that point to ONVIF device endpoints.
+        long-summary: For more information on ONVIF connectors, please see https://aka.ms/aio-onvif-quickstart
     """
 
     helps[
@@ -1509,6 +1511,7 @@ def load_iotops_adr_help():
     ] = """
         type: group
         short-summary: Manage assets that point to OPC UA device endpoints.
+        long-summary: For more information on OPC UA connectors, please see https://aka.ms/aio-opcua-quickstart
     """
 
     helps[
