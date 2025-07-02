@@ -4,7 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import sys
+from collections.abc import MutableMapping
+from enum import Enum
 from time import sleep
 from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple
 
@@ -14,10 +15,6 @@ from knack.log import get_logger
 from ...constants import USER_AGENT
 from .common import ensure_azure_namespace_path
 
-if sys.version_info >= (3, 9):
-    from collections.abc import MutableMapping
-else:
-    from typing import MutableMapping
 JSON = MutableMapping[str, Any]  # pylint: disable=unsubscriptable-object
 
 ensure_azure_namespace_path()
@@ -45,13 +42,13 @@ if TYPE_CHECKING:
     from ..vendor.clients.deviceregistrymgmt_v2 import (
         MicrosoftDeviceRegistryManagementService as MicrosoftDeviceRegistryRefreshManagementService
     )
-    from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
-    from ..vendor.clients.resourcesmgmt import ResourceManagementClient
-    from ..vendor.clients.storagemgmt import StorageManagementClient
-    from ..vendor.clients.msimgmt import ManagedServiceIdentityClient
-    from ..vendor.clients.secretsyncmgmt import MicrosoftSecretSyncController
-    from ..vendor.clients.keyvault import KeyVaultClient
     from ..vendor.clients.extendedlocmgmt import CustomLocations
+    from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
+    from ..vendor.clients.keyvault import KeyVaultClient
+    from ..vendor.clients.msimgmt import ManagedServiceIdentityClient
+    from ..vendor.clients.resourcesmgmt import ResourceManagementClient
+    from ..vendor.clients.secretsyncmgmt import MicrosoftSecretSyncController
+    from ..vendor.clients.storagemgmt import StorageManagementClient
 
 
 # TODO @digimaun - simplify client init pattern. Consider multi-profile vs static API client.
@@ -181,11 +178,19 @@ def get_registry_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftDevice
     )
 
 
-def get_iotops_mgmt_client(subscription_id: str, **kwargs) -> "MicrosoftIoTOperationsManagementService":
+class IoTOpsMgmtApiVersion(Enum):
+    V20250401 = "2025-04-01"
+    V20250701_preview = "2025-07-01-preview"
+
+
+def get_iotops_mgmt_client(
+    subscription_id: str, api_version: IoTOpsMgmtApiVersion = IoTOpsMgmtApiVersion.V20250701_preview, **kwargs
+) -> "MicrosoftIoTOperationsManagementService":
     from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
 
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
+    kwargs["api_version"] = api_version.value
 
     return MicrosoftIoTOperationsManagementService(
         credential=AZURE_CLI_CREDENTIAL,

@@ -352,8 +352,8 @@ class UpgradeScenario:
             },
         ),
         (
-            UpgradeScenario("Patch ops extension due to ops_version override.").set_user_kwargs(ops_version="1.2.3"),
-            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "1.2.3"}}},
+            UpgradeScenario("Patch ops extension due to ops_version override.").set_user_kwargs(ops_version="2.0.0"),
+            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "2.0.0"}}},
         ),
         (
             UpgradeScenario("Patch ops extension due to ops_version override with dev version string variant.")

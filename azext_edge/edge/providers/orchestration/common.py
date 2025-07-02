@@ -101,7 +101,8 @@ class KubernetesDistroType(Enum):
 
 
 class IdentityUsageType(Enum):
-    dataflow = "dataflow"
+    DATAFLOW = "dataflow"
+    SCHEMA = "schema"
 
 
 class SchemaType(Enum):

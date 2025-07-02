@@ -46,7 +46,6 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
-    KubernetesDistroType,
 )
 from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET
 from azext_edge.edge.providers.orchestration.targets import (
@@ -59,7 +58,7 @@ from azext_edge.edge.providers.orchestration.work import (
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
 
-from ...generators import generate_random_string, get_zeroed_subscription
+from ...generators import generate_random_string, get_zeroed_subscription, generate_resource_id
 from .resources.conftest import RequestKPIs, get_request_kpis
 from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS
 
@@ -77,6 +76,7 @@ class ExpectedAPIVersion(Enum):
     SCHEMA_REGISTRY = "2024-09-01-preview"
     AUTHORIZATION = "2022-04-01"
     CUSTOM_LOCATION = "2021-08-31-preview"
+    GRAPH = "2022-10-01"
 
 
 class CallKey(Enum):
@@ -87,6 +87,7 @@ class CallKey(Enum):
     DEPLOY_INIT = "deployInit"
     GET_SCHEMA_REGISTRY = "getSchemaRegistry"
     GET_CLUSTER_EXTENSIONS = "getClusterExtensions"
+    GET_EXISTING_DEPLOYMENTS = "getExistingDeployments"
     GET_SCHEMA_REGISTRY_RA = "getSchemaRegistryRoleAssignments"
     PUT_SCHEMA_REGISTRY_RA = "putSchemaRegistryRoleAssignment"
     DEPLOY_CREATE_WHATIF = "deployCreateWhatIf"
@@ -96,7 +97,7 @@ class CallKey(Enum):
     CREATE_CUSTOM_LOCATION = "createCustomLocation"
 
 
-CL_EXTENSION_TYPES = ["microsoft.azure.secretstore", "microsoft.iotoperations.platform", "microsoft.iotoperations"]
+CL_EXTENSION_TYPES = ["microsoft.azure.secretstore", "microsoft.iotoperations"]
 
 
 class ExceptionMeta(NamedTuple):
@@ -207,7 +208,7 @@ class ServiceGenerator:
                 assert cl_payload["properties"]["hostResourceId"] == self.scenario["cluster"]["id"]
                 cl_create_call_len = len(self.call_map.get(CallKey.CREATE_CUSTOM_LOCATION, []))
                 expected_ext_ids = self.scenario["cluster"]["extensions"]["value"]
-                types_in_play = ["microsoft.iotoperations.platform"] if not cl_create_call_len else CL_EXTENSION_TYPES
+                types_in_play = ["microsoft.azure.secretstore"] if not cl_create_call_len else CL_EXTENSION_TYPES
                 expected_cl_ext_ids = set(
                     ext["id"] for ext in expected_ext_ids if ext["properties"]["extensionType"] in types_in_play
                 )
@@ -297,6 +298,14 @@ class ServiceGenerator:
 
                 return (api_control["code"], STANDARD_HEADERS, json.dumps(api_control["body"]))
 
+        if request_kpis.method == responses.POST:
+            if request_kpis.path_url == "/providers/Microsoft.ResourceGraph/resources":
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.GRAPH.value
+                self.call_map[CallKey.GET_EXISTING_DEPLOYMENTS].append(request_kpis)
+                api_control = self.scenario["apiControl"][CallKey.GET_EXISTING_DEPLOYMENTS]
+
+                return (api_control["code"], STANDARD_HEADERS, json.dumps(api_control["body"]))
+
     def _get_extension_identity(self, extension_type: str = EXTENSION_TYPE_OPS) -> Optional[dict]:
         for ext in self.scenario["cluster"]["extensions"]["value"]:
             if ext["properties"]["extensionType"] == extension_type:
@@ -315,6 +324,7 @@ def build_target_scenario(
     **kwargs,
 ) -> dict:
     schema_registry_name: str = generate_random_string()
+    adr_namespace_name: str = generate_random_string()
     resource_group_name = generate_random_string()
 
     expected_extension_types: List[str] = list(OPS_EXTENSION_DEPS)
@@ -369,12 +379,21 @@ def build_target_scenario(
         "check_cluster": None,
         "ensureLatest": None,
         "schemaRegistry": {
-            "id": (
-                f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}"
-                f"/providers/microsoft.deviceregistry/schemaRegistries/{schema_registry_name}"
+            "id": generate_resource_id(
+                resource_group_name=resource_group_name,
+                resource_provider="microsoft.deviceregistry",
+                resource_path=f"/schemaRegistries/{schema_registry_name}",
             ),
             "name": schema_registry_name,
             "roleAssignments": {"value": []},
+        },
+        "deviceRegistryNamespace": {
+            "id": generate_resource_id(
+                resource_group_name=resource_group_name,
+                resource_provider="microsoft.deviceregistry",
+                resource_path=f"/namespaces/{adr_namespace_name}",
+            ),
+            "name": adr_namespace_name,
         },
         "dataflow": {"profileInstances": None},
         "akri": {
@@ -389,6 +408,7 @@ def build_target_scenario(
             CallKey.DEPLOY_INIT_WHATIF: {"code": 200, "body": {"status": PROVISIONING_STATE_SUCCESS}},
             CallKey.DEPLOY_CREATE_WHATIF: {"code": 200, "body": {"status": PROVISIONING_STATE_SUCCESS}},
             CallKey.PUT_SCHEMA_REGISTRY_RA: {"code": 200, "body": {}},
+            CallKey.GET_EXISTING_DEPLOYMENTS: {"code": 200, "body": {"data": []}},
         },
     }
     if "cluster_properties" in kwargs:
@@ -703,6 +723,16 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             apiControl={CallKey.PUT_SCHEMA_REGISTRY_RA: {"code": 400, "body": {"status": "Failed"}}},
             warnings=[(0, "Role assignment failed with:\nOperation returned an invalid status 'Bad Request'")],
         ),
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_EXISTING_DEPLOYMENTS: {"code": 200, "body": {"data": [{"name": "location-12345"}]}}
+            },
+            raises=ExceptionMeta(
+                exc_type=ValidationError,
+                exc_msg="IoT Operations is detected on the cluster.",
+            ),
+            omit_http_methods=frozenset([responses.PUT]),
+        ),
     ],
 )
 def test_iot_ops_create(
@@ -714,9 +744,7 @@ def test_iot_ops_create(
     spy_work_displays: Dict[str, Mock],
     target_scenario: Dict[str, Union[bool, dict]],
 ):
-    servgen = ServiceGenerator(
-        scenario=target_scenario, mocked_responses=mocked_responses, omit_http_methods=frozenset([responses.POST])
-    )
+    servgen = ServiceGenerator(scenario=target_scenario, mocked_responses=mocked_responses)
     from azext_edge.edge.commands_edge import create_instance
 
     create_call_kwargs = {
@@ -725,6 +753,7 @@ def test_iot_ops_create(
         "resource_group_name": target_scenario["resourceGroup"],
         "instance_name": target_scenario["instance"]["name"],
         "schema_registry_resource_id": target_scenario["schemaRegistry"]["id"],
+        "adr_namespace_resource_id": target_scenario["deviceRegistryNamespace"]["id"],
     }
     if target_scenario["instance"]["namespace"]:
         create_call_kwargs["cluster_namespace"] = target_scenario["instance"]["namespace"]
@@ -774,6 +803,7 @@ def test_iot_ops_create(
         CallKey.GET_CLUSTER: 1,
         CallKey.GET_SCHEMA_REGISTRY: 1,
         CallKey.GET_CLUSTER_EXTENSIONS: 2,
+        CallKey.GET_EXISTING_DEPLOYMENTS: 1,
         CallKey.GET_SCHEMA_REGISTRY_RA: 1,
         CallKey.PUT_SCHEMA_REGISTRY_RA: 1,
         CallKey.CREATE_CUSTOM_LOCATION: 2,
@@ -856,20 +886,15 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
         [
             ext["id"]
             for ext in target_scenario["cluster"]["extensions"]["value"]
-            if ext["properties"]["extensionType"] in [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
+            if ext["properties"]["extensionType"] in [EXTENSION_TYPE_SSC]
         ]
     )
     assert set(parameters["clExtentionIds"]["value"]) == cl_extension_ids
     assert parameters["schemaRegistryId"]["value"] == target_scenario["schemaRegistry"]["id"]
     assert parameters["deployResourceSyncRules"]["value"] == bool(target_scenario["enableRsyncRules"])
 
-    assert (
-        parameters["kubernetesDistro"]["value"] == target_scenario["akri"]["kubernetesDistro"]
-        or KubernetesDistroType.k8s.value
-    )
-
-    if target_scenario["akri"]["containerRuntimeSocket"]:
-        assert parameters["containerRuntimeSocket"]["value"] == target_scenario["akri"]["containerRuntimeSocket"]
+    assert "kubernetesDistro" not in parameters
+    assert "containerRuntimeSocket" not in parameters
 
     expected_profile_instances = target_scenario.get("dataflow", {}).get("profileInstances") or 1
     assert parameters["defaultDataflowinstanceCount"]["value"] == expected_profile_instances

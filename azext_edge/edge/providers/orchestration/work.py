@@ -433,13 +433,10 @@ class WorkManager:
                     api_version=REGISTRY_PREVIEW_API_VERSION,
                 )
                 self._process_extension_dependencies()
-                dependency_ext_ids = [
-                    self.ops_extension_dependencies[ext]["id"] for ext in [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
-                ]
+                self._raise_if_ops_deployed()
+                dependency_ext_ids = [self.ops_extension_dependencies[EXTENSION_TYPE_SSC]["id"]]
                 self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS, active_step=WorkStepKey.DEPLOY_INSTANCE)
-                self._create_or_update_custom_location(
-                    extension_ids=[self.ops_extension_dependencies[EXTENSION_TYPE_PLATFORM]["id"]]
-                )
+                self._create_or_update_custom_location(extension_ids=dependency_ext_ids)
                 instance_content, instance_parameters = self._targets.get_ops_instance_template(
                     cl_extension_ids=dependency_ext_ids,
                     phase=InstancePhase.EXT,
@@ -685,3 +682,12 @@ class WorkManager:
             else None
         )
         return cluster_check_kwargs
+
+    def _raise_if_ops_deployed(self):
+        if self._resource_map.connected_cluster.get_aio_custom_locations():
+            raise ValidationError(
+                "IoT Operations is detected on the cluster.\n"
+                "Re-deployment or multiple instances are not supported at this time. Please run:\n\n"
+                f"'az iot ops delete --cluster {self._targets.cluster_name} -g {self._targets.resource_group_name}'\n"
+                "to uninstall the existing deployment prior to running ops create."
+            )

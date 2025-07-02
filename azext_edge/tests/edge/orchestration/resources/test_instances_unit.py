@@ -14,12 +14,20 @@ import pytest
 import responses
 from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
 
-from azext_edge.edge.commands_edge import list_instances, show_instance, update_instance
-from azext_edge.edge.commands_secretsync import secretsync_enable
+from azext_edge.edge.commands_edge import (
+    instance_identity_assign,
+    list_instances,
+    show_instance,
+    update_instance,
+)
+from azext_edge.edge.commands_secretsync import secretsync_enable, secretsync_disable
+from azext_edge.edge.providers.orchestration.common import IdentityUsageType
 from azext_edge.edge.providers.orchestration.resources import Instances
 from azext_edge.edge.providers.orchestration.resources.instances import (
     KEYVAULT_ROLE_ID_READER,
     KEYVAULT_ROLE_ID_SECRETS_USER,
+    SERVICE_ACCOUNT_DATAFLOW,
+    SERVICE_ACCOUNT_SCHEMA,
     SERVICE_ACCOUNT_SECRETSYNC,
     get_fc_name,
     get_spc_name,
@@ -40,6 +48,7 @@ from .conftest import (
     get_base_endpoint,
     get_mock_resource,
     get_resource_id,
+    echo_callback,
 )
 from .test_clusters_unit import get_cluster_url, get_federated_creds_url
 from .test_custom_locations_unit import (
@@ -47,6 +56,7 @@ from .test_custom_locations_unit import (
     get_mock_custom_location_record,
 )
 from .test_secretsync_spcs_unit import get_mock_spc_record, get_spc_endpoint
+from .test_secretsyncs_unit import get_mock_secretsync_record, get_secretsync_endpoint
 
 CONNECTED_CLUSTER_RP = "Microsoft.Kubernetes"
 KEYVAULT_RP = "Microsoft.KeyVault"
@@ -116,6 +126,7 @@ def get_mock_instance_record(
     schema_registry_name: Optional[str] = None,
     version: Optional[str] = None,
     identity_map: Optional[dict] = None,
+    default_spc_resource_id: Optional[str] = None,
 ) -> dict:
     properties = {
         "provisioningState": "Succeeded",
@@ -132,6 +143,8 @@ def get_mock_instance_record(
         properties["description"] = description
     if features:
         properties["features"] = features
+    if default_spc_resource_id:
+        properties["defaultSecretProviderClassRef"] = {"resourceId": default_spc_resource_id}
 
     kwargs = {}
     if cl_name:
@@ -576,9 +589,7 @@ def test_secretsync_enable(
 
     # Custom location fetch mock
     cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
-    cl_payload = get_mock_custom_location_record(
-        name=generate_random_string(), resource_group_name=resource_group_name
-    )
+    cl_payload = get_mock_custom_location_record(name=generate_random_string(), resource_group_name=resource_group_name)
     mocked_responses.add(
         method=responses.GET,
         url=re.compile(cl_endpoint),
@@ -612,7 +623,7 @@ def test_secretsync_enable(
     mocked_responses.add(
         method=responses.POST,
         url=ARG_ENDPOINT,
-        json={"data": [get_mock_custom_location_record(name="cl", resource_group_name=resource_group_name)]},
+        json={"data": []},
         status=200,
         content_type="application/json",
     )
@@ -633,7 +644,7 @@ def test_secretsync_enable(
         oidc_issuer = oidc_issuer_def["oidcIssuerProfile"].get("issuerUrl")
 
     subject = f"system:serviceaccount:{cl_payload['properties']['namespace']}:{SERVICE_ACCOUNT_SECRETSYNC}"
-    mocked_responses.add(
+    federation_capture = mocked_responses.add(
         method=responses.PUT,
         url=get_federated_creds_url(
             uami_rg_name=resource_group_name,
@@ -666,6 +677,15 @@ def test_secretsync_enable(
         content_type="application/json",
     )
 
+    # PUT Instance
+    instance_put = mocked_responses.add(
+        method=responses.PUT,
+        url=instance_endpoint,
+        json=instance_record,
+        status=200,
+        content_type="application/json",
+    )
+
     # TODO: assert when already enabled.
     result = secretsync_enable(
         cmd=mocked_cmd,
@@ -691,6 +711,14 @@ def test_secretsync_enable(
         assert spc_create_request["tags"] == tags
 
     mocked_get_tenant_id.assert_called_once()
+
+    federation_payload: dict = json.loads(federation_capture.calls[0].request.body)
+    assert federation_payload["properties"]["subject"] == subject
+    assert federation_payload["properties"]["issuer"] == oidc_issuer
+    assert federation_payload["properties"]["audiences"] == ["api://AzureADTokenExchange"]
+
+    instance_put_request = json.loads(instance_put.calls[0].request.body)
+    assert instance_put_request["properties"]["defaultSecretProviderClassRef"] == {"resourceId": spc_payload["id"]}
 
     if not skip_role_assignments:
         role_ids = []
@@ -841,9 +869,7 @@ def test_secretsync_enable_issuer_error(
 
     # Custom location fetch mock
     cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
-    cl_payload = get_mock_custom_location_record(
-        name=generate_random_string(), resource_group_name=resource_group_name
-    )
+    cl_payload = get_mock_custom_location_record(name=generate_random_string(), resource_group_name=resource_group_name)
     mocked_responses.add(
         method=responses.GET,
         url=re.compile(cl_endpoint),
@@ -891,3 +917,290 @@ def test_secretsync_enable_issuer_error(
         resource_group_name,
     )
     assert str(exc.value) == error_str
+
+
+@pytest.mark.parametrize(
+    "default_spc_resource_id",
+    [None, get_mock_spc_record(resource_group_name="mygroup", name="myspc1")["id"]],
+)
+@pytest.mark.parametrize(
+    "existing_resources",
+    [
+        None,
+        [
+            {
+                "payload": get_mock_spc_record(resource_group_name="mygroup", name="myspc1"),
+                "endpoint": get_spc_endpoint(resource_group_name="mygroup", spc_name="myspc1"),
+            }
+        ],
+        [
+            {
+                "payload": get_mock_spc_record(resource_group_name="mygroup", name="myspc1"),
+                "endpoint": get_spc_endpoint(resource_group_name="mygroup", spc_name="myspc1"),
+            },
+            {
+                "payload": get_mock_spc_record(resource_group_name="mygroup", name="myspc2"),
+                "endpoint": get_spc_endpoint(resource_group_name="mygroup", spc_name="myspc2"),
+            },
+            {
+                "payload": get_mock_secretsync_record(resource_group_name="mygroup", name="secretsync1"),
+                "endpoint": get_secretsync_endpoint(resource_group_name="mygroup", spc_name="secretsync1"),
+            },
+            {
+                "payload": get_mock_secretsync_record(resource_group_name="mygroup", name="secretsync2"),
+                "endpoint": get_secretsync_endpoint(resource_group_name="mygroup", spc_name="secretsync2"),
+            },
+        ],
+    ],
+)
+def test_secretsync_disable(
+    mocked_cmd,
+    mocked_responses: responses,
+    default_spc_resource_id: Optional[str],
+    existing_resources: Optional[list[dict]],
+):
+    resource_group_name = generate_random_string()
+
+    # Instance fetch mock
+    instance_name = generate_random_string()
+    instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
+    instance_record = get_mock_instance_record(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        default_spc_resource_id=default_spc_resource_id,
+    )
+    mocked_responses.add(
+        method=responses.GET,
+        url=instance_endpoint,
+        json=instance_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Custom location fetch mock
+    cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
+    cl_payload = get_mock_custom_location_record(name=generate_random_string(), resource_group_name=resource_group_name)
+    mocked_responses.add(
+        method=responses.GET,
+        url=re.compile(cl_endpoint),
+        json=cl_payload,
+        status=200,
+        content_type="application/json",
+    )
+
+    arg_data = []
+    if existing_resources:
+        arg_data.extend(r["payload"] for r in existing_resources)
+        for r in existing_resources:
+            mocked_responses.add(
+                method=responses.DELETE,
+                url=r["endpoint"],
+                status=204,
+                content_type="application/json",
+            )
+
+    # Resource Graph POST
+    mocked_responses.add(
+        method=responses.POST,
+        url=ARG_ENDPOINT,
+        json={"data": arg_data},
+        status=200,
+        content_type="application/json",
+    )
+
+    if default_spc_resource_id:
+        # PUT Instance
+        instance_put = mocked_responses.add(
+            method=responses.PUT,
+            url=instance_endpoint,
+            json=instance_record,
+            status=200,
+            content_type="application/json",
+        )
+
+    secretsync_disable(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        confirm_yes=True,
+        wait_sec=0.1,
+    )
+
+    if default_spc_resource_id:
+        instance_put_request = json.loads(instance_put.calls[0].request.body)
+        assert "defaultSecretProviderClassRef" not in instance_put_request["properties"]
+
+
+@pytest.mark.parametrize(
+    "usage_type",
+    [None, IdentityUsageType.DATAFLOW.value, IdentityUsageType.SCHEMA.value],
+)
+@pytest.mark.parametrize(
+    "use_self_hosted_issuer",
+    [None, True],
+)
+@pytest.mark.parametrize(
+    "fc_name",
+    [None, generate_random_string()],
+)
+@pytest.mark.parametrize(
+    "initial_identities",
+    [
+        None,
+        {
+            generate_resource_id(
+                resource_group_name="a",
+                resource_provider="Microsoft.ManagedIdentity",
+                resource_path="/userAssignedIdentities/a",
+            ): {}
+        },
+    ],
+)
+def test_add_mi_user_assigned(
+    mocked_cmd,
+    mocked_responses: responses,
+    usage_type: Optional[str],
+    use_self_hosted_issuer: Optional[bool],
+    fc_name: Optional[str],
+    initial_identities: Optional[dict],
+):
+    oidc_issuer_def = {
+        "oidcIssuerProfile": {
+            "enabled": True,
+            "selfHostedIssuerUrl": "https://localhost.selfHostedIssuer",
+            "issuerUrl": "https://localhost.systemIssuer",
+        },
+        "securityProfile": {"workloadIdentity": {"enabled": True}},
+    }
+
+    resource_group_name = generate_random_string()
+
+    # Instance fetch mock
+    instance_name = generate_random_string()
+    instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
+    instance_record = get_mock_instance_record(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+        identity_map=initial_identities,
+    )
+    mocked_responses.add(
+        method=responses.GET,
+        url=instance_endpoint,
+        json=instance_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    # UAMI fetch mock
+    uami_name = generate_random_string()
+    uami_endpoint = get_uami_endpoint(resource_group_name=resource_group_name, uami_name=uami_name)
+    uami_resource_id = generate_resource_id(
+        resource_group_name=resource_group_name,
+        resource_provider="Microsoft.ManagedIdentity",
+        resource_path=f"/userAssignedIdentities/{uami_name}",
+    )
+    client_id = generate_uuid()
+    principal_id = generate_uuid()
+    mocked_responses.add(
+        method=responses.GET,
+        url=uami_endpoint,
+        json={"properties": {"clientId": client_id, "principalId": principal_id}},
+        status=200,
+        content_type="application/json",
+    )
+
+    # Custom location fetch mock
+    cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
+    cl_payload = get_mock_custom_location_record(name=generate_random_string(), resource_group_name=resource_group_name)
+    mocked_responses.add(
+        method=responses.GET,
+        url=re.compile(cl_endpoint),
+        json=cl_payload,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Cluster fetch mock
+    cluster_location = generate_random_string()
+    cluster_name = generate_random_string()
+    cluster_endpoint = get_cluster_url(cluster_rg=".*", cluster_name=".*")
+    mocked_responses.add(
+        method=responses.GET,
+        url=re.compile(cluster_endpoint),
+        json={
+            "id": generate_resource_id(
+                resource_group_name=resource_group_name,
+                resource_provider="Microsoft.Kubernetes",
+                resource_path=f"/connectedClusters/{cluster_name}",
+            ),
+            "name": cluster_name,
+            "properties": {**oidc_issuer_def},
+            "location": cluster_location,
+        },
+        status=200,
+        content_type="application/json",
+    )
+
+    # Federation fetch
+    # TODO: assert when already federated.
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_federated_creds_url(uami_rg_name=resource_group_name, uami_name=uami_name),
+        json={"value": []},
+        status=200,
+        content_type="application/json",
+    )
+    # Federation PUT
+    if use_self_hosted_issuer:
+        oidc_issuer = oidc_issuer_def["oidcIssuerProfile"].get("selfHostedIssuerUrl")
+    else:
+        oidc_issuer = oidc_issuer_def["oidcIssuerProfile"].get("issuerUrl")
+
+    use_service_account = SERVICE_ACCOUNT_DATAFLOW
+    if usage_type == IdentityUsageType.SCHEMA.value:
+        use_service_account = SERVICE_ACCOUNT_SCHEMA
+
+    subject = f"system:serviceaccount:{cl_payload['properties']['namespace']}:{use_service_account}"
+    federation_capture = mocked_responses.add(
+        method=responses.PUT,
+        url=get_federated_creds_url(
+            uami_rg_name=resource_group_name,
+            uami_name=uami_name,
+            fc_name=fc_name or get_fc_name(cluster_name=cluster_name, oidc_issuer=oidc_issuer, subject=subject),
+        ),
+        json={},
+        status=200,
+        content_type="application/json",
+    )
+
+    # Instance PUT
+    mocked_responses.add_callback(method=responses.PUT, url=instance_endpoint, callback=echo_callback)
+    result = instance_identity_assign(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        mi_user_assigned=uami_resource_id,
+        federated_credential_name=fc_name,
+        usage_type=usage_type,
+        use_self_hosted_issuer=use_self_hosted_issuer,
+        wait_sec=0.1,
+    )
+    instance_put_request = list(mocked_responses.calls)[-1].request
+    instance_payload: dict = json.loads(instance_put_request.body)
+    identity_payload = instance_payload.get("identity")
+
+    assert identity_payload
+    assert identity_payload["type"] == "UserAssigned"
+    to_assert_uamis = [uami_resource_id]
+    if initial_identities:
+        to_assert_uamis.extend(list(initial_identities.keys()))
+
+    for uami in to_assert_uamis:
+        assert uami in identity_payload["userAssignedIdentities"]
+        assert identity_payload["userAssignedIdentities"][uami] == {}
+
+    assert result == instance_payload
+    federation_payload: dict = json.loads(federation_capture.calls[0].request.body)
+    assert federation_payload["properties"]["subject"] == subject
+    assert federation_payload["properties"]["issuer"] == oidc_issuer
+    assert federation_payload["properties"]["audiences"] == ["api://AzureADTokenExchange"]

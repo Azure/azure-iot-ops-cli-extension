@@ -27,6 +27,7 @@ class EnvironmentVariables(Enum):
     init_continue_on_error = "azext_edge_init_continue_on_error"
     init_redeployment = "azext_edge_init_redeployment"
     schema_registry_id = "azext_edge_schema_registry_id"
+    adr_namespace_id = "azext_edge_adr_namespace_id"
     upgrade_args = "azext_edge_upgrade_args"
 
 

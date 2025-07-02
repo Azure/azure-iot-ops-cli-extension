@@ -21,6 +21,7 @@ from ....util.az_client import (
     get_tenant_id,
     parse_resource_id,
     wait_for_terminal_state,
+    wait_for_terminal_states,
 )
 from ....util.common import (
     parse_kvp_nargs,
@@ -28,7 +29,7 @@ from ....util.common import (
     url_safe_hash_phrase,
 )
 from ....util.queryable import Queryable
-from ..common import CUSTOM_LOCATIONS_API_VERSION, KEYVAULT_CLOUD_API_VERSION
+from ..common import CUSTOM_LOCATIONS_API_VERSION, KEYVAULT_CLOUD_API_VERSION, IdentityUsageType
 from ..permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from ..resource_map import IoTOperationsResourceMap
 
@@ -41,8 +42,10 @@ SPC_RESOURCE_TYPE = "microsoft.secretsynccontroller/azurekeyvaultsecretproviderc
 SECRET_SYNC_RESOURCE_TYPE = "microsoft.secretsynccontroller/secretsyncs"
 SERVICE_ACCOUNT_DATAFLOW = "aio-dataflow"
 SERVICE_ACCOUNT_SECRETSYNC = "aio-ssc-sa"
+SERVICE_ACCOUNT_SCHEMA = "adr-schema-registry"
 KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
+MANAGED_IDENTITY_API_VERSION = "2023-01-31"
 
 COMPAT_FEAT_KEY_SET = {"connectors.settings.preview"}
 
@@ -69,10 +72,10 @@ def get_cred_subject(namespace: str, service_account_name: str):
     return f"system:serviceaccount:{namespace}:{service_account_name}"
 
 
-def get_enable_syntax(instanc_name: str, resource_group_name: str) -> str:
+def get_enable_syntax(instance_name: str, resource_group_name: str) -> str:
     return (
-        f"Use 'az iot ops secretsync enable -n {instanc_name} -g {resource_group_name} "
-        "--user-assigned /ua/mi/resource/id'."
+        f"Use 'az iot ops secretsync enable -n {instance_name} -g {resource_group_name} "
+        "--mi-user-assigned {UA_MI_RESOURCE_ID} --kv-resource-id {KEYVAULT_RESOURCE_ID}'."
     )
 
 
@@ -147,6 +150,7 @@ class Instances(Queryable):
         **kwargs: dict,
     ) -> dict:
         instance = kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
+        status_text = kwargs.pop("status_text", "Working...")
 
         if description:
             instance["properties"]["description"] = description
@@ -160,7 +164,7 @@ class Instances(Queryable):
         if tags or tags == {}:
             instance["tags"] = tags
 
-        with console.status("Working..."):
+        with console.status(status_text):
             poller = self.iotops_mgmt_client.instance.begin_create_or_update(
                 instance_name=name,
                 resource_group_name=resource_group_name,
@@ -219,6 +223,7 @@ class Instances(Queryable):
         name: str,
         resource_group_name: str,
         mi_user_assigned: str,
+        usage_type: str,
         federated_credential_name: Optional[str] = None,
         use_self_hosted_issuer: Optional[bool] = None,
         **kwargs,
@@ -226,14 +231,20 @@ class Instances(Queryable):
         """
         Responsible for federating and building the instance identity object.
         """
-        kwargs.pop("usage_type", None)  # TODO - @digimaun, unused atm.
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
+        self.resource_client.resources.get_by_id(
+            resource_id=mi_resource_id_container.resource_id, api_version=MANAGED_IDENTITY_API_VERSION
+        )
+
         instance = self.show(name=name, resource_group_name=resource_group_name)
         cluster_resource = self.get_resource_map(instance).connected_cluster.resource
         oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
         custom_location = self.get_associated_cl(instance)
         namespace = custom_location["properties"]["namespace"]
-        cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_DATAFLOW)
+        service_account_name = (
+            SERVICE_ACCOUNT_SCHEMA if usage_type == IdentityUsageType.SCHEMA.value else SERVICE_ACCOUNT_DATAFLOW
+        )
+        cred_subject = get_cred_subject(namespace=namespace, service_account_name=service_account_name)
 
         if not federated_credential_name:
             federated_credential_name = get_fc_name(
@@ -299,12 +310,14 @@ class Instances(Queryable):
             cred_subject = get_cred_subject(namespace=namespace, service_account_name=SERVICE_ACCOUNT_SECRETSYNC)
             oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
 
-            cl_resources = resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
-            secretsync_spc = self.find_existing_resources(cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE)
-            if secretsync_spc:
+            secretsync_resources = resource_map.connected_cluster.get_cl_resources_by_type(
+                custom_location_id=instance["extendedLocation"]["name"],
+                resource_types={SPC_RESOURCE_TYPE, SECRET_SYNC_RESOURCE_TYPE},
+            )
+            if secretsync_resources:
                 status.stop()
                 logger.warning(
-                    f"Instance '{instance['name']}' is already enabled for secret sync.\n"
+                    f"Instance '{instance['name']}' already has associated secret sync resources.\n"
                     f"Use 'az iot ops secretsync list -n {instance['name']} -g {resource_group_name}' for details."
                 )
                 return
@@ -344,20 +357,31 @@ class Instances(Queryable):
                 },
             )
             result_spc = wait_for_terminal_state(spc_poller, **kwargs)
-            return result_spc
+        instance["properties"]["defaultSecretProviderClassRef"] = {"resourceId": result_spc["id"]}
+        self.update(
+            name=name,
+            resource_group_name=resource_group_name,
+            instance=instance,
+            status_text="Associating identity with instance...",
+            **kwargs,
+        )
+        return result_spc
 
-    def list_secretsync(self, name: str, resource_group_name: str) -> Optional[dict]:
+    def list_secretsync(self, name: str, resource_group_name: str) -> Optional[List[dict]]:
         # TODO: add unit test
         with console.status("Working..."):
             instance = self.show(name=name, resource_group_name=resource_group_name)
             resource_map = self.get_resource_map(instance)
-            cl_resources = resource_map.connected_cluster.get_aio_resources(
-                custom_location_id=instance["extendedLocation"]["name"]
+            secretsync_resources = resource_map.connected_cluster.get_cl_resources_by_type(
+                custom_location_id=instance["extendedLocation"]["name"],
+                resource_types={SPC_RESOURCE_TYPE, SECRET_SYNC_RESOURCE_TYPE},
+                show_properties=True,
             )
-            secretsync_spcs = self.find_existing_resources(cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE)
-            if secretsync_spcs:
-                return secretsync_spcs
-        logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
+            result = secretsync_resources.get(SPC_RESOURCE_TYPE, [])
+            result.extend(secretsync_resources.get(SECRET_SYNC_RESOURCE_TYPE, []))
+            if result:
+                return result
+        logger.warning(f"No secret sync resources found.\n{get_enable_syntax(name, resource_group_name)}")
 
     def disable_secretsync(
         self,
@@ -366,50 +390,56 @@ class Instances(Queryable):
         confirm_yes: Optional[bool] = None,
         **kwargs,
     ):
-        # TODO: add unit test
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
         if should_bail:
             return
 
-        with console.status("Working..."):
-            instance = self.show(name=name, resource_group_name=resource_group_name)
-            resource_map = self.get_resource_map(instance)
-            cl_resources = resource_map.connected_cluster.get_aio_resources(
-                custom_location_id=instance["extendedLocation"]["name"]
+        instance: dict = self.show(name=name, resource_group_name=resource_group_name)
+        # remove the default secret provider class reference
+        default_spc_ref = instance["properties"].pop("defaultSecretProviderClassRef", None)
+        if default_spc_ref:
+            self.update(
+                name=name,
+                resource_group_name=resource_group_name,
+                instance=instance,
+                status_text="Disassociating secret provider class from instance...",
+                **kwargs,
             )
-            secretsync_spcs = self.find_existing_resources(cl_resources=cl_resources, resource_type=SPC_RESOURCE_TYPE)
-            secretsyncs = self.find_existing_resources(
-                cl_resources=cl_resources, resource_type=SECRET_SYNC_RESOURCE_TYPE
-            )
 
-            related_secretsyncs = []
-            if secretsync_spcs:
-                for secretsync_spc in secretsync_spcs:
-                    spc_poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_delete(
-                        resource_group_name=resource_group_name,
-                        azure_key_vault_secret_provider_class_name=secretsync_spc["name"],
-                    )
-                    wait_for_terminal_state(spc_poller, **kwargs)
+        resource_map = self.get_resource_map(instance)
+        secretsync_resources = resource_map.connected_cluster.get_cl_resources_by_type(
+            custom_location_id=instance["extendedLocation"]["name"],
+            resource_types={SPC_RESOURCE_TYPE, SECRET_SYNC_RESOURCE_TYPE},
+        )
+        if not secretsync_resources:
+            logger.warning(f"No secret sync resources found.\n{get_enable_syntax(name, resource_group_name)}")
+            return
 
-                    # get associated secret sync names
-                    related_secretsyncs.extend(
-                        self._find_spc_related_secretsyncs(
-                            spc_name=secretsync_spc["name"],
-                            secretsync_resources=secretsyncs,
+        with console.status("Deleting secret sync resources..."):
+            secretsyncs = secretsync_resources.get(SECRET_SYNC_RESOURCE_TYPE, [])
+            if secretsyncs:
+                wait_for_terminal_states(
+                    *[
+                        self.ssc_mgmt_client.secret_syncs.begin_delete(
+                            resource_group_name=resource["resourceGroup"],
+                            secret_sync_name=resource["name"],
                         )
-                    )
-
-                # delete associated secret syncs
-                if related_secretsyncs:
-                    for secretsync in related_secretsyncs:
-                        secretsync_poller = self.ssc_mgmt_client.secret_syncs.begin_delete(
-                            resource_group_name=resource_group_name,
-                            secret_sync_name=secretsync,
+                        for resource in secretsyncs
+                    ],
+                    **kwargs,
+                )
+            spcs = secretsync_resources.get(SPC_RESOURCE_TYPE, [])
+            if spcs:
+                wait_for_terminal_states(
+                    *[
+                        self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_delete(
+                            resource_group_name=resource["resourceGroup"],
+                            azure_key_vault_secret_provider_class_name=resource["name"],
                         )
-                        wait_for_terminal_state(secretsync_poller, **kwargs)
-
-                return
-        logger.warning(f"No secret provider class detected.\n{get_enable_syntax(name, resource_group_name)}")
+                        for resource in spcs
+                    ],
+                    **kwargs,
+                )
 
     def find_existing_resources(
         self,
@@ -447,13 +477,6 @@ class Instances(Queryable):
                         )
                     )
         return resources
-
-    def _find_spc_related_secretsyncs(self, spc_name: str, secretsync_resources: List[dict]) -> List[str]:
-        related_secretsyncs = []
-        for secretsync in secretsync_resources:
-            if secretsync["properties"]["secretProviderClassName"] == spc_name:
-                related_secretsyncs.append(secretsync["name"])
-        return related_secretsyncs
 
     def _attempt_keyvault_role_assignments(
         self,
