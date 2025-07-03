@@ -2963,3 +2963,15 @@ def load_iotops_help():
           text: >
             az iot ops rsync disable -n myinstance -g myresourcegroup
     """
+
+    helps[
+        "iot ops list-versions"
+    ] = """
+        type: command
+        short-summary: Opens the version guide in the default browser.
+
+        examples:
+        - name: Route to the version guide in a new browser window.
+          text: >
+            az iot ops list-versions
+    """

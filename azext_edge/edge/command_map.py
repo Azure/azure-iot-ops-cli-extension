@@ -36,6 +36,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("list", "list_instances")
         cmd_group.command("delete", "delete")
         cmd_group.command("clone", "clone_instance", is_preview=True)
+        cmd_group.command("list-versions", "list_versions", is_preview=True)
 
     with self.command_group(
         "iot ops rsync",

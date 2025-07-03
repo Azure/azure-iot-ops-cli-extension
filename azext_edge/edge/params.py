@@ -172,6 +172,13 @@ def load_iotops_arguments(self, _):
             arg_type=get_three_state_flag(),
             help="Use to visualize the IoT Operations deployment against the backing cluster.",
         )
+        context.argument(
+            "launch_doe",
+            options_list=["--launch-doe"],
+            arg_type=get_three_state_flag(),
+            help="Launch and route to the Digital Operations Experience in a browser.",
+            is_experimental=True,
+        )
 
     with self.argument_context("iot ops support") as context:
         context.argument(

@@ -95,8 +95,24 @@ class Instances(Queryable):
         )
         self.permission_manager = PermissionManager(self.default_subscription_id)
 
-    def show(self, name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> Optional[dict]:
+    def show(
+        self, name: str, resource_group_name: str, show_tree: Optional[bool] = None, launch_doe: Optional[bool] = None
+    ) -> Optional[dict]:
         result = self.iotops_mgmt_client.instance.get(instance_name=name, resource_group_name=resource_group_name)
+        if launch_doe:
+            with console.status("Working..."):
+                import webbrowser
+
+                id_container = parse_resource_id(resource_id=result["id"])
+                cluster_name = self.get_resource_map(result).connected_cluster.cluster_name
+                url = (
+                    f"https://iotoperations.azure.com/sites/_/_/_/instances"
+                    f"/{id_container.subscription_id}/{id_container.resource_group_name}/{cluster_name}"
+                )
+                success = webbrowser.open(url, new=1)
+                if not success:
+                    logger.warning(f"Failed to open browser. Please visit {url}.")
+                return
 
         if show_tree:
             self._show_tree(result)
@@ -112,10 +128,18 @@ class Instances(Queryable):
         return self.show(name=name, resource_group_name=resource_group_name)["extendedLocation"]
 
     def list(self, resource_group_name: Optional[str] = None) -> Iterable[dict]:
+        # super haxor
+        resource_map = IoTOperationsResourceMap(
+            cmd=self.cmd,
+            cluster_name=None,
+            resource_group_name=None,
+            defer_refresh=True,
+        )
         if resource_group_name:
-            return self.iotops_mgmt_client.instance.list_by_resource_group(resource_group_name=resource_group_name)
-
-        return self.iotops_mgmt_client.instance.list_by_subscription()
+            return resource_map.connected_cluster.get_aio_instances(resource_group=resource_group_name)
+            # return self.iotops_mgmt_client.instance.list_by_resource_group(resource_group_name=resource_group_name)
+        # return self.iotops_mgmt_client.instance.list_by_subscription()
+        return resource_map.connected_cluster.get_aio_instances()
 
     def _show_tree(self, instance: dict):
         resource_map = self.get_resource_map(instance)

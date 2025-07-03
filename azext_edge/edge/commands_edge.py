@@ -344,8 +344,16 @@ def delete(
     )
 
 
-def show_instance(cmd, instance_name: str, resource_group_name: str, show_tree: Optional[bool] = None) -> dict:
-    return Instances(cmd).show(name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree)
+def show_instance(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    show_tree: Optional[bool] = None,
+    launch_doe: Optional[bool] = None,
+) -> dict:
+    return Instances(cmd).show(
+        name=instance_name, resource_group_name=resource_group_name, show_tree=show_tree, launch_doe=launch_doe
+    )
 
 
 def list_instances(cmd, resource_group_name: Optional[str] = None) -> Iterable[dict]:
@@ -496,3 +504,14 @@ def list_rsync(
     from .providers.orchestration.resources import SyncRules
 
     return SyncRules(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).list()
+
+
+def list_versions():
+    import webbrowser
+
+    target_link = "https://aka.ms/aio-versions"
+    success = webbrowser.open(target_link, new=1)
+    if not success:
+        logger.warning(
+            f"Failed to open browser. Please visit {target_link} for an Azure IoT Operations version reference."
+        )

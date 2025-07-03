@@ -63,6 +63,12 @@ QUERIES = {
         | where id startswith '{custom_location_id}'
         | project id, name, apiVersion
         """,
+    "get_aio_instances": """
+        resources
+        | where type =~ 'microsoft.iotoperations/instances'
+        {where_clauses}
+        | project id, name, location, resourceGroup, properties, extendedLocation, type, systemData, tags
+        """,
 }
 
 
@@ -170,6 +176,17 @@ class ConnectedCluster:
 
         result = self.resource_graph.query_resources(query=query)
         return self._process_query_result(result)
+
+    def get_aio_instances(self, resource_group: Optional[str] = None) -> dict[str, list[dict]]:
+        where_clauses = ""
+        projections = ""
+        if resource_group:
+            where_clauses = f"| where resourceGroup == '{resource_group}'"
+        query = QUERIES["get_aio_instances"].format(where_clauses=where_clauses, projections=projections)
+
+        result = self.resource_graph.query_resources(query=query)
+        result = self._process_query_result(result)
+        return result or []
 
     def update_aio_extension(self, extension_name: str, properties: dict) -> dict:
         update_payload = {"properties": properties}
