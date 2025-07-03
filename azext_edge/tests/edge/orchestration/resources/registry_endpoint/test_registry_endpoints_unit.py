@@ -81,7 +81,7 @@ def test_registry_endpoint_show(mocked_cmd, mocked_responses: responses):
 
     result = show_registry_endpoint(
         cmd=mocked_cmd,
-        endpoint_name=registry_endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )
@@ -144,7 +144,7 @@ def test_registry_endpoint_remove(mocked_cmd, mocked_responses: responses):
 
     remove_registry_endpoint(
         cmd=mocked_cmd,
-        endpoint_name=registry_endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         confirm_yes=True,
@@ -496,7 +496,7 @@ def test_registry_endpoint_add_anonymous(mocked_cmd, mocked_responses: responses
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        endpoint_name=registry_endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
         host=host,
         wait_sec=0,
     )
@@ -582,7 +582,7 @@ def test_registry_endpoint_add_with_auth(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        endpoint_name=registry_endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
         host=host,
         auth_type=auth_type,
         secret_ref=secret_ref,
@@ -648,7 +648,7 @@ def test_registry_endpoint_update_host_only(mocked_cmd, mocked_responses: respon
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        endpoint_name=registry_endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
         host=new_host,
         wait_sec=0,
     )
@@ -737,7 +737,7 @@ def test_registry_endpoint_update_auth(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        endpoint_name=registry_endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
         auth_type=auth_type,
         secret_ref=secret_ref,
         audience=audience,
@@ -807,7 +807,7 @@ def test_registry_endpoint_update_host_and_auth(mocked_cmd, mocked_responses: re
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        endpoint_name=registry_endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
         host=new_host,
         secret_ref=secret_ref,
         wait_sec=0,

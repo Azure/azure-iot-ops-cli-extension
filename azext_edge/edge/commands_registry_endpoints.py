@@ -18,7 +18,7 @@ def add_registry_endpoint(
     cmd,
     instance_name: str,
     resource_group_name: str,
-    endpoint_name: str,
+    registry_endpoint_name: str,
     host: str,
     auth_type: Optional[str] = None,
     secret_ref: Optional[str] = None,
@@ -32,7 +32,7 @@ def add_registry_endpoint(
     return RegistryEndpoints(cmd).add(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
         host=host,
         auth_type=auth_type,
         secret_ref=secret_ref,
@@ -49,7 +49,7 @@ def update_registry_endpoint(
     cmd,
     instance_name: str,
     resource_group_name: str,
-    endpoint_name: str,
+    registry_endpoint_name: str,
     host: Optional[str] = None,
     auth_type: Optional[str] = None,
     secret_ref: Optional[str] = None,
@@ -63,7 +63,7 @@ def update_registry_endpoint(
     return RegistryEndpoints(cmd).update(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
         host=host,
         auth_type=auth_type,
         secret_ref=secret_ref,
@@ -75,12 +75,12 @@ def update_registry_endpoint(
     )
 
 
-def show_registry_endpoint(cmd, endpoint_name: str, instance_name: str, resource_group_name: str):
+def show_registry_endpoint(cmd, registry_endpoint_name: str, instance_name: str, resource_group_name: str):
     """Show details of a registry endpoint in an IoT Operations instance."""
     return RegistryEndpoints(cmd).show(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
     )
 
 
@@ -94,7 +94,7 @@ def list_registry_endpoints(cmd, instance_name: str, resource_group_name: str) -
 
 def remove_registry_endpoint(
     cmd,
-    endpoint_name: str,
+    registry_endpoint_name: str,
     instance_name: str,
     resource_group_name: str,
     confirm_yes: Optional[bool] = None,
@@ -104,7 +104,7 @@ def remove_registry_endpoint(
     return RegistryEndpoints(cmd).remove(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=endpoint_name,
+        registry_endpoint_name=registry_endpoint_name,
         confirm_yes=confirm_yes,
         **kwargs,
     )
