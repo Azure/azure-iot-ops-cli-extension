@@ -185,7 +185,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("add", "add_registry_endpoint")
         cmd_group.command("update", "update_registry_endpoint")
         cmd_group.command("remove", "remove_registry_endpoint")
-        cmd_group.command("show", "show_registry_endpoint")
+        cmd_group.show_command("show", "show_registry_endpoint")
 
     with self.command_group(
         "iot ops asset",
