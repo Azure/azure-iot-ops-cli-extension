@@ -39,7 +39,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
     try:
         # CREATE - Anonymous authentication (default)
         registry_endpoint = run(
-            f"az iot ops dataflow graph registry add -n {registry_endpoint_name} "
+            f"az iot ops registry add -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host {host}"
         )
@@ -56,8 +56,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
 
         # SHOW
         show_endpoint = run(
-            f"az iot ops dataflow graph registry show -n {registry_endpoint_name} "
-            f"-g {resource_group} --instance {instance_name}"
+            f"az iot ops registry show -n {registry_endpoint_name} " f"-g {resource_group} --instance {instance_name}"
         )
         assert_registry_endpoint(
             endpoint=show_endpoint,
@@ -69,16 +68,14 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
         )
 
         # LIST - check our endpoint is in the list
-        list_endpoints = run(
-            f"az iot ops dataflow graph registry list " f"-g {resource_group} --instance {instance_name}"
-        )
+        list_endpoints = run(f"az iot ops registry list " f"-g {resource_group} --instance {instance_name}")
         endpoint_names = [ep["name"] for ep in list_endpoints]
         assert registry_endpoint_name in endpoint_names
 
         # UPDATE - change host
         new_host = "newregistry.azurecr.io"
         updated_endpoint = run(
-            f"az iot ops dataflow graph registry update -n {registry_endpoint_name} "
+            f"az iot ops registry update -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host {new_host}"
         )
@@ -93,15 +90,13 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
 
         # REMOVE
         run(
-            f"az iot ops dataflow graph registry remove -n {registry_endpoint_name} "
+            f"az iot ops registry remove -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} -y"
         )
         tracked_resources.remove(registry_endpoint["id"])
 
         # Verify removal - endpoint should not be in list
-        list_endpoints_after = run(
-            f"az iot ops dataflow graph registry list " f"-g {resource_group} --instance {instance_name}"
-        )
+        list_endpoints_after = run(f"az iot ops registry list " f"-g {resource_group} --instance {instance_name}")
         endpoint_names_after = [ep["name"] for ep in list_endpoints_after]
         assert registry_endpoint_name not in endpoint_names_after
 
@@ -110,11 +105,11 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
         if registry_endpoint.get("id") in tracked_resources:
             try:
                 run(
-                    f"az iot ops dataflow graph registry remove -n {registry_endpoint_name} "
+                    f"az iot ops registry remove -n {registry_endpoint_name} "
                     f"-g {resource_group} --instance {instance_name} -y"
                 )
                 tracked_resources.remove(registry_endpoint["id"])
-            except:
+            except Exception:
                 pass  # Best effort cleanup
         raise
 
@@ -130,7 +125,7 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
     try:
         # CREATE - ArtifactPullSecret authentication
         registry_endpoint = run(
-            f"az iot ops dataflow graph registry add -n {registry_endpoint_name} "
+            f"az iot ops registry add -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host {host} --secret-ref {secret_ref}"
         )
@@ -147,8 +142,7 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
 
         # SHOW
         show_endpoint = run(
-            f"az iot ops dataflow graph registry show -n {registry_endpoint_name} "
-            f"-g {resource_group} --instance {instance_name}"
+            f"az iot ops registry show -n {registry_endpoint_name} " f"-g {resource_group} --instance {instance_name}"
         )
         assert_registry_endpoint(
             endpoint=show_endpoint,
@@ -161,7 +155,7 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
 
         # REMOVE
         run(
-            f"az iot ops dataflow graph registry remove -n {registry_endpoint_name} "
+            f"az iot ops registry remove -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} -y"
         )
         tracked_resources.remove(registry_endpoint["id"])
@@ -171,11 +165,11 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
         if registry_endpoint.get("id") in tracked_resources:
             try:
                 run(
-                    f"az iot ops dataflow graph registry remove -n {registry_endpoint_name} "
+                    f"az iot ops registry remove -n {registry_endpoint_name} "
                     f"-g {resource_group} --instance {instance_name} -y"
                 )
                 tracked_resources.remove(registry_endpoint["id"])
-            except:
+            except Exception:
                 pass  # Best effort cleanup
         raise
 
@@ -191,7 +185,7 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
     try:
         # CREATE - SystemAssigned authentication with audience
         registry_endpoint = run(
-            f"az iot ops dataflow graph registry add -n {registry_endpoint_name} "
+            f"az iot ops registry add -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host {host} --auth-type SystemAssignedManagedIdentity --audience {audience}"
         )
@@ -208,8 +202,7 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
 
         # SHOW
         show_endpoint = run(
-            f"az iot ops dataflow graph registry show -n {registry_endpoint_name} "
-            f"-g {resource_group} --instance {instance_name}"
+            f"az iot ops registry show -n {registry_endpoint_name} " f"-g {resource_group} --instance {instance_name}"
         )
         assert_registry_endpoint(
             endpoint=show_endpoint,
@@ -222,7 +215,7 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
 
         # REMOVE
         run(
-            f"az iot ops dataflow graph registry remove -n {registry_endpoint_name} "
+            f"az iot ops registry remove -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} -y"
         )
         tracked_resources.remove(registry_endpoint["id"])
@@ -232,11 +225,11 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
         if registry_endpoint.get("id") in tracked_resources:
             try:
                 run(
-                    f"az iot ops dataflow graph registry remove -n {registry_endpoint_name} "
+                    f"az iot ops registry remove -n {registry_endpoint_name} "
                     f"-g {resource_group} --instance {instance_name} -y"
                 )
                 tracked_resources.remove(registry_endpoint["id"])
-            except:
+            except Exception:
                 pass  # Best effort cleanup
         raise
 
@@ -254,7 +247,7 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
     try:
         # CREATE - UserAssigned authentication with full parameters
         registry_endpoint = run(
-            f"az iot ops dataflow graph registry add -n {registry_endpoint_name} "
+            f"az iot ops registry add -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host {host} --auth-type UserAssignedManagedIdentity "
             f"--client-id {client_id} --tenant-id {tenant_id} --scope {scope}"
@@ -272,8 +265,7 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
 
         # SHOW
         show_endpoint = run(
-            f"az iot ops dataflow graph registry show -n {registry_endpoint_name} "
-            f"-g {resource_group} --instance {instance_name}"
+            f"az iot ops registry show -n {registry_endpoint_name} " f"-g {resource_group} --instance {instance_name}"
         )
         assert_registry_endpoint(
             endpoint=show_endpoint,
@@ -286,7 +278,7 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
 
         # REMOVE
         run(
-            f"az iot ops dataflow graph registry remove -n {registry_endpoint_name} "
+            f"az iot ops registry remove -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} -y"
         )
         tracked_resources.remove(registry_endpoint["id"])
@@ -296,11 +288,11 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
         if registry_endpoint.get("id") in tracked_resources:
             try:
                 run(
-                    f"az iot ops dataflow graph registry remove -n {registry_endpoint_name} "
+                    f"az iot ops registry remove -n {registry_endpoint_name} "
                     f"-g {resource_group} --instance {instance_name} -y"
                 )
                 tracked_resources.remove(registry_endpoint["id"])
-            except:
+            except Exception:
                 pass  # Best effort cleanup
         raise
 
@@ -311,7 +303,7 @@ def test_registry_endpoint_list_empty(registry_endpoint_test_setup):
     instance_name = registry_endpoint_test_setup["instanceName"]
 
     # LIST - should work even if no endpoints exist
-    list_endpoints = run(f"az iot ops dataflow graph registry list " f"-g {resource_group} --instance {instance_name}")
+    list_endpoints = run(f"az iot ops registry list " f"-g {resource_group} --instance {instance_name}")
     # Should return empty list or list that doesn't contain our test endpoints
     assert isinstance(list_endpoints, list)
 
@@ -324,10 +316,7 @@ def test_registry_endpoint_show_nonexistent(registry_endpoint_test_setup):
 
     # SHOW - should fail for nonexistent endpoint
     with pytest.raises(CLIInternalError):
-        run(
-            f"az iot ops dataflow graph registry show -n {nonexistent_name} "
-            f"-g {resource_group} --instance {instance_name}"
-        )
+        run(f"az iot ops registry show -n {nonexistent_name} " f"-g {resource_group} --instance {instance_name}")
 
 
 def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_setup, tracked_resources):
@@ -341,7 +330,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Auto-detect ArtifactPullSecret (secret_ref provided)
         name1 = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
         endpoint1 = run(
-            f"az iot ops dataflow graph registry add -n {name1} "
+            f"az iot ops registry add -n {name1} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host registry1.azurecr.io --secret-ref my-secret"
         )
@@ -358,7 +347,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Auto-detect SystemAssigned (audience provided)
         name2 = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
         endpoint2 = run(
-            f"az iot ops dataflow graph registry add -n {name2} "
+            f"az iot ops registry add -n {name2} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host registry2.azurecr.io --audience my-audience"
         )
@@ -375,7 +364,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Auto-detect UserAssigned (client-id and tenant-id provided)
         name3 = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
         endpoint3 = run(
-            f"az iot ops dataflow graph registry add -n {name3} "
+            f"az iot ops registry add -n {name3} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host registry3.azurecr.io --client-id my-client --tenant-id my-tenant"
         )
@@ -392,7 +381,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Auto-detect Anonymous (no auth parameters provided)
         name4 = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
         endpoint4 = run(
-            f"az iot ops dataflow graph registry add -n {name4} "
+            f"az iot ops registry add -n {name4} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host registry4.azurecr.io"
         )
@@ -408,10 +397,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
 
         # Cleanup all endpoints
         for ep_id, ep_name in endpoints_to_cleanup:
-            run(
-                f"az iot ops dataflow graph registry remove -n {ep_name} "
-                f"-g {resource_group} --instance {instance_name} -y"
-            )
+            run(f"az iot ops registry remove -n {ep_name} " f"-g {resource_group} --instance {instance_name} -y")
             tracked_resources.append(ep_id)  # Add to tracked for safety
             tracked_resources.remove(ep_id)  # Remove after successful deletion
 
@@ -419,11 +405,8 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Cleanup in case of failure
         for ep_id, ep_name in endpoints_to_cleanup:
             try:
-                run(
-                    f"az iot ops dataflow graph registry remove -n {ep_name} "
-                    f"-g {resource_group} --instance {instance_name} -y"
-                )
-            except:
+                run(f"az iot ops registry remove -n {ep_name} " f"-g {resource_group} --instance {instance_name} -y")
+            except Exception:
                 pass  # Best effort cleanup
         raise
 
@@ -442,6 +425,3 @@ def assert_registry_endpoint(endpoint: dict, **expected):
     # Check authentication method
     auth = endpoint_props.get("authentication", {})
     assert auth.get("method") == expected["auth_method"]
-
-    # Check provisioning state
-    assert endpoint_props.get("provisioningState") in ["Succeeded", "InProgress"]

@@ -849,11 +849,16 @@ def load_iotops_arguments(self, _):
                 ),
             )
 
-    with self.argument_context("iot ops dataflow graph registry") as context:
+    with self.argument_context("iot ops registry") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
         context.argument(
             "registry_endpoint_name",
             options_list=["--name", "-n"],
-            help="Dataflow graph registry endpoint name.",
+            help="Registry endpoint name.",
         )
         context.argument(
             "host",
