@@ -129,17 +129,17 @@ class Instances(Queryable):
 
     def list(self, resource_group_name: Optional[str] = None) -> Iterable[dict]:
         # super haxor
-        resource_map = IoTOperationsResourceMap(
-            cmd=self.cmd,
-            cluster_name=None,
-            resource_group_name=None,
-            defer_refresh=True,
-        )
+        # resource_map = IoTOperationsResourceMap(
+        #     cmd=self.cmd,
+        #     cluster_name=None,
+        #     resource_group_name=None,
+        #     defer_refresh=True,
+        # )
         if resource_group_name:
-            return resource_map.connected_cluster.get_aio_instances(resource_group=resource_group_name)
-            # return self.iotops_mgmt_client.instance.list_by_resource_group(resource_group_name=resource_group_name)
-        # return self.iotops_mgmt_client.instance.list_by_subscription()
-        return resource_map.connected_cluster.get_aio_instances()
+            #return resource_map.connected_cluster.get_aio_instances(resource_group=resource_group_name)
+            return self.iotops_mgmt_client.instance.list_by_resource_group(resource_group_name=resource_group_name)
+        return self.iotops_mgmt_client.instance.list_by_subscription()
+        #return resource_map.connected_cluster.get_aio_instances()
 
     def _show_tree(self, instance: dict):
         resource_map = self.get_resource_map(instance)

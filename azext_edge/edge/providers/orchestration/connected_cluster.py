@@ -67,7 +67,7 @@ QUERIES = {
         resources
         | where type =~ 'microsoft.iotoperations/instances'
         {where_clauses}
-        | project id, name, location, resourceGroup, properties, extendedLocation, type, systemData, tags
+        | project id, name, location, identity, resourceGroup, properties, extendedLocation, type, systemData, tags
         """,
 }
 

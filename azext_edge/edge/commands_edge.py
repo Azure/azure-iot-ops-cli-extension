@@ -23,7 +23,6 @@ from .providers.orchestration.common import (
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
 
-
 logger = get_logger(__name__)
 
 
@@ -509,9 +508,14 @@ def list_rsync(
 def list_versions():
     import webbrowser
 
+    from rich.console import Console
+
+    console = Console(stderr=True)
     target_link = "https://aka.ms/aio-versions"
-    success = webbrowser.open(target_link, new=1)
+
+    with console.status("Working..."):
+        success = webbrowser.open(target_link, new=1)
     if not success:
-        logger.warning(
-            f"Failed to open browser. Please visit {target_link} for an Azure IoT Operations version reference."
+        console.log(
+            f"Failed to open browser. Please visit {target_link} for the Azure IoT Operations version reference."
         )
