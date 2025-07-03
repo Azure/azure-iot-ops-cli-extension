@@ -711,21 +711,6 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops dataflow graph list"
-    ] = """
-        type: command
-        short-summary: List available dataflow graph images from an instance's configured registry endpoints.
-        long-summary: |
-          Discover and list dataflow images available in container registries configured for the Azure IoT Operations instance.
-          The command searches through all configured registry endpoints for dataflow graph images.
-
-        examples:
-        - name: List all dataflow images from configured registries in the instance.
-          text: >
-            az iot ops dataflow graph list -i myinstance -g myresourcegroup
-    """
-
-    helps[
         "iot ops dataflow graph registry"
     ] = """
         type: group

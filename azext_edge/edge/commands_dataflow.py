@@ -1111,13 +1111,6 @@ def list_dataflow_endpoints(cmd, instance_name: str, resource_group_name: str) -
     return DataFlowEndpoints(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
 
 
-def list_dataflow_graphs(cmd, instance_name: str, resource_group_name: str) -> dict[str, list[dict]]:
-    return RegistryEndpoints(cmd).list_dataflow_graphs(
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-    )
-
-
 # TODO - support for trusted_signing_key / configmap property
 def add_dataflow_graph_registry(
     cmd,
