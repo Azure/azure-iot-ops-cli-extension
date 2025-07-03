@@ -292,7 +292,7 @@ class NamespaceDevices(Queryable):
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        resource_group = device["resourceGroup"]
+        resource_group = device["id"].split("/")[4]
         namespace_name = device["id"].rsplit("/", 3)[-3]
         original_endpoints = device["properties"].get("endpoints", {}).get("inbound", {})
 
@@ -378,7 +378,7 @@ class NamespaceDevices(Queryable):
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        resource_group = device["resourceGroup"]
+        resource_group = device["id"].split("/")[4]
         namespace_name = device["id"].rsplit("/", 3)[-3]
         original_endpoints = device["properties"].get("endpoints", {}).get("inbound", {})
         # remove the endpoints from the endpoint list by key

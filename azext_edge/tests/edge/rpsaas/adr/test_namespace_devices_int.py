@@ -51,7 +51,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
 
     # Query devices
     result = run(
-        f"az iot ops ns device query --instance {instance_name} -g {resource_group}"
+        "az iot ops ns device query"
     )
     assert device_name_1 in [d["name"] for d in result]
 
@@ -251,11 +251,11 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         f"--instance {instance_name} -g {resource_group} "
         f"--endpoint {endpoint_name_onvif} {endpoint_name_media} -y"
     )
-    assert len(result["endpoints"]) == 2
-    assert endpoint_name_onvif not in result["endpoints"]
-    assert endpoint_name_media not in result["endpoints"]
-    assert endpoint_name_opcua in result["endpoints"]
-    assert endpoint_name_custom in result["endpoints"]
+    assert len(result) == 2
+    assert endpoint_name_onvif not in result
+    assert endpoint_name_media not in result
+    assert endpoint_name_opcua in result
+    assert endpoint_name_custom in result
 
     # Test device query functionality
     # Query for specific device by name
@@ -267,10 +267,11 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
 
     # Query for devices by manufacturer
     result = run(
-        f"az iot ops ns device query --manufacturer Contoso -g {resource_group}"
+        "az iot ops ns device query --manufacturer Contoso"
     )
-    assert len(result) >= 1
-    assert any(d["name"] == device_name_2 for d in result)
+    device_names = [d["name"] for d in result]
+    assert device_name_2 in device_names
+    assert device_name_1 not in device_names
 
     # Delete devices
     run(
@@ -282,7 +283,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         f"-g {resource_group} -y"
     )
     result = run(
-        f"az iot ops ns device query --instance {instance_name} -g {resource_group}"
+        "az iot ops ns device query"
     )
     device_names = [d["name"] for d in result]
     assert device_name_1 not in device_names
