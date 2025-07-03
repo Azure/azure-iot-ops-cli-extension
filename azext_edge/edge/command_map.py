@@ -12,6 +12,7 @@ from azure.cli.core.commands import CliCommandType
 schema_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_schema#{}")
 mq_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_mq#{}")
 dataflow_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_dataflow#{}")
+registry_endpoint_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_registry_endpoints#{}")
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
 secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_secretsync#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
@@ -178,13 +179,13 @@ def load_iotops_commands(self, _):
 
     with self.command_group(
         "iot ops registry",
-        command_type=dataflow_resource_ops,
+        command_type=registry_endpoint_resource_ops,
     ) as cmd_group:
-        cmd_group.command("list", "list_dataflow_graph_registries")
-        cmd_group.command("add", "add_dataflow_graph_registry")
-        cmd_group.command("update", "update_dataflow_graph_registry")
-        cmd_group.command("remove", "remove_dataflow_graph_registry")
-        cmd_group.command("show", "show_dataflow_graph_registry")
+        cmd_group.command("list", "list_registry_endpoints")
+        cmd_group.command("add", "add_registry_endpoint")
+        cmd_group.command("update", "update_registry_endpoint")
+        cmd_group.command("remove", "remove_registry_endpoint")
+        cmd_group.command("show", "show_registry_endpoint")
 
     with self.command_group(
         "iot ops asset",

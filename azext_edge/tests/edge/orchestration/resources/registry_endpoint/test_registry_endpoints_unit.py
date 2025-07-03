@@ -10,12 +10,12 @@ import pytest
 import responses
 from azure.cli.core.azclierror import MutuallyExclusiveArgumentError, RequiredArgumentMissingError
 
-from azext_edge.edge.commands_dataflow import (
-    add_dataflow_graph_registry,
-    list_dataflow_graph_registries,
-    remove_dataflow_graph_registry,
-    show_dataflow_graph_registry,
-    update_dataflow_graph_registry,
+from azext_edge.edge.commands_registry_endpoints import (
+    add_registry_endpoint,
+    list_registry_endpoints,
+    remove_registry_endpoint,
+    show_registry_endpoint,
+    update_registry_endpoint,
 )
 from azext_edge.edge.providers.orchestration.common import (
     REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS,
@@ -79,9 +79,9 @@ def test_registry_endpoint_show(mocked_cmd, mocked_responses: responses):
         content_type="application/json",
     )
 
-    result = show_dataflow_graph_registry(
+    result = show_registry_endpoint(
         cmd=mocked_cmd,
-        registry_endpoint_name=registry_endpoint_name,
+        endpoint_name=registry_endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
     )
@@ -116,7 +116,7 @@ def test_registry_endpoint_list(mocked_cmd, mocked_responses: responses, records
     )
 
     result = list(
-        list_dataflow_graph_registries(
+        list_registry_endpoints(
             cmd=mocked_cmd,
             instance_name=instance_name,
             resource_group_name=resource_group_name,
@@ -142,9 +142,9 @@ def test_registry_endpoint_remove(mocked_cmd, mocked_responses: responses):
         status=204,
     )
 
-    remove_dataflow_graph_registry(
+    remove_registry_endpoint(
         cmd=mocked_cmd,
-        registry_endpoint_name=registry_endpoint_name,
+        endpoint_name=registry_endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         confirm_yes=True,
@@ -492,11 +492,11 @@ def test_registry_endpoint_add_anonymous(mocked_cmd, mocked_responses: responses
         content_type="application/json",
     )
 
-    result = add_dataflow_graph_registry(
+    result = add_registry_endpoint(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_endpoint_name,
+        endpoint_name=registry_endpoint_name,
         host=host,
         wait_sec=0,
     )
@@ -574,15 +574,15 @@ def test_registry_endpoint_add_with_auth(
             registry_endpoint_name=registry_endpoint_name,
         ),
         json=mock_registry_record,
-        status=200,  # PUT operations typically return 200
+        status=200,
         content_type="application/json",
     )
 
-    result = add_dataflow_graph_registry(
+    result = add_registry_endpoint(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_endpoint_name,
+        endpoint_name=registry_endpoint_name,
         host=host,
         auth_type=auth_type,
         secret_ref=secret_ref,
@@ -644,11 +644,11 @@ def test_registry_endpoint_update_host_only(mocked_cmd, mocked_responses: respon
         content_type="application/json",
     )
 
-    result = update_dataflow_graph_registry(
+    result = update_registry_endpoint(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_endpoint_name,
+        endpoint_name=registry_endpoint_name,
         host=new_host,
         wait_sec=0,
     )
@@ -733,11 +733,11 @@ def test_registry_endpoint_update_auth(
         content_type="application/json",
     )
 
-    result = update_dataflow_graph_registry(
+    result = update_registry_endpoint(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_endpoint_name,
+        endpoint_name=registry_endpoint_name,
         auth_type=auth_type,
         secret_ref=secret_ref,
         audience=audience,
@@ -803,11 +803,11 @@ def test_registry_endpoint_update_host_and_auth(mocked_cmd, mocked_responses: re
         content_type="application/json",
     )
 
-    result = update_dataflow_graph_registry(
+    result = update_registry_endpoint(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_endpoint_name,
+        endpoint_name=registry_endpoint_name,
         host=new_host,
         secret_ref=secret_ref,
         wait_sec=0,

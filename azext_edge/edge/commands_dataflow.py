@@ -17,7 +17,7 @@ from .providers.orchestration.common import (
     ListenerProtocol,
     MqttRetainType,
 )
-from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles, RegistryEndpoints
+from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles
 
 
 def create_dataflow_profile(
@@ -1109,95 +1109,3 @@ def show_dataflow_endpoint(cmd, endpoint_name: str, instance_name: str, resource
 
 def list_dataflow_endpoints(cmd, instance_name: str, resource_group_name: str) -> Iterable[dict]:
     return DataFlowEndpoints(cmd).list(instance_name=instance_name, resource_group_name=resource_group_name)
-
-
-# TODO - support for trusted_signing_key / configmap property
-def add_dataflow_graph_registry(
-    cmd,
-    instance_name: str,
-    resource_group_name: str,
-    registry_endpoint_name: str,
-    host: str,
-    auth_type: Optional[str] = None,
-    secret_ref: Optional[str] = None,
-    audience: Optional[str] = None,
-    client_id: Optional[str] = None,
-    tenant_id: Optional[str] = None,
-    scope: Optional[str] = None,
-    **kwargs,
-):
-    return RegistryEndpoints(cmd).add(
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_endpoint_name,
-        host=host,
-        auth_type=auth_type,
-        secret_ref=secret_ref,
-        audience=audience,
-        client_id=client_id,
-        tenant_id=tenant_id,
-        scope=scope,
-        **kwargs,
-    )
-
-
-# TODO - support for trusted_signing_key / configmap property
-def update_dataflow_graph_registry(
-    cmd,
-    instance_name: str,
-    resource_group_name: str,
-    registry_endpoint_name: str,
-    host: Optional[str] = None,
-    auth_type: Optional[str] = None,
-    secret_ref: Optional[str] = None,
-    audience: Optional[str] = None,
-    client_id: Optional[str] = None,
-    tenant_id: Optional[str] = None,
-    scope: Optional[str] = None,
-    **kwargs,
-):
-    return RegistryEndpoints(cmd).update(
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_endpoint_name,
-        host=host,
-        auth_type=auth_type,
-        secret_ref=secret_ref,
-        audience=audience,
-        client_id=client_id,
-        tenant_id=tenant_id,
-        scope=scope,
-        **kwargs,
-    )
-
-
-def show_dataflow_graph_registry(cmd, registry_endpoint_name: str, instance_name: str, resource_group_name: str):
-    return RegistryEndpoints(cmd).show(
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_endpoint_name,
-    )
-
-
-def list_dataflow_graph_registries(cmd, instance_name: str, resource_group_name: str):
-    return RegistryEndpoints(cmd).list(
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-    )
-
-
-def remove_dataflow_graph_registry(
-    cmd,
-    registry_endpoint_name: str,
-    instance_name: str,
-    resource_group_name: str,
-    confirm_yes: Optional[bool] = None,
-    **kwargs,
-) -> None:
-    return RegistryEndpoints(cmd).remove(
-        instance_name=instance_name,
-        resource_group_name=resource_group_name,
-        registry_endpoint_name=registry_endpoint_name,
-        confirm_yes=confirm_yes,
-        **kwargs,
-    )
