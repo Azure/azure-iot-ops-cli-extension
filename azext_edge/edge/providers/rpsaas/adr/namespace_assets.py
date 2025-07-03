@@ -277,7 +277,6 @@ class NamespaceAssets(Queryable):
             asset_name=asset_name
         )
         asset_properties = asset["properties"]
-        print("asset", namespace.name, namespace.resource_group)
 
         # update payload
         update_payload = {}
@@ -333,7 +332,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            return wait_for_terminal_state(poller, **kwargs)
+            wait_for_terminal_state(poller, **kwargs)
+            return self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )
 
     # DATASETS - only allowed for opcua and custom assets
     def add_dataset(
@@ -344,7 +348,6 @@ class NamespaceAssets(Queryable):
         asset_type: str,
         dataset_name: str,
         dataset_data_source: str,
-        # TODO: singular dataset
         replace: bool = False,
         # TODO: future pr, import datapoints from file
         **kwargs
@@ -400,7 +403,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            datasets = wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]
+            wait_for_terminal_state(poller, **kwargs)
+            datasets = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["datasets"]
             return next(dset for dset in datasets if dset["name"] == dataset_name)
 
     def list_datasets(self, asset_name: str, instance_name: str, instance_resource_group: str) -> List[dict]:
@@ -478,7 +486,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            datasets = wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]
+            wait_for_terminal_state(poller, **kwargs)
+            datasets = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["datasets"]
             return next(dset for dset in datasets if dset["name"] == dataset_name)
 
     def remove_dataset(
@@ -513,7 +526,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            return wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]
+            wait_for_terminal_state(poller, **kwargs)
+            return self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["datasets"]
 
     def add_dataset_datapoint(
         self,
@@ -574,7 +592,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            asset = wait_for_terminal_state(poller, **kwargs)
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )
             return get_default_dataset(asset, dataset_name)["dataPoints"]
 
     def list_dataset_datapoints(
@@ -630,7 +653,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            asset = wait_for_terminal_state(poller, **kwargs)
+            wait_for_terminal_state(poller, **kwargs)
+            asset = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )
             return get_default_dataset(asset, dataset_name)["dataPoints"]
 
     # EVENTS - allowed for opcua, and custom assets
@@ -689,7 +717,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
+            wait_for_terminal_state(poller, **kwargs)
+            events = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["events"]
             return next(event for event in events if event["name"] == event_name)
 
     def list_events(self, asset_name: str, instance_name: str, instance_resource_group: str) -> List[dict]:
@@ -743,7 +776,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            return wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
+            wait_for_terminal_state(poller, **kwargs)
+            return self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["events"]
 
     def update_event(
         self,
@@ -797,7 +835,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
+            wait_for_terminal_state(poller, **kwargs)
+            events = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["events"]
             return next(event for event in events if event["name"] == event_name)
 
     # EVENT DATAPOINTS - allowed for opcua, onvif, and custom assets
@@ -862,7 +905,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
+            wait_for_terminal_state(poller, **kwargs)
+            events = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["events"]
             # note that we return a list of datapoints
             return next(event for event in events if event["name"] == event_name)["dataPoints"]
 
@@ -921,7 +969,12 @@ class NamespaceAssets(Queryable):
                 asset_name=asset_name,
                 properties=update_payload
             )
-            events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
+            wait_for_terminal_state(poller, **kwargs)
+            events = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["events"]
             # note that we return a list of datapoints
             return next(event for event in events if event["name"] == event_name)["dataPoints"]
 

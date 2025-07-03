@@ -126,13 +126,19 @@ def test_add_namespace_asset_event(
     destination_params: Dict[str, str],
     has_previous_events: bool,
     replace_event: bool,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     event_name = f"testEvent{generate_random_string(5)}"
     event_notifier = f"nsu=test;s=FastUInt{randint(1, 1000)}"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Create the expected event
     expected_event = {
@@ -232,16 +238,27 @@ def test_add_namespace_asset_event(
             namespace_name=namespace_name,
             asset_name=asset_name
         ),
-        json=updated_asset,
         status=200
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=updated_asset,
+        status=200,
+        content_type="application/json",
     )
 
     # Call the function being tested
     result = command_func(
         cmd=mocked_cmd,
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         event_notifier=event_notifier,
         replace=replace_event,
@@ -282,6 +299,13 @@ def test_add_namespace_asset_event(
     for event in events:
         assert event["name"] in event_map, f"Event {event['name']} not found in updated asset"
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("asset_type, command_func", [
     ("custom", add_namespace_custom_asset_event),
@@ -293,7 +317,8 @@ def test_add_namespace_asset_event_error(
     mocked_responses: responses,
     asset_type: str,
     command_func,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     """Test error cases for adding asset events with different asset types.
 
@@ -302,16 +327,21 @@ def test_add_namespace_asset_event_error(
     - Event exists but replace flag not set
     """
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     event_name = f"testEvent{generate_random_string(5)}"
     event_notifier = f"nsu=test;s=FastUInt{randint(1, 1000)}"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Create base parameters for all test cases
     base_params = {
         "cmd": mocked_cmd,
-        "resource_group_name": resource_group_name,
-        "namespace_name": namespace_name,
+        "instance_name": instance_name,
+        "instance_resource_group": instance_resource_group,
         "asset_name": asset_name,
         "event_name": event_name,
         "event_notifier": event_notifier,
@@ -401,14 +431,26 @@ def test_add_namespace_asset_event_error(
 
     assert f"Event '{event_name}' already exists in asset '{asset_name}'. " in str(excinfo.value)
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("num_events", [0, 1, 3])
 def test_list_namespace_asset_events(
-    mocked_cmd, mocked_responses: responses, num_events: int
+    mocked_cmd, mocked_responses: responses, num_events: int, mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     expected_events = [generate_event(num_data_points=randint(0, 2)) for _ in range(num_events)]
     mocked_asset = get_namespace_asset_record(
@@ -434,8 +476,8 @@ def test_list_namespace_asset_events(
 
     events = list_namespace_asset_events(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_name=asset_name
     )
     assert len(events) == num_events
@@ -453,12 +495,24 @@ def test_list_namespace_asset_events(
             for dp in event.get("dataPoints", []):
                 assert dp in expected_event["dataPoints"]
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
 
-def test_show_namespace_asset_event(mocked_cmd, mocked_responses: responses):
+
+def test_show_namespace_asset_event(mocked_cmd, mocked_responses: responses, mocked_get_namespace_for_instance):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     event_name = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     expected_event = generate_event(event_name=event_name, num_data_points=randint(0, 2))
     mocked_asset = get_namespace_asset_record(
@@ -481,8 +535,8 @@ def test_show_namespace_asset_event(mocked_cmd, mocked_responses: responses):
 
     event = show_namespace_asset_event(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         event_name=event_name
     )
@@ -501,6 +555,13 @@ def test_show_namespace_asset_event(mocked_cmd, mocked_responses: responses):
             assert dp["dataSource"] == expected_dp_map[dp["name"]]["dataSource"]
             assert dp["dataPointConfiguration"] == expected_dp_map[dp["name"]]["dataPointConfiguration"]
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("events_present", [True, False])
 @pytest.mark.parametrize("event_deleted", [True, False])
@@ -509,12 +570,18 @@ def test_remove_namespace_asset_event(
     mocked_responses: responses,
     events_present: bool,
     event_deleted: bool,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     event_name = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
@@ -557,14 +624,25 @@ def test_remove_namespace_asset_event(
                 namespace_name=namespace_name,
                 asset_name=asset_name
             ),
-            json=updated_asset,
             status=200
+        )
+
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_asset_mgmt_uri(
+                asset_name=asset_name,
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name
+            ),
+            json=updated_asset,
+            status=200,
+            content_type="application/json",
         )
 
     result_events = remove_namespace_asset_event(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         event_name=event_name,
         wait_sec=0
@@ -589,6 +667,13 @@ def test_remove_namespace_asset_event(
             assert event["eventNotifier"] == expected_event["eventNotifier"]
             assert event["eventConfiguration"] == expected_event["eventConfiguration"]
             assert event["destinations"] == expected_event["destinations"]
+
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
 
 
 @pytest.mark.parametrize("common_reqs", [
@@ -630,12 +715,18 @@ def test_update_namespace_asset_event(
     command_func,
     common_reqs: dict,
     unique_reqs: dict,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     event_name = f"testEvent{generate_random_string(5)}"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Generate mock asset with the event already in it
     mocked_asset = get_namespace_asset_record(
@@ -742,16 +833,27 @@ def test_update_namespace_asset_event(
             namespace_name=namespace_name,
             asset_name=asset_name
         ),
-        json=updated_asset,
         status=200
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=updated_asset,
+        status=200,
+        content_type="application/json",
     )
 
     # Call the function being tested
     result = command_func(
         cmd=mocked_cmd,
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         wait_sec=0,
         **common_reqs,
@@ -790,6 +892,13 @@ def test_update_namespace_asset_event(
     for i, dp in enumerate(patch_event["dataPoints"]):
         assert dp["name"] == initial_event["dataPoints"][i]["name"]
         assert dp["dataSource"] == initial_event["dataPoints"][i]["dataSource"]
+
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
 
 
 @pytest.mark.parametrize("asset_type, command_func, config_params", [
@@ -831,15 +940,21 @@ def test_add_namespace_asset_event_point(
     config_params: dict,
     has_points: bool,
     replace: bool,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     # Setup test variables
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     event_name = f"testEvent{generate_random_string(5)}"
     datapoint_name = f"testPoint{generate_random_string(5)}"
     data_source = f"nsu=test;s=Point{randint(1, 1000)}"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Generate mock asset with an event
     mocked_asset = get_namespace_asset_record(
@@ -928,14 +1043,25 @@ def test_add_namespace_asset_event_point(
             namespace_name=namespace_name,
             asset_name=asset_name
         ),
-        json=updated_asset,
         status=200
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=updated_asset,
+        status=200,
+        content_type="application/json",
     )
 
     result = command_func(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         event_name=event_name,
         datapoint_name=datapoint_name,
@@ -966,15 +1092,27 @@ def test_add_namespace_asset_event_point(
     assert patched_point["dataSource"] == data_source
     assert patched_point["dataPointConfiguration"] == expected_datapoint.get("dataPointConfiguration", "{}")
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("num_points", [0, 1, 3])
 def test_list_namespace_asset_event_points(
-    mocked_cmd, mocked_responses: responses, num_points: int
+    mocked_cmd, mocked_responses: responses, num_points: int, mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     event_name = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
@@ -997,8 +1135,8 @@ def test_list_namespace_asset_event_points(
 
     points = list_namespace_asset_event_points(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         event_name=event_name
     )
@@ -1010,6 +1148,13 @@ def test_list_namespace_asset_event_points(
         assert point["dataSource"] == expected_point["dataSource"]
         assert point["dataPointConfiguration"] == expected_point["dataPointConfiguration"]
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("points_present", [True, False])
 @pytest.mark.parametrize("point_deleted", [True, False])
@@ -1018,13 +1163,19 @@ def test_remove_namespace_asset_event_point(
     mocked_responses: responses,
     points_present: bool,
     point_deleted: bool,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     event_name = generate_random_string()
     datapoint_name = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Create mock asset with an event
     mocked_asset = get_namespace_asset_record(
@@ -1096,15 +1247,26 @@ def test_remove_namespace_asset_event_point(
                 namespace_name=namespace_name,
                 asset_name=asset_name
             ),
-            json=updated_asset,
             status=200
+        )
+
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_asset_mgmt_uri(
+                asset_name=asset_name,
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name
+            ),
+            json=updated_asset,
+            status=200,
+            content_type="application/json",
         )
 
     # Call the function being tested
     result = remove_namespace_asset_event_point(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         event_name=event_name,
         datapoint_name=datapoint_name,
@@ -1142,3 +1304,10 @@ def test_remove_namespace_asset_event_point(
         assert len(patched_datapoints) == len(expected_datapoints)
         for dp in expected_datapoints:
             assert dp in patched_datapoints
+
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )

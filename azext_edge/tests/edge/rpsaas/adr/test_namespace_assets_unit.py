@@ -728,6 +728,17 @@ def test_update_namespace_asset(
             namespace_name=namespace_name,
             resource_group_name=namespace_resource_group
         ),
+        status=200,
+        content_type="application/json",
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=namespace_resource_group
+        ),
         json=updated_asset,
         status=200,
         content_type="application/json",

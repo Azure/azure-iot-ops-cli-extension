@@ -291,16 +291,15 @@ class NamespaceDevices(Queryable):
         trust_list: Optional[str] = None,
         **kwargs
     ):
-        from .helpers import process_authentication, process_additional_configuration
+        from .helpers import process_authentication, process_additional_configuration, NamespaceResource
         # get the original inbound endpoints
         device = self.show(
             device_name=device_name,
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        resource_group = device["id"].split("/")[4]
-        namespace_name = device["id"].rsplit("/", 3)[-3]
-        original_endpoints = device["properties"].get("endpoints", {}).get("inbound", {})
+        namespace = NamespaceResource(device["id"])
+        original_endpoints = _get_endpoints(device)
 
         # create the new endpoint
         endpoint_body = {
@@ -324,6 +323,7 @@ class NamespaceDevices(Queryable):
                 "trustList": trust_list
             }
 
+        # TODO: can add a replace endpoint functionality
         # update the endpoints with the new one
         original_endpoints[endpoint_name] = endpoint_body
 
@@ -338,16 +338,16 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Updating inbound endpoints for {device_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 device_name=device_name,
                 properties=update_payload
             )
             wait_for_terminal_state(poller, **kwargs)
             result = self.show(
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group=resource_group
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group
             )
             return result["properties"].get("endpoints", {}).get("inbound", {})
 
@@ -358,12 +358,12 @@ class NamespaceDevices(Queryable):
         instance_resource_group: str,
         inbound: bool = False
     ) -> dict:
-        endpoints = self.show(
+        device = self.show(
             device_name=device_name,
             instance_name=instance_name,
             resource_group=instance_resource_group
-        )["properties"].get("endpoints", {})
-        return endpoints.get("inbound") if inbound else endpoints
+        )
+        return _get_endpoints(device, inbound=inbound)
 
     def inbound_remove_endpoint(
         self,
@@ -386,7 +386,7 @@ class NamespaceDevices(Queryable):
             resource_group=instance_resource_group
         )
         namespace = NamespaceResource(device["id"])
-        original_endpoints = device["properties"].get("endpoints", {}).get("inbound", {})
+        original_endpoints = _get_endpoints(device)
         # remove the endpoints from the endpoint list by key
         remaining_endpoints = {
             endpoint: endpoint_body if endpoint not in endpoint_names else None
@@ -416,6 +416,22 @@ class NamespaceDevices(Queryable):
                 resource_group=namespace.resource_group
             )
             return result["properties"].get("endpoints", {}).get("inbound", {})
+
+
+# TODO: unit test
+def _get_endpoints(device: dict, inbound: bool = True) -> dict:
+    """
+    Helper function to extract endpoints from a device.
+    """
+    device_props = device["properties"]
+
+    # if device.properties.endpoints is not present or empty,
+    # both inbound and outbound endpoints are {}
+    if "endpoints" not in device_props or not device_props["endpoints"]:
+        return {}
+
+    device_endpoints = device_props.get("endpoints", {})
+    return device_endpoints.get("inbound", {}) if inbound else device_endpoints
 
 
 def _process_onvif_configuration(
