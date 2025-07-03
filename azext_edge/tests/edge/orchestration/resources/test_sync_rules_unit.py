@@ -333,6 +333,7 @@ def test_sync_rules_list(mocked_cmd, mocked_responses: responses, rules_count: i
             get_mock_sync_rule_record(
                 name=generate_random_string(),
                 resource_group_name=resource_group_name,
+                provider=ADR_PROVIDER if _ % 2 == 0 else OPS_PROVIDER,
             )
         )
     mocked_responses.add(
@@ -393,6 +394,7 @@ def test_sync_rules_disable(mocked_cmd, mocked_logger: Mock, mocked_responses: r
             get_mock_sync_rule_record(
                 name=generate_random_string(),
                 resource_group_name=resource_group_name,
+                provider=ADR_PROVIDER if i % 2 == 0 else OPS_PROVIDER,
             )
         )
     mocked_responses.add(
