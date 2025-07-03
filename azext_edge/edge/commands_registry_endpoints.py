@@ -13,7 +13,6 @@ from typing import Iterable, Optional
 from .providers.orchestration.resources import RegistryEndpoints
 
 
-# TODO - support for trusted_signing_key / configmap property
 def add_registry_endpoint(
     cmd,
     instance_name: str,
@@ -26,6 +25,8 @@ def add_registry_endpoint(
     client_id: Optional[str] = None,
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
+    trusted_signing_configmap_key: Optional[str] = None,
+    trusted_signing_secret_key: Optional[str] = None,
     **kwargs,
 ):
     """Add a registry endpoint to an IoT Operations instance."""
@@ -40,11 +41,12 @@ def add_registry_endpoint(
         client_id=client_id,
         tenant_id=tenant_id,
         scope=scope,
+        trusted_signing_configmap_key=trusted_signing_configmap_key,
+        trusted_signing_secret_key=trusted_signing_secret_key,
         **kwargs,
     )
 
 
-# TODO - support for trusted_signing_key / configmap property
 def update_registry_endpoint(
     cmd,
     instance_name: str,
@@ -57,6 +59,8 @@ def update_registry_endpoint(
     client_id: Optional[str] = None,
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
+    trusted_signing_configmap_key: Optional[str] = None,
+    trusted_signing_secret_key: Optional[str] = None,
     **kwargs,
 ):
     """Update a registry endpoint in an IoT Operations instance."""
@@ -71,6 +75,8 @@ def update_registry_endpoint(
         client_id=client_id,
         tenant_id=tenant_id,
         scope=scope,
+        trusted_signing_configmap_key=trusted_signing_configmap_key,
+        trusted_signing_secret_key=trusted_signing_secret_key,
         **kwargs,
     )
 

@@ -903,6 +903,18 @@ def load_iotops_arguments(self, _):
             help="Scope for user-assigned managed identity registry authentication.",
             arg_group="User-Assigned Identity",
         )
+        context.argument(
+            "trusted_signing_configmap_key",
+            options_list=["--trust-config-map", "--tcm"],
+            help="Trusted signing config map reference.",
+            arg_group="Trusted Signing",
+        )
+        context.argument(
+            "trusted_signing_secret_key",
+            options_list=["--trust-secret", "--ts"],
+            help="Trusted signing secret reference.",
+            arg_group="Trusted Signing",
+        )
 
     with self.argument_context("iot ops broker") as context:
         context.argument(

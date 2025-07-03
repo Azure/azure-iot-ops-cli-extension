@@ -19,6 +19,7 @@ from ..common import (
     REGISTRY_ENDPOINT_AUTHENTICATION_REQUIRED_PARAMS,
     REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS,
     RegistryEndpointAuthenticationType,
+    TrustedSigningKeyType,
 )
 from .instances import Instances
 
@@ -135,7 +136,44 @@ class RegistryEndpoints(Queryable):
         auth_config[settings_key] = auth_settings
         return auth_config
 
-    # TODO - support for trusted_signing_key / configmap property
+    def _process_trusted_signing_key(
+        self,
+        trusted_signing_configmap_key: Optional[str] = None,
+        trusted_signing_secret_key: Optional[str] = None,
+    ) -> Optional[dict]:
+        """
+        Process trusted signing key configuration for registry endpoints.
+
+        :param trusted_signing_configmap_key: ConfigMap reference for trusted signing key.
+        :param trusted_signing_secret_key: Secret reference for trusted signing key.
+        :returns: Trusted signing key configuration or None if not provided.
+        :raises MutuallyExclusiveArgumentError: If both configmap and secret keys are provided.
+        """
+        if not trusted_signing_configmap_key and not trusted_signing_secret_key:
+            return None
+
+        # Ensure mutual exclusivity
+        if trusted_signing_configmap_key and trusted_signing_secret_key:
+            raise MutuallyExclusiveArgumentError(
+                "Cannot specify both config map and secret key for trusted signing key settings."
+                "Choose one trusted signing key type."
+            )
+
+        if trusted_signing_configmap_key:
+            return {
+                "trustedSigningKeys": {
+                    "configMapRef": trusted_signing_configmap_key,
+                    "type": TrustedSigningKeyType.CONFIGMAP.value
+                }
+            }
+        elif trusted_signing_secret_key:
+            return {
+                "trustedSigningKeys": {
+                    "secretRef": trusted_signing_secret_key,
+                    "type": TrustedSigningKeyType.SECRET.value
+                }
+            }
+
     def add(
         self,
         instance_name: str,
@@ -148,6 +186,8 @@ class RegistryEndpoints(Queryable):
         client_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
         scope: Optional[str] = None,
+        trusted_signing_configmap_key: Optional[str] = None,
+        trusted_signing_secret_key: Optional[str] = None,
         **kwargs,
     ) -> dict:
         """
@@ -176,16 +216,28 @@ class RegistryEndpoints(Queryable):
             scope=scope,
         )
 
+        # Process trusted signing key configuration
+        trust_settings = self._process_trusted_signing_key(
+            trusted_signing_configmap_key=trusted_signing_configmap_key,
+            trusted_signing_secret_key=trusted_signing_secret_key,
+        )
+
         # Build the resource configuration
+        properties = {
+            "host": host,
+            "authentication": auth_config,
+        }
+        
+        # Add trust settings if provided
+        if trust_settings:
+            properties["trustSettings"] = trust_settings
+
         resource = {
             "extendedLocation": self.instances.get_ext_loc(
                 name=instance_name,
                 resource_group_name=resource_group_name,
             ),
-            "properties": {
-                "host": host,
-                "authentication": auth_config,
-            },
+            "properties": properties,
         }
 
         with console.status("Working..."):
@@ -197,7 +249,6 @@ class RegistryEndpoints(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
-    # TODO - support for trusted_signing_key / configmap property
     def update(
         self,
         instance_name: str,
@@ -210,6 +261,8 @@ class RegistryEndpoints(Queryable):
         client_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
         scope: Optional[str] = None,
+        trusted_signing_configmap_key: Optional[str] = None,
+        trusted_signing_secret_key: Optional[str] = None,
         **kwargs,
     ) -> dict:
         """
@@ -249,6 +302,15 @@ class RegistryEndpoints(Queryable):
                 scope=scope,
             )
             existing_endpoint["properties"]["authentication"] = auth_config
+
+        # Process trusted signing key configuration
+        if any([trusted_signing_configmap_key, trusted_signing_secret_key]):
+            trusted_signing_config = self._process_trusted_signing_key(
+                trusted_signing_configmap_key=trusted_signing_configmap_key,
+                trusted_signing_secret_key=trusted_signing_secret_key,
+            )
+            if trusted_signing_config:
+                existing_endpoint["properties"]["trustSettings"] = trusted_signing_config
 
         with console.status("Working..."):
             poller = self.registry_endpoints.begin_create_or_update(

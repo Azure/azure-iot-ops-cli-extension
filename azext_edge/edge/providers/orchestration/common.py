@@ -367,7 +367,7 @@ class RegistryEndpointAuthenticationType(Enum):
 
 class TrustedSigningKeyType(Enum):
     CONFIGMAP = "ConfigMap"
-    # TODO - Secret?
+    SECRET = "Secret"
 
 
 # Registry Endpoint Authentication Configuration
