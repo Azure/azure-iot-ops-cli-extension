@@ -26,10 +26,7 @@ def registry_endpoint_test_setup(settings):
             f"Current settings:\n {settings}"
         )
 
-    yield {
-        "resourceGroup": settings.env.azext_edge_rg,
-        "instanceName": settings.env.azext_edge_instance
-    }
+    yield {"resourceGroup": settings.env.azext_edge_rg, "instanceName": settings.env.azext_edge_instance}
 
 
 def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tracked_resources):
@@ -47,14 +44,14 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
             f"--host {host}"
         )
         tracked_resources.append(registry_endpoint["id"])
-        
+
         assert_registry_endpoint(
             endpoint=registry_endpoint,
             name=registry_endpoint_name,
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="Anonymous"
+            auth_method="Anonymous",
         )
 
         # SHOW
@@ -68,13 +65,12 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="Anonymous"
+            auth_method="Anonymous",
         )
 
         # LIST - check our endpoint is in the list
         list_endpoints = run(
-            f"az iot ops dataflow graph registry list "
-            f"-g {resource_group} --instance {instance_name}"
+            f"az iot ops dataflow graph registry list " f"-g {resource_group} --instance {instance_name}"
         )
         endpoint_names = [ep["name"] for ep in list_endpoints]
         assert registry_endpoint_name in endpoint_names
@@ -92,7 +88,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
             resource_group=resource_group,
             instance_name=instance_name,
             host=new_host,
-            auth_method="Anonymous"
+            auth_method="Anonymous",
         )
 
         # REMOVE
@@ -104,8 +100,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
 
         # Verify removal - endpoint should not be in list
         list_endpoints_after = run(
-            f"az iot ops dataflow graph registry list "
-            f"-g {resource_group} --instance {instance_name}"
+            f"az iot ops dataflow graph registry list " f"-g {resource_group} --instance {instance_name}"
         )
         endpoint_names_after = [ep["name"] for ep in list_endpoints_after]
         assert registry_endpoint_name not in endpoint_names_after
@@ -140,14 +135,14 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
             f"--host {host} --secret-ref {secret_ref}"
         )
         tracked_resources.append(registry_endpoint["id"])
-        
+
         assert_registry_endpoint(
             endpoint=registry_endpoint,
             name=registry_endpoint_name,
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="ArtifactPullSecret"
+            auth_method="ArtifactPullSecret",
         )
 
         # SHOW
@@ -161,7 +156,7 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="ArtifactPullSecret"
+            auth_method="ArtifactPullSecret",
         )
 
         # REMOVE
@@ -201,14 +196,14 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
             f"--host {host} --auth-type SystemAssignedManagedIdentity --audience {audience}"
         )
         tracked_resources.append(registry_endpoint["id"])
-        
+
         assert_registry_endpoint(
             endpoint=registry_endpoint,
             name=registry_endpoint_name,
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="SystemAssignedManagedIdentity"
+            auth_method="SystemAssignedManagedIdentity",
         )
 
         # SHOW
@@ -222,7 +217,7 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="SystemAssignedManagedIdentity"
+            auth_method="SystemAssignedManagedIdentity",
         )
 
         # REMOVE
@@ -265,14 +260,14 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
             f"--client-id {client_id} --tenant-id {tenant_id} --scope {scope}"
         )
         tracked_resources.append(registry_endpoint["id"])
-        
+
         assert_registry_endpoint(
             endpoint=registry_endpoint,
             name=registry_endpoint_name,
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="UserAssignedManagedIdentity"
+            auth_method="UserAssignedManagedIdentity",
         )
 
         # SHOW
@@ -286,7 +281,7 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="UserAssignedManagedIdentity"
+            auth_method="UserAssignedManagedIdentity",
         )
 
         # REMOVE
@@ -316,10 +311,7 @@ def test_registry_endpoint_list_empty(registry_endpoint_test_setup):
     instance_name = registry_endpoint_test_setup["instanceName"]
 
     # LIST - should work even if no endpoints exist
-    list_endpoints = run(
-        f"az iot ops dataflow graph registry list "
-        f"-g {resource_group} --instance {instance_name}"
-    )
+    list_endpoints = run(f"az iot ops dataflow graph registry list " f"-g {resource_group} --instance {instance_name}")
     # Should return empty list or list that doesn't contain our test endpoints
     assert isinstance(list_endpoints, list)
 
@@ -342,7 +334,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
     """Test automatic authentication method detection based on provided parameters."""
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
-    
+
     endpoints_to_cleanup = []
 
     try:
@@ -360,7 +352,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             resource_group=resource_group,
             instance_name=instance_name,
             host="registry1.azurecr.io",
-            auth_method="ArtifactPullSecret"
+            auth_method="ArtifactPullSecret",
         )
 
         # Auto-detect SystemAssigned (audience provided)
@@ -377,7 +369,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             resource_group=resource_group,
             instance_name=instance_name,
             host="registry2.azurecr.io",
-            auth_method="SystemAssignedManagedIdentity"
+            auth_method="SystemAssignedManagedIdentity",
         )
 
         # Auto-detect UserAssigned (client-id and tenant-id provided)
@@ -394,7 +386,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             resource_group=resource_group,
             instance_name=instance_name,
             host="registry3.azurecr.io",
-            auth_method="UserAssignedManagedIdentity"
+            auth_method="UserAssignedManagedIdentity",
         )
 
         # Auto-detect Anonymous (no auth parameters provided)
@@ -411,7 +403,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             resource_group=resource_group,
             instance_name=instance_name,
             host="registry4.azurecr.io",
-            auth_method="Anonymous"
+            auth_method="Anonymous",
         )
 
         # Cleanup all endpoints
@@ -440,16 +432,16 @@ def assert_registry_endpoint(endpoint: dict, **expected):
     """Assert that a registry endpoint matches expected values."""
     assert endpoint["name"] == expected["name"]
     assert endpoint["resourceGroup"] == expected["resource_group"]
-    
+
     # Check the endpoint is under the correct instance
     assert f"/instances/{expected['instance_name']}/registryEndpoints/{expected['name']}" in endpoint["id"]
-    
+
     endpoint_props = endpoint["properties"]
     assert endpoint_props["host"] == expected["host"]
-    
+
     # Check authentication method
     auth = endpoint_props.get("authentication", {})
     assert auth.get("method") == expected["auth_method"]
-    
+
     # Check provisioning state
     assert endpoint_props.get("provisioningState") in ["Succeeded", "InProgress"]
