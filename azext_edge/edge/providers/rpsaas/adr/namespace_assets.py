@@ -7,7 +7,7 @@
 from copy import deepcopy
 import json
 from rich.console import Console
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 from knack.log import get_logger
 
 from azure.cli.core.azclierror import (
@@ -19,7 +19,9 @@ from azure.cli.core.azclierror import (
 from ....util.common import parse_kvp_nargs, should_continue_prompt
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.queryable import Queryable
-from .helpers import process_additional_configuration, ensure_schema_structure, get_default_dataset
+from .helpers import (
+    process_additional_configuration, ensure_schema_structure, get_default_dataset, NamespaceResource
+)
 from .namespace_devices import DeviceEndpointType
 
 if TYPE_CHECKING:
@@ -50,8 +52,8 @@ class NamespaceAssets(Queryable):
     def create(  # noqa: C901
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         asset_type: str,
         device_name: str,
         device_endpoint_name: str,
@@ -80,9 +82,9 @@ class NamespaceAssets(Queryable):
         # TODO: future, Add in options to import from files for datasets, events, streams, and mgmt groups
 
         # use the device to get the location, extended location, and check type and endpoint
-        device = self._check_device_props(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
+        device, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
             asset_type=asset_type,
             device_name=device_name,
             device_endpoint_name=device_endpoint_name
@@ -133,9 +135,9 @@ class NamespaceAssets(Queryable):
 
         with console.status(f"Creating asset {asset_name}..."):
             poller = self.ops.begin_create_or_replace(
-                resource_group_name,
-                namespace_name,
-                asset_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
                 resource=asset_body
             )
             return wait_for_terminal_state(poller, **kwargs)
@@ -143,18 +145,26 @@ class NamespaceAssets(Queryable):
     def delete(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         confirm_yes: bool = False,
         **kwargs
     ):
         # should bail prompt
         if not should_continue_prompt(confirm_yes):
             return
+
+        from .helpers import get_namespace_for_instance
+        namespace = get_namespace_for_instance(
+            cmd=self.cmd,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
+        )
+
         with console.status(f"Deleting asset {asset_name}..."):
             poller = self.ops.begin_delete(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 asset_name=asset_name
             )
             return wait_for_terminal_state(poller, **kwargs)
@@ -162,14 +172,24 @@ class NamespaceAssets(Queryable):
     def show(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        resource_group: str,
+        namespace_name: Optional[str] = None,
+        instance_name: Optional[str] = None,
         check_cluster: bool = False
     ) -> dict:
+        if not namespace_name:
+            # assume resource group is instance resource group
+            from .helpers import get_namespace_for_instance
+            namespace = get_namespace_for_instance(
+                cmd=self.cmd,
+                instance_name=instance_name,
+                instance_resource_group=resource_group
+            )
+            namespace_name = namespace.name
+            resource_group = namespace.resource_group
+
         asset = self.ops.get(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
-            asset_name=asset_name
+            resource_group_name=resource_group, namespace_name=namespace_name, asset_name=asset_name
         )
         if check_cluster:
             from .helpers import check_cluster_connectivity
@@ -182,7 +202,7 @@ class NamespaceAssets(Queryable):
         self,
         asset_name: Optional[str] = None,
         custom_query: Optional[str] = None,
-        resource_group_name: Optional[str] = None,
+        resource_group_name: Optional[str] = None,  # TODO remove this to avoid confusion with instance resource group
         device_name: Optional[str] = None,
         device_endpoint_name: Optional[str] = None,
     ) -> dict:
@@ -228,8 +248,8 @@ class NamespaceAssets(Queryable):
     def update(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         asset_type: str,
         asset_type_refs: Optional[List[str]] = None,
         attributes: Optional[List[str]] = None,
@@ -250,12 +270,14 @@ class NamespaceAssets(Queryable):
         **kwargs
     ) -> dict:
         # need original asset default configurations to update
-        asset_properties = self._check_device_props(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
             asset_type=asset_type,
             asset_name=asset_name
-        )["properties"]
+        )
+        asset_properties = asset["properties"]
+        print("asset", namespace.name, namespace.resource_group)
 
         # update payload
         update_payload = {}
@@ -306,10 +328,10 @@ class NamespaceAssets(Queryable):
 
         with console.status(f"Updating asset {asset_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name,
-                namespace_name,
-                asset_name,
-                update_payload
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
+                properties=update_payload
             )
             return wait_for_terminal_state(poller, **kwargs)
 
@@ -317,8 +339,8 @@ class NamespaceAssets(Queryable):
     def add_dataset(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         asset_type: str,
         dataset_name: str,
         dataset_data_source: str,
@@ -333,9 +355,9 @@ class NamespaceAssets(Queryable):
                 "Currently only one dataset with the name 'default' is supported. "
                 "Please use 'default' as the dataset name."
             )
-        asset = self._check_device_props(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
             asset_type=asset_type,
             asset_name=asset_name
         )
@@ -373,46 +395,46 @@ class NamespaceAssets(Queryable):
         }
         with console.status(f"Adding dataset {dataset_name} to asset {asset_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 asset_name=asset_name,
                 properties=update_payload
             )
             datasets = wait_for_terminal_state(poller, **kwargs)["properties"]["datasets"]
             return next(dset for dset in datasets if dset["name"] == dataset_name)
 
-    def list_datasets(self, asset_name: str, namespace_name: str, resource_group_name: str) -> List[dict]:
+    def list_datasets(self, asset_name: str, instance_name: str, instance_resource_group: str) -> List[dict]:
         asset = self.show(
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            instance_name=instance_name,
+            resource_group=instance_resource_group
         )
         return asset["properties"].get("datasets", [])
 
     def show_dataset(
-        self, asset_name: str, namespace_name: str, resource_group_name: str, dataset_name: str
+        self, asset_name: str, instance_name: str, instance_resource_group: str, dataset_name: str
     ) -> dict:
         asset = self.show(
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            instance_name=instance_name,
+            resource_group=instance_resource_group
         )
         return get_default_dataset(asset, dataset_name)
 
     def update_dataset(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         asset_type: str,
         dataset_name: str,
         dataset_data_source: Optional[str] = None,
         dataset_type_ref: Optional[str] = None,
         **kwargs
     ):
-        asset = self._check_device_props(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
             asset_type=asset_type,
             asset_name=asset_name
         )
@@ -451,8 +473,8 @@ class NamespaceAssets(Queryable):
         }
         with console.status(f"Updating dataset {dataset_name} to asset {asset_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 asset_name=asset_name,
                 properties=update_payload
             )
@@ -460,14 +482,16 @@ class NamespaceAssets(Queryable):
             return next(dset for dset in datasets if dset["name"] == dataset_name)
 
     def remove_dataset(
-        self, asset_name: str, namespace_name: str, resource_group_name: str, dataset_name: str, **kwargs
+        self, asset_name: str, instance_name: str, instance_resource_group: str, dataset_name: str, **kwargs
     ) -> dict:
+        from .helpers import NamespaceResource
         asset = self.show(
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
             check_cluster=True
         )
+        namespace = NamespaceResource(asset["id"])
 
         datasets = asset["properties"].get("datasets", [])
         # note that delete should be ok with dataset not there
@@ -484,8 +508,8 @@ class NamespaceAssets(Queryable):
         }
         with console.status(f"Removing dataset {dataset_name} from asset {asset_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 asset_name=asset_name,
                 properties=update_payload
             )
@@ -494,8 +518,8 @@ class NamespaceAssets(Queryable):
     def add_dataset_datapoint(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         asset_type: str,
         dataset_name: str,
         datapoint_name: str,
@@ -509,9 +533,9 @@ class NamespaceAssets(Queryable):
         **kwargs
     ) -> List[dict]:
         # note that for now, we will not expose typeref for dataset datapoints
-        asset = self._check_device_props(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
             asset_type=asset_type,
             asset_name=asset_name
         )
@@ -545,39 +569,41 @@ class NamespaceAssets(Queryable):
 
         with console.status(f"Updating asset {asset_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name,
-                namespace_name,
-                asset_name,
-                update_payload
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
+                properties=update_payload
             )
             asset = wait_for_terminal_state(poller, **kwargs)
             return get_default_dataset(asset, dataset_name)["dataPoints"]
 
     def list_dataset_datapoints(
-        self, asset_name: str, namespace_name: str, resource_group_name: str, dataset_name: str
+        self, asset_name: str, instance_name: str, instance_resource_group: str, dataset_name: str
     ) -> List[dict]:
         asset = self.show(
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            instance_name=instance_name,
+            resource_group=instance_resource_group
         )
         return get_default_dataset(asset, dataset_name)["dataPoints"]
 
     def remove_dataset_datapoint(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         dataset_name: str,
         datapoint_name: str,
         **kwargs
     ) -> dict:
+        from .helpers import NamespaceResource
         asset = self.show(
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
             check_cluster=True
         )
+        namespace = NamespaceResource(asset["id"])
 
         dataset = get_default_dataset(asset, dataset_name)
         datapoints = dataset.get("dataPoints", [])
@@ -599,8 +625,8 @@ class NamespaceAssets(Queryable):
             f"Removing datapoint {datapoint_name} from dataset {dataset_name} in asset {asset_name}..."
         ):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 asset_name=asset_name,
                 properties=update_payload
             )
@@ -611,8 +637,8 @@ class NamespaceAssets(Queryable):
     def add_event(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         asset_type: str,
         event_name: str,
         event_notifier: str,
@@ -620,9 +646,9 @@ class NamespaceAssets(Queryable):
         # TODO: future pr, add datapoints
         **kwargs
     ) -> dict:
-        asset = self._check_device_props(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
             asset_type=asset_type,
             asset_name=asset_name
         )
@@ -658,41 +684,43 @@ class NamespaceAssets(Queryable):
         }
         with console.status(f"Adding event {event_name} to asset {asset_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 asset_name=asset_name,
                 properties=update_payload
             )
             events = wait_for_terminal_state(poller, **kwargs)["properties"]["events"]
             return next(event for event in events if event["name"] == event_name)
 
-    def list_events(self, asset_name: str, namespace_name: str, resource_group_name: str) -> List[dict]:
+    def list_events(self, asset_name: str, instance_name: str, instance_resource_group: str) -> List[dict]:
         asset = self.show(
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            instance_name=instance_name,
+            resource_group=instance_resource_group
         )
         return asset["properties"].get("events", [])
 
     def show_event(
-        self, asset_name: str, namespace_name: str, resource_group_name: str, event_name: str
+        self, asset_name: str, instance_name: str, instance_resource_group: str, event_name: str
     ) -> dict:
         asset = self.show(
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            instance_name=instance_name,
+            resource_group=instance_resource_group
         )
         return _get_event(asset, event_name)
 
     def remove_event(
-        self, asset_name: str, namespace_name: str, resource_group_name: str, event_name: str, **kwargs
+        self, asset_name: str, instance_name: str, instance_resource_group: str, event_name: str, **kwargs
     ) -> dict:
+        from .helpers import NamespaceResource
         asset = self.show(
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
             check_cluster=True
         )
+        namespace = NamespaceResource(asset["id"])
 
         events = asset["properties"].get("events", [])
         # note that delete should be ok with event not there
@@ -710,8 +738,8 @@ class NamespaceAssets(Queryable):
         }
         with console.status(f"Removing event {event_name} from asset {asset_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 asset_name=asset_name,
                 properties=update_payload
             )
@@ -720,17 +748,17 @@ class NamespaceAssets(Queryable):
     def update_event(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         asset_type: str,
         event_name: str,
         event_notifier: Optional[str] = None,
         type_ref: Optional[str] = None,
         **kwargs
     ):
-        asset = self._check_device_props(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
             asset_type=asset_type,
             asset_name=asset_name
         )
@@ -764,8 +792,8 @@ class NamespaceAssets(Queryable):
         }
         with console.status(f"Updating event {event_name} in asset {asset_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 asset_name=asset_name,
                 properties=update_payload
             )
@@ -776,8 +804,8 @@ class NamespaceAssets(Queryable):
     def add_event_datapoint(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         asset_type: str,
         event_name: str,
         datapoint_name: str,
@@ -790,10 +818,9 @@ class NamespaceAssets(Queryable):
         replace: bool = False,
         **kwargs
     ) -> dict:
-        # note that event datapoints do not have type-refs
-        asset = self._check_device_props(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
             asset_type=asset_type,
             asset_name=asset_name
         )
@@ -830,8 +857,8 @@ class NamespaceAssets(Queryable):
         }
         with console.status(f"Adding datapoint {datapoint_name} to event {event_name} in asset {asset_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 asset_name=asset_name,
                 properties=update_payload
             )
@@ -840,12 +867,12 @@ class NamespaceAssets(Queryable):
             return next(event for event in events if event["name"] == event_name)["dataPoints"]
 
     def list_event_datapoints(
-        self, asset_name: str, namespace_name: str, resource_group_name: str, event_name: str
+        self, asset_name: str, instance_name: str, instance_resource_group: str, event_name: str
     ):
         event = self.show_event(
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
             event_name=event_name
         )
         return event.get("dataPoints", [])
@@ -853,19 +880,20 @@ class NamespaceAssets(Queryable):
     def remove_event_datapoint(
         self,
         asset_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         event_name: str,
         datapoint_name: str,
         **kwargs
     ):
+        from .helpers import NamespaceResource
         asset = self.show(
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
             check_cluster=True
         )
-
+        namespace = NamespaceResource(asset["id"])
         event = _get_event(asset, event_name)
         datapoints = event.get("dataPoints", [])
         # note that delete should be ok with datapoint not there
@@ -888,8 +916,8 @@ class NamespaceAssets(Queryable):
             f"Removing datapoint {datapoint_name} from event {event_name} in asset {asset_name}..."
         ):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 asset_name=asset_name,
                 properties=update_payload
             )
@@ -901,16 +929,16 @@ class NamespaceAssets(Queryable):
     # STREAMS - allowed for media and custom assets
     # Management Groups - allowed for opcua, onvif, and custom assets
 
-    # TODO: update unit tests to have asset types as list
+    # TODO: update unit tests
     def _check_device_props(
         self,
-        resource_group_name: str,
-        namespace_name: str,
+        instance_resource_group: str,
+        instance_name: str,
         asset_type: Union[List[str], str],  # change to list
         asset_name: Optional[str] = None,
         device_name: Optional[str] = None,
         device_endpoint_name: Optional[str] = None
-    ) -> dict:
+    ) -> Tuple[dict, NamespaceResource]:
         """
         Checks the device properties to ensure the endpoint type matches the asset operation's type.
         Returns the asset if the asset name is provided, otherwise the device
@@ -921,22 +949,30 @@ class NamespaceAssets(Queryable):
         If asset_name is provided (in the case of the asset is already created), it will retrieve the
         asset to populate the device_name and device_endpoint_name.
         """
-        from azext_edge.edge.providers.rpsaas.adr.helpers import check_cluster_connectivity
+        from .helpers import check_cluster_connectivity, get_namespace_for_instance
 
         asset = None
+        namespace = None
         if asset_name:
             # get the asset to populate the device name and endpoint name
             asset = self.show(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group=instance_resource_group,
+                instance_name=instance_name,
                 asset_name=asset_name
             )
             device_name = asset["properties"]["deviceRef"]["deviceName"]
             device_endpoint_name = asset["properties"]["deviceRef"]["endpointName"]
+            namespace = NamespaceResource(asset["id"])
+        else:
+            namespace = get_namespace_for_instance(
+                cmd=self.cmd,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group
+            )
 
         device = self.device_ops.get(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
+            resource_group_name=namespace.resource_group,
+            namespace_name=namespace.name,
             device_name=device_name
         )
 
@@ -971,7 +1007,7 @@ class NamespaceAssets(Queryable):
                 f"but expected '{' or '.join(asset_type)}'."
             )
 
-        return asset if asset_name else device
+        return (asset if asset_name else device, namespace)
 
 
 # Helpers

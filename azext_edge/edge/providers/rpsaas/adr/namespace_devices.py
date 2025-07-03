@@ -144,9 +144,14 @@ class NamespaceDevices(Queryable):
         instance_name: Optional[str] = None,
         check_cluster: bool = False
     ) -> dict:
-        # resource group is either the namespace resource group or the instance resource group
-        # it depends on which param is provided
+        """
+        Shows the details of a device in a namespace.
+        One of the `namespace_name` or `instance_name` must be provided.
 
+        Resource group can be either the namespace resource group or the instance resource group.
+        The expected behavior is that if `namespace_name` is provided, the resource group
+        is the namespace resource group, and if `instance_name` is provided, the resource group
+        is the instance resource group."""
         if not namespace_name:
             # assume resource group is instance resource group
             from .helpers import get_namespace_for_instance
@@ -171,7 +176,7 @@ class NamespaceDevices(Queryable):
         self,
         device_name: Optional[str] = None,
         custom_query: Optional[str] = None,
-        resource_group_name: Optional[str] = None,
+        resource_group_name: Optional[str] = None,  # TODO remove this to avoid confusion with instance resource group
         manufacturer: Optional[str] = None,
         model: Optional[str] = None,
         operating_system: Optional[str] = None,
@@ -210,6 +215,7 @@ class NamespaceDevices(Queryable):
                 "| extend manufacturer = properties.manufacturer "
                 "| extend model = properties.model "
                 "| extend operatingSystem = properties.operatingSystem "
+                # TODO: I can prob remove the project
                 "| project id, customLocation, location, name, resourceGroup, provisioningState, "
                 "enabled, manufacturer, model, operatingSystem, tags, type, subscriptionId"
             )
@@ -372,14 +378,14 @@ class NamespaceDevices(Queryable):
         if not should_continue_prompt(confirm_yes):
             return
 
+        from .helpers import NamespaceResource
         # get the original inbound endpoints
         device = self.show(
             device_name=device_name,
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        resource_group = device["id"].split("/")[4]
-        namespace_name = device["id"].rsplit("/", 3)[-3]
+        namespace = NamespaceResource(device["id"])
         original_endpoints = device["properties"].get("endpoints", {}).get("inbound", {})
         # remove the endpoints from the endpoint list by key
         remaining_endpoints = {
@@ -398,16 +404,16 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Updating inbound endpoints for {device_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 device_name=device_name,
                 properties=update_payload
             )
             wait_for_terminal_state(poller, **kwargs)
             result = self.show(
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group=resource_group
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group
             )
             return result["properties"].get("endpoints", {}).get("inbound", {})
 

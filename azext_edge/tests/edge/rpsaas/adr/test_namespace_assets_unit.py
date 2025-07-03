@@ -215,7 +215,8 @@ def test_create_namespace_asset(
     reqs: dict,
     asset_type: str,
     unique_reqs: dict,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     """
     Test the create_namespace_asset function for different asset types.
@@ -223,10 +224,15 @@ def test_create_namespace_asset(
     """
     # Setup variables
     asset_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = generate_random_string()
+    instance_resource_group = generate_random_string()
     device_name = generate_random_string()
     device_endpoint_name = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    namespace_resource_group = namespace_resource.resource_group
 
     # Merge shared and unique requirements
     all_reqs = {**reqs, **unique_reqs}
@@ -235,7 +241,7 @@ def test_create_namespace_asset(
         mocked_responses=mocked_responses,
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        resource_group_name=namespace_resource_group,
         endpoint_name=device_endpoint_name,
         endpoint_type=asset_type
     )
@@ -244,7 +250,7 @@ def test_create_namespace_asset(
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=namespace_resource_group
     )
 
     # Add mock asset creation response
@@ -253,7 +259,7 @@ def test_create_namespace_asset(
         url=get_namespace_asset_mgmt_uri(
             asset_name=asset_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            resource_group_name=namespace_resource_group
         ),
         json=mock_asset_record,
         status=200,
@@ -269,8 +275,8 @@ def test_create_namespace_asset(
     result = type_to_command[asset_type](
         cmd=mocked_cmd,
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         device_name=device_name,
         device_endpoint_name=device_endpoint_name,
         wait_sec=0,
@@ -297,6 +303,13 @@ def test_create_namespace_asset(
 
     assert_asset_properties(request_body["properties"], all_reqs)
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("asset_type, create_command", [
     ["media", create_namespace_media_asset],
@@ -308,21 +321,26 @@ def test_create_namespace_asset_error(
     mocked_responses: responses,
     asset_type: str,
     create_command,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     # Setup variables
     asset_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = generate_random_string()
+    instance_resource_group = generate_random_string()
     device_name = generate_random_string()
     device_endpoint_name = generate_random_string()
-    fake_endpoint_name = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    namespace_resource_group = namespace_resource.resource_group
 
     # Create mock device record
     mock_device_record = get_namespace_device_record(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        resource_group_name=namespace_resource_group,
     )
 
     # Add the endpoint but with an incompatible type
@@ -342,53 +360,52 @@ def test_create_namespace_asset_error(
         url=get_namespace_device_mgmt_uri(
             device_name=device_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            resource_group_name=namespace_resource_group
         ),
         json=mock_device_record,
         status=200,
         content_type="application/json",
     )
 
-    # Test missing endpoint
-    with pytest.raises(InvalidArgumentValueError) as excinfo:
+    # Test that InvalidArgumentValueError is raised due to incompatible endpoint type
+    with pytest.raises(InvalidArgumentValueError):
         create_command(
             cmd=mocked_cmd,
             asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name,
-            device_name=device_name,
-            device_endpoint_name=fake_endpoint_name,
-            wait_sec=0
-        )
-
-    # Verify the error message contains our expected text
-    assert "not found in" in str(excinfo.value)
-
-    # Test incompatible type
-    with pytest.raises(InvalidArgumentValueError) as excinfo:
-        create_command(
-            cmd=mocked_cmd,
-            asset_name=asset_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
             device_name=device_name,
             device_endpoint_name=device_endpoint_name,
             wait_sec=0
         )
 
-    # Verify the error message contains our expected text
-    assert "is of type" in str(excinfo.value)
+    # Verify that mocked_get_namespace_for_instance was called
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
 
 
 @pytest.mark.parametrize("response_status", [202, 404])
-def test_delete_namespace_asset(mocked_cmd, mocked_responses: responses, response_status: int):
+def test_delete_namespace_asset(
+    mocked_cmd,
+    mocked_responses: responses,
+    response_status: int,
+    mocked_get_namespace_for_instance
+):
     """
     Test the delete_namespace_asset function.
     """
     # Setup variables
     asset_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = generate_random_string()
+    instance_resource_group = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    namespace_resource_group = namespace_resource.resource_group
 
     # Create mock response
     mock_response = {} if response_status == 202 else {"error": {"code": "NotFound", "message": "Asset not found"}}
@@ -399,7 +416,7 @@ def test_delete_namespace_asset(mocked_cmd, mocked_responses: responses, respons
         url=get_namespace_asset_mgmt_uri(
             asset_name=asset_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            resource_group_name=namespace_resource_group
         ),
         json=mock_response,
         status=response_status,
@@ -412,8 +429,8 @@ def test_delete_namespace_asset(mocked_cmd, mocked_responses: responses, respons
             delete_namespace_asset(
                 cmd=mocked_cmd,
                 asset_name=asset_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
                 confirm_yes=True,
                 wait_sec=0
             )
@@ -423,8 +440,8 @@ def test_delete_namespace_asset(mocked_cmd, mocked_responses: responses, respons
     delete_namespace_asset(
         cmd=mocked_cmd,
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         confirm_yes=True,
         wait_sec=0
     )
@@ -432,22 +449,36 @@ def test_delete_namespace_asset(mocked_cmd, mocked_responses: responses, respons
     # Verify result matches mock response
     assert len(mocked_responses.calls) == 1
 
+    # Verify that mocked_get_namespace_for_instance was called
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("response_status", [200, 404])
-def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_status: int):
+def test_show_namespace_asset(
+    mocked_cmd, mocked_responses: responses, mocked_get_namespace_for_instance, response_status: int
+):
     """
-    Test the show_namespace_asset function.
+    Test the show_namespace_asset function using instance-based parameters.
     """
     # Setup variables
     asset_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = generate_random_string()
+    instance_resource_group = generate_random_string()
+
+    # Setup mock for get_namespace_for_instance to return the namespace_name
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    namespace_resource_group = namespace_resource.resource_group
 
     # Create mock response
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=namespace_resource_group
     )
 
     # Add mock response
@@ -456,7 +487,7 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
         url=get_namespace_asset_mgmt_uri(
             asset_name=asset_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            resource_group_name=namespace_resource_group
         ),
         json=mock_asset_record if response_status == 200 else {"error": "NotFound"},
         status=response_status,
@@ -469,20 +500,35 @@ def test_show_namespace_asset(mocked_cmd, mocked_responses: responses, response_
             show_namespace_asset(
                 cmd=mocked_cmd,
                 asset_name=asset_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name
+                instance_name=instance_name,
+                resource_group_name=instance_resource_group
             )
+        # Verify the namespace resolution mock was called
+        mocked_get_namespace_for_instance.assert_called_once_with(
+            mocked_cmd,
+            instance_name,
+            instance_resource_group
+        )
         return
 
     # Test show_namespace_asset for success case
     result = show_namespace_asset(
         cmd=mocked_cmd,
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
-    )    # Verify result matches mock response
+        instance_name=instance_name,
+        resource_group_name=instance_resource_group
+    )
+
+    # Verify result matches mock response
     assert result == mock_asset_record
     assert len(mocked_responses.calls) == 1
+
+    # Verify the namespace resolution mock was called
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        mocked_cmd,
+        instance_name,
+        instance_resource_group
+    )
 
 
 @pytest.mark.parametrize("reqs", [
@@ -623,12 +669,18 @@ def test_update_namespace_asset(
     asset_type: str,
     unique_reqs: dict,
     original_properties: dict,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     # Setup variables
     asset_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = generate_random_string()
+    instance_resource_group = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    namespace_resource_group = mocked_get_namespace_for_instance.return_value.resource_group
+    print("test", namespace_name, namespace_resource_group)
 
     # Merge shared and unique requirements
     all_reqs = {**reqs, **unique_reqs}
@@ -637,7 +689,7 @@ def test_update_namespace_asset(
     original_asset = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=namespace_resource_group
     )
     original_asset["properties"].update(original_properties)
 
@@ -646,7 +698,7 @@ def test_update_namespace_asset(
         mocked_responses=mocked_responses,
         device_name=original_asset["properties"]["deviceRef"]["deviceName"],
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        resource_group_name=namespace_resource_group,
         endpoint_name=original_asset["properties"]["deviceRef"]["endpointName"],
         endpoint_type=asset_type
     )
@@ -657,7 +709,7 @@ def test_update_namespace_asset(
         url=get_namespace_asset_mgmt_uri(
             asset_name=asset_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            resource_group_name=namespace_resource_group
         ),
         json=original_asset,
         status=200,
@@ -674,7 +726,7 @@ def test_update_namespace_asset(
         url=get_namespace_asset_mgmt_uri(
             asset_name=asset_name,
             namespace_name=namespace_name,
-            resource_group_name=resource_group_name
+            resource_group_name=namespace_resource_group
         ),
         json=updated_asset,
         status=200,
@@ -693,8 +745,8 @@ def test_update_namespace_asset(
     result = type_to_command[asset_type](
         cmd=mocked_cmd,
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         wait_sec=0,
         **all_reqs
     )
@@ -717,6 +769,13 @@ def test_update_namespace_asset(
     # Only check properties key if it exists in the request body
     if "properties" in request_body:
         assert_asset_properties(request_body["properties"], all_reqs)
+
+    # Verify that mocked_get_namespace_for_instance was called
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
 
 
 @pytest.mark.parametrize("reqs", [

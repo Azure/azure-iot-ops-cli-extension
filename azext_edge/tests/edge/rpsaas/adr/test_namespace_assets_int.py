@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from typing import List
 from azext_edge.edge.util.common import parse_kvp_nargs
 
@@ -12,137 +13,136 @@ from ....helpers import run
 
 
 def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: List[str]):
-    # TODO: remove when service is ready
-    location = "eastus2euap"
-
     # Setup test variables
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     custom_location = require_init["customLocationId"]
-    namespace_name = f"ns-{generate_random_string(8)}"
-    device_name_1 = f"dev-{generate_random_string(8)}"
-    endpoint_name_onvif = f"onvif-{generate_random_string(8)}"
-    endpoint_name_opcua = f"opcua-{generate_random_string(8)}"
-    endpoint_name_media = f"media-{generate_random_string(8)}"
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    # endpoint_name_onvif = f"onvif-{generate_random_string(8)}"
+    # endpoint_name_opcua = f"opcua-{generate_random_string(8)}"
+    # endpoint_name_media = f"media-{generate_random_string(8)}"
     endpoint_name_custom = f"custom-{generate_random_string(8)}"
-    asset_name_onvif = f"onvif-{generate_random_string(8)}"
-    asset_name_opcua = f"opcua-{generate_random_string(8)}"
-    asset_name_media = f"media-{generate_random_string(8)}"
-    asset_name_custom = f"custom-{generate_random_string(8)}"
+    # asset_name_onvif = f"onvif-{generate_random_string(8, force_lower=True)}"
+    # asset_name_opcua = f"opcua-{generate_random_string(8, force_lower=True)}"
+    # asset_name_media = f"media-{generate_random_string(8, force_lower=True)}"
+    asset_name_custom = f"custom-{generate_random_string(8, force_lower=True)}"
 
     # Tags and attributes
     common_tags = {"env": "test", "purpose": "automation"}
     common_attrs = ["location=building1", "floor=3"]
 
-    # Create namespace
-    result = run(
-        f"az iot ops ns create -n {namespace_name} -g {resource_group} --mi-system-assigned"
-        f"--location {location}"
-    )
-    tracked_resources.append(result["id"])  # only track namespace - deletion of it should delete devices too
-
     # Create Device
     result = run(
-        f"az iot ops ns device create --name {device_name_1} --namespace {namespace_name} "
-        f"-g {resource_group} --instance {instance_name} --template-id dtmi:sample:device;1"
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
     )
+    tracked_resources.append(result["id"])
 
     # Create device endpoints
     for endpoint_name, endpoint_type in [
-        (endpoint_name_onvif, "onvif"),
-        (endpoint_name_opcua, "opcua"),
-        (endpoint_name_media, "media"),
+        # (endpoint_name_onvif, "onvif"),
+        # (endpoint_name_opcua, "opcua"),
+        # (endpoint_name_media, "media"),
         (endpoint_name_custom, "custom")
     ]:
-        run(
-            f"az iot ops ns device endpoint create --name {endpoint_name} --namespace {namespace_name} "
-            f"-g {resource_group} --instance {instance_name} --device {device_name_1} --type {endpoint_type}"
+        command = (
+            f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
+            f"--instance {instance_name} -g {resource_group} --device {device_name} "
+            f"--endpoint-address 'http://192.168.1.100:8000/onvif/device_service'"
         )
+        if endpoint_type == "custom":
+            command += " --endpoint-type custom"
+        run(command)
 
-    # 1. Create ONVIF asset with maximum inputs
-    asset_onvif = run(
-        f"az iot ops ns asset create onvif --name {asset_name_onvif} --namespace {namespace_name} "
-        f"-g {resource_group} --device {device_name_1} --endpoint-name {endpoint_name_onvif} "
-        f"--description 'ONVIF Camera' --display-name 'Entrance Camera' --model 'Camera-X1' "
-        f"--manufacturer 'SecurityCo' --serial-number 'CAM123456' "
-        f"--documentation-uri 'https://example.com/docs/camera' "
-        f"--external-asset-id 'EXT-CAM-01' --hardware-revision 'v1.2' "
-        f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
-    )
+    # TODO: maybe move the 1p asset creation/update to seperate test
+    # # 1. Create ONVIF asset with maximum inputs
+    # asset_onvif = run(
+    #     f"az iot ops ns asset onvif create --name {asset_name_onvif} --instance {instance_name} "
+    #     f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_onvif} "
+    #     f"--description \"ONVIF Camera\" --display-name \"Entrance Camera\" --model \"Camera-X1\" "
+    #     f"--manufacturer \"SecurityCo\" --serial-number \"CAM123456\" "
+    #     f"--documentation-uri \"https://example.com/docs/camera\" "
+    #     f"--external-asset-id \"EXT-CAM-01\" --hardware-revision \"v1.2\" "
+    #     f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
+    # )
+    # tracked_resources.append(asset_onvif["id"])
 
-    assert_asset_properties(
-        asset_onvif,
-        name=asset_name_onvif,
-        device=device_name_1,
-        endpoint=endpoint_name_onvif,
-        description="ONVIF Camera",
-        display_name="Entrance Camera",
-        custom_location=custom_location
-    )
+    # assert_asset_properties(
+    #     asset_onvif,
+    #     name=asset_name_onvif,
+    #     device=device_name,
+    #     endpoint=endpoint_name_onvif,
+    #     description="ONVIF Camera",
+    #     display_name="Entrance Camera",
+    #     custom_location=custom_location
+    # )
 
-    # 2. Create OPCUA asset with maximum inputs
-    asset_opcua = run(
-        f"az iot ops ns asset create opcua --name {asset_name_opcua} --namespace {namespace_name} "
-        f"-g {resource_group} --device {device_name_1} --endpoint-name {endpoint_name_opcua} "
-        f"--description 'OPC UA Sensor' --display-name 'Temperature Sensor' --model 'Sensor-T2000' "
-        f"--manufacturer 'Contoso' --serial-number 'OPCUA987654' "
-        f"--dataset-publish-interval 2000 --dataset-sampling-interval 1000 --dataset-queue-size 5 "
-        f"--dataset-key-frame-count 2 --dataset-start-instance 'ns=1;i=1234' "
-        f"--events-publish-interval 3000 --events-queue-size 10 --events-start-instance 'ns=1;i=5678' "
-        f"--events-filter-clause path='ns=1;i=1000' type='String' field='Temperature' "
-        f"--datasets-destinations topic='factory/data' qos=1 retain=true ttl=3600 "
-        f"--events-destinations topic='factory/events' qos=1 retain=false ttl=7200 "
-        f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
-    )
+    # # 2. Create OPCUA asset with maximum inputs
+    # asset_opcua = run(
+    #     f"az iot ops ns asset opcua create --name {asset_name_opcua} --instance {instance_name} "
+    #     f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_opcua} "
+    #     f"--description \"OPC UA Sensor\" --display-name \"Temperature Sensor\" --model \"Sensor-T2000\" "
+    #     f"--manufacturer \"Contoso\" --serial-number \"OPCUA987654\" "
+    #     f"--dataset-publish-int 2000 --dataset-sampling-int 1000 --dataset-queue-size 5 "
+    #     f"--dataset-key-frame-count 2 --dataset-start-inst \"ns=1;i=1234\" "
+    #     f"--event-publish-int 3000 --event-queue-size 10 --event-start-inst \"ns=1;i=5678\" "
+    #     f"--event-filter-clause path=\"ns=1;i=1000\" type=\"String\" field=\"Temperature\" "
+    #     f"--dataset-dest topic=\"factory/data\" qos=Qos1 retain=Keep ttl=3600 "
+    #     f"--event-dest topic=\"factory/events\" qos=Qos0 retain=Never ttl=7200 "
+    #     f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
+    # )
+    # tracked_resources.append(asset_opcua["id"])
 
-    assert_asset_properties(
-        asset_opcua,
-        name=asset_name_opcua,
-        device=device_name_1,
-        endpoint=endpoint_name_opcua,
-        description="OPC UA Sensor",
-        display_name="Temperature Sensor",
-        custom_location=custom_location
-    )
+    # assert_asset_properties(
+    #     asset_opcua,
+    #     name=asset_name_opcua,
+    #     device=device_name,
+    #     endpoint=endpoint_name_opcua,
+    #     description="OPC UA Sensor",
+    #     display_name="Temperature Sensor",
+    #     custom_location=custom_location
+    # )
 
-    # 3. Create Media asset with maximum inputs
-    asset_media = run(
-        f"az iot ops ns asset create media --name {asset_name_media} --namespace {namespace_name} "
-        f"-g {resource_group} --device {device_name_1} --endpoint-name {endpoint_name_media} "
-        f"--description 'Media Camera' --display-name 'Monitoring Camera' --model 'MediaCam-4K' "
-        f"--manufacturer 'MediaCorp' --serial-number 'MEDIA567890' "
-        f"--task-type 'snapshot-to-mqtt' --task-format 'jpeg' --snapshots-per-second 1 "
-        f"--streams-destinations topic='security/cameras/main' qos=1 retain=false ttl=300 "
-        f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
-    )
+    # # 3. Create Media asset with maximum inputs
+    # asset_media = run(
+    #     f"az iot ops ns asset media create --name {asset_name_media} --instance {instance_name} "
+    #     f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_media} "
+    #     f"--description \"Media Camera\" --display-name \"Monitoring Camera\" --model \"MediaCam-4K\" "
+    #     f"--manufacturer \"MediaCorp\" --serial-number \"MEDIA567890\" "
+    #     f"--task-type \"snapshot-to-mqtt\" --task-format \"jpeg\" --snapshots-per-sec 1 "
+    #     f"--stream-dest topic=\"security/cameras/main\" qos=Qos0 retain=Never ttl=300 "
+    #     f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
+    # )
+    # tracked_resources.append(asset_media["id"])
 
-    assert_asset_properties(
-        asset_media,
-        name=asset_name_media,
-        device=device_name_1,
-        endpoint=endpoint_name_media,
-        description="Media Camera",
-        display_name="Monitoring Camera",
-        custom_location=custom_location
-    )
+    # assert_asset_properties(
+    #     asset_media,
+    #     name=asset_name_media,
+    #     device=device_name,
+    #     endpoint=endpoint_name_media,
+    #     description="Media Camera",
+    #     display_name="Monitoring Camera",
+    #     custom_location=custom_location
+    # )
 
     # 4. Create Custom asset with maximum inputs
     asset_custom = run(
-        f"az iot ops ns asset create custom --name {asset_name_custom} --namespace {namespace_name} "
-        f"-g {resource_group} --device {device_name_1} --endpoint-name {endpoint_name_custom} "
-        f"--description 'Custom Device' --display-name 'Multi-Sensor' --model 'Custom-MS100' "
-        f"--manufacturer 'CustomDevices' --serial-number 'CUST123456' "
-        f"--datasets-config \"{{\\\"publishingInterval\\\": 1000}}\" "
-        f"--events-config \"{{\\\"queueSize\\\": 5}}\" "
-        f"--datasets-destination topic='custom/data' qos=1 retain=true ttl=3600 "
-        f"--events-destination topic='custom/events' qos=1 retain=false ttl=3600 "
+        f"az iot ops ns asset custom create --name {asset_name_custom} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_custom} "
+        f"--description \"Custom Device\" --display-name \"Multi-Sensor\" --model \"Custom-MS100\" "
+        f"--manufacturer \"CustomDevices\" --serial-number \"CUST123456\" "
+        f"--dataset-config \"{{\\\"publishingInterval\\\": 1000}}\" "
+        f"--event-config \"{{\\\"queueSize\\\": 5}}\" "
+        f"--dataset-dest topic=\"custom/data\" qos=Qos1 retain=Keep ttl=3600 "
+        f"--event-dest topic=\"custom/events\" qos=Qos0 retain=Never ttl=3600 "
         f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
     )
+    tracked_resources.append(asset_custom["id"])
 
     assert_asset_properties(
         asset_custom,
         name=asset_name_custom,
-        device=device_name_1,
+        device=device_name,
         endpoint=endpoint_name_custom,
         description="Custom Device",
         display_name="Multi-Sensor",
@@ -151,25 +151,256 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # Test show operation for an asset
     shown_asset = run(
-        f"az iot ops ns asset show --name {asset_name_onvif} --namespace {namespace_name} "
+        f"az iot ops ns asset show --name {asset_name_custom} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
     assert_asset_properties(
         shown_asset,
-        name=asset_name_onvif,
-        device=device_name_1,
-        endpoint=endpoint_name_onvif,
-        description="ONVIF Camera",
-        display_name="Entrance Camera",
+        name=asset_name_custom,
+        device=device_name,
+        endpoint=endpoint_name_custom,
     )
 
     # Test update operation for each asset type
+    # # 1. Update ONVIF asset
+    # updated_onvif = run(
+    #     f"az iot ops ns asset onvif update --name {asset_name_onvif} --instance {instance_name} "
+    #     f"-g {resource_group} --description \"Updated ONVIF Camera\" --display-name \"Main Entrance Camera\" "
+    #     f"--attribute location=entrance resolution=4K"
+    # )
+
+    # assert_asset_properties(
+    #     updated_onvif,
+    #     name=asset_name_onvif,
+    #     description="Updated ONVIF Camera",
+    #     display_name="Main Entrance Camera",
+    #     attributes=["location=entrance", "resolution=4K"]
+    # )
+
+    # # 2. Update OPCUA asset
+    # updated_opcua = run(
+    #     f"az iot ops ns asset opcua update --name {asset_name_opcua} --instance {instance_name} "
+    #     f"-g {resource_group} --description \"Updated OPC UA Sensor\" "
+    #     "--dataset-publish-int 500 --dataset-sampling-int 250"
+    #     "--model \"Sensor-T3000\" --manufacturer \"ContosoTech\" "
+    # )
+
+    # assert_asset_properties(
+    #     updated_opcua,
+    #     name=asset_name_opcua,
+    #     description="Updated OPC UA Sensor",
+    #     model="Sensor-T3000",
+    #     manufacturer="ContosoTech",
+    # )
+
+    # # 3. Update Media asset
+    # updated_media = run(
+    #     f"az iot ops ns asset media update --name {asset_name_media} --instance {instance_name} "
+    #     f"-g {resource_group} --task-type \"snapshot-to-fs\" --task-format \"png\" --path \"/data/snapshots\""
+    #     "--serial-number \"MEDIA567890-UPDATED\" "
+    # )
+
+    # assert_asset_properties(
+    #     updated_media,
+    #     name=asset_name_media,
+    #     serial_number="MEDIA567890-UPDATED",
+    # )
+
+    # 4. Update Custom asset
+    updated_custom = run(
+        f"az iot ops ns asset custom update --name {asset_name_custom} --instance {instance_name} "
+        f"-g {resource_group} --dataset-config \"{{\\\"publishingInterval\\\": 2000}}\" "
+        f"--event-config \"{{\\\"queueSize\\\": 10}}\" --software-revision \"v2.0\" "
+
+    )
+
+    assert_asset_properties(
+        updated_custom,
+        name=asset_name_custom,
+        software_revision="v2.0",
+    )
+
+    # Test query operation
+    queried_assets = run(
+        "az iot ops ns asset query"
+    )
+
+    asset_names = [asset["name"] for asset in queried_assets]
+    assert asset_name_custom in asset_names
+    # assert asset_name_onvif in asset_names
+    # assert asset_name_opcua in asset_names
+    # assert asset_name_media in asset_names
+
+    # Query by specific device
+    device_assets = run(
+        f"az iot ops ns asset query --device {device_name}"
+    )
+
+    asset_names = [asset["name"] for asset in device_assets]
+    assert asset_name_custom in asset_names
+    # assert asset_name_onvif in asset_names
+    # assert asset_name_opcua in asset_names
+    # assert asset_name_media in asset_names
+
+    # Query by asset name
+    named_asset = run(
+        f"az iot ops ns asset query --name {asset_name_custom}"
+    )
+
+    assert len(named_asset) == 1
+    assert named_asset[0]["name"] == asset_name_custom
+
+    # Test delete operation
+    run(
+        f"az iot ops ns asset delete --name {asset_name_custom} --instance {instance_name} "
+        f"-g {resource_group} -y"
+    )
+
+    # Verify deletion by querying
+    deleted_query = run(
+        "az iot ops ns asset query"
+    )
+
+    asset_names = [asset["name"] for asset in deleted_query]
+    assert asset_name_custom not in asset_names
+    # assert asset_name_onvif in asset_names
+    # assert asset_name_opcua in asset_names
+    # assert asset_name_media in asset_names
+
+
+@pytest.mark.skip(reason="Skipping until asset types are implemented")
+def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
+    # Setup test variables
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    custom_location = require_init["customLocationId"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name_onvif = f"onvif-{generate_random_string(8)}"
+    endpoint_name_opcua = f"opcua-{generate_random_string(8)}"
+    endpoint_name_media = f"media-{generate_random_string(8)}"
+    asset_name_onvif = f"onvif-{generate_random_string(8, force_lower=True)}"
+    asset_name_opcua = f"opcua-{generate_random_string(8, force_lower=True)}"
+    asset_name_media = f"media-{generate_random_string(8, force_lower=True)}"
+
+    # Tags and attributes
+    common_tags = {"env": "test", "purpose": "automation"}
+    common_attrs = ["location=building1", "floor=3"]
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create device endpoints
+    for endpoint_name, endpoint_type in [
+        (endpoint_name_onvif, "onvif"),
+        (endpoint_name_opcua, "opcua"),
+        (endpoint_name_media, "media"),
+    ]:
+        command = (
+            f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
+            f"--instance {instance_name} -g {resource_group} --device {device_name} "
+            "--endpoint-address 'http://192.168.1.100:8000/onvif/device_service'"
+        )
+        if endpoint_type == "custom":
+            command += " --endpoint-type custom"
+        run(command)
+
+    # 1. Create ONVIF asset with maximum inputs
+    asset_onvif = run(
+        f"az iot ops ns asset onvif create --name {asset_name_onvif} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_onvif} "
+        "--description \"ONVIF Camera\" --display-name \"Entrance Camera\" --model \"Camera-X1\" "
+        "--manufacturer \"SecurityCo\" --serial-number \"CAM123456\" "
+        "--documentation-uri \"https://example.com/docs/camera\" "
+        "--external-asset-id \"EXT-CAM-01\" --hardware-revision \"v1.2\" "
+        f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
+    )
+    tracked_resources.append(asset_onvif["id"])
+
+    assert_asset_properties(
+        asset_onvif,
+        name=asset_name_onvif,
+        device=device_name,
+        endpoint=endpoint_name_onvif,
+        description="ONVIF Camera",
+        display_name="Entrance Camera",
+        model="Camera-X1",
+        manufacturer="SecurityCo",
+        serial_number="CAM123456",
+        documentation_uri="https://example.com/docs/camera",
+        external_asset_id="EXT-CAM-01",
+        hardware_revision="v1.2",
+        tags=common_tags,
+        attributes=common_attrs,
+        custom_location=custom_location
+    )
+
+    # 2. Create OPCUA asset with maximum inputs
+    asset_opcua = run(
+        f"az iot ops ns asset opcua create --name {asset_name_opcua} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_opcua} "
+        "--description \"OPC UA Sensor\" --display-name \"Temperature Sensor\" --model \"Sensor-T2000\" "
+        "--manufacturer \"Contoso\" --serial-number \"OPCUA987654\" "
+        "--dataset-publish-int 2000 --dataset-sampling-int 1000 --dataset-queue-size 5 "
+        "--dataset-key-frame-count 2 --dataset-start-inst \"ns=1;i=1234\" "
+        "--event-publish-int 3000 --event-queue-size 10 --event-start-inst \"ns=1;i=5678\" "
+        "--event-filter-clause path=\"ns=1;i=1000\" type=\"String\" field=\"Temperature\" "
+        "--dataset-dest topic=\"factory/data\" qos=Qos1 retain=Keep ttl=3600 "
+        "--event-dest topic=\"factory/events\" qos=Qos0 retain=Never ttl=7200 "
+        "--product-code \"PROD-1234\""
+    )
+    tracked_resources.append(asset_opcua["id"])
+
+    assert_asset_properties(
+        asset_opcua,
+        name=asset_name_opcua,
+        device=device_name,
+        endpoint=endpoint_name_opcua,
+        description="OPC UA Sensor",
+        display_name="Temperature Sensor",
+        model="Sensor-T2000",
+        manufacturer="Contoso",
+        serial_number="OPCUA987654",
+        product_code="PROD-1234",
+        custom_location=custom_location
+    )
+
+    # 3. Create Media asset with maximum inputs
+    asset_media = run(
+        f"az iot ops ns asset media create --name {asset_name_media} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_media} "
+        "--description \"Media Camera\" --display-name \"Monitoring Camera\" --model \"MediaCam-4K\" "
+        "--manufacturer \"MediaCorp\" --serial-number \"MEDIA567890\" "
+        "--task-type \"snapshot-to-mqtt\" --task-format \"jpeg\" --snapshots-per-sec 1 "
+        "--stream-dest topic=\"security/cameras/main\" qos=Qos0 retain=Never ttl=300 "
+        "--external-asset-id \"EXT-MEDIA-01\" --hardware-revision \"v1.0\" "
+    )
+    tracked_resources.append(asset_media["id"])
+
+    assert_asset_properties(
+        asset_media,
+        name=asset_name_media,
+        device=device_name,
+        endpoint=endpoint_name_media,
+        description="Media Camera",
+        display_name="Monitoring Camera",
+        model="MediaCam-4K",
+        manufacturer="MediaCorp",
+        serial_number="MEDIA567890",
+        external_asset_id="EXT-MEDIA-01",
+        hardware_revision="v1.0",
+        custom_location=custom_location,
+    )
+
     # 1. Update ONVIF asset
     updated_onvif = run(
-        f"az iot ops ns asset update onvif --name {asset_name_onvif} --namespace {namespace_name} "
-        f"-g {resource_group} --description 'Updated ONVIF Camera' --display-name 'Main Entrance Camera' "
-        f"--attribute location=entrance resolution=4K"
+        f"az iot ops ns asset onvif update --name {asset_name_onvif} --instance {instance_name} "
+        f"-g {resource_group} --description \"Updated ONVIF Camera\" --display-name \"Main Entrance Camera\" "
+        "--attribute location=entrance resolution=4K"
     )
 
     assert_asset_properties(
@@ -177,82 +408,37 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
         name=asset_name_onvif,
         description="Updated ONVIF Camera",
         display_name="Main Entrance Camera",
+        attributes=["location=entrance", "resolution=4K"]
     )
 
     # 2. Update OPCUA asset
     updated_opcua = run(
-        f"az iot ops ns asset update opcua --name {asset_name_opcua} --namespace {namespace_name} "
-        f"-g {resource_group} --description 'Updated OPC UA Sensor' "
-        f"--dataset-publish-interval 500 --dataset-sampling-interval 250"
+        f"az iot ops ns asset opcua update --name {asset_name_opcua} --instance {instance_name} "
+        f"-g {resource_group} --description \"Updated OPC UA Sensor\" "
+        "--dataset-publish-int 500 --dataset-sampling-int 250"
+        "--model \"Sensor-T3000\" --manufacturer \"ContosoTech\" "
     )
 
     assert_asset_properties(
         updated_opcua,
         name=asset_name_opcua,
         description="Updated OPC UA Sensor",
+        model="Sensor-T3000",
+        manufacturer="ContosoTech",
     )
 
     # 3. Update Media asset
     updated_media = run(
-        f"az iot ops ns asset update media --name {asset_name_media} --namespace {namespace_name} "
-        f"-g {resource_group} --task-type 'snapshot-to-fs' --task-format 'png' --path '/data/snapshots'"
+        f"az iot ops ns asset media update --name {asset_name_media} --instance {instance_name} "
+        f"-g {resource_group} --task-type \"snapshot-to-fs\" --task-format \"png\" --path \"/data/snapshots\""
+        "--serial-number \"MEDIA567890-UPDATED\" "
     )
 
     assert_asset_properties(
         updated_media,
         name=asset_name_media,
+        serial_number="MEDIA567890-UPDATED",
     )
-
-    # 4. Update Custom asset
-    updated_custom = run(
-        f"az iot ops ns asset update custom --name {asset_name_custom} --namespace {namespace_name} "
-        f"-g {resource_group} --datasets-config \"{{\\\"publishingInterval\\\": 2000}}\" "
-        f"--events-config \"{{\\\"queueSize\\\": 10}}\""
-    )
-
-    assert_asset_properties(
-        updated_custom,
-        name=asset_name_custom,
-    )
-
-    # Test query operation
-    queried_assets = run(
-        f"az iot ops ns asset query -g {resource_group}"
-    )
-
-    assert len(queried_assets) >= 4
-
-    # Query by specific device
-    device_assets = run(
-        f"az iot ops ns asset query -g {resource_group} --device {device_name_1}"
-    )
-
-    assert len(device_assets) >= 4
-
-    # Query by asset name
-    named_asset = run(
-        f"az iot ops ns asset query -g {resource_group} --name {asset_name_onvif}"
-    )
-
-    assert len(named_asset) == 1
-    assert named_asset[0]["name"] == asset_name_onvif
-
-    # Test delete operation
-    run(
-        f"az iot ops ns asset delete --name {asset_name_custom} --namespace {namespace_name} "
-        f"-g {resource_group} -y"
-    )
-
-    # Verify deletion by querying - should return no results
-    deleted_query = run(
-        f"az iot ops ns asset query -g {resource_group}"
-    )
-
-    asset_names = [asset["name"] for asset in deleted_query]
-    assert asset_name_custom not in asset_names
-    assert asset_name_onvif in asset_names
-    assert asset_name_opcua in asset_names
-    assert asset_name_media in asset_names
 
 
 def assert_asset_properties(result, **expected):
@@ -265,7 +451,7 @@ def assert_asset_properties(result, **expected):
     assert result["name"] == expected["name"]
     # Check custom location
     if "custom_location" in expected:
-        assert result["properties"]["extendedLocation"]["name"] == expected["custom_location"]
+        assert result["extendedLocation"]["name"] == expected["custom_location"]
 
     result_props = result["properties"]
 

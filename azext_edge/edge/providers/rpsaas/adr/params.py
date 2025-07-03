@@ -606,6 +606,16 @@ def load_adr_arguments(self, _):
             options_list=["--name", "-n"],
             help="Namespace name.",
         )
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="The name of the Azure IoT Operations instance.",
+        )
+        context.argument(
+            "instance_resource_group",
+            options_list=["--resource-group", "-g"],
+            help="The resource group of the Azure IoT Operations instance.",
+        )
 
     with self.argument_context("iot ops ns device") as context:
         context.argument(
@@ -617,16 +627,6 @@ def load_adr_arguments(self, _):
             "device_name",
             options_list=["--name", "-n"],
             help="The name of the device to create.",
-        )
-        context.argument(
-            "instance_name",
-            options_list=["--instance", "-i"],
-            help="The name of the Azure IoT Operations instance.",
-        )
-        context.argument(
-            "instance_resource_group",
-            options_list=["--resource-group", "-g"],
-            help="The resource group of the Azure IoT Operations instance.",
         )
         context.argument(
             "custom_attributes",
@@ -897,11 +897,6 @@ def load_adr_arguments(self, _):
             "device_name",
             options_list=["--device", "-d"],
             help="Device name.",
-        )
-        context.argument(
-            "namespace_name",
-            options_list=["--namespace", "--ns"],
-            help="Namespace name.",
         )
         context.argument(
             "device_endpoint_name",

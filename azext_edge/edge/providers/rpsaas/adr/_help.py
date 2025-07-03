@@ -577,21 +577,21 @@ def load_iotops_adr_help():
         examples:
         - name: Create a device with minimal configuration
           text: >
-            az iot ops ns device create --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device create --name myDevice --instance myInstance -g myInstanceResourceGroup
 
         - name: Create a device with custom attributes
           text: >
-            az iot ops ns device create --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device create --name myDevice --instance myInstance -g myInstanceResourceGroup
             --attr location=building1 floor=3
 
         - name: Create a device with manufacturer information and operating system details
           text: >
-            az iot ops ns device create --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device create --name myDevice --instance myInstance -g myInstanceResourceGroup
             --manufacturer "Contoso" --model "Gateway X1" --os "Linux" --os-version "4.15"
 
         - name: Create a disabled device with tags
           text: >
-            az iot ops ns device create --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device create --name myDevice --instance myInstance -g myInstanceResourceGroup
             --disabled --tags environment=test criticality=low
     """
 
@@ -639,7 +639,7 @@ def load_iotops_adr_help():
         examples:
         - name: Show details of a device
           text: >
-            az iot ops ns device show --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device show --name myDevice --instance myInstance -g myInstanceResourceGroup
     """
 
     helps[
@@ -651,7 +651,7 @@ def load_iotops_adr_help():
         examples:
         - name: Delete a device
           text: >
-            az iot ops ns device delete --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device delete --name myDevice --instance myInstance -g myInstanceResourceGroup
     """
 
     helps[
@@ -663,22 +663,22 @@ def load_iotops_adr_help():
         examples:
         - name: Update device custom attributes
           text: >
-            az iot ops ns device update --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device update --name myDevice --instance myInstance -g myInstanceResourceGroup
             --attr location=building2 floor=5
 
         - name: Update operating system version
           text: >
-            az iot ops ns device update --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device update --name myDevice --instance myInstance -g myInstanceResourceGroup
             --os-version "4.18"
 
         - name: Disable a device
           text: >
-            az iot ops ns device update --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device update --name myDevice --instance myInstance -g myInstanceResourceGroup
             --disabled
 
         - name: Update device tags
           text: >
-            az iot ops ns device update --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device update --name myDevice --instance myInstance -g myInstanceResourceGroup
             --tags environment=production criticality=high
     """
 
@@ -701,10 +701,10 @@ def load_iotops_adr_help():
         examples:
         - name: List inbound and outbound endpoints of a device
           text: >
-            az iot ops ns device endpoint list --device myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device endpoint list --device myDevice --instance myInstance -g myInstanceResourceGroup
         - name: List only inbound endpoints of a device
           text: >
-            az iot ops ns device endpoint list --device myDevice --instance myInstance --instance-resource-group myResourceGroup --inbound
+            az iot ops ns device endpoint list --device myDevice --instance myInstance -g myInstanceResourceGroup --inbound
     """
 
     helps[
@@ -725,7 +725,7 @@ def load_iotops_adr_help():
         examples:
         - name: List all inbound endpoints of a device
           text: >
-            az iot ops ns device endpoint inbound list --device myDevice --instance myInstance --instance-resource-group myResourceGroup
+            az iot ops ns device endpoint inbound list --device myDevice --instance myInstance -g myInstanceResourceGroup
     """
 
     helps[
@@ -737,11 +737,11 @@ def load_iotops_adr_help():
         examples:
         - name: Remove a single inbound endpoint from a device
           text: >
-            az iot ops ns device endpoint inbound remove --device myDevice --instance myInstance --instance-resource-group myResourceGroup --endpoint myEndpoint
+            az iot ops ns device endpoint inbound remove --device myDevice --instance myInstance -g myInstanceResourceGroup --endpoint myEndpoint
 
         - name: Remove multiple inbound endpoints from a device
           text: >
-            az iot ops ns device endpoint inbound remove --device myDevice --instance myInstance --instance-resource-group myResourceGroup --endpoint myEndpoint1 myEndpoint2
+            az iot ops ns device endpoint inbound remove --device myDevice --instance myInstance -g myInstanceResourceGroup --endpoint myEndpoint1 myEndpoint2
     """
 
     helps[
@@ -763,19 +763,19 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic custom endpoint to a device
           text: >
-            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080"
+            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080"
 
         - name: Add a custom endpoint with authentication
           text: >
-            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --user-ref "secretRef:username" --pass-ref "secretRef:password"
 
         - name: Add a custom endpoint with certificate authentication
           text: >
-            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref "secretRef:certificate"
+            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref "secretRef:certificate"
 
         - name: Add a custom endpoint with additional configuration
           text: >
-            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --additional-config "{\\\"customSetting\\\": \\\"value\\\"}"
+            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --additional-config "{\\\"customSetting\\\": \\\"value\\\"}"
     """
 
     helps[
@@ -789,11 +789,11 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic media endpoint to a device
           text: >
-            az iot ops ns device endpoint inbound add media --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream"
+            az iot ops ns device endpoint inbound add media --device myDevice --instance myInstance -g myInstanceResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream"
 
         - name: Add a media endpoint with authentication
           text: >
-            az iot ops ns device endpoint inbound add media --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+            az iot ops ns device endpoint inbound add media --device myDevice --instance myInstance -g myInstanceResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --user-ref "secretRef:username" --pass-ref "secretRef:password"
     """
 
     helps[
@@ -807,15 +807,15 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic ONVIF endpoint to a device
           text: >
-            az iot ops ns device endpoint inbound add onvif --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service"
+            az iot ops ns device endpoint inbound add onvif --device myDevice --instance myInstance -g myInstanceResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service"
 
         - name: Add an ONVIF endpoint with authentication
           text: >
-            az iot ops ns device endpoint inbound add onvif --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+            az iot ops ns device endpoint inbound add onvif --device myDevice --instance myInstance -g myInstanceResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service" --user-ref "secretRef:username" --pass-ref "secretRef:password"
 
         - name: Add an ONVIF endpoint that accepts invalid hostnames and certificates
           text: >
-            az iot ops ns device endpoint inbound add onvif --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myONVIFEndpoint --endpoint-address "https://192.168.1.100:8000/onvif/device_service" --accept-invalid-hostnames --accept-invalid-certificates
+            az iot ops ns device endpoint inbound add onvif --device myDevice --instance myInstance -g myInstanceResourceGroup --name myONVIFEndpoint --endpoint-address "https://192.168.1.100:8000/onvif/device_service" --accept-invalid-hostnames --accept-invalid-certificates
     """
 
     helps[
@@ -829,53 +829,53 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic OPC UA endpoint to a device
           text: >
-            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840"
+            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance -g myInstanceResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840"
 
         - name: Add an OPC UA endpoint with authentication
           text: >
-            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance -g myInstanceResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --user-ref "secretRef:username" --pass-ref "secretRef:password"
 
         - name: Add an OPC UA endpoint with a custom application name
           text: >
-            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --application-name "My OPC UA App"
+            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance -g myInstanceResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --application-name "My OPC UA App"
 
         - name: Add an OPC UA endpoint with customized session parameters
           text: >
-            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --keep-alive 15000 --session-timeout 90000 --publishing-interval 2000 --sampling-interval 1500
+            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance -g myInstanceResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --keep-alive 15000 --session-timeout 90000 --publishing-interval 2000 --sampling-interval 1500
 
         - name: Add an OPC UA endpoint with security settings and asset discovery enabled
           text: >
-            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --run-asset-discovery
+            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance -g myInstanceResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --run-asset-discovery
     """
 
     helps[
         "iot ops ns asset"
     ] = """
         type: group
-        short-summary: Manage assets in Device Registry namespaces.
+        short-summary: Manage namespaced assets in an IoT Operations instance.
     """
 
     helps[
         "iot ops ns asset delete"
     ] = """
         type: command
-        short-summary: Delete an asset from a Device Registry namespace.
+        short-summary: Delete a namespaced asset from an IoT Operations instance.
 
         examples:
         - name: Delete an asset with confirmation prompt
           text: >
-            az iot ops ns asset delete --name myAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset delete --name myAsset --instance myInstance -g myInstanceResourceGroup
 
         - name: Delete an asset and skip the confirmation prompt
           text: >
-            az iot ops ns asset delete --name myAsset --namespace myNamespace -g myResourceGroup -y
+            az iot ops ns asset delete --name myAsset --instance myInstance -g myInstanceResourceGroup -y
     """
 
     helps[
         "iot ops ns asset query"
     ] = """
         type: command
-        short-summary: Query assets in Device Registry namespaces.
+        short-summary: Query namespaced assets.
         long-summary: |
           Query assets across namespaces based on various search criteria including asset name,
           device name, endpoint name and more.
@@ -883,63 +883,63 @@ def load_iotops_adr_help():
         examples:
         - name: Query for a specific asset by name
           text: >
-            az iot ops ns asset query --name myAsset -g myResourceGroup
+            az iot ops ns asset query --name myAsset
 
         - name: Query for assets associated with a specific device and endpoint
           text: >
-            az iot ops ns asset query --device myDevice --endpoint-name myEndpoint -g myResourceGroup
+            az iot ops ns asset query --device myDevice --endpoint-name myEndpoint
 
         - name: Use a custom query to search for assets
           text: >
-            az iot ops ns asset query --custom-query "where tags.environment=='production'" -g myResourceGroup
+            az iot ops ns asset query --custom-query "where tags.environment=='production'"
     """
 
     helps[
         "iot ops ns asset show"
     ] = """
         type: command
-        short-summary: Show details of an asset in a Device Registry namespace.
+        short-summary: Show details of a namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Show details of an asset
           text: >
-            az iot ops ns asset show --name myAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset show --name myAsset --instance myInstance -g myInstanceResourceGroup
     """
 
     helps[
         "iot ops ns asset custom"
     ] = """
         type: group
-        short-summary: Manage assets that point to custom device endpoints.
+        short-summary: Manage namespaced assets that point to custom device endpoints.
     """
 
     helps[
         "iot ops ns asset custom create"
     ] = """
         type: command
-        short-summary: Create a custom asset in a Device Registry namespace.
+        short-summary: Create a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Create a basic custom asset
           text: >
-            az iot ops ns asset custom create --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset custom create --name myCustomAsset --instance myInstance -g myInstanceResourceGroup
             --device myDevice --endpoint-name myEndpoint
 
         - name: Create a custom asset with additional metadata
           text: >
-            az iot ops ns asset custom create --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset custom create --name myCustomAsset --instance myInstance -g myInstanceResourceGroup
             --device myDevice --endpoint-name myEndpoint --description "Factory sensor" --display-name "Temperature Sensor"
             --model "TempSensor-X1" --manufacturer "Contoso" --serial-number "SN12345"
 
         - name: Create a custom asset with dataset and events configuration using inline JSON
           text: >
-            az iot ops ns asset custom create --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset custom create --name myCustomAsset --instance myInstance -g myInstanceResourceGroup
             --device myDevice --endpoint-name myEndpoint --dataset-config "{\\\"publishingInterval\\\": 1000}"
             --event-config "{\\\"queueSize\\\": 5}"
 
         - name: Create a custom asset with datasets use a BrokerStateStore destination, events use a Mqtt destination, and streams use a Storage destination.
           text: >
-            az iot ops ns asset custom create --name myCustomAsset --namespace myNamespace -g myResourceGroupmyResourceGroup
+            az iot ops ns asset custom create --name myCustomAsset --instance myInstance -g myInstanceResourceGroupmyResourceGroup
             --device myDevice --endpoint-name myEndpoint
             --dataset-dest key="myKey"
             --event-dest topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
@@ -950,34 +950,34 @@ def load_iotops_adr_help():
         "iot ops ns asset custom update"
     ] = """
         type: command
-        short-summary: Update a custom asset in a Device Registry namespace.
+        short-summary: Update a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Update a custom asset's basic properties
           text: >
-            az iot ops ns asset custom update --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset custom update --name myCustomAsset --instance myInstance -g myInstanceResourceGroup
             --description "Updated factory sensor" --display-name "Temperature Sensor v2"
 
         - name: Update a custom asset with additional metadata
           text: >
-            az iot ops ns asset custom update --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset custom update --name myCustomAsset --instance myInstance -g myInstanceResourceGroup
             --model "TempSensor-X2" --manufacturer "Contoso" --serial-number "SN98765" --disable
 
         - name: Update a custom asset's dataset and events configuration
           text: >
-            az iot ops ns asset custom update --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset custom update --name myCustomAsset --instance myInstance -g myInstanceResourceGroup
             --dataset-config "{\\\"publishingInterval\\\": 2000}" --event-config "{\\\"queueSize\\\": 10}"
 
         - name: Update a custom asset's destinations so the datasets use a BrokerStateStore destination, events use a Mqtt destination, and streams use a Storage destination.
           text: >
-            az iot ops ns asset custom update --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset custom update --name myCustomAsset --instance myInstance -g myInstanceResourceGroup
             --dataset-dest key="myKey"
             --event-dest topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
             --stream-dest path="my/storage/path"
 
         - name: Update a custom asset's custom attributes
           text: >
-            az iot ops ns asset custom update --name myCustomAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset custom update --name myCustomAsset --instance myInstance -g myInstanceResourceGroup
             --attribute location=building2 floor=3 zone=production
     """
 
@@ -985,7 +985,7 @@ def load_iotops_adr_help():
         "iot ops ns asset custom dataset"
     ] = """
         type: group
-        short-summary: Manage datasets for custom assets in Device Registry namespaces.
+        short-summary: Manage datasets for custom namespaced assets in an IoT Operations instance.
         long-summary: Currently, only one dataset with the name "default" is supported for assets.
     """
 
@@ -993,37 +993,37 @@ def load_iotops_adr_help():
         "iot ops ns asset custom dataset add"
     ] = """
         type: command
-        short-summary: Add a dataset to a custom asset in a Device Registry namespace.
+        short-summary: Add a dataset to a custom namespaced asset in an IoT Operations instance.
         long-summary: Currently, only one dataset with the name "default" is supported for assets.
 
         examples:
         - name: Add a basic custom dataset
           text: >
-            az iot ops ns asset custom dataset add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name default --data-source "customDataSource"
+            az iot ops ns asset custom dataset add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name default --data-source "customDataSource"
 
         - name: Add a custom dataset with configuration
           text: >
-            az iot ops ns asset custom dataset add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name default --data-source "sensor/pressure"
+            az iot ops ns asset custom dataset add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name default --data-source "sensor/pressure"
             --config "{\\\"publishingInterval\\\": 1000, \\\"queueSize\\\": 5}"
 
         - name: Add a custom dataset with MQTT destination
           text: >
-            az iot ops ns asset custom dataset add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name default --data-source "sensor/temp"
+            az iot ops ns asset custom dataset add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name default --data-source "sensor/temp"
             --destination topic="factory/temperature" retain=true qos=1 ttl=3600
 
         - name: Add a custom dataset with BrokerStateStore destination
           text: >
-            az iot ops ns asset custom dataset add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name default --data-source "device/state"
+            az iot ops ns asset custom dataset add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name default --data-source "device/state"
             --destination key="deviceState"
 
         - name: Add a custom dataset with Storage destination
           text: >
-            az iot ops ns asset custom dataset add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name default --data-source "device/logs"
+            az iot ops ns asset custom dataset add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name default --data-source "device/logs"
             --destination path="data/logs/device001"
     """
 
@@ -1031,58 +1031,58 @@ def load_iotops_adr_help():
         "iot ops ns asset custom dataset list"
     ] = """
         type: command
-        short-summary: List datasets for a custom asset in a Device Registry namespace.
+        short-summary: List datasets for a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: List all datasets for a custom asset
           text: >
-            az iot ops ns asset custom dataset list --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup
+            az iot ops ns asset custom dataset list --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup
     """
 
     helps[
         "iot ops ns asset custom dataset remove"
     ] = """
         type: command
-        short-summary: Remove a dataset from a custom asset in a Device Registry namespace.
+        short-summary: Remove a dataset from a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Remove a dataset from a custom asset
           text: >
-            az iot ops ns asset custom dataset remove --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name default
+            az iot ops ns asset custom dataset remove --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name default
     """
 
     helps[
         "iot ops ns asset custom dataset show"
     ] = """
         type: command
-        short-summary: Show details of a dataset for a custom asset in a Device Registry namespace.
+        short-summary: Show details of a dataset for a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Show dataset details
           text: >
-            az iot ops ns asset custom dataset show --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name default
+            az iot ops ns asset custom dataset show --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name default
     """
 
     helps[
         "iot ops ns asset custom dataset update"
     ] = """
         type: command
-        short-summary: Update a dataset for a custom asset in a Device Registry namespace.
+        short-summary: Update a dataset for a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Update dataset configuration
           text: >
-            az iot ops ns asset custom dataset update --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name default --data-source "updated/source"
+            az iot ops ns asset custom dataset update --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name default --data-source "updated/source"
             --config "{\\\"publishingInterval\\\": 2000}"
 
         - name: Update dataset destination to MQTT
           text: >
-            az iot ops ns asset custom dataset update --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name default
+            az iot ops ns asset custom dataset update --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name default
             --destination topic="factory/updated/temperature" retain=false qos=2 ttl=7200
     """
 
@@ -1102,19 +1102,19 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic data point
           text: >
-            az iot ops ns asset custom dataset point add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --dataset default --name temp1 --data-source "sensor.temp1"
+            az iot ops ns asset custom dataset point add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --dataset default --name temp1 --data-source "sensor.temp1"
 
         - name: Add a data point with custom configuration
           text: >
-            az iot ops ns asset custom dataset point add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --dataset default --name pressure1 --data-source "sensor.pressure1"
+            az iot ops ns asset custom dataset point add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --dataset default --name pressure1 --data-source "sensor.pressure1"
             --config "{\\\"samplingInterval\\\": 500, \\\"priority\\\": \\\"high\\\"}"
 
         - name: Add a data point and replace existing one with same name
           text: >
-            az iot ops ns asset custom dataset point add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --dataset default --name temp1 --data-source "sensor.temp1.v2"
+            az iot ops ns asset custom dataset point add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --dataset default --name temp1 --data-source "sensor.temp1.v2"
             --replace
     """
 
@@ -1127,8 +1127,8 @@ def load_iotops_adr_help():
         examples:
         - name: List all data points for a dataset
           text: >
-            az iot ops ns asset custom dataset point list --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --dataset default
+            az iot ops ns asset custom dataset point list --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --dataset default
     """
 
     helps[
@@ -1140,39 +1140,39 @@ def load_iotops_adr_help():
         examples:
         - name: Remove a data point from a dataset
           text: >
-            az iot ops ns asset custom dataset point remove --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --dataset default --name temp1
+            az iot ops ns asset custom dataset point remove --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --dataset default --name temp1
     """
 
     helps[
         "iot ops ns asset custom event"
     ] = """
         type: group
-        short-summary: Manage events for custom assets in Device Registry namespaces.
+        short-summary: Manage events for custom namespaced assets in an IoT Operations instance.
     """
 
     helps[
         "iot ops ns asset custom event add"
     ] = """
         type: command
-        short-summary: Add an event to a custom asset in a Device Registry namespace.
+        short-summary: Add an event to a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Add a basic custom event
           text: >
-            az iot ops ns asset custom event add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name alarmEvent --event-notifier "alarm.critical"
+            az iot ops ns asset custom event add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent --event-notifier "alarm.critical"
 
         - name: Add a custom event with MQTT destination
           text: >
-            az iot ops ns asset custom event add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name statusEvent --event-notifier "status.change"
+            az iot ops ns asset custom event add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name statusEvent --event-notifier "status.change"
             --destination topic="factory/custom/events" retain=false qos=1 ttl=1800
 
         - name: Replace a custom event with same name
           text: >
-            az iot ops ns asset custom event add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name alarmEvent --event-notifier "alarm.updated"
+            az iot ops ns asset custom event add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent --event-notifier "alarm.updated"
             --replace
     """
 
@@ -1180,57 +1180,57 @@ def load_iotops_adr_help():
         "iot ops ns asset custom event list"
     ] = """
         type: command
-        short-summary: List events for a custom asset in a Device Registry namespace.
+        short-summary: List events for a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: List all events for a custom asset
           text: >
-            az iot ops ns asset custom event list --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup
+            az iot ops ns asset custom event list --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup
     """
 
     helps[
         "iot ops ns asset custom event remove"
     ] = """
         type: command
-        short-summary: Remove an event from a custom asset in a Device Registry namespace.
+        short-summary: Remove an event from a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Remove an event from a custom asset
           text: >
-            az iot ops ns asset custom event remove --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name alarmEvent
+            az iot ops ns asset custom event remove --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent
     """
 
     helps[
         "iot ops ns asset custom event show"
     ] = """
         type: command
-        short-summary: Show details of an event for a custom asset in a Device Registry namespace.
+        short-summary: Show details of an event for a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Show event details
           text: >
-            az iot ops ns asset custom event show --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name alarmEvent
+            az iot ops ns asset custom event show --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent
     """
 
     helps[
         "iot ops ns asset custom event update"
     ] = """
         type: command
-        short-summary: Update an event for a custom asset in a Device Registry namespace.
+        short-summary: Update an event for a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Update event notifier
           text: >
-            az iot ops ns asset custom event update --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name alarmEvent --event-notifier "alarm.updated"
+            az iot ops ns asset custom event update --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent --event-notifier "alarm.updated"
 
         - name: Update event destination
           text: >
-            az iot ops ns asset custom event update --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureAlert
+            az iot ops ns asset custom event update --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureAlert
             --destination topic="factory/custom/alerts/updated" retain=true qos=2 ttl=3600
     """
 
@@ -1250,13 +1250,13 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic custom event point
           text: >
-            az iot ops ns asset custom event point add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --event alarmEvent --name severity --data-source "alarm.severity"
+            az iot ops ns asset custom event point add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --event alarmEvent --name severity --data-source "alarm.severity"
 
         - name: Replace a custom event point with same name
           text: >
-            az iot ops ns asset custom event point add --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --event alarmEvent --name severity --data-source "alarm.severity.updated"
+            az iot ops ns asset custom event point add --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --event alarmEvent --name severity --data-source "alarm.severity.updated"
             --replace
     """
 
@@ -1269,8 +1269,8 @@ def load_iotops_adr_help():
         examples:
         - name: List all event points for an event
           text: >
-            az iot ops ns asset custom event point list --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --event alarmEvent
+            az iot ops ns asset custom event point list --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --event alarmEvent
     """
 
     helps[
@@ -1282,15 +1282,15 @@ def load_iotops_adr_help():
         examples:
         - name: Remove an event point from an event
           text: >
-            az iot ops ns asset custom event point remove --asset myCustomAsset --namespace myNamespace
-            -g myResourceGroup --event alarmEvent --name severity
+            az iot ops ns asset custom event point remove --asset myCustomAsset --instance myInstance
+            -g myInstanceResourceGroup --event alarmEvent --name severity
     """
 
     helps[
         "iot ops ns asset media"
     ] = """
         type: group
-        short-summary: Manage assets that point to media device endpoints.
+        short-summary: Manage namespaced assets that point to media device endpoints.
         long-summary: For more information on media connectors, please see https://aka.ms/aio-media-quickstart
     """
 
@@ -1298,37 +1298,37 @@ def load_iotops_adr_help():
         "iot ops ns asset media create"
     ] = """
         type: command
-        short-summary: Create a media asset in a Device Registry namespace.
+        short-summary: Create a media namespaced asset in an IoT Operations instance.
         long-summary: The device endpoint must be of type Microsoft.Media.
 
         examples:
         - name: Create a basic media asset
           text: >
-            az iot ops ns asset media create --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset media create --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --device myCamera --endpoint-name myCameraEndpoint
 
         - name: Create a media asset for MQTT snapshots with an MQTT destination
           text: >
-            az iot ops ns asset media create --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset media create --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --device myCamera --endpoint-name myCameraEndpoint --task-type snapshot-to-mqtt
             --task-format jpeg --snapshots-per-sec 1
             --stream-dest topic="factory/cameras/snapshots" qos=1 retain=false ttl=60
 
         - name: Create a media asset for file system snapshots
           text: >
-            az iot ops ns asset media create --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset media create --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --device myCamera --endpoint-name myCameraEndpoint --task-type snapshot-to-fs
             --task-format png --snapshots-per-sec 5 --path "/data/snapshots"
 
         - name: Create a media asset for file system clips
           text: >
-            az iot ops ns asset media create --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset media create --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --device myCamera --endpoint-name myCameraEndpoint --task-type clip-to-fs
             --task-format mp4 --duration 300 --path "/data/clips"
 
         - name: Create a media asset for RTSP streaming
           text: >
-            az iot ops ns asset media create --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset media create --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --device myCamera --endpoint-name myCameraEndpoint --task-type stream-to-rtsp
             --media-server-address "media-server.media-server.svc.cluster.local"
             --media-server-port 8554 --media-server-path "myCamera/stream"
@@ -1338,34 +1338,34 @@ def load_iotops_adr_help():
         "iot ops ns asset media update"
     ] = """
         type: command
-        short-summary: Update a media asset in a Device Registry namespace.
+        short-summary: Update a media namespaced asset in an IoT Operations instance.
         long-summary: The device endpoint must be of type Microsoft.Media.
 
         examples:
         - name: Update a media asset's basic properties
           text: >
-            az iot ops ns asset media update --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset media update --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --description "Updated surveillance camera" --display-name "Entry Camera HD"
 
         - name: Change a media asset from MQTT snapshots to file system snapshots
           text: >
-            az iot ops ns asset media update --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset media update --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --task-type snapshot-to-fs --task-format png --path "/data/snapshots/hd"
 
         - name: Update a media asset's clip configuration
           text: >
-            az iot ops ns asset media update --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset media update --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --task-type clip-to-fs --duration 600 --path "/data/clips/extended"
 
         - name: Update a media asset's RTSP streaming configuration
           text: >
-            az iot ops ns asset media update --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset media update --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --task-type stream-to-rtsp --media-server-address "new-media-server.local"
             --media-server-port 8555 --media-server-path "cameras/main/stream"
 
         - name: Update a media asset's destination and metadata
           text: >
-            az iot ops ns asset media update --name myCameraAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset media update --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --stream-dest topic="security/cameras/main" qos=1 retain=false ttl=300
             --manufacturer "SecureCam Inc." --model "HD-8000" --serial-number "CAM9876"
     """
@@ -1374,7 +1374,7 @@ def load_iotops_adr_help():
         "iot ops ns asset onvif"
     ] = """
         type: group
-        short-summary: Manage assets that point to ONVIF device endpoints.
+        short-summary: Manage namespaced assets that point to ONVIF device endpoints.
         long-summary: For more information on ONVIF connectors, please see https://aka.ms/aio-onvif-quickstart
     """
 
@@ -1382,25 +1382,25 @@ def load_iotops_adr_help():
         "iot ops ns asset onvif create"
     ] = """
         type: command
-        short-summary: Create an ONVIF asset in a Device Registry namespace.
+        short-summary: Create an ONVIF namespaced asset in an IoT Operations instance.
         long-summary: The device endpoint must be of type Microsoft.Onvif.
 
         examples:
         - name: Create a basic ONVIF asset
           text: >
-            az iot ops ns asset onvif create --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset onvif create --name myOnvifAsset --instance myInstance -g myInstanceResourceGroup
             --device myCamera --endpoint-name myOnvifEndpoint
 
         - name: Create an ONVIF asset with additional metadata
           text: >
-            az iot ops ns asset onvif create --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset onvif create --name myOnvifAsset --instance myInstance -g myInstanceResourceGroup
             --device myCamera --endpoint-name myOnvifEndpoint --description "Surveillance Camera"
             --display-name "Entry Camera" --model "SecureCam Pro" --manufacturer "SecurityCo"
             --serial-number "CAM-12345" --documentation-uri "https://example.com/docs/camera"
 
         - name: Create an ONVIF asset with custom attributes
           text: >
-            az iot ops ns asset onvif create --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset onvif create --name myOnvifAsset --instance myInstance -g myInstanceResourceGroup
             --device myCamera --endpoint-name myOnvifEndpoint --attribute location=entrance
             --attribute resolution=1080p --attribute ptz=true
     """
@@ -1409,29 +1409,29 @@ def load_iotops_adr_help():
         "iot ops ns asset onvif update"
     ] = """
         type: command
-        short-summary: Update an ONVIF asset in a Device Registry namespace.
+        short-summary: Update an ONVIF namespaced asset in an IoT Operations instance.
         long-summary: The device endpoint must be of type Microsoft.Onvif.
 
         examples:
         - name: Update an ONVIF asset's basic properties
           text: >
-            az iot ops ns asset onvif update --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset onvif update --name myOnvifAsset --instance myInstance -g myInstanceResourceGroup
             --description "Updated surveillance camera" --display-name "Main Entrance Camera"
 
         - name: Update an ONVIF asset's metadata
           text: >
-            az iot ops ns asset onvif update --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset onvif update --name myOnvifAsset --instance myInstance -g myInstanceResourceGroup
             --model "SecureCam Pro X1" --manufacturer "SecurityCo" --serial-number "CAM-67890"
             --documentation-uri "https://example.com/docs/camera/v2"
 
         - name: Update an ONVIF asset's custom attributes
           text: >
-            az iot ops ns asset onvif update --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset onvif update --name myOnvifAsset --instance myInstance -g myInstanceResourceGroup
             --attribute location=main-entrance resolution=4K ptz=true night-vision=true
 
         - name: Disable an ONVIF asset and update its reference information
           text: >
-            az iot ops ns asset onvif update --name myOnvifAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset onvif update --name myOnvifAsset --instance myInstance -g myInstanceResourceGroup
             --disable --external-asset-id "CAM-MAIN-01" --hardware-revision "v2.1"
     """
 
@@ -1439,31 +1439,31 @@ def load_iotops_adr_help():
         "iot ops ns asset onvif event"
     ] = """
         type: group
-        short-summary: Manage events for ONVIF assets in Device Registry namespaces.
+        short-summary: Manage events for ONVIF namespaced assets in an IoT Operations instance.
     """
 
     helps[
         "iot ops ns asset onvif event add"
     ] = """
         type: command
-        short-summary: Add an event to an ONVIF asset in a Device Registry namespace.
+        short-summary: Add an event to an ONVIF namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Add a basic ONVIF event
           text: >
-            az iot ops ns asset onvif event add --asset myOnvifAsset --namespace myNamespace
-            -g myResourceGroup --name motionEvent --event-notifier "motion.detection"
+            az iot ops ns asset onvif event add --asset myOnvifAsset --instance myInstance
+            -g myInstanceResourceGroup --name motionEvent --event-notifier "motion.detection"
 
         - name: Add an ONVIF event with MQTT destination
           text: >
-            az iot ops ns asset onvif event add --asset myOnvifAsset --namespace myNamespace
-            -g myResourceGroup --name lineDetection --event-notifier "line.crossing"
+            az iot ops ns asset onvif event add --asset myOnvifAsset --instance myInstance
+            -g myInstanceResourceGroup --name lineDetection --event-notifier "line.crossing"
             --destination topic="factory/onvif/events" retain=false qos=1 ttl=1800
 
         - name: Repalce an ONVIF event with same name
           text: >
-            az iot ops ns asset onvif event add --asset myOnvifAsset --namespace myNamespace
-            -g myResourceGroup --name motionEvent --event-notifier "motion.detection.updated"
+            az iot ops ns asset onvif event add --asset myOnvifAsset --instance myInstance
+            -g myInstanceResourceGroup --name motionEvent --event-notifier "motion.detection.updated"
             --replace
     """
 
@@ -1471,57 +1471,57 @@ def load_iotops_adr_help():
         "iot ops ns asset onvif event list"
     ] = """
         type: command
-        short-summary: List events for an ONVIF asset in a Device Registry namespace.
+        short-summary: List events for an ONVIF namespaced asset in an IoT Operations instance.
 
         examples:
         - name: List all events for an ONVIF asset
           text: >
-            az iot ops ns asset onvif event list --asset myOnvifAsset --namespace myNamespace
-            -g myResourceGroup
+            az iot ops ns asset onvif event list --asset myOnvifAsset --instance myInstance
+            -g myInstanceResourceGroup
     """
 
     helps[
         "iot ops ns asset onvif event remove"
     ] = """
         type: command
-        short-summary: Remove an event from an ONVIF asset in a Device Registry namespace.
+        short-summary: Remove an event from an ONVIF namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Remove an event from an ONVIF asset
           text: >
-            az iot ops ns asset onvif event remove --asset myOnvifAsset --namespace myNamespace
-            -g myResourceGroup --name motionEvent
+            az iot ops ns asset onvif event remove --asset myOnvifAsset --instance myInstance
+            -g myInstanceResourceGroup --name motionEvent
     """
 
     helps[
         "iot ops ns asset onvif event show"
     ] = """
         type: command
-        short-summary: Show details of an event for an ONVIF asset in a Device Registry namespace.
+        short-summary: Show details of an event for an ONVIF namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Show event details
           text: >
-            az iot ops ns asset onvif event show --asset myOnvifAsset --namespace myNamespace
-            -g myResourceGroup --name motionEvent
+            az iot ops ns asset onvif event show --asset myOnvifAsset --instance myInstance
+            -g myInstanceResourceGroup --name motionEvent
     """
 
     helps[
         "iot ops ns asset onvif event update"
     ] = """
         type: command
-        short-summary: Update an event for an ONVIF asset in a Device Registry namespace.
+        short-summary: Update an event for an ONVIF namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Update event notifier
           text: >
-            az iot ops ns asset onvif event update --asset myOnvifAsset --namespace myNamespace
-            -g myResourceGroup --name motionEvent --event-notifier "motion.detection.enhanced"
+            az iot ops ns asset onvif event update --asset myOnvifAsset --instance myInstance
+            -g myInstanceResourceGroup --name motionEvent --event-notifier "motion.detection.enhanced"
 
         - name: Update event destination
           text: >
-            az iot ops ns asset onvif event update --asset myOnvifAsset --namespace myNamespace
-            -g myResourceGroup --name lineDetection
+            az iot ops ns asset onvif event update --asset myOnvifAsset --instance myInstance
+            -g myInstanceResourceGroup --name lineDetection
             --destination topic="factory/onvif/security/updated" retain=true qos=2 ttl=3600
     """
 
@@ -1529,7 +1529,7 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua"
     ] = """
         type: group
-        short-summary: Manage assets that point to OPC UA device endpoints.
+        short-summary: Manage namespaced assets that point to OPC UA device endpoints.
         long-summary: For more information on OPC UA connectors, please see https://aka.ms/aio-opcua-quickstart
     """
 
@@ -1537,32 +1537,32 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua create"
     ] = """
         type: command
-        short-summary: Create an OPC UA asset in a Device Registry namespace.
+        short-summary: Create an OPC UA namespaced asset in an IoT Operations instance.
         long-summary: The device endpoint must be of type Microsoft.OpcUa.
 
         examples:
         - name: Create a basic OPC UA asset
           text: >
-            az iot ops ns asset opcua create --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset opcua create --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --device myOpcuaDevice --endpoint-name myOpcuaEndpoint
 
         - name: Create an OPC UA asset with dataset configuration
           text: >
-            az iot ops ns asset opcua create --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset opcua create --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --dataset-publish-int 1000
             --dataset-sampling-int 500 --dataset-queue-size 5 --dataset-key-frame-count 1
             --dataset-start-inst "ns=1;i=1234"
 
         - name: Create an OPC UA asset with event configuration
           text: >
-            az iot ops ns asset opcua create --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset opcua create --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --event-publish-int 2000
             --event-queue-size 10 --event-start-inst "ns=1;i=5678"
             --event-filter-clause path="ns=1;i=1000" type="String" field="Temperature"
 
         - name: Create an OPC UA asset with MQTT destinations for datasets and events
           text: >
-            az iot ops ns asset opcua create --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset opcua create --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --device myOpcuaDevice --endpoint-name myOpcuaEndpoint
             --dataset-dest topic="factory/opcua/data" retain=true qos=1 ttl=3600
             --event-dest topic="factory/opcua/events" retain=false qos=1 ttl=3600
@@ -1572,36 +1572,36 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua update"
     ] = """
         type: command
-        short-summary: Update an OPC UA asset in a Device Registry namespace.
+        short-summary: Update an OPC UA namespaced asset in an IoT Operations instance.
         long-summary: The device endpoint must be of type Microsoft.OpcUa.
 
         examples:
         - name: Update an OPC UA asset's basic properties
           text: >
-            az iot ops ns asset opcua update --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset opcua update --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --description "Updated factory PLC" --display-name "Production Line Controller"
 
         - name: Update an OPC UA asset's dataset configuration
           text: >
-            az iot ops ns asset opcua update --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset opcua update --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --dataset-publish-int 500 --dataset-sampling-int 250
             --dataset-queue-size 10 --dataset-key-frame-count 2
 
         - name: Update an OPC UA asset's event configuration
           text: >
-            az iot ops ns asset opcua update --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset opcua update --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --event-publish-int 1000 --event-queue-size 5
             --event-filter-clause path="ns=1;i=2000" type="String" field="Alarm"
 
         - name: Update an OPC UA asset's destination configurations
           text: >
-            az iot ops ns asset opcua update --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset opcua update --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --dataset-dest topic="factory/opcua/data/updated" retain=true qos=1 ttl=7200
             --event-dest topic="factory/opcua/events/updated" retain=false qos=1 ttl=3600
 
         - name: Update an OPC UA asset's metadata and attributes
           text: >
-            az iot ops ns asset opcua update --name myOpcuaAsset --namespace myNamespace -g myResourceGroup
+            az iot ops ns asset opcua update --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --manufacturer "Automation Corp" --model "PLC-2000" --serial-number "PLC87654"
             --attribute location=factory-floor zone="production line"
     """
@@ -1610,7 +1610,7 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua dataset"
     ] = """
         type: group
-        short-summary: Manage datasets for OPC UA assets in Device Registry namespaces.
+        short-summary: Manage datasets for OPC UA namespaced assets in an IoT Operations instance.
         long-summary: Currently, only one dataset with the name "default" is supported for assets.
     """
 
@@ -1618,37 +1618,37 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua dataset add"
     ] = """
         type: command
-        short-summary: Add a dataset to an OPC UA asset in a Device Registry namespace.
+        short-summary: Add a dataset to an OPC UA namespaced asset in an IoT Operations instance.
         long-summary: Currently, only one dataset with the name "default" is supported for assets.
 
         examples:
         - name: Add a basic OPC UA dataset
           text: >
-            az iot ops ns asset opcua dataset add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData --data-source "ns=2;s=Temperature"
+            az iot ops ns asset opcua dataset add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureData --data-source "ns=2;s=Temperature"
 
         - name: Add an OPC UA dataset with publishing and sampling intervals
           text: >
-            az iot ops ns asset opcua dataset add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name pressureData --data-source "ns=2;s=Pressure"
+            az iot ops ns asset opcua dataset add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name pressureData --data-source "ns=2;s=Pressure"
             --publish-int 1000 --sampling-int 500 --queue-size 10
 
         - name: Add an OPC UA dataset with key frame count and start instance
           text: >
-            az iot ops ns asset opcua dataset add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name videoData --data-source "ns=2;s=VideoStream"
+            az iot ops ns asset opcua dataset add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name videoData --data-source "ns=2;s=VideoStream"
             --key-frame-count 5 --start-inst "ns=2;i=1000"
 
         - name: Add an OPC UA dataset with MQTT destination
           text: >
-            az iot ops ns asset opcua dataset add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData --data-source "ns=2;s=Temperature"
+            az iot ops ns asset opcua dataset add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureData --data-source "ns=2;s=Temperature"
             --dest topic="factory/opcua/temperature" retain=true qos=1 ttl=3600
 
         - name: Add an OPC UA dataset and replace existing one with same name
           text: >
-            az iot ops ns asset opcua dataset add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData --data-source "ns=3;s=NewTemperature"
+            az iot ops ns asset opcua dataset add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureData --data-source "ns=3;s=NewTemperature"
             --replace
     """
 
@@ -1656,63 +1656,63 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua dataset list"
     ] = """
         type: command
-        short-summary: List datasets for an OPC UA asset in a Device Registry namespace.
+        short-summary: List datasets for an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
         - name: List all datasets for an OPC UA asset
           text: >
-            az iot ops ns asset opcua dataset list --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup
+            az iot ops ns asset opcua dataset list --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup
     """
 
     helps[
         "iot ops ns asset opcua dataset remove"
     ] = """
         type: command
-        short-summary: Remove a dataset from an OPC UA asset in a Device Registry namespace.
+        short-summary: Remove a dataset from an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Remove a dataset from an OPC UA asset
           text: >
-            az iot ops ns asset opcua dataset remove --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData
+            az iot ops ns asset opcua dataset remove --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureData
     """
 
     helps[
         "iot ops ns asset opcua dataset show"
     ] = """
         type: command
-        short-summary: Show details of a dataset for an OPC UA asset in a Device Registry namespace.
+        short-summary: Show details of a dataset for an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Show dataset details
           text: >
-            az iot ops ns asset opcua dataset show --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData
+            az iot ops ns asset opcua dataset show --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureData
     """
 
     helps[
         "iot ops ns asset opcua dataset update"
     ] = """
         type: command
-        short-summary: Update a dataset for an OPC UA asset in a Device Registry namespace.
+        short-summary: Update a dataset for an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Update dataset data source and intervals
           text: >
-            az iot ops ns asset opcua dataset update --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData --data-source "ns=3;s=UpdatedTemperature"
+            az iot ops ns asset opcua dataset update --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureData --data-source "ns=3;s=UpdatedTemperature"
             --publish-int 2000 --sampling-int 1000
 
         - name: Update dataset queue size and key frame count
           text: >
-            az iot ops ns asset opcua dataset update --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name videoData --queue-size 20 --key-frame-count 10
+            az iot ops ns asset opcua dataset update --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name videoData --queue-size 20 --key-frame-count 10
 
         - name: Update dataset destination
           text: >
-            az iot ops ns asset opcua dataset update --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureData
+            az iot ops ns asset opcua dataset update --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureData
             --dest topic="factory/opcua/updated/temperature" retain=false qos=2 ttl=7200
     """
 
@@ -1732,19 +1732,19 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic OPC UA data point
           text: >
-            az iot ops ns asset opcua dataset point add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --dataset temperatureData --name temp1 --data-source "ns=2;s=Temp1"
+            az iot ops ns asset opcua dataset point add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --dataset temperatureData --name temp1 --data-source "ns=2;s=Temp1"
 
         - name: Add an OPC UA data point with queue size and sampling interval
           text: >
-            az iot ops ns asset opcua dataset point add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --dataset pressureData --name pressure1 --data-source "ns=2;s=Pressure1"
+            az iot ops ns asset opcua dataset point add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --dataset pressureData --name pressure1 --data-source "ns=2;s=Pressure1"
             --queue-size 5 --sampling-int 1000
 
         - name: Add an OPC UA data point and replace existing one with same name
           text: >
-            az iot ops ns asset opcua dataset point add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --dataset temperatureData --name temp1 --data-source "ns=3;s=NewTemp1"
+            az iot ops ns asset opcua dataset point add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --dataset temperatureData --name temp1 --data-source "ns=3;s=NewTemp1"
             --replace
     """
 
@@ -1757,8 +1757,8 @@ def load_iotops_adr_help():
         examples:
         - name: List all data points for a dataset
           text: >
-            az iot ops ns asset opcua dataset point list --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --dataset temperatureData
+            az iot ops ns asset opcua dataset point list --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --dataset temperatureData
     """
 
     helps[
@@ -1770,51 +1770,51 @@ def load_iotops_adr_help():
         examples:
         - name: Remove a data point from a dataset
           text: >
-            az iot ops ns asset opcua dataset point remove --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --dataset temperatureData --name temp1
+            az iot ops ns asset opcua dataset point remove --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --dataset temperatureData --name temp1
     """
 
     helps[
         "iot ops ns asset opcua event"
     ] = """
         type: group
-        short-summary: Manage events for OPC UA assets in Device Registry namespaces.
+        short-summary: Manage events for OPC UA namespaced assets in an IoT Operations instance.
     """
 
     helps[
         "iot ops ns asset opcua event add"
     ] = """
         type: command
-        short-summary: Add an event to an OPC UA asset in a Device Registry namespace.
+        short-summary: Add an event to an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Add a basic OPC UA event
           text: >
-            az iot ops ns asset opcua event add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name alarmEvent --event-notifier "ns=2;i=1000"
+            az iot ops ns asset opcua event add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent --event-notifier "ns=2;i=1000"
 
         - name: Add an OPC UA event with publishing interval and queue size
           text: >
-            az iot ops ns asset opcua event add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name systemEvent --event-notifier "ns=2;i=200"
+            az iot ops ns asset opcua event add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name systemEvent --event-notifier "ns=2;i=200"
             --publish-int 1500 --queue-size 8
 
         - name: Add an OPC UA event with filter
           text: >
-            az iot ops ns asset opcua event add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureAlarm --event-notifier "ns=2;i=3000"
+            az iot ops ns asset opcua event add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureAlarm --event-notifier "ns=2;i=3000"
             --filter-type equals --filter-clause path="ns=2;i=5000" type="String" field="AlarmType"
 
         - name: Add an OPC UA event with MQTT destination
           text: >
-            az iot ops ns asset opcua event add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name criticalAlarm --event-notifier "ns=2;i=4000"
+            az iot ops ns asset opcua event add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name criticalAlarm --event-notifier "ns=2;i=4000"
             --dest topic="factory/opcua/alarms" retain=true qos=2 ttl=7200
 
         - name: Replace an OPC UA event with same name
           text: >
-            az iot ops ns asset opcua event add --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name alarmEvent --event-notifier "ns=3;i=1000"
+            az iot ops ns asset opcua event add --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent --event-notifier "ns=3;i=1000"
             --replace
     """
 
@@ -1822,62 +1822,62 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua event list"
     ] = """
         type: command
-        short-summary: List events for an OPC UA asset in a Device Registry namespace.
+        short-summary: List events for an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
         - name: List all events for an OPC UA asset
           text: >
-            az iot ops ns asset opcua event list --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup
+            az iot ops ns asset opcua event list --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup
     """
 
     helps[
         "iot ops ns asset opcua event remove"
     ] = """
         type: command
-        short-summary: Remove an event from an OPC UA asset in a Device Registry namespace.
+        short-summary: Remove an event from an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Remove an event from an OPC UA asset
           text: >
-            az iot ops ns asset opcua event remove --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name alarmEvent
+            az iot ops ns asset opcua event remove --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent
     """
 
     helps[
         "iot ops ns asset opcua event show"
     ] = """
         type: command
-        short-summary: Show details of an event for an OPC UA asset in a Device Registry namespace.
+        short-summary: Show details of an event for an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Show event details
           text: >
-            az iot ops ns asset opcua event show --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name alarmEvent
+            az iot ops ns asset opcua event show --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent
     """
 
     helps[
         "iot ops ns asset opcua event update"
     ] = """
         type: command
-        short-summary: Update an event for an OPC UA asset in a Device Registry namespace.
+        short-summary: Update an event for an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Update event publishing interval and queue size
           text: >
-            az iot ops ns asset opcua event update --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name alarmEvent --publish-int 2000 --queue-size 10
+            az iot ops ns asset opcua event update --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name alarmEvent --publish-int 2000 --queue-size 10
 
         - name: Update event filter configuration
           text: >
-            az iot ops ns asset opcua event update --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name temperatureAlarm --filter-type contains
+            az iot ops ns asset opcua event update --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name temperatureAlarm --filter-type contains
             --filter-clause path="ns=2;i=6000" type="Double" field="Temperature"
 
         - name: Update event destination
           text: >
-            az iot ops ns asset opcua event update --asset myOpcuaAsset --namespace myNamespace
-            -g myResourceGroup --name systemEvent
+            az iot ops ns asset opcua event update --asset myOpcuaAsset --instance myInstance
+            -g myInstanceResourceGroup --name systemEvent
             --dest topic="factory/opcua/system/updated" retain=false qos=1 ttl=3600
     """
