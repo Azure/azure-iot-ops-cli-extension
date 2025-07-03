@@ -15,6 +15,7 @@ from azure.cli.core.azclierror import FileOperationError
 from azext_edge.edge.commands_namespaces import (
     create_namespace_device,
     delete_namespace_device,
+    query_namespace_devices,
     show_namespace_device,
     update_namespace_device,
     list_namespace_device_endpoints,
@@ -98,7 +99,6 @@ def get_namespace_device_record(device_name: str, namespace_name: str, resource_
     {
         "custom_attributes": ["key1=value1", "key2=value2"],
         "disabled": True,
-        "instance_subscription": get_zeroed_subscription(),
         "manufacturer": "Fabrikam",
         "model": "ModelY",
         "operating_system": "Windows",
@@ -212,8 +212,76 @@ def test_create_namespace_device(
         assert call_body["properties"]["attributes"] == parse_kvp_nargs(req["custom_attributes"])
 
 
-def test_query_namespace_devices():
-    pass  # TODO
+@pytest.mark.parametrize("req", [
+    {},  # No filters
+    {
+        "device_name": "test-device",
+        "resource_group_name": "test-rg",
+        "manufacturer": "Contoso",
+        "model": "Model X",
+        "operating_system": "Linux"
+    },
+    {
+        "custom_query": " | where name contains 'special' | project name, location"
+    },
+    {
+        "device_name": "another-device",
+        "manufacturer": "Fabrikam"
+    }
+])
+def test_query_namespace_devices(mocked_cmd, mocker, req: Dict):
+
+    return_value = [{"id": "device1"}, {"id": "device2"}]
+    # Mock the query method from the Queryable class
+    mock_query = mocker.patch(
+        "azext_edge.edge.util.queryable.Queryable.query",
+        return_value=return_value
+    )
+
+    # Test query_namespace_devices for success case
+    result = query_namespace_devices(
+        cmd=mocked_cmd,
+        **req
+    )
+
+    # Verify the function returns the mocked query result
+    assert result == return_value
+
+    # Assert that the query method was called
+    assert mock_query.call_count == 1
+
+    # Check the query string that was passed to the query method
+    actual_query = mock_query.call_args[1]["query"]
+
+    # Assert that the query starts with the expected base
+    assert actual_query.startswith("Resources | where type =~ 'Microsoft.DeviceRegistry/namespaces/devices'")
+
+    # Verify specific filters based on request parameters
+    if "custom_query" in req:
+        # Custom query should be used as-is after the base query
+        assert req["custom_query"] in actual_query
+    else:
+        # Verify individual filters are applied
+        if "device_name" in req:
+            assert f'where name =~ "{req["device_name"]}"' in actual_query
+        if "resource_group_name" in req:
+            assert f'where resourceGroup =~ "{req["resource_group_name"]}"' in actual_query
+        if "manufacturer" in req:
+            assert f'where properties.manufacturer =~ "{req["manufacturer"]}"' in actual_query
+        if "model" in req:
+            assert f'where properties.model =~ "{req["model"]}"' in actual_query
+        if "operating_system" in req:
+            assert f'where properties.operatingSystem =~ "{req["operating_system"]}"' in actual_query
+
+        # Verify projection clause is included
+        assert "| extend customLocation = tostring(extendedLocation.name)" in actual_query
+        assert "| extend provisioningState = properties.provisioningState" in actual_query
+        assert "| extend enabled = properties.enabled" in actual_query
+        assert "| extend manufacturer = properties.manufacturer" in actual_query
+        assert "| extend model = properties.model" in actual_query
+        assert "| extend operatingSystem = properties.operatingSystem" in actual_query
+        assert "| project id, customLocation, location, name, resourceGroup, provisioningState" in actual_query
+        assert "enabled, manufacturer, model, operatingSystem, tags, type, subscriptionId" in actual_query
 
 
 @pytest.mark.parametrize("response_status", [202, 443])

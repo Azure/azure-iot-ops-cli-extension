@@ -619,17 +619,22 @@ def load_adr_arguments(self, _):
             help="The name of the device to create.",
         )
         context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="The name of the Azure IoT Operations instance.",
+        )
+        context.argument(
+            "instance_resource_group",
+            options_list=["--resource-group", "-g"],
+            help="The resource group of the Azure IoT Operations instance.",
+        )
+        context.argument(
             "custom_attributes",
             options_list=["--custom-attribute", "--attr"],
             help="Space-separated key=value pairs corresponding to additional custom attributes for the device. "
                  "This parameter can be used more than once.",
             nargs="+",
             action="extend",
-        )
-        context.argument(
-            "device_group_id",
-            options_list=["--device-group-id", "--group-id"],
-            help="The device group ID for the device.",
         )
         context.argument(
             "disabled",
@@ -650,22 +655,6 @@ def load_adr_arguments(self, _):
         )
 
     with self.argument_context("iot ops ns device create") as context:
-        context.argument(
-            "instance_name",
-            options_list=["--instance", "--inst"],
-            help="The name of the Azure IoT Operations instance.",
-        )
-        context.argument(
-            "device_template_id",
-            options_list=["--template-id", "--tid"],
-            help="The device template ID to use for the device.",
-        )
-        context.argument(
-            "instance_resource_group",
-            options_list=["--instance-resource-group", "--irg"],
-            help="The resource group of the Azure IoT Operations instance. If not provided, the device "
-            "resource group will be used.",
-        )
         context.argument(
             "instance_subscription",
             options_list=["--instance-subscription", "--isub"],

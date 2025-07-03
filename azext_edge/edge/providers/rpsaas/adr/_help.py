@@ -577,25 +577,21 @@ def load_iotops_adr_help():
         examples:
         - name: Create a device with minimal configuration
           text: >
-            az iot ops ns device create --name myDevice --namespace myNamespace -g myResourceGroup
-            --instance myInstance --template-id "dtmi:sample:device;1"
+            az iot ops ns device create --name myDevice --instance myInstance --instance-resource-group myResourceGroup
 
-        - name: Create a device with custom attributes and device group
+        - name: Create a device with custom attributes
           text: >
-            az iot ops ns device create --name myDevice --namespace myNamespace -g myResourceGroup
-            --instance myInstance --template-id "dtmi:sample:device;1"
-            --device-group-id "critical-devices" --attr location=building1 floor=3
+            az iot ops ns device create --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            --attr location=building1 floor=3
 
         - name: Create a device with manufacturer information and operating system details
           text: >
-            az iot ops ns device create --name myDevice --namespace myNamespace -g myResourceGroup
-            --instance myInstance --template-id "dtmi:sample:device;1"
+            az iot ops ns device create --name myDevice --instance myInstance --instance-resource-group myResourceGroup
             --manufacturer "Contoso" --model "Gateway X1" --os "Linux" --os-version "4.15"
 
         - name: Create a disabled device with tags
           text: >
-            az iot ops ns device create --name myDevice --namespace myNamespace -g myResourceGroup
-            --instance myInstance --template-id "dtmi:sample:device;1"
+            az iot ops ns device create --name myDevice --instance myInstance --instance-resource-group myResourceGroup
             --disabled --tags environment=test criticality=low
     """
 
@@ -608,7 +604,30 @@ def load_iotops_adr_help():
         examples:
         - name: List all devices in a namespace
           text: >
-            az iot ops ns device list --namespace myNamespace -g myResourceGroup
+            az iot ops ns device list --instance myInstance --instance-resource-group myResourceGroup
+    """
+
+    helps[
+        "iot ops ns device query"
+    ] = """
+        type: command
+        short-summary: Query devices in Device Registry namespaces.
+        long-summary: |
+          Query devices across namespaces based on various search criteria including device name,
+          manufacturer, model, and more.
+
+        examples:
+        - name: Query for a specific device by name
+          text: >
+            az iot ops ns device query --name myDevice --instance-resource-group myResourceGroup
+
+        - name: Query for devices from a specific manufacturer
+          text: >
+            az iot ops ns device query --manufacturer "Contoso" --instance-resource-group myResourceGroup
+
+        - name: Use a custom query to search for devices
+          text: >
+            az iot ops ns device query --custom-query "where tags.environment=='production'" --instance-resource-group myResourceGroup
     """
 
     helps[
@@ -620,7 +639,7 @@ def load_iotops_adr_help():
         examples:
         - name: Show details of a device
           text: >
-            az iot ops ns device show --name myDevice --namespace myNamespace -g myResourceGroup
+            az iot ops ns device show --name myDevice --instance myInstance --instance-resource-group myResourceGroup
     """
 
     helps[
@@ -632,7 +651,7 @@ def load_iotops_adr_help():
         examples:
         - name: Delete a device
           text: >
-            az iot ops ns device delete --name myDevice --namespace myNamespace -g myResourceGroup
+            az iot ops ns device delete --name myDevice --instance myInstance --instance-resource-group myResourceGroup
     """
 
     helps[
@@ -644,22 +663,22 @@ def load_iotops_adr_help():
         examples:
         - name: Update device custom attributes
           text: >
-            az iot ops ns device update --name myDevice --namespace myNamespace -g myResourceGroup
+            az iot ops ns device update --name myDevice --instance myInstance --instance-resource-group myResourceGroup
             --attr location=building2 floor=5
 
-        - name: Move device to a different device group and update operating system version
+        - name: Update operating system version
           text: >
-            az iot ops ns device update --name myDevice --namespace myNamespace -g myResourceGroup
-            --device-group-id "maintenance-devices" --os-version "4.18"
+            az iot ops ns device update --name myDevice --instance myInstance --instance-resource-group myResourceGroup
+            --os-version "4.18"
 
         - name: Disable a device
           text: >
-            az iot ops ns device update --name myDevice --namespace myNamespace -g myResourceGroup
+            az iot ops ns device update --name myDevice --instance myInstance --instance-resource-group myResourceGroup
             --disabled
 
         - name: Update device tags
           text: >
-            az iot ops ns device update --name myDevice --namespace myNamespace -g myResourceGroup
+            az iot ops ns device update --name myDevice --instance myInstance --instance-resource-group myResourceGroup
             --tags environment=production criticality=high
     """
 
@@ -682,10 +701,10 @@ def load_iotops_adr_help():
         examples:
         - name: List inbound and outbound endpoints of a device
           text: >
-            az iot ops ns device endpoint list --device myDevice --namespace myNamespace -g myResourceGroup
+            az iot ops ns device endpoint list --device myDevice --instance myInstance --instance-resource-group myResourceGroup
         - name: List only inbound endpoints of a device
           text: >
-            az iot ops ns device endpoint list --device myDevice --namespace myNamespace -g myResourceGroup --inbound
+            az iot ops ns device endpoint list --device myDevice --instance myInstance --instance-resource-group myResourceGroup --inbound
     """
 
     helps[
@@ -706,7 +725,7 @@ def load_iotops_adr_help():
         examples:
         - name: List all inbound endpoints of a device
           text: >
-            az iot ops ns device endpoint inbound list --device myDevice --namespace myNamespace -g myResourceGroup
+            az iot ops ns device endpoint inbound list --device myDevice --instance myInstance --instance-resource-group myResourceGroup
     """
 
     helps[
@@ -718,11 +737,11 @@ def load_iotops_adr_help():
         examples:
         - name: Remove a single inbound endpoint from a device
           text: >
-            az iot ops ns device endpoint inbound remove --device myDevice --namespace myNamespace -g myResourceGroup --endpoint myEndpoint
+            az iot ops ns device endpoint inbound remove --device myDevice --instance myInstance --instance-resource-group myResourceGroup --endpoint myEndpoint
 
         - name: Remove multiple inbound endpoints from a device
           text: >
-            az iot ops ns device endpoint inbound remove --device myDevice --namespace myNamespace -g myResourceGroup --endpoint myEndpoint1 myEndpoint2
+            az iot ops ns device endpoint inbound remove --device myDevice --instance myInstance --instance-resource-group myResourceGroup --endpoint myEndpoint1 myEndpoint2
     """
 
     helps[
@@ -744,19 +763,19 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic custom endpoint to a device
           text: >
-            az iot ops ns device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080"
+            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080"
 
         - name: Add a custom endpoint with authentication
           text: >
-            az iot ops ns device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --user-ref "secretRef:username" --pass-ref "secretRef:password"
 
         - name: Add a custom endpoint with certificate authentication
           text: >
-            az iot ops ns device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref "secretRef:certificate"
+            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref "secretRef:certificate"
 
         - name: Add a custom endpoint with additional configuration
           text: >
-            az iot ops ns device endpoint inbound add custom --device myDevice --namespace myNamespace -g myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --additional-config "{\\\"customSetting\\\": \\\"value\\\"}"
+            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --additional-config "{\\\"customSetting\\\": \\\"value\\\"}"
     """
 
     helps[
@@ -770,11 +789,11 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic media endpoint to a device
           text: >
-            az iot ops ns device endpoint inbound add media --device myDevice --namespace myNamespace -g myResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream"
+            az iot ops ns device endpoint inbound add media --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream"
 
         - name: Add a media endpoint with authentication
           text: >
-            az iot ops ns device endpoint inbound add media --device myDevice --namespace myNamespace -g myResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+            az iot ops ns device endpoint inbound add media --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --user-ref "secretRef:username" --pass-ref "secretRef:password"
     """
 
     helps[
@@ -788,15 +807,15 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic ONVIF endpoint to a device
           text: >
-            az iot ops ns device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service"
+            az iot ops ns device endpoint inbound add onvif --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service"
 
         - name: Add an ONVIF endpoint with authentication
           text: >
-            az iot ops ns device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+            az iot ops ns device endpoint inbound add onvif --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service" --user-ref "secretRef:username" --pass-ref "secretRef:password"
 
         - name: Add an ONVIF endpoint that accepts invalid hostnames and certificates
           text: >
-            az iot ops ns device endpoint inbound add onvif --device myDevice --namespace myNamespace -g myResourceGroup --name myONVIFEndpoint --endpoint-address "https://192.168.1.100:8000/onvif/device_service" --accept-invalid-hostnames --accept-invalid-certificates
+            az iot ops ns device endpoint inbound add onvif --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myONVIFEndpoint --endpoint-address "https://192.168.1.100:8000/onvif/device_service" --accept-invalid-hostnames --accept-invalid-certificates
     """
 
     helps[
@@ -810,23 +829,23 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic OPC UA endpoint to a device
           text: >
-            az iot ops ns device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840"
+            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840"
 
         - name: Add an OPC UA endpoint with authentication
           text: >
-            az iot ops ns device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --user-ref "secretRef:username" --pass-ref "secretRef:password"
 
         - name: Add an OPC UA endpoint with a custom application name
           text: >
-            az iot ops ns device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --application-name "My OPC UA App"
+            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --application-name "My OPC UA App"
 
         - name: Add an OPC UA endpoint with customized session parameters
           text: >
-            az iot ops ns device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --keep-alive 15000 --session-timeout 90000 --publishing-interval 2000 --sampling-interval 1500
+            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --keep-alive 15000 --session-timeout 90000 --publishing-interval 2000 --sampling-interval 1500
 
         - name: Add an OPC UA endpoint with security settings and asset discovery enabled
           text: >
-            az iot ops ns device endpoint inbound add opcua --device myDevice --namespace myNamespace -g myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --run-asset-discovery
+            az iot ops ns device endpoint inbound add opcua --device myDevice --instance myInstance --instance-resource-group myResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --security-policy "Basic256Sha256" --security-mode "SignAndEncrypt" --run-asset-discovery
     """
 
     helps[

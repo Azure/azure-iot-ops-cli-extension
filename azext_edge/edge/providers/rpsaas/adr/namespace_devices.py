@@ -183,6 +183,7 @@ class NamespaceDevices(Queryable):
 
         # for now, keep it simple
         # later on, add namespace (needs id parsing), location, endpoint types (will need to add joins)
+        # instance names
         def _build_query_body(
             device_name: Optional[str] = None,
             resource_group_name: Optional[str] = None,
