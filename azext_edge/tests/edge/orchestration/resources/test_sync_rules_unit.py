@@ -16,6 +16,8 @@ import responses
 from azext_edge.edge.providers.orchestration.resources.sync_rules import (
     K8_BRIDGE_APP_ID,
     KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID,
+    ADR_PROVIDER,
+    OPS_PROVIDER,
 )
 from azext_edge.edge.commands_edge import enable_rsync, list_rsync, disable_rsync
 
@@ -35,6 +37,27 @@ from .test_instances_unit import get_instance_endpoint, get_mock_instance_record
 RESOURCE_SYNC_RP = "Microsoft.ExtendedLocation"
 RESOURCE_SYNC_API_VERSION = "2021-08-31-preview"
 
+EXPECTED_SELECTORS = {
+    ADR_PROVIDER: {
+        "matchExpressions": [
+            {
+                "key": "management.azure.com/provider-name",
+                "operator": "In",
+                "values": [ADR_PROVIDER, ADR_PROVIDER.lower()],
+            }
+        ]
+    },
+    OPS_PROVIDER: {
+        "matchExpressions": [
+            {
+                "key": "management.azure.com/provider-name",
+                "operator": "In",
+                "values": [OPS_PROVIDER, OPS_PROVIDER.lower()],
+            }
+        ]
+    },
+}
+
 
 def get_sync_rule_endpoint(resource_group_name: str, cl_name: str, rule_name: Optional[str] = None) -> str:
     resource_path = f"/customLocations/{cl_name}/resourceSyncRules"
@@ -48,13 +71,13 @@ def get_sync_rule_endpoint(resource_group_name: str, cl_name: str, rule_name: Op
     )
 
 
-def get_mock_sync_rule_record(name: str, resource_group_name: str, priority: int = 400) -> dict:
+def get_mock_sync_rule_record(name: str, resource_group_name: str, provider: str, priority: int = 400) -> dict:
     resource = get_mock_resource(
         name=name,
         properties={
             "priority": priority,
             "provisioningState": "Succeeded",
-            "selector": {"matchLabels": {"management.azure.com/provider-name": "microsoft.iotoperations"}},
+            "selector": EXPECTED_SELECTORS[provider],
             "targetResourceGroup": f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}",
         },
         resource_group_name=resource_group_name,
@@ -183,14 +206,12 @@ def test_sync_rules_enable(
             )
 
     expected_rule_adr_name = rule_adr_name or f"{cl_name}-adr-sync"
-    expected_rule_ops_name = rule_ops_name or f"{cl_name}-broker-sync"
+    expected_rule_ops_name = rule_ops_name or f"{cl_name}-aio-sync"
     adr_rule_payload = get_mock_sync_rule_record(
-        name=expected_rule_adr_name,
-        resource_group_name=resource_group_name,
+        name=expected_rule_adr_name, resource_group_name=resource_group_name, provider=ADR_PROVIDER
     )
     ops_rule_payload = get_mock_sync_rule_record(
-        name=expected_rule_ops_name,
-        resource_group_name=resource_group_name,
+        name=expected_rule_ops_name, resource_group_name=resource_group_name, provider=OPS_PROVIDER
     )
     sync_rule_adr_put = mocked_responses.add(
         method=responses.PUT,
@@ -232,7 +253,8 @@ def test_sync_rules_enable(
         if not user_k8_bridge_sp_oid:
             assert sp_get.call_count == 1
             mocked_logger_queryable.debug.call_args_list[0].assert_called_once_with(
-                "Using aud: https://graph.microsoft.com")
+                "Using aud: https://graph.microsoft.com"
+            )
             if sp_lookup_code != 200:
                 mocked_logger.warning.assert_called_once_with(
                     "Unable to query K8 Bridge service principal and OID not provided via parameter. "
@@ -250,17 +272,21 @@ def test_sync_rules_enable(
             assert ra_put_json["properties"]["principalId"] == target_k8_bridge_sp_oid
             assert ra_put_json["properties"]["principalType"] == "ServicePrincipal"
 
+    sync_rule_adr_put.call_count == 1
     sync_rule_adr_put_json = json.loads(sync_rule_adr_put.calls[0].request.body)
     assert sync_rule_adr_put_json["properties"]["targetResourceGroup"] == (
         f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}"
     )
     assert sync_rule_adr_put_json["properties"]["priority"] == rule_adr_pri
+    assert sync_rule_adr_put_json["properties"]["selector"] == EXPECTED_SELECTORS[ADR_PROVIDER]
 
+    sync_rule_ops_put.call_count == 1
     sync_rule_ops_put_json = json.loads(sync_rule_ops_put.calls[0].request.body)
     assert sync_rule_ops_put_json["properties"]["targetResourceGroup"] == (
         f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{resource_group_name}"
     )
     assert sync_rule_ops_put_json["properties"]["priority"] == rule_ops_pri
+    assert sync_rule_ops_put_json["properties"]["selector"] == EXPECTED_SELECTORS[OPS_PROVIDER]
     if tags:
         assert sync_rule_ops_put_json["tags"] == tags
         assert sync_rule_adr_put_json["tags"] == tags
