@@ -40,7 +40,6 @@ TRUST_ISSUER_KIND_KEY = "issuerKind"
 TRUST_SETTING_KEYS = ["issuerName", TRUST_ISSUER_KIND_KEY, "configMapName", "configMapKey"]
 
 EXTENSION_TYPE_PLATFORM = "microsoft.iotoperations.platform"
-EXTENSION_TYPE_OSM = "microsoft.openservicemesh"
 EXTENSION_TYPE_ACS = "microsoft.arc.containerstorage"
 EXTENSION_TYPE_SSC = "microsoft.azure.secretstore"
 EXTENSION_TYPE_OPS = "microsoft.iotoperations"
@@ -49,15 +48,13 @@ OPS_EXTENSION_DEPS = frozenset([EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC, EXT
 
 EXTENSION_TYPE_TO_MONIKER_MAP = {
     EXTENSION_TYPE_PLATFORM: "platform",
-    EXTENSION_TYPE_OSM: "openServiceMesh",
-    EXTENSION_TYPE_ACS: "containerStorage",
     EXTENSION_TYPE_SSC: "secretStore",
+    EXTENSION_TYPE_ACS: "containerStorage",
     EXTENSION_TYPE_OPS: "iotOperations",
 }
 
 EXTENSION_MONIKER_TO_ALIAS_MAP = {
     "platform": "plat",
-    "openServiceMesh": "osm",
     "secretStore": "ssc",
     "containerStorage": "acs",
     "iotOperations": "ops",
@@ -65,7 +62,6 @@ EXTENSION_MONIKER_TO_ALIAS_MAP = {
 
 EXTENSION_ALIAS_TO_TYPE_MAP = {
     "plat": EXTENSION_TYPE_PLATFORM,
-    "osm": EXTENSION_TYPE_OSM,
     "ssc": EXTENSION_TYPE_SSC,
     "acs": EXTENSION_TYPE_ACS,
     "ops": EXTENSION_TYPE_OPS,
