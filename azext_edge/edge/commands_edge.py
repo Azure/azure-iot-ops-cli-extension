@@ -18,7 +18,6 @@ from .providers.orchestration.common import (
     IdentityUsageType,
     KubernetesDistroType,
     MqMemoryProfile,
-    MqServiceType,
 )
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
@@ -171,7 +170,6 @@ def create_instance(
     # Broker
     custom_broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
-    broker_service_type: str = MqServiceType.CLUSTERIP.value,
     broker_backend_partitions: int = 2,
     broker_backend_workers: int = 2,
     broker_backend_redundancy_factor: int = 2,
@@ -188,7 +186,6 @@ def create_instance(
     from .util import (
         is_env_flag_enabled,
         read_file_content,
-        should_continue_prompt,
     )
 
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
@@ -200,21 +197,6 @@ def create_instance(
     custom_broker_config = None
     if custom_broker_config_file:
         custom_broker_config = json.loads(read_file_content(file_path=custom_broker_config_file))
-
-    if broker_service_type == MqServiceType.LOADBALANCER.value and add_insecure_listener:
-        raise ArgumentUsageError(
-            f"--add-insecure-listener cannot be used when --broker-service-type is {MqServiceType.LOADBALANCER.value}."
-        )
-
-    # TODO - @digimaun, should [temp] user confirms be moved to InitTargets?
-    if broker_backend_redundancy_factor < 2:
-        logger.warning(
-            "Deploying Azure IoT Operations with less than 2 broker backend replicas "
-            "prevents future version upgrades."
-        )
-        should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Create")
-        if should_bail:
-            return
 
     work_manager = WorkManager(cmd)
     result_payload = work_manager.execute_ops_init(
@@ -242,7 +224,6 @@ def create_instance(
         # Broker
         custom_broker_config=custom_broker_config,
         broker_memory_profile=broker_memory_profile,
-        broker_service_type=broker_service_type,
         broker_backend_partitions=broker_backend_partitions,
         broker_backend_workers=broker_backend_workers,
         broker_backend_redundancy_factor=broker_backend_redundancy_factor,

@@ -1220,14 +1220,6 @@ def load_iotops_arguments(self, _):
                 arg_group="Broker",
             )
             context.argument(
-                "broker_service_type",
-                arg_type=get_enum_type(MqServiceType),
-                options_list=["--broker-listener-type", "--lt"],
-                help="Service type associated with the default mqtt broker listener.",
-                arg_group="Broker",
-                deprecate_info=context.deprecate(hide=True),
-            )
-            context.argument(
                 "enable_fault_tolerance",
                 arg_type=get_three_state_flag(),
                 options_list=["--enable-fault-tolerance"],
