@@ -18,7 +18,6 @@ from .providers.orchestration.common import (
     IdentityUsageType,
     KubernetesDistroType,
     MqMemoryProfile,
-    MqServiceType,
 )
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
@@ -171,7 +170,6 @@ def create_instance(
     # Broker
     custom_broker_config_file: Optional[str] = None,
     broker_memory_profile: str = MqMemoryProfile.medium.value,
-    broker_service_type: str = MqServiceType.CLUSTERIP.value,
     broker_backend_partitions: int = 2,
     broker_backend_workers: int = 2,
     broker_backend_redundancy_factor: int = 2,
@@ -180,7 +178,6 @@ def create_instance(
     add_insecure_listener: Optional[bool] = None,
     tags: Optional[dict] = None,
     no_progress: Optional[bool] = None,
-    confirm_yes: Optional[str] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .common import INIT_NO_PREFLIGHT_ENV_KEY
@@ -188,7 +185,6 @@ def create_instance(
     from .util import (
         is_env_flag_enabled,
         read_file_content,
-        should_continue_prompt,
     )
 
     no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
@@ -200,21 +196,6 @@ def create_instance(
     custom_broker_config = None
     if custom_broker_config_file:
         custom_broker_config = json.loads(read_file_content(file_path=custom_broker_config_file))
-
-    if broker_service_type == MqServiceType.LOADBALANCER.value and add_insecure_listener:
-        raise ArgumentUsageError(
-            f"--add-insecure-listener cannot be used when --broker-service-type is {MqServiceType.LOADBALANCER.value}."
-        )
-
-    # TODO - @digimaun, should [temp] user confirms be moved to InitTargets?
-    if broker_backend_redundancy_factor < 2:
-        logger.warning(
-            "Deploying Azure IoT Operations with less than 2 broker backend replicas "
-            "prevents future version upgrades."
-        )
-        should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Create")
-        if should_bail:
-            return
 
     work_manager = WorkManager(cmd)
     result_payload = work_manager.execute_ops_init(
@@ -242,7 +223,6 @@ def create_instance(
         # Broker
         custom_broker_config=custom_broker_config,
         broker_memory_profile=broker_memory_profile,
-        broker_service_type=broker_service_type,
         broker_backend_partitions=broker_backend_partitions,
         broker_backend_workers=broker_backend_workers,
         broker_backend_redundancy_factor=broker_backend_redundancy_factor,
@@ -272,10 +252,6 @@ def upgrade_instance(
     acs_config_sync_mode: Optional[str] = None,
     acs_version: Optional[str] = None,
     acs_train: Optional[str] = None,
-    osm_config: Optional[List[str]] = None,
-    osm_config_sync_mode: Optional[str] = None,
-    osm_version: Optional[str] = None,
-    osm_train: Optional[str] = None,
     ssc_config: Optional[List[str]] = None,
     ssc_version: Optional[str] = None,
     ssc_train: Optional[str] = None,
@@ -303,10 +279,6 @@ def upgrade_instance(
         acs_version=acs_version,
         acs_train=acs_train,
         acs_config_sync_mode=acs_config_sync_mode,
-        osm_config=osm_config,
-        osm_version=osm_version,
-        osm_train=osm_train,
-        osm_config_sync_mode=osm_config_sync_mode,
         ssc_config=ssc_config,
         ssc_version=ssc_version,
         ssc_train=ssc_train,

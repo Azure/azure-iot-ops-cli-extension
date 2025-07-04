@@ -48,12 +48,14 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="1deef34f002261e376e0741c7090e0ffe013694b",
+    commit_id="f9eaf713ec57783d5776885096bf076b3b516f2b",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.36.1.42791", "templateHash": "1341186064891329303"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.36.1.42791", "templateHash": "13806746648919550554"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -585,7 +587,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"platform": "0.7.24", "secretStore": "0.10.0", "containerStorage": "2.5.3"},
+            "VERSIONS": {"platform": "0.7.25", "secretStore": "0.10.0", "containerStorage": "2.6.0"},
             "TRAINS": {"platform": "preview", "secretStore": "preview", "containerStorage": "stable"},
             "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arccontainerstorage-storage-pool')]",
             "nonFaultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'default,local-path')]",
@@ -691,7 +693,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.36.1.42791", "templateHash": "5877529647570154212"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.36.1.42791", "templateHash": "6060386194716746867"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1291,16 +1293,10 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "description": "The default node path of the container runtime socket. The default is empty.\nIf it's empty, socket path is determined by param kubernetesDistro.\n",
                 },
             },
-            "customLocationName": {
-                "type": "string",
-                "defaultValue": "[format('location-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5)))]",
-            },
+            "customLocationName": {"type": "string", "nullable": True},
             "clExtentionIds": {"type": "array", "items": {"type": "string"}},
             "deployResourceSyncRules": {"type": "bool", "defaultValue": False},
-            "aioInstanceName": {
-                "type": "string",
-                "defaultValue": "[format('aio-{0}', coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5)))]",
-            },
+            "aioInstanceName": {"type": "string", "nullable": True},
             "userAssignedIdentity": {"type": "string", "nullable": True},
             "schemaRegistryId": {"type": "string"},
             "adrNamespaceId": {"type": "string", "nullable": True},
@@ -1313,6 +1309,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         "variables": {
             "VERSIONS": {"iotOperations": "1.2.18"},
             "TRAINS": {"iotOperations": "integration"},
+            "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
             "AIO_EXTENSION_SCOPE": {"cluster": {"releaseNamespace": "[parameters('clusterNamespace')]"}},
@@ -1350,7 +1347,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "schemaRegistry.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
             },
             "extendedLocation": {
-                "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
+                "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))))]",
                 "type": "CustomLocation",
             },
         },
@@ -1379,12 +1376,12 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "customLocation": {
                 "type": "Microsoft.ExtendedLocation/customLocations",
                 "apiVersion": "2021-08-31-preview",
-                "name": "[parameters('customLocationName')]",
+                "name": "[coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH')))]",
                 "location": "[parameters('clusterLocation')]",
                 "properties": {
                     "hostResourceId": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
                     "namespace": "[parameters('clusterNamespace')]",
-                    "displayName": "[parameters('customLocationName')]",
+                    "displayName": "[coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH')))]",
                     "clusterExtensionIds": "[flatten(createArray(parameters('clExtentionIds'), createArray(extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))))))]",
                 },
                 "dependsOn": ["aio_extension"],
@@ -1393,11 +1390,19 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "condition": "[parameters('deployResourceSyncRules')]",
                 "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                 "apiVersion": "2021-08-31-preview",
-                "name": "[format('{0}/{1}', parameters('customLocationName'), format('{0}-broker-sync', parameters('customLocationName')))]",
+                "name": "[format('{0}/{1}', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))), format('{0}-aio-sync', parameters('customLocationName')))]",
                 "location": "[parameters('clusterLocation')]",
                 "properties": {
                     "priority": 400,
-                    "selector": {"matchLabels": {"management.azure.com/provider-name": "microsoft.iotoperations"}},
+                    "selector": {
+                        "matchExpressions": [
+                            {
+                                "key": "management.azure.com/provider-name",
+                                "operator": "In",
+                                "values": ["Microsoft.IoTOperations", "microsoft.iotoperations"],
+                            }
+                        ]
+                    },
                     "targetResourceGroup": "[resourceGroup().id]",
                 },
                 "dependsOn": ["customLocation"],
@@ -1406,11 +1411,19 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "condition": "[parameters('deployResourceSyncRules')]",
                 "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
                 "apiVersion": "2021-08-31-preview",
-                "name": "[format('{0}/{1}', parameters('customLocationName'), format('{0}-adr-sync', parameters('customLocationName')))]",
+                "name": "[format('{0}/{1}', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))), format('{0}-adr-sync', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH')))))]",
                 "location": "[parameters('clusterLocation')]",
                 "properties": {
                     "priority": 200,
-                    "selector": {"matchLabels": {"management.azure.com/provider-name": "Microsoft.DeviceRegistry"}},
+                    "selector": {
+                        "matchExpressions": [
+                            {
+                                "key": "management.azure.com/provider-name",
+                                "operator": "In",
+                                "values": ["Microsoft.DeviceRegistry", "microsoft.deviceregistry"],
+                            }
+                        ]
+                    },
                     "targetResourceGroup": "[resourceGroup().id]",
                 },
                 "dependsOn": ["aio_syncRule", "customLocation"],
@@ -1418,7 +1431,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
                 "apiVersion": "2025-07-01-preview",
-                "name": "[parameters('aioInstanceName')]",
+                "name": "[coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))]",
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "identity": "[_2.buildIdentity(createArray(parameters('userAssignedIdentity')))]",
@@ -1433,7 +1446,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
                 "apiVersion": "2025-07-01-preview",
-                "name": "[format('{0}/{1}', parameters('aioInstanceName'), 'default')]",
+                "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
                     "memoryProfile": "[variables('BROKER_CONFIG').memoryProfile]",
@@ -1456,7 +1469,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "broker_authn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
                 "apiVersion": "2025-07-01-preview",
-                "name": "[format('{0}/{1}/{2}', parameters('aioInstanceName'), 'default', 'default')]",
+                "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
                     "authenticationMethods": [
@@ -1473,7 +1486,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "broker_listener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
                 "apiVersion": "2025-07-01-preview",
-                "name": "[format('{0}/{1}/{2}', parameters('aioInstanceName'), 'default', 'default')]",
+                "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
                     "serviceType": "[variables('BROKER_CONFIG').serviceType]",
@@ -1500,7 +1513,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "dataflow_profile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
                 "apiVersion": "2025-07-01-preview",
-                "name": "[format('{0}/{1}', parameters('aioInstanceName'), 'default')]",
+                "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {"instanceCount": "[parameters('defaultDataflowinstanceCount')]"},
                 "dependsOn": ["aioInstance", "customLocation"],
@@ -1508,7 +1521,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "dataflow_endpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
                 "apiVersion": "2025-07-01-preview",
-                "name": "[format('{0}/{1}', parameters('aioInstanceName'), 'default')]",
+                "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
                     "endpointType": "Mqtt",
@@ -1544,7 +1557,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "aio": {
                 "type": "object",
                 "value": {
-                    "name": "[parameters('aioInstanceName')]",
+                    "name": "[coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))]",
                     "broker": {
                         "name": "default",
                         "listener": "default",
@@ -1556,12 +1569,12 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "customLocation": {
                 "type": "object",
                 "value": {
-                    "id": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
-                    "name": "[parameters('customLocationName')]",
+                    "id": "[resourceId('Microsoft.ExtendedLocation/customLocations', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))))]",
+                    "name": "[coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH')))]",
                     "resourceSyncRulesEnabled": "[parameters('deployResourceSyncRules')]",
                     "resourceSyncRules": [
-                        "[format('{0}-adr-sync', parameters('customLocationName'))]",
-                        "[format('{0}-broker-sync', parameters('customLocationName'))]",
+                        "[format('{0}-adr-sync', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))))]",
+                        "[format('{0}-aio-sync', parameters('customLocationName'))]",
                     ],
                 },
             },

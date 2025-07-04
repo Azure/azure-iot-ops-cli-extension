@@ -80,7 +80,6 @@ class InitTargets:
         # Broker
         custom_broker_config: Optional[dict] = None,
         broker_memory_profile: Optional[str] = None,
-        broker_service_type: Optional[str] = None,
         broker_backend_partitions: Optional[int] = None,
         broker_backend_workers: Optional[int] = None,
         broker_backend_redundancy_factor: Optional[int] = None,
@@ -135,7 +134,6 @@ class InitTargets:
         # Broker
         self.add_insecure_listener = add_insecure_listener
         self.broker_memory_profile = broker_memory_profile
-        self.broker_service_type = broker_service_type
         self.broker_backend_partitions = self._sanitize_int(broker_backend_partitions)
         self.broker_backend_workers = self._sanitize_int(broker_backend_workers)
         self.broker_backend_redundancy_factor = self._sanitize_int(broker_backend_redundancy_factor)
@@ -321,19 +319,20 @@ class InitTargets:
             "backendWorkers": self.broker_backend_workers,
             "backendPartitions": self.broker_backend_partitions,
             "memoryProfile": self.broker_memory_profile,
-            "serviceType": self.broker_service_type,
         }
         processed_config_map = {}
 
         validation_errors = []
         broker_config_def = TEMPLATE_BLUEPRINT_INSTANCE.get_type_definition("_1.BrokerConfig")["properties"]
+        if not broker_config_def:
+            return to_process_config_map
+        # TODO @digimaun - replace with longer term pattern
+        broker_config_def["backendRedundancyFactor"]["minValue"] = 2
+
         for config in to_process_config_map:
             if to_process_config_map[config] is None:
                 continue
             processed_config_map[config] = to_process_config_map[config]
-
-            if not broker_config_def:
-                continue
 
             if isinstance(to_process_config_map[config], int):
                 if config in broker_config_def and broker_config_def[config].get("type") == "int":

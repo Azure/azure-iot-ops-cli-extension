@@ -113,10 +113,9 @@ INSTANCE_FEATURE_ATTR = "instance_features"
             ops_train=generate_random_string(),
             dataflow_profile_instances=randint(1, 10),
             broker_memory_profile=generate_random_string(),
-            broker_service_type=generate_random_string(),
             broker_backend_partitions=randint(1, 10),
             broker_backend_workers=randint(1, 10),
-            broker_backend_redundancy_factor=randint(1, 5),
+            broker_backend_redundancy_factor=randint(2, 5),
             broker_frontend_workers=randint(1, 10),
             broker_frontend_replicas=randint(1, 10),
             add_insecure_listener=True,
@@ -274,6 +273,7 @@ def test_init_targets(target_scenario: dict):
 
 
 def verify_broker_config(target_scenario: dict, parameters):
+    assert "serviceType" not in parameters["brokerConfig"]["value"]
     for target_pair in [
         ("broker_frontend_replicas", "frontendReplicas"),
         ("broker_frontend_workers", "frontendWorkers"),
@@ -281,7 +281,6 @@ def verify_broker_config(target_scenario: dict, parameters):
         ("broker_backend_workers", "backendWorkers"),
         ("broker_backend_partitions", "backendPartitions"),
         ("broker_memory_profile", "memoryProfile"),
-        ("broker_service_type", "serviceType"),
     ]:
         if target_pair[0] in target_scenario:
             assert parameters["brokerConfig"]["value"][target_pair[1]] == target_scenario[target_pair[0]]
@@ -405,3 +404,36 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
             assert result.get(key) == (
                 acs_config.get(key, default_config.get(key)) if acs_config else default_config.get(key)
             )
+
+
+@pytest.mark.parametrize(
+    "target_scenario, expected_error",
+    [
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                broker_backend_redundancy_factor=1,
+            ),
+            "backendRedundancyFactor value range min:2 max:5",
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                broker_backend_redundancy_factor=1,
+                broker_frontend_replicas=20,
+                broker_backend_workers=20,
+            ),
+            "frontendReplicas value range min:1 max:16\n"
+            "backendRedundancyFactor value range min:2 max:5\n"
+            "backendWorkers value range min:1 max:16",
+        ),
+    ],
+)
+def test_broker_config_limits(target_scenario: dict, expected_error: str):
+    with pytest.raises(
+        InvalidArgumentValueError,
+    ) as e:
+        InitTargets(**target_scenario)
+    assert str(e.value) == expected_error

@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID = "5d3f1697-4507-4d08-bb4a-477695db5f82"
 K8_BRIDGE_APP_ID = "319f651f-7ddb-4fc6-9857-7aef9250bd05"
 ADR_PROVIDER = "Microsoft.DeviceRegistry"
-OPS_PROVIDER = "microsoft.iotoperations"  # This casing matches with template.
+OPS_PROVIDER = "Microsoft.IoTOperations"
 
 logger = get_logger(__name__)
 console = Console()
@@ -55,8 +55,7 @@ def get_sync_rule_attrs(
         SyncRuleAttr(
             provider=OPS_PROVIDER,
             priority=rule_ops_pri or 400,
-            name=rule_ops_name
-            or f"{custom_location_name}-broker-sync",  # Not my favorite but aligns with template naming.
+            name=rule_ops_name or f"{custom_location_name}-aio-sync",
         ),
         SyncRuleAttr(
             provider=ADR_PROVIDER,
@@ -96,9 +95,16 @@ class SyncRules(Queryable):
         if tags:
             parameters["tags"] = tags
 
-        properties["selector"] = {"matchLabels": {"management.azure.com/provider-name": provider_name}}
+        properties["selector"] = {
+            "matchExpressions": [
+                {
+                    "key": "management.azure.com/provider-name",
+                    "operator": "In",
+                    "values": [provider_name, provider_name.lower()],
+                }
+            ]
+        }
         parameters["properties"] = properties
-
         return parameters
 
     def enable(
