@@ -734,6 +734,14 @@ def load_iotops_help():
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type UserAssignedManagedIdentity --scope myscope --cid myclientid --tid mytenantid
+        - name: Add a registry endpoint with a trusted signing key config map reference
+          text: >
+            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            --trust-config-map my-trust-configmap
+        - name: Add a registry endpoint with a trusted signing key secret reference
+          text: >
+            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            --trust-secret my-trust-secret
     """
 
     helps[
@@ -746,6 +754,9 @@ def load_iotops_help():
         - name: Update an endpoint's hostname and auth-type to use a system-assigned managed identity
           text: >
             az iot ops registry update -n myregistry --host newregistry.azurecr.io -i myinstance -g myresourcegroup --auth-type SystemAssignedManagedIdentity
+        - name: Update an endpoint to use trusted signing with a config map reference
+          text: >
+            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --trust-config-map my-trust-configmap
     """
 
     helps[

@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from azure.cli.core.azclierror import CLIInternalError
+from azure.cli.core.azclierror import MutuallyExclusiveArgumentError, ResourceNotFoundError
 
 from azext_edge.tests.generators import generate_random_string
 from azext_edge.tests.helpers import run
@@ -315,9 +315,10 @@ def test_registry_endpoint_show_nonexistent(registry_endpoint_test_setup):
     nonexistent_name = f"nonexistent-{generate_random_string(force_lower=True, size=8)}"
 
     # SHOW - should fail for nonexistent endpoint
-    with pytest.raises(CLIInternalError):
+    with pytest.raises(Exception) as exc_info:
         run(f"az iot ops registry show -n {nonexistent_name} " f"-g {resource_group} --instance {instance_name}")
 
+    assert "ResourceNotFound" in str(exc_info.value)
 
 def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_setup, tracked_resources):
     """Test automatic authentication method detection based on provided parameters."""
@@ -409,6 +410,117 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             except Exception:
                 pass  # Best effort cleanup
         raise
+
+
+def test_registry_endpoint_trusted_signing_key(registry_endpoint_test_setup, tracked_resources):
+    """Test complete lifecycle of registry endpoint with trusted signing settings."""
+    resource_group = registry_endpoint_test_setup["resourceGroup"]
+    instance_name = registry_endpoint_test_setup["instanceName"]
+    registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    host = "trustregistry.azurecr.io"
+    trust_configmap = "my-trust-configmap"
+
+    try:
+        # CREATE - with trusted signing configmap
+        registry_endpoint = run(
+            f"az iot ops registry add -n {registry_endpoint_name} "
+            f"-g {resource_group} --instance {instance_name} "
+            f"--host {host} --trust-config-map {trust_configmap}"
+        )
+        tracked_resources.append(registry_endpoint["id"])
+
+        assert_registry_endpoint(
+            endpoint=registry_endpoint,
+            name=registry_endpoint_name,
+            resource_group=resource_group,
+            instance_name=instance_name,
+            host=host,
+            auth_method="Anonymous",
+        )
+
+        # Verify trust settings
+        trust_settings = registry_endpoint["properties"].get("trustSettings")
+        assert trust_settings is not None
+        trusted_signing_keys = trust_settings.get("trustedSigningKeys")
+        assert trusted_signing_keys is not None
+        assert trusted_signing_keys.get("configMapRef") == trust_configmap
+        assert trusted_signing_keys.get("type") == "ConfigMap"
+
+        # UPDATE - test mutual exclusivity
+        with pytest.raises(Exception) as exc_info:
+            run(
+                f"az iot ops registry update -n {registry_endpoint_name} "
+                f"-g {resource_group} --instance {instance_name} "
+                f"--host {host} --trust-config-map my-configmap --trust-secret my-secret"
+            )
+        # The CLI should fail with the mutual exclusivity error
+        assert exc_info.value.error_msg is not None
+
+        # UPDATE - switch to signing secret instead of configmap
+        trust_secret = "my-trust-secret"
+        updated_endpoint = run(
+            f"az iot ops registry update -n {registry_endpoint_name} "
+            f"-g {resource_group} --instance {instance_name} "
+            f"--trust-secret {trust_secret}"
+        )
+
+        assert_registry_endpoint(
+            endpoint=updated_endpoint,
+            name=registry_endpoint_name,
+            resource_group=resource_group,
+            instance_name=instance_name,
+            host=host,
+            auth_method="Anonymous",
+        )
+
+        # Verify trust settings were updated
+        trust_settings = updated_endpoint["properties"].get("trustSettings")
+        assert trust_settings is not None
+        trusted_signing_keys = trust_settings.get("trustedSigningKeys")
+        assert trusted_signing_keys is not None
+        assert trusted_signing_keys.get("secretRef") == trust_secret
+        assert trusted_signing_keys.get("type") == "Secret"
+        # Ensure configMapRef is no longer present
+        assert "configMapRef" not in trusted_signing_keys
+
+        # REMOVE
+        run(
+            f"az iot ops registry remove -n {registry_endpoint_name} "
+            f"-g {resource_group} --instance {instance_name} -y"
+        )
+        tracked_resources.remove(registry_endpoint["id"])
+
+    except Exception:
+        # Cleanup in case of failure
+        if registry_endpoint.get("id") in tracked_resources:
+            try:
+                run(
+                    f"az iot ops registry remove -n {registry_endpoint_name} "
+                    f"-g {resource_group} --instance {instance_name} -y"
+                )
+                tracked_resources.remove(registry_endpoint["id"])
+            except Exception:
+                pass
+        raise
+
+
+def test_registry_endpoint_trusted_signing_mutual_exclusivity(registry_endpoint_test_setup, tracked_resources):
+    """Test that specifying both configmap and secret raises an error."""
+    resource_group = registry_endpoint_test_setup["resourceGroup"]
+    instance_name = registry_endpoint_test_setup["instanceName"]
+    registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    host = "trustregistry.azurecr.io"
+
+    # Test mutual exclusivity on add
+    with pytest.raises(Exception) as exc_info:
+        run(
+            f"az iot ops registry add -n {registry_endpoint_name} "
+            f"-g {resource_group} --instance {instance_name} "
+            f"--host {host} --trust-config-map my-configmap --trust-secret my-secret"
+        )
+
+    # The CLI should fail with the mutual exclusivity error
+    assert exc_info.value.error_msg is not None
 
 
 def assert_registry_endpoint(endpoint: dict, **expected):
