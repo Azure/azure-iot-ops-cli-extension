@@ -178,7 +178,7 @@ def test_add_namespace_asset_event(
         if "topic" in destination_params:
             dest = {"target": "Mqtt", "configuration": destination_params}
         expected_event["destinations"] = [dest]
-        config_params["event_destinations"] = [[f"{key}={value}" for key, value in dest["configuration"].items()]]
+        config_params["event_destinations"] = [f"{key}={value}" for key, value in dest["configuration"].items()]
 
     # Generate mock asset
     mocked_asset = get_namespace_asset_record(
@@ -819,9 +819,9 @@ def test_update_namespace_asset_event(
             }
         }
         expected_event["destinations"] = [destination]
-        common_reqs["event_destinations"] = [[
+        common_reqs["event_destinations"] = [
             f"{key}={value}" for key, value in destination["configuration"].items()
-        ]]
+        ]
 
     # Create updated asset for mock response
     updated_asset = deepcopy(mocked_asset)

@@ -1355,7 +1355,6 @@ def load_adr_arguments(self, _):
             help="Key=value pairs representing the destination for dataset. "
             "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
             "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
-            action="append",
             nargs="+",
         )
 
@@ -1432,7 +1431,6 @@ def load_adr_arguments(self, _):
             help="Key=value pairs representing the destination for events. "
             "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
             "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
-            action="append",
             nargs="+",
         )
 
@@ -1449,7 +1447,6 @@ def load_adr_arguments(self, _):
             options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for events. "
             "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
-            action="append",
             nargs="+",
         )
 

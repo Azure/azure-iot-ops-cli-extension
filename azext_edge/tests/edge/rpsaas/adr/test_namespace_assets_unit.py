@@ -29,10 +29,7 @@ from azext_edge.edge.util.common import parse_kvp_nargs
 
 from .test_namespace_devices_unit import get_namespace_device_record, get_namespace_device_mgmt_uri
 from .test_namespaces_unit import get_namespace_mgmt_uri
-# TODO: once public
-# from ....generators import BASE_URL, generate_random_string
-from ....generators import generate_random_string
-BASE_URL = "https://eastus2euap.management.azure.com"
+from ....generators import BASE_URL, generate_random_string
 
 # TODO: consolidate all these ADR refresh apis
 NAMESPACE_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces/assets"

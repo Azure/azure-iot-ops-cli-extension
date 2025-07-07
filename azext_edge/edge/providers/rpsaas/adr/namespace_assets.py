@@ -1106,9 +1106,8 @@ def _build_destination(
     if not destination_args:
         return []
 
-    # currently support only one destination
     destination = {}
-    destination_args = parse_kvp_nargs(destination_args[0])
+    destination_args = parse_kvp_nargs(destination_args)
     destination_args_copy = deepcopy(destination_args)
     if "key" in destination_args:
         destination = {

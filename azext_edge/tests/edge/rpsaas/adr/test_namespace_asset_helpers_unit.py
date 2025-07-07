@@ -36,17 +36,17 @@ def mocked_logger(mocker):
 @pytest.mark.parametrize("test_case", [
     # BrokerStateStore
     {
-        "args": [["key=test-key"]],
+        "args": ["key=test-key"],
         "expected_target": "BrokerStateStore",
     },
     # Storage
     {
-        "args": [["path=/data/test"]],
+        "args": ["path=/data/test"],
         "expected_target": "Storage",
     },
     # MQTT
     {
-        "args": [["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]],
+        "args": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"],
         "expected_target": "Mqtt",
     },
     {
@@ -55,7 +55,7 @@ def mocked_logger(mocker):
 ])
 @pytest.mark.parametrize("allowed_types", [None, ["BrokerStateStore", "Storage", "Mqtt"]])
 def test_build_destination(test_case: dict, allowed_types: Optional[List[str]]):
-    expected_config = parse_kvp_nargs(test_case["args"][0] if test_case["args"] else None)
+    expected_config = parse_kvp_nargs(test_case["args"])
     if "ttl" in expected_config:
         expected_config["ttl"] = int(expected_config["ttl"])
 
@@ -74,20 +74,20 @@ def test_build_destination(test_case: dict, allowed_types: Optional[List[str]]):
 @pytest.mark.parametrize("test_case", [
     # Missing required field for MQTT
     {
-        "args": [["topic=/contoso/test", "retain=Never", "qos=Qos0"]],  # Missing 'ttl'
+        "args": ["topic=/contoso/test", "retain=Never", "qos=Qos0"],  # Missing 'ttl'
         "expected_error": RequiredArgumentMissingError,
         "expected_msg": ["For MQTT destinations, 'topic', 'retain', 'qos', and 'ttl' must be provided"]
     },
     # Invalid destination type
     {
-        "args": [["key=test-key"]],
+        "args": ["key=test-key"],
         "allowed_types": ["Storage", "Mqtt"],
         "expected_error": InvalidArgumentValueError,
         "expected_msg": ["Destination type 'BrokerStateStore' is not allowed", "Allowed types are: Storage, Mqtt"]
     },
     # Extra args for BrokerStateStore
     {
-        "args": [["key=test-key", "topic=/test"]],
+        "args": ["key=test-key", "topic=/test"],
         "expected_error": MutuallyExclusiveArgumentError,
         "expected_msg": [
             "Conflicting arguments for destination: key, topic", "For BrokerStateStore, only 'key' is allowed"
@@ -95,13 +95,13 @@ def test_build_destination(test_case: dict, allowed_types: Optional[List[str]]):
     },
     # Extra args for Storage
     {
-        "args": [["path=/data/test", "retain=Never"]],
+        "args": ["path=/data/test", "retain=Never"],
         "expected_error": MutuallyExclusiveArgumentError,
         "expected_msg": ["Conflicting arguments for destination: path, retain", "For Storage, only 'path' is allowed"]
     },
     # Extra args for MQTT
     {
-        "args": [["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600", "extra=value"]],
+        "args": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600", "extra=value"],
         "expected_error": MutuallyExclusiveArgumentError,
         "expected_msg": ["Conflicting arguments for destination: topic, retain, qos, ttl, extra"]
     }

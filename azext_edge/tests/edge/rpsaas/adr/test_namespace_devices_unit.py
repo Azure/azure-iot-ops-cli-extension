@@ -32,10 +32,7 @@ from azext_edge.edge.util.common import parse_kvp_nargs
 
 # Import necessary modules
 from .test_namespaces_unit import get_namespace_mgmt_uri
-# TODO: once service is public
-# from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
-from ....generators import generate_random_string, get_zeroed_subscription
-BASE_URL = "https://eastus2euap.management.azure.com"
+from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
 
 ADR_REFRESH_API_VERSION = "2025-07-01-preview"
 
