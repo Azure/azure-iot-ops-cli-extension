@@ -6,7 +6,10 @@
 
 from typing import TYPE_CHECKING, Iterable, Optional
 
-from azure.cli.core.azclierror import MutuallyExclusiveArgumentError, RequiredArgumentMissingError
+from azure.cli.core.azclierror import (
+    MutuallyExclusiveArgumentError,
+    RequiredArgumentMissingError,
+)
 from knack.log import get_logger
 from rich.console import Console
 
@@ -37,7 +40,9 @@ class RegistryEndpoints(Queryable):
         super().__init__(cmd=cmd)
         self.instances = Instances(cmd=cmd)
         self.iotops_mgmt_client = self.instances.iotops_mgmt_client
-        self.registry_endpoints: "RegistryEndpointOperations" = self.iotops_mgmt_client.registry_endpoint
+        self.registry_endpoints: "RegistryEndpointOperations" = (
+            self.iotops_mgmt_client.registry_endpoint
+        )
 
     def list(self, instance_name: str, resource_group_name: str) -> Iterable[dict]:
         """
@@ -52,9 +57,11 @@ class RegistryEndpoints(Queryable):
             resource_group_name=resource_group_name, instance_name=instance_name
         )
 
-    def show(self, instance_name: str, resource_group_name: str, registry_endpoint_name: str) -> dict:
+    def show(
+        self, instance_name: str, resource_group_name: str, registry_endpoint_name: str
+    ) -> dict:
         """
-        Get a specific registry endpoint for the IoT Operations instance.
+        Get a specific registry endpoint of the IoT Operations instance.
 
         :param instance_name: Name of the IoT Operations instance.
         :param resource_group_name: Name of the resource group.
@@ -155,7 +162,7 @@ class RegistryEndpoints(Queryable):
         # Ensure mutual exclusivity
         if trusted_signing_configmap_key and trusted_signing_secret_key:
             raise MutuallyExclusiveArgumentError(
-                "Cannot specify both config map and secret key for trusted signing key settings."
+                "Cannot specify both config map and secret for trusted signing key settings."
                 "Choose one trusted signing key type."
             )
 
@@ -163,14 +170,14 @@ class RegistryEndpoints(Queryable):
             return {
                 "trustedSigningKeys": {
                     "configMapRef": trusted_signing_configmap_key,
-                    "type": TrustedSigningKeyType.CONFIGMAP.value
+                    "type": TrustedSigningKeyType.CONFIGMAP.value,
                 }
             }
         elif trusted_signing_secret_key:
             return {
                 "trustedSigningKeys": {
                     "secretRef": trusted_signing_secret_key,
-                    "type": TrustedSigningKeyType.SECRET.value
+                    "type": TrustedSigningKeyType.SECRET.value,
                 }
             }
 
@@ -203,6 +210,8 @@ class RegistryEndpoints(Queryable):
         :param client_id: Client ID for UserAssignedManagedIdentity authentication.
         :param tenant_id: Tenant ID for UserAssignedManagedIdentity authentication.
         :param scope: Scope for UserAssignedManagedIdentity authentication.
+        :param trusted_signing_configmap_key: ConfigMap reference for trusted signing key.
+        :param trusted_signing_secret_key: Secret reference for trusted signing key.
         :param kwargs: Additional keyword arguments for the operation.
         :returns: The created registry endpoint.
         """
@@ -227,7 +236,7 @@ class RegistryEndpoints(Queryable):
             "host": host,
             "authentication": auth_config,
         }
-        
+
         # Add trust settings if provided
         if trust_settings:
             properties["trustSettings"] = trust_settings
@@ -278,6 +287,9 @@ class RegistryEndpoints(Queryable):
         :param client_id: Client ID for UserAssignedManagedIdentity authentication.
         :param tenant_id: Tenant ID for UserAssignedManagedIdentity authentication.
         :param scope: Scope for UserAssignedManagedIdentity authentication.
+        :param trusted_signing_configmap_key: ConfigMap reference for trusted signing key.
+        :param trusted_signing_secret_key: Secret reference for trusted signing key.
+        :param kwargs: Additional keyword arguments for the operation.
         :returns: The updated registry endpoint.
         """
 
@@ -310,7 +322,9 @@ class RegistryEndpoints(Queryable):
                 trusted_signing_secret_key=trusted_signing_secret_key,
             )
             if trusted_signing_config:
-                existing_endpoint["properties"]["trustSettings"] = trusted_signing_config
+                existing_endpoint["properties"][
+                    "trustSettings"
+                ] = trusted_signing_config
 
         with console.status("Working..."):
             poller = self.registry_endpoints.begin_create_or_update(
@@ -338,18 +352,22 @@ class RegistryEndpoints(Queryable):
         :param confirm_yes: Whether to skip confirmation prompt.
         :param kwargs: Additional keyword arguments for the operation.
         """
-        should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
+        should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Removal")
         if should_bail:
             return
 
-        with console.status(f"Removing registry endpoint '{registry_endpoint_name}'..."):
+        with console.status(
+            f"Removing registry endpoint '{registry_endpoint_name}'..."
+        ):
             poller = self.registry_endpoints.begin_delete(
                 resource_group_name=resource_group_name,
                 instance_name=instance_name,
                 registry_endpoint_name=registry_endpoint_name,
             )
             wait_for_terminal_state(poller, **kwargs)
-        logger.info(f"Registry endpoint '{registry_endpoint_name}' removed successfully.")
+        logger.info(
+            f"Registry endpoint '{registry_endpoint_name}' removed successfully."
+        )
 
     def _identify_authentication_method(
         self,
@@ -427,7 +445,8 @@ class RegistryEndpoints(Queryable):
         improper_params = set(provided_params) - allowed_params
         if improper_params:
             improper_params_text = ", ".join(
-                REGISTRY_ENDPOINT_AUTHENTICATION_PARAM_TEXT_MAP.get(param, param) for param in improper_params
+                REGISTRY_ENDPOINT_AUTHENTICATION_PARAM_TEXT_MAP.get(param, param)
+                for param in improper_params
             )
             raise MutuallyExclusiveArgumentError(
                 f"Parameters {improper_params_text} are not compatible with authentication type '{auth_type}'."
@@ -437,7 +456,10 @@ class RegistryEndpoints(Queryable):
         parameter_delta = required_params - set(provided_params)
         if parameter_delta:
             missing_params = ", ".join(
-                [REGISTRY_ENDPOINT_AUTHENTICATION_PARAM_TEXT_MAP.get(param, param) for param in parameter_delta]
+                [
+                    REGISTRY_ENDPOINT_AUTHENTICATION_PARAM_TEXT_MAP.get(param, param)
+                    for param in parameter_delta
+                ]
             )
             raise RequiredArgumentMissingError(
                 f"Authentication type '{auth_type}' requires the following parameters: {missing_params}"

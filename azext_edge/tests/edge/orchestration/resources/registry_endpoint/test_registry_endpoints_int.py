@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from azure.cli.core.azclierror import MutuallyExclusiveArgumentError, ResourceNotFoundError
 
 from azext_edge.tests.generators import generate_random_string
 from azext_edge.tests.helpers import run
@@ -26,14 +25,21 @@ def registry_endpoint_test_setup(settings):
             f"Current settings:\n {settings}"
         )
 
-    yield {"resourceGroup": settings.env.azext_edge_rg, "instanceName": settings.env.azext_edge_instance}
+    yield {
+        "resourceGroup": settings.env.azext_edge_rg,
+        "instanceName": settings.env.azext_edge_instance,
+    }
 
 
-def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tracked_resources):
+def test_registry_endpoint_lifecycle_anonymous(
+    registry_endpoint_test_setup, tracked_resources
+):
     """Test complete lifecycle of registry endpoint with Anonymous authentication."""
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
-    registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    registry_endpoint_name = (
+        f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    )
     host = "myregistry.azurecr.io"
 
     try:
@@ -56,7 +62,8 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
 
         # SHOW
         show_endpoint = run(
-            f"az iot ops registry show -n {registry_endpoint_name} " f"-g {resource_group} --instance {instance_name}"
+            f"az iot ops registry show -n {registry_endpoint_name} "
+            f"-g {resource_group} --instance {instance_name}"
         )
         assert_registry_endpoint(
             endpoint=show_endpoint,
@@ -68,7 +75,10 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
         )
 
         # LIST - check our endpoint is in the list
-        list_endpoints = run(f"az iot ops registry list " f"-g {resource_group} --instance {instance_name}")
+        list_endpoints = run(
+            f"az iot ops registry list "
+            f"-g {resource_group} --instance {instance_name}"
+        )
         endpoint_names = [ep["name"] for ep in list_endpoints]
         assert registry_endpoint_name in endpoint_names
 
@@ -96,7 +106,10 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
         tracked_resources.remove(registry_endpoint["id"])
 
         # Verify removal - endpoint should not be in list
-        list_endpoints_after = run(f"az iot ops registry list " f"-g {resource_group} --instance {instance_name}")
+        list_endpoints_after = run(
+            f"az iot ops registry list "
+            f"-g {resource_group} --instance {instance_name}"
+        )
         endpoint_names_after = [ep["name"] for ep in list_endpoints_after]
         assert registry_endpoint_name not in endpoint_names_after
 
@@ -114,11 +127,15 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
         raise
 
 
-def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tracked_resources):
+def test_registry_endpoint_artifact_pull_secret(
+    registry_endpoint_test_setup, tracked_resources
+):
     """Test complete lifecycle of registry endpoint with ArtifactPullSecret authentication."""
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
-    registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    registry_endpoint_name = (
+        f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    )
     host = "secretregistry.azurecr.io"
     secret_ref = "my-registry-secret"
 
@@ -142,7 +159,8 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
 
         # SHOW
         show_endpoint = run(
-            f"az iot ops registry show -n {registry_endpoint_name} " f"-g {resource_group} --instance {instance_name}"
+            f"az iot ops registry show -n {registry_endpoint_name} "
+            f"-g {resource_group} --instance {instance_name}"
         )
         assert_registry_endpoint(
             endpoint=show_endpoint,
@@ -174,11 +192,15 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
         raise
 
 
-def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tracked_resources):
+def test_registry_endpoint_system_assigned_auth(
+    registry_endpoint_test_setup, tracked_resources
+):
     """Test registry endpoint with SystemAssigned authentication."""
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
-    registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    registry_endpoint_name = (
+        f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    )
     host = "systemregistry.azurecr.io"
     audience = "system-audience"
 
@@ -202,7 +224,8 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
 
         # SHOW
         show_endpoint = run(
-            f"az iot ops registry show -n {registry_endpoint_name} " f"-g {resource_group} --instance {instance_name}"
+            f"az iot ops registry show -n {registry_endpoint_name} "
+            f"-g {resource_group} --instance {instance_name}"
         )
         assert_registry_endpoint(
             endpoint=show_endpoint,
@@ -234,11 +257,15 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
         raise
 
 
-def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, tracked_resources):
+def test_registry_endpoint_user_assigned_auth(
+    registry_endpoint_test_setup, tracked_resources
+):
     """Test registry endpoint with UserAssigned authentication."""
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
-    registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    registry_endpoint_name = (
+        f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    )
     host = "userregistry.azurecr.io"
     client_id = "test-client-id"
     tenant_id = "test-tenant-id"
@@ -265,7 +292,8 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
 
         # SHOW
         show_endpoint = run(
-            f"az iot ops registry show -n {registry_endpoint_name} " f"-g {resource_group} --instance {instance_name}"
+            f"az iot ops registry show -n {registry_endpoint_name} "
+            f"-g {resource_group} --instance {instance_name}"
         )
         assert_registry_endpoint(
             endpoint=show_endpoint,
@@ -303,7 +331,9 @@ def test_registry_endpoint_list_empty(registry_endpoint_test_setup):
     instance_name = registry_endpoint_test_setup["instanceName"]
 
     # LIST - should work even if no endpoints exist
-    list_endpoints = run(f"az iot ops registry list " f"-g {resource_group} --instance {instance_name}")
+    list_endpoints = run(
+        f"az iot ops registry list " f"-g {resource_group} --instance {instance_name}"
+    )
     # Should return empty list or list that doesn't contain our test endpoints
     assert isinstance(list_endpoints, list)
 
@@ -316,11 +346,17 @@ def test_registry_endpoint_show_nonexistent(registry_endpoint_test_setup):
 
     # SHOW - should fail for nonexistent endpoint
     with pytest.raises(Exception) as exc_info:
-        run(f"az iot ops registry show -n {nonexistent_name} " f"-g {resource_group} --instance {instance_name}")
+        run(
+            f"az iot ops registry show -n {nonexistent_name} "
+            f"-g {resource_group} --instance {instance_name}"
+        )
 
     assert "ResourceNotFound" in str(exc_info.value)
 
-def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_setup, tracked_resources):
+
+def test_registry_endpoint_authentication_auto_detection(
+    registry_endpoint_test_setup, tracked_resources
+):
     """Test automatic authentication method detection based on provided parameters."""
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
@@ -398,7 +434,10 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
 
         # Cleanup all endpoints
         for ep_id, ep_name in endpoints_to_cleanup:
-            run(f"az iot ops registry remove -n {ep_name} " f"-g {resource_group} --instance {instance_name} -y")
+            run(
+                f"az iot ops registry remove -n {ep_name} "
+                f"-g {resource_group} --instance {instance_name} -y"
+            )
             tracked_resources.append(ep_id)  # Add to tracked for safety
             tracked_resources.remove(ep_id)  # Remove after successful deletion
 
@@ -406,17 +445,24 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Cleanup in case of failure
         for ep_id, ep_name in endpoints_to_cleanup:
             try:
-                run(f"az iot ops registry remove -n {ep_name} " f"-g {resource_group} --instance {instance_name} -y")
+                run(
+                    f"az iot ops registry remove -n {ep_name} "
+                    f"-g {resource_group} --instance {instance_name} -y"
+                )
             except Exception:
                 pass  # Best effort cleanup
         raise
 
 
-def test_registry_endpoint_trusted_signing_key(registry_endpoint_test_setup, tracked_resources):
+def test_registry_endpoint_trusted_signing_key(
+    registry_endpoint_test_setup, tracked_resources
+):
     """Test complete lifecycle of registry endpoint with trusted signing settings."""
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
-    registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    registry_endpoint_name = (
+        f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    )
     host = "trustregistry.azurecr.io"
     trust_configmap = "my-trust-configmap"
 
@@ -504,11 +550,15 @@ def test_registry_endpoint_trusted_signing_key(registry_endpoint_test_setup, tra
         raise
 
 
-def test_registry_endpoint_trusted_signing_mutual_exclusivity(registry_endpoint_test_setup, tracked_resources):
+def test_registry_endpoint_trusted_signing_mutual_exclusivity(
+    registry_endpoint_test_setup, tracked_resources
+):
     """Test that specifying both configmap and secret raises an error."""
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
-    registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    registry_endpoint_name = (
+        f"test-registry-{generate_random_string(force_lower=True, size=8)}"
+    )
     host = "trustregistry.azurecr.io"
 
     # Test mutual exclusivity on add
@@ -529,7 +579,10 @@ def assert_registry_endpoint(endpoint: dict, **expected):
     assert endpoint["resourceGroup"] == expected["resource_group"]
 
     # Check the endpoint is under the correct instance
-    assert f"/instances/{expected['instance_name']}/registryEndpoints/{expected['name']}" in endpoint["id"]
+    assert (
+        f"/instances/{expected['instance_name']}/registryEndpoints/{expected['name']}"
+        in endpoint["id"]
+    )
 
     endpoint_props = endpoint["properties"]
     assert endpoint_props["host"] == expected["host"]
