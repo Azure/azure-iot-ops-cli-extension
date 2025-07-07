@@ -186,7 +186,39 @@ class SecurityMode(Enum):
 
 
 # ASSETS
-NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA = {
+NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1 = {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://azure-iot-operations/schemas/asset/datasetconfiguration/opcua/1.1.0.json",
+  "title": "AIO OPC UA Asset Dataset Additional Configuration Schema",
+  "description": "Schema for the additional configuration of OPC UA asset dataset in Azure Industrial Operations",
+  "type": "object",
+  "properties": {
+    "publishingInterval": {
+      "type": "integer",
+      "minimum" : -1,
+      "default": 1000
+    },
+    "samplingInterval": {
+      "type": "integer",
+      "minimum" : -1,
+      "default": 1000
+    },
+    "queueSize": {
+      "type": "integer",
+      "minimum" : 0,
+      "default": 1
+    },
+    "keyFrameCount": {
+      "type": "integer",
+      "minimum" : 0,
+      "default": 0
+    }
+  }
+}
+
+
+# not used yet
+NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V2 = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://azure-iot-operations/schemas/asset/defaultdatasetsconfiguration/opcua/1.2.0.json",
     "title": "AIO OPC UA Asset Default Datasets Additional Configuration Schema",
@@ -222,7 +254,29 @@ NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA = {
 }
 
 
-NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA = {
+NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V1 = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://azure-iot-operations/schemas/asset/eventconfiguration/opcua/1.0.0.json",
+    "title": "AIO OPC UA Asset Event Additional Configuration Schema",
+    "description": "Schema for the additional configuration of OPC UA asset event in Azure Industrial Operations",
+    "type": "object",
+    "properties": {
+        "publishingInterval": {
+            "type": "integer",
+            "minimum" : -1,
+            "default": 1000
+        },
+        "queueSize": {
+            "type": "integer",
+            "minimum" : 0,
+            "default": 1
+        }
+    }
+}
+
+
+# not used yet
+NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V2 = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://azure-iot-operations/schemas/asset/defaulteventsconfiguration/opcua/1.2.0.json",
     "title": "AIO OPC UA Asset Default Events Additional Configuration Schema",
