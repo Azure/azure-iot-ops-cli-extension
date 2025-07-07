@@ -5,7 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Optional, Callable
+import json
+from typing import Optional, Callable, Tuple
+from ....generators import generate_random_string
+from ....helpers import create_file
 
 """Helpers for ADR v2 tests."""
 
@@ -46,3 +49,21 @@ def check_destinations(added: dict, expected: Optional[dict] = None):
         result_config = destination.get("configuration", {})
         expected_config = expected_destination.get("configuration", {})
         assert result_config.get("key") == expected_config.get("key")
+
+
+def create_config_file(tracked_files: list) -> Tuple[str, str]:
+    """Create a JSON configuration file with random content."""
+    json_content = json.dumps({
+        generate_random_string(): generate_random_string(),
+        generate_random_string(): {
+            generate_random_string(): generate_random_string()
+        },
+        generate_random_string(): generate_random_string()
+    })
+    file_path = create_file(
+        file_name=f"test_additional_config_{generate_random_string(size=4)}.json",
+        module_file=__file__,
+        tracked_files=tracked_files,
+        content=json_content
+    )
+    return file_path, json_content

@@ -982,7 +982,6 @@ class NamespaceAssets(Queryable):
     # STREAMS - allowed for media and custom assets
     # Management Groups - allowed for opcua, onvif, and custom assets
 
-    # TODO: update unit tests
     def _check_device_props(
         self,
         instance_resource_group: str,
@@ -1065,7 +1064,7 @@ class NamespaceAssets(Queryable):
 
 # Helpers
 def _build_destination(
-    destination_args: List[str],
+    destination_args: List[List[str]],
     allowed_types: Optional[List[str]] = None
 ) -> List[dict]:
     """
@@ -1106,8 +1105,10 @@ def _build_destination(
     """
     if not destination_args:
         return []
+
+    # currently support only one destination
     destination = {}
-    destination_args = parse_kvp_nargs(destination_args)
+    destination_args = parse_kvp_nargs(destination_args[0])
     destination_args_copy = deepcopy(destination_args)
     if "key" in destination_args:
         destination = {

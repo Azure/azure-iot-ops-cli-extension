@@ -8,6 +8,7 @@ from typing import List
 
 from ....generators import generate_random_string
 from ....helpers import run
+from .namespace_helpers import create_config_file
 
 
 def test_namespace_custom_asset_dataset_lifecycle_operations(require_init, tracked_resources: List[str]):
@@ -18,20 +19,20 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(require_init, track
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"custom-{generate_random_string(8)}"
     asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
-    dataset_name = f"dataset-{generate_random_string(6, force_lower=True)}"
+    dataset_name = "default"
     datapoint_name_1 = f"dp1-{generate_random_string(6, force_lower=True)}"
     datapoint_name_2 = f"dp2-{generate_random_string(6, force_lower=True)}"
 
     # Create Device
     result = run(
-        f"az iot ops ns device create - {device_name} --instance {instance_name} "
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
     tracked_resources.append(result["id"])
 
     # Create device endpoint
     run(
-        f"az iot ops ns device endpoint inbound add custom - {endpoint_name} "
+        f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
         f"--instance {instance_name} -g {resource_group} --device {device_name} "
         f"--endpoint-address 'http://192.168.1.100:8000/custom/service' "
         "--endpoint-type custom"
@@ -39,7 +40,7 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(require_init, track
 
     # Create Custom asset
     asset_custom = run(
-        f"az iot ops ns asset custom create - {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
         f"--description \"Custom Device for Dataset Testing\" --display \"Multi-Sensor Dataset\" "
         f"--model \"Custom-DS100\" --manufacturer \"CustomDevices\""
@@ -49,22 +50,23 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(require_init, track
     # 1. CREATE DATASET
     dataset_data_source = "sensor/temperature"
     dataset_destinations = "topic=factory/temperature qos=Qos1 retain=Keep ttl=3600"
-    dataset_custom_config = '{"pollingInterval": 1000, "format": "json"}'
+    custom_config_path, custom_config = create_config_file(tracked_resources)
 
     # Add custom asset dataset
     dataset_result = run(
         f"az iot ops ns asset custom dataset add --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--dataset-data-source {dataset_data_source} "
-        f"--dataset-destinations {dataset_destinations} "
-        f"--dataset-custom-configuration '{dataset_custom_config}'"
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source {dataset_data_source} "
+        f"--destination {dataset_destinations} "
+        f"--config {custom_config_path}"
     )
 
     assert_dataset_properties(
         dataset_result,
         name=dataset_name,
         data_source=dataset_data_source,
-        asset_type="custom"
+        asset_type="custom",
+        custom_configuration=custom_config
     )
 
     # 2. LIST DATASETS
@@ -80,7 +82,7 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(require_init, track
     # 3. SHOW DATASET
     shown_dataset = run(
         f"az iot ops ns asset custom dataset show --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name}"
     )
 
     assert_dataset_properties(
@@ -93,52 +95,54 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(require_init, track
     # 4. UPDATE DATASET
     updated_data_source = "sensor/temperature_updated"
     updated_destinations = "topic=factory/temperature_v2 qos=Qos0 retain=Never ttl=1800"
-    updated_config = '{"pollingInterval": 2000, "format": "xml"}'
+    custom_config_path, custom_config = create_config_file(tracked_resources)
 
     updated_dataset = run(
-        f"az iot ops ns asset custom dataset update custom --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--dataset-data-source {updated_data_source} "
-        f"--dataset-destinations {updated_destinations} "
-        f"--dataset-custom-configuration '{updated_config}'"
+        f"az iot ops ns asset custom dataset update --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source {updated_data_source} "
+        f"--destination {updated_destinations} "
+        f"--config {custom_config_path}"
     )
 
     assert_dataset_properties(
         updated_dataset,
         name=dataset_name,
         data_source=updated_data_source,
-        asset_type="custom"
+        asset_type="custom",
+        custom_configuration=custom_config
     )
 
     # 5. TEST DATASET REPLACE FUNCTIONALITY
     # Replace dataset with --replace flag
     replaced_data_source = "sensor/temperature_replaced"
-    replaced_config = '{"pollingInterval": 3000, "format": "binary"}'
+    custom_config_path, custom_config = create_config_file(tracked_resources)
 
     replaced_dataset = run(
         f"az iot ops ns asset custom dataset add --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--dataset-data-source {replaced_data_source} "
-        f"--dataset-custom-configuration '{replaced_config}' --replace"
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source {replaced_data_source} "
+        f"--config {custom_config_path} --replace"
     )
 
     assert_dataset_properties(
         replaced_dataset,
         name=dataset_name,
         data_source=replaced_data_source,
-        asset_type="custom"
+        asset_type="custom",
+        custom_configuration=custom_config
     )
 
     # 6. ADD DATASET DATAPOINTS
     # Add first datapoint
     datapoint_data_source_1 = "sensor/temperature/value"
-    datapoint_config_1 = '{"unit": "celsius", "precision": 2}'
+    custom_config_path, custom_config = create_config_file(tracked_resources)
 
     datapoint_result_1 = run(
         f"az iot ops ns asset custom dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--datapoint {datapoint_name_1} --data-source {datapoint_data_source_1} "
-        f"--custom-configuration '{datapoint_config_1}'"
+        f"--name {datapoint_name_1} --data-source {datapoint_data_source_1} "
+        f"--custom-configuration {custom_config_path}"
     )
 
     assert_datapoint_properties(
@@ -149,13 +153,13 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(require_init, track
 
     # Add second datapoint
     datapoint_data_source_2 = "sensor/humidity/value"
-    datapoint_config_2 = '{"unit": "percent", "precision": 1}'
+    custom_config_path, custom_config = create_config_file(tracked_resources)
 
     datapoint_result_2 = run(
         f"az iot ops ns asset custom dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--datapoint {datapoint_name_2} --data-source {datapoint_data_source_2} "
-        f"--custom-configuration '{datapoint_config_2}'"
+        f"--name {datapoint_name_2} --data-source {datapoint_data_source_2} "
+        f"--custom-configuration {custom_config_path}"
     )
 
     assert_datapoint_properties(
@@ -178,13 +182,13 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(require_init, track
     # 8. TEST DATAPOINT REPLACE FUNCTIONALITY
     # Replace first datapoint with --replace flag
     replaced_datapoint_data_source = "sensor/temperature/replaced_value"
-    replaced_datapoint_config = '{"unit": "fahrenheit", "precision": 3}'
+    custom_config_path, custom_config = create_config_file(tracked_resources)
 
     replaced_datapoint = run(
         f"az iot ops ns asset custom dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--datapoint {datapoint_name_1} --data-source {replaced_datapoint_data_source} "
-        f"--custom-configuration '{replaced_datapoint_config}' --replace"
+        f"--name {datapoint_name_1} --data-source {replaced_datapoint_data_source} "
+        f"--custom-configuration {custom_config_path} --replace"
     )
 
     assert_datapoint_properties(
@@ -197,7 +201,7 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(require_init, track
     run(
         f"az iot ops ns asset custom dataset point remove --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--datapoint {datapoint_name_2}"
+        f"--name {datapoint_name_2}"
     )
 
     # Verify datapoint removal
@@ -213,7 +217,7 @@ def test_namespace_custom_asset_dataset_lifecycle_operations(require_init, track
     # 10. REMOVE DATASET
     run(
         f"az iot ops ns asset custom dataset remove --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name}"
     )
 
     # Verify dataset removal
@@ -234,27 +238,27 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name = f"opcua-{generate_random_string(8)}"
     asset_name = f"opcua-{generate_random_string(8, force_lower=True)}"
-    dataset_name = f"dataset-{generate_random_string(6, force_lower=True)}"
+    dataset_name = "default"
     datapoint_name_1 = f"dp1-{generate_random_string(6, force_lower=True)}"
     datapoint_name_2 = f"dp2-{generate_random_string(6, force_lower=True)}"
 
     # Create Device
     result = run(
-        f"az iot ops ns device create - {device_name} --instance {instance_name} "
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
     tracked_resources.append(result["id"])
 
     # Create device endpoint
     run(
-        f"az iot ops ns device endpoint inbound add opcua - {endpoint_name} "
+        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
         f"--instance {instance_name} -g {resource_group} --device {device_name} "
-        f"--endpoint-url 'opc.tcp://192.168.1.200:4840/OPCUA/Server'"
+        f"--endpoint-address 'opc.tcp://192.168.1.200:4840/OPCUA/Server'"
     )
 
     # Create OPCUA asset
     asset_opcua = run(
-        f"az iot ops ns asset opcua create - {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
         f"--description \"OPCUA Device for Dataset Testing\" --display \"OPC Temperature Sensor\" "
         f"--model \"OPC-DS200\" --manufacturer \"OPCDevices\""
@@ -268,21 +272,22 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     # Add OPCUA asset dataset with specific OPCUA parameters
     dataset_result = run(
         f"az iot ops ns asset opcua dataset add --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--dataset-data-source {dataset_data_source} "
-        f"--dataset-destinations {dataset_destinations} "
-        f"--opcua-dataset-publishing-interval 1000 "
-        f"--opcua-dataset-sampling-interval 500 "
-        f"--opcua-dataset-queue-size 10 "
-        f"--opcua-dataset-key-frame-count 5 "
-        f"--opcua-dataset-start-instance 'ns=2;i=1000'"
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source {dataset_data_source} "
+        f"--destination {dataset_destinations} "
+        f"--publish-int 1000 "
+        f"--sampling-int 500 "
+        f"--queue-size 10 "
+        f"--key-frame-count 5 "
+        f"--start-inst 'ns=2;i=1000'"
     )
 
     assert_dataset_properties(
         dataset_result,
         name=dataset_name,
         data_source=dataset_data_source,
-        asset_type="opcua"
+        asset_type="opcua",
+        publishing_interval=1000,
     )
 
     # 2. LIST DATASETS
@@ -305,7 +310,8 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
         shown_dataset,
         name=dataset_name,
         data_source=dataset_data_source,
-        asset_type="opcua"
+        asset_type="opcua",
+        publishing_interval=1000,
     )
 
     # 4. UPDATE DATASET
@@ -313,20 +319,21 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     updated_destinations = "topic=factory/opcua/temperature_v2 qos=Qos0 retain=Never ttl=1800"
 
     updated_dataset = run(
-        f"az iot ops ns asset opcua dataset update opcua --asset {asset_name} "
+        f"az iot ops ns asset opcua dataset update --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
         f"--data-source {updated_data_source} "
-        f"--destinations {updated_destinations} "
-        f"--opcua-dataset-publishing-interval 2000 "
-        f"--opcua-dataset-sampling-interval 1000 "
-        f"--opcua-dataset-queue-size 20"
+        f"--destination {updated_destinations} "
+        f"--publish-int 2000 "
+        f"--sampling-int 1000 "
+        f"--queue-size 20"
     )
 
     assert_dataset_properties(
         updated_dataset,
         name=dataset_name,
         data_source=updated_data_source,
-        asset_type="opcua"
+        asset_type="opcua",
+        publishing_interval=2000,
     )
 
     # 5. TEST DATASET REPLACE FUNCTIONALITY
@@ -335,16 +342,17 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
     replaced_dataset = run(
         f"az iot ops ns asset opcua dataset add --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--dataset-data-source {replaced_data_source} "
-        f"--opcua-dataset-publishing-interval 3000 --replace"
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source {replaced_data_source} "
+        f"--publish-int 3000 --replace"
     )
 
     assert_dataset_properties(
         replaced_dataset,
         name=dataset_name,
         data_source=replaced_data_source,
-        asset_type="opcua"
+        asset_type="opcua",
+        publishing_interval=3000
     )
 
     # 6. ADD DATASET DATAPOINTS
@@ -354,7 +362,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     datapoint_result_1 = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--datapoint {datapoint_name_1} --data-source {datapoint_data_source_1} "
+        f"--name {datapoint_name_1} --data-source {datapoint_data_source_1} "
         f"--queue-size 5 --sampling-interval 250"
     )
 
@@ -370,7 +378,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     datapoint_result_2 = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--datapoint {datapoint_name_2} --data-source {datapoint_data_source_2} "
+        f"--name {datapoint_name_2} --data-source {datapoint_data_source_2} "
         f"--queue-size 3 --sampling-interval 500"
     )
 
@@ -398,7 +406,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     replaced_datapoint = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--datapoint {datapoint_name_1} --data-source {replaced_datapoint_data_source} "
+        f"--name {datapoint_name_1} --data-source {replaced_datapoint_data_source} "
         f"--queue-size 15 --sampling-interval 100 --replace"
     )
 
@@ -412,7 +420,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     run(
         f"az iot ops ns asset opcua dataset point remove --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--datapoint {datapoint_name_2}"
+        f"--name {datapoint_name_2}"
     )
 
     # Verify datapoint removal
@@ -428,7 +436,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     # 10. REMOVE DATASET
     run(
         f"az iot ops ns asset opcua dataset remove --asset {asset_name} "
-        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name}"
     )
 
     # Verify dataset removal
@@ -442,15 +450,21 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
 
 def assert_dataset_properties(result, **expected):
-    """Verify dataset properties match expected values."""
+    """Verify dataset properties match expected values.
+
+    Minimal checks since unit tests already validate the command structure."""
     assert result["name"] == expected["name"]
 
     if "data_source" in expected:
         assert result["dataSource"] == expected["data_source"]
+    if "custom_configuration" in expected:
+        assert result["datasetConfiguration"] == expected["custom_configuration"]
 
 
 def assert_datapoint_properties(result, **expected):
-    """Verify datapoint properties match expected values."""
+    """Verify datapoint properties match expected values.
+
+    Minimal checks since unit tests already validate the command structure."""
     assert result["name"] == expected["name"]
 
     if "data_source" in expected:

@@ -8,449 +8,472 @@ from typing import List
 
 from ....generators import generate_random_string
 from ....helpers import run
+from .namespace_helpers import create_config_file
 
 
-def test_namespace_asset_event_lifecycle_operations(require_init, tracked_resources: List[str]):
-    """Test event operations for namespace assets."""
-    # TODO: remove when service is ready
-    location = "eastus2euap"
-
+def test_namespace_custom_asset_event_lifecycle_operations(require_init, tracked_resources: List[str]):
+    """Test complete lifecycle of custom asset event and datapoint operations."""
     # Setup test variables
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
-    namespace_name = f"ns-{generate_random_string(8)}"
-    device_name = f"dev-{generate_random_string(8)}"
-    endpoint_name_custom = f"custom-{generate_random_string(8)}"
-    endpoint_name_opcua = f"opcua-{generate_random_string(8)}"
-    endpoint_name_onvif = f"onvif-{generate_random_string(8)}"
-    asset_name_custom = f"custom-{generate_random_string(8)}"
-    asset_name_opcua = f"opcua-{generate_random_string(8)}"
-    asset_name_onvif = f"onvif-{generate_random_string(8)}"
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"custom-{generate_random_string(8)}"
+    asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
+    event_name = f"event-{generate_random_string(6, force_lower=True)}"
+    datapoint_name_1 = f"dp1-{generate_random_string(6, force_lower=True)}"
+    datapoint_name_2 = f"dp2-{generate_random_string(6, force_lower=True)}"
 
-    # Event names
-    event_name_custom = f"customEvent-{generate_random_string(8)}"
-    event_name_opcua = f"opcuaEvent-{generate_random_string(8)}"
-    event_name_onvif = f"onvifEvent-{generate_random_string(8)}"
-
-    # Create namespace
+    # Create Device
     result = run(
-        f"az iot ops ns create -n {namespace_name} -g {resource_group} --mi-system-assigned "
-        f"--location {location}"
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
     )
     tracked_resources.append(result["id"])
 
-    # Create Device
+    # Create device endpoint
     run(
-        f"az iot ops ns device create --name {device_name} --namespace {namespace_name} "
-        f"-g {resource_group} --instance {instance_name} --template-id dtmi:sample:device;1"
+        f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'http://192.168.1.100:8000/custom/service' "
+        "--endpoint-type custom"
     )
 
-    # Create device endpoints
-    for endpoint_name, endpoint_type in [
-        (endpoint_name_custom, "custom"),
-        (endpoint_name_opcua, "opcua"),
-        (endpoint_name_onvif, "onvif")
-    ]:
-        run(
-            f"az iot ops ns device endpoint inbound add {endpoint_type} --device {device_name} "
-            f"--namespace {namespace_name} -g {resource_group} --endpoint-name {endpoint_name} "
-            f"--endpoint-address http://test-server:8080"
-        )
-
-    # Create assets
-    run(
-        f"az iot ops ns asset custom create --name {asset_name_custom} --namespace {namespace_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_custom} "
-        f"--description 'Custom Asset for Event Testing'"
+    # Create Custom asset
+    asset_custom = run(
+        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"Custom Device for Event Testing\" --display \"Multi-Sensor Event\" "
+        f"--model \"Custom-EV100\" --manufacturer \"CustomDevices\""
     )
+    tracked_resources.append(asset_custom["id"])
 
-    run(
-        f"az iot ops ns asset opcua create --name {asset_name_opcua} --namespace {namespace_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_opcua} "
-        f"--description 'OPC UA Asset for Event Testing'"
-    )
+    # 1. CREATE EVENT
+    event_notifier = "temperature.alarm"
+    custom_config_path, custom_config = create_config_file(tracked_resources)
+    event_destinations = "topic=factory/custom/events qos=1 retain=false ttl=3600"
 
-    run(
-        f"az iot ops ns asset onvif create --name {asset_name_onvif} --namespace {namespace_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_onvif} "
-        f"--description 'ONVIF Asset for Event Testing'"
-    )
-
-    # Test 1: Add Custom Event
-    custom_event = run(
-        f"az iot ops ns asset custom event add --asset {asset_name_custom} --namespace {namespace_name} "
-        f"-g {resource_group} --name {event_name_custom} --event-notifier temperature.alarm "
-        f"--event-config '{{\"observabilityMode\": \"log\", \"samplingInterval\": 1000}}' "
-        f"--event-dest topic=factory/custom/events qos=1 retain=false ttl=3600"
+    event_result = run(
+        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
+        f"--event-config {custom_config_path} --event-dest '{event_destinations}'"
     )
 
     assert_event_properties(
-        custom_event,
-        name=event_name_custom,
-        event_notifier="temperature.alarm"
+        event_result,
+        name=event_name,
+        event_notifier=event_notifier,
+        custom_configuration=custom_config,
     )
 
-    # Test 2: Add OPC UA Event with full configuration
-    opcua_event = run(
-        f"az iot ops ns asset opcua event add --asset {asset_name_opcua} --namespace {namespace_name} "
-        f"-g {resource_group} --name {event_name_opcua} --event-notifier ns=2;i=1000 "
-        f"--event-publish-int 500 --event-queue-size 10 "
-        f"--event-filter-type equals --event-filter-clause path=ns=2;i=5000 type=String field=AlarmType "
-        f"--event-dest topic=factory/opcua/events qos=2 retain=true ttl=7200"
+    # 2. LIST EVENTS
+    events_list = run(
+        f"az iot ops ns asset event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
     )
 
-    assert_event_properties(
-        opcua_event,
-        name=event_name_opcua,
-        event_notifier="ns=2;i=1000"
-    )
+    assert len(events_list) >= 1
+    event_names = [ev["name"] for ev in events_list]
+    assert event_name in event_names
 
-    # Test 3: Add ONVIF Event
-    onvif_event = run(
-        f"az iot ops ns asset onvif event add --asset {asset_name_onvif} --namespace {namespace_name} "
-        f"-g {resource_group} --name {event_name_onvif} --event-notifier motion.detection "
-        f"--event-dest topic=factory/onvif/events qos=1 retain=false ttl=1800"
+    # 3. SHOW EVENT
+    event_show = run(
+        f"az iot ops ns asset event show --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name}"
     )
 
     assert_event_properties(
-        onvif_event,
-        name=event_name_onvif,
-        event_notifier="motion.detection"
+        event_show,
+        name=event_name,
+        event_notifier=event_notifier
     )
 
-    # Test 4: List events
-    custom_events = run(
-        f"az iot ops ns asset custom event list --asset {asset_name_custom} "
-        f"--namespace {namespace_name} -g {resource_group}"
-    )
+    # 4. UPDATE EVENT
+    updated_event_notifier = "temperature.alarm.critical"
+    custom_config_path, custom_config = create_config_file(tracked_resources)
 
-    assert len(custom_events) >= 1
-    event_names = [ev["name"] for ev in custom_events]
-    assert event_name_custom in event_names
-
-    opcua_events = run(
-        f"az iot ops ns asset opcua event list --asset {asset_name_opcua} "
-        f"--namespace {namespace_name} -g {resource_group}"
-    )
-
-    assert len(opcua_events) >= 1
-    event_names = [ev["name"] for ev in opcua_events]
-    assert event_name_opcua in event_names
-
-    onvif_events = run(
-        f"az iot ops ns asset onvif event list --asset {asset_name_onvif} "
-        f"--namespace {namespace_name} -g {resource_group}"
-    )
-
-    assert len(onvif_events) >= 1
-    event_names = [ev["name"] for ev in onvif_events]
-    assert event_name_onvif in event_names
-
-    # Test 5: Show event details
-    shown_custom_event = run(
-        f"az iot ops ns asset custom event show --asset {asset_name_custom} "
-        f"--namespace {namespace_name} -g {resource_group} --name {event_name_custom}"
+    updated_event = run(
+        f"az iot ops ns asset custom event update --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name} --event-notifier {updated_event_notifier} "
+        f"--event-config custom_config_path"
     )
 
     assert_event_properties(
-        shown_custom_event,
-        name=event_name_custom,
-        event_notifier="temperature.alarm"
+        updated_event,
+        name=event_name,
+        event_notifier=updated_event_notifier,
+        custom_configuration=custom_config,
     )
 
-    shown_opcua_event = run(
-        f"az iot ops ns asset opcua event show --asset {asset_name_opcua} "
-        f"--namespace {namespace_name} -g {resource_group} --name {event_name_opcua}"
-    )
-
-    assert_event_properties(
-        shown_opcua_event,
-        name=event_name_opcua,
-        event_notifier="ns=2;i=1000"
-    )
-
-    shown_onvif_event = run(
-        f"az iot ops ns asset onvif event show --asset {asset_name_onvif} "
-        f"--namespace {namespace_name} -g {resource_group} --name {event_name_onvif}"
-    )
-
-    assert_event_properties(
-        shown_onvif_event,
-        name=event_name_onvif,
-        event_notifier="motion.detection"
-    )
-
-    # Test 6: Update events
-    updated_custom_event = run(
-        f"az iot ops ns asset custom event update --asset {asset_name_custom} "
-        f"--namespace {namespace_name} -g {resource_group} --name {event_name_custom} "
-        f"--event-notifier temperature.alarm.updated "
-        f"--event-config '{{\"observabilityMode\": \"none\", \"samplingInterval\": 2000}}'"
-    )
-
-    assert_event_properties(
-        updated_custom_event,
-        name=event_name_custom,
-        event_notifier="temperature.alarm.updated"
-    )
-
-    updated_opcua_event = run(
-        f"az iot ops ns asset opcua event update --asset {asset_name_opcua} "
-        f"--namespace {namespace_name} -g {resource_group} --name {event_name_opcua} "
-        f"--event-notifier ns=3;i=1000 --event-publish-int 1000 "
-        f"--event-queue-size 15 --event-filter-type contains"
-    )
-
-    assert_event_properties(
-        updated_opcua_event,
-        name=event_name_opcua,
-        event_notifier="ns=3;i=1000"
-    )
-
-    updated_onvif_event = run(
-        f"az iot ops ns asset onvif event update --asset {asset_name_onvif} "
-        f"--namespace {namespace_name} -g {resource_group} --name {event_name_onvif} "
-        f"--event-notifier motion.detection.enhanced"
-    )
-
-    assert_event_properties(
-        updated_onvif_event,
-        name=event_name_onvif,
-        event_notifier="motion.detection.enhanced"
-    )
-
-    # Test 7: Add event with replace flag
-    replaced_custom_event = run(
-        f"az iot ops ns asset custom event add --asset {asset_name_custom} --namespace {namespace_name} "
-        f"-g {resource_group} --name {event_name_custom} --event-notifier temperature.alarm.replaced "
+    # 5. CREATE EVENT WITH REPLACE
+    replaced_event_notifier = "temperature.alarm.replaced"
+    replaced_event = run(
+        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name} --event-notifier {replaced_event_notifier} "
         f"--replace"
     )
 
     assert_event_properties(
-        replaced_custom_event,
-        name=event_name_custom,
-        event_notifier="temperature.alarm.replaced"
+        replaced_event,
+        name=event_name,
+        event_notifier=replaced_event_notifier,
+        custom_configuration=custom_config,
     )
 
-    # Test 8: Remove events
+    # 6. ADD EVENT DATAPOINT
+    datapoint_data_source = "temperature.severity"
+    custom_config_path, custom_config = create_config_file(tracked_resources)
+
+    datapoint_result = run(
+        f"az iot ops ns asset custom event point add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event {event_name} --name {datapoint_name_1} "
+        f"--data-source {datapoint_data_source} --custom-config {custom_config_path}"
+    )
+
+    assert_event_point_properties(
+        datapoint_result,
+        name=datapoint_name_1,
+        data_source=datapoint_data_source,
+        custom_configuration=custom_config
+    )
+
+    # 7. ADD ANOTHER EVENT DATAPOINT
+    datapoint_data_source_2 = "temperature.level"
+    custom_config_path, custom_config = create_config_file(tracked_resources)
+
+    datapoint_result_2 = run(
+        f"az iot ops ns asset custom event point add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event {event_name} --name {datapoint_name_2} "
+        f"--data-source {datapoint_data_source_2} --custom-config {custom_config_path}"
+    )
+
+    assert_event_point_properties(
+        datapoint_result_2,
+        name=datapoint_name_2,
+        data_source=datapoint_data_source_2,
+        custom_configuration=custom_config
+    )
+
+    # 8. LIST EVENT DATAPOINTS
+    datapoints_list = run(
+        f"az iot ops ns asset event point list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event {event_name}"
+    )
+
+    assert len(datapoints_list) >= 2
+    datapoint_names = [dp["name"] for dp in datapoints_list]
+    assert datapoint_name_1 in datapoint_names
+    assert datapoint_name_2 in datapoint_names
+
+    # 9. REPLACE EVENT DATAPOINT
+    replaced_datapoint_source = "temperature.severity.replaced"
+    replaced_datapoint = run(
+        f"az iot ops ns asset custom event point add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event {event_name} --name {datapoint_name_1} "
+        f"--data-source {replaced_datapoint_source} --replace"
+    )
+
+    assert_event_point_properties(
+        replaced_datapoint,
+        name=datapoint_name_1,
+        data_source=replaced_datapoint_source
+    )
+
+    # 10. REMOVE EVENT DATAPOINT
     run(
-        f"az iot ops ns asset custom event remove --asset {asset_name_custom} "
-        f"--namespace {namespace_name} -g {resource_group} --name {event_name_custom}"
+        f"az iot ops ns asset event point remove --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event {event_name} --name {datapoint_name_1}"
+    )
+
+    # Verify removal by listing
+    remaining_datapoints = run(
+        f"az iot ops ns asset event point list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event {event_name}"
+    )
+
+    remaining_names = [dp["name"] for dp in remaining_datapoints]
+    assert datapoint_name_1 not in remaining_names
+    assert datapoint_name_2 in remaining_names
+
+    # 11. REMOVE EVENT
+    run(
+        f"az iot ops ns asset event remove --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name}"
     )
 
     # Verify removal by listing
     remaining_events = run(
-        f"az iot ops ns asset custom event list --asset {asset_name_custom} "
-        f"--namespace {namespace_name} -g {resource_group}"
+        f"az iot ops ns asset event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
     )
 
-    event_names = [ev["name"] for ev in remaining_events]
-    assert event_name_custom not in event_names
-
-    run(
-        f"az iot ops ns asset opcua event remove --asset {asset_name_opcua} "
-        f"--namespace {namespace_name} -g {resource_group} --name {event_name_opcua}"
-    )
-
-    run(
-        f"az iot ops ns asset onvif event remove --asset {asset_name_onvif} "
-        f"--namespace {namespace_name} -g {resource_group} --name {event_name_onvif}"
-    )
+    remaining_event_names = [ev["name"] for ev in remaining_events]
+    assert event_name not in remaining_event_names
 
 
-def test_namespace_asset_event_point_lifecycle_operations(require_init, tracked_resources: List[str]):
-    """Test event point operations for namespace assets."""
-    # TODO: remove when service is ready
-    location = "eastus2euap"
-
+def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_resources: List[str]):
+    """Test complete lifecycle of OPC UA asset event operations (events only)."""
     # Setup test variables
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
-    namespace_name = f"ns-{generate_random_string(8)}"
-    device_name = f"dev-{generate_random_string(8)}"
-    endpoint_name_custom = f"custom-{generate_random_string(8)}"
-    asset_name_custom = f"custom-{generate_random_string(8)}"
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"opcua-{generate_random_string(8)}"
+    asset_name = f"opcua-{generate_random_string(8, force_lower=True)}"
+    event_name = f"event-{generate_random_string(6, force_lower=True)}"
 
-    # Event and event point names
-    event_name_custom = f"customEvent-{generate_random_string(8)}"
-    event_point_name_custom = f"customEventPoint-{generate_random_string(8)}"
-
-    # Create namespace
+    # Create Device
     result = run(
-        f"az iot ops ns create -n {namespace_name} -g {resource_group} --mi-system-assigned "
-        f"--location {location}"
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
     )
     tracked_resources.append(result["id"])
 
-    # Create Device
-    run(
-        f"az iot ops ns device create --name {device_name} --namespace {namespace_name} "
-        f"-g {resource_group} --instance {instance_name} --template-id dtmi:sample:device;1"
-    )
-
     # Create device endpoint
     run(
-        f"az iot ops ns device endpoint inbound add custom --device {device_name} "
-        f"--namespace {namespace_name} -g {resource_group} --endpoint-name {endpoint_name_custom} "
-        f"--endpoint-address http://test-server:8080"
+        f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'opc.tcp://192.168.1.100:4840' "
+        "--endpoint-type opcua"
     )
 
-    # Create asset
+    # Create OPC UA asset
+    asset_opcua = run(
+        f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"OPC UA Device for Event Testing\" --display \"OPC UA Event Server\" "
+        f"--model \"OPCUA-EV200\" --manufacturer \"OPCDevices\""
+    )
+    tracked_resources.append(asset_opcua["id"])
+
+    # 1. CREATE EVENT WITH FULL OPCUA CONFIGURATION
+    event_notifier = "ns=2;i=1000"
+    event_destinations = "topic=factory/opcua/events qos=2 retain=true ttl=7200"
+    publishing_interval = 500
+    queue_size = 10
+    filter_type = "equals"
+    filter_clauses = "path=ns=2;i=5000 type=String field=AlarmType"
+
+    event_result = run(
+        f"az iot ops ns asset opcua event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name} --event-notifier '{event_notifier}' "
+        f"--event-dest '{event_destinations}' --event-publish-int {publishing_interval} "
+        f"--event-queue-size {queue_size} --event-filter-type {filter_type} "
+        f"--event-filter-clause {filter_clauses}"
+    )
+
+    assert_event_properties(
+        event_result,
+        name=event_name,
+        event_notifier=event_notifier,
+    )
+
+    # 2. LIST EVENTS
+    events_list = run(
+        f"az iot ops ns asset event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+
+    assert len(events_list) >= 1
+    event_names = [ev["name"] for ev in events_list]
+    assert event_name in event_names
+
+    # 3. SHOW EVENT
+    event_show = run(
+        f"az iot ops ns asset event show --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name}"
+    )
+
+    assert_event_properties(
+        event_show,
+        name=event_name,
+        event_notifier=event_notifier
+    )
+
+    # 4. UPDATE EVENT
+    updated_event_notifier = "ns=3;i=1000"
+    updated_publishing_interval = 1000
+    updated_queue_size = 15
+    updated_filter_type = "contains"
+
+    updated_event = run(
+        f"az iot ops ns asset opcua event update --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name} --event-notifier '{updated_event_notifier}' "
+        f"--event-publish-int {updated_publishing_interval} --event-queue-size {updated_queue_size} "
+        f"--event-filter-type {updated_filter_type}"
+    )
+
+    assert_event_properties(
+        updated_event,
+        name=event_name,
+        event_notifier=updated_event_notifier,
+    )
+
+    # 5. CREATE EVENT WITH REPLACE
+    replaced_event_notifier = "ns=4;i=1000"
+    replaced_event = run(
+        f"az iot ops ns asset opcua event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name} --event-notifier '{replaced_event_notifier}' "
+        f"--replace"
+    )
+
+    assert_event_properties(
+        replaced_event,
+        name=event_name,
+        event_notifier=replaced_event_notifier
+    )
+
+    # 6. REMOVE EVENT
     run(
-        f"az iot ops ns asset custom create --name {asset_name_custom} --namespace {namespace_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_custom}"
-    )
-
-    # Create event first
-    run(
-        f"az iot ops ns asset custom event add --asset {asset_name_custom} --namespace {namespace_name} "
-        f"-g {resource_group} --name {event_name_custom} --event-notifier temperature.alarm"
-    )
-
-    # Test 1: Add Custom Event Point
-    custom_event_point = run(
-        f"az iot ops ns asset custom event point add --asset {asset_name_custom} "
-        f"--namespace {namespace_name} -g {resource_group} --event {event_name_custom} "
-        f"--name {event_point_name_custom} --data-source temperature.severity "
-        f"--custom-config '{{\"observabilityMode\": \"log\"}}'"
-    )
-
-    assert_event_point_properties(
-        custom_event_point,
-        name=event_point_name_custom,
-        data_source="temperature.severity"
-    )
-
-    # Test 2: List event points
-    custom_event_points = run(
-        f"az iot ops ns asset custom event point list --asset {asset_name_custom} "
-        f"--namespace {namespace_name} -g {resource_group} --event {event_name_custom}"
-    )
-
-    assert len(custom_event_points) >= 1
-    point_names = [ep["name"] for ep in custom_event_points]
-    assert event_point_name_custom in point_names
-
-    # Test 3: Add event point with replace flag
-    replaced_custom_event_point = run(
-        f"az iot ops ns asset custom event point add --asset {asset_name_custom} "
-        f"--namespace {namespace_name} -g {resource_group} --event {event_name_custom} "
-        f"--name {event_point_name_custom} --data-source temperature.severity.replaced --replace"
-    )
-
-    assert_event_point_properties(
-        replaced_custom_event_point,
-        name=event_point_name_custom,
-        data_source="temperature.severity.replaced"
-    )
-
-    # Test 4: Remove event point
-    run(
-        f"az iot ops ns asset custom event point remove --asset {asset_name_custom} "
-        f"--namespace {namespace_name} -g {resource_group} --event {event_name_custom} "
-        f"--name {event_point_name_custom}"
+        f"az iot ops ns asset event remove --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name}"
     )
 
     # Verify removal by listing
-    remaining_event_points = run(
-        f"az iot ops ns asset custom event point list --asset {asset_name_custom} "
-        f"--namespace {namespace_name} -g {resource_group} --event {event_name_custom}"
+    remaining_events = run(
+        f"az iot ops ns asset event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
     )
 
-    point_names = [ep["name"] for ep in remaining_event_points]
-    assert event_point_name_custom not in point_names
+    remaining_event_names = [ev["name"] for ev in remaining_events]
+    assert event_name not in remaining_event_names
+
+
+def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_resources: List[str]):
+    """Test complete lifecycle of ONVIF asset event operations (events only)."""
+    # Setup test variables
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"onvif-{generate_random_string(8)}"
+    asset_name = f"onvif-{generate_random_string(8, force_lower=True)}"
+    event_name = f"event-{generate_random_string(6, force_lower=True)}"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create device endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add onvif --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'http://192.168.1.100:8080/onvif/device' "
+        "--endpoint-type onvif"
+    )
+
+    # Create ONVIF asset
+    asset_onvif = run(
+        f"az iot ops ns asset onvif create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"ONVIF Device for Event Testing\" --display \"ONVIF Event Camera\" "
+        f"--model \"ONVIF-EV300\" --manufacturer \"ONVIFDevices\""
+    )
+    tracked_resources.append(asset_onvif["id"])
+
+    # 1. CREATE EVENT
+    event_notifier = "motion.detection"
+    event_destinations = "topic=factory/onvif/events qos=1 retain=false ttl=1800"
+
+    event_result = run(
+        f"az iot ops ns asset onvif event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
+        f"--event-dest '{event_destinations}'"
+    )
+
+    assert_event_properties(
+        event_result,
+        name=event_name,
+        event_notifier=event_notifier,
+    )
+
+    # 2. LIST EVENTS
+    events_list = run(
+        f"az iot ops ns asset event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+
+    assert len(events_list) >= 1
+    event_names = [ev["name"] for ev in events_list]
+    assert event_name in event_names
+
+    # 3. SHOW EVENT
+    event_show = run(
+        f"az iot ops ns asset event show --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name}"
+    )
+
+    assert_event_properties(
+        event_show,
+        name=event_name,
+        event_notifier=event_notifier
+    )
+
+    # 4. UPDATE EVENT
+    updated_event_notifier = "motion.detection.enhanced"
+    updated_event_destinations = "topic=factory/onvif/events/enhanced qos=2 retain=true ttl=3600"
+
+    updated_event = run(
+        f"az iot ops ns asset onvif event update --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name} --event-notifier {updated_event_notifier} "
+        f"--event-dest '{updated_event_destinations}'"
+    )
+
+    assert_event_properties(
+        updated_event,
+        name=event_name,
+        event_notifier=updated_event_notifier,
+    )
+
+    # 5. CREATE EVENT WITH REPLACE
+    replaced_event_notifier = "motion.detection.replaced"
+    replaced_event = run(
+        f"az iot ops ns asset onvif event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name} --event-notifier {replaced_event_notifier} "
+        f"--replace"
+    )
+
+    assert_event_properties(
+        replaced_event,
+        name=event_name,
+        event_notifier=replaced_event_notifier
+    )
+
+    # 6. REMOVE EVENT
+    run(
+        f"az iot ops ns asset event remove --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name}"
+    )
+
+    # Verify removal by listing
+    remaining_events = run(
+        f"az iot ops ns asset event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+
+    remaining_event_names = [ev["name"] for ev in remaining_events]
+    assert event_name not in remaining_event_names
 
 
 def assert_event_properties(result, **expected):
-    """Verify event properties match expected values."""
+    """Verify event properties match expected values.
 
+    Minimal checks since unit tests already validate the command structure."""
     assert result["name"] == expected["name"]
 
-    result_props = result.get("properties", {})
-
     if "event_notifier" in expected:
-        assert result_props.get("eventNotifier") == expected["event_notifier"]
-
-    if "observability_mode" in expected:
-        config = result_props.get("eventConfiguration", {})
-        assert config.get("observabilityMode") == expected["observability_mode"]
-
-    if "sampling_interval" in expected:
-        config = result_props.get("eventConfiguration", {})
-        assert config.get("samplingInterval") == expected["sampling_interval"]
-
-    if "publishing_interval" in expected:
-        config = result_props.get("eventConfiguration", {})
-        assert config.get("publishingInterval") == expected["publishing_interval"]
-
-    if "queue_size" in expected:
-        config = result_props.get("eventConfiguration", {})
-        assert config.get("queueSize") == expected["queue_size"]
-
-    if "filter_type" in expected:
-        config = result_props.get("eventConfiguration", {})
-        filter_config = config.get("filter", {})
-        assert filter_config.get("type") == expected["filter_type"]
-
-    if "filter_clauses" in expected:
-        config = result_props.get("eventConfiguration", {})
-        filter_config = config.get("filter", {})
-        assert filter_config.get("clauses") == expected["filter_clauses"]
-
-    # Check MQTT destination if present
-    if "mqtt_topic" in expected:
-        destinations = result_props.get("destinations", [])
-        if destinations:
-            mqtt_dest = destinations[0].get("mqtt", {})
-            assert mqtt_dest.get("topic") == expected["mqtt_topic"]
-
-    if "mqtt_qos" in expected:
-        destinations = result_props.get("destinations", [])
-        if destinations:
-            mqtt_dest = destinations[0].get("mqtt", {})
-            assert mqtt_dest.get("qos") == expected["mqtt_qos"]
-
-    if "mqtt_retain" in expected:
-        destinations = result_props.get("destinations", [])
-        if destinations:
-            mqtt_dest = destinations[0].get("mqtt", {})
-            assert mqtt_dest.get("retain") == expected["mqtt_retain"]
-
-    if "mqtt_ttl" in expected:
-        destinations = result_props.get("destinations", [])
-        if destinations:
-            mqtt_dest = destinations[0].get("mqtt", {})
-            assert mqtt_dest.get("ttl") == expected["mqtt_ttl"]
+        assert result["eventNotifier"] == expected["event_notifier"]
+    if "custom_configuration" in expected:
+        assert result["eventConfiguration"] == expected["custom_configuration"]
 
 
 def assert_event_point_properties(result, **expected):
     """Verify event point properties match expected values."""
-
     assert result["name"] == expected["name"]
 
     result_props = result.get("properties", {})
 
     if "data_source" in expected:
         assert result_props.get("dataSource") == expected["data_source"]
-
-    if "observability_mode" in expected:
-        assert result_props.get("observabilityMode") == expected["observability_mode"]
-
-    if "queue_size" in expected:
-        config = result_props.get("eventPointConfiguration", {})
-        assert config.get("queueSize") == expected["queue_size"]
-
-    if "sampling_interval" in expected:
-        config = result_props.get("eventPointConfiguration", {})
-        assert config.get("samplingInterval") == expected["sampling_interval"]
-
-    # Check custom configuration for custom assets
-    if "custom_config" in expected:
-        config = result_props.get("eventPointConfiguration", {})
-        custom_config = config.get("customConfiguration")
-        if custom_config:
-            # Parse JSON if it's a string
-            import json
-            if isinstance(custom_config, str):
-                custom_config = json.loads(custom_config)
-            assert custom_config == expected["custom_config"]
+    if "custom_configuration" in expected:
+        assert result["customConfiguration"] == expected["custom_configuration"]

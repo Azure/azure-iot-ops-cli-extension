@@ -5,11 +5,16 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+from time import sleep
 from typing import List
+from knack.log import get_logger
+from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 from ....generators import generate_random_string
 from ....helpers import run
+
+logger = get_logger(__name__)
 
 
 def test_namespace_device_lifecycle_operations(require_init, tracked_resources: List[str]):
@@ -274,14 +279,28 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     assert device_name_1 not in device_names
 
     # Delete devices
-    run(
-        f"az iot ops ns device delete --name {device_name_1} --instance {instance_name} "
-        f"-g {resource_group} -y"
-    )
-    run(
-        f"az iot ops ns device delete --name {device_name_2} --instance {instance_name} "
-        f"-g {resource_group} -y"
-    )
+    try:
+        run(
+            f"az iot ops ns device delete --name {device_name_1} --instance {instance_name} "
+            f"-g {resource_group} -y"
+        )
+    except CLIInternalError as e:
+        if "Operation returned an invalid status" in str(e):
+            logger.warning("Device api returns the wrong error code.")
+        else:
+            raise e
+    try:
+        run(
+            f"az iot ops ns device delete --name {device_name_2} --instance {instance_name} "
+            f"-g {resource_group} -y"
+        )
+    except CLIInternalError as e:
+        if "Operation returned an invalid status" in str(e):
+            logger.warning("Device api returns the wrong error code.")
+        else:
+            raise e
+
+    sleep(30)  # Wait for deletion to propagate
     result = run(
         "az iot ops ns device query"
     )

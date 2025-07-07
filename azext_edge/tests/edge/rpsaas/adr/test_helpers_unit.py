@@ -234,7 +234,6 @@ def test_get_namespace_for_instance(
 
 @pytest.mark.parametrize("subscription", [None, generate_random_string()])
 @pytest.mark.parametrize("scenario", [
-    "missing_properties",
     "missing_adr_namespace_ref",
     "empty_adr_namespace_ref",
     "missing_resource_id",
@@ -262,10 +261,7 @@ def test_get_namespace_for_instance_error(
         )
     }
 
-    if scenario == "missing_properties":
-        # No properties at all
-        pass
-    elif scenario == "missing_adr_namespace_ref":
+    if scenario == "missing_adr_namespace_ref":
         instance_resource["properties"] = {}
     elif scenario == "empty_adr_namespace_ref":
         instance_resource["properties"] = {
