@@ -326,10 +326,14 @@ jobs:
           echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
 
           # limit both names - 30 for registry, 20 for namespace
-          schema_registy_name=$(echo "init-registry${{ env.CLUSTER_NAME }}" | cut -c 1-30)
+          schema_registry_name=$(echo "init-registry${{ env.CLUSTER_NAME }}" | cut -c 1-30)
           schema_namespace=$(echo "init-ns-${{ env.CLUSTER_NAME }}" | cut -c 1-20)
-          registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n $schema_registy_name --rn $schema_namespace --sa-resource-id $storage_id -o tsv --query id)
+          registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n $schema_registry_name --rn $schema_namespace --sa-resource-id $storage_id -o tsv --query id)
           echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
+
+          adr_namespace_name=$(echo "init-adr-ns-${{ env.CLUSTER_NAME }}" | cut -c 1-30)
+          adr_namespace_id=$(az resource create -g ${{ env.RESOURCE_GROUP }} -n $adr_namespace_name --api-version 2025-07-01-preview --resource-type Microsoft.DeviceRegistry/namespaces --properties '{}' --query "id" -o tsv)
+          echo "ADR_NAMESPACE_ID=$adr_namespace_id" >> $GITHUB_OUTPUT
       - name: "OIDC Token exchange service"
         run: |
           while true; do
@@ -350,6 +354,7 @@ jobs:
           azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
           azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
           azext_edge_schema_registry_id: ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}
+          azext_edge_adr_namespace_id: ${{ steps.init_reqs.outputs.ADR_NAMESPACE_ID }}
         run: |
           tox r -e python-init-int --skip-pkg-install -- --durations=0
           tox r -e report
@@ -457,6 +462,11 @@ jobs:
             az resource delete -v --id ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }} --verbose
           else
             echo "No schema registry to delete"
+          fi
+          if [ "${{ steps.init_reqs.outputs.ADR_NAMESPACE_ID }}" ]; then
+            az resource delete -v --id ${{ steps.init_reqs.outputs.ADR_NAMESPACE_ID }} --verbose
+          else
+            echo "No ADR namespace to delete"
           fi
           if [ "${{ steps.init_reqs.outputs.STORAGE_ID }}" ]; then
             az resource delete -v --id ${{ steps.init_reqs.outputs.STORAGE_ID }} --verbose

@@ -32,7 +32,7 @@ from ...util import (
     to_safe_filename,
 )
 from ...util.az_client import (
-    REGISTRY_API_VERSION,
+    DeviceRegistryMgmtApiVersion,
     get_msi_mgmt_client,
     get_resource_client,
     wait_for_terminal_state,
@@ -1108,7 +1108,7 @@ class CloneManager:
         asset_endpoints = self.get_resources_of_type(resource_type="microsoft.deviceregistry/assetendpointprofiles")
         self._add_deployment(
             key=StateResourceKey.ASSET_ENDPOINT_PROFILE,
-            api_version=REGISTRY_API_VERSION,
+            api_version=DeviceRegistryMgmtApiVersion.V20241101.value,
             data_iter=asset_endpoints,
             depends_on=[
                 instance_resource_id_expr,
@@ -1125,7 +1125,7 @@ class CloneManager:
         if assets and asset_endpoints:
             self._add_deployment(
                 key=StateResourceKey.ASSET,
-                api_version=REGISTRY_API_VERSION,
+                api_version=DeviceRegistryMgmtApiVersion.V20241101.value,
                 data_iter=assets,
                 depends_on=get_resource_id_by_parts(
                     "Microsoft.Resources/deployments",

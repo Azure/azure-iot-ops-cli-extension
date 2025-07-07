@@ -9,8 +9,10 @@
 from copy import deepcopy
 from typing import Any, TYPE_CHECKING
 
+from azure.core.pipeline import policies
 from azure.core.rest import HttpRequest, HttpResponse
 from azure.mgmt.core import ARMPipelineClient
+from azure.mgmt.core.policies import ARMAutoResourceProviderRegistrationPolicy
 
 from ._configuration import MicrosoftDeviceRegistryManagementServiceConfiguration
 from ._serialization import Deserializer, Serializer
@@ -18,8 +20,11 @@ from .operations import (
     AssetEndpointProfilesOperations,
     AssetsOperations,
     BillingContainersOperations,
-    DiscoveredAssetEndpointProfilesOperations,
-    DiscoveredAssetsOperations,
+    NamespaceAssetsOperations,
+    NamespaceDevicesOperations,
+    NamespaceDiscoveredAssetsOperations,
+    NamespaceDiscoveredDevicesOperations,
+    NamespacesOperations,
     OperationStatusOperations,
     Operations,
     SchemaRegistriesOperations,
@@ -44,26 +49,33 @@ class MicrosoftDeviceRegistryManagementService:  # pylint: disable=client-accept
     :vartype assets: deviceregistry.mgmt.operations.AssetsOperations
     :ivar billing_containers: BillingContainersOperations operations
     :vartype billing_containers: deviceregistry.mgmt.operations.BillingContainersOperations
-    :ivar discovered_asset_endpoint_profiles: DiscoveredAssetEndpointProfilesOperations operations
-    :vartype discovered_asset_endpoint_profiles:
-     deviceregistry.mgmt.operations.DiscoveredAssetEndpointProfilesOperations
-    :ivar discovered_assets: DiscoveredAssetsOperations operations
-    :vartype discovered_assets: deviceregistry.mgmt.operations.DiscoveredAssetsOperations
     :ivar operation_status: OperationStatusOperations operations
     :vartype operation_status: deviceregistry.mgmt.operations.OperationStatusOperations
+    :ivar namespaces: NamespacesOperations operations
+    :vartype namespaces: deviceregistry.mgmt.operations.NamespacesOperations
     :ivar schema_registries: SchemaRegistriesOperations operations
     :vartype schema_registries: deviceregistry.mgmt.operations.SchemaRegistriesOperations
+    :ivar namespace_assets: NamespaceAssetsOperations operations
+    :vartype namespace_assets: deviceregistry.mgmt.operations.NamespaceAssetsOperations
+    :ivar namespace_devices: NamespaceDevicesOperations operations
+    :vartype namespace_devices: deviceregistry.mgmt.operations.NamespaceDevicesOperations
+    :ivar namespace_discovered_assets: NamespaceDiscoveredAssetsOperations operations
+    :vartype namespace_discovered_assets:
+     deviceregistry.mgmt.operations.NamespaceDiscoveredAssetsOperations
+    :ivar namespace_discovered_devices: NamespaceDiscoveredDevicesOperations operations
+    :vartype namespace_discovered_devices:
+     deviceregistry.mgmt.operations.NamespaceDiscoveredDevicesOperations
     :ivar schemas: SchemasOperations operations
     :vartype schemas: deviceregistry.mgmt.operations.SchemasOperations
     :ivar schema_versions: SchemaVersionsOperations operations
     :vartype schema_versions: deviceregistry.mgmt.operations.SchemaVersionsOperations
-    :param subscription_id: The ID of the target subscription. The value must be an UUID. Required.
-    :type subscription_id: str
     :param credential: Credential needed for the client to connect to Azure. Required.
     :type credential: ~azure.core.credentials.TokenCredential
-    :keyword endpoint: Service URL. Default value is "https://management.azure.com".
-    :paramtype endpoint: str
-    :keyword api_version: Api Version. Default value is "2024-09-01-preview". Note that overriding
+    :param subscription_id: The ID of the target subscription. The value must be an UUID. Required.
+    :type subscription_id: str
+    :param endpoint: Service URL. Default value is "https://management.azure.com".
+    :type endpoint: str
+    :keyword api_version: Api Version. Default value is "2025-07-01-preview". Note that overriding
      this default value may result in unsupported behavior.
     :paramtype api_version: str
     :keyword int polling_interval: Default waiting time between two polls for LRO operations if no
@@ -72,16 +84,33 @@ class MicrosoftDeviceRegistryManagementService:  # pylint: disable=client-accept
 
     def __init__(
         self,
-        subscription_id: str,
         credential: "TokenCredential",
-        *,
+        subscription_id: str,
         endpoint: str = "https://management.azure.com",
         **kwargs: Any
     ) -> None:
         self._config = MicrosoftDeviceRegistryManagementServiceConfiguration(
-            subscription_id=subscription_id, credential=credential, **kwargs
+            credential=credential, subscription_id=subscription_id, **kwargs
         )
-        self._client: ARMPipelineClient = ARMPipelineClient(base_url=endpoint, config=self._config, **kwargs)
+        _policies = kwargs.pop("policies", None)
+        if _policies is None:
+            _policies = [
+                policies.RequestIdPolicy(**kwargs),
+                self._config.headers_policy,
+                self._config.user_agent_policy,
+                self._config.proxy_policy,
+                policies.ContentDecodePolicy(**kwargs),
+                ARMAutoResourceProviderRegistrationPolicy(),
+                self._config.redirect_policy,
+                self._config.retry_policy,
+                self._config.authentication_policy,
+                self._config.custom_hook_policy,
+                self._config.logging_policy,
+                policies.DistributedTracingPolicy(**kwargs),
+                policies.SensitiveHeaderCleanupPolicy(**kwargs) if self._config.redirect_policy else None,
+                self._config.http_logging_policy,
+            ]
+        self._client: ARMPipelineClient = ARMPipelineClient(base_url=endpoint, policies=_policies, **kwargs)
 
         self._serialize = Serializer()
         self._deserialize = Deserializer()
@@ -94,22 +123,29 @@ class MicrosoftDeviceRegistryManagementService:  # pylint: disable=client-accept
         self.billing_containers = BillingContainersOperations(
             self._client, self._config, self._serialize, self._deserialize
         )
-        self.discovered_asset_endpoint_profiles = DiscoveredAssetEndpointProfilesOperations(
-            self._client, self._config, self._serialize, self._deserialize
-        )
-        self.discovered_assets = DiscoveredAssetsOperations(
-            self._client, self._config, self._serialize, self._deserialize
-        )
         self.operation_status = OperationStatusOperations(
             self._client, self._config, self._serialize, self._deserialize
         )
+        self.namespaces = NamespacesOperations(self._client, self._config, self._serialize, self._deserialize)
         self.schema_registries = SchemaRegistriesOperations(
+            self._client, self._config, self._serialize, self._deserialize
+        )
+        self.namespace_assets = NamespaceAssetsOperations(
+            self._client, self._config, self._serialize, self._deserialize
+        )
+        self.namespace_devices = NamespaceDevicesOperations(
+            self._client, self._config, self._serialize, self._deserialize
+        )
+        self.namespace_discovered_assets = NamespaceDiscoveredAssetsOperations(
+            self._client, self._config, self._serialize, self._deserialize
+        )
+        self.namespace_discovered_devices = NamespaceDiscoveredDevicesOperations(
             self._client, self._config, self._serialize, self._deserialize
         )
         self.schemas = SchemasOperations(self._client, self._config, self._serialize, self._deserialize)
         self.schema_versions = SchemaVersionsOperations(self._client, self._config, self._serialize, self._deserialize)
 
-    def send_request(self, request: HttpRequest, **kwargs: Any) -> HttpResponse:
+    def send_request(self, request: HttpRequest, *, stream: bool = False, **kwargs: Any) -> HttpResponse:
         """Runs the network request through the client's chained policies.
 
         >>> from azure.core.rest import HttpRequest
@@ -129,7 +165,7 @@ class MicrosoftDeviceRegistryManagementService:  # pylint: disable=client-accept
 
         request_copy = deepcopy(request)
         request_copy.url = self._client.format_url(request_copy.url)
-        return self._client.send_request(request_copy, **kwargs)
+        return self._client.send_request(request_copy, stream=stream, **kwargs)  # type: ignore
 
     def close(self) -> None:
         self._client.close()

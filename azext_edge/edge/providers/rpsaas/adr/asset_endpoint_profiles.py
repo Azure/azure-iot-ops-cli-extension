@@ -5,17 +5,24 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-from rich.console import Console
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
-from knack.log import get_logger
-
 from azure.cli.core.azclierror import (
+    FileOperationError,
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
-    FileOperationError,
 )
+from knack.log import get_logger
+from rich.console import Console
+
+from ....common import AEPAuthModes, AEPTypes
+from ....util.az_client import (
+    DeviceRegistryMgmtApiVersion,
+    get_registry_mgmt_client,
+    wait_for_terminal_state,
+)
+from ....util.queryable import Queryable
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
     GENERAL_AUTH_REF_MISMATCH_ERROR,
@@ -23,13 +30,10 @@ from .user_strings import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG,
 )
-from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state, REGISTRY_API_VERSION
-from ....util.queryable import Queryable
-from ....common import AEPAuthModes, AEPTypes
 
 if TYPE_CHECKING:
     from ....vendor.clients.deviceregistrymgmt.operations import (
-        AssetEndpointProfilesOperations as AEPOperations
+        AssetEndpointProfilesOperations as AEPOperations,
     )
 
 console = Console()
@@ -43,7 +47,7 @@ class AssetEndpointProfiles(Queryable):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
             subscription_id=self.default_subscription_id,
-            api_version=REGISTRY_API_VERSION
+            api_version=DeviceRegistryMgmtApiVersion.V20241101
         )
         self.ops: "AEPOperations" = self.deviceregistry_mgmt_client.asset_endpoint_profiles
 
