@@ -7,7 +7,7 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import DATAFLOW_API_V1
+from azext_edge.edge.providers.edge_api import DATAFLOW_API_V1B1
 from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
@@ -36,10 +36,10 @@ def test_create_bundle_dataflow(cluster_connection, tracked_files):
 
     check_custom_resource_files(
         file_objs=file_map,
-        resource_api=DATAFLOW_API_V1
+        resource_api=DATAFLOW_API_V1B1
     )
 
-    expected_types = set(DATAFLOW_WORKLOAD_TYPES).union(DATAFLOW_API_V1.kinds)
+    expected_types = set(DATAFLOW_WORKLOAD_TYPES).union(DATAFLOW_API_V1B1.kinds)
     assert set(file_map.keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=file_map,
