@@ -28,6 +28,7 @@ logger = get_logger(__name__)
 
 class NamespaceResource:
     def __init__(self, resource_id: str):
+        # unit test? do I unit test?
         resource_id = resource_id.split("/")
         self.name = resource_id[8]
         self.resource_group = resource_id[4]
@@ -46,7 +47,6 @@ def check_cluster_connectivity(cmd, resource: dict):
         logger.warning(f"Cluster {connected_cluster.cluster_name} is not connected.")
 
 
-# TODO update unit test
 def get_extended_location(
     cmd,
     instance_name: str,
@@ -86,7 +86,6 @@ def get_extended_location(
     }
 
 
-# TODO unit test
 def get_namespace_for_instance(
     cmd,
     instance_name: str,

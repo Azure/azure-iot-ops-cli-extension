@@ -766,8 +766,8 @@ def test_update_namespace_asset(
     assert result == updated_asset
 
     # Ensure we've made the expected API calls
-    # GET to fetch the device + GET to fetch original asset + PATCH to update it
-    assert len(mocked_responses.calls) == 3
+    # GET to fetch the device + GET to fetch original asset + PATCH to update it + GET
+    assert len(mocked_responses.calls) == 4
 
     # Verify request payload in the second call (PATCH)
     patch_request = mocked_responses.calls[2].request

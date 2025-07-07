@@ -245,10 +245,11 @@ def test_add_namespace_asset_dataset(
     assert result == expected_dataset
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 3  # GET device + GET asset + PATCH asset
+    assert len(mocked_responses.calls) == 4  # GET device + GET asset + PATCH asset + GET Asset
     assert mocked_responses.calls[0].request.method == "GET"  # Device GET call
     assert mocked_responses.calls[1].request.method == "GET"  # Asset GET call
     assert mocked_responses.calls[2].request.method == "PATCH"  # Asset PATCH call
+    assert mocked_responses.calls[3].request.method == "GET"  # Asset GET call
 
     # Verify the PATCH request body contains the expected dataset structure
     patch_body = json.loads(mocked_responses.calls[2].request.body)
@@ -593,12 +594,13 @@ def test_remove_namespace_asset_dataset(
     assert result == expected_datasets
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == (2 if dataset_deleted else 1)
+    assert len(mocked_responses.calls) == (3 if dataset_deleted else 1)
     assert mocked_responses.calls[0].request.method == "GET"
 
-    # If the dataset was deleted, there should be a PATCH request
+    # If the dataset was deleted, there should be a PATCH + GET request
     if dataset_deleted:
         assert mocked_responses.calls[1].request.method == "PATCH"
+        assert mocked_responses.calls[2].request.method == "GET"
 
         # Verify the PATCH request body contains the expected datasets
         patch_body = json.loads(mocked_responses.calls[1].request.body)
@@ -869,10 +871,11 @@ def test_update_namespace_asset_dataset(
     assert result == expected_dataset
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 3
+    assert len(mocked_responses.calls) == 4
     assert mocked_responses.calls[0].request.method == "GET"  # Device endpoint check
     assert mocked_responses.calls[1].request.method == "GET"  # Asset get
     assert mocked_responses.calls[2].request.method == "PATCH"  # Update asset
+    assert mocked_responses.calls[3].request.method == "GET"  # Asset get
 
     # Verify the PATCH request body contains the expected updated dataset
     patch_body = json.loads(mocked_responses.calls[2].request.body)
@@ -945,7 +948,7 @@ def test_add_namespace_asset_dataset_point(
 
     # Resolved namespace and resource group from the mocked fixture
     namespace_name = mocked_get_namespace_for_instance.return_value.name
-    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group_name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create mock asset record
     mocked_asset = get_namespace_asset_record(
@@ -1064,21 +1067,16 @@ def test_add_namespace_asset_dataset_point(
         **config_params
     )
 
-    # Verify the fixture was called with the correct parameters
-    mocked_get_namespace_for_instance.assert_called_once_with(
-        instance_name=instance_name,
-        instance_resource_group=instance_resource_group
-    )
-
     # Result should be a list of datapoints from the patch response
     assert isinstance(result, list)
     assert result == updated_asset["properties"]["datasets"][0]["dataPoints"]
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 3  # GET device + GET asset + PATCH asset
+    assert len(mocked_responses.calls) == 4  # GET device + GET asset + PATCH asset + GET asset
     assert mocked_responses.calls[0].request.method == "GET"  # Device GET call
     assert mocked_responses.calls[1].request.method == "GET"  # Asset GET call
     assert mocked_responses.calls[2].request.method == "PATCH"  # Asset PATCH call
+    assert mocked_responses.calls[3].request.method == "GET"  # Asset GET call
 
     # Verify the PATCH request payload contains the expected data point
     patch_body = json.loads(mocked_responses.calls[2].request.body)
@@ -1090,6 +1088,13 @@ def test_add_namespace_asset_dataset_point(
     assert patched_point is not None, f"Data point '{datapoint_name}' not found in PATCH request"
     assert patched_point["dataSource"] == data_source
     assert patched_point["dataPointConfiguration"] == expected_datapoint.get("dataPointConfiguration", "{}")
+
+    # Verify the fixture was called with the correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
 
 
 @pytest.mark.parametrize("num_points", [0, 1, 3])
@@ -1103,7 +1108,7 @@ def test_list_namespace_asset_dataset_points(
 
     # Resolved namespace and resource group from the mocked fixture
     namespace_name = mocked_get_namespace_for_instance.return_value.name
-    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group_name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create mock asset record
     mocked_asset = get_namespace_asset_record(
@@ -1139,6 +1144,7 @@ def test_list_namespace_asset_dataset_points(
 
     # Verify the fixture was called with the correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group
     )
@@ -1175,7 +1181,7 @@ def test_remove_namespace_asset_dataset_point(
 
     # Resolved namespace and resource group from the mocked fixture
     namespace_name = mocked_get_namespace_for_instance.return_value.name
-    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group_name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create mock asset with a dataset
     mocked_asset = get_namespace_asset_record(
@@ -1275,6 +1281,7 @@ def test_remove_namespace_asset_dataset_point(
 
     # Verify the fixture was called with the correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group
     )
@@ -1283,12 +1290,13 @@ def test_remove_namespace_asset_dataset_point(
     assert result == expected_datapoints
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == (2 if point_deleted else 1)
+    assert len(mocked_responses.calls) == (3 if point_deleted else 1)
     assert mocked_responses.calls[0].request.method == "GET"
 
-    # If the point was deleted, there should be a PATCH request
+    # If the point was deleted, there should be a PATCH + GET request
     if point_deleted:
         assert mocked_responses.calls[1].request.method == "PATCH"
+        assert mocked_responses.calls[2].request.method == "GET"
 
         # Verify the PATCH request body contains the expected datapoints
         patch_body = json.loads(mocked_responses.calls[1].request.body)

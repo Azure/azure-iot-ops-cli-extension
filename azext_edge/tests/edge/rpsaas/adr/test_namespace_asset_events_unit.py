@@ -270,10 +270,11 @@ def test_add_namespace_asset_event(
     assert result == expected_event
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 3
+    assert len(mocked_responses.calls) == 4
     assert mocked_responses.calls[0].request.method == "GET"
     assert mocked_responses.calls[1].request.method == "GET"
     assert mocked_responses.calls[2].request.method == "PATCH"
+    assert mocked_responses.calls[3].request.method == "GET"
 
     # Verify the PATCH request body contains the expected event structure
     patch_body = json.loads(mocked_responses.calls[2].request.body)
@@ -652,10 +653,11 @@ def test_remove_namespace_asset_event(
     assert result_events == expected_events
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == (2 if event_deleted else 1)
+    assert len(mocked_responses.calls) == (3 if event_deleted else 1)
     assert mocked_responses.calls[0].request.method == "GET"
     if event_deleted:
         assert mocked_responses.calls[1].request.method == "PATCH"
+        assert mocked_responses.calls[2].request.method == "GET"
 
         call_body = json.loads(mocked_responses.calls[1].request.body)
         call_events = call_body["properties"].get("events", [])
@@ -863,10 +865,11 @@ def test_update_namespace_asset_event(
     assert result == expected_event
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 3
+    assert len(mocked_responses.calls) == 4
     assert mocked_responses.calls[0].request.method == "GET"
     assert mocked_responses.calls[1].request.method == "GET"
     assert mocked_responses.calls[2].request.method == "PATCH"
+    assert mocked_responses.calls[3].request.method == "GET"
 
     # Verify the PATCH request body contains the expected updated event
     patch_body = json.loads(mocked_responses.calls[2].request.body)
@@ -1076,10 +1079,11 @@ def test_add_namespace_asset_event_point(
     assert result == updated_asset["properties"]["events"][0]["dataPoints"]
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 3  # GET device + GET asset + PATCH asset
+    assert len(mocked_responses.calls) == 4  # GET device + GET asset + PATCH asset + GET asset
     assert mocked_responses.calls[0].request.method == "GET"  # Device GET call
     assert mocked_responses.calls[1].request.method == "GET"  # Asset GET call
     assert mocked_responses.calls[2].request.method == "PATCH"  # Asset PATCH call
+    assert mocked_responses.calls[3].request.method == "GET"  # Asset GET call
 
     # Verify the PATCH request payload contains the expected data point
     patch_body = json.loads(mocked_responses.calls[2].request.body)
@@ -1277,12 +1281,13 @@ def test_remove_namespace_asset_event_point(
     assert result == expected_datapoints
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == (2 if point_deleted else 1)
+    assert len(mocked_responses.calls) == (3 if point_deleted else 1)
     assert mocked_responses.calls[0].request.method == "GET"
 
     # If the point was deleted, there should be a PATCH request
     if point_deleted:
         assert mocked_responses.calls[1].request.method == "PATCH"
+        assert mocked_responses.calls[2].request.method == "GET"
 
         # Verify the PATCH request body contains the expected datapoints
         patch_body = json.loads(mocked_responses.calls[1].request.body)

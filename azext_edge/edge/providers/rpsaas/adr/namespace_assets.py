@@ -701,7 +701,7 @@ class NamespaceAssets(Queryable):
                 "eventNotifier": event_notifier,
                 "eventConfiguration": processed_configs.get("eventsConfiguration"),
                 "destinations": processed_configs.get("eventsDestinations", []),
-                "dataPoints": []  # TODO: future pr, add datapoints
+                "dataPoints": []
             }
         )
 

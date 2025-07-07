@@ -78,13 +78,20 @@ def test_check_cluster_connectivity(mocked_cmd, mocked_logger, mocked_responses:
 
 @pytest.mark.parametrize("connected", [True, False])
 @pytest.mark.parametrize("subscription", [None, generate_random_string()])
+@pytest.mark.parametrize("namespace_name", [None, generate_random_string()])
 def test_get_extended_location(
-    mocked_cmd, mocked_logger, mocked_responses: responses, connected: bool, subscription: str
+    mocked_cmd,
+    mocked_logger,
+    mocked_responses: responses,
+    connected: bool,
+    subscription: str,
+    namespace_name: str
 ):
     from azext_edge.edge.providers.rpsaas.adr.helpers import get_extended_location
     name = generate_random_string()
     resource_group = generate_random_string()
     location = generate_random_string()
+    namespace_resource_group = generate_random_string() if namespace_name else None
     # base resource - should be ok if it is not an instance object
     resource = {
         "extendedLocation": {
@@ -99,8 +106,19 @@ def test_get_extended_location(
             resource_group_name=resource_group,
             resource_provider="Microsoft.IoTOperations/instances",
             resource_path=f"/{name}"
-        )
+        ),
+        "properties": {}
     }
+    if namespace_name:
+        resource["properties"]["adrNamespaceRef"] = {
+            "resourceId": generate_resource_id(
+                resource_subscription=subscription,
+                resource_group_name=namespace_resource_group,
+                resource_provider="Microsoft.DeviceRegistry/namespaces",
+                resource_path=f"/{namespace_name}"
+            )
+        }
+
     # the custom location
     cl_resource = {
         "properties": {
@@ -149,6 +167,153 @@ def test_get_extended_location(
     assert result["name"] == resource['extendedLocation']['name']
     assert result["cluster_location"] == location
     assert mocked_logger.warning.called is not connected
+
+    if namespace_name:
+        assert result["namespace"].name == namespace_name
+        assert result["namespace"].resource_group == namespace_resource_group
+    else:
+        assert result["namespace"] is None
+
+
+@pytest.mark.parametrize("subscription", [None, generate_random_string()])
+@pytest.mark.parametrize("namespace_name", [generate_random_string()])
+def test_get_namespace_for_instance(
+    mocked_cmd,
+    mocked_responses: responses,
+    subscription: str,
+    namespace_name: str
+):
+    from azext_edge.edge.providers.rpsaas.adr.helpers import get_namespace_for_instance, NamespaceResource
+
+    instance_name = generate_random_string()
+    instance_resource_group = generate_random_string()
+    namespace_resource_group = generate_random_string()
+
+    # Create mock instance resource
+    instance_resource = {
+        "id": generate_resource_id(
+            resource_subscription=subscription,
+            resource_group_name=instance_resource_group,
+            resource_provider="Microsoft.IoTOperations/instances",
+            resource_path=f"/{instance_name}"
+        ),
+        "properties": {
+            "adrNamespaceRef": {
+                "resourceId": generate_resource_id(
+                    resource_subscription=subscription,
+                    resource_group_name=namespace_resource_group,
+                    resource_provider="Microsoft.DeviceRegistry/namespaces",
+                    resource_path=f"/{namespace_name}"
+                )
+            }
+        }
+    }
+
+    # Mock the instance API call
+    mocked_responses.add(
+        method=responses.GET,
+        url=f"{BASE_URL}{instance_resource['id']}",
+        json=instance_resource,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Call the function
+    result = get_namespace_for_instance(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        instance_subscription=subscription
+    )
+
+    # Verify the result
+    assert isinstance(result, NamespaceResource)
+    assert result.name == namespace_name
+    assert result.resource_group == namespace_resource_group
+
+
+@pytest.mark.parametrize("subscription", [None, generate_random_string()])
+@pytest.mark.parametrize("scenario", [
+    "missing_properties",
+    "missing_adr_namespace_ref",
+    "empty_adr_namespace_ref",
+    "missing_resource_id",
+    "empty_resource_id",
+    "null_resource_id"
+])
+def test_get_namespace_for_instance_error(
+    mocked_cmd,
+    mocked_responses: responses,
+    subscription: str,
+    scenario: str
+):
+    from azext_edge.edge.providers.rpsaas.adr.helpers import get_namespace_for_instance
+
+    instance_name = generate_random_string()
+    instance_resource_group = generate_random_string()
+
+    # Create mock instance resource based on scenario
+    instance_resource = {
+        "id": generate_resource_id(
+            resource_subscription=subscription,
+            resource_group_name=instance_resource_group,
+            resource_provider="Microsoft.IoTOperations/instances",
+            resource_path=f"/{instance_name}"
+        )
+    }
+
+    if scenario == "missing_properties":
+        # No properties at all
+        pass
+    elif scenario == "missing_adr_namespace_ref":
+        instance_resource["properties"] = {}
+    elif scenario == "empty_adr_namespace_ref":
+        instance_resource["properties"] = {
+            "adrNamespaceRef": {}
+        }
+    elif scenario == "missing_resource_id":
+        instance_resource["properties"] = {
+            "adrNamespaceRef": {
+                "someOtherProperty": "value"
+            }
+        }
+    elif scenario == "empty_resource_id":
+        instance_resource["properties"] = {
+            "adrNamespaceRef": {
+                "resourceId": ""
+            }
+        }
+    elif scenario == "null_resource_id":
+        instance_resource["properties"] = {
+            "adrNamespaceRef": {
+                "resourceId": None
+            }
+        }
+
+    # Mock the instance API call
+    mocked_responses.add(
+        method=responses.GET,
+        url=f"{BASE_URL}{instance_resource['id']}",
+        json=instance_resource,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Call the function and expect InvalidArgumentValueError
+    with pytest.raises(InvalidArgumentValueError) as exc_info:
+        get_namespace_for_instance(
+            cmd=mocked_cmd,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+            instance_subscription=subscription
+        )
+
+    # Verify the error message
+    expected_error = (
+        f"Instance {instance_name} does not have an Device Registry namespace associated with it. "
+        "Please update your instance to use new Device Registry features."
+    )
+    assert str(exc_info.value) == expected_error
 
 
 @pytest.mark.parametrize("datasets", [
