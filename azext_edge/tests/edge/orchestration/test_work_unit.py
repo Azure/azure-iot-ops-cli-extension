@@ -387,7 +387,7 @@ def build_target_scenario(
             "name": schema_registry_name,
             "roleAssignments": {"value": []},
         },
-        "deviceRegistryNamespace": {
+        "adrNamespace": {
             "id": generate_resource_id(
                 resource_group_name=resource_group_name,
                 resource_provider="microsoft.deviceregistry",
@@ -443,6 +443,9 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
         if isinstance(expected_exc_meta.exc_msg, list):
             for msg_seg in expected_exc_meta.exc_msg:
                 assert msg_seg in exc_msg
+            return
+        if isinstance(expected_exc_meta.exc_msg, re.Pattern):
+            assert expected_exc_meta.exc_msg.match(exc_msg)
             return
         assert expected_exc_meta.exc_msg in exc_msg
 
@@ -732,6 +735,20 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             ),
             omit_http_methods=frozenset([responses.PUT]),
         ),
+        build_target_scenario(
+            adrNamespace={
+                "id": generate_resource_id(
+                    resource_group_name=generate_random_string,
+                    resource_provider="microsoft.deviceregistry",
+                    resource_path="/namespaces/mynamespace",
+                ),
+            },
+            raises=ExceptionMeta(
+                exc_type=InvalidArgumentValueError,
+                exc_msg=re.compile(r"Resource Id '(.+)' does not match the instance resource group '(.+)'."),
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD]),
+        ),
     ],
 )
 def test_iot_ops_create(
@@ -752,7 +769,7 @@ def test_iot_ops_create(
         "resource_group_name": target_scenario["resourceGroup"],
         "instance_name": target_scenario["instance"]["name"],
         "schema_registry_resource_id": target_scenario["schemaRegistry"]["id"],
-        "adr_namespace_resource_id": target_scenario["deviceRegistryNamespace"]["id"],
+        "adr_namespace_resource_id": target_scenario["adrNamespace"]["id"],
     }
     if target_scenario["instance"]["namespace"]:
         create_call_kwargs["cluster_namespace"] = target_scenario["instance"]["namespace"]
@@ -877,6 +894,7 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
     )
     assert set(parameters["clExtentionIds"]["value"]) == cl_extension_ids
     assert parameters["schemaRegistryId"]["value"] == target_scenario["schemaRegistry"]["id"]
+    assert parameters["adrNamespaceId"]["value"] == target_scenario["adrNamespace"]["id"]
     assert parameters["deployResourceSyncRules"]["value"] == bool(target_scenario["enableRsyncRules"])
 
     assert "kubernetesDistro" not in parameters

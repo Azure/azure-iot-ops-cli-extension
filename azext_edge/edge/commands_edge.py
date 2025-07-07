@@ -22,7 +22,6 @@ from .providers.orchestration.common import (
 from .providers.orchestration.resources import Instances
 from .providers.support.base import get_bundle_path
 
-
 logger = get_logger(__name__)
 
 
