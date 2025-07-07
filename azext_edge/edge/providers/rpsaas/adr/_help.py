@@ -596,18 +596,6 @@ def load_iotops_adr_help():
     """
 
     helps[
-        "iot ops ns device list"
-    ] = """
-        type: command
-        short-summary: List devices in a Device Registry namespace.
-
-        examples:
-        - name: List all devices in a namespace
-          text: >
-            az iot ops ns device list --instance myInstance --instance-resource-group myResourceGroup
-    """
-
-    helps[
         "iot ops ns device query"
     ] = """
         type: command
@@ -619,15 +607,15 @@ def load_iotops_adr_help():
         examples:
         - name: Query for a specific device by name
           text: >
-            az iot ops ns device query --name myDevice --instance-resource-group myResourceGroup
+            az iot ops ns device query --name myDevice
 
         - name: Query for devices from a specific manufacturer
           text: >
-            az iot ops ns device query --manufacturer "Contoso" --instance-resource-group myResourceGroup
+            az iot ops ns device query --manufacturer "Contoso"
 
         - name: Use a custom query to search for devices
           text: >
-            az iot ops ns device query --custom-query "where tags.environment=='production'" --instance-resource-group myResourceGroup
+            az iot ops ns device query --custom-query "where tags.environment=='production'"
     """
 
     helps[

@@ -216,7 +216,6 @@ def test_create_namespace_device(
     {},  # No filters
     {
         "device_name": "test-device",
-        "resource_group_name": "test-rg",
         "manufacturer": "Contoso",
         "model": "Model X",
         "operating_system": "Linux"
@@ -230,7 +229,6 @@ def test_create_namespace_device(
     }
 ])
 def test_query_namespace_devices(mocked_cmd, mocker, req: Dict):
-
     return_value = [{"id": "device1"}, {"id": "device2"}]
     # Mock the query method from the Queryable class
     mock_query = mocker.patch(

@@ -793,7 +793,6 @@ def test_update_namespace_asset(
     {},
     {
         "asset_name": generate_random_string(),
-        "resource_group_name": generate_random_string(),
         "device_name": generate_random_string(),
         "device_endpoint_name": generate_random_string(),
     },
@@ -801,17 +800,11 @@ def test_update_namespace_asset(
         "custom_query": "| where resouceGroupName == 'test-rg' | project name, type",
     },
     {
-        "resource_group_name": generate_random_string(),
+        "asset_name": generate_random_string(),
         "custom_query": "| where resouceGroupName == 'test-rg' | project name, type",
     }
 ])
 def test_query_namespace_assets(mocked_cmd, mocker, reqs):
-    """
-    Test the query_namespace_assets function in commands_namespaces.py.
-    Tests that:
-    1. The function calls NamespaceAssets.query with the right Kusto query
-    2. Custom queries override other parameter filters
-    """
     return_value = [{"id": "asset1"}, {"id": "asset2"}]
     # Mock the query method from the Queryable class
     mock_query = mocker.patch(

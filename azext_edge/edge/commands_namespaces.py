@@ -100,7 +100,6 @@ def query_namespace_devices(
     cmd,
     device_name: Optional[str] = None,
     custom_query: Optional[str] = None,
-    resource_group_name: Optional[str] = None,
     manufacturer: Optional[str] = None,
     model: Optional[str] = None,
     operating_system: Optional[str] = None,
@@ -108,7 +107,6 @@ def query_namespace_devices(
     return NamespaceDevices(cmd).query_devices(
         device_name=device_name,
         custom_query=custom_query,
-        resource_group_name=resource_group_name,
         manufacturer=manufacturer,
         model=model,
         operating_system=operating_system
@@ -903,14 +901,12 @@ def query_namespace_assets(
     cmd,
     asset_name: Optional[str] = None,
     custom_query: Optional[str] = None,
-    resource_group_name: Optional[str] = None,
     device_name: Optional[str] = None,
     device_endpoint_name: Optional[str] = None,
 ) -> dict:
     return NamespaceAssets(cmd).query_assets(
         asset_name=asset_name,
         custom_query=custom_query,
-        resource_group_name=resource_group_name,
         device_name=device_name,
         device_endpoint_name=device_endpoint_name
     )

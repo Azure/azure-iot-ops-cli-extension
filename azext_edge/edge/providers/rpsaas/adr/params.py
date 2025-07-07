@@ -653,14 +653,6 @@ def load_adr_arguments(self, _):
             help="Space-separated tags in 'key[=value]' format. Use '' to clear existing tags.",
             arg_type=tags_type,
         )
-
-    with self.argument_context("iot ops ns device create") as context:
-        context.argument(
-            "instance_subscription",
-            options_list=["--instance-subscription", "--isub"],
-            help="The subscription ID of the Azure IoT Operations instance. If not provided, the current "
-            "subscription will be used.",
-        )
         context.argument(
             "manufacturer",
             options_list=["--manufacturer"],
@@ -675,6 +667,19 @@ def load_adr_arguments(self, _):
             "operating_system",
             options_list=["--os"],
             help="The device operating system.",
+        )
+        context.argument(
+            "custom_query",
+            options_list=["--custom-query", "--cq"],
+            help="Custom query to use. All other query arguments will be ignored.",
+        )
+
+    with self.argument_context("iot ops ns device create") as context:
+        context.argument(
+            "instance_subscription",
+            options_list=["--instance-subscription", "--isub"],
+            help="The subscription ID of the Azure IoT Operations instance. If not provided, the current "
+            "subscription will be used.",
         )
 
     with self.argument_context("iot ops ns device endpoint") as context:
