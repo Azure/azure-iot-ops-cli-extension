@@ -17,15 +17,12 @@ pytestmark = pytest.mark.rpsaas
 
 
 def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
-    # TODO: remove when service is ready
-    location = "eastus2euap"
     rg = settings_with_rg.env.azext_edge_rg
 
     # Create a minimal namespace
     namespace_name1 = "testns" + generate_random_string(force_lower=True)[:4]
     min_namespace = run(
         f"az iot ops ns create -n {namespace_name1} -g {rg} "
-        f"--location {location}"
     )
     tracked_resources.append(min_namespace["id"])
     assert_namespace_properties(result=min_namespace, name=namespace_name1)
@@ -48,7 +45,7 @@ def test_namespace_lifecycle(tracked_resources: List[str], settings_with_rg):
     tags_str = " ".join([f"{k}={v}" for k, v in tags.items()])
     namespace = run(
         f"az iot ops ns create -n {namespace_name2} -g {rg} "
-        f"--tags {tags_str} --location {location}"
+        f"--tags {tags_str}"
     )
     tracked_resources.append(namespace["id"])
     assert_namespace_properties(

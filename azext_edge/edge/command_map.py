@@ -252,7 +252,7 @@ def load_iotops_commands(self, _):
     ) as cmd_group:
         cmd_group.command("create", "create_namespace_device")
         cmd_group.command("delete", "delete_namespace_device")
-        cmd_group.command("list", "list_namespace_devices")
+        cmd_group.command("query", "query_namespace_devices")
         cmd_group.show_command("show", "show_namespace_device")
         cmd_group.command("update", "update_namespace_device")
 

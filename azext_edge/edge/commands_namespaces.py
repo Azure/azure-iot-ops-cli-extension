@@ -70,15 +70,10 @@ def update_namespace(
 def create_namespace_device(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
     instance_name: str,
-    device_template_id: str,
+    instance_resource_group: str,
     custom_attributes: Optional[List[str]] = None,
-    device_group_id: Optional[str] = None,
     disabled: Optional[bool] = None,
-    instance_resource_group: Optional[str] = None,
-    instance_subscription: Optional[str] = None,
     manufacturer: Optional[str] = None,
     model: Optional[str] = None,
     operating_system: Optional[str] = None,
@@ -88,15 +83,10 @@ def create_namespace_device(
 ):
     return NamespaceDevices(cmd).create(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
         instance_name=instance_name,
-        device_group_id=device_group_id,
-        device_template_id=device_template_id,
+        instance_resource_group=instance_resource_group,
         custom_attributes=custom_attributes,
         disabled=disabled,
-        instance_resource_group=instance_resource_group,
-        instance_subscription=instance_subscription,
         manufacturer=manufacturer,
         model=model,
         operating_system=operating_system,
@@ -106,29 +96,35 @@ def create_namespace_device(
     )
 
 
-def list_namespace_devices(
+def query_namespace_devices(
     cmd,
-    namespace_name: str,
-    resource_group_name: str
-) -> List[dict]:
-    return NamespaceDevices(cmd).list(
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+    device_name: Optional[str] = None,
+    custom_query: Optional[str] = None,
+    manufacturer: Optional[str] = None,
+    model: Optional[str] = None,
+    operating_system: Optional[str] = None,
+) -> dict:
+    return NamespaceDevices(cmd).query_devices(
+        device_name=device_name,
+        custom_query=custom_query,
+        manufacturer=manufacturer,
+        model=model,
+        operating_system=operating_system
     )
 
 
 def delete_namespace_device(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     confirm_yes: Optional[bool] = False,
     **kwargs
 ):
     NamespaceDevices(cmd).delete(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         confirm_yes=confirm_yes,
         **kwargs
     )
@@ -137,23 +133,22 @@ def delete_namespace_device(
 def show_namespace_device(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str
+    instance_name: str,
+    instance_resource_group: str,
 ) -> dict:
     return NamespaceDevices(cmd).show(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        instance_name=instance_name,
+        resource_group=instance_resource_group
     )
 
 
 def update_namespace_device(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     custom_attributes: Optional[List[str]] = None,
-    device_group_id: Optional[str] = None,
     disabled: Optional[bool] = None,
     operating_system_version: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
@@ -161,10 +156,9 @@ def update_namespace_device(
 ):
     return NamespaceDevices(cmd).update(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         custom_attributes=custom_attributes,
-        device_group_id=device_group_id,
         disabled=disabled,
         operating_system_version=operating_system_version,
         tags=tags,
@@ -175,14 +169,14 @@ def update_namespace_device(
 def list_namespace_device_endpoints(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     inbound: Optional[bool] = False
 ) -> dict:
     return NamespaceDevices(cmd).list_endpoints(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         inbound=inbound
     )
 
@@ -191,8 +185,8 @@ def list_namespace_device_endpoints(
 def add_inbound_custom_device_endpoint(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     endpoint_name: str,
     endpoint_type: str,
     endpoint_address: str,
@@ -205,8 +199,8 @@ def add_inbound_custom_device_endpoint(
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_type=endpoint_type,
         endpoint_address=endpoint_address,
@@ -222,8 +216,8 @@ def add_inbound_custom_device_endpoint(
 def add_inbound_media_device_endpoint(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     endpoint_name: str,
     endpoint_address: str,
     password_reference: Optional[str] = None,
@@ -232,8 +226,8 @@ def add_inbound_media_device_endpoint(
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.MEDIA.value,
         endpoint_address=endpoint_address,
@@ -246,8 +240,8 @@ def add_inbound_media_device_endpoint(
 def add_inbound_onvif_device_endpoint(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     endpoint_name: str,
     endpoint_address: str,
     accept_invalid_hostnames: Optional[bool] = False,
@@ -258,8 +252,8 @@ def add_inbound_onvif_device_endpoint(
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.ONVIF.value,
         endpoint_address=endpoint_address,
@@ -274,8 +268,8 @@ def add_inbound_onvif_device_endpoint(
 def add_inbound_opcua_device_endpoint(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     endpoint_name: str,
     endpoint_address: str,
     application_name: Optional[str] = "OPC UA Broker",
@@ -301,8 +295,8 @@ def add_inbound_opcua_device_endpoint(
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.OPCUA.value,
         endpoint_address=endpoint_address,
@@ -332,13 +326,13 @@ def add_inbound_opcua_device_endpoint(
 def list_inbound_device_endpoints(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str
+    instance_name: str,
+    instance_resource_group: str
 ) -> dict:
     return NamespaceDevices(cmd).list_endpoints(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         inbound=True
     )
 
@@ -346,16 +340,16 @@ def list_inbound_device_endpoints(
 def remove_inbound_device_endpoints(
     cmd,
     device_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     endpoint_names: List[str],
     confirm_yes: Optional[bool] = False,
     **kwargs
 ) -> dict:
     return NamespaceDevices(cmd).inbound_remove_endpoint(
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_names=endpoint_names,
         confirm_yes=confirm_yes,
         **kwargs
@@ -366,8 +360,8 @@ def remove_inbound_device_endpoints(
 def create_namespace_custom_asset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     device_name: str,
     device_endpoint_name: str,
     asset_type_refs: Optional[List[str]] = None,
@@ -396,9 +390,9 @@ def create_namespace_custom_asset(
 ) -> dict:
     return NamespaceAssets(cmd).create(
         asset_name=asset_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_type="custom",
-        resource_group_name=resource_group_name,
         device_name=device_name,
         device_endpoint_name=device_endpoint_name,
         asset_type_refs=asset_type_refs,
@@ -430,8 +424,8 @@ def create_namespace_custom_asset(
 def create_namespace_media_asset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     device_name: str,
     device_endpoint_name: str,
     task_type: Optional[str] = None,
@@ -465,9 +459,9 @@ def create_namespace_media_asset(
 ) -> dict:
     return NamespaceAssets(cmd).create(
         asset_name=asset_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_type=DeviceEndpointType.MEDIA.value,
-        resource_group_name=resource_group_name,
         device_name=device_name,
         device_endpoint_name=device_endpoint_name,
         task_type=task_type,
@@ -504,8 +498,8 @@ def create_namespace_media_asset(
 def create_namespace_onvif_asset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     device_name: str,
     device_endpoint_name: str,
     asset_type_refs: Optional[List[str]] = None,
@@ -527,9 +521,9 @@ def create_namespace_onvif_asset(
 ) -> dict:
     return NamespaceAssets(cmd).create(
         asset_name=asset_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_type=DeviceEndpointType.ONVIF.value,
-        resource_group_name=resource_group_name,
         device_name=device_name,
         device_endpoint_name=device_endpoint_name,
         asset_type_refs=asset_type_refs,
@@ -554,8 +548,8 @@ def create_namespace_onvif_asset(
 def create_namespace_opcua_asset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     device_name: str,
     device_endpoint_name: str,
     asset_type_refs: Optional[List[str]] = None,
@@ -586,9 +580,9 @@ def create_namespace_opcua_asset(
     # waiting on service for mgmt schemas
     return NamespaceAssets(cmd).create(
         asset_name=asset_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_type=DeviceEndpointType.OPCUA.value,
-        resource_group_name=resource_group_name,
         device_name=device_name,
         device_endpoint_name=device_endpoint_name,
         asset_type_refs=asset_type_refs,
@@ -621,28 +615,28 @@ def create_namespace_opcua_asset(
 def show_namespace_asset(
     cmd,
     asset_name: str,
-    namespace_name: str,
+    instance_name: str,
     resource_group_name: str
 ) -> dict:
     return NamespaceAssets(cmd).show(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        instance_name=instance_name,
+        resource_group=resource_group_name
     )
 
 
 def delete_namespace_asset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     confirm_yes: bool = False,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).delete(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         confirm_yes=confirm_yes,
         **kwargs
     )
@@ -651,8 +645,8 @@ def delete_namespace_asset(
 def update_namespace_custom_asset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     asset_type_refs: Optional[List[str]] = None,
     attributes: Optional[List[str]] = None,
     dataset_custom_configuration: Optional[str] = None,
@@ -679,9 +673,9 @@ def update_namespace_custom_asset(
 ) -> dict:
     return NamespaceAssets(cmd).update(
         asset_name=asset_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_type="custom",
-        resource_group_name=resource_group_name,
         asset_type_refs=asset_type_refs,
         attributes=attributes,
         dataset_custom_configuration=dataset_custom_configuration,
@@ -711,8 +705,8 @@ def update_namespace_custom_asset(
 def update_namespace_media_asset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     task_type: Optional[str] = None,
     task_format: Optional[str] = None,
     snapshots_per_second: Optional[int] = None,
@@ -744,9 +738,9 @@ def update_namespace_media_asset(
 ) -> dict:
     return NamespaceAssets(cmd).update(
         asset_name=asset_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_type=DeviceEndpointType.MEDIA.value,
-        resource_group_name=resource_group_name,
         task_type=task_type,
         task_format=task_format,
         snapshots_per_second=snapshots_per_second,
@@ -781,8 +775,8 @@ def update_namespace_media_asset(
 def update_namespace_onvif_asset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     asset_type_refs: Optional[List[str]] = None,
     attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
@@ -802,9 +796,9 @@ def update_namespace_onvif_asset(
 ) -> dict:
     return NamespaceAssets(cmd).update(
         asset_name=asset_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_type=DeviceEndpointType.ONVIF.value,
-        resource_group_name=resource_group_name,
         asset_type_refs=asset_type_refs,
         attributes=attributes,
         description=description,
@@ -827,8 +821,8 @@ def update_namespace_onvif_asset(
 def update_namespace_opcua_asset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     asset_type_refs: Optional[List[str]] = None,
     attributes: Optional[List[str]] = None,
     dataset_publishing_interval: Optional[int] = None,
@@ -857,9 +851,9 @@ def update_namespace_opcua_asset(
     # waiting on service for mgmt schemas
     return NamespaceAssets(cmd).update(
         asset_name=asset_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_type=DeviceEndpointType.OPCUA.value,
-        resource_group_name=resource_group_name,
         asset_type_refs=asset_type_refs,
         attributes=attributes,
         opcua_dataset_publishing_interval=dataset_publishing_interval,
@@ -891,14 +885,12 @@ def query_namespace_assets(
     cmd,
     asset_name: Optional[str] = None,
     custom_query: Optional[str] = None,
-    resource_group_name: Optional[str] = None,
     device_name: Optional[str] = None,
     device_endpoint_name: Optional[str] = None,
 ) -> dict:
     return NamespaceAssets(cmd).query_assets(
         asset_name=asset_name,
         custom_query=custom_query,
-        resource_group_name=resource_group_name,
         device_name=device_name,
         device_endpoint_name=device_endpoint_name
     )
@@ -908,8 +900,8 @@ def query_namespace_assets(
 def add_namespace_custom_asset_dataset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     dataset_name: str,
     dataset_data_source: str,
     dataset_custom_configuration: Optional[str] = None,
@@ -919,8 +911,8 @@ def add_namespace_custom_asset_dataset(
 ) -> dict:
     return NamespaceAssets(cmd).add_dataset(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type="custom",
         dataset_data_source=dataset_data_source,
@@ -934,8 +926,8 @@ def add_namespace_custom_asset_dataset(
 def add_namespace_opcua_asset_dataset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     dataset_name: str,
     dataset_data_source: str,
     dataset_destinations: Optional[str] = None,
@@ -948,8 +940,8 @@ def add_namespace_opcua_asset_dataset(
 ) -> dict:
     return NamespaceAssets(cmd).add_dataset(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type=DeviceEndpointType.OPCUA.value,
         dataset_data_source=dataset_data_source,
@@ -966,27 +958,27 @@ def add_namespace_opcua_asset_dataset(
 def list_namespace_asset_datasets(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str
+    instance_name: str,
+    instance_resource_group: str,
 ) -> List[dict]:
     return NamespaceAssets(cmd).list_datasets(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
     )
 
 
 def show_namespace_asset_dataset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     dataset_name: str
 ) -> dict:
     return NamespaceAssets(cmd).show_dataset(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name
     )
 
@@ -994,8 +986,8 @@ def show_namespace_asset_dataset(
 def update_namespace_custom_asset_dataset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     dataset_name: str,
     dataset_data_source: Optional[str] = None,
     dataset_custom_configuration: Optional[str] = None,
@@ -1004,8 +996,8 @@ def update_namespace_custom_asset_dataset(
 ) -> dict:
     return NamespaceAssets(cmd).update_dataset(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type="custom",
         dataset_data_source=dataset_data_source,
@@ -1018,8 +1010,8 @@ def update_namespace_custom_asset_dataset(
 def update_namespace_opcua_asset_dataset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     dataset_name: str,
     dataset_data_source: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
@@ -1032,8 +1024,8 @@ def update_namespace_opcua_asset_dataset(
 ) -> dict:
     return NamespaceAssets(cmd).update_dataset(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type=DeviceEndpointType.OPCUA.value,
         dataset_data_source=dataset_data_source,
@@ -1050,15 +1042,15 @@ def update_namespace_opcua_asset_dataset(
 def remove_namespace_asset_dataset(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     dataset_name: str,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).remove_dataset(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         **kwargs
     )
@@ -1068,8 +1060,8 @@ def remove_namespace_asset_dataset(
 def add_namespace_custom_asset_dataset_point(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     dataset_name: str,
     datapoint_name: str,
     data_source: str,
@@ -1079,8 +1071,8 @@ def add_namespace_custom_asset_dataset_point(
 ) -> dict:
     return NamespaceAssets(cmd).add_dataset_datapoint(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type="custom",
         datapoint_name=datapoint_name,
@@ -1094,8 +1086,8 @@ def add_namespace_custom_asset_dataset_point(
 def add_namespace_opcua_asset_dataset_point(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     dataset_name: str,
     datapoint_name: str,
     data_source: str,
@@ -1106,8 +1098,8 @@ def add_namespace_opcua_asset_dataset_point(
 ) -> dict:
     return NamespaceAssets(cmd).add_dataset_datapoint(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type=DeviceEndpointType.OPCUA.value,
         datapoint_name=datapoint_name,
@@ -1122,14 +1114,14 @@ def add_namespace_opcua_asset_dataset_point(
 def list_namespace_asset_dataset_points(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     dataset_name: str
 ) -> List[dict]:
     return NamespaceAssets(cmd).list_dataset_datapoints(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name
     )
 
@@ -1137,16 +1129,16 @@ def list_namespace_asset_dataset_points(
 def remove_namespace_asset_dataset_point(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     dataset_name: str,
     datapoint_name: str,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).remove_dataset_datapoint(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         datapoint_name=datapoint_name,
         **kwargs
@@ -1157,8 +1149,8 @@ def remove_namespace_asset_dataset_point(
 def add_namespace_custom_asset_event(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str,
     event_notifier: str,
     event_custom_configuration: Optional[str] = None,
@@ -1168,8 +1160,8 @@ def add_namespace_custom_asset_event(
 ) -> dict:
     return NamespaceAssets(cmd).add_event(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         asset_type="custom",
         event_notifier=event_notifier,
@@ -1184,8 +1176,8 @@ def add_namespace_custom_asset_event(
 def add_namespace_opcua_asset_event(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str,
     event_notifier: str,
     event_destinations: Optional[str] = None,
@@ -1198,8 +1190,8 @@ def add_namespace_opcua_asset_event(
 ) -> dict:
     return NamespaceAssets(cmd).add_event(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         asset_type=DeviceEndpointType.OPCUA.value,
         event_notifier=event_notifier,
@@ -1216,8 +1208,8 @@ def add_namespace_opcua_asset_event(
 def add_namespace_onvif_asset_event(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str,
     event_notifier: str,
     event_destinations: Optional[str] = None,
@@ -1226,8 +1218,8 @@ def add_namespace_onvif_asset_event(
 ) -> dict:
     return NamespaceAssets(cmd).add_event(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         asset_type=DeviceEndpointType.ONVIF.value,
         event_notifier=event_notifier,
@@ -1240,27 +1232,27 @@ def add_namespace_onvif_asset_event(
 def list_namespace_asset_events(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str
+    instance_name: str,
+    instance_resource_group: str,
 ) -> List[dict]:
     return NamespaceAssets(cmd).list_events(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
     )
 
 
 def show_namespace_asset_event(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str
 ) -> dict:
     return NamespaceAssets(cmd).show_event(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name
     )
 
@@ -1268,8 +1260,8 @@ def show_namespace_asset_event(
 def update_namespace_custom_asset_event(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str,
     event_notifier: Optional[str] = None,
     event_custom_configuration: Optional[str] = None,
@@ -1278,8 +1270,8 @@ def update_namespace_custom_asset_event(
 ) -> dict:
     return NamespaceAssets(cmd).update_event(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         asset_type="custom",
         event_notifier=event_notifier,
@@ -1292,8 +1284,8 @@ def update_namespace_custom_asset_event(
 def update_namespace_opcua_asset_event(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str,
     event_notifier: Optional[str] = None,
     event_destinations: Optional[str] = None,
@@ -1305,8 +1297,8 @@ def update_namespace_opcua_asset_event(
 ) -> dict:
     return NamespaceAssets(cmd).update_event(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         asset_type=DeviceEndpointType.OPCUA.value,
         event_notifier=event_notifier,
@@ -1322,8 +1314,8 @@ def update_namespace_opcua_asset_event(
 def update_namespace_onvif_asset_event(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str,
     event_notifier: Optional[str] = None,
     event_destinations: Optional[str] = None,
@@ -1331,8 +1323,8 @@ def update_namespace_onvif_asset_event(
 ) -> dict:
     return NamespaceAssets(cmd).update_event(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         asset_type=DeviceEndpointType.ONVIF.value,
         event_notifier=event_notifier,
@@ -1344,15 +1336,15 @@ def update_namespace_onvif_asset_event(
 def remove_namespace_asset_event(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).remove_event(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         **kwargs
     )
@@ -1362,8 +1354,8 @@ def remove_namespace_asset_event(
 def add_namespace_custom_asset_event_point(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str,
     datapoint_name: str,
     data_source: str,
@@ -1373,8 +1365,8 @@ def add_namespace_custom_asset_event_point(
 ) -> dict:
     return NamespaceAssets(cmd).add_event_datapoint(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         asset_type="custom",
         datapoint_name=datapoint_name,
@@ -1389,8 +1381,8 @@ def add_namespace_custom_asset_event_point(
 def add_namespace_opcua_asset_event_point(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str,
     datapoint_name: str,
     data_source: str,
@@ -1401,8 +1393,8 @@ def add_namespace_opcua_asset_event_point(
 ) -> dict:
     return NamespaceAssets(cmd).add_event_datapoint(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         asset_type=DeviceEndpointType.OPCUA.value,
         datapoint_name=datapoint_name,
@@ -1417,14 +1409,14 @@ def add_namespace_opcua_asset_event_point(
 def list_namespace_asset_event_points(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str
 ) -> List[dict]:
     return NamespaceAssets(cmd).list_event_datapoints(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name
     )
 
@@ -1432,16 +1424,16 @@ def list_namespace_asset_event_points(
 def remove_namespace_asset_event_point(
     cmd,
     asset_name: str,
-    namespace_name: str,
-    resource_group_name: str,
+    instance_name: str,
+    instance_resource_group: str,
     event_name: str,
     datapoint_name: str,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).remove_event_datapoint(
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         event_name=event_name,
         datapoint_name=datapoint_name,
         **kwargs

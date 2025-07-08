@@ -71,6 +71,7 @@ class AssetEndpointProfiles(Queryable):
             instance_subscription=instance_subscription
         )
         cluster_location = extended_location.pop("cluster_location")
+        extended_location.pop("namespace", None)
 
         auth_mode = None
         if not any([username_reference, password_reference, certificate_reference]):

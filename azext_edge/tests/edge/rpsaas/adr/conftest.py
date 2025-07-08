@@ -7,6 +7,8 @@
 import pytest
 from copy import deepcopy
 from typing import Optional
+
+from azext_edge.edge.providers.rpsaas.adr.helpers import NamespaceResource
 from ....generators import generate_random_string, get_zeroed_subscription
 from ....helpers import run
 
@@ -63,7 +65,11 @@ def mocked_get_extended_location(mocker):
     result = {
         "type": "CustomLocation",
         "name": generate_random_string(),
-        "cluster_location": generate_random_string()
+        "cluster_location": generate_random_string(),
+        "namespace": NamespaceResource(
+            resource_id=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/{generate_random_string()}"
+            f"/providers/Microsoft.DeviceRegistry/namespaces/{generate_random_string()}"
+        )
     }
     mock = mocker.patch(
         "azext_edge.edge.providers.rpsaas.adr.helpers.get_extended_location",
@@ -80,6 +86,19 @@ def mocked_check_cluster_connectivity(mocker):
         "azext_edge.edge.providers.rpsaas.adr.helpers.check_cluster_connectivity",
         # autospec=True  # TODO: uncomment when GA
     )
+
+
+@pytest.fixture()
+def mocked_get_namespace_for_instance(mocker):
+    mock = mocker.patch(
+        "azext_edge.edge.providers.rpsaas.adr.helpers.get_namespace_for_instance",
+        return_value=NamespaceResource(
+            resource_id=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/{generate_random_string()}"
+            f"/providers/Microsoft.DeviceRegistry/namespaces/{generate_random_string()}"
+        ),
+        autospec=True
+    )
+    yield mock
 
 
 def get_asset_id(
