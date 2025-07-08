@@ -39,7 +39,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
     host = "myregistry.azurecr.io"
 
     try:
-        # CREATE - Anonymous authentication (default)
+        # CREATE - SAMI authentication (default)
         registry_endpoint = run(
             f"az iot ops registry add -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
@@ -53,7 +53,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="Anonymous",
+            auth_method="SystemAssignedManagedIdentity",  # Default auth type
         )
 
         # SHOW
@@ -66,7 +66,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="Anonymous",
+            auth_method="SystemAssignedManagedIdentity",
         )
 
         # LIST - check our endpoint is in the list
@@ -87,7 +87,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
             resource_group=resource_group,
             instance_name=instance_name,
             host=new_host,
-            auth_method="Anonymous",
+            auth_method="SystemAssignedManagedIdentity",
         )
 
         # REMOVE
@@ -348,12 +348,12 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             auth_method="ArtifactPullSecret",
         )
 
-        # Auto-detect SystemAssigned (audience provided)
+        # Auto-detect SystemAssigned (no auth parameters provided)
         name2 = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
         endpoint2 = run(
             f"az iot ops registry add -n {name2} "
             f"-g {resource_group} --instance {instance_name} "
-            f"--host registry2.azurecr.io --audience my-audience"
+            f"--host registry2.azurecr.io"
         )
         endpoints_to_cleanup.append((endpoint2["id"], name2))
         assert_registry_endpoint(
@@ -382,12 +382,12 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
             auth_method="UserAssignedManagedIdentity",
         )
 
-        # Auto-detect Anonymous (no auth parameters provided)
+        # Auto-detect Anonymous --no-auth
         name4 = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
         endpoint4 = run(
             f"az iot ops registry add -n {name4} "
             f"-g {resource_group} --instance {instance_name} "
-            f"--host registry4.azurecr.io"
+            f"--host registry4.azurecr.io --no-auth"
         )
         endpoints_to_cleanup.append((endpoint4["id"], name4))
         assert_registry_endpoint(
@@ -438,7 +438,7 @@ def test_registry_endpoint_trusted_signing_key(registry_endpoint_test_setup, tra
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="Anonymous",
+            auth_method="SystemAssignedManagedIdentity",
         )
 
         # Verify trust settings
@@ -473,7 +473,7 @@ def test_registry_endpoint_trusted_signing_key(registry_endpoint_test_setup, tra
             resource_group=resource_group,
             instance_name=instance_name,
             host=host,
-            auth_method="Anonymous",
+            auth_method="SystemAssignedManagedIdentity",
         )
 
         # Verify trust settings were updated
