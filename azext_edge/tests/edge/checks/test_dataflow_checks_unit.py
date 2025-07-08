@@ -63,9 +63,7 @@ dataflow_conditions = [
     ],
 )
 @pytest.mark.parametrize("ops_service", ["dataflow"])
-def test_check_dataflow_by_resource_types(
-    ops_service, mocker, mock_resource_types, resource_kinds
-):
+def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
         CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
             "azext_edge.edge.providers.check.dataflow.evaluate_core_service_runtime",
@@ -191,9 +189,7 @@ def test_check_dataflow_by_resource_types(
                     ),
                     (
                         "value",
-                        {
-                            "spec.operations[*].sourceSettings.endpointRef": "dataflow-endpoint-1"
-                        },
+                        {"spec.operations[*].sourceSettings.endpointRef": "dataflow-endpoint-1"},
                     ),
                 ],
                 [
@@ -204,9 +200,7 @@ def test_check_dataflow_by_resource_types(
                     ),
                     (
                         "value",
-                        {
-                            "ref(spec.operations[*].sourceSettings.endpointRef).endpointType": "mqtt"
-                        },
+                        {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": "mqtt"},
                     ),
                 ],
                 [
@@ -217,9 +211,7 @@ def test_check_dataflow_by_resource_types(
                     ),
                     (
                         "value",
-                        {
-                            "spec.operations[*].destinationSettings.endpointRef": "dataflow-endpoint-2"
-                        },
+                        {"spec.operations[*].destinationSettings.endpointRef": "dataflow-endpoint-2"},
                     ),
                 ],
             ],
@@ -352,9 +344,7 @@ def test_check_dataflow_by_resource_types(
                     ),
                     (
                         "value",
-                        {
-                            "spec.operations[*].destinationSettings.endpointRef": "invalid-endpoint"
-                        },
+                        {"spec.operations[*].destinationSettings.endpointRef": "invalid-endpoint"},
                     ),
                 ],
                 [
@@ -397,9 +387,7 @@ def test_check_dataflow_by_resource_types(
                     ),
                     (
                         "value",
-                        {
-                            "spec.operations[*].sourceSettings.endpointRef": "invalid-endpoint"
-                        },
+                        {"spec.operations[*].sourceSettings.endpointRef": "invalid-endpoint"},
                     ),
                 ],
                 [
@@ -410,9 +398,7 @@ def test_check_dataflow_by_resource_types(
                     ),
                     (
                         "value",
-                        {
-                            "ref(spec.operations[*].sourceSettings.endpointRef).endpointType": None
-                        },
+                        {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": None},
                     ),
                 ],
                 [
@@ -423,9 +409,7 @@ def test_check_dataflow_by_resource_types(
                     ),
                     (
                         "value",
-                        {
-                            "spec.operations[*].destinationSettings.endpointRef": "real-endpoint"
-                        },
+                        {"spec.operations[*].destinationSettings.endpointRef": "real-endpoint"},
                     ),
                 ],
                 [
@@ -468,9 +452,7 @@ def test_check_dataflow_by_resource_types(
                     ),
                     (
                         "value",
-                        {
-                            "spec.operations[*].sourceSettings.endpointRef": "bad-source-endpoint"
-                        },
+                        {"spec.operations[*].sourceSettings.endpointRef": "bad-source-endpoint"},
                     ),
                 ],
                 [
@@ -481,9 +463,7 @@ def test_check_dataflow_by_resource_types(
                     ),
                     (
                         "value",
-                        {
-                            "ref(spec.operations[*].sourceSettings.endpointRef).endpointType": "fabriconelake"
-                        },
+                        {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": "fabriconelake"},
                     ),
                 ],
                 [
@@ -494,9 +474,7 @@ def test_check_dataflow_by_resource_types(
                     ),
                     (
                         "value",
-                        {
-                            "spec.operations[*].destinationSettings.endpointRef": "real-endpoint"
-                        },
+                        {"spec.operations[*].destinationSettings.endpointRef": "real-endpoint"},
                     ),
                 ],
                 [
@@ -662,16 +640,9 @@ def test_evaluate_dataflows(
     target = result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
 
     for namespace in target:
-        assert (
-            namespace
-            in result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
-        )
+        assert namespace in result["targets"]["dataflows.connectivity.iotoperations.azure.com"]
 
-        target[namespace]["conditions"] = (
-            []
-            if not target[namespace]["conditions"]
-            else target[namespace]["conditions"]
-        )
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], conditions)
         assert_evaluations(target[namespace], evaluations)
 
@@ -694,9 +665,7 @@ def test_evaluate_dataflows(
                             "host": "kafkaHost",
                             "authentication": {
                                 "method": "SystemAssignedManagedIdentity",
-                                "systemAssignedManagedIdentitySettings": {
-                                    "audience": "audience"
-                                },
+                                "systemAssignedManagedIdentitySettings": {"audience": "audience"},
                             },
                             "cloudEventAttributes": "Propagate",
                             "consumerGroupId": None,
@@ -953,18 +922,9 @@ def test_evaluate_dataflow_endpoints(
     target = result["targets"]["dataflowendpoints.connectivity.iotoperations.azure.com"]
 
     for namespace in target:
-        assert (
-            namespace
-            in result["targets"][
-                "dataflowendpoints.connectivity.iotoperations.azure.com"
-            ]
-        )
+        assert namespace in result["targets"]["dataflowendpoints.connectivity.iotoperations.azure.com"]
 
-        target[namespace]["conditions"] = (
-            []
-            if not target[namespace]["conditions"]
-            else target[namespace]["conditions"]
-        )
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], conditions)
         assert_evaluations(target[namespace], evaluations)
 
@@ -1279,18 +1239,9 @@ def test_evaluate_dataflow_profiles(
     target = result["targets"]["dataflowprofiles.connectivity.iotoperations.azure.com"]
 
     for namespace in target:
-        assert (
-            namespace
-            in result["targets"][
-                "dataflowprofiles.connectivity.iotoperations.azure.com"
-            ]
-        )
+        assert namespace in result["targets"]["dataflowprofiles.connectivity.iotoperations.azure.com"]
 
-        target[namespace]["conditions"] = (
-            []
-            if not target[namespace]["conditions"]
-            else target[namespace]["conditions"]
-        )
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], conditions)
         assert_evaluations(target[namespace], evaluations)
 
@@ -1366,25 +1317,16 @@ def test_evaluate_core_service_runtime(
     namespace = generate_random_string()
     for pod in pods:
         pod.metadata.namespace = namespace
-    result = evaluate_core_service_runtime(
-        detail_level=detail_level, resource_name=resource_name
-    )
+    result = evaluate_core_service_runtime(detail_level=detail_level, resource_name=resource_name)
 
     assert result["name"] == "evalCoreServiceRuntime"
     assert result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
     target = result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 
     for namespace in target:
-        assert (
-            namespace
-            in result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
-        )
+        assert namespace in result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 
-        target[namespace]["conditions"] = (
-            []
-            if not target[namespace]["conditions"]
-            else target[namespace]["conditions"]
-        )
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)
         assert_evaluations(target[namespace], namespace_evaluations)
 
@@ -1435,9 +1377,7 @@ def test_evaluate_core_service_runtime(
                         "host": "testregistry.azurecr.io",
                         "authentication": {
                             "method": "SystemAssignedManagedIdentity",
-                            "systemAssignedManagedIdentitySettings": {
-                                "audience": "audience"
-                            },
+                            "systemAssignedManagedIdentitySettings": {"audience": "audience"},
                         },
                     },
                 },
@@ -1546,17 +1486,8 @@ def test_evaluate_registry_endpoints(
     target = result["targets"]["registryendpoints.connectivity.iotoperations.azure.com"]
 
     for namespace in target:
-        assert (
-            namespace
-            in result["targets"][
-                "registryendpoints.connectivity.iotoperations.azure.com"
-            ]
-        )
+        assert namespace in result["targets"]["registryendpoints.connectivity.iotoperations.azure.com"]
 
-        target[namespace]["conditions"] = (
-            []
-            if not target[namespace]["conditions"]
-            else target[namespace]["conditions"]
-        )
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], conditions)
         assert_evaluations(target[namespace], evaluations)
