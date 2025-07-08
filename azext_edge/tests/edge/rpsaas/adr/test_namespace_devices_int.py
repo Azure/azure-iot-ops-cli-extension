@@ -4,84 +4,75 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import json
+from time import sleep
 from typing import List
+from knack.log import get_logger
+from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 from ....generators import generate_random_string
 from ....helpers import run
 
+logger = get_logger(__name__)
+
 
 def test_namespace_device_lifecycle_operations(require_init, tracked_resources: List[str]):
-    # TODO: remove when service is ready
-    location = "eastus2euap"
     # Setup test variables
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     custom_location = require_init["customLocationId"]
-    namespace_name = f"ns-{generate_random_string(8)}"
-    device_name_1 = f"dev-{generate_random_string(8)}"
-    device_name_2 = f"dev-{generate_random_string(8)}"
-    device_template_id = "dtmi:sample:device;1"
+    device_name_1 = f"dev-{generate_random_string(8, force_lower=True)}"
+    device_name_2 = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name_onvif = f"onvif-{generate_random_string(8)}"
     endpoint_name_opcua = f"opcua-{generate_random_string(8)}"
     endpoint_name_media = f"media-{generate_random_string(8)}"
     endpoint_name_custom = f"custom-{generate_random_string(8)}"
 
-    # Create namespace
-    result = run(
-        f"az iot ops ns create -n {namespace_name} -g {resource_group} --mi-system-assigned"
-        f"--location {location}"
-    )
-    tracked_resources.append(result["id"])  # only track namespace - deletion of it should delete devices too
-
     # Create 1st device with minimal inputs
     result = run(
-        f"az iot ops ns device create --name {device_name_1} --namespace {namespace_name} "
-        f"-g {resource_group} --instance {instance_name} --template-id {device_template_id}"
+        f"az iot ops ns device create --name {device_name_1} --instance {instance_name} "
+        f"-g {resource_group}"
     )
+    tracked_resources.append(result["id"])
     assert_namespace_device_properties(
         result,
         name=device_name_1,
-        template_id=device_template_id,
         enabled=True,
         custom_location=custom_location,
     )
 
     # Show device
     result = run(
-        f"az iot ops ns device show --name {device_name_1} --namespace {namespace_name} "
+        f"az iot ops ns device show --name {device_name_1} --instance {instance_name} "
         f"-g {resource_group}"
     )
     assert_namespace_device_properties(
         result,
         name=device_name_1,
-        template_id=device_template_id,
         enabled=True,
         custom_location=custom_location,
     )
 
-    # List devices
+    # Query devices
     result = run(
-        f"az iot ops ns device list --namespace {namespace_name} -g {resource_group}"
+        "az iot ops ns device query"
     )
-    assert len(result) == 1
     assert device_name_1 in [d["name"] for d in result]
 
     # Update device
     custom_attrs = ["location=building1", "department=manufacturing"]
     tags = ["env=test", "criticality=high"]
     result = run(
-        f"az iot ops ns device update --name {device_name_1} --namespace {namespace_name} "
-        f"-g {resource_group} --attr {' '.join(custom_attrs)} --device-group-id critical-devices "
+        f"az iot ops ns device update --name {device_name_1} --instance {instance_name} "
+        f"-g {resource_group} --attr {' '.join(custom_attrs)} "
         f"--os-version 2.0 --tags {' '.join(tags)} --disabled"
     )
     assert_namespace_device_properties(
         result,
         name=device_name_1,
-        template_id=device_template_id,
-        enabled=True,
+        enabled=False,
         custom_location=custom_location,
-        device_group_id="critical-devices",
         operating_system_version="2.0",
         custom_attributes=custom_attrs,
         tags=tags,
@@ -91,18 +82,17 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     custom_attrs = ["floor=3", "building=HQ"]
     tags = ["environment=prod", "priority=p1"]
     result = run(
-        f"az iot ops ns device create --name {device_name_2} --namespace {namespace_name} "
-        f"-g {resource_group} --instance {instance_name} --template-id {device_template_id} "
-        f"--device-group-id production-devices --attr {' '.join(custom_attrs)} --manufacturer Contoso "
+        f"az iot ops ns device create --name {device_name_2} --instance {instance_name} "
+        f"-g {resource_group} "
+        f"--attr {' '.join(custom_attrs)} --manufacturer Contoso "
         f"--model Gateway-X5 --os Linux --os-version 4.15 --tags {' '.join(tags)} --disabled"
     )
+    tracked_resources.append(result["id"])
     assert_namespace_device_properties(
         result,
         name=device_name_2,
-        template_id=device_template_id,
         enabled=False,
         custom_location=custom_location,
-        device_group_id="production-devices",
         custom_attributes=custom_attrs,
         manufacturer="Contoso",
         model="Gateway-X5",
@@ -118,7 +108,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     password_reference = "secretRef:password"
     result = run(
         f"az iot ops ns device endpoint inbound add onvif --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_onvif} "
+        f"--instance {instance_name} -g {resource_group} --name {endpoint_name_onvif} "
         f"--endpoint-address {endpoint_address} "
         f"--accept-invalid-hostnames true --accept-invalid-certificates true "
         f"--user-ref {username_reference} --pass-ref {password_reference} "
@@ -139,7 +129,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     endpoint_address = "rtsp://192.168.1.100:554/stream"
     result = run(
         f"az iot ops ns device endpoint inbound add media --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_media} "
+        f"--instance {instance_name} -g {resource_group} --name {endpoint_name_media} "
         f"--endpoint-address rtsp://192.168.1.100:554/stream "
         f"--user-ref {username_reference} --pass-ref {password_reference} "
     )
@@ -167,20 +157,20 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     sub_lifetime = 60000
     sub_max_items = 10
     security_policy = "Basic256Sha256"
-    security_mode = "SignAndEncrypt"
+    security_mode = "signAndEncrypt"
 
     result = run(
         f"az iot ops ns device endpoint inbound add opcua --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_opcua} "
+        f"--instance {instance_name} -g {resource_group} --name {endpoint_name_opcua} "
         f"--endpoint-address {endpoint_address} --application-name {application_name} "
         f"--keep-alive {keep_alive} --publishing-interval {publishing_interval} "
         f"--sampling-interval {sampling_interval} --queue-size {queue_size} "
         f"--key-frame-count {key_frame_count} --security-policy {security_policy} "
         f"--security-mode {security_mode} --run-asset-discovery "
-        f"--session-timeout {session_timeout} --reconnect-period {reconnect_period} "
-        f"--reconnect-exponential-backoff {reconnect_exponential_backoff} "
-        f"--enable-tracing --sub-lifetime {sub_lifetime} "
-        f"--sub-max-items {sub_max_items} --accept-certs "
+        f"--session-timeout {session_timeout} --session-reconnect {reconnect_period} "
+        f"--session-backoff {reconnect_exponential_backoff} "
+        f"--session-tracing --subscription-lifetime {sub_lifetime} "
+        f"--subscription-max-items {sub_max_items} --accept-certs "
 
     )
     assert_namespace_device_endpoint_props(
@@ -215,7 +205,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     trust_list = "cert1"
     result = run(
         f"az iot ops ns device endpoint inbound add custom --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} --name {endpoint_name_custom} "
+        f"--instance {instance_name} -g {resource_group} --name {endpoint_name_custom} "
         f"--endpoint-type {endpoint_type} --endpoint-address {endpoint_address} "
         f"--additional-config \"{{\\\"customSetting\\\": \\\"value\\\"}}\""
         f" --cert-ref {certificate_reference} --trust-list {trust_list} "
@@ -234,7 +224,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     # List (all) endpoints
     result = run(
         f"az iot ops ns device endpoint list --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} --all"
+        f"--instance {instance_name} -g {resource_group}"
     )
     assert len(result["inbound"]) == 4
     assert endpoint_name_onvif in result["inbound"]
@@ -245,50 +235,78 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     # List inbound endpoints option a
     result_1 = run(
         f"az iot ops ns device endpoint list --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} --inbound"
+        f"--instance {instance_name} -g {resource_group} --inbound"
     )
 
     # List inbound endpoints option b
     result_2 = run(
         f"az iot ops ns device endpoint inbound list --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group}"
+        f"--instance {instance_name} -g {resource_group}"
     )
     assert len(result_1) == len(result_2) == 4
     assert result_1 == result_2
-    assert endpoint_name_onvif in result
-    assert endpoint_name_media in result
-    assert endpoint_name_opcua in result
-    assert endpoint_name_custom in result
+    assert endpoint_name_onvif in result_1
+    assert endpoint_name_media in result_1
+    assert endpoint_name_opcua in result_1
+    assert endpoint_name_custom in result_1
 
     # Remove endpoints
     result = run(
         f"az iot ops ns device endpoint inbound remove --device {device_name_2} "
-        f"--namespace {namespace_name} -g {resource_group} "
-        f"--endpoint {endpoint_name_onvif} {endpoint_name_media}"
+        f"--instance {instance_name} -g {resource_group} "
+        f"--endpoint {endpoint_name_onvif} {endpoint_name_media} -y"
     )
-    assert len(result["endpoints"]) == 2
-    assert endpoint_name_onvif not in result["endpoints"]
-    assert endpoint_name_media not in result["endpoints"]
-    assert endpoint_name_opcua in result["endpoints"]
-    assert endpoint_name_custom in result["endpoints"]
+    assert len(result) == 2
+    assert endpoint_name_onvif not in result
+    assert endpoint_name_media not in result
+    assert endpoint_name_opcua in result
+    assert endpoint_name_custom in result
+
+    # Test device query functionality
+    # Query for specific device by name
+    result = run(
+        f"az iot ops ns device query --name {device_name_1}"
+    )
+    assert len(result) == 1
+    assert result[0]["name"] == device_name_1
+
+    # Query for devices by manufacturer
+    result = run(
+        "az iot ops ns device query --manufacturer Contoso"
+    )
+    device_names = [d["name"] for d in result]
+    assert device_name_2 in device_names
+    assert device_name_1 not in device_names
 
     # Delete devices
-    run(
-        f"az iot ops ns device delete --name {device_name_1} --namespace {namespace_name} "
-        f"-g {resource_group} -y"
-    )
-    run(
-        f"az iot ops ns device delete --name {device_name_2} --namespace {namespace_name} "
-        f"-g {resource_group} -y"
-    )
-    result = run(
-        f"az iot ops ns device list --namespace {namespace_name} -g {resource_group}"
-    )
-    assert len(result) == 0
+    try:
+        run(
+            f"az iot ops ns device delete --name {device_name_1} --instance {instance_name} "
+            f"-g {resource_group} -y"
+        )
+    except CLIInternalError as e:
+        if "Operation returned an invalid status" in str(e):
+            logger.warning("Device api returns the wrong error code.")
+        else:
+            raise e
+    try:
+        run(
+            f"az iot ops ns device delete --name {device_name_2} --instance {instance_name} "
+            f"-g {resource_group} -y"
+        )
+    except CLIInternalError as e:
+        if "Operation returned an invalid status" in str(e):
+            logger.warning("Device api returns the wrong error code.")
+        else:
+            raise e
 
-    # Cleanup: Delete namespace
-    run(f"az iot ops ns delete -n {namespace_name} -g {resource_group} -y")
-    tracked_resources.remove(result["id"])
+    sleep(30)  # Wait for deletion to propagate
+    result = run(
+        "az iot ops ns device query"
+    )
+    device_names = [d["name"] for d in result]
+    assert device_name_1 not in device_names
+    assert device_name_2 not in device_names
 
 
 def assert_namespace_device_properties(
@@ -301,19 +319,16 @@ def assert_namespace_device_properties(
 
     # Check custom location
     if "custom_location" in expected:
-        assert result["properties"]["extendedLocation"]["name"] == expected["custom_location"]
+        assert result["extendedLocation"]["name"] == expected["custom_location"]
 
     # Check device properties
     device_properties = result["properties"]
-    assert device_properties["templateId"] == expected.get("template_id")
 
     # Check optional properties if specified
-    assert device_properties.get("deviceGroupId") == expected.get("device_group_id")
     assert device_properties.get("manufacturer") == expected.get("manufacturer")
     assert device_properties.get("model") == expected.get("model")
     assert device_properties.get("operatingSystem") == expected.get("operating_system")
     assert device_properties.get("operatingSystemVersion") == expected.get("operating_system_version")
-    assert device_properties.get("tags") == expected.get("tags")
     assert device_properties.get("enabled") == expected.get("enabled")
 
     if "custom_attributes" in expected:
@@ -321,7 +336,7 @@ def assert_namespace_device_properties(
         if isinstance(expected["custom_attributes"], str):
             expected["custom_attributes"] = (expected["custom_attributes"]).split(" ")
         custom_attributes = parse_kvp_nargs(expected["custom_attributes"])
-        assert device_properties["customAttributes"] == custom_attributes
+        assert device_properties["attributes"] == custom_attributes
 
     # Check tags if specified
     if "tags" in expected:
@@ -333,16 +348,17 @@ def assert_namespace_device_properties(
 
 
 def assert_namespace_device_endpoint_props(
-    result_endpoint: dict,
+    result_endpoints: dict,
     **expected: dict
 ):
     """Asserts that the endpoint properties match the expected values."""
     # Check basic properties
-    assert result_endpoint["name"] == expected["endpoint_name"]
+    assert expected["endpoint_name"] in result_endpoints
+    result_endpoint = result_endpoints[expected["endpoint_name"]]
+
     if expected["endpoint_type"] in ["Onvif", "Media", "OpcUa"]:
         expected["endpoint_type"] = f"Microsoft.{expected['endpoint_type']}"
     assert result_endpoint["endpointType"] == expected["endpoint_type"]
-    assert result_endpoint["endpointType"] == f"Microsoft.{expected['endpoint_type']}"
     assert result_endpoint["address"] == expected.get("endpoint_address")
 
     # Check authentication
@@ -350,30 +366,29 @@ def assert_namespace_device_endpoint_props(
     assert result_auth["method"] == expected.get("authentication_method", "Anonymous")
 
     if "username_reference" in expected:
-        assert result_auth["usernamePasswordCredentials"]["usernameReference"] == expected["username_reference"]
-        assert result_auth["usernamePasswordCredentials"]["passwordReference"] == expected["password_reference"]
+        assert result_auth["usernamePasswordCredentials"]["usernameSecretName"] == expected["username_reference"]
+        assert result_auth["usernamePasswordCredentials"]["passwordSecretName"] == expected["password_reference"]
     elif "certificate_reference" in expected:
         assert result_auth["x509Credentials"]["certificateSecretName"] == expected["certificate_reference"]
 
     if "trust_list" in expected:
-        assert result_auth["trustSettings"]["trustList"] == expected["trust_list"]
+        assert result_endpoint["trustSettings"]["trustList"] == expected["trust_list"]
 
-    """Asserts that the endpoint additional configuration properties match the expected values."""
     # Check additional configuration
     # Custom Configuration
     if "custom_configuration" in expected:
-        assert result_endpoint["additionalConfiguration"] == expected["custom_configuration"]
+        assert json.loads(result_endpoint["additionalConfiguration"]) == expected["custom_configuration"]
 
     # ONVIF Configuration
     if result_endpoint["endpointType"] == "Microsoft.Onvif":
-        additional_config = result_endpoint["additionalConfiguration"]
+        additional_config = json.loads(result_endpoint["additionalConfiguration"])
         assert additional_config["acceptInvalidHostnames"] == expected.get("accept_invalid_hostnames", False)
         assert additional_config["acceptInvalidCertificates"] == expected.get("accept_invalid_certificates", False)
 
     # pylint said too many if statements
     if result_endpoint["endpointType"] == "Microsoft.OpcUa":
         assert_namespace_device_opcua_props(
-            result_endpoint["additionalConfiguration"],
+            json.loads(result_endpoint["additionalConfiguration"]),
             **expected,
         )
 
@@ -393,13 +408,13 @@ def assert_namespace_device_opcua_props(
         assert result_config["runAssetDiscovery"] == expected["run_asset_discovery"]
     # Default
     if "publishing_interval" in expected:
-        assert result_config["default"]["publishingIntervalMilliseconds"] == expected["publishing_interval"]
+        assert result_config["defaults"]["publishingIntervalMilliseconds"] == expected["publishing_interval"]
     if "sampling_interval" in expected:
-        assert result_config["default"]["samplingIntervalMilliseconds"] == expected["sampling_interval"]
+        assert result_config["defaults"]["samplingIntervalMilliseconds"] == expected["sampling_interval"]
     if "queue_size" in expected:
-        assert result_config["default"]["queueSize"] == expected["queue_size"]
+        assert result_config["defaults"]["queueSize"] == expected["queue_size"]
     if "key_frame_count" in expected:
-        assert result_config["default"]["keyFrameCount"] == expected["key_frame_count"]
+        assert result_config["defaults"]["keyFrameCount"] == expected["key_frame_count"]
     # Session
     if "timeout" in expected:
         assert result_config["session"]["timeoutMilliseconds"] == expected["timeout"]
@@ -411,10 +426,10 @@ def assert_namespace_device_opcua_props(
         result_backoff = result_config["session"]["reconnectExponentialBackOffMilliseconds"]
         assert result_backoff == expected["reconnect_exponential_backoff"]
     if "enable_tracing" in expected:
-        assert result_config["session"]["enableTracing"] is expected["enableTracingHeaders"]
+        assert result_config["session"]["enableTracingHeaders"] is expected["enable_tracing"]
     # Subscription
     if "sub_lifetime" in expected:
-        assert result_config["subscription"]["lifetimeMilliseconds"] == expected["sub_lifetime"]
+        assert result_config["subscription"]["lifeTimeMilliseconds"] == expected["sub_lifetime"]
     if "sub_max_items" in expected:
         assert result_config["subscription"]["maxItems"] == expected["sub_max_items"]
     # Security
@@ -422,6 +437,6 @@ def assert_namespace_device_opcua_props(
         assert result_config["security"]["autoAcceptUntrustedServerCertificates"] == expected["accept_certs"]
     if "security_policy" in expected:
         expected_policy = f"http://opcfoundation.org/UA/SecurityPolicy#{expected['security_policy']}"
-        assert result_config["securityPolicy"] == expected_policy
+        assert result_config["security"]["securityPolicy"] == expected_policy
     if "security_mode" in expected:
-        assert result_config["securityMode"] == expected["security_mode"]
+        assert result_config["security"]["securityMode"] == expected["security_mode"]

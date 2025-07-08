@@ -116,13 +116,19 @@ def test_add_namespace_asset_dataset(
     destination_params: Dict[str, str],
     previous_datasets: bool,
     replace: bool,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     dataset_name = "default"  # Currently only one dataset with name "default" is supported
     data_source = f"nsu=http://microsoft.com/Opc/OpcPlc/Oven;i={randint(1, 1000)}"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Create the expected dataset
     expected_dataset = {
@@ -207,16 +213,27 @@ def test_add_namespace_asset_dataset(
             namespace_name=namespace_name,
             asset_name=asset_name
         ),
-        json=updated_asset,
         status=200
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=updated_asset,
+        status=200,
+        content_type="application/json",
     )
 
     # Call the function being tested
     result = command_func(
         cmd=mocked_cmd,
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         dataset_data_source=data_source,
         replace=replace,
@@ -228,10 +245,11 @@ def test_add_namespace_asset_dataset(
     assert result == expected_dataset
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 3  # GET device + GET asset + PATCH asset
+    assert len(mocked_responses.calls) == 4  # GET device + GET asset + PATCH asset + GET Asset
     assert mocked_responses.calls[0].request.method == "GET"  # Device GET call
     assert mocked_responses.calls[1].request.method == "GET"  # Asset GET call
     assert mocked_responses.calls[2].request.method == "PATCH"  # Asset PATCH call
+    assert mocked_responses.calls[3].request.method == "GET"  # Asset GET call
 
     # Verify the PATCH request body contains the expected dataset structure
     patch_body = json.loads(mocked_responses.calls[2].request.body)
@@ -257,6 +275,13 @@ def test_add_namespace_asset_dataset(
     for dataset in datasets:
         assert dataset["name"] in dataset_map, f"Dataset {dataset['name']} not found in updated asset"
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("asset_type, command_func", [
     ("custom", add_namespace_custom_asset_dataset),
@@ -267,7 +292,8 @@ def test_add_namespace_asset_dataset_error(
     mocked_responses: responses,
     asset_type: str,
     command_func,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     """Test error cases for adding asset datasets with different asset types.
 
@@ -278,16 +304,21 @@ def test_add_namespace_asset_dataset_error(
     """
 
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     dataset_name = "default"
     data_source = f"nsu=http://microsoft.com/Opc/OpcPlc/Oven;i={randint(1, 1000)}"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Create base parameters for all test cases
     base_params = {
         "cmd": mocked_cmd,
-        "resource_group_name": resource_group_name,
-        "namespace_name": namespace_name,
+        "instance_name": instance_name,
+        "instance_resource_group": instance_resource_group,
         "asset_name": asset_name,
         "dataset_name": dataset_name,
         "dataset_data_source": data_source,
@@ -375,12 +406,29 @@ def test_add_namespace_asset_dataset_error(
     error_msg += " If you want to update the dataset properties, please use the update command."
     assert error_msg in str(excinfo.value)
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("num_datasets", [0, 1, 3])
-def test_list_namespace_asset_datasets(mocked_cmd, mocked_responses: responses, num_datasets: int):
+def test_list_namespace_asset_datasets(
+    mocked_cmd,
+    mocked_responses: responses,
+    num_datasets: int,
+    mocked_get_namespace_for_instance
+):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Generate expected datasets
     expected_datasets = [generate_dataset(num_data_points=randint(0, 2)) for _ in range(num_datasets)]
@@ -411,9 +459,9 @@ def test_list_namespace_asset_datasets(mocked_cmd, mocked_responses: responses, 
     # Call the function being tested
     datasets = list_namespace_asset_datasets(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
-        asset_name=asset_name
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
     )
 
     # Verify the result
@@ -443,6 +491,13 @@ def test_list_namespace_asset_datasets(mocked_cmd, mocked_responses: responses, 
                 assert dp["dataSource"] == expected_dp["dataSource"]
                 assert dp["dataPointConfiguration"] == expected_dp["dataPointConfiguration"]
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("datasets_present", [True, False])
 @pytest.mark.parametrize("dataset_deleted", [True, False])
@@ -451,12 +506,18 @@ def test_remove_namespace_asset_dataset(
     mocked_responses: responses,
     datasets_present: bool,
     dataset_deleted: bool,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     dataset_name = "default"  # Currently only one dataset with name "default" is supported
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Create mock asset
     mocked_asset = get_namespace_asset_record(
@@ -504,16 +565,27 @@ def test_remove_namespace_asset_dataset(
                 namespace_name=namespace_name,
                 asset_name=asset_name
             ),
-            json=updated_asset,
             status=200
+        )
+
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_asset_mgmt_uri(
+                asset_name=asset_name,
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name
+            ),
+            json=updated_asset,
+            status=200,
+            content_type="application/json",
         )
 
     # Call the function being tested
     result = remove_namespace_asset_dataset(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
         asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         wait_sec=0
     )
@@ -522,12 +594,13 @@ def test_remove_namespace_asset_dataset(
     assert result == expected_datasets
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == (2 if dataset_deleted else 1)
+    assert len(mocked_responses.calls) == (3 if dataset_deleted else 1)
     assert mocked_responses.calls[0].request.method == "GET"
 
-    # If the dataset was deleted, there should be a PATCH request
+    # If the dataset was deleted, there should be a PATCH + GET request
     if dataset_deleted:
         assert mocked_responses.calls[1].request.method == "PATCH"
+        assert mocked_responses.calls[2].request.method == "GET"
 
         # Verify the PATCH request body contains the expected datasets
         patch_body = json.loads(mocked_responses.calls[1].request.body)
@@ -542,12 +615,28 @@ def test_remove_namespace_asset_dataset(
         for ds in expected_datasets:
             assert ds in patch_datasets
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
 
-def test_show_namespace_asset_dataset(mocked_cmd, mocked_responses: responses):
+
+def test_show_namespace_asset_dataset(
+    mocked_cmd,
+    mocked_responses: responses,
+    mocked_get_namespace_for_instance
+):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     dataset_name = "default"  # Currently only one dataset with name "default" is supported
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Generate expected dataset with random number of data points
     expected_dataset = generate_dataset(dataset_name=dataset_name, num_data_points=randint(0, 2))
@@ -576,9 +665,9 @@ def test_show_namespace_asset_dataset(mocked_cmd, mocked_responses: responses):
     # Call the function being tested
     dataset = show_namespace_asset_dataset(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
         asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name
     )
 
@@ -597,6 +686,13 @@ def test_show_namespace_asset_dataset(mocked_cmd, mocked_responses: responses):
             assert dp["name"] in expected_dp_map
             assert dp["dataSource"] == expected_dp_map[dp["name"]]["dataSource"]
             assert dp["dataPointConfiguration"] == expected_dp_map[dp["name"]]["dataPointConfiguration"]
+
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
 
 
 @pytest.mark.parametrize("common_reqs", [
@@ -641,12 +737,18 @@ def test_update_namespace_asset_dataset(
     command_func,
     common_reqs: dict,
     unique_reqs: dict,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     dataset_name = "default"  # Currently only one dataset with name "default" is supported
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource.name
+    resource_group_name = namespace_resource.resource_group
 
     # Generate mock asset with the dataset already in it
     mocked_asset = get_namespace_asset_record(
@@ -738,16 +840,27 @@ def test_update_namespace_asset_dataset(
             namespace_name=namespace_name,
             asset_name=asset_name
         ),
-        json=updated_asset,
         status=200
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=updated_asset,
+        status=200,
+        content_type="application/json",
     )
 
     # Call the function being tested
     result = command_func(
         cmd=mocked_cmd,
         asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         wait_sec=0,
         **common_reqs,
@@ -758,10 +871,11 @@ def test_update_namespace_asset_dataset(
     assert result == expected_dataset
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 3
+    assert len(mocked_responses.calls) == 4
     assert mocked_responses.calls[0].request.method == "GET"  # Device endpoint check
     assert mocked_responses.calls[1].request.method == "GET"  # Asset get
     assert mocked_responses.calls[2].request.method == "PATCH"  # Update asset
+    assert mocked_responses.calls[3].request.method == "GET"  # Asset get
 
     # Verify the PATCH request body contains the expected updated dataset
     patch_body = json.loads(mocked_responses.calls[2].request.body)
@@ -795,23 +909,18 @@ def test_update_namespace_asset_dataset(
         assert dp["dataSource"] == data_points_map[dp["name"]]["dataSource"]
         assert dp["dataPointConfiguration"] == data_points_map[dp["name"]]["dataPointConfiguration"]
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("asset_type, command_func, config_params", [
-    # Custom asset dataset point
-    ("custom", add_namespace_custom_asset_dataset_point, {
-        "custom_configuration": json.dumps({
-            "customSetting": "test",
-            "priority": "high"
-        })
-    }),
-    # Custom asset dataset point with minimal config
+    ("custom", add_namespace_custom_asset_dataset_point, {"custom_configuration": json.dumps({"test": "value"})}),
+    ("opcua", add_namespace_opcua_asset_dataset_point, {"queue_size": 5, "sampling_interval": 100}),
     ("custom", add_namespace_custom_asset_dataset_point, {}),
-    # OPCUA asset dataset point with queue_size and sampling_interval
-    ("opcua", add_namespace_opcua_asset_dataset_point, {
-        "queue_size": 500,
-        "sampling_interval": 1000
-    }),
-    # OPCUA asset dataset point with minimal config
     ("opcua", add_namespace_opcua_asset_dataset_point, {})
 ])
 @pytest.mark.parametrize("has_points, replace", [
@@ -827,14 +936,19 @@ def test_add_namespace_asset_dataset_point(
     config_params: dict,
     has_points: bool,
     replace: bool,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     dataset_name = "default"  # Currently only one dataset with name "default" is supported
     datapoint_name = generate_random_string()
     data_source = f"nsu=test;s=DataPoint{generate_random_string()}"
+
+    # Resolved namespace and resource group from the mocked fixture
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create mock asset record
     mocked_asset = get_namespace_asset_record(
@@ -924,15 +1038,26 @@ def test_add_namespace_asset_dataset_point(
             namespace_name=namespace_name,
             asset_name=asset_name
         ),
-        json=updated_asset,
         status=200
+    )
+
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_asset_mgmt_uri(
+            asset_name=asset_name,
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name
+        ),
+        json=updated_asset,
+        status=200,
+        content_type="application/json",
     )
 
     # Call the function being tested
     result = command_func(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         dataset_name=dataset_name,
         datapoint_name=datapoint_name,
@@ -947,10 +1072,11 @@ def test_add_namespace_asset_dataset_point(
     assert result == updated_asset["properties"]["datasets"][0]["dataPoints"]
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 3  # GET device + GET asset + PATCH asset
+    assert len(mocked_responses.calls) == 4  # GET device + GET asset + PATCH asset + GET asset
     assert mocked_responses.calls[0].request.method == "GET"  # Device GET call
     assert mocked_responses.calls[1].request.method == "GET"  # Asset GET call
     assert mocked_responses.calls[2].request.method == "PATCH"  # Asset PATCH call
+    assert mocked_responses.calls[3].request.method == "GET"  # Asset GET call
 
     # Verify the PATCH request payload contains the expected data point
     patch_body = json.loads(mocked_responses.calls[2].request.body)
@@ -963,25 +1089,26 @@ def test_add_namespace_asset_dataset_point(
     assert patched_point["dataSource"] == data_source
     assert patched_point["dataPointConfiguration"] == expected_datapoint.get("dataPointConfiguration", "{}")
 
-    # # Verify configuration
-    # if asset_type == "custom" and "custom_configuration" in config_params:
-    #     assert patched_point["dataPointConfiguration"] == config_params["custom_configuration"]
-    # elif asset_type == "opcua" and (("queue_size" in config_params) or ("sampling_interval" in config_params)):
-    #     patched_config = json.loads(patched_point["dataPointConfiguration"])
-    #     if "queue_size" in config_params:
-    #         assert patched_config["queueSize"] == config_params["queue_size"]
-    #     if "sampling_interval" in config_params:
-    #         assert patched_config["samplingInterval"] == config_params["sampling_interval"]
+    # Verify the fixture was called with the correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
 
 
 @pytest.mark.parametrize("num_points", [0, 1, 3])
 def test_list_namespace_asset_dataset_points(
-    mocked_cmd, mocked_responses: responses, num_points: int
+    mocked_cmd, mocked_responses: responses, num_points: int, mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     dataset_name = "default"  # Currently only one dataset with name "default" is supported
+
+    # Resolved namespace and resource group from the mocked fixture
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create mock asset record
     mocked_asset = get_namespace_asset_record(
@@ -1009,10 +1136,17 @@ def test_list_namespace_asset_dataset_points(
     # Call the function being tested
     points = list_namespace_asset_dataset_points(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         dataset_name=dataset_name
+    )
+
+    # Verify the fixture was called with the correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
     )
 
     # Verify the result
@@ -1036,13 +1170,18 @@ def test_remove_namespace_asset_dataset_point(
     mocked_responses: responses,
     points_present: bool,
     point_deleted: bool,
-    mocked_check_cluster_connectivity
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
-    namespace_name = "testNamespace"
-    resource_group_name = "testResourceGroup"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
     dataset_name = "default"  # Currently only one dataset with name "default" is supported
     datapoint_name = generate_random_string()
+
+    # Resolved namespace and resource group from the mocked fixture
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create mock asset with a dataset
     mocked_asset = get_namespace_asset_record(
@@ -1114,31 +1253,50 @@ def test_remove_namespace_asset_dataset_point(
                 namespace_name=namespace_name,
                 asset_name=asset_name
             ),
-            json=updated_asset,
             status=200
+        )
+
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_asset_mgmt_uri(
+                asset_name=asset_name,
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name
+            ),
+            json=updated_asset,
+            status=200,
+            content_type="application/json",
         )
 
     # Call the function being tested
     result = remove_namespace_asset_dataset_point(
         cmd=mocked_cmd,
-        resource_group_name=resource_group_name,
-        namespace_name=namespace_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         dataset_name=dataset_name,
         datapoint_name=datapoint_name,
         wait_sec=0
     )
 
+    # Verify the fixture was called with the correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
     # Verify the result is the updated datapoints list
     assert result == expected_datapoints
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == (2 if point_deleted else 1)
+    assert len(mocked_responses.calls) == (3 if point_deleted else 1)
     assert mocked_responses.calls[0].request.method == "GET"
 
-    # If the point was deleted, there should be a PATCH request
+    # If the point was deleted, there should be a PATCH + GET request
     if point_deleted:
         assert mocked_responses.calls[1].request.method == "PATCH"
+        assert mocked_responses.calls[2].request.method == "GET"
 
         # Verify the PATCH request body contains the expected datapoints
         patch_body = json.loads(mocked_responses.calls[1].request.body)

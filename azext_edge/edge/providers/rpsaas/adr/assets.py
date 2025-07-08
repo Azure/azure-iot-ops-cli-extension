@@ -83,6 +83,7 @@ class Assets(Queryable):
             instance_subscription=instance_subscription
         )
         cluster_location = extended_location.pop("cluster_location")
+        extended_location.pop("namespace", None)
 
         # Properties
         properties = {

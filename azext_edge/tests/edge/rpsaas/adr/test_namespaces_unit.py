@@ -19,9 +19,7 @@ from azext_edge.edge.commands_namespaces import (
 )
 from ...orchestration.resources.conftest import get_base_endpoint
 
-from ....generators import generate_random_string, get_zeroed_subscription
-# TODO: remove ADR_BASE_URL once service is public
-ADR_BASE_URL = "https://eastus2euap.management.azure.com"
+from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
 
 
 RESOURCES_API_VERSION = "2024-03-01"
@@ -52,7 +50,7 @@ def get_namespace_mgmt_uri(
     )
     if include_api:
         namespace_id += f"?api-version={ADR_REFRESH_API_VERSION}"
-    return f"{ADR_BASE_URL}{namespace_id}"
+    return f"{BASE_URL}{namespace_id}"
 
 
 def get_namespace_record(
@@ -63,7 +61,7 @@ def get_namespace_record(
     namespace = {
         "id": get_namespace_mgmt_uri(
             namespace_name, resource_group_name, subscription, include_api=False
-        )[len(ADR_BASE_URL) :],
+        )[len(BASE_URL) :],
         "name": namespace_name,
         "resourceGroup": resource_group_name,
         "type": "Microsoft.DeviceRegistry/namespaces",

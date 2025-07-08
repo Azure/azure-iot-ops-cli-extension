@@ -6,8 +6,10 @@
 
 import json
 from rich.console import Console
-from typing import TYPE_CHECKING, Callable, Dict, List, Iterable, Optional
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 from knack.log import get_logger
+
+from azure.cli.core.azclierror import InvalidArgumentValueError
 
 from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
 from ....util.common import parse_kvp_nargs, should_continue_prompt
@@ -21,6 +23,7 @@ if TYPE_CHECKING:
 
 console = Console()
 logger = get_logger(__name__)
+NAMESPACE_DEVICE_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces/devices"
 
 
 class DeviceEndpointType(ListableEnum):
@@ -49,14 +52,10 @@ class NamespaceDevices(Queryable):
     def create(
         self,
         device_name: str,
-        namespace_name: str,
-        resource_group_name: str,
         instance_name: str,
-        device_template_id: str,
-        device_group_id: Optional[str] = None,
+        instance_resource_group: str,
         custom_attributes: Optional[List[str]] = None,
         disabled: Optional[bool] = None,
-        instance_resource_group: Optional[str] = None,
         instance_subscription: Optional[str] = None,
         manufacturer: Optional[str] = None,
         model: Optional[str] = None,
@@ -67,28 +66,30 @@ class NamespaceDevices(Queryable):
     ):
         # get the extended location from the instance
         from .helpers import get_extended_location
-        # TODO: add a check for instance being the right version
         extended_location = get_extended_location(
             cmd=self.cmd,
             instance_name=instance_name,
-            instance_resource_group=instance_resource_group or resource_group_name,
+            instance_resource_group=instance_resource_group,
             instance_subscription=instance_subscription
         )
         # use the namespace location instead of the cluster location
         extended_location.pop("cluster_location")
 
+        namespace = extended_location.pop("namespace", None)
+        if not namespace:
+            raise InvalidArgumentValueError(
+                "The instance must have an ADR namespace reference to create a namespaced device."
+            )
         # get the location of the namespace
         location = self.namespace_ops.get(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name
+            resource_group_name=namespace.resource_group,
+            namespace_name=namespace.name
         )["location"]
 
         device_body = {
             "extendedLocation": extended_location,
             "location": location,
             "properties": {
-                "deviceGroupId": device_group_id,
-                "deviceTemplateId": device_template_id,
                 "attributes": parse_kvp_nargs(custom_attributes),
                 "enabled": not disabled,
                 "manufacturer": manufacturer,
@@ -101,57 +102,158 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Creating {device_name}..."):
             poller = self.ops.begin_create_or_replace(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 device_name=device_name,
                 resource=device_body
             )
             return wait_for_terminal_state(poller, **kwargs)
 
     def delete(
-        self, device_name: str, namespace_name: str, resource_group_name: str, confirm_yes: bool = False, **kwargs
+        self,
+        device_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        confirm_yes: bool = False,
+        **kwargs
     ):
         # should bail prompt
         if not should_continue_prompt(confirm_yes):
             return
 
+        from .helpers import get_namespace_for_instance
+        namespace = get_namespace_for_instance(
+            cmd=self.cmd,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
+        )
+
         with console.status(f"Deleting {device_name}..."):
             poller = self.ops.begin_delete(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 device_name=device_name
             )
             return wait_for_terminal_state(poller, **kwargs)
 
-    def show(self, device_name: str, namespace_name: str, resource_group_name: str) -> dict:
-        return self.ops.get(
-            resource_group_name=resource_group_name, namespace_name=namespace_name, device_name=device_name
+    def show(
+        self,
+        device_name: str,
+        resource_group: str,
+        namespace_name: Optional[str] = None,
+        instance_name: Optional[str] = None,
+        check_cluster: bool = False
+    ) -> dict:
+        """
+        Shows the details of a device in a namespace.
+        One of the `namespace_name` or `instance_name` must be provided.
+
+        Resource group can be either the namespace resource group or the instance resource group.
+        The expected behavior is that if `namespace_name` is provided, the resource group
+        is the namespace resource group, and if `instance_name` is provided, the resource group
+        is the instance resource group."""
+        if not namespace_name:
+            # assume resource group is instance resource group
+            from .helpers import get_namespace_for_instance
+            namespace = get_namespace_for_instance(
+                cmd=self.cmd,
+                instance_name=instance_name,
+                instance_resource_group=resource_group
+            )
+            namespace_name = namespace.name
+            resource_group = namespace.resource_group
+
+        device = self.ops.get(
+            resource_group_name=resource_group, namespace_name=namespace_name, device_name=device_name
         )
 
-    def list(self, namespace_name: str, resource_group_name: str) -> Iterable[dict]:
-        return self.ops.list_by_resource_group(namespace_name=namespace_name, resource_group_name=resource_group_name)
+        if check_cluster:
+            from .helpers import check_cluster_connectivity
+            check_cluster_connectivity(self.cmd, device)
+        return device
+
+    def query_devices(
+        self,
+        device_name: Optional[str] = None,
+        custom_query: Optional[str] = None,
+        resource_group_name: Optional[str] = None,  # TODO remove this to avoid confusion with instance resource group
+        manufacturer: Optional[str] = None,
+        model: Optional[str] = None,
+        operating_system: Optional[str] = None,
+    ) -> dict:
+        """
+        Queries the devices using Azure Resource Graph.
+        """
+        query = "Resources | where type =~ '{}'".format(NAMESPACE_DEVICE_RESOURCE_TYPE)
+
+        # for now, keep it simple
+        # later on, add namespace (needs id parsing), location, endpoint types (will need to add joins)
+        # instance names
+        def _build_query_body(
+            device_name: Optional[str] = None,
+            resource_group_name: Optional[str] = None,
+            manufacturer: Optional[str] = None,
+            model: Optional[str] = None,
+            operating_system: Optional[str] = None
+        ) -> str:
+            query_body = ""
+            # add filters
+            if resource_group_name:
+                query_body += f' | where resourceGroup =~ "{resource_group_name}"'
+            if device_name:
+                query_body += f' | where name =~ "{device_name}"'
+            if manufacturer:
+                query_body += f' | where properties.manufacturer =~ "{manufacturer}"'
+            if model:
+                query_body += f' | where properties.model =~ "{model}"'
+            if operating_system:
+                query_body += f' | where properties.operatingSystem =~ "{operating_system}"'
+            return (
+                f"{query_body} | extend customLocation = tostring(extendedLocation.name) "
+                "| extend provisioningState = properties.provisioningState "
+                "| extend enabled = properties.enabled "
+                "| extend manufacturer = properties.manufacturer "
+                "| extend model = properties.model "
+                "| extend operatingSystem = properties.operatingSystem "
+                # TODO: I can prob remove the project
+                "| project id, customLocation, location, name, resourceGroup, provisioningState, "
+                "enabled, manufacturer, model, operatingSystem, tags, type, subscriptionId"
+            )
+
+        query += custom_query or _build_query_body(
+            device_name=device_name,
+            resource_group_name=resource_group_name,
+            manufacturer=manufacturer,
+            model=model,
+            operating_system=operating_system
+        )
+
+        return self.query(query=query)
 
     def update(
         self,
         device_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         custom_attributes: Optional[List[str]] = None,
-        device_group_id: Optional[str] = None,
         disabled: Optional[bool] = None,
         operating_system_version: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
         **kwargs
     ):
+        from .helpers import get_namespace_for_instance
+        namespace = get_namespace_for_instance(
+            cmd=self.cmd,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
+        )
         update_payload = {
             "properties": {}
         }
         if tags:
             update_payload["tags"] = tags
         if custom_attributes:
-            update_payload["properties"]["customAttributes"] = parse_kvp_nargs(custom_attributes)
-        if device_group_id:
-            update_payload["properties"]["deviceGroupId"] = device_group_id
+            update_payload["properties"]["attributes"] = parse_kvp_nargs(custom_attributes)
         if disabled is not None:
             update_payload["properties"]["enabled"] = not disabled
         if operating_system_version:
@@ -163,18 +265,23 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Updating {device_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 device_name=device_name,
                 properties=update_payload
             )
-            return wait_for_terminal_state(poller, **kwargs)
+            wait_for_terminal_state(poller, **kwargs)
+            return self.show(
+                device_name=device_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )
 
     def add_inbound_endpoint(
         self,
         device_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         endpoint_name: str,
         endpoint_address: str,
         endpoint_type: str,
@@ -184,13 +291,15 @@ class NamespaceDevices(Queryable):
         trust_list: Optional[str] = None,
         **kwargs
     ):
-        from .helpers import process_authentication, process_additional_configuration
+        from .helpers import process_authentication, process_additional_configuration, NamespaceResource
         # get the original inbound endpoints
-        original_endpoints = self.show(
+        device = self.show(
             device_name=device_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name
-        )["properties"].get("endpoints", {}).get("inbound", {})
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        namespace = NamespaceResource(device["id"])
+        original_endpoints = _get_endpoints(device)
 
         # create the new endpoint
         endpoint_body = {
@@ -214,6 +323,7 @@ class NamespaceDevices(Queryable):
                 "trustList": trust_list
             }
 
+        # TODO: can add a replace endpoint functionality
         # update the endpoints with the new one
         original_endpoints[endpoint_name] = endpoint_body
 
@@ -228,33 +338,38 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Updating inbound endpoints for {device_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 device_name=device_name,
                 properties=update_payload
             )
-            result = wait_for_terminal_state(poller, **kwargs)
+            wait_for_terminal_state(poller, **kwargs)
+            result = self.show(
+                device_name=device_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group
+            )
             return result["properties"].get("endpoints", {}).get("inbound", {})
 
     def list_endpoints(
         self,
         device_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         inbound: bool = False
     ) -> dict:
-        endpoints = self.show(
+        device = self.show(
             device_name=device_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name
-        )["properties"].get("endpoints", {})
-        return endpoints.get("inbound") if inbound else endpoints
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        return _get_endpoints(device, inbound=inbound)
 
     def inbound_remove_endpoint(
         self,
         device_name: str,
-        namespace_name: str,
-        resource_group_name: str,
+        instance_name: str,
+        instance_resource_group: str,
         endpoint_names: List[str],
         confirm_yes: bool = False,
         **kwargs
@@ -263,17 +378,19 @@ class NamespaceDevices(Queryable):
         if not should_continue_prompt(confirm_yes):
             return
 
+        from .helpers import NamespaceResource
         # get the original inbound endpoints
-        original_endpoints = self.show(
+        device = self.show(
             device_name=device_name,
-            namespace_name=namespace_name,
-            resource_group_name=resource_group_name
-        )["properties"].get("endpoints", {}).get("inbound", {})
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        namespace = NamespaceResource(device["id"])
+        original_endpoints = _get_endpoints(device)
         # remove the endpoints from the endpoint list by key
         remaining_endpoints = {
-            endpoint: endpoint_body
+            endpoint: endpoint_body if endpoint not in endpoint_names else None
             for endpoint, endpoint_body in original_endpoints.items()
-            if endpoint not in endpoint_names
         }
 
         # update payload
@@ -287,13 +404,34 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Updating inbound endpoints for {device_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=resource_group_name,
-                namespace_name=namespace_name,
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
                 device_name=device_name,
                 properties=update_payload
             )
-            result = wait_for_terminal_state(poller, **kwargs)
+            wait_for_terminal_state(poller, **kwargs)
+            result = self.show(
+                device_name=device_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group
+            )
             return result["properties"].get("endpoints", {}).get("inbound", {})
+
+
+# TODO: unit test
+def _get_endpoints(device: dict, inbound: bool = True) -> dict:
+    """
+    Helper function to extract endpoints from a device.
+    """
+    device_props = device["properties"]
+
+    # if device.properties.endpoints is not present or empty,
+    # both inbound and outbound endpoints are {}
+    if "endpoints" not in device_props or not device_props["endpoints"]:
+        return {}
+
+    device_endpoints = device_props.get("endpoints", {})
+    return device_endpoints.get("inbound", {}) if inbound else device_endpoints
 
 
 def _process_onvif_configuration(
@@ -337,13 +475,11 @@ def _process_opcua_configuration(
     Creates a stringified JSON that follows the OPC UA endpoint schema specifications
     defined in NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA.
     """
-    from .specs import NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA, SecurityMode, SecurityPolicy
+    from .specs import NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA
     from .helpers import ensure_schema_structure
 
     if security_policy:
-        security_policy = SecurityPolicy[security_policy].full_value
-    if security_mode:
-        security_mode = SecurityMode[security_mode].value
+        security_policy = "http://opcfoundation.org/UA/SecurityPolicy#" + security_policy
 
     configuration = {
         "applicationName": application_name,

@@ -14,8 +14,8 @@ from azure.cli.core.azclierror import FileOperationError
 
 from azext_edge.edge.commands_namespaces import (
     create_namespace_device,
-    list_namespace_devices,
     delete_namespace_device,
+    query_namespace_devices,
     show_namespace_device,
     update_namespace_device,
     list_namespace_device_endpoints,
@@ -32,10 +32,7 @@ from azext_edge.edge.util.common import parse_kvp_nargs
 
 # Import necessary modules
 from .test_namespaces_unit import get_namespace_mgmt_uri
-# TODO: once service is public
-# from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
-from ....generators import generate_random_string, get_zeroed_subscription
-BASE_URL = "https://eastus2euap.management.azure.com"
+from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
 
 ADR_REFRESH_API_VERSION = "2025-07-01-preview"
 
@@ -65,13 +62,12 @@ def get_namespace_device_record(device_name: str, namespace_name: str, resource_
         "id": device_id,
         "type": "Microsoft.DeviceRegistry/namespaces/devices",
         "location": "westus",
+        "resourceGroup": resource_group_name,
         "extendedLocation": {
             "name": generate_random_string(),
             "type": "CustomLocation"
         },
         "properties": {
-            "deviceGroupId": f"device-group-{generate_random_string()}",
-            "deviceTemplateId": f"template-{generate_random_string()}",
             "customAttributes": {},
             "enabled": True,
             "manufacturer": "Contoso",
@@ -98,11 +94,8 @@ def get_namespace_device_record(device_name: str, namespace_name: str, resource_
 @pytest.mark.parametrize("req", [
     {},
     {
-        "device_group_id": "test-group",
         "custom_attributes": ["key1=value1", "key2=value2"],
         "disabled": True,
-        "instance_resource_group": "instance-rg",
-        "instance_subscription": get_zeroed_subscription(),
         "manufacturer": "Fabrikam",
         "model": "ModelY",
         "operating_system": "Windows",
@@ -111,7 +104,6 @@ def get_namespace_device_record(device_name: str, namespace_name: str, resource_
     },
     {
         "disabled": False,
-        "instance_resource_group": "instance-rg",
         "operating_system": "Windows",
     }
 ])
@@ -124,10 +116,10 @@ def test_create_namespace_device(
 ):
     # Setup test data
     device_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    namespace_name = mocked_get_extended_location.return_value["namespace"].name
+    resource_group_name = mocked_get_extended_location.return_value["namespace"].resource_group
     instance_name = f"test-inst{generate_random_string()}"
-    device_template_id = f"template-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
 
     # Mock namespace get response for location
     namespace_location = f"westus{generate_random_string()}"
@@ -147,7 +139,7 @@ def test_create_namespace_device(
     device_record = get_namespace_device_record(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
     )
 
     mocked_responses.add(
@@ -168,10 +160,8 @@ def test_create_namespace_device(
             create_namespace_device(
                 cmd=mocked_cmd,
                 device_name=device_name,
-                namespace_name=namespace_name,
                 instance_name=instance_name,
-                device_template_id=device_template_id,
-                resource_group_name=resource_group_name,
+                instance_resource_group=instance_resource_group,
                 wait_sec=0,
                 **req
             )
@@ -181,10 +171,8 @@ def test_create_namespace_device(
     result = create_namespace_device(
         cmd=mocked_cmd,
         device_name=device_name,
-        namespace_name=namespace_name,
         instance_name=instance_name,
-        device_template_id=device_template_id,
-        resource_group_name=resource_group_name,
+        instance_resource_group=instance_resource_group,
         wait_sec=0,
         **req
     )
@@ -204,12 +192,9 @@ def test_create_namespace_device(
 
     # Check required fields
     assert call_body["location"] == namespace_location
-    assert call_body["properties"]["deviceTemplateId"] == device_template_id
     assert call_body["properties"]["enabled"] == (not req.get("disabled"))
 
     # Check optional fields if provided
-    if "device_group_id" in req:
-        assert call_body["properties"]["deviceGroupId"] == req["device_group_id"]
     if "manufacturer" in req:
         assert call_body["properties"]["manufacturer"] == req["manufacturer"]
     if "model" in req:
@@ -224,58 +209,88 @@ def test_create_namespace_device(
         assert call_body["properties"]["attributes"] == parse_kvp_nargs(req["custom_attributes"])
 
 
-@pytest.mark.parametrize("records", [0, 2])
-@pytest.mark.parametrize("response_status", [200, 443])
-def test_list_namespace_devices(
-    mocked_cmd, mocked_responses: responses, records: int, response_status: int
-):
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
-    mock_namespace_records = {
-        "value": [
-            get_namespace_device_record(
-                device_name=generate_random_string(),
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
-            )
-            for _ in range(records)
-        ]
+@pytest.mark.parametrize("req", [
+    {},  # No filters
+    {
+        "device_name": "test-device",
+        "manufacturer": "Contoso",
+        "model": "Model X",
+        "operating_system": "Linux"
+    },
+    {
+        "custom_query": " | where name contains 'special' | project name, location"
+    },
+    {
+        "device_name": "another-device",
+        "manufacturer": "Fabrikam"
     }
-
-    mocked_responses.add(
-        method=responses.GET,
-        url=get_namespace_device_mgmt_uri(
-            namespace_name=namespace_name, resource_group_name=resource_group_name
-        ),
-        json=mock_namespace_records,
-        status=response_status,
-        content_type="application/json",
+])
+def test_query_namespace_devices(mocked_cmd, mocker, req: Dict):
+    return_value = [{"id": "device1"}, {"id": "device2"}]
+    # Mock the query method from the Queryable class
+    mock_query = mocker.patch(
+        "azext_edge.edge.util.queryable.Queryable.query",
+        return_value=return_value
     )
 
-    if response_status != 200:
-        with pytest.raises(Exception):
-            list(list_namespace_devices(
-                cmd=mocked_cmd,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
-            ))
-        return
-
-    result = list(
-        list_namespace_devices(
-            cmd=mocked_cmd, namespace_name=namespace_name, resource_group_name=resource_group_name
-        )
+    # Test query_namespace_devices for success case
+    result = query_namespace_devices(
+        cmd=mocked_cmd,
+        **req
     )
-    assert result == mock_namespace_records["value"]
-    assert len(mocked_responses.calls) == 1
+
+    # Verify the function returns the mocked query result
+    assert result == return_value
+
+    # Assert that the query method was called
+    assert mock_query.call_count == 1
+
+    # Check the query string that was passed to the query method
+    actual_query = mock_query.call_args[1]["query"]
+
+    # Assert that the query starts with the expected base
+    assert actual_query.startswith("Resources | where type =~ 'Microsoft.DeviceRegistry/namespaces/devices'")
+
+    # Verify specific filters based on request parameters
+    if "custom_query" in req:
+        # Custom query should be used as-is after the base query
+        assert req["custom_query"] in actual_query
+    else:
+        # Verify individual filters are applied
+        if "device_name" in req:
+            assert f'where name =~ "{req["device_name"]}"' in actual_query
+        if "resource_group_name" in req:
+            assert f'where resourceGroup =~ "{req["resource_group_name"]}"' in actual_query
+        if "manufacturer" in req:
+            assert f'where properties.manufacturer =~ "{req["manufacturer"]}"' in actual_query
+        if "model" in req:
+            assert f'where properties.model =~ "{req["model"]}"' in actual_query
+        if "operating_system" in req:
+            assert f'where properties.operatingSystem =~ "{req["operating_system"]}"' in actual_query
+
+        # Verify projection clause is included
+        assert "| extend customLocation = tostring(extendedLocation.name)" in actual_query
+        assert "| extend provisioningState = properties.provisioningState" in actual_query
+        assert "| extend enabled = properties.enabled" in actual_query
+        assert "| extend manufacturer = properties.manufacturer" in actual_query
+        assert "| extend model = properties.model" in actual_query
+        assert "| extend operatingSystem = properties.operatingSystem" in actual_query
+        assert "| project id, customLocation, location, name, resourceGroup, provisioningState" in actual_query
+        assert "enabled, manufacturer, model, operatingSystem, tags, type, subscriptionId" in actual_query
 
 
 @pytest.mark.parametrize("response_status", [202, 443])
-def test_delete_namespace_device(mocked_cmd, mocked_responses: responses, response_status: int):
+def test_delete_namespace_device(
+    mocked_cmd, mocked_get_namespace_for_instance, mocked_responses: responses, response_status: int
+):
     # Setup test data
     device_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Mock the delete call
     mocked_responses.add(
@@ -295,8 +310,8 @@ def test_delete_namespace_device(mocked_cmd, mocked_responses: responses, respon
             delete_namespace_device(
                 cmd=mocked_cmd,
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
                 wait_sec=0,
                 confirm_yes=True
             )
@@ -306,8 +321,8 @@ def test_delete_namespace_device(mocked_cmd, mocked_responses: responses, respon
     delete_namespace_device(
         cmd=mocked_cmd,
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         wait_sec=0,
         confirm_yes=True
     )
@@ -317,17 +332,23 @@ def test_delete_namespace_device(mocked_cmd, mocked_responses: responses, respon
 
 
 @pytest.mark.parametrize("response_status", [200, 443])
-def test_show_namespace_device(mocked_cmd, mocked_responses: responses, response_status: int):
+def test_show_namespace_device(
+    mocked_cmd, mocked_get_namespace_for_instance, mocked_responses: responses, response_status: int
+):
     # Setup test data
     device_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create mock device record
     device_record = get_namespace_device_record(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
     )
 
     # Mock the get call
@@ -349,8 +370,8 @@ def test_show_namespace_device(mocked_cmd, mocked_responses: responses, response
             show_namespace_device(
                 cmd=mocked_cmd,
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
             )
         return
 
@@ -358,8 +379,8 @@ def test_show_namespace_device(mocked_cmd, mocked_responses: responses, response
     result = show_namespace_device(
         cmd=mocked_cmd,
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
     )
 
     # Verify result
@@ -374,7 +395,6 @@ def test_show_namespace_device(mocked_cmd, mocked_responses: responses, response
     {},
     {
         "custom_attributes": ["key1=value1", "key2=value2"],
-        "device_group_id": "test-group",
         "disabled": True,
         "operating_system_version": "2.0",
         "tags": {"env": "test", "purpose": "demo"},
@@ -385,20 +405,26 @@ def test_show_namespace_device(mocked_cmd, mocked_responses: responses, response
 ])
 def test_namespace_device_update(
     mocked_cmd,
+    mocked_get_namespace_for_instance,
+    mocked_check_cluster_connectivity,
     mocked_responses: responses,
     req: dict,
     response_status: int
 ):
     # Setup test data
     device_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create mock device records for PATCH responses
     mock_original_device = get_namespace_device_record(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
     )
 
     # Create updated record for successful response
@@ -409,8 +435,6 @@ def test_namespace_device_update(
         mock_updated_device["tags"] = req["tags"]
     if "custom_attributes" in req:
         mock_updated_device["properties"]["customAttributes"] = parse_kvp_nargs(req["custom_attributes"])
-    if "device_group_id" in req:
-        mock_updated_device["properties"]["deviceGroupId"] = req["device_group_id"]
     if "disabled" in req:
         mock_updated_device["properties"]["enabled"] = not req["disabled"]
     if "operating_system_version" in req:
@@ -424,19 +448,31 @@ def test_namespace_device_update(
             namespace_name=namespace_name,
             resource_group_name=resource_group_name
         ),
-        json=mock_updated_device,
         status=response_status,
         content_type="application/json",
     )
 
-    # Execute test based on response status
-    if response_status != 200:
+    if response_status == 200:
+        # Add mock GET response for final response
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_device_mgmt_uri(
+                device_name=device_name,
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name
+            ),
+            json=mock_updated_device,
+            status=200,
+            content_type="application/json",
+        )
+    else:
+        # Execute test based on response status
         with pytest.raises(Exception):  # Use more specific exception if available
             update_namespace_device(
                 cmd=mocked_cmd,
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
                 wait_sec=0,
                 **req
             )
@@ -446,8 +482,8 @@ def test_namespace_device_update(
     result = update_namespace_device(
         cmd=mocked_cmd,
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         wait_sec=0,
         **req
     )
@@ -456,18 +492,18 @@ def test_namespace_device_update(
     assert result == mock_updated_device
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 1
+    assert len(mocked_responses.calls) == 2
     assert mocked_responses.calls[0].request.method == "PATCH"
+    assert mocked_responses.calls[1].request.method == "GET"
 
     # Verify request body contains expected values
     call_body = json.loads(mocked_responses.calls[0].request.body)
     call_body_properties = call_body.get("properties", {})
 
     assert call_body.get("tags") == req.get("tags")
-    assert call_body_properties.get("deviceGroupId") == req.get("device_group_id")
     assert call_body_properties.get("operatingSystemVersion") == req.get("operating_system_version")
     if "custom_attributes" in req:
-        assert call_body_properties["customAttributes"] == parse_kvp_nargs(req["custom_attributes"])
+        assert call_body_properties["attributes"] == parse_kvp_nargs(req["custom_attributes"])
     if "disabled" in req:
         assert call_body_properties.get("enabled") == (not req["disabled"])
 
@@ -502,18 +538,23 @@ def test_list_namespace_device_endpoints(
     mocked_cmd,
     mocked_responses: responses,
     endpoints: dict,
-    response_status: int
+    response_status: int,
+    mocked_get_namespace_for_instance
 ):
     # Setup test data
     device_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create mock device record with the specified endpoints
     device_record = get_namespace_device_record(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
     )
     device_record["properties"]["endpoints"] = {"inbound": endpoints}
 
@@ -536,8 +577,8 @@ def test_list_namespace_device_endpoints(
             list_namespace_device_endpoints(
                 cmd=mocked_cmd,
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
             )
         return
 
@@ -545,8 +586,8 @@ def test_list_namespace_device_endpoints(
     result = list_namespace_device_endpoints(
         cmd=mocked_cmd,
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
     )
 
     # Verify result matches the endpoints in the mock response
@@ -602,18 +643,23 @@ def test_remove_namespace_device_inbound_endpoints(
     mocked_responses: responses,
     original_endpoints: dict,
     endpoint_names_to_remove: list,
-    response_status: int
+    response_status: int,
+    mocked_get_namespace_for_instance
 ):
     # Setup test data
     device_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create original device record
     original_device = get_namespace_device_record(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
     )
     original_device["properties"]["endpoints"] = {"inbound": original_endpoints}
 
@@ -647,19 +693,31 @@ def test_remove_namespace_device_inbound_endpoints(
             resource_group_name=resource_group_name,
             device_name=device_name
         ),
-        json=updated_device if response_status == 200 else {"error": "Unauthorized"},
         status=response_status,
         content_type="application/json",
     )
 
-    # Execute test based on status code
-    if response_status != 200:
+    if response_status == 200:
+        # Mock the GET call to show_namespace_device after removal
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_device_mgmt_uri(
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name,
+                device_name=device_name
+            ),
+            json=updated_device,
+            status=200,
+            content_type="application/json",
+        )
+    else:
+        # Execute test based on status code
         with pytest.raises(Exception):
             remove_inbound_device_endpoints(
                 cmd=mocked_cmd,
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
                 endpoint_names=endpoint_names_to_remove,
                 wait_sec=0,
                 confirm_yes=True
@@ -670,8 +728,8 @@ def test_remove_namespace_device_inbound_endpoints(
     result = remove_inbound_device_endpoints(
         cmd=mocked_cmd,
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_names=endpoint_names_to_remove,
         wait_sec=0,
         confirm_yes=True
@@ -681,13 +739,19 @@ def test_remove_namespace_device_inbound_endpoints(
     assert result == expected_remaining
 
     # Verify that both GET and PATCH calls were made
-    assert len(mocked_responses.calls) == 2
+    assert len(mocked_responses.calls) == 3
     assert mocked_responses.calls[0].request.method == "GET"
     assert mocked_responses.calls[1].request.method == "PATCH"
+    assert mocked_responses.calls[2].request.method == "GET"
 
     # Verify request body contains expected endpoints
     patch_body = json.loads(mocked_responses.calls[1].request.body)
-    assert patch_body["properties"]["endpoints"]["inbound"] == expected_remaining
+    patch_endpoints = patch_body["properties"]["endpoints"]["inbound"]
+    for endpoint in patch_endpoints:
+        if endpoint in expected_remaining:
+            assert patch_endpoints[endpoint] == expected_remaining[endpoint]
+        else:
+            assert patch_endpoints[endpoint] is None
 
 
 @pytest.mark.parametrize("response_status", [200, 400])
@@ -709,8 +773,21 @@ def test_add_inbound_custom_device_endpoint(
     cert_ref: Optional[str],
     username_ref: Optional[str],
     password_ref: Optional[str],
-    response_status: int
+    response_status: int,
+    mocked_get_namespace_for_instance
 ):
+    # Setup test data
+    device_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
+    endpoint_name = f"custom-endpoint-{generate_random_string()}"
+    endpoint_type = "Custom.Type"
+    endpoint_address = "192.168.1.100:8080"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
+
     # Setup mock for file reading
     mock_read_file_content = mocker.patch("azext_edge.edge.util.read_file_content")
     expected_additional_configuration = additional_configuration
@@ -720,19 +797,11 @@ def test_add_inbound_custom_device_endpoint(
     else:
         mock_read_file_content.side_effect = FileOperationError("Not a file")
 
-    # Setup test data
-    device_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
-    endpoint_name = f"custom-endpoint-{generate_random_string()}"
-    endpoint_type = "Custom.Type"
-    endpoint_address = "192.168.1.100:8080"
-
     # Create original device record with no endpoints
     original_device = get_namespace_device_record(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
     )
     original_device["properties"]["endpoints"] = {"inbound": {}}
 
@@ -791,19 +860,31 @@ def test_add_inbound_custom_device_endpoint(
             resource_group_name=resource_group_name,
             device_name=device_name
         ),
-        json=updated_device if response_status == 200 else {"error": "Bad Request"},
         status=response_status,
         content_type="application/json",
     )
 
-    # Execute test based on status code
-    if response_status != 200:
+    if response_status == 200:
+        # Mock the GET call to show_namespace_device after adding endpoint
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_device_mgmt_uri(
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name,
+                device_name=device_name
+            ),
+            json=updated_device,
+            status=200,
+            content_type="application/json",
+        )
+    else:
+        # Execute test based on status code
         with pytest.raises(Exception):
             add_inbound_custom_device_endpoint(
                 cmd=mocked_cmd,
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
                 endpoint_name=endpoint_name,
                 endpoint_type=endpoint_type,
                 endpoint_address=endpoint_address,
@@ -819,8 +900,8 @@ def test_add_inbound_custom_device_endpoint(
     result = add_inbound_custom_device_endpoint(
         cmd=mocked_cmd,
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_type=endpoint_type,
         endpoint_address=endpoint_address,
@@ -832,9 +913,10 @@ def test_add_inbound_custom_device_endpoint(
     )
     assert result == updated_device["properties"]["endpoints"]["inbound"]
     # Verify that both GET and PATCH calls were made
-    assert len(mocked_responses.calls) == 2
+    assert len(mocked_responses.calls) == 3
     assert mocked_responses.calls[0].request.method == "GET"
     assert mocked_responses.calls[1].request.method == "PATCH"
+    assert mocked_responses.calls[2].request.method == "GET"
 
     # Verify request body contains expected endpoint
     patch_body = json.loads(mocked_responses.calls[1].request.body)
@@ -862,20 +944,25 @@ def test_add_inbound_media_device_endpoint(
     mocked_responses: responses,
     username_ref: Optional[str],
     password_ref: Optional[str],
-    response_status: int
+    response_status: int,
+    mocked_get_namespace_for_instance
 ):
     # Setup test data
     device_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
     endpoint_name = f"media-endpoint-{generate_random_string()}"
     endpoint_address = "rtsp://192.168.1.100:554/stream"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create original device record with no endpoints
     original_device = get_namespace_device_record(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
     )
     original_device["properties"]["endpoints"] = {"inbound": {}}
 
@@ -931,14 +1018,27 @@ def test_add_inbound_media_device_endpoint(
         content_type="application/json",
     )
 
-    # Execute test based on status code
-    if response_status != 200:
+    if response_status == 200:
+        # Mock the GET call to show_namespace_device after adding endpoint
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_device_mgmt_uri(
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name,
+                device_name=device_name
+            ),
+            json=updated_device,
+            status=200,
+            content_type="application/json",
+        )
+    else:
+        # Execute test based on status code
         with pytest.raises(Exception):
             add_inbound_media_device_endpoint(
                 cmd=mocked_cmd,
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
                 endpoint_name=endpoint_name,
                 endpoint_address=endpoint_address,
                 username_reference=username_ref,
@@ -951,8 +1051,8 @@ def test_add_inbound_media_device_endpoint(
     result = add_inbound_media_device_endpoint(
         cmd=mocked_cmd,
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_address=endpoint_address,
         username_reference=username_ref,
@@ -962,9 +1062,10 @@ def test_add_inbound_media_device_endpoint(
     assert result == updated_device["properties"]["endpoints"]["inbound"]
 
     # Verify that both GET and PATCH calls were made
-    assert len(mocked_responses.calls) == 2
+    assert len(mocked_responses.calls) == 3
     assert mocked_responses.calls[0].request.method == "GET"
     assert mocked_responses.calls[1].request.method == "PATCH"
+    assert mocked_responses.calls[2].request.method == "GET"
 
     # Verify request body contains expected endpoint
     patch_body = json.loads(mocked_responses.calls[1].request.body)
@@ -989,20 +1090,25 @@ def test_add_inbound_onvif_device_endpoint(
     password_ref: Optional[str],
     accept_invalid_hostnames: bool,
     accept_invalid_certificates: bool,
-    response_status: int
+    response_status: int,
+    mocked_get_namespace_for_instance
 ):
     # Setup test data
     device_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
     endpoint_name = f"onvif-endpoint-{generate_random_string()}"
     endpoint_address = "http://192.168.1.100:80/onvif/device_service"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Create original device record with no endpoints
     original_device = get_namespace_device_record(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
     )
     original_device["properties"]["endpoints"] = {"inbound": {}}
 
@@ -1060,14 +1166,26 @@ def test_add_inbound_onvif_device_endpoint(
         content_type="application/json",
     )
 
-    # Execute test based on status code
-    if response_status != 200:
+    if response_status == 200:
+        # Mock the GET call to show_namespace_device after adding endpoint
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_device_mgmt_uri(
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name,
+                device_name=device_name
+            ),
+            json=updated_device,
+            status=200,
+            content_type="application/json",
+        )
+    else:
         with pytest.raises(Exception):
             add_inbound_onvif_device_endpoint(
                 cmd=mocked_cmd,
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
                 endpoint_name=endpoint_name,
                 endpoint_address=endpoint_address,
                 username_reference=username_ref,
@@ -1082,8 +1200,8 @@ def test_add_inbound_onvif_device_endpoint(
     result = add_inbound_onvif_device_endpoint(
         cmd=mocked_cmd,
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_address=endpoint_address,
         username_reference=username_ref,
@@ -1095,9 +1213,10 @@ def test_add_inbound_onvif_device_endpoint(
     assert result == updated_device["properties"]["endpoints"]["inbound"]
 
     # Verify that both GET and PATCH calls were made
-    assert len(mocked_responses.calls) == 2
+    assert len(mocked_responses.calls) == 3
     assert mocked_responses.calls[0].request.method == "GET"
     assert mocked_responses.calls[1].request.method == "PATCH"
+    assert mocked_responses.calls[2].request.method == "GET"
 
     # Verify request body contains expected endpoint
     patch_body = json.loads(mocked_responses.calls[1].request.body)
@@ -1136,16 +1255,16 @@ def test_add_inbound_onvif_device_endpoint(
         "subscription_max_items": 1500,
         "subscription_life_time": 65000,
         "security_auto_accept_certificates": True,
-        "security_policy": "basic256sha256",
-        "security_mode": "signandencrypt",
+        "security_policy": SecurityPolicy.aes128.value,
+        "security_mode": SecurityMode.signandencrypt.value,
         "run_asset_discovery": True,
     },
     {   # Partial set of parameters
         "application_name": "Simple OPC UA App",
         "session_enable_tracing_headers": True,
         "security_auto_accept_certificates": True,
-        "security_policy": "aes256",
-        "security_mode": "sign",
+        "security_policy": SecurityPolicy.basic256sha256.value,
+        "security_mode": SecurityMode.sign.value,
     }
 ])
 def test_add_inbound_opcua_device_endpoint(
@@ -1154,15 +1273,19 @@ def test_add_inbound_opcua_device_endpoint(
     username_ref: Optional[str],
     password_ref: Optional[str],
     req: dict,
-    response_status: int
+    response_status: int,
+    mocked_get_namespace_for_instance
 ):
-    """Tests that add_inbound_opcua_device_endpoint calls the expected APIs with the correct parameters."""
     # Setup test data
     device_name = generate_random_string()
-    namespace_name = generate_random_string()
-    resource_group_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
     endpoint_name = f"opcua-endpoint-{generate_random_string()}"
     endpoint_address = "opc.tcp://192.168.1.100:4840"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
     # Apply default values if not in req
     application_name = req.get("application_name", "OPC UA Broker")
@@ -1181,17 +1304,15 @@ def test_add_inbound_opcua_device_endpoint(
     security_auto_accept_certificates = req.get("security_auto_accept_certificates", False)
     security_policy = req.get("security_policy", None)
     if security_policy:
-        security_policy = f"http://opcfoundation.org/UA/SecurityPolicy#{SecurityPolicy[security_policy].value}"
+        security_policy = f"http://opcfoundation.org/UA/SecurityPolicy#{security_policy}"
     security_mode = req.get("security_mode", None)
-    if security_mode:
-        security_mode = SecurityMode[security_mode].value
     run_asset_discovery = req.get("run_asset_discovery", False)
 
     # Create original device record with no endpoints
     original_device = get_namespace_device_record(
         device_name=device_name,
         namespace_name=namespace_name,
-        resource_group_name=resource_group_name
+        resource_group_name=resource_group_name,
     )
     original_device["properties"]["endpoints"] = {"inbound": {}}
 
@@ -1274,14 +1395,26 @@ def test_add_inbound_opcua_device_endpoint(
         content_type="application/json",
     )
 
-    # Execute test based on status code
-    if response_status != 200:
+    if response_status == 200:
+        # Mock the GET call to show_namespace_device after adding endpoint
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_device_mgmt_uri(
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name,
+                device_name=device_name
+            ),
+            json=updated_device,
+            status=200,
+            content_type="application/json",
+        )
+    else:
         with pytest.raises(Exception):
             add_inbound_opcua_device_endpoint(
                 cmd=mocked_cmd,
                 device_name=device_name,
-                namespace_name=namespace_name,
-                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
                 endpoint_name=endpoint_name,
                 endpoint_address=endpoint_address,
                 username_reference=username_ref,
@@ -1295,8 +1428,8 @@ def test_add_inbound_opcua_device_endpoint(
     result = add_inbound_opcua_device_endpoint(
         cmd=mocked_cmd,
         device_name=device_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_address=endpoint_address,
         username_reference=username_ref,
@@ -1307,9 +1440,10 @@ def test_add_inbound_opcua_device_endpoint(
     assert result == updated_device["properties"]["endpoints"]["inbound"]
 
     # Verify that both GET and PATCH calls were made
-    assert len(mocked_responses.calls) == 2
+    assert len(mocked_responses.calls) == 3
     assert mocked_responses.calls[0].request.method == "GET"
     assert mocked_responses.calls[1].request.method == "PATCH"
+    assert mocked_responses.calls[2].request.method == "GET"
 
     # Verify request body contains expected endpoint
     patch_body = json.loads(mocked_responses.calls[1].request.body)

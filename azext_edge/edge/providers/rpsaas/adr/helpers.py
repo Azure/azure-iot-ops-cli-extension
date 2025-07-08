@@ -6,7 +6,7 @@
 
 import json
 from knack.log import get_logger
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 from azure.cli.core.azclierror import (
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
@@ -26,6 +26,14 @@ from ....common import ADRAuthModes
 logger = get_logger(__name__)
 
 
+class NamespaceResource:
+    def __init__(self, resource_id: str):
+        # unit test? do I unit test?
+        resource_id = resource_id.split("/")
+        self.name = resource_id[8]
+        self.resource_group = resource_id[4]
+
+
 def check_cluster_connectivity(cmd, resource: dict):
     """
     Uses the resource's extended location to get the cluster and checks connectivity.
@@ -43,8 +51,8 @@ def get_extended_location(
     cmd,
     instance_name: str,
     instance_resource_group: str,
-    instance_subscription: Optional[str] = None
-) -> Dict[str, str]:
+    instance_subscription: Optional[str] = None,
+) -> Dict[str, Optional[Union[str, NamespaceResource]]]:
     """
     Returns the extended location object with cluster location.
 
@@ -65,11 +73,41 @@ def get_extended_location(
     if not connected_cluster.connected:
         logger.warning(f"Cluster {connected_cluster.cluster_name} is not connected.")
 
+    # for the new adr
+    namespace = instance["properties"].get("adrNamespaceRef", {}).get("resourceId")
+    if namespace:
+        namespace = NamespaceResource(resource_id=namespace)
+
     return {
         "type": "CustomLocation",
         "name": instance["extendedLocation"]["name"],
-        "cluster_location": connected_cluster.location
+        "cluster_location": connected_cluster.location,
+        "namespace": namespace
     }
+
+
+def get_namespace_for_instance(
+    cmd,
+    instance_name: str,
+    instance_resource_group: str,
+    instance_subscription: Optional[str] = None,
+) -> NamespaceResource:
+    """
+    Returns the namespace resource for the given instance.
+    """
+    instance_provider = Instances(cmd=cmd, subscription_id=instance_subscription)
+    # instance should exist
+    instance = instance_provider.show(
+        name=instance_name, resource_group_name=instance_resource_group
+    )
+    namespace = instance["properties"].get("adrNamespaceRef", {}).get("resourceId")
+    if not namespace:
+        raise InvalidArgumentValueError(
+            f"Instance {instance_name} does not have an Device Registry namespace associated with it. "
+            "Please update your instance to use new Device Registry features."
+        )
+
+    return NamespaceResource(resource_id=namespace)
 
 
 def get_default_dataset(asset: dict, dataset_name: str, create_if_none: bool = False):
