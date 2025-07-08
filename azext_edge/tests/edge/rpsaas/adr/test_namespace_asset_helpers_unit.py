@@ -104,7 +104,23 @@ def test_build_destination(test_case: dict, allowed_types: Optional[List[str]]):
         "args": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600", "extra=value"],
         "expected_error": MutuallyExclusiveArgumentError,
         "expected_msg": ["Conflicting arguments for destination: topic, retain, qos, ttl, extra"]
-    }
+    },
+    # Invalid Mqtt QoS value
+    {
+        "args": ["topic=/contoso/test", "retain=Never", "qos=InvalidQoS", "ttl=3600"],
+        "expected_error": InvalidArgumentValueError,
+        "expected_msg": [
+            "Invalid QoS value 'InvalidQoS'. Allowed values are: Qos0, Qos1."
+        ]
+    },
+    # Invalid Mqtt Retain value
+    {
+        "args": ["topic=/contoso/test", "retain=InvalidRetain", "qos=Qos0", "ttl=3600"],
+        "expected_error": InvalidArgumentValueError,
+        "expected_msg": [
+            "Invalid retain value 'InvalidRetain'. Allowed values are: Never, Keep."
+        ]
+    },
 ])
 def test_build_destination_error(test_case: dict):
     """Test error conditions when creating destinations."""

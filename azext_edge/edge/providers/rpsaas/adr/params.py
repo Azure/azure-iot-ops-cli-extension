@@ -1018,7 +1018,8 @@ def load_adr_arguments(self, _):
                 options_list=["--dataset-dest", "--dsd"],
                 help="Key=value pairs representing the destination for dataset. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
-                "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are `Never` "
+                "and `Keep` and allowed values for `qos` are `Qos0` and `Qos1`. ",
                 nargs="+",
                 arg_group="Default Destination",
             )
@@ -1033,7 +1034,8 @@ def load_adr_arguments(self, _):
                 options_list=["--event-dest", "--evd"],
                 help="Key=value pairs representing the destination for events. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
-                "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are `Never` "
+                "and `Keep` and allowed values for `qos` are `Qos0` and `Qos1`. ",
                 nargs="+",
                 arg_group="Default Destination",
             )
@@ -1054,7 +1056,8 @@ def load_adr_arguments(self, _):
                 options_list=["--stream-dest", "--std"],
                 help="Key=value pairs representing the destination for streams. "
                 "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
-                "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are `Never` "
+                "and `Keep` and allowed values for `qos` are `Qos0` and `Qos1`. ",
                 nargs="+",
                 arg_group="Default Destination",
             )
@@ -1158,7 +1161,8 @@ def load_adr_arguments(self, _):
                 options_list=["--stream-dest", "--std"],
                 help="Key=value pairs representing the destination for streams. "
                 "Allowed arguments include: `path` for Storage; or "
-                "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+                "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are `Never` and "
+                "`Keep` and allowed values for `qos` are `Qos0` and `Qos1`.",
                 nargs="+",
                 arg_group="Default Stream Destination",
             )
@@ -1202,7 +1206,9 @@ def load_adr_arguments(self, _):
                 "dataset_destinations",
                 options_list=["--dataset-dest", "--dsd"],
                 help="Key=value pairs representing the destination for datasets. "
-                "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. ",
+                "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.  "
+                "Allowed values for `retain` are `Never` and `Keep` and allowed values for `qos` are "
+                "`Qos0` and `Qos1`.",
                 nargs="+",
                 arg_group="Default Dataset",
             )
@@ -1245,7 +1251,9 @@ def load_adr_arguments(self, _):
                 "event_destinations",
                 options_list=["--event-dest", "--evd"],
                 help="Key=value pairs representing the destination for events. "
-                "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
+                "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.  "
+                "Allowed values for `retain` are `Never` and `Keep` and allowed values for `qos` are "
+                "`Qos0` and `Qos1`.",
                 nargs="+",
                 arg_group="Default Event",
             )
@@ -1354,7 +1362,8 @@ def load_adr_arguments(self, _):
             options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for dataset. "
             "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
-            "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+            "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are "
+            "`Never` and `Keep` and allowed values for `qos` are `Qos0` and `Qos1`.",
             nargs="+",
         )
 
@@ -1399,7 +1408,9 @@ def load_adr_arguments(self, _):
             "dataset_destinations",
             options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for datasets. "
-            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. ",
+            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.  "
+            "Allowed values for `retain` are `Never` and `Keep` and allowed values for `qos` are "
+            "`Qos0` and `Qos1`.",
             nargs="+",
         )
 
@@ -1430,7 +1441,8 @@ def load_adr_arguments(self, _):
             options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for events. "
             "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
-            "`topic`, `retain`, `qos`, and `ttl` for MQTT.",
+            "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are "
+            "`Never` and `Keep` and allowed values for `qos` are `Qos0` and `Qos1`.",
             nargs="+",
         )
 
@@ -1446,31 +1458,33 @@ def load_adr_arguments(self, _):
             "event_destinations",
             options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for events. "
-            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
+            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. "
+            "Allowed values for `retain` are `Never` and `Keep` and allowed values for `qos` are "
+            "`Qos0` and `Qos1`.",
             nargs="+",
         )
 
     with self.argument_context("iot ops ns asset opcua event") as context:
         context.argument(
             "opcua_event_publishing_interval",
-            options_list=["--publish-int", "--evpi"],
+            options_list=["--publish-int", "--pi"],
             help="Publishing interval for events in milliseconds. Minimum: -1.",
             type=int,
         )
         context.argument(
             "opcua_event_queue_size",
-            options_list=["--queue-size", "--evqs"],
+            options_list=["--queue-size", "--qs"],
             help="Queue size for events. Minimum: 0.",
             type=int,
         )
         context.argument(
             "opcua_event_filter_type",
-            options_list=["--filter-type", "--evft"],
+            options_list=["--filter-type", "--ft"],
             help="Filter type for events.",
         )
         context.argument(
             "opcua_event_filter_clauses",
-            options_list=["--filter-clause", "--evf"],
+            options_list=["--filter-clause", "--fc"],
             help="Space-separated key=value pairs for event filter clauses. Allowed keys are `path` (required), "
             "`type`, and `field`.",
             nargs="+",
@@ -1480,7 +1494,9 @@ def load_adr_arguments(self, _):
             "event_destinations",
             options_list=["--destination", "--dest"],
             help="Key=value pairs representing the destination for events. "
-            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.",
+            "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. "
+            "Allowed values for `retain` are `Never` and `Keep` and allowed values for `qos` are "
+            "`Qos0` and `Qos1`.",
             nargs="+",
         )
 

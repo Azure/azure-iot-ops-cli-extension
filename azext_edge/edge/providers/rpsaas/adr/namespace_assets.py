@@ -1092,8 +1092,8 @@ def _build_destination(
         "target": "Mqtt",
         "configuration": {
             "topic": "/contoso/test",
-            "retain": "Never",  # TODO: enum for this, Keep
-            "qos": "Qos0",  # TODO: enum for this, Qos1
+            "retain": "Never",
+            "qos": "Qos0",
             "ttl": 3600
         }
     }]
@@ -1132,12 +1132,24 @@ def _build_destination(
             raise RequiredArgumentMissingError(
                 "For MQTT destinations, 'topic', 'retain', 'qos', and 'ttl' must be provided."
             )
+        from .common import DestinationQos, DestinationRetain
+        qos = destination_args.pop("qos")
+        if qos not in DestinationQos.list():
+            raise InvalidArgumentValueError(
+                f"Invalid QoS value '{qos}'. Allowed values are: {', '.join(DestinationQos.list())}."
+            )
+        retain = destination_args.pop("retain")
+        if retain not in DestinationRetain.list():
+            raise InvalidArgumentValueError(
+                f"Invalid retain value '{retain}'. Allowed values are: {', '.join(DestinationRetain.list())}."
+            )
+
         destination = {
             "target": "Mqtt",
             "configuration": {
                 "topic": destination_args.pop("topic"),
-                "retain": destination_args.pop("retain"),
-                "qos": destination_args.pop("qos"),
+                "retain": retain,
+                "qos": qos,
                 "ttl": int(destination_args.pop("ttl"))
             }
         }
