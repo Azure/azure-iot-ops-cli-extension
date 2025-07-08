@@ -275,9 +275,11 @@ NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA = {
 
 
 NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
-    "$id": "https://azure.com/aio/media-connector/datapoint.schema.json",
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "description": "Asset.dataPoint.dataPointConfiguration schema",
+    "$id": "https://azure-iot-operations/schemas/asset/streamconfiguration/media.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "AIO Media Asset stream configuration schema",
+    "description": "Schema of an Asset's stream configuration for endpointType Microsoft.Media",
+
     "type": "object",
     "properties": {
         "taskType": {
@@ -285,11 +287,17 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
         }
     },
     "required": ["taskType"],
+
     "oneOf": [
         {
             "properties": {
                 "taskType": {
                     "const": "snapshot-to-mqtt"
+                },
+                "autostart": {
+                    "type": "boolean",
+                    "description": "Whether to start immediately. The default is true.",
+                    "default": True
                 },
                 "format": {
                     "type": "string",
@@ -300,9 +308,9 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
                 "snapshotsPerSecond": {
                     "type": "number",
                     "minimum": 0,
-                    "description": "The number of snapshots per second to capture. Default is 1. If empty or 0, the "
-                    "source frame rate will be used. Example: 30 for a 30 snapshots per second; 1/60 for one snapshot "
-                    "per minutes.",
+                    "description": "The number of snapshots per second to capture. Default is 1. If empty or "
+                    "0, the source frame rate will be used. Example: 30 for a 30 snapshots per second; 0.0167 "
+                    "for approximately one snapshot per minute.",
                     "default": 1
                 }
             }
@@ -311,6 +319,11 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
             "properties": {
                 "taskType": {
                     "const": "snapshot-to-fs"
+                },
+                "autostart": {
+                    "type": "boolean",
+                    "description": "Whether to start immediately. The default is true.",
+                    "default": True
                 },
                 "format": {
                     "type": "string",
@@ -321,9 +334,9 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
                 "snapshotsPerSecond": {
                     "type": "number",
                     "minimum": 0,
-                    "description": "The number of snapshots per second to capture. Default is 1. If empty or 0, the "
-                    "source frame rate will be used. Example: 30 for a 30 snapshots per second; 1/60 for one snapshot "
-                    "per minutes.",
+                    "description": "The number of snapshots per second to capture. Default is 1. If empty or 0,"
+                    " the source frame rate will be used. Example: 30 for a 30 snapshots per second; 0.0167 for "
+                    "approximately one snapshot per minute.",
                     "default": 1
                 },
                 "path": {
@@ -338,6 +351,11 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
             "properties": {
                 "taskType": {
                     "const": "clip-to-fs"
+                },
+                "autostart": {
+                    "type": "boolean",
+                    "description": "Whether to start immediately. The default is true.",
+                    "default": True
                 },
                 "format": {
                     "type": "string",
@@ -364,6 +382,11 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
                 "taskType": {
                     "const": "stream-to-rtsp"
                 },
+                "autostart": {
+                    "type": "boolean",
+                    "description": "Whether to start immediately. The default is true.",
+                    "default": True
+                },
                 "mediaServerAddress": {
                     "type": "string",
                     "description": "The media server address or IP. The default is "
@@ -378,7 +401,7 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
                 },
                 "mediaServerPath": {
                     "type": "string",
-                    "description": "The media server path. by default set by the by default set by the connector as "
+                    "description": "The media server path, by default set by the connector as "
                     "<namespace>/data/<asset>.",
                     "default": ""
                 },
@@ -399,6 +422,11 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
                 "taskType": {
                     "const": "stream-to-rtsps"
                 },
+                "autostart": {
+                    "type": "boolean",
+                    "description": "Whether to start immediately. The default is true.",
+                    "default": True
+                },
                 "mediaServerAddress": {
                     "type": "string",
                     "description": "The media server address or IP. The default is "
@@ -413,7 +441,7 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
                 },
                 "mediaServerPath": {
                     "type": "string",
-                    "description": "The media server path. by default set by the by default set by the connector as "
+                    "description": "The media server path, by default set by the connector as "
                     "<namespace>/data/<asset>.",
                     "default": ""
                 },
@@ -472,15 +500,15 @@ class MediaTaskType(Enum):
     @property
     def allowed_properties(self):
         mapping = {
-            MediaTaskType.snapshot_to_mqtt.value: ["taskType", "format", "snapshotsPerSecond"],
-            MediaTaskType.snapshot_to_fs.value: ["taskType", "format", "snapshotsPerSecond", "path"],
-            MediaTaskType.clip_to_fs.value: ["taskType", "format", "duration", "path"],
+            MediaTaskType.snapshot_to_mqtt.value: ["taskType", "autostart", "format", "snapshotsPerSecond"],
+            MediaTaskType.snapshot_to_fs.value: ["taskType", "autostart", "format", "snapshotsPerSecond", "path"],
+            MediaTaskType.clip_to_fs.value: ["taskType", "autostart", "format", "duration", "path"],
             MediaTaskType.stream_to_rtsp.value: [
-                "taskType", "mediaServerAddress", "mediaServerPort", "mediaServerPath",
+                "taskType", "autostart", "mediaServerAddress", "mediaServerPort", "mediaServerPath",
                 "mediaServerUsernameRef", "mediaServerPasswordRef"
             ],
             MediaTaskType.stream_to_rtsps.value: [
-                "taskType", "mediaServerAddress", "mediaServerPort", "mediaServerPath",
+                "taskType", "autostart", "mediaServerAddress", "mediaServerPort", "mediaServerPath",
                 "mediaServerUsernameRef", "mediaServerPasswordRef", "mediaServerCertificateRef"
             ],
         }

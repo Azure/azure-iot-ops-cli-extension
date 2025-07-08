@@ -1046,7 +1046,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Configuration",
             )
             context.argument(
-                "streams_custom_configuration",
+                "stream_custom_configuration",
                 options_list=["--stream-config", "--stc"],
                 help="File path containing or inline json containing custom configuration for streams.",
                 arg_group="Default Configuration",
@@ -1068,6 +1068,13 @@ def load_adr_arguments(self, _):
                 options_list=["--task-type"],
                 help="Media task type.",
                 arg_type=get_enum_type(MediaTaskType),
+                arg_group="Default Stream Configuration",
+            )
+            context.argument(
+                "disable_autostart",
+                options_list=["--disable-autostart", "--da"],
+                help="Disable stream autostart.",
+                arg_type=get_three_state_flag(),
                 arg_group="Default Stream Configuration",
             )
             context.argument(
@@ -1258,7 +1265,8 @@ def load_adr_arguments(self, _):
                 arg_group="Default Event",
             )
 
-    for asset_type in ("custom", "opcua", "onvif"):
+    # shared dataset, event
+    for asset_type in ("custom", "opcua", "onvif", "media"):
         with self.argument_context(f"iot ops ns asset {asset_type} dataset") as context:
             context.argument(
                 "asset_name",
@@ -1349,6 +1357,29 @@ def load_adr_arguments(self, _):
                 options_list=["--replace"],
                 help="Replace the data point if another point with the same name is already present.",
                 arg_type=get_three_state_flag(),
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} stream") as context:
+            context.argument(
+                "asset_name",
+                options_list=["--asset", "-a"],
+                help="Asset name.",
+            )
+            context.argument(
+                "stream_name",
+                options_list=["--name"],
+                help="Stream name.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the stream if another stream with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+            context.argument(
+                "stream_data_source",
+                options_list=["--data-source", "--ds"],
+                help="Data source for the stream.",
             )
 
     with self.argument_context("iot ops ns asset custom dataset") as context:
@@ -1514,3 +1545,128 @@ def load_adr_arguments(self, _):
     #         help="Queue size. Minimum: 0.",
     #         type=int,
     #     )
+
+    with self.argument_context("iot ops ns asset custom stream") as context:
+        context.argument(
+            "stream_custom_configuration",
+            options_list=["--config"],
+            help="Custom stream configuration as a JSON string or file path.",
+        )
+        context.argument(
+            "stream_destinations",
+            options_list=["--destination", "--dest"],
+            help="Key=value pairs representing the destination for streams. "
+            "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+            "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are "
+            "`Never` and `Keep` and allowed values for `qos` are `Qos0` and `Qos1`.",
+            nargs="+",
+        )
+
+    with self.argument_context("iot ops ns asset media stream") as context:
+        context.argument(
+            "task_type",
+            options_list=["--task-type"],
+            help="Media task type.",
+            arg_type=get_enum_type(MediaTaskType),
+        )
+        context.argument(
+            "disable_autostart",
+            options_list=["--disable-autostart", "--da"],
+            help="Disable stream autostart.",
+            arg_type=get_three_state_flag(),
+        )
+        context.argument(
+            "task_format",
+            options_list=["--task-format", "--format"],
+            help="Media format. Only allowed for only " + (
+                ', '.join([
+                    MediaTaskType.snapshot_to_mqtt.value,
+                    MediaTaskType.snapshot_to_fs.value,
+                    MediaTaskType.clip_to_fs.value
+                ])
+            ) + ". For snapshots, only " + (
+                ', '.join([
+                    mf.value for mf in MediaFormat if mf.allowed_for_snapshot
+                ])
+            ) + " are allowed. For clips, only " + (
+                ', '.join([
+                    mf.value for mf in MediaFormat if mf.allowed_for_clip
+                ])
+            ) + " are allowed.",
+            arg_type=get_enum_type(MediaFormat),  # should I remove this to clutter the param help less
+            arg_group="Snapshot and Clip Configuration",
+        )
+        context.argument(
+            "snapshots_per_second",
+            options_list=["--snapshots-per-sec", "--sps"],
+            help=f"Number of snapshots per second. Only allowed for only {MediaTaskType.snapshot_to_mqtt.value} "
+            f"and {MediaTaskType.snapshot_to_fs.value}. Minimum: 0",
+            type=float,
+            arg_group="Snapshot and Clip Configuration",
+        )
+        context.argument(
+            "path",
+            options_list=["--path", "-p"],
+            help="File system path for snapshots or clips. Only allowed for only "
+            f"{MediaTaskType.snapshot_to_fs.value} and {MediaTaskType.clip_to_fs.value}.",
+            arg_group="Snapshot and Clip Configuration",
+        )
+        context.argument(
+            "duration",
+            options_list=["--duration"],
+            help=f"Duration of clip in seconds. Only allowed for only {MediaTaskType.clip_to_fs.value}. Minimum: 0",
+            type=int,
+            arg_group="Snapshot and Clip Configuration",
+        )
+        context.argument(
+            "media_server_address",
+            options_list=["--media-server-address", "--ms-addr"],
+            help=f"Media server address for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+            f"and {MediaTaskType.stream_to_rtsps.value}.",
+            arg_group="Stream to RTSP and RTSPS Configuration",
+        )
+        context.argument(
+            "media_server_path",
+            options_list=["--media-server-path", "--ms-path"],
+            help=f"Media server path for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+            f"and {MediaTaskType.stream_to_rtsps.value}.",
+            arg_group="Stream to RTSP and RTSPS Configuration",
+        )
+        context.argument(
+            "media_server_port",
+            options_list=["--media-server-port", "--ms-port"],
+            help=f"Media server port for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+            f"and {MediaTaskType.stream_to_rtsps.value}. Minimum: 1",
+            arg_group="Stream to RTSP and RTSPS Configuration",
+            type=int,
+        )
+        context.argument(
+            "media_server_username",
+            options_list=["--media-server-user", "--ms-user"],
+            help=f"Media server username reference. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+            f"and {MediaTaskType.stream_to_rtsps.value}.",
+            arg_group="Stream to RTSP and RTSPS Configuration",
+        )
+        context.argument(
+            "media_server_password",
+            options_list=["--media-server-pass", "--ms-pass"],
+            help=f"Media server password reference. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+            f"and {MediaTaskType.stream_to_rtsps.value}.",
+            arg_group="Stream to RTSP and RTSPS Configuration",
+        )
+        context.argument(
+            "media_server_certificate",
+            options_list=["--media-server-cert", "--ms-cert"],
+            help="Media server certificate reference. Only allowed for only "
+            f"{MediaTaskType.stream_to_rtsps.value}.",
+            arg_group="Stream to RTSP and RTSPS Configuration",
+        )
+        context.argument(
+            "stream_destinations",
+            options_list=["--destination", "--dest"],
+            help="Key=value pairs representing the destination for streams. "
+            "Allowed arguments include: `path` for Storage; or "
+            "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are `Never` and "
+            "`Keep` and allowed values for `qos` are `Qos0` and `Qos1`.",
+            nargs="+",
+        )

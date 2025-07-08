@@ -777,6 +777,7 @@ class NamespaceAssets(Queryable):
                 properties=update_payload
             )
             wait_for_terminal_state(poller, **kwargs)
+            # TODO: should remove event return the list of events or just nothing?
             return self.show(
                 asset_name=asset_name,
                 namespace_name=namespace.name,
@@ -978,8 +979,190 @@ class NamespaceAssets(Queryable):
             # note that we return a list of datapoints
             return next(event for event in events if event["name"] == event_name)["dataPoints"]
 
-    # TODO: future pr
     # STREAMS - allowed for media and custom assets
+    def add_stream(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        asset_type: str,
+        stream_name: str,
+        replace: bool = False,
+        # TODO: future pr, add datapoints
+        **kwargs
+    ) -> dict:
+        # ignoring typeref
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
+            asset_type=asset_type,
+            asset_name=asset_name
+        )
+        streams = asset["properties"].get("streams", [])
+        # remove stream if it exists
+        unmatched_streams = [stream for stream in streams if stream["name"] != stream_name]
+        if len(unmatched_streams) < len(streams) and not replace:
+            raise InvalidArgumentValueError(
+                f"Stream '{stream_name}' already exists in asset '{asset_name}'. "
+                "Use --replace to overwrite the existing stream."
+            )
+
+        # create the stream
+        processed_configs = _process_configs(
+            asset_type=asset_type,
+            default=False,
+            **kwargs
+        )
+        unmatched_streams.append(
+            {
+                "name": stream_name,
+                "streamConfiguration": processed_configs.get("streamsConfiguration"),
+                "destinations": processed_configs.get("streamsDestinations", []),
+            }
+        )
+
+        update_payload = {
+            "properties": {
+                "streams": unmatched_streams
+            }
+        }
+        with console.status(f"Adding stream {stream_name} to asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            streams = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["streams"]
+            return next(stream for stream in streams if stream["name"] == stream_name)
+
+    def list_streams(self, asset_name: str, instance_name: str, instance_resource_group: str) -> List[dict]:
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        return asset["properties"].get("streams", [])
+
+    def show_stream(
+        self, asset_name: str, instance_name: str, instance_resource_group: str, stream_name: str
+    ) -> dict:
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        streams = asset["properties"].get("streams", [])
+        stream = next((s for s in streams if s["name"] == stream_name), None)
+        if not stream:
+            raise InvalidArgumentValueError(f"Stream '{stream_name}' not found in asset '{asset_name}'.")
+        return stream
+
+    def remove_stream(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        stream_name: str,
+        **kwargs
+    ) -> dict:
+        from .helpers import NamespaceResource
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = NamespaceResource(asset["id"])
+
+        streams = asset["properties"].get("streams", [])
+        # note that delete should be ok with stream not there
+        remaining_streams = [stream for stream in streams if stream["name"] != stream_name]
+
+        if len(remaining_streams) == len(streams):
+            logger.info(f"Stream '{stream_name}' not found in asset '{asset_name}'.")
+            return streams
+
+        update_payload = {
+            "properties": {
+                "streams": remaining_streams
+            }
+        }
+        with console.status(f"Removing stream {stream_name} from asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            return self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["streams"]
+
+    def update_stream(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        asset_type: str,
+        stream_name: str,
+        **kwargs
+    ) -> dict:
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
+            asset_type=asset_type,
+            asset_name=asset_name
+        )
+        # check if stream exists
+        streams = asset["properties"].get("streams", [])
+        stream = next((s for s in streams if s["name"] == stream_name), None)
+        if not stream:
+            raise InvalidArgumentValueError(f"Stream '{stream_name}' not found in asset '{asset_name}'.")
+
+        # process the configs + destinations
+        processed_configs = _process_configs(
+            asset_type=asset_type,
+            default=False,
+            original_stream_configuration=stream.get("streamConfiguration"),
+            **kwargs
+        )
+
+        # update the stream properties
+        if "streamsConfiguration" in processed_configs:
+            stream["streamConfiguration"] = processed_configs["streamsConfiguration"]
+        if "streamsDestinations" in processed_configs:
+            stream["destinations"] = processed_configs["streamsDestinations"]
+
+        update_payload = {
+            "properties": {
+                "streams": streams
+            }
+        }
+        with console.status(f"Updating stream {stream_name} in asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            streams = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["streams"]
+            return next(stream for stream in streams if stream["name"] == stream_name)
+
+    # TODO: future pr
     # Management Groups - allowed for opcua, onvif, and custom assets
 
     def _check_device_props(
@@ -1300,7 +1483,7 @@ def _process_configs(
                 config_type="management group"
             ),
             "streamsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("streams_custom_configuration"),
+                additional_configuration=kwargs.get("stream_custom_configuration"),
                 config_type="stream"
             ),
             "datasetsDestinations": _build_destination(
@@ -1404,6 +1587,7 @@ def _process_opcua_event_configurations(
 def _process_media_stream_configurations(
     original_stream_configuration: Optional[str] = None,
     task_type: Optional[str] = None,
+    disable_autostart: Optional[bool] = None,
     task_format: Optional[str] = None,
     snapshots_per_second: Optional[int] = None,
     path: Optional[str] = None,
@@ -1422,7 +1606,7 @@ def _process_media_stream_configurations(
     task_type = task_type or result.get("taskType")
     if not task_type:
         if not any([
-            task_format, snapshots_per_second, path, duration,
+            task_format, disable_autostart, snapshots_per_second, path, duration,
             media_server_address, media_server_path, media_server_port,
             media_server_username, media_server_password, media_server_certificate
         ]):
@@ -1440,6 +1624,7 @@ def _process_media_stream_configurations(
 
     # Process provided parameters and update result
     for property_name, param_value in {
+        "autostart": disable_autostart,
         "format": task_format,
         "snapshotsPerSecond": snapshots_per_second,
         "path": path,
@@ -1454,6 +1639,8 @@ def _process_media_stream_configurations(
         # Skip None values
         if param_value is None:
             continue
+        elif property_name == "autostart":
+            param_value = not param_value  # Convert to 'enabled' property
 
         # Check if this property is allowed for the current task type
         if property_name not in allowed_properties:

@@ -397,24 +397,7 @@ def test_add_namespace_asset_event_error(
     )
 
     # 2nd do event already exists
-    existing_event = {
-        "name": event_name,
-        "eventNotifier": f"nsu=existing;s=FastUInt{randint(1, 1000)}",
-        "eventConfiguration": json.dumps({"existingConfig": "value"}),
-        "destinations": [
-            {
-                "target": "Mqtt",
-                "configuration": {
-                    "topic": "/contoso/existing",
-                    "retain": "Never",
-                    "qos": "Qos0",
-                    "ttl": 3600
-                }
-            }
-        ],
-        "dataPoints": []
-    }
-    mocked_asset["properties"]["events"] = [existing_event]
+    mocked_asset["properties"]["events"] = [generate_event(event_name=event_name, num_data_points=0)]
 
     mocked_responses.add(
         responses.GET,

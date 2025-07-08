@@ -364,15 +364,17 @@ def create_namespace_custom_asset(
     instance_resource_group: str,
     device_name: str,
     device_endpoint_name: str,
-    asset_type_refs: Optional[List[str]] = None,
-    attributes: Optional[List[str]] = None,
+    # default configs + destinations
     dataset_custom_configuration: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
     event_custom_configuration: Optional[str] = None,
     event_destinations: Optional[str] = None,
     mgmt_custom_configuration: Optional[str] = None,
-    streams_custom_configuration: Optional[str] = None,
+    stream_custom_configuration: Optional[str] = None,
     stream_destinations: Optional[str] = None,
+    asset_type_refs: Optional[List[str]] = None,
+    # other params
+    attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
     display_name: Optional[str] = None,
@@ -402,7 +404,7 @@ def create_namespace_custom_asset(
         event_custom_configuration=event_custom_configuration,
         event_destinations=event_destinations,
         mgmt_custom_configuration=mgmt_custom_configuration,
-        streams_custom_configuration=streams_custom_configuration,
+        stream_custom_configuration=stream_custom_configuration,
         stream_destinations=stream_destinations,
         description=description,
         disabled=disabled,
@@ -428,7 +430,9 @@ def create_namespace_media_asset(
     instance_resource_group: str,
     device_name: str,
     device_endpoint_name: str,
+    # default stream config
     task_type: Optional[str] = None,
+    disable_autostart: Optional[bool] = None,
     task_format: Optional[str] = None,
     snapshots_per_second: Optional[int] = None,
     path: Optional[str] = None,
@@ -440,6 +444,7 @@ def create_namespace_media_asset(
     media_server_password: Optional[str] = None,
     media_server_certificate: Optional[str] = None,
     stream_destinations: Optional[str] = None,
+    # other params
     asset_type_refs: Optional[List[str]] = None,
     attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
@@ -465,6 +470,7 @@ def create_namespace_media_asset(
         device_name=device_name,
         device_endpoint_name=device_endpoint_name,
         task_type=task_type,
+        disable_autostart=disable_autostart,
         task_format=task_format,
         snapshots_per_second=snapshots_per_second,
         path=path,
@@ -552,8 +558,7 @@ def create_namespace_opcua_asset(
     instance_resource_group: str,
     device_name: str,
     device_endpoint_name: str,
-    asset_type_refs: Optional[List[str]] = None,
-    attributes: Optional[List[str]] = None,
+    # default configs + destinations
     dataset_publishing_interval: Optional[int] = None,
     dataset_sampling_interval: Optional[int] = None,
     dataset_queue_size: Optional[int] = None,
@@ -566,6 +571,9 @@ def create_namespace_opcua_asset(
     events_filter_type: Optional[str] = None,
     events_filter_clauses: Optional[List[List[str]]] = None,
     event_destinations: Optional[str] = None,
+    # other params
+    asset_type_refs: Optional[List[str]] = None,
+    attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
     display_name: Optional[str] = None,
@@ -655,15 +663,17 @@ def update_namespace_custom_asset(
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    asset_type_refs: Optional[List[str]] = None,
-    attributes: Optional[List[str]] = None,
+    # default configs + destinations
     dataset_custom_configuration: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
     event_custom_configuration: Optional[str] = None,
     event_destinations: Optional[str] = None,
     mgmt_custom_configuration: Optional[str] = None,
-    streams_custom_configuration: Optional[str] = None,
+    stream_custom_configuration: Optional[str] = None,
     stream_destinations: Optional[str] = None,
+    # other params
+    asset_type_refs: Optional[List[str]] = None,
+    attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
     display_name: Optional[str] = None,
@@ -691,7 +701,7 @@ def update_namespace_custom_asset(
         event_custom_configuration=event_custom_configuration,
         event_destinations=event_destinations,
         mgmt_custom_configuration=mgmt_custom_configuration,
-        streams_custom_configuration=streams_custom_configuration,
+        stream_custom_configuration=stream_custom_configuration,
         stream_destinations=stream_destinations,
         description=description,
         disabled=disabled,
@@ -715,7 +725,9 @@ def update_namespace_media_asset(
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
+    # default stream config
     task_type: Optional[str] = None,
+    disable_autostart: Optional[bool] = None,
     task_format: Optional[str] = None,
     snapshots_per_second: Optional[int] = None,
     path: Optional[str] = None,
@@ -727,6 +739,7 @@ def update_namespace_media_asset(
     media_server_password: Optional[str] = None,
     media_server_certificate: Optional[str] = None,
     stream_destinations: Optional[str] = None,
+    # other params
     asset_type_refs: Optional[List[str]] = None,
     attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
@@ -750,6 +763,7 @@ def update_namespace_media_asset(
         instance_resource_group=instance_resource_group,
         asset_type=DeviceEndpointType.MEDIA.value,
         task_type=task_type,
+        disable_autostart=disable_autostart,
         task_format=task_format,
         snapshots_per_second=snapshots_per_second,
         path=path,
@@ -831,8 +845,7 @@ def update_namespace_opcua_asset(
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    asset_type_refs: Optional[List[str]] = None,
-    attributes: Optional[List[str]] = None,
+    # default configs + destinations
     dataset_publishing_interval: Optional[int] = None,
     dataset_sampling_interval: Optional[int] = None,
     dataset_queue_size: Optional[int] = None,
@@ -845,6 +858,9 @@ def update_namespace_opcua_asset(
     events_filter_type: Optional[str] = None,
     events_filter_clauses: Optional[List[List[str]]] = None,
     event_destinations: Optional[str] = None,
+    # other params
+    asset_type_refs: Optional[List[str]] = None,
+    attributes: Optional[List[str]] = None,
     description: Optional[str] = None,
     disabled: Optional[bool] = None,
     display_name: Optional[str] = None,
@@ -1456,3 +1472,187 @@ def remove_namespace_asset_event_point(
         datapoint_name=datapoint_name,
         **kwargs
     )
+
+
+# STREAM COMMANDS
+def add_namespace_custom_asset_stream(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    stream_name: str,
+    stream_custom_configuration: Optional[str] = None,
+    stream_destinations: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_stream(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        stream_name=stream_name,
+        asset_type="custom",
+        stream_custom_configuration=stream_custom_configuration,
+        stream_destinations=stream_destinations,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_media_asset_stream(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    stream_name: str,
+    task_type: Optional[str] = None,
+    disable_autostart: Optional[bool] = None,
+    task_format: Optional[str] = None,
+    snapshots_per_second: Optional[int] = None,
+    path: Optional[str] = None,
+    duration: Optional[int] = None,
+    media_server_address: Optional[str] = None,
+    media_server_path: Optional[str] = None,
+    media_server_port: Optional[int] = None,
+    media_server_username: Optional[str] = None,
+    media_server_password: Optional[str] = None,
+    media_server_certificate: Optional[str] = None,
+    stream_destinations: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_stream(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        stream_name=stream_name,
+        asset_type=DeviceEndpointType.MEDIA.value,
+        task_type=task_type,
+        disable_autostart=disable_autostart,
+        task_format=task_format,
+        snapshots_per_second=snapshots_per_second,
+        path=path,
+        duration=duration,
+        media_server_address=media_server_address,
+        media_server_path=media_server_path,
+        media_server_port=media_server_port,
+        media_server_username=media_server_username,
+        media_server_password=media_server_password,
+        media_server_certificate=media_server_certificate,
+        stream_destinations=stream_destinations,
+        replace=replace,
+        **kwargs
+    )
+
+
+def list_namespace_asset_streams(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str
+) -> List[dict]:
+    return NamespaceAssets(cmd).list_streams(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
+
+def show_namespace_asset_stream(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    stream_name: str
+) -> dict:
+    return NamespaceAssets(cmd).show_stream(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        stream_name=stream_name
+    )
+
+
+def update_namespace_custom_asset_stream(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    stream_name: str,
+    stream_custom_configuration: Optional[str] = None,
+    stream_destinations: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_stream(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        stream_name=stream_name,
+        asset_type="custom",
+        stream_custom_configuration=stream_custom_configuration,
+        stream_destinations=stream_destinations,
+        **kwargs
+    )
+
+
+def update_namespace_media_asset_stream(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    stream_name: str,
+    task_type: Optional[str] = None,
+    disable_autostart: Optional[bool] = None,
+    task_format: Optional[str] = None,
+    snapshots_per_second: Optional[int] = None,
+    path: Optional[str] = None,
+    duration: Optional[int] = None,
+    media_server_address: Optional[str] = None,
+    media_server_path: Optional[str] = None,
+    media_server_port: Optional[int] = None,
+    media_server_username: Optional[str] = None,
+    media_server_password: Optional[str] = None,
+    media_server_certificate: Optional[str] = None,
+    stream_destinations: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_stream(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        stream_name=stream_name,
+        asset_type=DeviceEndpointType.MEDIA.value,
+        task_type=task_type,
+        disable_autostart=disable_autostart,
+        task_format=task_format,
+        snapshots_per_second=snapshots_per_second,
+        path=path,
+        duration=duration,
+        media_server_address=media_server_address,
+        media_server_path=media_server_path,
+        media_server_port=media_server_port,
+        media_server_username=media_server_username,
+        media_server_password=media_server_password,
+        media_server_certificate=media_server_certificate,
+        stream_destinations=stream_destinations,
+        **kwargs
+    )
+
+
+def remove_namespace_asset_stream(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    stream_name: str,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).remove_stream(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        stream_name=stream_name,
+        **kwargs
+    )
+
+# MANAGEMENT GROUP COMMANDS

@@ -30,11 +30,17 @@ def assert_point_properties(result, **expected):
 def check_configuration(config_key: str, added: dict, expected: dict):
     """Helper function to check dataset/event configuration."""
     if expected and config_key in expected:
-        assert added[config_key] == expected[config_key]
+        added_config = json.loads(added.get(config_key) or "{}")
+        expected_config = json.loads(expected[config_key] or "{}")
+        assert len(added_config) == len(expected_config)
+        for key in expected_config:
+            assert key in added_config
+            assert added_config[key] == expected_config[key]
 
 
 check_dataset_configuration: Callable = partial(check_configuration, "datasetConfiguration")
 check_event_configuration: Callable = partial(check_configuration, "eventConfiguration")
+check_stream_configuration: Callable = partial(check_configuration, "streamConfiguration")
 
 
 def check_destinations(added: dict, expected: Optional[dict] = None):

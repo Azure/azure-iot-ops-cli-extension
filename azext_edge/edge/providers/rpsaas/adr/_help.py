@@ -739,7 +739,6 @@ def load_iotops_adr_help():
         short-summary: Add inbound endpoints to devices in Device Registry namespaces.
     """
 
-    # TODO: this is pretty long for a command name - debate on if I should throw out inbound
     helps[
         "iot ops ns device endpoint inbound add custom"
     ] = """
@@ -1275,6 +1274,97 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset custom stream"
+    ] = """
+        type: group
+        short-summary: Manage streams for custom namespaced assets in an IoT Operations instance.
+        long-summary: |
+          Streams define how data flows from custom assets to destinations. Custom streams
+          allow flexible configuration for various data streaming scenarios.
+    """
+
+    helps[
+        "iot ops ns asset custom stream add"
+    ] = """
+        type: command
+        short-summary: Add a stream to a custom asset.
+
+        examples:
+        - name: Add a basic custom stream to an asset.
+          text: >
+            az iot ops ns asset custom stream add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myStream --config '{"streamType": "sensor-data", "frequency": "1000ms"}'
+
+        - name: Add a custom stream with MQTT destinations.
+          text: >
+            az iot ops ns asset custom stream add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myStream --config '{"streamType": "telemetry", "bufferSize": 1024}'
+            --destination topic=/factory/streams/data retain=Keep qos=Qos1
+
+        - name: Replace an existing custom stream with the same name.
+          text: >
+            az iot ops ns asset custom stream add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myStream --config '{"streamType": "updated-config", "version": "2.0"}' --replace
+    """
+
+    helps[
+        "iot ops ns asset custom stream list"
+    ] = """
+        type: command
+        short-summary: List streams in a custom asset.
+
+        examples:
+        - name: List all streams in a custom asset.
+          text: >
+            az iot ops ns asset custom stream list --asset myAsset --instance myInstance -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset custom stream show"
+    ] = """
+        type: command
+        short-summary: Show details of a stream in a custom asset.
+
+        examples:
+        - name: Show details of a specific stream.
+          text: >
+            az iot ops ns asset custom stream show --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myStream
+    """
+
+    helps[
+        "iot ops ns asset custom stream update"
+    ] = """
+        type: command
+        short-summary: Update a stream in a custom asset.
+
+        examples:
+        - name: Update the custom configuration of a stream.
+          text: >
+            az iot ops ns asset custom stream update --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myStream --config '{"streamType": "updated-sensor-data", "frequency": "500ms"}'
+
+        - name: Update both configuration and destinations.
+          text: >
+            az iot ops ns asset custom stream update --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myStream --config '{"streamType": "hybrid-data", "compression": true}'
+            --destination path=/compressed/data
+    """
+
+    helps[
+        "iot ops ns asset custom stream remove"
+    ] = """
+        type: command
+        short-summary: Remove a stream from a custom asset.
+
+        examples:
+        - name: Remove a stream from a custom asset.
+          text: >
+            az iot ops ns asset custom stream remove --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myStream
+    """
+
+    helps[
         "iot ops ns asset media"
     ] = """
         type: group
@@ -1356,6 +1446,141 @@ def load_iotops_adr_help():
             az iot ops ns asset media update --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --stream-dest topic="security/cameras/main" qos=1 retain=false ttl=300
             --manufacturer "SecureCam Inc." --model "HD-8000" --serial-number "CAM9876"
+    """
+
+    helps[
+        "iot ops ns asset media stream"
+    ] = """
+        type: group
+        short-summary: Manage streams for media namespaced assets in an IoT Operations instance.
+    """
+
+    helps[
+        "iot ops ns asset media stream add"
+    ] = """
+        type: command
+        short-summary: Add a stream to a media asset.
+
+        examples:
+        - name: Add a snapshot-to-mqtt stream with default settings.
+          text: >
+            az iot ops ns asset media stream add --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name snapshotStream --task-type snapshot-to-mqtt
+
+        - name: Add a snapshot-to-mqtt stream with custom format and rate.
+          text: >
+            az iot ops ns asset media stream add --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name snapshotStream --task-type snapshot-to-mqtt --format png --snapshots-per-sec 2 --disable-autostart
+
+        - name: Add a snapshot-to-fs stream for saving images to file system.
+          text: >
+            az iot ops ns asset media stream add --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name fileSnapshotStream --task-type snapshot-to-fs --format jpeg --path /media/snapshots
+            --snapshots-per-sec 1
+
+        - name: Add a clip-to-fs stream for recording video clips.
+          text: >
+            az iot ops ns asset media stream add --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name clipStream --task-type clip-to-fs --format mp4 --duration 30 --path /media/clips
+
+        - name: Add a stream-to-rtsp stream for real-time streaming.
+          text: >
+            az iot ops ns asset media stream add --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name rtspStream --task-type stream-to-rtsp --media-server-address 192.168.1.100 --media-server-port 554
+            --media-server-path /live/stream1 --media-server-user streamuser --media-server-pass streampass
+
+        - name: Add a secure stream-to-rtsps stream with certificate.
+          text: >
+            az iot ops ns asset media stream add --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name secureRtspStream --task-type stream-to-rtsps --media-server-address secure.example.com
+            --media-server-port 322 --media-server-path /secure/stream --media-server-cert /path/to/cert.pem
+
+        - name: Add a media stream with a MQTT destination.
+          text: >
+            az iot ops ns asset media stream add --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name streamWithDest --task-type snapshot-to-mqtt --format jpeg
+            --destination topic=/media/snapshots retain=Keep qos=Qos1 ttl=3600
+
+        - name: Replace an existing media stream with new configuration.
+          text: >
+            az iot ops ns asset media stream add --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name snapshotStream --task-type snapshot-to-mqtt --format bmp --snapshots-per-sec 5 --replace
+    """
+
+    helps[
+        "iot ops ns asset media stream list"
+    ] = """
+        type: command
+        short-summary: List streams in a media asset.
+
+        examples:
+        - name: List all streams in a media asset.
+          text: >
+            az iot ops ns asset media stream list --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset media stream show"
+    ] = """
+        type: command
+        short-summary: Show details of a stream in a media asset.
+
+        examples:
+        - name: Show details of a specific media stream.
+          text: >
+            az iot ops ns asset media stream show --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name snapshotStream
+    """
+
+    helps[
+        "iot ops ns asset media stream update"
+    ] = """
+        type: command
+        short-summary: Update a stream in a media asset.
+
+        examples:
+        - name: Update the format and rate of a snapshot stream.
+          text: >
+            az iot ops ns asset media stream update --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name snapshotStream --format png --snapshots-per-sec 3
+
+        - name: Update the path for a file-based stream.
+          text: >
+            az iot ops ns asset media stream update --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name fileStream --path /updated/media/path
+
+        - name: Update server configuration for an RTSP stream.
+          text: >
+            az iot ops ns asset media stream update --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name rtspStream --media-server-address 192.168.1.200 --media-server-port 8554
+
+        - name: Update destinations for a media stream and disable autostart.
+          text: >
+            az iot ops ns asset media stream update --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name snapshotStream --destination path=/new/snapshot/path --disable-autostart
+
+        - name: Update clip duration and format.
+          text: >
+            az iot ops ns asset media stream update --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name clipStream --duration 60 --format avi
+
+        - name: Update secure RTSP stream credentials.
+          text: >
+            az iot ops ns asset media stream update --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name secureStream --media-server-cert /new/path/to/cert.pem
+    """
+
+    helps[
+        "iot ops ns asset media stream remove"
+    ] = """
+        type: command
+        short-summary: Remove a stream from a media asset.
+
+        examples:
+        - name: Remove a stream from a media asset.
+          text: >
+            az iot ops ns asset media stream remove --asset myMediaAsset --instance myInstance -g myInstanceResourceGroup
+            --name snapshotStream
     """
 
     helps[
