@@ -381,10 +381,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "acks",
             options_list=["--acks"],
-            arg_type=get_enum_type(
-                DataflowEndpointKafkaAcksType,
-                default=DataflowEndpointKafkaAcksType.ALL.value,
-            ),
+            arg_type=get_enum_type(DataflowEndpointKafkaAcksType, default=DataflowEndpointKafkaAcksType.ALL.value),
             help="Level of acknowledgment from the Kafka broker to "
             "ensure that the message sent by producer is successfully "
             "written to the topic and replicated across the Kafka cluster.",
@@ -442,10 +439,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "partition_strategy",
             options_list=["--partition-strategy", "--ps"],
-            arg_type=get_enum_type(
-                KafkaPartitionStrategyType,
-                default=KafkaPartitionStrategyType.DEFAULT.value,
-            ),
+            arg_type=get_enum_type(KafkaPartitionStrategyType, default=KafkaPartitionStrategyType.DEFAULT.value),
             help="The partition handling strategy controls how messages are "
             "assigned to Kafka partitions when sending them to Kafka topics.",
         )
@@ -995,16 +989,10 @@ def load_iotops_arguments(self, _):
             help="Protocol to use for client connections.",
         )
         context.argument(
-            "authn_ref",
-            options_list=["--authn-ref"],
-            help="Authentication reference (name).",
-            arg_group="Auth",
+            "authn_ref", options_list=["--authn-ref"], help="Authentication reference (name).", arg_group="Auth"
         )
         context.argument(
-            "authz_ref",
-            options_list=["--authz-ref"],
-            help="Authorization reference (name).",
-            arg_group="Auth",
+            "authz_ref", options_list=["--authz-ref"], help="Authorization reference (name).", arg_group="Auth"
         )
         context.argument(
             "tls_auto_issuer_ref",
@@ -1463,16 +1451,10 @@ def load_iotops_arguments(self, _):
             help="Schema registry name.",
         )
         context.argument(
-            "schema_format",
-            options_list=["--format"],
-            help="Schema format.",
-            arg_type=get_enum_type(SchemaFormat),
+            "schema_format", options_list=["--format"], help="Schema format.", arg_type=get_enum_type(SchemaFormat)
         )
         context.argument(
-            "schema_type",
-            options_list=["--type"],
-            help="Schema type.",
-            arg_type=get_enum_type(SchemaType),
+            "schema_type", options_list=["--type"], help="Schema type.", arg_type=get_enum_type(SchemaType)
         )
         context.argument(
             "description",
@@ -1672,12 +1654,7 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops schema version") as context:
-        context.argument(
-            "version_name",
-            options_list=["--name", "-n"],
-            help="Schema version name.",
-            type=int,
-        )
+        context.argument("version_name", options_list=["--name", "-n"], help="Schema version name.", type=int)
         context.argument(
             "schema_name",
             options_list=["--schema"],
