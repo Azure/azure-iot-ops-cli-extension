@@ -265,7 +265,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     # Test device query functionality
     # Query for specific device by name
     result = run(
-        f"az iot ops ns device query --name {device_name_1} -g {resource_group}"
+        f"az iot ops ns device query --name {device_name_1}"
     )
     assert len(result) == 1
     assert result[0]["name"] == device_name_1
