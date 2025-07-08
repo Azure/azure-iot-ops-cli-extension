@@ -57,9 +57,13 @@ dataflow_endpoint_check_desc = "Evaluate Dataflow Endpoints"
 dataflow_profile_check_name = "evalDataflowProfiles"
 dataflow_profile_check_desc = "Evaluate Dataflow Profiles"
 
+registry_endpoint_check_name = "evalRegistryEndpoints"
+registry_endpoint_check_desc = "Evaluate Registry Endpoints"
+
 dataflow_target = "dataflows.connectivity.iotoperations.azure.com"
 dataflow_endpoint_target = "dataflowendpoints.connectivity.iotoperations.azure.com"
 dataflow_profile_target = "dataflowprofiles.connectivity.iotoperations.azure.com"
+registry_endpoint_target = "registryendpoints.connectivity.iotoperations.azure.com"
 
 valid_source_endpoint_types = [
     DataflowEndpointType.kafka.value,
@@ -560,6 +564,85 @@ def _process_dataflow_destinationsettings(
                         label=label, value=val, padding=padding
                     ),
                 )
+
+
+def _process_registry_endpoint_authentication(
+    registry_endpoint_spec: dict,
+    check_manager: CheckManager,
+    target: str,
+    namespace: str,
+    padding: int,
+    detail_level: int,
+) -> None:
+
+    # TODO - generalize for other auth types and reuse
+    # TODO - import enums once registry endpoint PR merges
+    auth_property_dict = {
+        "Anonymous": {
+            "key": "anonymousSettings",
+            "displays": [],
+        },
+        "ArtifactPullSecret": {
+            "key": "artifactPullSecretSettings",
+            "displays": [
+                ("Secret Reference", "secretRef"),
+            ],
+        },
+        "SystemAssignedManagedIdentity": {
+            "key": "systemAssignedManagedIdentitySettings",
+            "displays": [
+                ("Audience", "audience"),
+            ],
+        },
+        "UserAssignedManagedIdentity": {
+            "key": "userAssignedManagedIdentitySettings",
+            "displays": [
+                ("Client ID", "clientId"),
+                ("Scope", "scope"),
+                ("Tenant ID", "tenantId"),
+            ],
+        },
+    }
+
+    auth: dict = registry_endpoint_spec.get("authentication", {})
+    auth_method = auth.get("method")
+
+    # display unknown auth method
+    if auth_method not in auth_property_dict:
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"[red]Unknown authentication method: {auth_method}", (0, 0, 0, padding)
+            ),
+        )
+        return
+
+    # display auth method
+    check_manager.add_display(
+        target_name=target,
+        namespace=namespace,
+        display=basic_property_display(
+            label="Authentication Method", value=auth_method, padding=padding
+        ),
+    )
+
+    # show details for various auth methods
+    if detail_level > ResourceOutputDetailLevel.detail.value:
+        auth_properties: dict = auth_property_dict.get(auth_method, {})
+        auth_settings_key = auth_properties.get("key")
+        auth_obj = auth.get(auth_settings_key)
+        if auth_obj:
+            for label, key in auth_properties.get("displays", []):
+                val = auth_obj.get(key)
+                if val:
+                    check_manager.add_display(
+                        target_name=target,
+                        namespace=namespace,
+                        display=basic_property_display(
+                            label=label, value=val, padding=padding + PADDING_SIZE
+                        ),
+                    )
 
 
 def _process_endpoint_authentication(
@@ -1110,6 +1193,7 @@ def check_dataflows_deployment(
         DataflowResourceKinds.DATAFLOWPROFILE: evaluate_dataflow_profiles,
         DataflowResourceKinds.DATAFLOWENDPOINT: evaluate_dataflow_endpoints,
         DataflowResourceKinds.DATAFLOW: evaluate_dataflows,
+        DataflowResourceKinds.REGISTRYENDPOINT: evaluate_registry_endpoints,
     }
 
     return check_post_deployment(
@@ -1824,6 +1908,136 @@ def evaluate_dataflow_profiles(
                     ),
                     (0, 0, 0, PADDING),
                 ),
+            )
+
+    return check_manager.as_dict(as_list=as_list)
+
+
+def evaluate_registry_endpoints(
+    as_list: bool = False,
+    detail_level: int = ResourceOutputDetailLevel.summary.value,
+    resource_name: str = None,
+):
+    check_manager = CheckManager(
+        check_name=registry_endpoint_check_name,
+        check_desc=registry_endpoint_check_desc,
+    )
+    target = registry_endpoint_target
+
+    all_registry_endpoints = get_resources_by_name(
+        api_info=DATAFLOW_API_V1B1,
+        kind=DataflowResourceKinds.REGISTRYENDPOINT,
+        resource_name=resource_name,
+    )
+    if not all_registry_endpoints:
+        no_registry_endpoints_text = "No Registry Endpoints detected in any namespace."
+        check_manager.add_target(target_name=target)
+        check_manager.add_target_eval(
+            target_name=target,
+            status=CheckTaskStatus.skipped.value,
+            value={"registryEndpoints": no_registry_endpoints_text},
+        )
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(no_registry_endpoints_text, (0, 0, 0, PADDING)),
+        )
+        return check_manager.as_dict(as_list=as_list)
+
+    for namespace, registry_endpoints in get_resources_grouped_by_namespace(
+        all_registry_endpoints
+    ):
+        check_manager.add_target(
+            target_name=target,
+            namespace=namespace,
+            conditions=[
+                "endsWith(spec.host, 'azurecr.io')",
+                "spec.authentication.method",
+            ],
+        )
+        check_manager.add_display(
+            target_name=target,
+            namespace=namespace,
+            display=Padding(
+                f"Registry Endpoints in namespace {{[purple]{namespace}[/purple]}}",
+                (0, 0, 0, PADDING),
+            ),
+        )
+
+        for registry_endpoint in list(registry_endpoints):
+            registry_endpoint_name = registry_endpoint.get("metadata", {}).get("name")
+            spec = registry_endpoint.get("spec", {})
+            host = spec.get("host", "")
+
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=Padding(
+                    f"\n- Registry Endpoint {{{colorize_string(value=registry_endpoint_name)}}} {colorize_string(color='green', value='detected')}",
+                    (0, 0, 0, PADDING),
+                ),
+            )
+
+            # evaluate status
+            status = registry_endpoint.get("status", {})
+            _process_dataflow_resource_status(
+                check_manager=check_manager,
+                target_name=target,
+                namespace=namespace,
+                status=status,
+                resource_name=registry_endpoint_name,
+                resource_kind=DataflowResourceKinds.REGISTRYENDPOINT.value,
+                detail_level=detail_level,
+                padding=INNER_PADDING,
+            )
+
+            # evaluate host condition - endsWith(spec.host, 'azurecr.io')
+            host_status = (
+                CheckTaskStatus.success
+                if host.endswith("azurecr.io")
+                else CheckTaskStatus.error
+            )
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=host_status.value,
+                resource_name=registry_endpoint_name,
+                resource_kind=DataflowResourceKinds.REGISTRYENDPOINT.value,
+                value={
+                    "endsWith(spec.host, 'azurecr.io')": host.endswith("azurecr.io")
+                },
+            )
+
+            # display host information always
+            check_manager.add_display(
+                target_name=target,
+                namespace=namespace,
+                display=basic_property_display(
+                    label="Host", value=host, padding=INNER_PADDING
+                ),
+            )
+
+            # evaluate authentication method
+            auth_method = spec.get("authentication", {}).get("method")
+            auth_method_status = (
+                CheckTaskStatus.success if auth_method else CheckTaskStatus.error
+            )
+            check_manager.add_target_eval(
+                target_name=target,
+                namespace=namespace,
+                status=auth_method_status.value,
+                resource_name=registry_endpoint_name,
+                resource_kind=DataflowResourceKinds.REGISTRYENDPOINT.value,
+                value={"spec.authentication.method": auth_method},
+            )
+
+            # process authentication details
+            _process_registry_endpoint_authentication(
+                registry_endpoint_spec=spec,
+                check_manager=check_manager,
+                target=target,
+                namespace=namespace,
+                padding=INNER_PADDING,
+                detail_level=detail_level,
             )
 
     return check_manager.as_dict(as_list=as_list)
