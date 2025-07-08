@@ -293,3 +293,5 @@ INIT_NO_PREFLIGHT_ENV_KEY = "AIO_CLI_INIT_PREFLIGHT_DISABLED"
 
 # OPC UA check constant
 OPCUA_SERVICE = "opcua"
+
+GET_VERSIONS_URL = "https://aka.ms/aio-versions"

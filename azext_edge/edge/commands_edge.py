@@ -467,3 +467,20 @@ def list_rsync(
     from .providers.orchestration.resources import SyncRules
 
     return SyncRules(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).list()
+
+
+def get_versions():
+    import webbrowser
+
+    from rich.console import Console
+    from .common import GET_VERSIONS_URL
+
+    console = Console(stderr=True)
+
+    with console.status("Working..."):
+        success = webbrowser.open(GET_VERSIONS_URL, new=1)
+    if not success:
+        console.log(
+            f"Failed to open browser. Please visit {GET_VERSIONS_URL} to "
+            "view the Azure IoT Operations version reference."
+        )
