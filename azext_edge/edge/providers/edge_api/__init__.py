@@ -48,6 +48,7 @@ __all__ = [
     "DATAFLOW_ACTIVE_API",
     "DATAFLOW_API_V1",
     "DATAFLOW_API_V1B1",
+    "DATAFLOW_ACTIVE_API",
     "DataflowResourceKinds",
     "META_API_V1",
     "META_ACTIVE_API",

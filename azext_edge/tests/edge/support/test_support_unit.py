@@ -24,6 +24,7 @@ from azext_edge.edge.providers.edge_api import (
     MQTT_BROKER_API_V1,
     DATAFLOW_API_V1,
     DATAFLOW_API_V1B1,
+    DATAFLOW_ACTIVE_API,
     EdgeResourceApi,
 )
 from azext_edge.edge.providers.edge_api.meta import META_API_V1
@@ -61,6 +62,8 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQTT_BROKER_API_V1, DEVICEREGISTRY_API_V1],
         [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1],
         [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1],
+        [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1, DATAFLOW_ACTIVE_API],
+        [MQ_ACTIVE_API, DATAFLOW_API_V1, DATAFLOW_ACTIVE_API],
     ],
     indirect=True,
 )
@@ -206,7 +209,7 @@ def test_create_bundle(
                 directory_path=MQ_DIRECTORY_PATH,
             )
 
-        if api in [DATAFLOW_API_V1, DATAFLOW_API_V1B1]:
+        if api in [DATAFLOW_API_V1, DATAFLOW_API_V1B1, DATAFLOW_ACTIVE_API]:
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,

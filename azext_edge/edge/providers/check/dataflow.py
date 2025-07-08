@@ -11,7 +11,7 @@ from rich.padding import Padding
 
 from ...common import DEFAULT_DATAFLOW_PROFILE, CheckTaskStatus, ResourceState
 from ..base import get_namespaced_pods_by_prefix
-from ..edge_api.dataflow import DATAFLOW_API_V1B1, DataflowResourceKinds
+from ..edge_api.dataflow import DATAFLOW_ACTIVE_API, DataflowResourceKinds
 from ..support.dataflow import (
     DATAFLOW_NAME_LABEL,
     DATAFLOW_OPERATOR_PREFIX,
@@ -1120,7 +1120,7 @@ def check_dataflows_deployment(
     }
 
     return check_post_deployment(
-        api_info=DATAFLOW_API_V1B1,
+        api_info=DATAFLOW_ACTIVE_API,
         check_name=dataflow_api_check_name,
         check_desc=dataflow_api_check_desc,
         evaluate_funcs=evaluate_funcs,
@@ -1194,7 +1194,7 @@ def evaluate_dataflows(
         check_desc=dataflows_check_desc,
     )
     all_dataflows = get_resources_by_name(
-        api_info=DATAFLOW_API_V1B1,
+        api_info=DATAFLOW_ACTIVE_API,
         kind=DataflowResourceKinds.DATAFLOW,
         resource_name=resource_name,
     )
@@ -1244,7 +1244,7 @@ def evaluate_dataflows(
 
         # profile names for reference lookup
         all_profiles = get_resources_by_name(
-            api_info=DATAFLOW_API_V1B1,
+            api_info=DATAFLOW_ACTIVE_API,
             kind=DataflowResourceKinds.DATAFLOWPROFILE,
             namespace=namespace,
             resource_name=None,
@@ -1252,7 +1252,7 @@ def evaluate_dataflows(
         profile_names = {profile.get("metadata", {}).get("name") for profile in all_profiles}
 
         all_endpoints = get_resources_by_name(
-            api_info=DATAFLOW_API_V1B1,
+            api_info=DATAFLOW_ACTIVE_API,
             kind=DataflowResourceKinds.DATAFLOWENDPOINT,
             namespace=namespace,
             resource_name=None,
@@ -1465,7 +1465,7 @@ def evaluate_dataflow_endpoints(
         check_desc=dataflow_endpoint_check_desc,
     )
     all_endpoints = get_resources_by_name(
-        api_info=DATAFLOW_API_V1B1,
+        api_info=DATAFLOW_ACTIVE_API,
         kind=DataflowResourceKinds.DATAFLOWENDPOINT,
         resource_name=resource_name,
     )
@@ -1579,7 +1579,7 @@ def evaluate_dataflow_profiles(
     target = dataflow_profile_target
 
     all_profiles = get_resources_by_name(
-        api_info=DATAFLOW_API_V1B1,
+        api_info=DATAFLOW_ACTIVE_API,
         kind=DataflowResourceKinds.DATAFLOWPROFILE,
         resource_name=resource_name,
     )
@@ -1814,7 +1814,7 @@ def evaluate_registry_endpoints(
     target = registry_endpoint_target
 
     all_registry_endpoints = get_resources_by_name(
-        api_info=DATAFLOW_API_V1B1,
+        api_info=DATAFLOW_ACTIVE_API,
         kind=DataflowResourceKinds.REGISTRYENDPOINT,
         resource_name=resource_name,
     )
