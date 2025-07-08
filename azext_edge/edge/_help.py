@@ -717,11 +717,16 @@ def load_iotops_help():
         short-summary: Add a container registry endpoint to an instance.
         long-summary: |
           Only Azure Container Registry (ACR) endpoints are supported.
+          By default, the registry endpoint will use System Assigned Managed Identity authentication.
+          Use the --no-auth flag to explicitly configure anonymous authentication.
 
         examples:
-        - name: Add a basic anonymous registry endpoint.
+        - name: Add a registry endpoint with default System Assigned Managed Identity authentication.
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+        - name: Add a registry endpoint with explicit anonymous authentication.
+          text: >
+            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup --no-auth
         - name: Add a registry endpoint with system-assigned managed identity and optional audience configuration
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup

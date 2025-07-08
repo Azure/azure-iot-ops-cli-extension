@@ -185,7 +185,7 @@ class TestRegistryEndpointsAuthentication:
         elif audience:
             expected = RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value
         else:
-            expected = RegistryEndpointAuthenticationType.ANONYMOUS.value
+            expected = RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value  # Default to SAMI
 
         # Assert the result matches expected authentication type
         assert result == expected
@@ -289,7 +289,7 @@ class TestRegistryEndpointsAuthentication:
                 ],  # expected_settings_key
                 {},  # expected_settings
             ),
-            # Anonymous - auto-detection (no parameters)
+            # SystemAssignedManagedIdentity - auto-detection (no parameters, default behavior)
             (
                 None,  # auth_type
                 None,  # secret_ref
@@ -297,9 +297,9 @@ class TestRegistryEndpointsAuthentication:
                 None,  # client_id
                 None,  # tenant_id
                 None,  # scope
-                RegistryEndpointAuthenticationType.ANONYMOUS.value,  # expected_method
+                RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value,  # expected_method
                 REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS[
-                    RegistryEndpointAuthenticationType.ANONYMOUS.value
+                    RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value
                 ],  # expected_settings_key
                 {},  # expected_settings
             ),
@@ -446,6 +446,46 @@ class TestRegistryEndpointsAuthentication:
         # Verify the expected structure
         expected = {"method": expected_method, expected_settings_key: expected_settings}
         assert result == expected
+
+    def test_identify_authentication_method_no_auth(self, mocked_cmd):
+        """Test _identify_authentication_method returns Anonymous when no_auth is True."""
+        # Create a RegistryEndpoints instance for testing
+        registry_endpoints = RegistryEndpoints(cmd=mocked_cmd)
+
+        # Test with no_auth=True
+        result = registry_endpoints._identify_authentication_method(no_auth=True)
+        assert result == RegistryEndpointAuthenticationType.ANONYMOUS.value
+
+        # Test with no_auth=True and other parameters (should still return Anonymous)
+        result = registry_endpoints._identify_authentication_method(
+            no_auth=True,
+            audience="test-audience",
+            client_id="test-client",
+        )
+        assert result == RegistryEndpointAuthenticationType.ANONYMOUS.value
+
+    def test_process_registry_endpoint_authentication_defaults(self, mocked_cmd):
+        """Test _process_registry_endpoint_authentication with no_auth parameter."""
+        registry_endpoints = RegistryEndpoints(cmd=mocked_cmd)
+
+        # Test with no_auth=True - should return Anonymous
+        result = registry_endpoints._process_registry_endpoint_authentication(no_auth=True)
+        expected = {"method": RegistryEndpointAuthenticationType.ANONYMOUS.value, "anonymousSettings": {}}
+        assert result == expected
+
+        # Test with no_auth=True and other parameters (should raise exception)
+        with pytest.raises(MutuallyExclusiveArgumentError):
+            registry_endpoints._process_registry_endpoint_authentication(
+                no_auth=True, audience="test-audience", client_id="test-client"
+            )
+
+        # Test with no_auth=False (should use default SAMI)
+        result = registry_endpoints._process_registry_endpoint_authentication(no_auth=False)
+        expected_sami = {
+            "method": RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value,
+            "systemAssignedManagedIdentitySettings": {},
+        }
+        assert result == expected_sami
 
 
 def test_registry_endpoint_add_anonymous(mocked_cmd, mocked_responses: responses):

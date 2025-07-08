@@ -873,7 +873,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "host",
             options_list=["--host"],
-            help="The URL endpoint of the Azure Container Registry.",
+            help="The endpoint of the Azure Container Registry.",
         )
         context.argument(
             "auth_type",
@@ -881,7 +881,7 @@ def load_iotops_arguments(self, _):
             arg_type=get_enum_type(RegistryEndpointAuthenticationType, default=None),
             help="The authentication type for the registry endpoint. If not provided, "
             "the authentication type will be determined based on the provided authentication parameters. "
-            "If no authentication parameters are provided, anonymous authentication will be used.",
+            "If no authentication parameters are provided, system-assigned managed identity authentication will be used.",
         )
         context.argument(
             "secret_ref",
@@ -912,6 +912,12 @@ def load_iotops_arguments(self, _):
             options_list=["--scope"],
             help="Scope for user-assigned managed identity registry authentication.",
             arg_group="User-Assigned Identity",
+        )
+        context.argument(
+            "no_auth",
+            options_list=["--no-auth"],
+            arg_type=get_three_state_flag(),
+            help="Explictly use anonymous authentication.",
         )
         context.argument(
             "trusted_signing_configmap_key",

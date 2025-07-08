@@ -83,6 +83,7 @@ class RegistryEndpoints(Queryable):
         client_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
         scope: Optional[str] = None,
+        no_auth: Optional[bool] = None,
     ) -> dict:
         """
         Process the authentication type for the registry endpoint.
@@ -94,6 +95,7 @@ class RegistryEndpoints(Queryable):
         :param client_id: Client ID for the authentication.
         :param tenant_id: Tenant ID for the authentication.
         :param scope: Scope for the authentication.
+        :param no_auth: Whether to use anonymous authentication.
         :returns: The authentication configuration dictionary.
         :raises RequiredArgumentMissingError: If required parameters are missing for the authentication type.
         :raises MutuallyExclusiveArgumentError: If parameters from different authentication types are provided.
@@ -107,6 +109,7 @@ class RegistryEndpoints(Queryable):
                 client_id=client_id,
                 tenant_id=tenant_id,
                 scope=scope,
+                no_auth=no_auth,
             )
 
         # Validate required / mutually exclusive parameters
@@ -117,6 +120,7 @@ class RegistryEndpoints(Queryable):
             client_id=client_id,
             tenant_id=tenant_id,
             scope=scope,
+            no_auth=no_auth,
         )
 
         # Build authentication configuration
@@ -193,6 +197,7 @@ class RegistryEndpoints(Queryable):
         client_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
         scope: Optional[str] = None,
+        no_auth: Optional[bool] = None,
         trusted_signing_configmap_key: Optional[str] = None,
         trusted_signing_secret_key: Optional[str] = None,
         **kwargs,
@@ -210,6 +215,7 @@ class RegistryEndpoints(Queryable):
         :param client_id: Client ID for UserAssignedManagedIdentity authentication.
         :param tenant_id: Tenant ID for UserAssignedManagedIdentity authentication.
         :param scope: Scope for UserAssignedManagedIdentity authentication.
+        :param no_auth: Whether to use anonymous authentication.
         :param trusted_signing_configmap_key: ConfigMap reference for trusted signing key.
         :param trusted_signing_secret_key: Secret reference for trusted signing key.
         :param kwargs: Additional keyword arguments for the operation.
@@ -223,6 +229,7 @@ class RegistryEndpoints(Queryable):
             client_id=client_id,
             tenant_id=tenant_id,
             scope=scope,
+            no_auth=no_auth,
         )
 
         # Process trusted signing key configuration
@@ -270,6 +277,7 @@ class RegistryEndpoints(Queryable):
         client_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
         scope: Optional[str] = None,
+        no_auth: Optional[bool] = None,
         trusted_signing_configmap_key: Optional[str] = None,
         trusted_signing_secret_key: Optional[str] = None,
         **kwargs,
@@ -287,6 +295,7 @@ class RegistryEndpoints(Queryable):
         :param client_id: Client ID for UserAssignedManagedIdentity authentication.
         :param tenant_id: Tenant ID for UserAssignedManagedIdentity authentication.
         :param scope: Scope for UserAssignedManagedIdentity authentication.
+        :param no_auth: Whether to use anonymous authentication.
         :param trusted_signing_configmap_key: ConfigMap reference for trusted signing key.
         :param trusted_signing_secret_key: Secret reference for trusted signing key.
         :param kwargs: Additional keyword arguments for the operation.
@@ -304,7 +313,7 @@ class RegistryEndpoints(Queryable):
             existing_endpoint["properties"]["host"] = host
 
         # Process authentication configuration
-        if any([auth_type, secret_ref, audience, client_id, tenant_id, scope]):
+        if any([auth_type, secret_ref, audience, client_id, tenant_id, scope, no_auth]):
             auth_config = self._process_registry_endpoint_authentication(
                 type=auth_type,
                 secret_ref=secret_ref,
@@ -312,6 +321,7 @@ class RegistryEndpoints(Queryable):
                 client_id=client_id,
                 tenant_id=tenant_id,
                 scope=scope,
+                no_auth=no_auth,
             )
             existing_endpoint["properties"]["authentication"] = auth_config
 
@@ -376,6 +386,7 @@ class RegistryEndpoints(Queryable):
         client_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
         scope: Optional[str] = None,
+        no_auth: Optional[bool] = None,
     ) -> str:
         """
         Identify the authentication method based on provided parameters.
@@ -385,8 +396,13 @@ class RegistryEndpoints(Queryable):
         :param client_id: Client ID for the authentication.
         :param tenant_id: Tenant ID for the authentication.
         :param scope: Scope for the authentication.
+        :param no_auth: Whether to use anonymous authentication.
         :returns: The identified authentication type.
         """
+        # Check for explicit no authentication request
+        if no_auth:
+            return RegistryEndpointAuthenticationType.ANONYMOUS.value
+        
         # Check for ArtifactPullSecret parameters
         if secret_ref:
             return RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value
@@ -399,8 +415,8 @@ class RegistryEndpoints(Queryable):
         if audience:
             return RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value
 
-        # Default to Anonymous if no parameters provided
-        return RegistryEndpointAuthenticationType.ANONYMOUS.value
+        # Default to SystemAssignedManagedIdentity if no parameters provided
+        return RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value
 
     def _validate_authentication_parameters(
         self,
@@ -410,6 +426,7 @@ class RegistryEndpoints(Queryable):
         client_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
         scope: Optional[str] = None,
+        no_auth: Optional[bool] = None,
     ) -> None:
         """
         Validate that provided parameters are compatible with the chosen authentication type.
@@ -420,6 +437,7 @@ class RegistryEndpoints(Queryable):
         :param client_id: Client ID for the authentication.
         :param tenant_id: Tenant ID for the authentication.
         :param scope: Scope for the authentication.
+        :param no_auth: Whether to use anonymous authentication.
         :raises MutuallyExclusiveArgumentError: If incompatible parameters are provided.
         :raises RequiredArgumentMissingError: If required parameters are missing for the authentication type.
         """
@@ -434,6 +452,12 @@ class RegistryEndpoints(Queryable):
             provided_params.append("tenant_id")
         if scope:
             provided_params.append("scope")
+
+        # Check for mutually exclusive no_auth parameter
+        if no_auth and provided_params:
+            raise MutuallyExclusiveArgumentError(
+                f"The --no-auth parameter cannot be used with other authentication parameters."
+            )
 
         required_params = REGISTRY_ENDPOINT_AUTHENTICATION_REQUIRED_PARAMS[auth_type]
         optional_params = REGISTRY_ENDPOINT_AUTHENTICATION_OPTIONAL_PARAMS[auth_type]
