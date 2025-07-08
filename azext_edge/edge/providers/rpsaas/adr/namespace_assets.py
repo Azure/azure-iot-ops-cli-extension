@@ -1239,10 +1239,10 @@ def _process_configs(
         # not allowed: streams
         # still waiting on opcua mgmt group schemas
         result = {
-            "datasetsConfiguration": _process_opcua_dataset_configurations(
+            "datasetsConfiguration": _process_opcua_dataset_configurations_v1(
                 **kwargs
             ),
-            "eventsConfiguration": _process_opcua_event_configurations(
+            "eventsConfiguration": _process_opcua_event_configurations_v1(
                 **kwargs
             ),
             "managementGroupsConfiguration": process_additional_configuration(
@@ -1326,7 +1326,34 @@ def _process_configs(
     return result
 
 
-def _process_opcua_dataset_configurations(
+def _process_opcua_dataset_configurations_v1(
+    original_dataset_configuration: Optional[str] = None,
+    opcua_dataset_publishing_interval: Optional[int] = None,
+    opcua_dataset_sampling_interval: Optional[int] = None,
+    opcua_dataset_queue_size: Optional[int] = None,
+    opcua_dataset_key_frame_count: Optional[int] = None,
+    **_
+) -> str:
+    from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1
+
+    result = json.loads(original_dataset_configuration) if original_dataset_configuration else {}
+    if opcua_dataset_publishing_interval is not None:
+        result["publishingInterval"] = opcua_dataset_publishing_interval
+    if opcua_dataset_sampling_interval is not None:
+        result["samplingInterval"] = opcua_dataset_sampling_interval
+    if opcua_dataset_queue_size is not None:
+        result["queueSize"] = opcua_dataset_queue_size
+    if opcua_dataset_key_frame_count is not None:
+        result["keyFrameCount"] = opcua_dataset_key_frame_count
+
+    ensure_schema_structure(
+        schema=NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1,
+        input_data=result
+    )
+    return json.dumps(result)
+
+
+def _process_opcua_dataset_configurations_v2(
     original_dataset_configuration: Optional[str] = None,
     opcua_dataset_publishing_interval: Optional[int] = None,
     opcua_dataset_sampling_interval: Optional[int] = None,
@@ -1335,7 +1362,10 @@ def _process_opcua_dataset_configurations(
     opcua_dataset_start_instance: Optional[str] = None,
     **_
 ) -> str:
-    from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA
+    """Processes the OPCUA dataset configurations for version 2.
+
+    This version is not yet supported but will be in the future so will keep the code around for now."""
+    from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V2
     result = json.loads(original_dataset_configuration) if original_dataset_configuration else {}
     if opcua_dataset_publishing_interval is not None:
         result["publishingInterval"] = opcua_dataset_publishing_interval
@@ -1349,13 +1379,34 @@ def _process_opcua_dataset_configurations(
         result["startInstance"] = opcua_dataset_start_instance
 
     ensure_schema_structure(
-        schema=NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA,
+        schema=NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V2,
         input_data=result
     )
     return json.dumps(result)
 
 
-def _process_opcua_event_configurations(
+def _process_opcua_event_configurations_v1(
+    original_event_configuration: Optional[str] = None,
+    opcua_event_publishing_interval: Optional[int] = None,
+    opcua_event_queue_size: Optional[int] = None,
+    **_
+) -> str:
+    from .specs import NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V1
+
+    result = json.loads(original_event_configuration) if original_event_configuration else {}
+    if opcua_event_publishing_interval is not None:
+        result["publishingInterval"] = opcua_event_publishing_interval
+    if opcua_event_queue_size is not None:
+        result["queueSize"] = opcua_event_queue_size
+
+    ensure_schema_structure(
+        schema=NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V1,
+        input_data=result
+    )
+    return json.dumps(result)
+
+
+def _process_opcua_event_configurations_v2(
     original_event_configuration: Optional[str] = None,
     opcua_event_publishing_interval: Optional[int] = None,
     opcua_event_queue_size: Optional[int] = None,
@@ -1364,7 +1415,10 @@ def _process_opcua_event_configurations(
     opcua_event_filter_clauses: Optional[List[List[str]]] = None,  # path (req), type, field
     **_
 ) -> str:
-    from .specs import NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA
+    """Processes the OPCUA event configurations for version 2.
+
+    This version is not yet supported but will be in the future so will keep the code around for now."""
+    from .specs import NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V2
 
     result = json.loads(original_event_configuration) if original_event_configuration else {}
     if opcua_event_publishing_interval is not None:
@@ -1395,7 +1449,7 @@ def _process_opcua_event_configurations(
             result["eventFilter"]["selectClauses"].append(formatted_clause)
 
     ensure_schema_structure(
-        schema=NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA,
+        schema=NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V2,
         input_data=result
     )
     return json.dumps(result)

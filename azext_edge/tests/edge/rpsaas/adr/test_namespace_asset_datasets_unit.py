@@ -87,7 +87,6 @@ def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 
         "opcua_dataset_sampling_interval": 750,
         "opcua_dataset_queue_size": 100,
         "opcua_dataset_key_frame_count": 3,
-        "opcua_dataset_start_instance": "ns=1;i=2000"
     }),
     # OPCUA asset dataset with minimal config
     ("opcua", add_namespace_opcua_asset_dataset, {})
@@ -152,8 +151,6 @@ def test_add_namespace_asset_dataset(
                 config["queueSize"] = config_params["opcua_dataset_queue_size"]
             if "opcua_dataset_key_frame_count" in config_params:
                 config["keyFrameCount"] = config_params["opcua_dataset_key_frame_count"]
-            if "opcua_dataset_start_instance" in config_params:
-                config["startInstance"] = config_params["opcua_dataset_start_instance"]
             if config:
                 expected_dataset["datasetConfiguration"] = json.dumps(config)
 
@@ -727,7 +724,6 @@ def test_show_namespace_asset_dataset(
         "opcua_dataset_sampling_interval": 750,
         "opcua_dataset_queue_size": 100,
         "opcua_dataset_key_frame_count": 3,
-        "opcua_dataset_start_instance": "ns=1;i=2000"
     })
 ])
 def test_update_namespace_asset_dataset(
@@ -807,8 +803,6 @@ def test_update_namespace_asset_dataset(
                 config["queueSize"] = unique_reqs["opcua_dataset_queue_size"]
             if "opcua_dataset_key_frame_count" in unique_reqs:
                 config["keyFrameCount"] = unique_reqs["opcua_dataset_key_frame_count"]
-            if "opcua_dataset_start_instance" in unique_reqs:
-                config["startInstance"] = unique_reqs["opcua_dataset_start_instance"]
 
             expected_dataset["datasetConfiguration"] = json.dumps(config)
 

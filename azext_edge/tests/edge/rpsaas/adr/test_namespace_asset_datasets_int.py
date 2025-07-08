@@ -281,7 +281,6 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
         f"--sampling-int 500 "
         f"--queue-size 10 "
         f"--key-frame-count 5 "
-        f"--start-inst 'ns=2;i=1000'"
     )
 
     assert_dataset_properties(
