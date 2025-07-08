@@ -719,7 +719,7 @@ def load_iotops_help():
           Only Azure Container Registry (ACR) endpoints are supported.
 
         examples:
-        - name: Add a basic anonymous registry endpoint
+        - name: Add a basic anonymous registry endpoint.
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
         - name: Add a registry endpoint with system-assigned managed identity and optional audience configuration
@@ -737,11 +737,11 @@ def load_iotops_help():
         - name: Add a registry endpoint with a trusted signing key config map reference
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
-            --trust-config-map my-trust-configmap
+            --trust-config-map-ref my-trust-configmap
         - name: Add a registry endpoint with a trusted signing key secret reference
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
-            --trust-secret my-trust-secret
+            --trust-secret-ref my-trust-secret
     """
 
     helps[
@@ -756,7 +756,7 @@ def load_iotops_help():
             az iot ops registry update -n myregistry --host newregistry.azurecr.io -i myinstance -g myresourcegroup --auth-type SystemAssignedManagedIdentity
         - name: Update an endpoint to use trusted signing with a config map reference
           text: >
-            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --trust-config-map my-trust-configmap
+            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --trust-config-map-ref my-trust-configmap
     """
 
     helps[

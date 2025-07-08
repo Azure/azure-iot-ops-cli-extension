@@ -100,7 +100,7 @@ class RegistryEndpoints(Queryable):
         """
 
         # Determine authentication type if not provided
-        if type is None:
+        if not type:
             type = self._identify_authentication_method(
                 secret_ref=secret_ref,
                 audience=audience,

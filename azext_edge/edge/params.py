@@ -417,9 +417,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "compression",
             options_list=["--compression"],
-            arg_type=get_enum_type(
-                KafkaCompressionType, default=KafkaCompressionType.NONE.value
-            ),
+            arg_type=get_enum_type(KafkaCompressionType, default=KafkaCompressionType.NONE.value),
             help="Compression type for the messages sent to Kafka topics.",
         )
         context.argument(
@@ -439,8 +437,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "group_id",
             options_list=["--group-id", "--gid"],
-            help="ID of consumer group that the data flow uses to read messages "
-            "from the Kafka topic.",
+            help="ID of consumer group that the data flow uses to read messages " "from the Kafka topic.",
         )
         context.argument(
             "partition_strategy",
@@ -490,9 +487,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "protocol",
             options_list=["--protocol"],
-            arg_type=get_enum_type(
-                ListenerProtocol, default=ListenerProtocol.MQTT.value
-            ),
+            arg_type=get_enum_type(ListenerProtocol, default=ListenerProtocol.MQTT.value),
             help="Protocol to use for client connections.",
         )
         context.argument(
@@ -512,15 +507,11 @@ def load_iotops_arguments(self, _):
         context.argument(
             "session_expiry",
             options_list=["--session-expiry"],
-            help="The session expiry interval in seconds for the data flow MQTT client. "
-            "Min value: 0.",
+            help="The session expiry interval in seconds for the data flow MQTT client. Min value: 0.",
             type=int,
         )
 
-    for cmd_space in [
-        "iot ops dataflow endpoint create adx",
-        "iot ops dataflow endpoint update adx",
-    ]:
+    for cmd_space in ["iot ops dataflow endpoint create adx", "iot ops dataflow endpoint update adx"]:
         with self.argument_context(cmd_space) as context:
             context.argument(
                 "database_name",
@@ -924,13 +915,13 @@ def load_iotops_arguments(self, _):
         )
         context.argument(
             "trusted_signing_configmap_key",
-            options_list=["--trust-config-map", "--tcm"],
+            options_list=["--trust-config-map-ref", "--tcmr"],
             help="Trusted signing config map reference.",
             arg_group="Trusted Signing",
         )
         context.argument(
             "trusted_signing_secret_key",
-            options_list=["--trust-secret", "--ts"],
+            options_list=["--trust-secret-ref", "--tsr"],
             help="Trusted signing secret reference.",
             arg_group="Trusted Signing",
         )
@@ -1185,9 +1176,7 @@ def load_iotops_arguments(self, _):
                 "enable_rsync_rules",
                 options_list=["--enable-rsync"],
                 arg_type=get_three_state_flag(),
-                deprecate_info=context.deprecate(
-                    target="--enable-rsync", redirect="az iot ops rsync enable"
-                ),
+                deprecate_info=context.deprecate(target="--enable-rsync", redirect="az iot ops rsync enable"),
                 help="Resource sync rules will be included in the IoT Operations deployment.",
             )
             context.argument(
@@ -1396,9 +1385,7 @@ def load_iotops_arguments(self, _):
                 help=f"{moniker} arc extension config sync mode. This option is applicable if an upgrade is "
                 "requested to a known version. Mode 'full' will alter current config to the target, "
                 "'add' will apply additive changes only, 'none' is a no-op.",
-                arg_type=get_enum_type(
-                    ConfigSyncModeType, default=ConfigSyncModeType.FULL.value
-                ),
+                arg_type=get_enum_type(ConfigSyncModeType, default=ConfigSyncModeType.FULL.value),
                 arg_group="Extension Config",
                 deprecate_info=context.deprecate(hide=True),
             )
@@ -1705,9 +1692,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "summary_mode",
             options_list=["--summary"],
-            arg_type=get_enum_type(
-                CloneSummaryMode, default=CloneSummaryMode.SIMPLE.value
-            ),
+            arg_type=get_enum_type(CloneSummaryMode, default=CloneSummaryMode.SIMPLE.value),
             help="Deployment summary option.",
         )
         context.argument(
@@ -1729,9 +1714,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "template_mode",
             options_list=["--mode"],
-            arg_type=get_enum_type(
-                CloneTemplateMode, default=CloneTemplateMode.NESTED.value
-            ),
+            arg_type=get_enum_type(CloneTemplateMode, default=CloneTemplateMode.NESTED.value),
             help="When mode 'nested' is used, sub-deployments will be self-contained in the root deployment. "
             "When mode 'linked' is used, asset related sub-deployments will be split and stored as separate files "
             "linked by the root deployment.",

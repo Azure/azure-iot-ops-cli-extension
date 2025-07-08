@@ -28,7 +28,7 @@ def add_registry_endpoint(
     trusted_signing_configmap_key: Optional[str] = None,
     trusted_signing_secret_key: Optional[str] = None,
     **kwargs,
-):
+) -> dict:
     """Add a registry endpoint to an IoT Operations instance."""
     return RegistryEndpoints(cmd).add(
         instance_name=instance_name,
@@ -62,7 +62,7 @@ def update_registry_endpoint(
     trusted_signing_configmap_key: Optional[str] = None,
     trusted_signing_secret_key: Optional[str] = None,
     **kwargs,
-):
+) -> dict:
     """Update a registry endpoint in an IoT Operations instance."""
     return RegistryEndpoints(cmd).update(
         instance_name=instance_name,
@@ -81,7 +81,7 @@ def update_registry_endpoint(
     )
 
 
-def show_registry_endpoint(cmd, registry_endpoint_name: str, instance_name: str, resource_group_name: str):
+def show_registry_endpoint(cmd, registry_endpoint_name: str, instance_name: str, resource_group_name: str) -> dict:
     """Show details of a registry endpoint in an IoT Operations instance."""
     return RegistryEndpoints(cmd).show(
         instance_name=instance_name,
