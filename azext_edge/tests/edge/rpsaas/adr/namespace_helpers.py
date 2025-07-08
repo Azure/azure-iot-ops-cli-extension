@@ -13,6 +13,20 @@ from ....helpers import create_file
 """Helpers for ADR v2 tests."""
 
 
+def assert_point_properties(result, **expected):
+    """Verify datapoint properties match expected values.
+
+    Minimal checks since unit tests already validate the command structure."""
+    result_map = {point["name"]: point for point in result}
+    result_point = result_map.get(expected["name"])
+    assert result_point["name"] == expected["name"]
+
+    if "data_source" in expected:
+        assert result_point["dataSource"] == expected["data_source"]
+    if "custom_configuration" in expected:
+        assert result_point["dataPointConfiguration"] == expected["custom_configuration"]
+
+
 def check_configuration(config_key: str, added: dict, expected: dict):
     """Helper function to check dataset/event configuration."""
     if expected and config_key in expected:
@@ -61,7 +75,7 @@ def create_config_file(tracked_files: list) -> Tuple[str, str]:
         generate_random_string(): generate_random_string()
     })
     file_path = create_file(
-        file_name=f"test_additional_config_{generate_random_string(size=4)}.json",
+        file_name=f"test_add_config_{generate_random_string(size=4)}.json",
         module_file=__file__,
         tracked_files=tracked_files,
         content=json_content

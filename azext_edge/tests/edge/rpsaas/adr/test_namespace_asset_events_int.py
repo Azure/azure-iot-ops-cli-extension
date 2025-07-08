@@ -8,10 +8,12 @@ from typing import List
 
 from ....generators import generate_random_string
 from ....helpers import run
-from .namespace_helpers import create_config_file
+from .namespace_helpers import create_config_file, assert_point_properties
 
 
-def test_namespace_custom_asset_event_lifecycle_operations(require_init, tracked_resources: List[str]):
+def test_namespace_custom_asset_event_lifecycle_operations(
+    require_init, tracked_resources: List[str], tracked_files: List[str]
+):
     """Test complete lifecycle of custom asset event and datapoint operations."""
     # Setup test variables
     instance_name = require_init["instanceName"]
@@ -49,13 +51,13 @@ def test_namespace_custom_asset_event_lifecycle_operations(require_init, tracked
 
     # 1. CREATE EVENT
     event_notifier = "temperature.alarm"
-    custom_config_path, custom_config = create_config_file(tracked_resources)
-    event_destinations = "topic=factory/custom/events qos=1 retain=false ttl=3600"
+    custom_config_path, custom_config = create_config_file(tracked_files)
+    event_destinations = "topic=factory/custom/events qos=1 retain=Never ttl=3600"
 
     event_result = run(
         f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
-        f"--event-config {custom_config_path} --event-dest '{event_destinations}'"
+        f"--config {custom_config_path} --destination {event_destinations}"
     )
 
     assert_event_properties(
@@ -89,12 +91,12 @@ def test_namespace_custom_asset_event_lifecycle_operations(require_init, tracked
 
     # 4. UPDATE EVENT
     updated_event_notifier = "temperature.alarm.critical"
-    custom_config_path, custom_config = create_config_file(tracked_resources)
+    custom_config_path, custom_config = create_config_file(tracked_files)
 
     updated_event = run(
         f"az iot ops ns asset custom event update --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {updated_event_notifier} "
-        f"--event-config custom_config_path"
+        f"--config {custom_config_path}"
     )
 
     assert_event_properties(
@@ -121,7 +123,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(require_init, tracked
 
     # 6. ADD EVENT DATAPOINT
     datapoint_data_source = "temperature.severity"
-    custom_config_path, custom_config = create_config_file(tracked_resources)
+    custom_config_path, custom_config = create_config_file(tracked_files)
 
     datapoint_result = run(
         f"az iot ops ns asset custom event point add --asset {asset_name} --instance {instance_name} "
@@ -129,7 +131,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(require_init, tracked
         f"--data-source {datapoint_data_source} --custom-config {custom_config_path}"
     )
 
-    assert_event_point_properties(
+    assert_point_properties(
         datapoint_result,
         name=datapoint_name_1,
         data_source=datapoint_data_source,
@@ -138,7 +140,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(require_init, tracked
 
     # 7. ADD ANOTHER EVENT DATAPOINT
     datapoint_data_source_2 = "temperature.level"
-    custom_config_path, custom_config = create_config_file(tracked_resources)
+    custom_config_path, custom_config = create_config_file(tracked_files)
 
     datapoint_result_2 = run(
         f"az iot ops ns asset custom event point add --asset {asset_name} --instance {instance_name} "
@@ -146,7 +148,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(require_init, tracked
         f"--data-source {datapoint_data_source_2} --custom-config {custom_config_path}"
     )
 
-    assert_event_point_properties(
+    assert_point_properties(
         datapoint_result_2,
         name=datapoint_name_2,
         data_source=datapoint_data_source_2,
@@ -172,7 +174,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(require_init, tracked
         f"--data-source {replaced_datapoint_source} --replace"
     )
 
-    assert_event_point_properties(
+    assert_point_properties(
         replaced_datapoint,
         name=datapoint_name_1,
         data_source=replaced_datapoint_source
@@ -232,7 +234,6 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
         f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
         f"--instance {instance_name} -g {resource_group} --device {device_name} "
         f"--endpoint-address 'opc.tcp://192.168.1.100:4840' "
-        "--endpoint-type opcua"
     )
 
     # Create OPC UA asset
@@ -246,7 +247,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
 
     # 1. CREATE EVENT WITH FULL OPCUA CONFIGURATION
     event_notifier = "ns=2;i=1000"
-    event_destinations = "topic=factory/opcua/events qos=2 retain=true ttl=7200"
+    event_destinations = "topic=factory/opcua/events qos=2 retain=Keep ttl=7200"
     publishing_interval = 500
     queue_size = 10
     filter_type = "equals"
@@ -255,7 +256,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     event_result = run(
         f"az iot ops ns asset opcua event add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier '{event_notifier}' "
-        f"--event-dest '{event_destinations}' --event-publish-int {publishing_interval} "
+        f"--destination {event_destinations} --event-publish-int {publishing_interval} "
         f"--event-queue-size {queue_size} --event-filter-type {filter_type} "
         f"--event-filter-clause {filter_clauses}"
     )
@@ -359,7 +360,6 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
         f"az iot ops ns device endpoint inbound add onvif --name {endpoint_name} "
         f"--instance {instance_name} -g {resource_group} --device {device_name} "
         f"--endpoint-address 'http://192.168.1.100:8080/onvif/device' "
-        "--endpoint-type onvif"
     )
 
     # Create ONVIF asset
@@ -373,12 +373,12 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
 
     # 1. CREATE EVENT
     event_notifier = "motion.detection"
-    event_destinations = "topic=factory/onvif/events qos=1 retain=false ttl=1800"
+    event_destinations = "topic=factory/onvif/events qos=1 retain=Never ttl=1800"
 
     event_result = run(
         f"az iot ops ns asset onvif event add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
-        f"--event-dest '{event_destinations}'"
+        f"--destination {event_destinations}"
     )
 
     assert_event_properties(
@@ -411,12 +411,12 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
 
     # 4. UPDATE EVENT
     updated_event_notifier = "motion.detection.enhanced"
-    updated_event_destinations = "topic=factory/onvif/events/enhanced qos=2 retain=true ttl=3600"
+    updated_event_destinations = "topic=factory/onvif/events/enhanced qos=2 retain=Keep ttl=3600"
 
     updated_event = run(
         f"az iot ops ns asset onvif event update --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {updated_event_notifier} "
-        f"--event-dest '{updated_event_destinations}'"
+        f"--destination {updated_event_destinations}"
     )
 
     assert_event_properties(
@@ -465,15 +465,3 @@ def assert_event_properties(result, **expected):
         assert result["eventNotifier"] == expected["event_notifier"]
     if "custom_configuration" in expected:
         assert result["eventConfiguration"] == expected["custom_configuration"]
-
-
-def assert_event_point_properties(result, **expected):
-    """Verify event point properties match expected values."""
-    assert result["name"] == expected["name"]
-
-    result_props = result.get("properties", {})
-
-    if "data_source" in expected:
-        assert result_props.get("dataSource") == expected["data_source"]
-    if "custom_configuration" in expected:
-        assert result["customConfiguration"] == expected["custom_configuration"]

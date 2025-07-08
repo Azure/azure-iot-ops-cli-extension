@@ -274,14 +274,14 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
         name=asset_name_onvif,
         description="Updated ONVIF Camera",
         display_name="Main Entrance Camera",
-        attributes=["location=entrance", "resolution=4K"]
+        attributes=["location=entrance", "resolution=4K", "floor=3"],
     )
 
     # 2. Update OPCUA asset
     updated_opcua = run(
         f"az iot ops ns asset opcua update --name {asset_name_opcua} --instance {instance_name} "
         f"-g {resource_group} --description \"Updated OPC UA Sensor\" "
-        "--dataset-publish-int 500 --dataset-sampling-int 250"
+        "--dataset-publish-int 500 --dataset-sampling-int 250 "
         "--model \"Sensor-T3000\" --manufacturer \"ContosoTech\" "
     )
 
@@ -296,7 +296,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     # 3. Update Media asset
     updated_media = run(
         f"az iot ops ns asset media update --name {asset_name_media} --instance {instance_name} "
-        f"-g {resource_group} --task-type \"snapshot-to-fs\" --task-format \"png\" --path \"/data/snapshots\""
+        f"-g {resource_group} --task-type \"snapshot-to-fs\" --task-format \"png\" --path \"/data/snapshots\" "
         "--serial-number \"MEDIA567890-UPDATED\" "
     )
 
