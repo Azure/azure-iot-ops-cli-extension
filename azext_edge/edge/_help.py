@@ -18,6 +18,7 @@ from azext_edge.edge.providers.edge_api import (
     TRUSTMANAGER_API_V1,
 )
 
+from .common import GET_VERSIONS_URL
 from .providers.orchestration.common import (
     CLONE_INSTANCE_VERS_MAX,
     CLONE_INSTANCE_VERS_MIN,
@@ -2962,4 +2963,16 @@ def load_iotops_help():
         - name: Disable resource sync for the target instance.
           text: >
             az iot ops rsync disable -n myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops get-versions"
+    ] = f"""
+        type: command
+        short-summary: Opens the version guide located at {GET_VERSIONS_URL} in the default browser.
+
+        examples:
+        - name: Route to the version guide in a new browser window.
+          text: >
+            az iot ops get-versions
     """
