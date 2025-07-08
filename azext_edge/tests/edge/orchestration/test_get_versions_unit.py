@@ -89,5 +89,4 @@ def test_get_versions_target_link_constant():
     """Test that the target link constant has the expected value."""
     from azext_edge.edge.common import GET_VERSIONS_URL
 
-    # This test ensures the URL constant has the expected value
     assert GET_VERSIONS_URL == "https://aka.ms/aio-versions"
