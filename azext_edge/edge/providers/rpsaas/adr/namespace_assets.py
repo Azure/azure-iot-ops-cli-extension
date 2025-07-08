@@ -1138,10 +1138,10 @@ def _process_configs(
         # not allowed: streams
         # still waiting on opcua mgmt group schemas
         result = {
-            "datasetsConfiguration": _process_opcua_dataset_configurations(
+            "datasetsConfiguration": _process_opcua_dataset_configurations_v1(
                 **kwargs
             ),
-            "eventsConfiguration": _process_opcua_event_configurations(
+            "eventsConfiguration": _process_opcua_event_configurations_v1(
                 **kwargs
             ),
             "managementGroupsConfiguration": process_additional_configuration(
@@ -1227,9 +1227,28 @@ def _process_configs(
 
 def _process_opcua_dataset_configurations_v1(
     original_dataset_configuration: Optional[str] = None,
+    opcua_dataset_publishing_interval: Optional[int] = None,
+    opcua_dataset_sampling_interval: Optional[int] = None,
+    opcua_dataset_queue_size: Optional[int] = None,
+    opcua_dataset_key_frame_count: Optional[int] = None,
 ) -> str:
-    # TODO
-    pass
+    from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1
+
+    result = json.loads(original_dataset_configuration) if original_dataset_configuration else {}
+    if opcua_dataset_publishing_interval is not None:
+        result["publishingInterval"] = opcua_dataset_publishing_interval
+    if opcua_dataset_sampling_interval is not None:
+        result["samplingInterval"] = opcua_dataset_sampling_interval
+    if opcua_dataset_queue_size is not None:
+        result["queueSize"] = opcua_dataset_queue_size
+    if opcua_dataset_key_frame_count is not None:
+        result["keyFrameCount"] = opcua_dataset_key_frame_count
+
+    ensure_schema_structure(
+        schema=NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1,
+        input_data=result
+    )
+    return json.dumps(result)
 
 
 def _process_opcua_dataset_configurations_v2(
@@ -1241,6 +1260,9 @@ def _process_opcua_dataset_configurations_v2(
     opcua_dataset_start_instance: Optional[str] = None,
     **_
 ) -> str:
+    """Processes the OPCUA dataset configurations for version 2.
+
+    This version is not yet supported but will be in the future so will keep the code around for now."""
     from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V2
     result = json.loads(original_dataset_configuration) if original_dataset_configuration else {}
     if opcua_dataset_publishing_interval is not None:
