@@ -1019,7 +1019,6 @@ def update_namespace_opcua_asset_dataset(
     opcua_dataset_sampling_interval: Optional[int] = None,
     opcua_dataset_queue_size: Optional[int] = None,
     opcua_dataset_key_frame_count: Optional[int] = None,
-    opcua_dataset_start_instance: Optional[str] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_dataset(
@@ -1034,7 +1033,6 @@ def update_namespace_opcua_asset_dataset(
         opcua_dataset_sampling_interval=opcua_dataset_sampling_interval,
         opcua_dataset_queue_size=opcua_dataset_queue_size,
         opcua_dataset_key_frame_count=opcua_dataset_key_frame_count,
-        opcua_dataset_start_instance=opcua_dataset_start_instance,
         **kwargs
     )
 
@@ -1172,7 +1170,6 @@ def add_namespace_custom_asset_event(
     )
 
 
-# TODO: needs schema confirmation
 def add_namespace_opcua_asset_event(
     cmd,
     asset_name: str,
@@ -1183,8 +1180,6 @@ def add_namespace_opcua_asset_event(
     event_destinations: Optional[str] = None,
     opcua_event_publishing_interval: Optional[int] = None,
     opcua_event_queue_size: Optional[int] = None,
-    opcua_event_filter_type: Optional[str] = None,
-    opcua_event_filter_clauses: Optional[List[List[str]]] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -1198,8 +1193,6 @@ def add_namespace_opcua_asset_event(
         event_destinations=event_destinations,
         opcua_event_publishing_interval=opcua_event_publishing_interval,
         opcua_event_queue_size=opcua_event_queue_size,
-        opcua_event_filter_type=opcua_event_filter_type,
-        opcua_event_filter_clauses=opcua_event_filter_clauses,
         replace=replace,
         **kwargs
     )
@@ -1291,8 +1284,6 @@ def update_namespace_opcua_asset_event(
     event_destinations: Optional[str] = None,
     opcua_event_publishing_interval: Optional[int] = None,
     opcua_event_queue_size: Optional[int] = None,
-    opcua_event_filter_type: Optional[str] = None,
-    opcua_event_filter_clauses: Optional[List[List[str]]] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_event(
@@ -1305,8 +1296,6 @@ def update_namespace_opcua_asset_event(
         event_destinations=event_destinations,
         opcua_event_publishing_interval=opcua_event_publishing_interval,
         opcua_event_queue_size=opcua_event_queue_size,
-        opcua_event_filter_type=opcua_event_filter_type,
-        opcua_event_filter_clauses=opcua_event_filter_clauses,
         **kwargs
     )
 

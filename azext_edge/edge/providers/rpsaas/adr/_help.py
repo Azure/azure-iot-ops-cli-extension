@@ -1539,14 +1539,12 @@ def load_iotops_adr_help():
             az iot ops ns asset opcua create --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --dataset-publish-int 1000
             --dataset-sampling-int 500 --dataset-queue-size 5 --dataset-key-frame-count 1
-            --dataset-start-inst "ns=1;i=1234"
 
         - name: Create an OPC UA asset with event configuration
           text: >
             az iot ops ns asset opcua create --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --event-publish-int 2000
-            --event-queue-size 10 --event-start-inst "ns=1;i=5678"
-            --event-filter-clause path="ns=1;i=1000" type="String" field="Temperature"
+            --event-queue-size 10
 
         - name: Create an OPC UA asset with MQTT destinations for datasets and events
           text: >
@@ -1579,7 +1577,6 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset opcua update --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --event-publish-int 1000 --event-queue-size 5
-            --event-filter-clause path="ns=1;i=2000" type="String" field="Alarm"
 
         - name: Update an OPC UA asset's destination configurations
           text: >
@@ -1621,11 +1618,11 @@ def load_iotops_adr_help():
             -g myInstanceResourceGroup --name pressureData --data-source "ns=2;s=Pressure"
             --publish-int 1000 --sampling-int 500 --queue-size 10
 
-        - name: Add an OPC UA dataset with key frame count and start instance
+        - name: Add an OPC UA dataset with key frame count
           text: >
             az iot ops ns asset opcua dataset add --asset myOpcuaAsset --instance myInstance
             -g myInstanceResourceGroup --name videoData --data-source "ns=2;s=VideoStream"
-            --key-frame-count 5 --start-inst "ns=2;i=1000"
+            --key-frame-count 5
 
         - name: Add an OPC UA dataset with MQTT destination
           text: >
@@ -1787,12 +1784,6 @@ def load_iotops_adr_help():
             -g myInstanceResourceGroup --name systemEvent --event-notifier "ns=2;i=200"
             --publish-int 1500 --queue-size 8
 
-        - name: Add an OPC UA event with filter
-          text: >
-            az iot ops ns asset opcua event add --asset myOpcuaAsset --instance myInstance
-            -g myInstanceResourceGroup --name temperatureAlarm --event-notifier "ns=2;i=3000"
-            --filter-type equals --filter-clause path="ns=2;i=5000" type="String" field="AlarmType"
-
         - name: Add an OPC UA event with MQTT destination
           text: >
             az iot ops ns asset opcua event add --asset myOpcuaAsset --instance myInstance
@@ -1856,12 +1847,6 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset opcua event update --asset myOpcuaAsset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent --publish-int 2000 --queue-size 10
-
-        - name: Update event filter configuration
-          text: >
-            az iot ops ns asset opcua event update --asset myOpcuaAsset --instance myInstance
-            -g myInstanceResourceGroup --name temperatureAlarm --filter-type contains
-            --filter-clause path="ns=2;i=6000" type="Double" field="Temperature"
 
         - name: Update event destination
           text: >

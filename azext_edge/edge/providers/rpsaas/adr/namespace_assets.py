@@ -1332,6 +1332,7 @@ def _process_opcua_dataset_configurations_v1(
     opcua_dataset_sampling_interval: Optional[int] = None,
     opcua_dataset_queue_size: Optional[int] = None,
     opcua_dataset_key_frame_count: Optional[int] = None,
+    **_
 ) -> str:
     from .specs import NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1
 
@@ -1388,6 +1389,7 @@ def _process_opcua_event_configurations_v1(
     original_event_configuration: Optional[str] = None,
     opcua_event_publishing_interval: Optional[int] = None,
     opcua_event_queue_size: Optional[int] = None,
+    **_
 ) -> str:
     from .specs import NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V1
 
