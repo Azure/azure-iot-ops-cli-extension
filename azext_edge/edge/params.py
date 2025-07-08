@@ -881,7 +881,8 @@ def load_iotops_arguments(self, _):
             arg_type=get_enum_type(RegistryEndpointAuthenticationType, default=None),
             help="The authentication type for the registry endpoint. If not provided, "
             "the authentication type will be determined based on the provided authentication parameters. "
-            "If no authentication parameters are provided, system-assigned managed identity authentication will be used.",
+            "If no authentication parameters are provided, system-assigned managed identity authentication "
+            "will be used.",
         )
         context.argument(
             "secret_ref",
