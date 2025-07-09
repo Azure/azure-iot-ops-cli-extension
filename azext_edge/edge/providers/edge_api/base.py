@@ -72,7 +72,7 @@ class EdgeApiManager:
         sep = "\n" if len(self.api_group_map) > 1 else ""
         for group in self.api_group_map:
             # TODO: Fix the separator logic
-            apis_str += f"{group}/[{','.join(self.api_group_map[group])}]{sep}"
+            apis_str += f"{group}/[{','.join(sorted(self.api_group_map[group]))}]{sep}"
         return apis_str
 
     def get_deployed(self, raise_on_404: bool = False) -> Iterable[EdgeResourceApi]:
