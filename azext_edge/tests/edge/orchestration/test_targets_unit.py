@@ -300,7 +300,7 @@ def test_init_targets(target_scenario: dict):
         )
 
 
-def verify_broker_config(target_scenario: dict, parameters):
+def verify_broker_config(target_scenario: dict, parameters: dict):
     assert "serviceType" not in parameters["brokerConfig"]["value"]
     for target_pair in [
         ("broker_frontend_replicas", "frontendReplicas"),
@@ -314,6 +314,7 @@ def verify_broker_config(target_scenario: dict, parameters):
             assert parameters["brokerConfig"]["value"][target_pair[1]] == target_scenario[target_pair[0]]
 
     if "persist_max_size" not in target_scenario:
+        assert "persistence" not in parameters["brokerConfig"]["value"]
         return
 
     explicit_mode_keys = {"stateStore": False, "retain": False, "subscriberQueue": False}
