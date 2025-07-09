@@ -988,7 +988,6 @@ class NamespaceAssets(Queryable):
         asset_type: str,
         stream_name: str,
         replace: bool = False,
-        # TODO: future pr, add datapoints
         **kwargs
     ) -> dict:
         # ignoring typeref
@@ -1162,8 +1161,329 @@ class NamespaceAssets(Queryable):
             )["properties"]["streams"]
             return next(stream for stream in streams if stream["name"] == stream_name)
 
-    # TODO: future pr
     # Management Groups - allowed for opcua, onvif, and custom assets
+    def add_management_group(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        asset_type: str,
+        group_name: str,
+        default_topic: Optional[str] = None,
+        default_timeout: Optional[int] = None,
+        replace: bool = False,
+        **kwargs
+    ) -> dict:
+        # ignoring typeref
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
+            asset_type=asset_type,
+            asset_name=asset_name
+        )
+        mgmt_groups = asset["properties"].get("managementGroups", [])
+        # remove management group if it exists
+        unmatched_mgmt_groups = [mgmt for mgmt in mgmt_groups if mgmt["name"] != group_name]
+        if len(unmatched_mgmt_groups) < len(mgmt_groups) and not replace:
+            raise InvalidArgumentValueError(
+                f"Management group '{group_name}' already exists in asset '{asset_name}'. "
+                "Use --replace to overwrite the existing management group."
+            )
+
+        # create the management group
+        processed_configs = _process_configs(
+            asset_type=asset_type,
+            default=False,
+            **kwargs
+        )
+        unmatched_mgmt_groups.append(
+            {
+                "name": group_name,
+                "defaultTopic": default_topic,
+                "defaultTimeout": default_timeout,
+                "managementGroupConfiguration": processed_configs.get("managementGroupsConfiguration"),
+                "destinations": processed_configs.get("managementGroupsDestinations", []),
+            }
+        )
+        update_payload = {
+            "properties": {
+                "managementGroups": unmatched_mgmt_groups
+            }
+        }
+        with console.status(f"Adding management group {group_name} to asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            mgmt_groups = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["managementGroups"]
+            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)
+
+    def list_management_groups(
+        self, asset_name: str, instance_name: str, instance_resource_group: str
+    ) -> List[dict]:
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        return asset["properties"].get("managementGroups", [])
+
+    def show_management_group(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        group_name: str
+    ) -> dict:
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        return _get_mgmt_group(asset, group_name)
+
+    def remove_management_group(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        group_name: str,
+        **kwargs
+    ) -> dict:
+        from .helpers import NamespaceResource
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = NamespaceResource(asset["id"])
+
+        mgmt_groups = asset["properties"].get("managementGroups", [])
+        # note that delete should be ok with management group not there
+        remaining_mgmt_groups = [mgmt for mgmt in mgmt_groups if mgmt["name"] != group_name]
+
+        if len(remaining_mgmt_groups) == len(mgmt_groups):
+            logger.info(f"Management group '{group_name}' not found in asset '{asset_name}'.")
+            return mgmt_groups
+
+        update_payload = {
+            "properties": {
+                "managementGroups": remaining_mgmt_groups
+            }
+        }
+        with console.status(f"Removing management group {group_name} from asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            return self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["managementGroups"]
+
+    def update_management_group(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        asset_type: str,
+        group_name: str,
+        default_topic: Optional[str] = None,
+        default_timeout: Optional[int] = None,
+        **kwargs
+    ) -> dict:
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
+            asset_type=asset_type,
+            asset_name=asset_name
+        )
+        # check if management group exists
+        mgmt_groups = asset["properties"].get("managementGroups", [])
+        mgmt_group = _get_mgmt_group(asset, group_name)
+
+        # process the configs + destinations
+        processed_configs = _process_configs(
+            asset_type=asset_type,
+            default=False,
+            original_management_group_configuration=mgmt_group.get("managementGroupConfiguration"),
+            **kwargs
+        )
+
+        # update the management group properties
+        if "managementGroupsConfiguration" in processed_configs:
+            mgmt_group["managementGroupConfiguration"] = processed_configs["managementGroupsConfiguration"]
+        if default_topic:
+            mgmt_group["defaultTopic"] = default_topic
+        if default_timeout:
+            mgmt_group["defaultTimeout"] = default_timeout
+        if "managementGroupsDestinations" in processed_configs:
+            mgmt_group["destinations"] = processed_configs["managementGroupsDestinations"]
+
+        update_payload = {
+            "properties": {
+                "managementGroups": mgmt_groups
+            }
+        }
+        with console.status(f"Updating management group {group_name} in asset {asset_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            mgmt_groups = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["managementGroups"]
+            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)
+
+    # MANAGEMENT GROUP ACTIONS
+    def add_management_group_action(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        asset_type: str,
+        group_name: str,
+        action_name: str,
+        target_uri: str,
+        topic: Optional[str] = None,
+        action_type: Optional[str] = None,
+        timeout: Optional[int] = None,
+        custom_configuration: Optional[str] = None,
+        replace: bool = False,
+        **kwargs
+    ) -> dict:
+        # also ignore typeref here
+        asset, namespace = self._check_device_props(
+            instance_resource_group=instance_resource_group,
+            instance_name=instance_name,
+            asset_type=asset_type,
+            asset_name=asset_name
+        )
+        mgmt_group = _get_mgmt_group(asset, group_name)
+
+        actions = mgmt_group.get("actions", [])
+        unmatched_actions = [action for action in actions if action["name"] != action_name]
+        if len(unmatched_actions) < len(actions) and not replace:
+            raise InvalidArgumentValueError(
+                f"Action '{action_name}' already exists in management group '{group_name}' "
+                f"of asset '{asset_name}'. Use --replace to overwrite the existing action."
+            )
+
+        # create the action
+        action = {
+            "name": action_name,
+            "targetUri": target_uri,
+            "topic": topic,
+            "actionType": action_type,
+            "timeoutInSeconds": timeout
+        }
+        if custom_configuration:
+            action["customConfiguration"] = process_additional_configuration(
+                custom_configuration, config_type="action"
+
+            )
+        unmatched_actions.append(action)
+        mgmt_group["actions"] = unmatched_actions
+
+        update_payload = {
+            "properties": {
+                "managementGroups": asset["properties"]["managementGroups"]
+            }
+        }
+        with console.status(f"Adding action {action_name} to management group {group_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            mgmt_groups = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["managementGroups"]
+            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)
+
+    def list_management_group_actions(
+        self, asset_name: str, instance_name: str, instance_resource_group: str, group_name: str
+    ) -> List[dict]:
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group
+        )
+        mgmt_group = _get_mgmt_group(asset, group_name)
+        return mgmt_group.get("actions", [])
+
+    def remove_management_group_action(
+        self,
+        asset_name: str,
+        instance_name: str,
+        instance_resource_group: str,
+        group_name: str,
+        action_name: str,
+        **kwargs
+    ) -> dict:
+        from .helpers import NamespaceResource
+        asset = self.show(
+            asset_name=asset_name,
+            instance_name=instance_name,
+            resource_group=instance_resource_group,
+            check_cluster=True
+        )
+        namespace = NamespaceResource(asset["id"])
+        mgmt_group = _get_mgmt_group(asset, group_name)
+
+        actions = mgmt_group.get("actions", [])
+        # note that delete should be ok with action not there
+        remaining_actions = [action for action in actions if action["name"] != action_name]
+
+        if len(remaining_actions) == len(actions):
+            logger.info(
+                f"Action '{action_name}' not found in management group '{group_name}' "
+                f"of asset '{asset_name}'."
+            )
+            return actions
+
+        mgmt_group["actions"] = remaining_actions
+
+        update_payload = {
+            "properties": {
+                "managementGroups": asset["properties"]["managementGroups"]
+            }
+        }
+        with console.status(f"Removing action {action_name} from management group {group_name}..."):
+            poller = self.ops.begin_update(
+                resource_group_name=namespace.resource_group,
+                namespace_name=namespace.name,
+                asset_name=asset_name,
+                properties=update_payload
+            )
+            wait_for_terminal_state(poller, **kwargs)
+            mgmt_groups = self.show(
+                asset_name=asset_name,
+                namespace_name=namespace.name,
+                resource_group=namespace.resource_group,
+            )["properties"]["managementGroups"]
+            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)
 
     def _check_device_props(
         self,
@@ -1402,6 +1722,20 @@ def _get_event(asset: dict, event_name: str) -> dict:
     if not matched_events:
         raise InvalidArgumentValueError(f"Event '{event_name}' not found in asset '{asset['name']}'.")
     return matched_events[0]
+
+
+def _get_mgmt_group(asset: dict, management_group_name: str) -> dict:
+    """Helper function to get a management group from an asset.
+
+    Raises InvalidArgumentValueError if the management group is not found.
+    """
+    mgmt_groups = asset["properties"].get("managementGroups", [])
+    matched_mgmt_groups = [mgmt for mgmt in mgmt_groups if mgmt["name"] == management_group_name]
+    if not matched_mgmt_groups:
+        raise InvalidArgumentValueError(
+            f"Management group '{management_group_name}' not found in asset '{asset['name']}'."
+        )
+    return matched_mgmt_groups[0]
 
 
 # maybe move the config processing functions to specs?

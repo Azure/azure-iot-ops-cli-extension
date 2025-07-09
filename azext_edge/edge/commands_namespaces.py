@@ -1655,4 +1655,329 @@ def remove_namespace_asset_stream(
         **kwargs
     )
 
+
 # MANAGEMENT GROUP COMMANDS
+def add_namespace_custom_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    default_topic: Optional[str] = None,
+    default_timeout: Optional[int] = None,
+    mgmt_custom_configuration: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_management_group(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        asset_type="custom",
+        default_timeout=default_timeout,
+        default_topic=default_topic,
+        mgmt_custom_configuration=mgmt_custom_configuration,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_opcua_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    default_topic: Optional[str] = None,
+    default_timeout: Optional[int] = None,
+    # mgmt_custom_configuration: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_management_group(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        asset_type=DeviceEndpointType.OPCUA.value,
+        default_timeout=default_timeout,
+        default_topic=default_topic,
+        # mgmt_custom_configuration=mgmt_custom_configuration,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_onvif_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    default_topic: Optional[str] = None,
+    default_timeout: Optional[int] = None,
+    # mgmt_custom_configuration: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_management_group(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        asset_type=DeviceEndpointType.ONVIF.value,
+        default_timeout=default_timeout,
+        default_topic=default_topic,
+        # mgmt_custom_configuration=mgmt_custom_configuration,
+        replace=replace,
+        **kwargs
+    )
+
+
+def list_namespace_asset_management_groups(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str
+) -> List[dict]:
+    return NamespaceAssets(cmd).list_management_groups(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
+
+def show_namespace_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str
+) -> dict:
+    return NamespaceAssets(cmd).show_management_group(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name
+    )
+
+
+def update_namespace_custom_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    default_topic: Optional[str] = None,
+    default_timeout: Optional[int] = None,
+    mgmt_custom_configuration: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_management_group(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        asset_type="custom",
+        default_timeout=default_timeout,
+        default_topic=default_topic,
+        mgmt_custom_configuration=mgmt_custom_configuration,
+        **kwargs
+    )
+
+
+def update_namespace_opcua_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    default_topic: Optional[str] = None,
+    default_timeout: Optional[int] = None,
+    # mgmt_custom_configuration: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_management_group(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        asset_type=DeviceEndpointType.OPCUA.value,
+        default_timeout=default_timeout,
+        default_topic=default_topic,
+        # mgmt_custom_configuration=mgmt_custom_configuration,
+        **kwargs
+    )
+
+
+def update_namespace_onvif_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    default_topic: Optional[str] = None,
+    default_timeout: Optional[int] = None,
+    # mgmt_custom_configuration: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_management_group(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        asset_type=DeviceEndpointType.ONVIF.value,
+        default_timeout=default_timeout,
+        default_topic=default_topic,
+        # mgmt_custom_configuration=mgmt_custom_configuration,
+        **kwargs
+    )
+
+
+def remove_namespace_asset_management_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).remove_management_group(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        **kwargs
+    )
+
+
+# MANAGEMENT GROUP ACTION COMMANDS
+def add_namespace_custom_asset_management_group_action(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    action_name: str,
+    target_uri: str,
+    action_type: Optional[str] = None,
+    custom_configuration: Optional[str] = None,
+    timeout: Optional[int] = None,
+    topic: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_management_group_action(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        action_name=action_name,
+        asset_type="custom",
+        target_uri=target_uri,
+        action_type=action_type,
+        custom_configuration=custom_configuration,
+        timeout=timeout,
+        topic=topic,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_opcua_asset_management_group_action(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    action_name: str,
+    target_uri: str,
+    action_type: Optional[str] = None,
+    # custom_configuration: Optional[str] = None,
+    timeout: Optional[int] = None,
+    topic: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_management_group_action(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        action_name=action_name,
+        asset_type=DeviceEndpointType.OPCUA.value,
+        target_uri=target_uri,
+        action_type=action_type,
+        # custom_configuration=custom_configuration,
+        timeout=timeout,
+        topic=topic,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_onvif_asset_management_group_action(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    action_name: str,
+    target_uri: str,
+    action_type: Optional[str] = None,
+    # custom_configuration: Optional[str] = None,
+    timeout: Optional[int] = None,
+    topic: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_management_group_action(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        action_name=action_name,
+        asset_type=DeviceEndpointType.ONVIF.value,
+        target_uri=target_uri,
+        action_type=action_type,
+        # custom_configuration=custom_configuration,
+        timeout=timeout,
+        topic=topic,
+        replace=replace,
+        **kwargs
+    )
+
+
+def list_namespace_asset_management_group_actions(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str
+) -> List[dict]:
+    return NamespaceAssets(cmd).list_management_group_actions(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name
+    )
+
+
+def remove_namespace_asset_management_group_action(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    action_name: str,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).remove_management_group_action(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        action_name=action_name,
+        **kwargs
+    )
