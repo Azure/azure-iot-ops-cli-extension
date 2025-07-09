@@ -80,7 +80,6 @@ class InitTargets:
         # Broker
         custom_broker_config: Optional[dict] = None,
         broker_memory_profile: Optional[str] = None,
-        broker_service_type: Optional[str] = None,
         broker_backend_partitions: Optional[int] = None,
         broker_backend_workers: Optional[int] = None,
         broker_backend_redundancy_factor: Optional[int] = None,
@@ -95,7 +94,9 @@ class InitTargets:
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
         self.schema_registry_resource_id = ensure_resource_id(schema_registry_resource_id)
-        self.adr_namespace_resource_id = ensure_resource_id(adr_namespace_resource_id)
+        self.adr_namespace_resource_id = ensure_resource_id(
+            adr_namespace_resource_id, match_context={"resource_group": resource_group_name}
+        )
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
         if not custom_location_name:
@@ -135,7 +136,6 @@ class InitTargets:
         # Broker
         self.add_insecure_listener = add_insecure_listener
         self.broker_memory_profile = broker_memory_profile
-        self.broker_service_type = broker_service_type
         self.broker_backend_partitions = self._sanitize_int(broker_backend_partitions)
         self.broker_backend_workers = self._sanitize_int(broker_backend_workers)
         self.broker_backend_redundancy_factor = self._sanitize_int(broker_backend_redundancy_factor)
@@ -321,19 +321,20 @@ class InitTargets:
             "backendWorkers": self.broker_backend_workers,
             "backendPartitions": self.broker_backend_partitions,
             "memoryProfile": self.broker_memory_profile,
-            "serviceType": self.broker_service_type,
         }
         processed_config_map = {}
 
         validation_errors = []
         broker_config_def = TEMPLATE_BLUEPRINT_INSTANCE.get_type_definition("_1.BrokerConfig")["properties"]
+        if not broker_config_def:
+            return to_process_config_map
+        # TODO @digimaun - replace with longer term pattern
+        broker_config_def["backendRedundancyFactor"]["minValue"] = 2
+
         for config in to_process_config_map:
             if to_process_config_map[config] is None:
                 continue
             processed_config_map[config] = to_process_config_map[config]
-
-            if not broker_config_def:
-                continue
 
             if isinstance(to_process_config_map[config], int):
                 if config in broker_config_def and broker_config_def[config].get("type") == "int":
@@ -450,13 +451,21 @@ def get_default_instance_config(
     }
 
 
-def ensure_resource_id(resource_id: Optional[str]) -> Optional[str]:
+def ensure_resource_id(resource_id: Optional[str], match_context: Optional[dict] = None) -> Optional[str]:
     if not resource_id:
         return
     if is_valid_resource_id(resource_id):
         parsed_id = parse_resource_id(resource_id)  # Validate the resource ID format
         resource_name = parsed_id.get("name")
         if resource_name:
+            if match_context:
+                match_resource_group: str = match_context.get("resource_group", "")
+                if match_resource_group:
+                    if parsed_id.get("resource_group", "").lower() != match_resource_group.lower():
+                        raise InvalidArgumentValueError(
+                            f"Resource Id '{resource_id}' does not match the "
+                            f"instance resource group '{match_resource_group}'."
+                        )
             return resource_id
     raise InvalidArgumentValueError(
         f"Malformed resource Id '{resource_id}'. An Azure resource Id has the form:\n"

@@ -20,7 +20,6 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     EXTENSION_TYPE_ACS,
     EXTENSION_TYPE_OPS,
-    EXTENSION_TYPE_OSM,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
@@ -123,14 +122,8 @@ class UpgradeScenario:
 
     def _build_defaults(self):
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
-
-            if ext_type == EXTENSION_TYPE_OSM:
-                # Use last known version of support OSM.
-                vers = "1.2.10"
-                train = "stable"
-            else:
-                vers = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"]
-                train = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["train"]
+            vers = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"]
+            train = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["train"]
 
             self.extensions[ext_type] = {
                 "properties": {
@@ -295,11 +288,7 @@ class UpgradeScenario:
                 "In this case, the train increments to match desired state if the desired state version "
                 "is equal to current state version."
             ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_train="stablez"),
-            {
-                EXTENSION_TYPE_OPS: {
-                    "properties": {"extensionType": EXTENSION_TYPE_OPS, "releaseTrain": BUILT_IN_VALUE}
-                }
-            },
+            {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "releaseTrain": BUILT_IN_VALUE}}},
         ),
         (
             UpgradeScenario("Variant of prior case. Train does not auto-increment if explicit version is provided.")
@@ -308,9 +297,9 @@ class UpgradeScenario:
             {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": "9.9.9"}}},
         ),
         (
-            UpgradeScenario(
-                "Ensure default version and train increments for ops when upgrade is known."
-            ).set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0", ext_train="train"),
+            UpgradeScenario("Ensure default version and train increments for ops when upgrade is known.").set_extension(
+                ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0", ext_train="train"
+            ),
             {
                 EXTENSION_TYPE_OPS: {
                     "properties": {
@@ -332,14 +321,15 @@ class UpgradeScenario:
             },
         ),
         (
-            UpgradeScenario("Patch platform, osm and ops extensions.")
+            UpgradeScenario("Patch platform, ssc and ops extensions.")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="0.5.0")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.2.0")
-            .set_extension(ext_type=EXTENSION_TYPE_OSM, ext_vers="0.3.0"),
+            .set_extension(ext_type=EXTENSION_TYPE_SSC, ext_vers="0.3.0"),
             {
                 EXTENSION_TYPE_PLATFORM: {
                     "properties": {"extensionType": EXTENSION_TYPE_PLATFORM, "version": BUILT_IN_VALUE}
                 },
+                EXTENSION_TYPE_SSC: {"properties": {"extensionType": EXTENSION_TYPE_SSC, "version": BUILT_IN_VALUE}},
                 EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": BUILT_IN_VALUE}},
             },
         ),
@@ -392,6 +382,7 @@ class UpgradeScenario:
                 acs_train="stablezz",
             ),
             {
+                EXTENSION_TYPE_SSC: {"properties": {"extensionType": EXTENSION_TYPE_SSC, "version": BUILT_IN_VALUE}},
                 EXTENSION_TYPE_ACS: {
                     "properties": {
                         "extensionType": EXTENSION_TYPE_ACS,
@@ -400,7 +391,6 @@ class UpgradeScenario:
                         "configurationSettings": {"c": "d", "e": "f"},
                     }
                 },
-                EXTENSION_TYPE_SSC: {"properties": {"extensionType": EXTENSION_TYPE_SSC, "version": BUILT_IN_VALUE}},
                 EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "version": BUILT_IN_VALUE}},
             },
         ),

@@ -94,8 +94,6 @@ def generate_event(
     ("opcua", add_namespace_opcua_asset_event, {
         "opcua_event_publishing_interval": 1500,
         "opcua_event_queue_size": 100,
-        "opcua_event_filter_type": "SimpleEvents",
-        # filter clauses will be set in the test
     }),
     # OPCUA asset dataset with minimal config
     ("opcua", add_namespace_opcua_asset_event, {}),
@@ -151,23 +149,9 @@ def test_add_namespace_asset_event(
     # Add optional configuration parameters based on test case
     if config_params:
         if asset_type == "opcua":
-            clause = {"path": "test", "type": "SimpleEvents", "field": "testField"}
-            config_params["opcua_event_filter_clauses"] = [[
-                f"{key}={value}" for key, value in clause.items()
-            ]]
             expected_event["eventConfiguration"] = json.dumps({
                 "publishingInterval": config_params["opcua_event_publishing_interval"],
                 "queueSize": config_params["opcua_event_queue_size"],
-                "eventFilter": {
-                    "typeDefinitionId": config_params["opcua_event_filter_type"],
-                    "selectClauses": [
-                        {
-                            "browsePath": clause["path"],
-                            "typeDefinitionId": clause["type"],
-                            "fieldId": clause["field"]
-                        }
-                    ]
-                }
             })
         elif asset_type == "custom":
             expected_event["eventConfiguration"] = config_params.get("event_custom_configuration")
@@ -687,8 +671,6 @@ def test_remove_namespace_asset_event(
     ("opcua", update_namespace_opcua_asset_event, {
         "opcua_event_publishing_interval": 2000,
         "opcua_event_queue_size": 10,
-        "opcua_event_filter_type": "WhereClause"
-        # filter clauses will be set in the test
     }),
     # ONVIF asset event
     ("onvif", update_namespace_onvif_asset_event, {})
@@ -771,23 +753,9 @@ def test_update_namespace_asset_event(
         if asset_type == "custom":
             expected_event["eventConfiguration"] = unique_reqs["event_custom_configuration"]
         elif asset_type == "opcua":
-            clause = {"path": "test", "type": "SimpleEvents", "field": "testField"}
-            unique_reqs["opcua_event_filter_clauses"] = [[
-                f"{key}={value}" for key, value in clause.items()
-            ]]
             expected_event["eventConfiguration"] = json.dumps({
                 "publishingInterval": unique_reqs.get("opcua_event_publishing_interval"),
-                "queueSize": unique_reqs.get("opcua_event_queue_size"),
-                "eventFilter": {
-                    "typeDefinitionId": unique_reqs.get("opcua_event_filter_type"),
-                    "selectClauses": [
-                        {
-                            "browsePath": clause["path"],
-                            "typeDefinitionId": clause["type"],
-                            "fieldId": clause["field"]
-                        }
-                    ]
-                }
+                "queueSize": unique_reqs.get("opcua_event_queue_size")
             })
 
     # Update destinations if specified

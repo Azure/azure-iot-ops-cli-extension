@@ -17,16 +17,10 @@ from knack.arguments import CaseInsensitiveList
 
 from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 
-from ._validators import (
-    validate_namespace,
-    validate_resource_name,
-)
+from ._validators import validate_namespace, validate_resource_name
 from .common import OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
-from .providers.edge_api import (
-    DeviceRegistryResourceKinds,
-    MqResourceKinds,
-)
+from .providers.edge_api import DeviceRegistryResourceKinds, MqResourceKinds
 from .providers.orchestration.common import (
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     TRUST_SETTING_KEYS,
@@ -48,6 +42,7 @@ from .providers.orchestration.common import (
     MqMemoryProfile,
     MqServiceType,
     MqttRetainType,
+    RegistryEndpointAuthenticationType,
     SchemaFormat,
     SchemaType,
     TlsKeyAlgo,
@@ -506,7 +501,7 @@ def load_iotops_arguments(self, _):
         context.argument(
             "session_expiry",
             options_list=["--session-expiry"],
-            help="The session expiry interval in seconds for the data flow MQTT client. " "Min value: 0.",
+            help="The session expiry interval in seconds for the data flow MQTT client. Min value: 0.",
             type=int,
         )
 
@@ -858,6 +853,80 @@ def load_iotops_arguments(self, _):
                 ),
             )
 
+    with self.argument_context("iot ops registry") as context:
+        context.argument(
+            "instance_name",
+            options_list=["--instance", "-i"],
+            help="IoT Operations instance name.",
+        )
+        context.argument(
+            "registry_endpoint_name",
+            options_list=["--name", "-n"],
+            help="Registry endpoint name.",
+        )
+        context.argument(
+            "host",
+            options_list=["--host"],
+            help="The endpoint of the Azure Container Registry.",
+        )
+        context.argument(
+            "auth_type",
+            options_list=["--auth-type"],
+            arg_type=get_enum_type(RegistryEndpointAuthenticationType, default=None),
+            help="The authentication type for the registry endpoint. If not provided, "
+            "the authentication type will be determined based on the provided authentication parameters. "
+            "If no authentication parameters are provided, system-assigned managed identity authentication "
+            "will be used.",
+        )
+        context.argument(
+            "secret_ref",
+            options_list=["--secret-ref"],
+            help="Kubernetes secret reference for registry authentication.",
+            arg_group="Artifact Pull Secret",
+        )
+        context.argument(
+            "audience",
+            options_list=["--audience", "--aud"],
+            help="Audience for system-assigned managed identity registry authentication.",
+            arg_group="System-Assigned Identity",
+        )
+        context.argument(
+            "client_id",
+            options_list=["--client-id", "--cid"],
+            help="Client ID for user-assigned managed identity registry authentication.",
+            arg_group="User-Assigned Identity",
+        )
+        context.argument(
+            "tenant_id",
+            options_list=["--tenant-id", "--tid"],
+            help="Tenant ID for user-assigned managed identity registry authentication.",
+            arg_group="User-Assigned Identity",
+        )
+        context.argument(
+            "scope",
+            options_list=["--scope"],
+            help="Scope for user-assigned managed identity registry authentication.",
+            arg_group="User-Assigned Identity",
+        )
+        context.argument(
+            "no_auth",
+            options_list=["--no-auth"],
+            arg_type=get_three_state_flag(),
+            help="Explictly use anonymous authentication.",
+        )
+        context.argument(
+            "trusted_signing_configmap_key",
+            options_list=["--trust-config-map-ref", "--tcmr"],
+            help="Trusted signing config map reference.",
+            arg_group="Trusted Signing",
+        )
+        context.argument(
+            "trusted_signing_secret_key",
+            options_list=["--trust-secret-ref", "--tsr"],
+            help="Trusted signing secret reference.",
+            arg_group="Trusted Signing",
+        )
+
     with self.argument_context("iot ops broker") as context:
         context.argument(
             "instance_name",
@@ -1102,7 +1171,7 @@ def load_iotops_arguments(self, _):
                 "enable_rsync_rules",
                 options_list=["--enable-rsync"],
                 arg_type=get_three_state_flag(),
-                deprecate_info=context.deprecate(target="--enable-rsync", redirect='az iot ops rsync enable'),
+                deprecate_info=context.deprecate(target="--enable-rsync", redirect="az iot ops rsync enable"),
                 help="Resource sync rules will be included in the IoT Operations deployment.",
             )
             context.argument(
@@ -1218,14 +1287,6 @@ def load_iotops_arguments(self, _):
                 options_list=["--broker-mem-profile", "--mp"],
                 help="Mqtt broker memory profile.",
                 arg_group="Broker",
-            )
-            context.argument(
-                "broker_service_type",
-                arg_type=get_enum_type(MqServiceType),
-                options_list=["--broker-listener-type", "--lt"],
-                help="Service type associated with the default mqtt broker listener.",
-                arg_group="Broker",
-                deprecate_info=context.deprecate(hide=True),
             )
             context.argument(
                 "enable_fault_tolerance",

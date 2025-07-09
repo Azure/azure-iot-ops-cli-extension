@@ -20,8 +20,10 @@ from azext_edge.edge.providers.rpsaas.adr.namespace_assets import (
     _create_datapoint,
     _get_event,
     _process_configs,
-    _process_opcua_dataset_configurations,
-    _process_opcua_event_configurations,
+    _process_opcua_dataset_configurations_v1,
+    _process_opcua_event_configurations_v1,
+    _process_opcua_dataset_configurations_v2,
+    _process_opcua_event_configurations_v2,
     _process_media_stream_configurations
 )
 from azext_edge.edge.util.common import parse_kvp_nargs
@@ -130,6 +132,67 @@ def test_build_destination_error(test_case: dict):
 
     for msg in test_case["expected_msg"]:
         assert msg in str(excinfo.value)
+
+
+@pytest.mark.parametrize("num_events", [1, 5, 10])
+def test_get_event(num_events: int):
+    from .test_namespace_asset_events_unit import generate_event
+    test_event = generate_random_string()
+    asset = {
+        "name": "testAsset",
+        "properties": {
+            "events": []
+        }
+    }
+
+    for i in range(num_events):
+        asset["properties"]["events"].append(generate_event(f"testEvent{i}"))
+
+    # Set up events in asset properties
+    asset["properties"]["events"].append(generate_event(test_event))
+
+    # Test success case
+    result = _get_event(asset, test_event)
+    assert result["name"] == test_event
+    # lazy way cause the event is last
+    assert result == asset["properties"]["events"][-1]
+
+
+@pytest.mark.parametrize("test_case", [
+    {
+        "event_name": generate_random_string(),
+        "events": [
+            {
+                "name": f"another{generate_random_string()}",
+                "eventNotifier": "nsu=test;s=FastUInt456",
+            }
+        ],
+    },
+    {
+        "event_name": generate_random_string(),
+        "events": [],
+    },
+    {
+        "event_name": generate_random_string(),
+        "events": None,
+    }
+])
+def test_get_event_error(test_case):
+    """Test error handling when an event is not found in an asset."""
+    asset = {
+        "name": "testAsset",
+        "properties": {}
+    }
+
+    # Set up events in asset properties if provided
+    if test_case["events"] is not None:
+        asset["properties"]["events"] = test_case["events"]
+
+    # Test error cases
+    with pytest.raises(InvalidArgumentValueError) as ex:
+        _get_event(asset, test_case["event_name"])
+    error_msg = f"Event '{test_case['event_name']}' not found in asset '{asset['name']}'."
+    assert error_msg in str(ex.value)
 
 
 @pytest.mark.parametrize("test_case", [
@@ -319,8 +382,8 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
     # Set up mocks for all the helper functions
     mocks = {}
     for func_name in [
-        "_process_opcua_dataset_configurations",
-        "_process_opcua_event_configurations",
+        "_process_opcua_dataset_configurations_v1",
+        "_process_opcua_event_configurations_v1",
         "_process_media_stream_configurations",
         "process_additional_configuration",
         "_build_destination"
@@ -418,8 +481,8 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
 
     # specific configurations
     for arg, func in [
-        ("opcua_dataset_values", "_process_opcua_dataset_configurations"),
-        ("opcua_event_values", "_process_opcua_event_configurations"),
+        ("opcua_dataset_values", "_process_opcua_dataset_configurations_v1"),
+        ("opcua_event_values", "_process_opcua_event_configurations_v1"),
         ("media_stream_values", "_process_media_stream_configurations")
     ]:
         if arg in expected_args:
@@ -454,6 +517,77 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
             _add_expected_key(dest_func, arg)
 
     assert result == expected_result
+
+
+@pytest.mark.parametrize("test_case", [
+    # Empty configuration
+    {
+        "original": None,
+        "params": {},
+        "expected_values": {}
+    },
+    # Set all parameters
+    {
+        "original": None,
+        "params": {
+            "opcua_dataset_publishing_interval": 1000,
+            "opcua_dataset_sampling_interval": 500,
+            "opcua_dataset_queue_size": 50,
+            "opcua_dataset_key_frame_count": 5,
+        },
+        "expected_values": {
+            "publishingInterval": 1000,
+            "samplingInterval": 500,
+            "queueSize": 50,
+            "keyFrameCount": 5,
+        }
+    },
+    # Set some parameters
+    {
+        "original": None,
+        "params": {
+            "opcua_dataset_publishing_interval": 1000,
+            "opcua_dataset_queue_size": 50
+        },
+        "expected_values": {
+            "publishingInterval": 1000,
+            "queueSize": 50
+        }
+    },
+    # Update existing configuration
+    {
+        "original": json.dumps({"publishingInterval": 1000, "samplingInterval": 500}),
+        "params": {"opcua_dataset_queue_size": 50, "opcua_dataset_key_frame_count": 5},
+        "expected_values": {
+            "publishingInterval": 1000,
+            "samplingInterval": 500,
+            "queueSize": 50,
+            "keyFrameCount": 5
+        }
+    },
+    # Override existing configuration
+    {
+        "original": json.dumps({"publishingInterval": 1000, "samplingInterval": 500}),
+        "params": {"opcua_dataset_publishing_interval": 2000},
+        "expected_values": {"publishingInterval": 2000, "samplingInterval": 500}
+    }
+])
+def test_process_opcua_dataset_configurations_v1(test_case):
+    """Test processing OPC UA dataset configurations with various parameters."""
+    result_json = _process_opcua_dataset_configurations_v1(
+        original_dataset_configuration=test_case["original"],
+        **test_case["params"]
+    )
+
+    # Verify the result is a json
+    result = json.loads(result_json)
+
+    # Check that all expected values are correct
+    for key, value in test_case["expected_values"].items():
+        assert result[key] == value
+
+    # Check that no unexpected keys are present
+    assert len(result) == len(test_case["expected_values"])
 
 
 @pytest.mark.parametrize("test_case", [
@@ -511,9 +645,9 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         "expected_values": {"publishingInterval": 2000, "samplingInterval": 500}
     }
 ])
-def test_process_opcua_dataset_configurations(test_case):
+def test_process_opcua_dataset_configurations_v2(test_case):
     """Test processing OPC UA dataset configurations with various parameters."""
-    result_json = _process_opcua_dataset_configurations(
+    result_json = _process_opcua_dataset_configurations_v2(
         original_dataset_configuration=test_case["original"],
         **test_case["params"]
     )
@@ -527,6 +661,63 @@ def test_process_opcua_dataset_configurations(test_case):
 
     # Check that no unexpected keys are present
     assert len(result) == len(test_case["expected_values"])
+
+
+@pytest.mark.parametrize("test_case", [
+    # Empty configuration
+    {
+        "original": None,
+        "params": {},
+        "expected_values": {}
+    },
+    # Update existing configuration
+    {
+        "original": json.dumps({"publishingInterval": 1000}),
+        "params": {"opcua_event_queue_size": 50},
+        "expected_values": {"publishingInterval": 1000, "queueSize": 50}
+    },
+    # Set all parameters
+    {
+        "original": None,
+        "params": {
+            "opcua_event_publishing_interval": 1000,
+            "opcua_event_queue_size": 50,
+        },
+        "expected_values": {
+            "publishingInterval": 1000,
+            "queueSize": 50,
+        },
+    }
+])
+def test_process_opcua_event_configurations_v1(test_case, mocked_logger):
+    result_json = _process_opcua_event_configurations_v1(
+        original_event_configuration=test_case.get("original"),
+        **test_case.get("params", {})
+    )
+
+    # Verify the result
+    result = json.loads(result_json)
+
+    # Check eventFilter
+    event_filter = test_case["expected_values"].get("eventFilter", {})
+    if event_filter:
+        assert "eventFilter" in result
+        assert result["eventFilter"].get("typeDefinitionId") == event_filter.get("typeDefinitionId")
+        assert result["eventFilter"].get("selectClauses") == event_filter.get("selectClauses")
+
+    # Check that all expected values are correct
+    for key, value in test_case["expected_values"].items():
+        if isinstance(value, dict):
+            for sub_key, sub_value in value.items():
+                assert result[key][sub_key] == sub_value
+        else:
+            assert result[key] == value
+
+    # Check for warning logs when path is missing
+    len_param_filters = len(test_case["params"].get("event_filter_clauses", []))
+    len_expected_select_clauses = len(test_case["expected_values"].get("eventFilter", {}).get("selectClauses", []))
+    if len_param_filters > len_expected_select_clauses:
+        mocked_logger.warning.assert_called()
 
 
 @pytest.mark.parametrize("test_case", [
@@ -634,8 +825,8 @@ def test_process_opcua_dataset_configurations(test_case):
         },
     }
 ])
-def test_process_opcua_event_configurations(test_case, mocked_logger):
-    result_json = _process_opcua_event_configurations(
+def test_process_opcua_event_configurations_v2(test_case, mocked_logger):
+    result_json = _process_opcua_event_configurations_v2(
         original_event_configuration=test_case.get("original"),
         **test_case.get("params", {})
     )
@@ -864,64 +1055,3 @@ def test_process_media_stream_configurations_error(test_case):
         )
 
     assert test_case["expected_msg"] in str(excinfo.value)
-
-
-@pytest.mark.parametrize("num_events", [1, 5, 10])
-def test_get_event(num_events: int):
-    from .test_namespace_asset_events_unit import generate_event
-    test_event = generate_random_string()
-    asset = {
-        "name": "testAsset",
-        "properties": {
-            "events": []
-        }
-    }
-
-    for i in range(num_events):
-        asset["properties"]["events"].append(generate_event(f"testEvent{i}"))
-
-    # Set up events in asset properties
-    asset["properties"]["events"].append(generate_event(test_event))
-
-    # Test success case
-    result = _get_event(asset, test_event)
-    assert result["name"] == test_event
-    # lazy way cause the event is last
-    assert result == asset["properties"]["events"][-1]
-
-
-@pytest.mark.parametrize("test_case", [
-    {
-        "event_name": generate_random_string(),
-        "events": [
-            {
-                "name": f"another{generate_random_string()}",
-                "eventNotifier": "nsu=test;s=FastUInt456",
-            }
-        ],
-    },
-    {
-        "event_name": generate_random_string(),
-        "events": [],
-    },
-    {
-        "event_name": generate_random_string(),
-        "events": None,
-    }
-])
-def test_get_event_error(test_case):
-    """Test error handling when an event is not found in an asset."""
-    asset = {
-        "name": "testAsset",
-        "properties": {}
-    }
-
-    # Set up events in asset properties if provided
-    if test_case["events"] is not None:
-        asset["properties"]["events"] = test_case["events"]
-
-    # Test error cases
-    with pytest.raises(InvalidArgumentValueError) as ex:
-        _get_event(asset, test_case["event_name"])
-    error_msg = f"Event '{test_case['event_name']}' not found in asset '{asset['name']}'."
-    assert error_msg in str(ex.value)

@@ -249,15 +249,12 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     event_destinations = "topic=factory/opcua/events qos=Qos0 retain=Keep ttl=7200"
     publishing_interval = 500
     queue_size = 10
-    filter_type = "equals"
-    filter_clauses = "path=ns=2;i=5000 type=String field=AlarmType"
 
     event_result = run(
         f"az iot ops ns asset opcua event add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
         f"--destination {event_destinations} --publish-int {publishing_interval} "
-        f"--queue-size {queue_size} --filter-type {filter_type} "
-        f"--filter-clause {filter_clauses}"
+        f"--queue-size {queue_size}"
     )
 
     assert_event_properties(
@@ -292,13 +289,11 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     updated_event_notifier = "ns=3;i=1000"
     updated_publishing_interval = 1000
     updated_queue_size = 15
-    updated_filter_type = "contains"
 
     updated_event = run(
         f"az iot ops ns asset opcua event update --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {updated_event_notifier} "
         f"--publish-int {updated_publishing_interval} --queue-size {updated_queue_size} "
-        f"--filter-type {updated_filter_type}"
     )
 
     assert_event_properties(

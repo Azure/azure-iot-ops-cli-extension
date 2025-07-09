@@ -18,6 +18,7 @@ from azext_edge.edge.providers.edge_api import (
     TRUSTMANAGER_API_V1,
 )
 
+from .common import GET_VERSIONS_URL
 from .providers.orchestration.common import (
     CLONE_INSTANCE_VERS_MAX,
     CLONE_INSTANCE_VERS_MIN,
@@ -701,6 +702,103 @@ def load_iotops_help():
         - name: Enumerate dataflows associated with the profile 'myprofile'.
           text: >
             az iot ops dataflow list -p myprofile --in mycluster-ops-instance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops registry"
+    ] = """
+        type: group
+        short-summary: Manage container registry endpoints.
+    """
+
+    helps[
+        "iot ops registry add"
+    ] = """
+        type: command
+        short-summary: Add a container registry endpoint to an instance.
+        long-summary: |
+          Only Azure Container Registry (ACR) endpoints are supported.
+          By default, the registry endpoint will use System Assigned Managed Identity authentication.
+          Use the --no-auth flag to explicitly configure anonymous authentication.
+
+        examples:
+        - name: Add a registry endpoint with default System Assigned Managed Identity authentication.
+          text: >
+            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+        - name: Add a registry endpoint with explicit anonymous authentication.
+          text: >
+            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup --no-auth
+        - name: Add a registry endpoint with system-assigned managed identity and optional audience configuration
+          text: >
+            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            --auth-type SystemAssignedManagedIdentity --aud myaudience
+        - name: Add a registry endpoint with kubernetes secret reference authentication
+          text: >
+            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            --auth-type ArtifactPullSecret --secret-ref mysecret
+        - name: Add a registry endpoint with user-assigned managed identity configuration
+          text: >
+            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            --auth-type UserAssignedManagedIdentity --scope myscope --cid myclientid --tid mytenantid
+        - name: Add a registry endpoint with a trusted signing key config map reference
+          text: >
+            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            --trust-config-map-ref my-trust-configmap
+        - name: Add a registry endpoint with a trusted signing key secret reference
+          text: >
+            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            --trust-secret-ref my-trust-secret
+    """
+
+    helps[
+        "iot ops registry update"
+    ] = """
+        type: command
+        short-summary: Update a container registry endpoint.
+
+        examples:
+        - name: Update an endpoint's hostname and auth-type to use a system-assigned managed identity
+          text: >
+            az iot ops registry update -n myregistry --host newregistry.azurecr.io -i myinstance -g myresourcegroup --auth-type SystemAssignedManagedIdentity
+        - name: Update an endpoint to use trusted signing with a config map reference
+          text: >
+            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --trust-config-map-ref my-trust-configmap
+    """
+
+    helps[
+        "iot ops registry list"
+    ] = """
+        type: command
+        short-summary: List configured container registry endpoints.
+
+        examples:
+        - name: List all registry endpoints for an instance.
+          text: >
+            az iot ops registry list -i myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops registry show"
+    ] = """
+        type: command
+        short-summary: Show details of a container registry endpoint.
+
+        examples:
+        - name: Show details of a registry endpoint.
+          text: >
+            az iot ops registry show -n myregistry -i myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops registry remove"
+    ] = """
+        type: command
+        short-summary: Remove a container registry endpoint.
+
+        examples:
+        - name: Remove a registry endpoint.
+          text: >
+            az iot ops registry remove -n myregistry -i myinstance -g myresourcegroup
     """
 
     helps[
@@ -2489,4 +2587,16 @@ def load_iotops_help():
         - name: Disable resource sync for the target instance.
           text: >
             az iot ops rsync disable -n myinstance -g myresourcegroup
+    """
+
+    helps[
+        "iot ops get-versions"
+    ] = f"""
+        type: command
+        short-summary: Opens the version guide located at {GET_VERSIONS_URL} in the default browser.
+
+        examples:
+        - name: Route to the version guide in a new browser window.
+          text: >
+            az iot ops get-versions
     """

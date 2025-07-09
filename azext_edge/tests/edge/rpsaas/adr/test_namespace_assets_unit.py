@@ -194,13 +194,9 @@ def add_device_get_call(
             "default_dataset_sampling_interval": 1000,
             "default_dataset_queue_size": 2,
             "default_dataset_key_frame_count": 3,
-            "default_dataset_start_instance": "test-instance",
             "default_dataset_destinations": ["topic=/contoso/test", "retain=Never", "qos=0", "ttl=3600"],
             "default_events_publishing_interval": 1500,
             "default_events_queue_size": 4,
-            "default_events_start_instance": "event-instance",
-            "default_events_filter_type": "test-filter-type",
-            "default_events_filter_clauses": [["path=test", "type=test", "field=test"]],
             "default_event_destinations": ["topic=/contoso/test2", "retain=Never", "qos=1", "ttl=400"]
         }
     ]
@@ -293,7 +289,6 @@ def test_create_namespace_asset(
     assert request_body["properties"]["deviceRef"]["deviceName"] == device_name
     assert request_body["properties"]["deviceRef"]["endpointName"] == device_endpoint_name
 
-    # Use the helper function to verify properties in the request
     all_reqs["asset_type"] = f"Microsoft.{asset_type}"
     assert request_body.get("tags") == all_reqs.get("tags")
 
@@ -611,13 +606,9 @@ def test_show_namespace_asset(
             "default_dataset_sampling_interval": 1000,
             "default_dataset_queue_size": 2,
             "default_dataset_key_frame_count": 3,
-            "default_dataset_start_instance": "test-instance",
             "default_dataset_destinations": ["topic=/contoso/test", "retain=Never", "qos=0", "ttl=3600"],
             "default_events_publishing_interval": 1500,
             "default_events_queue_size": 4,
-            "default_events_start_instance": "event-instance",
-            "default_events_filter_type": "test-filter-type",
-            "default_events_filter_clauses": [["path=test", "type=test", "field=test"]],
             "default_event_destinations": ["topic=/contoso/test2", "retain=Never", "qos=1", "ttl=400"]
         }
     ]
