@@ -15,8 +15,6 @@ from knack.log import get_logger
 from rich.console import Console
 
 from .helpers import get_default_dataset
-from .user_strings import DUPLICATE_EVENT_ERROR, DUPLICATE_POINT_ERROR, INVALID_OBSERVABILITY_MODE_ERROR
-from ....util import assemble_nargs_to_dict
 from ....common import FileType
 from ....util import assemble_nargs_to_dict
 from ....util.az_client import (

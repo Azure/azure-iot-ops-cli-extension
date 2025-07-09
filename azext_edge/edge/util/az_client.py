@@ -39,9 +39,6 @@ if TYPE_CHECKING:
     from ..vendor.clients.deviceregistrymgmt import (
         MicrosoftDeviceRegistryManagementService,
     )
-    from ..vendor.clients.deviceregistrymgmt_v2 import (
-        MicrosoftDeviceRegistryManagementService as MicrosoftDeviceRegistryRefreshManagementService
-    )
     from ..vendor.clients.extendedlocmgmt import CustomLocations
     from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
     from ..vendor.clients.keyvault import KeyVaultClient
@@ -144,24 +141,6 @@ class DeviceRegistryMgmtApiVersion(Enum):
     V20240901_preview = "2024-09-01-preview"
 
 
-def get_registry_refresh_mgmt_client(
-    subscription_id: str, **kwargs
-) -> "MicrosoftDeviceRegistryRefreshManagementService":
-    from ..vendor.clients.deviceregistrymgmt_v2 import (
-        MicrosoftDeviceRegistryManagementService,
-    )
-
-    if "http_logging_policy" not in kwargs:
-        kwargs["http_logging_policy"] = get_default_logging_policy()
-
-    return MicrosoftDeviceRegistryManagementService(
-        credential=AZURE_CLI_CREDENTIAL,
-        subscription_id=subscription_id,
-        user_agent_policy=UserAgentPolicy(user_agent=USER_AGENT),
-        **kwargs,
-    )
-
-  
 def get_registry_mgmt_client(
     subscription_id: str,
     api_version: Union[DeviceRegistryMgmtApiVersion, str] = DeviceRegistryMgmtApiVersion.V20241101,

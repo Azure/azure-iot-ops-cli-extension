@@ -16,7 +16,6 @@ from azure.cli.core.azclierror import (
 from knack.log import get_logger
 from rich.console import Console
 
-from ....common import AEPAuthModes, AEPTypes
 from ....util.az_client import (
     DeviceRegistryMgmtApiVersion,
     get_registry_mgmt_client,
@@ -30,8 +29,6 @@ from .user_strings import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG,
 )
-from ....util.az_client import get_registry_mgmt_client, wait_for_terminal_state, REGISTRY_API_VERSION
-from ....util.queryable import Queryable
 from ....common import ADRAuthModes, AEPTypes
 
 if TYPE_CHECKING:

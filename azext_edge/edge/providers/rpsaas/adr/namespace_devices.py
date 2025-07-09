@@ -11,13 +11,15 @@ from knack.log import get_logger
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
-from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
+from ....util.az_client import (
+    get_registry_mgmt_client, get_resource_client, wait_for_terminal_state, DeviceRegistryMgmtApiVersion
+)
 from ....util.common import parse_kvp_nargs, should_continue_prompt
 from ....util.queryable import Queryable
 from ....common import ListableEnum
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistrymgmt_v2.operations import NamespacesOperations, NamespaceDevicesOperations
+    from ....vendor.clients.deviceregistrymgmt.operations import NamespacesOperations, NamespaceDevicesOperations
     from ....vendor.clients.resourcesmgmt.operations import ResourcesOperations
 
 
@@ -39,8 +41,9 @@ class DeviceEndpointType(ListableEnum):
 class NamespaceDevices(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
-        self.deviceregistry_mgmt_client = get_registry_refresh_mgmt_client(
-            subscription_id=self.default_subscription_id
+        self.deviceregistry_mgmt_client = get_registry_mgmt_client(
+            subscription_id=self.default_subscription_id,
+            api_version=DeviceRegistryMgmtApiVersion.V20250701_preview
         )
         self.resource_mgmt_client = get_resource_client(
             subscription_id=self.default_subscription_id

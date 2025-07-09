@@ -17,7 +17,9 @@ from azure.cli.core.azclierror import (
 )
 
 from ....util.common import parse_kvp_nargs, should_continue_prompt
-from ....util.az_client import get_registry_refresh_mgmt_client, get_resource_client, wait_for_terminal_state
+from ....util.az_client import (
+    get_registry_mgmt_client, get_resource_client, wait_for_terminal_state, DeviceRegistryMgmtApiVersion
+)
 from ....util.queryable import Queryable
 from .helpers import (
     process_additional_configuration, ensure_schema_structure, get_default_dataset, NamespaceResource
@@ -25,7 +27,7 @@ from .helpers import (
 from .namespace_devices import DeviceEndpointType
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistrymgmt_v2.operations import (
+    from ....vendor.clients.deviceregistrymgmt.operations import (
         NamespaceAssetsOperations, NamespaceDevicesOperations
     )
     from ....vendor.clients.resourcesmgmt.operations import ResourcesOperations
@@ -39,8 +41,9 @@ NAMESPACE_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces/assets"
 class NamespaceAssets(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
-        self.deviceregistry_mgmt_client = get_registry_refresh_mgmt_client(
-            subscription_id=self.default_subscription_id
+        self.deviceregistry_mgmt_client = get_registry_mgmt_client(
+            subscription_id=self.default_subscription_id,
+            api_version=DeviceRegistryMgmtApiVersion.V20250701_preview
         )
         self.resource_mgmt_client = get_resource_client(
             subscription_id=self.default_subscription_id
