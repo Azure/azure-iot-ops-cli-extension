@@ -82,6 +82,7 @@ def mocked_cluster_resources(request, mocker):
         MQTT_BROKER_API_V1,
         DEVICEREGISTRY_API_V1,
         CLUSTER_CONFIG_API_V1,
+        DATAFLOW_ACTIVE_API
     )
 
     requested_resource_apis = getattr(request, "param", [])
@@ -120,6 +121,13 @@ def mocked_cluster_resources(request, mocker):
             v1_resources.append(_get_api_resource("BillingSettings"))
             v1_resources.append(_get_api_resource("BillingUsage"))
             v1_resources.append(_get_api_resource("BillingStorage"))
+
+        if r == DATAFLOW_ACTIVE_API:
+            v1_resources.append(_get_api_resource("Dataflow"))
+            v1_resources.append(_get_api_resource("DataflowProfile"))
+            v1_resources.append(_get_api_resource("DataflowEndpoint"))
+            v1_resources.append(_get_api_resource("RegistryEndpoint"))
+            v1_resources.append(_get_api_resource("DataflowGraph"))
 
         resource_map[r_key] = V1APIResourceList(resources=v1_resources, group_version=r.version)
 
@@ -269,6 +277,7 @@ def mocked_list_deployments(mocked_client):
             "aio-opc-opc",
             "opcplc-0000000",
             "diagnostics-operator-deployment",
+            "aio-dataflow-operator",
         ]
         deployment_list = []
         for name in names:

@@ -10,6 +10,10 @@ from knack.log import get_logger
 from rich.padding import Padding
 
 from ...common import DEFAULT_DATAFLOW_PROFILE, CheckTaskStatus, ResourceState
+from ...providers.orchestration.common import (
+    RegistryEndpointAuthenticationType,
+    REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS,
+)
 from ..base import get_namespaced_pods_by_prefix
 from ..edge_api.dataflow import DATAFLOW_ACTIVE_API, DataflowResourceKinds
 from ..support.dataflow import (
@@ -531,26 +535,31 @@ def _process_registry_endpoint_authentication(
 ) -> None:
 
     # TODO - generalize for other auth types and reuse
-    # TODO - import enums once registry endpoint PR merges
     auth_property_dict = {
-        "Anonymous": {
-            "key": "anonymousSettings",
+        RegistryEndpointAuthenticationType.ANONYMOUS.value: {
+            "key": REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS[RegistryEndpointAuthenticationType.ANONYMOUS.value],
             "displays": [],
         },
-        "ArtifactPullSecret": {
-            "key": "artifactPullSecretSettings",
+        RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value: {
+            "key": REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS[
+                RegistryEndpointAuthenticationType.ARTIFACTPULLSECRET.value
+            ],
             "displays": [
                 ("Secret Reference", "secretRef"),
             ],
         },
-        "SystemAssignedManagedIdentity": {
-            "key": "systemAssignedManagedIdentitySettings",
+        RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value: {
+            "key": REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS[
+                RegistryEndpointAuthenticationType.SYSTEMASSIGNED.value
+            ],
             "displays": [
                 ("Audience", "audience"),
             ],
         },
-        "UserAssignedManagedIdentity": {
-            "key": "userAssignedManagedIdentitySettings",
+        RegistryEndpointAuthenticationType.USERASSIGNED.value: {
+            "key": REGISTRY_ENDPOINT_AUTHENTICATION_TYPE_SETTINGS[
+                RegistryEndpointAuthenticationType.USERASSIGNED.value
+            ],
             "displays": [
                 ("Client ID", "clientId"),
                 ("Scope", "scope"),
@@ -1305,6 +1314,19 @@ def evaluate_dataflows(
                 )
                 continue
 
+            # requestDiskPersistence
+            if detail_level > ResourceOutputDetailLevel.detail.value:
+                request_disk_persistence = spec.get("requestDiskPersistence", "unknown")
+                check_manager.add_display(
+                    target_name=target,
+                    namespace=namespace,
+                    display=basic_property_display(
+                        label="Request Disk Persistence",
+                        value=request_disk_persistence,
+                        padding=INNER_PADDING,
+                    ),
+                )
+            
             status = dataflow.get("status", {})
             _process_dataflow_resource_status(
                 check_manager=check_manager,
