@@ -7,12 +7,6 @@
 from .base import EdgeResourceApi
 
 
-CLUSTER_CONFIG_API_V1 = EdgeResourceApi(
-    group="clusterconfig.azure.com", version="v1", moniker="clusterconfig", label="microsoft-iotoperations"
-)
+AKRI_API_V1B1 = EdgeResourceApi(group="akri.microsoft.com", version="v1beta1", moniker="akri")
 
-CLUSTER_CONFIG_API_V1B1 = EdgeResourceApi(
-    group="clusterconfig.azure.com", version="v1beta1", moniker="clusterconfig", label="microsoft-iotoperations"
-)
-
-CLUSTERCONFIG_ACTIVE_API = CLUSTER_CONFIG_API_V1B1
+AKRI_ACTIVE_API = AKRI_API_V1B1

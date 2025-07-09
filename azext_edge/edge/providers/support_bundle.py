@@ -8,18 +8,25 @@ from typing import List, Optional
 from zipfile import ZipFile, ZIP_DEFLATED
 
 import yaml
+
 from knack.log import get_logger
 from rich.console import Console, NewLine
 
 from ..common import OpsServiceType
 from ..providers.edge_api import (
+    AKRI_API_V1B1,
     CERTMANAGER_API_V1,
     CLUSTER_CONFIG_API_V1,
+    CLUSTER_CONFIG_API_V1B1,
     CONTAINERSTORAGE_API_V1,
     MQTT_BROKER_API_V1,
+    MQTT_BROKER_API_V1B1,
     DEVICEREGISTRY_API_V1,
+    DEVICEREGISTRY_API_V1B1,
     DATAFLOW_API_V1,
+    DATAFLOW_API_V1B1,
     META_API_V1,
+    META_API_V1B1,
     ARCCONTAINERSTORAGE_API_V1,
     SECRETSYNC_API_V1,
     SECRETSTORE_API_V1,
@@ -33,14 +40,15 @@ logger = get_logger(__name__)
 console = Console()
 
 COMPAT_CERTMANAGER_APIS = EdgeApiManager(resource_apis=[CERTMANAGER_API_V1, TRUSTMANAGER_API_V1])
-COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1])
-COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1])
-COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1])
-COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1])
-COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1])
+COMPAT_CLUSTER_CONFIG_APIS = EdgeApiManager(resource_apis=[CLUSTER_CONFIG_API_V1, CLUSTER_CONFIG_API_V1B1])
+COMPAT_MQTT_BROKER_APIS = EdgeApiManager(resource_apis=[MQTT_BROKER_API_V1, MQTT_BROKER_API_V1B1])
+COMPAT_DEVICEREGISTRY_APIS = EdgeApiManager(resource_apis=[DEVICEREGISTRY_API_V1, DEVICEREGISTRY_API_V1B1])
+COMPAT_DATAFLOW_APIS = EdgeApiManager(resource_apis=[DATAFLOW_API_V1, DATAFLOW_API_V1B1])
+COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1, META_API_V1B1])
 COMPAT_ARCCONTAINERSTORAGE_APIS = EdgeApiManager(resource_apis=[ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1])
 COMPAT_SECRETSTORE_APIS = EdgeApiManager(resource_apis=[SECRETSYNC_API_V1, SECRETSTORE_API_V1])
 COMPAT_AZUREMONITOR_APIS = EdgeApiManager(resource_apis=[AZUREMONITOR_API_V1])
+COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V1B1])
 
 
 def build_bundle(
@@ -95,7 +103,7 @@ def build_bundle(
             "apis": None,
             "prepare_bundle": prepare_connector_bundle,
         },
-        OpsServiceType.akri.value: {"apis": None, "prepare_bundle": prepare_akri_bundle},
+        OpsServiceType.akri.value: {"apis": COMPAT_AKRI_APIS, "prepare_bundle": prepare_akri_bundle},
         OpsServiceType.deviceregistry.value: {
             "apis": COMPAT_DEVICEREGISTRY_APIS,
             "prepare_bundle": prepare_deviceregistry_bundle,
@@ -144,7 +152,7 @@ def build_bundle(
 
         if not deployed_apis and service_moniker not in [
             OpsServiceType.schemaregistry.value,
-            OpsServiceType.akri.value,
+            # OpsServiceType.akri.value,
             OpsServiceType.connectors.value,
             OpsServiceType.meso.value,
         ]:
