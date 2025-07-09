@@ -4,7 +4,14 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from ...common import ListableEnum
 from .base import EdgeResourceApi
+
+
+class AkriResourceKinds(ListableEnum):
+    CONNECTORINSTANCE = "connectorinstance"
+    CONNECTORTEMPLATE = "connectortemplate"
+    DISCOVERYHANDLER = "discoveryhandler"
 
 
 AKRI_API_V1B1 = EdgeResourceApi(group="akri.microsoft.com", version="v1beta1", moniker="akri")

@@ -5,33 +5,32 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List, Optional
-from zipfile import ZipFile, ZIP_DEFLATED
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import yaml
-
 from knack.log import get_logger
 from rich.console import Console, NewLine
 
 from ..common import OpsServiceType
 from ..providers.edge_api import (
     AKRI_API_V1B1,
+    ARCCONTAINERSTORAGE_API_V1,
+    AZUREMONITOR_API_V1,
     CERTMANAGER_API_V1,
     CLUSTER_CONFIG_API_V1,
     CLUSTER_CONFIG_API_V1B1,
     CONTAINERSTORAGE_API_V1,
-    MQTT_BROKER_API_V1,
-    MQTT_BROKER_API_V1B1,
-    DEVICEREGISTRY_API_V1,
-    DEVICEREGISTRY_API_V1B1,
     DATAFLOW_API_V1,
     DATAFLOW_API_V1B1,
+    DEVICEREGISTRY_API_V1,
+    DEVICEREGISTRY_API_V1B1,
     META_API_V1,
     META_API_V1B1,
-    ARCCONTAINERSTORAGE_API_V1,
-    SECRETSYNC_API_V1,
+    MQTT_BROKER_API_V1,
+    MQTT_BROKER_API_V1B1,
     SECRETSTORE_API_V1,
+    SECRETSYNC_API_V1,
     TRUSTMANAGER_API_V1,
-    AZUREMONITOR_API_V1,
     EdgeApiManager,
 )
 
@@ -61,21 +60,21 @@ def build_bundle(
     from rich.progress import Progress
     from rich.table import Table
 
+    from .support.akri import prepare_bundle as prepare_akri_bundle
+    from .support.arcagents import prepare_bundle as prepare_arcagents_bundle
+    from .support.arccontainerstorage import prepare_bundle as prepare_arccontainerstorage_bundle
+    from .support.azuremonitor import prepare_bundle as prepare_azuremonitor_bundle
     from .support.billing import prepare_bundle as prepare_billing_bundle
-    from .support.mq import prepare_bundle as prepare_mq_bundle
+    from .support.certmanager import prepare_bundle as prepare_certmanager_bundle
     from .support.connectors import prepare_bundle as prepare_connector_bundle
     from .support.dataflow import prepare_bundle as prepare_dataflow_bundle
     from .support.deviceregistry import prepare_bundle as prepare_deviceregistry_bundle
-    from .support.shared import prepare_bundle as prepare_shared_bundle
-    from .support.akri import prepare_bundle as prepare_akri_bundle
-    from .support.arcagents import prepare_bundle as prepare_arcagents_bundle
-    from .support.meta import prepare_bundle as prepare_meta_bundle
-    from .support.schemaregistry import prepare_bundle as prepare_schema_registry_bundle
-    from .support.arccontainerstorage import prepare_bundle as prepare_arccontainerstorage_bundle
-    from .support.secretstore import prepare_bundle as prepare_secretstore_bundle
-    from .support.azuremonitor import prepare_bundle as prepare_azuremonitor_bundle
-    from .support.certmanager import prepare_bundle as prepare_certmanager_bundle
     from .support.meso import prepare_bundle as prepare_meso_bundle
+    from .support.meta import prepare_bundle as prepare_meta_bundle
+    from .support.mq import prepare_bundle as prepare_mq_bundle
+    from .support.schemaregistry import prepare_bundle as prepare_schema_registry_bundle
+    from .support.secretstore import prepare_bundle as prepare_secretstore_bundle
+    from .support.shared import prepare_bundle as prepare_shared_bundle
 
     def collect_default_works(
         pending_work: dict,
@@ -152,7 +151,6 @@ def build_bundle(
 
         if not deployed_apis and service_moniker not in [
             OpsServiceType.schemaregistry.value,
-            # OpsServiceType.akri.value,
             OpsServiceType.connectors.value,
             OpsServiceType.meso.value,
         ]:
@@ -173,7 +171,6 @@ def build_bundle(
             bundle = bundle_method(log_age_seconds, deployed_apis, include_mq_traces)
         elif service_moniker in [
             OpsServiceType.schemaregistry.value,
-            OpsServiceType.akri.value,
             OpsServiceType.connectors.value,
             OpsServiceType.meso.value,
         ]:

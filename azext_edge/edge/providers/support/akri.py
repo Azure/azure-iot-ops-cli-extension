@@ -5,14 +5,13 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
+from typing import Iterable, Optional
 
 from knack.log import get_logger
-from .base import (
-    DAY_IN_SECONDS,
-    process_deployments,
-    process_v1_pods,
-    process_replicasets,
-)
+
+from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
+
+from .base import DAY_IN_SECONDS, assemble_crd_work, process_deployments, process_replicasets, process_v1_pods
 from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
@@ -46,8 +45,12 @@ support_runtime_elements = {
 }
 
 
-def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS) -> dict:
+def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS, apis: Optional[Iterable[EdgeResourceApi]] = None) -> dict:
     akri_to_run = {}
+
+    if apis:
+        akri_to_run.update(assemble_crd_work(apis))
+
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     akri_to_run.update(support_runtime_elements)
 
