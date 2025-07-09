@@ -387,7 +387,7 @@ def build_target_scenario(
             "name": schema_registry_name,
             "roleAssignments": {"value": []},
         },
-        "deviceRegistryNamespace": {
+        "adrNamespace": {
             "id": generate_resource_id(
                 resource_group_name=resource_group_name,
                 resource_provider="microsoft.deviceregistry",
@@ -443,6 +443,9 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
         if isinstance(expected_exc_meta.exc_msg, list):
             for msg_seg in expected_exc_meta.exc_msg:
                 assert msg_seg in exc_msg
+            return
+        if isinstance(expected_exc_meta.exc_msg, re.Pattern):
+            assert expected_exc_meta.exc_msg.match(exc_msg)
             return
         assert expected_exc_meta.exc_msg in exc_msg
 
@@ -598,7 +601,6 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
     "target_scenario",
     [
         build_target_scenario(),
-        build_target_scenario(broker={"backendRedundancyFactor": 1}),
         build_target_scenario(instance_features=["connectors.settings.preview=Enabled"]),
         build_target_scenario(
             akri={"containerRuntimeSocket": "/var/containerd/socket", "kubernetesDistro": "K3s"},
@@ -733,6 +735,20 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             ),
             omit_http_methods=frozenset([responses.PUT]),
         ),
+        build_target_scenario(
+            adrNamespace={
+                "id": generate_resource_id(
+                    resource_group_name=generate_random_string,
+                    resource_provider="microsoft.deviceregistry",
+                    resource_path="/namespaces/mynamespace",
+                ),
+            },
+            raises=ExceptionMeta(
+                exc_type=InvalidArgumentValueError,
+                exc_msg=re.compile(r"Resource Id '(.+)' does not match the instance resource group '(.+)'."),
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD]),
+        ),
     ],
 )
 def test_iot_ops_create(
@@ -753,7 +769,7 @@ def test_iot_ops_create(
         "resource_group_name": target_scenario["resourceGroup"],
         "instance_name": target_scenario["instance"]["name"],
         "schema_registry_resource_id": target_scenario["schemaRegistry"]["id"],
-        "adr_namespace_resource_id": target_scenario["deviceRegistryNamespace"]["id"],
+        "adr_namespace_resource_id": target_scenario["adrNamespace"]["id"],
     }
     if target_scenario["instance"]["namespace"]:
         create_call_kwargs["cluster_namespace"] = target_scenario["instance"]["namespace"]
@@ -778,10 +794,6 @@ def test_iot_ops_create(
     if target_scenario["akri"]["kubernetesDistro"]:
         create_call_kwargs["kubernetes_distro"] = target_scenario["akri"]["kubernetesDistro"]
 
-    backend_redundancy_factor = target_scenario["broker"].get("backendRedundancyFactor")
-    if backend_redundancy_factor:
-        create_call_kwargs["broker_backend_redundancy_factor"] = backend_redundancy_factor
-
     instance_features = target_scenario.get("instance_features")
     if instance_features:
         create_call_kwargs["instance_features"] = instance_features
@@ -795,7 +807,7 @@ def test_iot_ops_create(
         assert_exception(expected_exc_meta=exc_meta, call_func=create_instance, call_kwargs=create_call_kwargs)
         return
 
-    create_result = create_instance(**create_call_kwargs)  # pylint: disable=assignment-from-none
+    create_result = create_instance(**create_call_kwargs)  # pylint: disable=assignment-from-no-return
 
     expected_call_count_map = {
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
@@ -814,7 +826,6 @@ def test_iot_ops_create(
     assert_call_map(expected_call_count_map, servgen.call_map)
     assert_create_displays(spy_work_displays, target_scenario)
     assert_logger(mocked_logger, target_scenario)
-    assert_user_confirm(mocked_confirm, target_scenario)
 
     # TODO - @digimaun
     if target_scenario["noProgress"]:
@@ -826,14 +837,6 @@ def assert_logger(mocked_logger: Mock, target_scenario: dict):
     warning_calls: List[Mock] = mocked_logger.warning.mock_calls
     for w in expected_warnings:
         assert w[1] in warning_calls[w[0]].args[0]
-
-
-def assert_user_confirm(mocked_confirm: Mock, target_scenario: dict):
-    backend_redundancy_factor = target_scenario["broker"].get("backendRedundancyFactor")
-    if backend_redundancy_factor and backend_redundancy_factor < 2:
-        mocked_confirm.ask.assert_called_once()
-        return
-    mocked_confirm.ask.assert_not_called()
 
 
 def assert_create_displays(spy_work_displays: Dict[str, Mock], target_scenario: dict):
@@ -891,6 +894,7 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
     )
     assert set(parameters["clExtentionIds"]["value"]) == cl_extension_ids
     assert parameters["schemaRegistryId"]["value"] == target_scenario["schemaRegistry"]["id"]
+    assert parameters["adrNamespaceId"]["value"] == target_scenario["adrNamespace"]["id"]
     assert parameters["deployResourceSyncRules"]["value"] == bool(target_scenario["enableRsyncRules"])
 
     assert "kubernetesDistro" not in parameters
@@ -900,16 +904,14 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
     assert parameters["defaultDataflowinstanceCount"]["value"] == expected_profile_instances
 
     # @digimaun - this asserts defaults. brokerConfig should be primarily tested in targets unit tests.
-    expected_backend_redundancy_factor: int = target_scenario["broker"].get("backendRedundancyFactor", 2)
     assert parameters["brokerConfig"] == {
         "value": {
             "frontendReplicas": 2,
             "frontendWorkers": 2,
-            "backendRedundancyFactor": expected_backend_redundancy_factor,
+            "backendRedundancyFactor": 2,
             "backendWorkers": 2,
             "backendPartitions": 2,
             "memoryProfile": "Medium",
-            "serviceType": "ClusterIp",
         }
     }
     expected_trust_config = {"source": "SelfSigned"}
