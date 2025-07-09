@@ -1312,8 +1312,8 @@ def load_iotops_arguments(self, _):
                 action="extend",
                 help="Configure disk persistence mode for state store, retain messages and subscriber queues. "
                 "Format is space-separated key=value pairs. Supported keys include: 'stateStore', "
-                "'retain', 'subscriberQueue'. Supported values include: 'None', 'All', 'Custom'. By default each "
-                "mode is set to min Custom with dynamic persistence enabled. "
+                "'retain', 'subscriberQueue'. Supported values for each key include: 'None', 'All', 'Custom'. "
+                "By default each mode is set to min Custom with dynamic persistence enabled. "
                 "This option can be used one or more times.",
                 arg_group="Disk Persistence",
             )
