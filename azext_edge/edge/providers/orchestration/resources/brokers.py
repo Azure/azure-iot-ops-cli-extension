@@ -64,6 +64,68 @@ class Brokers(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
+    @classmethod
+    def build_broker_config(
+        cls,
+        persist_max_size: Optional[str] = None,
+        persist_pvc_sc: Optional[str] = None,
+        persist_mode: Optional[dict[str, str]] = None,
+    ) -> dict:
+        """
+        Build the broker configuration dict. Only data persistence is supported at the moment.
+
+        Args:
+            persist_max_size (str, optional): Maximum size for the persistent volume claim.
+                If provided, enables persistence.
+            persist_pvc_sc (str, optional): Storage class for the persistent volume claim.
+            persist_mode (dict[str, str], optional): Dictionary specifying the persistence modes for state store,
+                retain, and subscriber queue.
+
+        Returns:
+            dict: A dictionary representing the broker configuration.
+
+        Raises:
+            InvalidArgumentValueError: If persistence is enabled but max size is not provided,
+                or if invalid modes are specified.
+        """
+        if any([persist_pvc_sc, persist_mode]) and not persist_max_size:
+            raise InvalidArgumentValueError(
+                "Provide a persist max size value to enable and customize broker data persistence."
+            )
+
+        config = {}
+        persistence = {}
+        if persist_max_size:
+            persistence["maxSize"] = persist_max_size
+            persistence["retain"] = {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}}
+            persistence["stateStore"] = {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}}
+            persistence["subscriberQueue"] = {
+                "mode": "Custom",
+                "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}},
+            }
+        if persist_pvc_sc:
+            persistence["persistentVolumeClaimSpec"] = {
+                "storageClassName": persist_pvc_sc,
+                "accessModes": ["ReadWriteOncePod"],
+            }
+        if persist_mode:
+            valid_mode_keys = ["stateStore", "retain", "subscriberQueue"]
+            valid_mode_values = ["None", "All", "Custom"]
+            for key, value in persist_mode.items():
+                if key not in valid_mode_keys:
+                    raise InvalidArgumentValueError(
+                        f"Invalid persistence mode key: {key}. Valid keys are {valid_mode_keys}."
+                    )
+                if value not in valid_mode_values:
+                    raise InvalidArgumentValueError(
+                        f"Invalid persistence mode value: {value}. Valid values are {valid_mode_values}."
+                    )
+                persistence[key] = {"mode": value}
+
+        if persistence:
+            config["persistence"] = persistence
+        return config
+
 
 class BrokerListeners:
     def __init__(self, ops: "BrokerListenerOperations", get_ext_loc: GetInstanceExtLoc):
@@ -209,9 +271,7 @@ class BrokerListeners:
 
         if not listener:
             listener["name"] = listener_name
-            listener["extendedLocation"] = self.get_ext_loc(
-                name=instance_name, resource_group_name=resource_group_name
-            )
+            listener["extendedLocation"] = self.get_ext_loc(name=instance_name, resource_group_name=resource_group_name)
             listener["properties"] = {"serviceType": str(service_type)}
             if service_name:
                 listener["properties"]["serviceName"] = service_name

@@ -601,6 +601,20 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
     "target_scenario",
     [
         build_target_scenario(),
+        build_target_scenario(persist_max_size="10Gi"),
+        build_target_scenario(persist_max_size="10Gi", persist_pvc_sc="default"),
+        build_target_scenario(
+            persist_pvc_sc="default",
+            raises=ExceptionMeta(
+                exc_type=InvalidArgumentValueError,
+                exc_msg="Provide a persist max size value to enable and customize broker data persistence.",
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD]),
+        ),
+        build_target_scenario(
+            persist_max_size="10Gi",
+            persist_mode=["retain=All", "stateStore=None"],
+        ),
         build_target_scenario(instance_features=["connectors.settings.preview=Enabled"]),
         build_target_scenario(
             akri={"containerRuntimeSocket": "/var/containerd/socket", "kubernetesDistro": "K3s"},
@@ -738,7 +752,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         build_target_scenario(
             adrNamespace={
                 "id": generate_resource_id(
-                    resource_group_name=generate_random_string,
+                    resource_group_name=generate_random_string(),
                     resource_provider="microsoft.deviceregistry",
                     resource_path="/namespaces/mynamespace",
                 ),
@@ -800,6 +814,11 @@ def test_iot_ops_create(
 
     if target_scenario["noProgress"]:
         create_call_kwargs["no_progress"] = target_scenario["noProgress"]
+
+    # TODO: Simplify existing arg plumbing to this style for simplification
+    for key in ["persist_max_size", "persist_pvc_sc", "persist_mode"]:
+        if key in target_scenario:
+            create_call_kwargs[key] = target_scenario[key]
 
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
     if exc_meta:
@@ -903,17 +922,42 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
     expected_profile_instances = target_scenario.get("dataflow", {}).get("profileInstances") or 1
     assert parameters["defaultDataflowinstanceCount"]["value"] == expected_profile_instances
 
-    # @digimaun - this asserts defaults. brokerConfig should be primarily tested in targets unit tests.
-    assert parameters["brokerConfig"] == {
-        "value": {
-            "frontendReplicas": 2,
-            "frontendWorkers": 2,
-            "backendRedundancyFactor": 2,
-            "backendWorkers": 2,
-            "backendPartitions": 2,
-            "memoryProfile": "Medium",
-        }
+    broker_config = {
+        "frontendReplicas": 2,
+        "frontendWorkers": 2,
+        "backendRedundancyFactor": 2,
+        "backendWorkers": 2,
+        "backendPartitions": 2,
+        "memoryProfile": "Medium",
     }
+    persistence = {}
+    if "persist_max_size" in target_scenario:
+        persistence = {
+            "maxSize": target_scenario["persist_max_size"],
+            "retain": {
+                "mode": "Custom",
+                "retainSettings": {
+                    "dynamic": {"mode": "Enabled"},
+                },
+            },
+            "stateStore": {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}},
+            "subscriberQueue": {"mode": "Custom", "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}}},
+        }
+    if "persist_pvc_sc" in target_scenario:
+        persistence["persistentVolumeClaimSpec"] = {
+            "storageClassName": target_scenario["persist_pvc_sc"],
+            "accessModes": ["ReadWriteOncePod"],
+        }
+    if "persist_mode" in target_scenario:
+        for kvp in target_scenario["persist_mode"]:
+            key, value = kvp.split("=")
+            persistence[key] = {"mode": value}
+
+    if persistence:
+        broker_config["persistence"] = persistence
+
+    # @digimaun - this asserts defaults. brokerConfig should be primarily tested in targets unit tests.
+    assert parameters["brokerConfig"] == {"value": broker_config}
     expected_trust_config = {"source": "SelfSigned"}
     if target_scenario["trust"]["settings"]:
         assembled_settings = assemble_nargs_to_dict(target_scenario["trust"]["settings"])

@@ -1725,13 +1725,18 @@ def load_iotops_help():
         type: command
         short-summary: Create an IoT Operations instance.
         long-summary: |
-                      A succesful execution of init is required before running this command.
+          A succesful execution of init is required before running this command.
 
-                      The result of the command nets an IoT Operations instance with
-                      a set of default resources configured for cohesive function.
+          The result of the command nets an IoT Operations instance with
+          a set of default resources configured for cohesive function.
 
-                      To enable edge to cloud resource hydration please use the
-                      `az iot ops rsync enable` command post instance creation.
+          To enable broker disk persistence at least a value for --persist-max-size
+          must be provided. When enabled the default configuration is constrained to
+          dynamic persistence across state store, retain messages and subscriber
+          queues.
+
+          To enable edge to cloud resource hydration please use the
+          `az iot ops rsync enable` command post instance creation.
 
         examples:
         - name: Create the target instance with minimum input.
@@ -1756,6 +1761,14 @@ def load_iotops_help():
               az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
               --ns-resource-id $NAMESPACE_RESOURCE_ID --trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem
               issuerKind=ClusterIssuer issuerName=trust-manager-selfsigned-issuer
+        - name: Deploy the mqtt broker with the min options to enable disk persistence.
+          text: >
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             --ns-resource-id $NAMESPACE_RESOURCE_ID --persist-max-size 10Gi
+        - name: Deploy the mqtt broker with disk persistence configuring volume claim storage class and persistence mode.
+          text: >
+             az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
+             --ns-resource-id $NAMESPACE_RESOURCE_ID --persist-max-size 10Gi --persist-pvc-sc mystorageclass --persist-mode retain=All
     """
 
     helps[
@@ -1841,9 +1854,6 @@ def load_iotops_help():
         - name: Update the instance description.
           text: >
             az iot ops update --name myinstance -g myresourcegroup --desc "Fabrikam Widget Factory B42"
-        - name: Update an instance to enable preview config for connectors.
-          text: >
-            az iot ops update --name myinstance -g myresourcegroup --feature connectors.settings.preview=Enabled
     """
 
     helps[
