@@ -11,6 +11,10 @@ from ...common import ListableEnum
 class DeviceRegistryResourceKinds(ListableEnum):
     ASSET = "asset"
     ASSETENDPOINTPROFILE = "assetendpointprofile"
+    DISCOVEREDASSET = "discoveredasset"
+    DISCOVEREDASSETENDPOINTPROFILE = "discoveredassetendpointprofile"
+    DEVICE = "device"
+    DISCOVEREDDEVICE = "discovereddevice"
 
 
 DEVICEREGISTRY_API_V1 = EdgeResourceApi(
