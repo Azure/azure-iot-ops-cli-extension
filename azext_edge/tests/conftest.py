@@ -11,6 +11,11 @@ import pytest
 import responses
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "init_scenario_test: mark tests that will run az iot ops init.")
+    config.addinivalue_line("markers", "no_global_setup: mark tests that will not use global setup.")
+
+
 # Sets current working directory to the directory of the executing file
 @pytest.fixture
 def set_cwd(request):
@@ -104,3 +109,20 @@ def mocked_confirm(mocker):
     )
     mock.ask.return_value = True
     yield mock
+
+
+# TODO - temporary fixture to enable superuser mode for all tests.
+@pytest.fixture(autouse=True)
+def global_setup(request):
+    if "no_global_setup" in request.node.keywords:
+        yield
+        return
+    os.environ["AIO_CLI_SUPERUSER_MODE"] = "1"
+    from azext_edge.edge.features import feature_config
+
+    feature_config.refresh()
+    yield
+    # Check in case another fixture changes the env var.
+    if "AIO_CLI_SUPERUSER_MODE" in os.environ:
+        del os.environ["AIO_CLI_SUPERUSER_MODE"]
+    feature_config.refresh()

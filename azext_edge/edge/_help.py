@@ -1765,10 +1765,11 @@ def load_iotops_help():
           text: >
              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
              --ns-resource-id $NAMESPACE_RESOURCE_ID --persist-max-size 10Gi
-        - name: Deploy the mqtt broker with disk persistence configuring volume claim storage class and persistence mode.
+        - name: Deploy the mqtt broker with disk persistence, configuring volume claim storage class and persistence mode.
           text: >
              az iot ops create --cluster mycluster -g myresourcegroup --name myinstance --sr-resource-id $SCHEMA_REGISTRY_RESOURCE_ID
-             --ns-resource-id $NAMESPACE_RESOURCE_ID --persist-max-size 10Gi --persist-pvc-sc mystorageclass --persist-mode retain=All
+             --ns-resource-id $NAMESPACE_RESOURCE_ID --persist-max-size 10Gi --persist-pvc-sc mystorageclass
+             --persist-mode retain=All stateStore=None
     """
 
     helps[

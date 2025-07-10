@@ -357,6 +357,16 @@ class ExtensionUpgradeState:
     def _throw_on_downgrade(self):
         if self.force:
             return
+        # TODO - temporary.
+        from ...features import feature_config, FeatureFlag
+
+        if not feature_config.is_enabled(FeatureFlag.SUPERUSER_MODE):
+            if self._has_delta_in_version():
+                raise ValidationError(
+                    "Version upgrades are not allowed in this Azure IoT Operations CLI version.\n"
+                    "A new instance must be deployed."
+                )
+
         if self.semver.parse(self.desired_version[0]) < self.semver.parse(self.current_version[0]):
             raise ValidationError(
                 f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
