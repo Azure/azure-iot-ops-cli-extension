@@ -6,6 +6,7 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 from azure.cli.core.azclierror import CLIInternalError
+from azext_edge.edge.common import PodState
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 from ....helpers import (
     PLURAL_KEY,
@@ -267,6 +268,7 @@ def _assert_pod_conditions(
         ("PodReadyToStartContainers", "status.conditions.podreadytostartcontainers"),
     ]
     pod_conditions = kubectl_pod["status"].get("conditions", {})
+    pod_phase = kubectl_pod['status'].get("phase", "").lower()
 
     known_conditions = [condition[0] for condition in conditions_to_evaluate]
     unknown_conditions = [
@@ -277,7 +279,8 @@ def _assert_pod_conditions(
     if _all_known_conditions_true(pod_conditions, known_conditions):
         is_known_success = True
 
-    if not is_known_success:
+    # Pod states should not be marked as error if overall pod phase is 'succeeded'
+    if not is_known_success and pod_phase != PodState.succeeded.value:
         expected_status = "error"
 
     if is_known_success and unknown_conditions:
