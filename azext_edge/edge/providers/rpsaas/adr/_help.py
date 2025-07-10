@@ -1365,6 +1365,171 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset custom mgmt"
+    ] = """
+        type: group
+        short-summary: Manage custom asset management groups in an IoT Operations instance.
+    """
+
+    helps[
+        "iot ops ns asset custom mgmt add"
+    ] = """
+        type: command
+        short-summary: Add a management group to a custom asset.
+
+        examples:
+        - name: Add a basic management group to a custom asset.
+          text: >
+            az iot ops ns asset custom mgmt add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup
+
+        - name: Add a management group with default topic and timeout.
+          text: >
+            az iot ops ns asset custom mgmt add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --default-topic factory/management/responses --default-timeout 30
+
+        - name: Add a management group with custom configuration.
+          text: >
+            az iot ops ns asset custom mgmt add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --custom-config '{"groupType": "sensor-control", "priority": "high"}'
+            --default-topic factory/control/commands --default-timeout 60
+
+        - name: Replace an existing management group with the same name.
+          text: >
+            az iot ops ns asset custom mgmt add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --custom-config '{"groupType": "updated-control", "version": "2.0"}' --replace
+    """
+
+    helps[
+        "iot ops ns asset custom mgmt list"
+    ] = """
+        type: command
+        short-summary: List management groups for a custom asset.
+
+        examples:
+        - name: List all management groups for a custom asset.
+          text: >
+            az iot ops ns asset custom mgmt list --asset myAsset --instance myInstance -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset custom mgmt show"
+    ] = """
+        type: command
+        short-summary: Show details of a management group for a custom asset.
+
+        examples:
+        - name: Show details of a specific management group.
+          text: >
+            az iot ops ns asset custom mgmt show --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup
+    """
+
+    helps[
+        "iot ops ns asset custom mgmt update"
+    ] = """
+        type: command
+        short-summary: Update a management group for a custom asset.
+
+        examples:
+        - name: Update the default topic and timeout for a management group.
+          text: >
+            az iot ops ns asset custom mgmt update --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --default-topic factory/updated/responses --default-timeout 45
+
+        - name: Update the custom configuration for a management group.
+          text: >
+            az iot ops ns asset custom mgmt update --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --custom-config '{"groupType": "advanced-control", "features": ["logging", "retry"]}'
+
+        - name: Clear the custom configuration for a management group.
+          text: >
+            az iot ops ns asset custom mgmt update --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --custom-config ""
+    """
+
+    helps[
+        "iot ops ns asset custom mgmt remove"
+    ] = """
+        type: command
+        short-summary: Remove a management group from a custom asset.
+
+        examples:
+        - name: Remove a management group from a custom asset.
+          text: >
+            az iot ops ns asset custom mgmt remove --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup
+    """
+
+    helps[
+        "iot ops ns asset custom mgmt action"
+    ] = """
+        type: group
+        short-summary: Manage actions within custom asset management groups.
+        long-summary: |
+          Actions within management groups define specific operations that can be performed on custom assets.
+          Each action has a target URI and can include custom configuration.
+    """
+
+    helps[
+        "iot ops ns asset custom mgmt action add"
+    ] = """
+        type: command
+        short-summary: Add an action to a custom asset management group.
+
+        examples:
+        - name: Add a basic action to a management group.
+          text: >
+            az iot ops ns asset custom mgmt action add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+
+        - name: Add an action with custom configuration and timeout.
+          text: >
+            az iot ops ns asset custom mgmt action add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --custom-config '{"method": "start", "parameters": {"speed": 100}}'
+            --timeout 45
+
+        - name: Add an action with specific action type and topic.
+          text: >
+            az iot ops ns asset custom mgmt action add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --action-type "control" --topic factory/control/actions --timeout 30
+
+        - name: Replace an existing action with the same name.
+          text: >
+            az iot ops ns asset custom mgmt action add --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=UpdatedMethodNode"
+            --custom-config '{"method": "restart", "priority": "high"}' --replace
+    """
+
+    helps[
+        "iot ops ns asset custom mgmt action list"
+    ] = """
+        type: command
+        short-summary: List actions in a custom asset management group.
+
+        examples:
+        - name: List all actions in a management group.
+          text: >
+            az iot ops ns asset custom mgmt action list --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup
+    """
+
+    helps[
+        "iot ops ns asset custom mgmt action remove"
+    ] = """
+        type: command
+        short-summary: Remove an action from a custom asset management group.
+
+        examples:
+        - name: Remove an action from a management group.
+          text: >
+            az iot ops ns asset custom mgmt action remove --asset myAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction
+    """
+
+    helps[
         "iot ops ns asset media"
     ] = """
         type: group
@@ -1739,6 +1904,162 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset onvif mgmt"
+    ] = """
+        type: group
+        short-summary: Manage ONVIF asset management groups in an IoT Operations instance.
+        long-summary: |
+          Management groups define collections of management actions that can be performed on ONVIF assets.
+          Each management group contains actions with specific configurations and targets.
+    """
+
+    helps[
+        "iot ops ns asset onvif mgmt add"
+    ] = """
+        type: command
+        short-summary: Add a management group to an ONVIF asset.
+
+        examples:
+        - name: Add a basic management group to an ONVIF asset.
+          text: >
+            az iot ops ns asset onvif mgmt add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup
+
+        - name: Add a management group with default topic and timeout.
+          text: >
+            az iot ops ns asset onvif mgmt add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --default-topic factory/onvif/management/responses --default-timeout 30
+
+        - name: Replace an existing management group with the same name.
+          text: >
+            az iot ops ns asset onvif mgmt add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --default-topic factory/onvif/control/commands --default-timeout 60 --replace
+    """
+
+    helps[
+        "iot ops ns asset onvif mgmt list"
+    ] = """
+        type: command
+        short-summary: List management groups for an ONVIF asset.
+
+        examples:
+        - name: List all management groups for an ONVIF asset.
+          text: >
+            az iot ops ns asset onvif mgmt list --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset onvif mgmt show"
+    ] = """
+        type: command
+        short-summary: Show details of a management group for an ONVIF asset.
+
+        examples:
+        - name: Show details of a specific management group.
+          text: >
+            az iot ops ns asset onvif mgmt show --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup
+    """
+
+    helps[
+        "iot ops ns asset onvif mgmt update"
+    ] = """
+        type: command
+        short-summary: Update a management group for an ONVIF asset.
+
+        examples:
+        - name: Update the default topic and timeout for a management group.
+          text: >
+            az iot ops ns asset onvif mgmt update --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --default-topic factory/onvif/updated/responses --default-timeout 45
+
+        - name: Update only the default timeout for a management group.
+          text: >
+            az iot ops ns asset onvif mgmt update --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --default-timeout 90
+    """
+
+    helps[
+        "iot ops ns asset onvif mgmt remove"
+    ] = """
+        type: command
+        short-summary: Remove a management group from an ONVIF asset.
+
+        examples:
+        - name: Remove a management group from an ONVIF asset.
+          text: >
+            az iot ops ns asset onvif mgmt remove --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup
+    """
+
+    helps[
+        "iot ops ns asset onvif mgmt action"
+    ] = """
+        type: group
+        short-summary: Manage actions within ONVIF asset management groups.
+        long-summary: |
+          Actions within management groups define specific operations that can be performed on ONVIF assets.
+          Each action has a target URI and can include timeout and topic configuration.
+    """
+
+    helps[
+        "iot ops ns asset onvif mgmt action add"
+    ] = """
+        type: command
+        short-summary: Add an action to an ONVIF asset management group.
+
+        examples:
+        - name: Add a basic action to a management group.
+          text: >
+            az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "device/ptz/move"
+
+        - name: Add an action with timeout and topic.
+          text: >
+            az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "device/ptz/move"
+            --timeout 45 --topic factory/onvif/actions
+
+        - name: Add an action with specific action type.
+          text: >
+            az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "device/ptz/move"
+            --action-type "control" --timeout 30
+
+        - name: Replace an existing action with the same name.
+          text: >
+            az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "device/ptz/zoom"
+            --timeout 60 --replace
+    """
+
+    helps[
+        "iot ops ns asset onvif mgmt action list"
+    ] = """
+        type: command
+        short-summary: List actions in an ONVIF asset management group.
+
+        examples:
+        - name: List all actions in a management group.
+          text: >
+            az iot ops ns asset onvif mgmt action list --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup
+    """
+
+    helps[
+        "iot ops ns asset onvif mgmt action remove"
+    ] = """
+        type: command
+        short-summary: Remove an action from an ONVIF asset management group.
+
+        examples:
+        - name: Remove an action from a management group.
+          text: >
+            az iot ops ns asset onvif mgmt action remove --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction
+    """
+
+    helps[
         "iot ops ns asset opcua"
     ] = """
         type: group
@@ -2078,4 +2399,159 @@ def load_iotops_adr_help():
             az iot ops ns asset opcua event update --asset myOpcuaAsset --instance myInstance
             -g myInstanceResourceGroup --name systemEvent
             --dest topic="factory/opcua/system/updated" retain=false qos=1 ttl=3600
+    """
+
+    helps[
+        "iot ops ns asset opcua mgmt"
+    ] = """
+        type: group
+        short-summary: Manage OPC UA asset management groups in an IoT Operations instance.
+        long-summary: |
+          Management groups define collections of management actions that can be performed on OPC UA assets.
+          Each management group contains actions with specific configurations and targets.
+    """
+
+    helps[
+        "iot ops ns asset opcua mgmt add"
+    ] = """
+        type: command
+        short-summary: Add a management group to an OPC UA asset.
+
+        examples:
+        - name: Add a basic management group to an OPC UA asset.
+          text: >
+            az iot ops ns asset opcua mgmt add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup
+
+        - name: Add a management group with default topic and timeout.
+          text: >
+            az iot ops ns asset opcua mgmt add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --default-topic factory/opcua/management/responses --default-timeout 30
+
+        - name: Replace an existing management group with the same name.
+          text: >
+            az iot ops ns asset opcua mgmt add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --default-topic factory/opcua/control/commands --default-timeout 60 --replace
+    """
+
+    helps[
+        "iot ops ns asset opcua mgmt list"
+    ] = """
+        type: command
+        short-summary: List management groups for an OPC UA asset.
+
+        examples:
+        - name: List all management groups for an OPC UA asset.
+          text: >
+            az iot ops ns asset opcua mgmt list --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset opcua mgmt show"
+    ] = """
+        type: command
+        short-summary: Show details of a management group for an OPC UA asset.
+
+        examples:
+        - name: Show details of a specific management group.
+          text: >
+            az iot ops ns asset opcua mgmt show --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup
+    """
+
+    helps[
+        "iot ops ns asset opcua mgmt update"
+    ] = """
+        type: command
+        short-summary: Update a management group for an OPC UA asset.
+
+        examples:
+        - name: Update the default topic and timeout for a management group.
+          text: >
+            az iot ops ns asset opcua mgmt update --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --default-topic factory/opcua/updated/responses --default-timeout 45
+
+        - name: Update only the default timeout for a management group.
+          text: >
+            az iot ops ns asset opcua mgmt update --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup --default-timeout 90
+    """
+
+    helps[
+        "iot ops ns asset opcua mgmt remove"
+    ] = """
+        type: command
+        short-summary: Remove a management group from an OPC UA asset.
+
+        examples:
+        - name: Remove a management group from an OPC UA asset.
+          text: >
+            az iot ops ns asset opcua mgmt remove --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --name myManagementGroup
+    """
+    helps[
+        "iot ops ns asset opcua mgmt action"
+    ] = """
+        type: group
+        short-summary: Manage actions within OPC UA asset management groups.
+        long-summary: |
+          Actions within management groups define specific operations that can be performed on OPC UA assets.
+          Each action has a target URI and can include timeout and topic configuration.
+    """
+
+    helps[
+        "iot ops ns asset opcua mgmt action add"
+    ] = """
+        type: command
+        short-summary: Add an action to an OPC UA asset management group.
+
+        examples:
+        - name: Add a basic action to a management group.
+          text: >
+            az iot ops ns asset opcua mgmt action add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+
+        - name: Add an action with timeout and topic.
+          text: >
+            az iot ops ns asset opcua mgmt action add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --timeout 45 --topic factory/opcua/actions
+
+        - name: Add an action with specific action type.
+          text: >
+            az iot ops ns asset opcua mgmt action add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --action-type "call" --timeout 30
+
+        - name: Replace an existing action with the same name.
+          text: >
+            az iot ops ns asset opcua mgmt action add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=UpdatedMethodNode"
+            --timeout 60 --replace
+    """
+
+    helps[
+        "iot ops ns asset opcua mgmt action list"
+    ] = """
+        type: command
+        short-summary: List actions in an OPC UA asset management group.
+
+        examples:
+        - name: List all actions in a management group.
+          text: >
+            az iot ops ns asset opcua mgmt action list --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup
+    """
+
+    helps[
+        "iot ops ns asset opcua mgmt action remove"
+    ] = """
+        type: command
+        short-summary: Remove an action from an OPC UA asset management group.
+
+        examples:
+        - name: Remove an action from a management group.
+          text: >
+            az iot ops ns asset opcua mgmt action remove --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
+            --group-name myManagementGroup --name myAction
     """

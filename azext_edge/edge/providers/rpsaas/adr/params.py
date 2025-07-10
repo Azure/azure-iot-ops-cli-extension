@@ -15,6 +15,7 @@ from ....common import (
     TopicRetain,
 )
 from .specs import MediaFormat, MediaTaskType, SecurityPolicy, SecurityMode
+from .common import ActionType
 
 
 def load_adr_arguments(self, _):
@@ -1267,7 +1268,7 @@ def load_adr_arguments(self, _):
                 arg_group="Default Event",
             )
 
-    # shared dataset, event
+    # shared dataset, event, stream, management arguments
     for asset_type in ("custom", "opcua", "onvif", "media"):
         with self.argument_context(f"iot ops ns asset {asset_type} dataset") as context:
             context.argument(
@@ -1378,10 +1379,81 @@ def load_adr_arguments(self, _):
                 help="Replace the stream if another stream with the same name is already present.",
                 arg_type=get_three_state_flag(),
             )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} mgmt") as context:
             context.argument(
-                "stream_data_source",
-                options_list=["--data-source", "--ds"],
-                help="Data source for the stream.",
+                "asset_name",
+                options_list=["--asset", "-a"],
+                help="Asset name.",
+            )
+            context.argument(
+                "group_name",
+                options_list=["--name", "-n"],
+                help="Management group name.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the management if another management with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+            context.argument(
+                "default_topic",
+                options_list=["--default-topic", "--dt"],
+                help="Default topic for management group actions. "
+            )
+            context.argument(
+                "default_timeout",
+                options_list=["--default-timeout", "--dto"],
+                help="Default timeout in seconds for management group actions. "
+                "Minimum: 0",
+                type=int,
+            )
+
+        with self.argument_context(f"iot ops ns asset {asset_type} mgmt action") as context:
+            context.argument(
+                "asset_name",
+                options_list=["--asset", "-a"],
+                help="Asset name.",
+            )
+            context.argument(
+                "group_name",
+                options_list=["--group"],
+                help="Management group name.",
+            )
+            context.argument(
+                "action_name",
+                options_list=["--name", "-n"],
+                help="Action name.",
+            )
+            context.argument(
+                "target_uri",
+                options_list=["--target-uri", "--uri"],
+                help="Target URI for the management action. "
+            )
+            context.argument(
+                "topic",
+                options_list=["--topic", "-t"],
+                help="Topic override for this specific action. "
+            )
+            context.argument(
+                "action_type",
+                options_list=["--action-type", "--at"],
+                help="Type of management action. ",
+                arg_type=get_enum_type(ActionType),
+            )
+            context.argument(
+                "timeout",
+                options_list=["--timeout", "--to"],
+                help="Timeout in seconds for this specific action. "
+                "Minimum: 0",
+                type=int,
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the action if another action with the same name is already present.",
+                arg_type=get_three_state_flag(),
             )
 
     with self.argument_context("iot ops ns asset custom dataset") as context:
@@ -1673,4 +1745,18 @@ def load_adr_arguments(self, _):
             "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are `Never` and "
             "`Keep` and allowed values for `qos` are `Qos0` and `Qos1`.",
             nargs="+",
+        )
+
+    with self.argument_context("iot ops ns asset custom mgmt") as context:
+        context.argument(
+            "mgmt_custom_configuration",
+            options_list=["--config"],
+            help="Custom management group configuration as a JSON string or file path. ",
+        )
+
+    with self.argument_context("iot ops ns asset custom mgmt action") as context:
+        context.argument(
+            "custom_configuration",
+            options_list=["--config"],
+            help="Custom action configuration as a JSON string or file path. ",
         )

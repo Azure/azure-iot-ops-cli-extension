@@ -1203,9 +1203,9 @@ class NamespaceAssets(Queryable):
             {
                 "name": group_name,
                 "defaultTopic": default_topic,
-                "defaultTimeout": default_timeout,
+                "defaultTimeoutInSeconds": default_timeout,
                 "managementGroupConfiguration": processed_configs.get("managementGroupsConfiguration"),
-                "destinations": processed_configs.get("managementGroupsDestinations", []),
+                "actions": []
             }
         )
         update_payload = {
@@ -1328,12 +1328,12 @@ class NamespaceAssets(Queryable):
         # update the management group properties
         if "managementGroupsConfiguration" in processed_configs:
             mgmt_group["managementGroupConfiguration"] = processed_configs["managementGroupsConfiguration"]
-        if default_topic:
+        if default_topic == "":
+            mgmt_group.pop("defaultTopic", None)
+        elif default_topic:
             mgmt_group["defaultTopic"] = default_topic
-        if default_timeout:
-            mgmt_group["defaultTimeout"] = default_timeout
-        if "managementGroupsDestinations" in processed_configs:
-            mgmt_group["destinations"] = processed_configs["managementGroupsDestinations"]
+        if default_timeout is not None:
+            mgmt_group["defaultTimeoutInSeconds"] = default_timeout
 
         update_payload = {
             "properties": {
@@ -1398,7 +1398,7 @@ class NamespaceAssets(Queryable):
             "timeoutInSeconds": timeout
         }
         if custom_configuration:
-            action["customConfiguration"] = process_additional_configuration(
+            action["actionConfiguration"] = process_additional_configuration(
                 custom_configuration, config_type="action"
 
             )
@@ -1423,7 +1423,7 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace.name,
                 resource_group=namespace.resource_group,
             )["properties"]["managementGroups"]
-            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)
+            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)["actions"]
 
     def list_management_group_actions(
         self, asset_name: str, instance_name: str, instance_resource_group: str, group_name: str
@@ -1486,7 +1486,7 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace.name,
                 resource_group=namespace.resource_group,
             )["properties"]["managementGroups"]
-            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)
+            return next(mgmt for mgmt in mgmt_groups if mgmt["name"] == group_name)["actions"]
 
     def _check_device_props(
         self,

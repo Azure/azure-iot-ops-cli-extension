@@ -359,6 +359,26 @@ def load_iotops_commands(self, _):
             cmd_group.show_command("show", "show_namespace_asset_stream")
             cmd_group.command("update", f"update_namespace_{asset_type}_asset_stream")
 
+    # management group actions
+    for asset_type in ["custom", "opcua", "onvif"]:
+        with self.command_group(
+            f"iot ops ns asset {asset_type} mgmt",
+            command_type=namespace_resource_ops,
+        ) as cmd_group:
+            cmd_group.command("add", f"add_namespace_{asset_type}_asset_management_group")
+            cmd_group.command("list", "list_namespace_asset_management_groups")
+            cmd_group.command("remove", "remove_namespace_asset_management_group")
+            cmd_group.show_command("show", "show_namespace_asset_management_group")
+            cmd_group.command("update", f"update_namespace_{asset_type}_asset_management_group")
+
+        with self.command_group(
+            f"iot ops ns asset {asset_type} mgmt action",
+            command_type=namespace_resource_ops,
+        ) as cmd_group:
+            cmd_group.command("add", f"add_namespace_{asset_type}_asset_management_group_action")
+            cmd_group.command("list", "list_namespace_asset_management_group_actions")
+            cmd_group.command("remove", "remove_namespace_asset_management_group_action")
+
     with self.command_group(
         "iot ops schema",
         command_type=schema_resource_ops,
