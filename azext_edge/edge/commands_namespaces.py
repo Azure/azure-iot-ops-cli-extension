@@ -8,9 +8,9 @@ from typing import Dict, List, Optional
 
 from knack.log import get_logger
 
-from .providers.rpsaas.adr.namespaces import Namespaces
-from .providers.rpsaas.adr.namespace_assets import NamespaceAssets
-from .providers.rpsaas.adr.namespace_devices import NamespaceDevices, DeviceEndpointType
+from .providers.adr.namespaces import Namespaces
+from .providers.adr.namespace_assets import NamespaceAssets
+from .providers.adr.namespace_devices import NamespaceDevices, DeviceEndpointType
 
 logger = get_logger(__name__)
 
@@ -190,11 +190,13 @@ def add_inbound_custom_device_endpoint(
     endpoint_name: str,
     endpoint_type: str,
     endpoint_address: str,
+    endpoint_version: Optional[str] = None,
     additional_configuration: Optional[str] = None,
     certificate_reference: Optional[str] = None,
     password_reference: Optional[str] = None,
     username_reference: Optional[str] = None,
     trust_list: Optional[str] = None,
+    replace: Optional[bool] = False,
     **kwargs
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
@@ -204,11 +206,13 @@ def add_inbound_custom_device_endpoint(
         endpoint_name=endpoint_name,
         endpoint_type=endpoint_type,
         endpoint_address=endpoint_address,
+        endpoint_version=endpoint_version,
         additional_configuration=additional_configuration,
         certificate_reference=certificate_reference,
         password_reference=password_reference,
         username_reference=username_reference,
         trust_list=trust_list,
+        replace=replace,
         **kwargs
     )
 
@@ -220,8 +224,10 @@ def add_inbound_media_device_endpoint(
     instance_resource_group: str,
     endpoint_name: str,
     endpoint_address: str,
+    endpoint_version: Optional[str] = None,
     password_reference: Optional[str] = None,
     username_reference: Optional[str] = None,
+    replace: Optional[bool] = False,
     **kwargs
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
@@ -231,8 +237,10 @@ def add_inbound_media_device_endpoint(
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.MEDIA.value,
         endpoint_address=endpoint_address,
+        endpoint_version=endpoint_version,
         password_reference=password_reference,
         username_reference=username_reference,
+        replace=replace,
         **kwargs
     )
 
@@ -244,10 +252,12 @@ def add_inbound_onvif_device_endpoint(
     instance_resource_group: str,
     endpoint_name: str,
     endpoint_address: str,
+    endpoint_version: Optional[str] = None,
     accept_invalid_hostnames: Optional[bool] = False,
     accept_invalid_certificates: Optional[bool] = False,
     password_reference: Optional[str] = None,
     username_reference: Optional[str] = None,
+    replace: Optional[bool] = False,
     **kwargs
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
@@ -257,10 +267,12 @@ def add_inbound_onvif_device_endpoint(
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.ONVIF.value,
         endpoint_address=endpoint_address,
+        endpoint_version=endpoint_version,
         password_reference=password_reference,
         username_reference=username_reference,
         accept_invalid_hostnames=accept_invalid_hostnames,
         accept_invalid_certificates=accept_invalid_certificates,
+        replace=replace,
         **kwargs
     )
 
@@ -272,6 +284,7 @@ def add_inbound_opcua_device_endpoint(
     instance_resource_group: str,
     endpoint_name: str,
     endpoint_address: str,
+    endpoint_version: Optional[str] = None,
     application_name: Optional[str] = "OPC UA Broker",
     keep_alive: Optional[int] = 10000,
     publishing_interval: Optional[int] = 1000,
@@ -291,6 +304,7 @@ def add_inbound_opcua_device_endpoint(
     run_asset_discovery: Optional[bool] = False,
     password_reference: Optional[str] = None,
     username_reference: Optional[str] = None,
+    replace: Optional[bool] = False,
     **kwargs
 ):
     return NamespaceDevices(cmd).add_inbound_endpoint(
@@ -300,6 +314,7 @@ def add_inbound_opcua_device_endpoint(
         endpoint_name=endpoint_name,
         endpoint_type=DeviceEndpointType.OPCUA.value,
         endpoint_address=endpoint_address,
+        endpoint_version=endpoint_version,
         password_reference=password_reference,
         username_reference=username_reference,
         application_name=application_name,
@@ -319,6 +334,7 @@ def add_inbound_opcua_device_endpoint(
         security_policy=security_policy,
         security_mode=security_mode,
         run_asset_discovery=run_asset_discovery,
+        replace=replace,
         **kwargs
     )
 
@@ -1888,6 +1904,7 @@ def add_namespace_opcua_asset_management_group_action(
     )
 
 
+# TODO: not exposed for now but this will be supported in the near future
 def add_namespace_onvif_asset_management_group_action(
     cmd,
     asset_name: str,

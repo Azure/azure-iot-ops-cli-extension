@@ -16,8 +16,8 @@ from azure.cli.core.azclierror import (
     RequiredArgumentMissingError,
 )
 
-from azext_edge.edge.common import ADRAuthModes
-from azext_edge.edge.providers.rpsaas.adr.specs import (
+from azext_edge.edge.providers.adr.common import ADRAuthModes
+from azext_edge.edge.providers.adr.specs import (
     NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA,
     NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA,
     NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA,
@@ -29,12 +29,12 @@ CONNECTED_CLUSTER_API = "2024-07-15-preview"
 
 @pytest.fixture()
 def mocked_logger(mocker):
-    yield mocker.patch("azext_edge.edge.providers.rpsaas.adr.helpers.logger", autospec=True)
+    yield mocker.patch("azext_edge.edge.providers.adr.helpers.logger", autospec=True)
 
 
 @pytest.mark.parametrize("connected", [True, False])
 def test_check_cluster_connectivity(mocked_cmd, mocked_logger, mocked_responses: responses, connected: bool):
-    from azext_edge.edge.providers.rpsaas.adr.helpers import check_cluster_connectivity
+    from azext_edge.edge.providers.adr.helpers import check_cluster_connectivity
     # base resource - should be ok if it is not an instance object
     resource = {
         "extendedLocation": {
@@ -87,7 +87,7 @@ def test_get_extended_location(
     subscription: str,
     namespace_name: str
 ):
-    from azext_edge.edge.providers.rpsaas.adr.helpers import get_extended_location
+    from azext_edge.edge.providers.adr.helpers import get_extended_location
     name = generate_random_string()
     resource_group = generate_random_string()
     location = generate_random_string()
@@ -183,7 +183,7 @@ def test_get_namespace_for_instance(
     subscription: str,
     namespace_name: str
 ):
-    from azext_edge.edge.providers.rpsaas.adr.helpers import get_namespace_for_instance, NamespaceResource
+    from azext_edge.edge.providers.adr.helpers import get_namespace_for_instance, NamespaceResource
 
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
@@ -246,7 +246,7 @@ def test_get_namespace_for_instance_error(
     subscription: str,
     scenario: str
 ):
-    from azext_edge.edge.providers.rpsaas.adr.helpers import get_namespace_for_instance
+    from azext_edge.edge.providers.adr.helpers import get_namespace_for_instance
 
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
@@ -318,7 +318,7 @@ def test_get_namespace_for_instance_error(
 ])
 @pytest.mark.parametrize("dataset_name", ["default", generate_random_string()])
 def test_get_default_dataset(datasets, dataset_name):
-    from azext_edge.edge.providers.rpsaas.adr.helpers import get_default_dataset
+    from azext_edge.edge.providers.adr.helpers import get_default_dataset
     expected = deepcopy(datasets[0])
     if dataset_name != "default":
         expected = {"name": dataset_name, "dataPoints": generate_random_string()}
@@ -333,7 +333,7 @@ def test_get_default_dataset(datasets, dataset_name):
 
 @pytest.mark.parametrize("dataset_name", ["default", generate_random_string()])
 def test_get_default_dataset_error(dataset_name):
-    from azext_edge.edge.providers.rpsaas.adr.helpers import get_default_dataset
+    from azext_edge.edge.providers.adr.helpers import get_default_dataset
     with pytest.raises(InvalidArgumentValueError):
         get_default_dataset(
             asset={"name": generate_random_string(), "properties": {}},
@@ -357,7 +357,7 @@ def test_get_default_dataset_error(dataset_name):
 def test_process_additional_configuration(
     mocker, configuration, is_file
 ):
-    from azext_edge.edge.providers.rpsaas.adr.helpers import process_additional_configuration
+    from azext_edge.edge.providers.adr.helpers import process_additional_configuration
     patched_read_file = mocker.patch("azext_edge.edge.util.read_file_content")
     file_name = None
     if is_file:
@@ -379,7 +379,7 @@ def test_process_additional_configuration(
 
 
 def test_process_additional_configuration_error(mocker):
-    from azext_edge.edge.providers.rpsaas.adr.helpers import process_additional_configuration
+    from azext_edge.edge.providers.adr.helpers import process_additional_configuration
     configuration = json.dumps({generate_random_string(): generate_random_string()})
     configuration = configuration[-2:-1]  # remove the } to make invalid
     file_name = generate_random_string
@@ -432,7 +432,7 @@ def test_process_additional_configuration_error(mocker):
 def test_process_authentication(
     mocked_logger, original_props, req
 ):
-    from azext_edge.edge.providers.rpsaas.adr.helpers import process_authentication
+    from azext_edge.edge.providers.adr.helpers import process_authentication
     result = process_authentication(
         auth_props=original_props,
         **req
@@ -518,7 +518,7 @@ def test_process_authentication(
 def test_process_authentication_error(
     req
 ):
-    from azext_edge.edge.providers.rpsaas.adr.helpers import process_authentication
+    from azext_edge.edge.providers.adr.helpers import process_authentication
     with pytest.raises(CLIError) as e:
         process_authentication(
             auth_props=None,
@@ -724,7 +724,7 @@ def test_ensure_schema_structure_valid(schema, data):
     """
     Test ensure_schema_structure with valid inputs that don't trigger validation errors.
     """
-    from azext_edge.edge.providers.rpsaas.adr.helpers import ensure_schema_structure
+    from azext_edge.edge.providers.adr.helpers import ensure_schema_structure
 
     # This should not raise any exceptions for valid data
     ensure_schema_structure(schema, data)
@@ -820,7 +820,7 @@ def test_ensure_schema_structure_invalid(schema, data, expected_error):
     """
     Test ensure_schema_structure with invalid inputs that should trigger validation errors.
     """
-    from azext_edge.edge.providers.rpsaas.adr.helpers import ensure_schema_structure
+    from azext_edge.edge.providers.adr.helpers import ensure_schema_structure
 
     with pytest.raises(InvalidArgumentValueError) as exc:
         ensure_schema_structure(schema, data)

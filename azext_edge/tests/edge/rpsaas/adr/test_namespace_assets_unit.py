@@ -24,7 +24,7 @@ from azext_edge.edge.commands_namespaces import (
     update_namespace_opcua_asset,
     query_namespace_assets
 )
-from azext_edge.edge.providers.rpsaas.adr.namespace_assets import _process_configs
+from azext_edge.edge.providers.adr.namespace_assets import _process_configs
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 from .test_namespace_devices_unit import get_namespace_device_record, get_namespace_device_mgmt_uri

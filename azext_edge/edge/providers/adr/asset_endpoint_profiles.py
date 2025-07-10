@@ -16,12 +16,12 @@ from azure.cli.core.azclierror import (
 from knack.log import get_logger
 from rich.console import Console
 
-from ....util.az_client import (
+from ...util.az_client import (
     DeviceRegistryMgmtApiVersion,
     get_registry_mgmt_client,
     wait_for_terminal_state,
 )
-from ....util.queryable import Queryable
+from ...util.queryable import Queryable
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
     GENERAL_AUTH_REF_MISMATCH_ERROR,
@@ -29,10 +29,10 @@ from .user_strings import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG,
 )
-from ....common import ADRAuthModes, AEPTypes
+from .common import ADRAuthModes, AEPTypes
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistrymgmt.operations import (
+    from ...vendor.clients.deviceregistrymgmt.operations import (
         AssetEndpointProfilesOperations as AEPOperations,
     )
 
@@ -356,7 +356,7 @@ def _build_query_body(
 
 
 def _process_additional_configuration(configuration: str) -> Optional[str]:
-    from ....util import read_file_content
+    from ...util import read_file_content
     inline_json = False
     if not configuration:
         return

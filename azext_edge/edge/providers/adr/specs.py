@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import Enum
-from ....common import ListableEnum
+from ...common import ListableEnum
 
 
 # DEVICE

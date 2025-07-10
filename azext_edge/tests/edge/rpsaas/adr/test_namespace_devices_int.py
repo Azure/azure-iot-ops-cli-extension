@@ -112,6 +112,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         f"--endpoint-address {endpoint_address} "
         f"--accept-invalid-hostnames true --accept-invalid-certificates true "
         f"--user-ref {username_reference} --pass-ref {password_reference} "
+        f"--version 1"
     )
     assert_namespace_device_endpoint_props(
         result,
@@ -123,6 +124,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         authentication_method="UsernamePassword",
         username_reference=username_reference,
         password_reference=password_reference,
+        version="1",
     )
 
     # Add Media endpoint
@@ -207,8 +209,9 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         f"az iot ops ns device endpoint inbound add custom --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group} --name {endpoint_name_custom} "
         f"--endpoint-type {endpoint_type} --endpoint-address {endpoint_address} "
-        f"--additional-config \"{{\\\"customSetting\\\": \\\"value\\\"}}\""
-        f" --cert-ref {certificate_reference} --trust-list {trust_list} "
+        f"--additional-config \"{{\\\"customSetting\\\": \\\"value\\\"}}\" "
+        f"--cert-ref {certificate_reference} --trust-list {trust_list} "
+        f"--version 1.0.0"
     )
     assert_namespace_device_endpoint_props(
         result,
@@ -219,6 +222,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         authentication_method="Certificate",
         certificate_reference=certificate_reference,
         trust_list=trust_list,
+        version="1.0.0",
     )
 
     # List (all) endpoints
@@ -360,6 +364,7 @@ def assert_namespace_device_endpoint_props(
         expected["endpoint_type"] = f"Microsoft.{expected['endpoint_type']}"
     assert result_endpoint["endpointType"] == expected["endpoint_type"]
     assert result_endpoint["address"] == expected.get("endpoint_address")
+    assert result_endpoint.get("version") == expected.get("version")
 
     # Check authentication
     result_auth = result_endpoint["authentication"]

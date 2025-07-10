@@ -10,7 +10,7 @@ import json
 import pytest
 import responses
 
-from azure.cli.core.azclierror import FileOperationError
+from azure.cli.core.azclierror import FileOperationError, InvalidArgumentValueError
 
 from azext_edge.edge.commands_namespaces import (
     create_namespace_device,
@@ -25,9 +25,9 @@ from azext_edge.edge.commands_namespaces import (
     add_inbound_onvif_device_endpoint,
     add_inbound_opcua_device_endpoint,
 )
-from azext_edge.edge.common import ADRAuthModes
-from azext_edge.edge.providers.rpsaas.adr.namespace_devices import DeviceEndpointType
-from azext_edge.edge.providers.rpsaas.adr.specs import SecurityMode, SecurityPolicy
+from azext_edge.edge.providers.adr.common import ADRAuthModes
+from azext_edge.edge.providers.adr.namespace_devices import DeviceEndpointType
+from azext_edge.edge.providers.adr.specs import SecurityMode, SecurityPolicy
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 # Import necessary modules
@@ -86,6 +86,34 @@ def get_namespace_device_record(device_name: str, namespace_name: str, resource_
             "lastModifiedAt": "2023-01-01T00:00:00.000Z",
             "lastModifiedBy": "user@example.com",
             "lastModifiedByType": "User"
+        }
+    }
+
+
+def generate_device_inbound_endpoint(
+    endpoint_name: Optional[str] = None,
+    endpoint_type: Optional[str] = None,
+):
+    """
+    Generate a mock inbound device endpoint record.
+    """
+    if not endpoint_name:
+        endpoint_name = f"endpoint-{generate_random_string()}"
+    if not endpoint_type:
+        endpoint_type = generate_random_string()
+
+    return {
+        endpoint_name: {
+            "endpointType": endpoint_type,
+            "address": f"{endpoint_type.lower()}://example.com",
+            "authentication": {
+                "type": ADRAuthModes.anonymous.value
+            },
+            "additionalConfiguration": json.dumps({
+                "publishingInterval": 500,
+                "samplingInterval": 500,
+                "queueSize": 1
+            })
         }
     }
 
@@ -764,6 +792,12 @@ def test_remove_namespace_device_inbound_endpoints(
     (None, "secretRef:username", "secretRef:password"),  # Username/Password auth
     ("secretRef:certificate", None, None),  # Certificate auth
 ])
+@pytest.mark.parametrize("endpoint_version", [None, "1.0"])
+@pytest.mark.parametrize("endpoints_present, replace", [
+    (False, False),  # Endpoint does not exist, do not replace
+    (True, False),   # Endpoint exists, do not replace
+    (True, True)     # Endpoint exists, replace it
+])
 def test_add_inbound_custom_device_endpoint(
     mocker,
     mocked_cmd,
@@ -774,6 +808,9 @@ def test_add_inbound_custom_device_endpoint(
     username_ref: Optional[str],
     password_ref: Optional[str],
     response_status: int,
+    endpoint_version: Optional[str],
+    endpoints_present: bool,
+    replace: bool,
     mocked_get_namespace_for_instance
 ):
     # Setup test data
@@ -803,13 +840,20 @@ def test_add_inbound_custom_device_endpoint(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
-    original_device["properties"]["endpoints"] = {"inbound": {}}
+    original_device["properties"]["endpoints"] = {
+        "inbound": generate_device_inbound_endpoint() if endpoints_present else {}
+    }
+    if replace:
+        original_device["properties"]["endpoints"]["inbound"].update(
+            generate_device_inbound_endpoint(endpoint_name=endpoint_name)
+        )
 
     # Create expected endpoint structure based on auth type
     expected_endpoint = {
         "endpointType": endpoint_type,
         "address": endpoint_address,
-        "additionalConfiguration": expected_additional_configuration
+        "additionalConfiguration": expected_additional_configuration,
+        "version": endpoint_version
     }
 
     # Set up authentication structure based on auth type
@@ -892,6 +936,8 @@ def test_add_inbound_custom_device_endpoint(
                 certificate_reference=cert_ref,
                 username_reference=username_ref,
                 password_reference=password_ref,
+                endpoint_version=endpoint_version,
+                replace=replace,
                 wait_sec=0
             )
         return
@@ -909,6 +955,8 @@ def test_add_inbound_custom_device_endpoint(
         certificate_reference=cert_ref,
         username_reference=username_ref,
         password_reference=password_ref,
+        endpoint_version=endpoint_version,
+        replace=replace,
         wait_sec=0
     )
     assert result == updated_device["properties"]["endpoints"]["inbound"]
@@ -924,6 +972,7 @@ def test_add_inbound_custom_device_endpoint(
     assert endpoint_name in patch_endpoints
     patch_endpoint = patch_endpoints[endpoint_name]
     assert patch_endpoint["endpointType"] == endpoint_type
+    assert patch_endpoint["version"] == endpoint_version
     assert patch_endpoint["address"] == endpoint_address
     assert patch_endpoint["additionalConfiguration"] == expected_additional_configuration
     assert patch_endpoint["authentication"]["method"] == expected_endpoint["authentication"]["method"]
@@ -939,12 +988,21 @@ def test_add_inbound_custom_device_endpoint(
     (None, None),              # Anonymous auth
     ("secretRef:username", "secretRef:password"),  # Username/Password auth
 ])
+@pytest.mark.parametrize("endpoint_version", [None, "1.0"])
+@pytest.mark.parametrize("endpoints_present, replace", [
+    (False, False),  # Endpoint does not exist, do not replace
+    (True, False),   # Endpoint exists, do not replace
+    (True, True)     # Endpoint exists, replace it
+])
 def test_add_inbound_media_device_endpoint(
     mocked_cmd,
     mocked_responses: responses,
     username_ref: Optional[str],
     password_ref: Optional[str],
     response_status: int,
+    endpoint_version: Optional[str],
+    endpoints_present: bool,
+    replace: bool,
     mocked_get_namespace_for_instance
 ):
     # Setup test data
@@ -964,12 +1022,19 @@ def test_add_inbound_media_device_endpoint(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
-    original_device["properties"]["endpoints"] = {"inbound": {}}
+    original_device["properties"]["endpoints"] = {
+        "inbound": generate_device_inbound_endpoint() if endpoints_present else {}
+    }
+    if replace:
+        original_device["properties"]["endpoints"]["inbound"].update(
+            generate_device_inbound_endpoint(endpoint_name=endpoint_name)
+        )
 
     # Create expected endpoint structure
     expected_endpoint = {
         "endpointType": DeviceEndpointType.MEDIA.value,
         "address": endpoint_address,
+        "version": endpoint_version
     }
 
     # Set up authentication structure based on auth type
@@ -1043,6 +1108,8 @@ def test_add_inbound_media_device_endpoint(
                 endpoint_address=endpoint_address,
                 username_reference=username_ref,
                 password_reference=password_ref,
+                endpoint_version=endpoint_version,
+                replace=replace,
                 wait_sec=0
             )
         return
@@ -1057,6 +1124,8 @@ def test_add_inbound_media_device_endpoint(
         endpoint_address=endpoint_address,
         username_reference=username_ref,
         password_reference=password_ref,
+        endpoint_version=endpoint_version,
+        replace=replace,
         wait_sec=0
     )
     assert result == updated_device["properties"]["endpoints"]["inbound"]
@@ -1071,6 +1140,7 @@ def test_add_inbound_media_device_endpoint(
     patch_body = json.loads(mocked_responses.calls[1].request.body)
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.MEDIA.value
+    assert endpoint_patch["version"] == endpoint_version
     assert endpoint_patch["address"] == endpoint_address
     assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
     assert endpoint_patch["authentication"] == expected_endpoint["authentication"]
@@ -1083,6 +1153,12 @@ def test_add_inbound_media_device_endpoint(
 ])
 @pytest.mark.parametrize("accept_invalid_hostnames", [True, False])
 @pytest.mark.parametrize("accept_invalid_certificates", [True, False])
+@pytest.mark.parametrize("endpoint_version", [None, "1.0"])
+@pytest.mark.parametrize("endpoints_present, replace", [
+    (False, False),  # Endpoint does not exist, do not replace
+    (True, False),   # Endpoint exists, do not replace
+    (True, True)     # Endpoint exists, replace it
+])
 def test_add_inbound_onvif_device_endpoint(
     mocked_cmd,
     mocked_responses: responses,
@@ -1091,6 +1167,9 @@ def test_add_inbound_onvif_device_endpoint(
     accept_invalid_hostnames: bool,
     accept_invalid_certificates: bool,
     response_status: int,
+    endpoint_version: Optional[str],
+    endpoints_present: bool,
+    replace: bool,
     mocked_get_namespace_for_instance
 ):
     # Setup test data
@@ -1110,14 +1189,21 @@ def test_add_inbound_onvif_device_endpoint(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
-    original_device["properties"]["endpoints"] = {"inbound": {}}
+    original_device["properties"]["endpoints"] = {
+        "inbound": generate_device_inbound_endpoint() if endpoints_present else {}
+    }
+    if replace:
+        original_device["properties"]["endpoints"]["inbound"].update(
+            generate_device_inbound_endpoint(endpoint_name=endpoint_name)
+        )
 
     # Create expected endpoint structure
     expected_endpoint = {
         "endpointType": DeviceEndpointType.ONVIF.value,
         "address": endpoint_address,
         "acceptInvalidHostnames": accept_invalid_hostnames,
-        "acceptInvalidCertificates": accept_invalid_certificates
+        "acceptInvalidCertificates": accept_invalid_certificates,
+        "version": endpoint_version
     }
 
     # Set up authentication structure based on auth type
@@ -1192,6 +1278,8 @@ def test_add_inbound_onvif_device_endpoint(
                 password_reference=password_ref,
                 accept_invalid_hostnames=accept_invalid_hostnames,
                 accept_invalid_certificates=accept_invalid_certificates,
+                endpoint_version=endpoint_version,
+                replace=replace,
                 wait_sec=0
             )
         return
@@ -1208,6 +1296,8 @@ def test_add_inbound_onvif_device_endpoint(
         password_reference=password_ref,
         accept_invalid_hostnames=accept_invalid_hostnames,
         accept_invalid_certificates=accept_invalid_certificates,
+        endpoint_version=endpoint_version,
+        replace=replace,
         wait_sec=0
     )
     assert result == updated_device["properties"]["endpoints"]["inbound"]
@@ -1222,6 +1312,7 @@ def test_add_inbound_onvif_device_endpoint(
     patch_body = json.loads(mocked_responses.calls[1].request.body)
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.ONVIF.value
+    assert endpoint_patch["version"] == endpoint_version
     assert endpoint_patch["address"] == endpoint_address
 
     assert endpoint_patch["additionalConfiguration"]
@@ -1258,6 +1349,7 @@ def test_add_inbound_onvif_device_endpoint(
         "security_policy": SecurityPolicy.aes128.value,
         "security_mode": SecurityMode.signandencrypt.value,
         "run_asset_discovery": True,
+        "endpoint_version": "1.0"
     },
     {   # Partial set of parameters
         "application_name": "Simple OPC UA App",
@@ -1267,6 +1359,11 @@ def test_add_inbound_onvif_device_endpoint(
         "security_mode": SecurityMode.sign.value,
     }
 ])
+@pytest.mark.parametrize("endpoints_present, replace", [
+    (False, False),  # Endpoint does not exist, do not replace
+    (True, False),   # Endpoint exists, do not replace
+    (True, True)     # Endpoint exists, replace it
+])
 def test_add_inbound_opcua_device_endpoint(
     mocked_cmd,
     mocked_responses: responses,
@@ -1274,6 +1371,8 @@ def test_add_inbound_opcua_device_endpoint(
     password_ref: Optional[str],
     req: dict,
     response_status: int,
+    endpoints_present: bool,
+    replace: bool,
     mocked_get_namespace_for_instance
 ):
     # Setup test data
@@ -1287,6 +1386,7 @@ def test_add_inbound_opcua_device_endpoint(
     namespace_name = mocked_get_namespace_for_instance.return_value.name
     resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
 
+    endpoint_version = req.get("endpoint_version")
     # Apply default values if not in req
     application_name = req.get("application_name", "OPC UA Broker")
     keep_alive = req.get("keep_alive", 10000)
@@ -1314,12 +1414,19 @@ def test_add_inbound_opcua_device_endpoint(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
-    original_device["properties"]["endpoints"] = {"inbound": {}}
+    original_device["properties"]["endpoints"] = {
+        "inbound": generate_device_inbound_endpoint() if endpoints_present else {}
+    }
+    if replace:
+        original_device["properties"]["endpoints"]["inbound"].update(
+            generate_device_inbound_endpoint(endpoint_name=endpoint_name)
+        )
 
     # Create expected endpoint structure with OPC UA specific properties
     expected_endpoint = {
         "endpointType": DeviceEndpointType.OPCUA.value,
         "address": endpoint_address,
+        "version": endpoint_version,
         "additionalConfiguration": json.dumps({
             "applicationName": application_name,
             "keepAliveMilliseconds": keep_alive,
@@ -1419,6 +1526,7 @@ def test_add_inbound_opcua_device_endpoint(
                 endpoint_address=endpoint_address,
                 username_reference=username_ref,
                 password_reference=password_ref,
+                replace=replace,
                 wait_sec=0,
                 **req
             )
@@ -1434,6 +1542,7 @@ def test_add_inbound_opcua_device_endpoint(
         endpoint_address=endpoint_address,
         username_reference=username_ref,
         password_reference=password_ref,
+        replace=replace,
         wait_sec=0,
         **req
     )
@@ -1450,6 +1559,7 @@ def test_add_inbound_opcua_device_endpoint(
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.OPCUA.value
     assert endpoint_patch["address"] == endpoint_address
+    assert endpoint_patch["version"] == endpoint_version
 
     # Parse additionalConfiguration for validation
     assert endpoint_patch["additionalConfiguration"]
@@ -1485,3 +1595,72 @@ def test_add_inbound_opcua_device_endpoint(
     # Verify authentication structure
     assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
     assert endpoint_patch["authentication"] == expected_endpoint["authentication"]
+
+
+# TODO: add replace error test for inbound endpoints
+@pytest.mark.parametrize("endpoint_type, command_func", [
+    (DeviceEndpointType.ONVIF.value, add_inbound_onvif_device_endpoint),
+    (DeviceEndpointType.MEDIA.value, add_inbound_media_device_endpoint),
+    (DeviceEndpointType.OPCUA.value, add_inbound_opcua_device_endpoint),
+    ("custom", add_inbound_custom_device_endpoint)
+])
+def test_add_inbound_device_endpoint_error(
+    mocked_cmd,
+    mocked_responses: responses,
+    endpoint_type: str,
+    command_func,
+    mocked_get_namespace_for_instance
+):
+    # Setup test data
+    device_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
+    endpoint_name = f"error-endpoint-{generate_random_string()}"
+    endpoint_address = f"http://{generate_random_string()}"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value.name
+    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
+
+    # Create original device record with no endpoints
+    original_device = get_namespace_device_record(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+
+    original_device["properties"]["endpoints"] = {
+        "inbound": (
+            generate_device_inbound_endpoint(endpoint_name=endpoint_name)
+        )
+    }
+
+    # Mock the GET call to get the original device
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=original_device,
+        status=200,
+        content_type="application/json",
+    )
+
+    kwargs = {
+        "cmd": mocked_cmd,
+        "device_name": device_name,
+        "instance_name": instance_name,
+        "instance_resource_group": instance_resource_group,
+        "endpoint_name": endpoint_name,
+        "endpoint_address": endpoint_address,
+        "wait_sec": 0
+    }
+    if endpoint_type == "custom":
+        kwargs["endpoint_type"] = endpoint_type
+
+    with pytest.raises(InvalidArgumentValueError) as exc_info:
+        command_func(**kwargs)
+
+    assert f"Inbound endpoint '{endpoint_name}' already exists. Use --replace to update it." in str(exc_info.value)

@@ -194,23 +194,6 @@ class ResourceTypeMapping(Enum):
         return mapping[self]
 
 
-class ADRAuthModes(Enum):
-    """
-    Authentication modes for asset endpoints/devices
-    """
-
-    anonymous = "Anonymous"
-    certificate = "Certificate"
-    userpass = "UsernamePassword"
-
-
-class AEPTypes(ListableEnum):
-    """Asset Endpoint Profile (connector) Types"""
-
-    opcua = "Microsoft.OpcUa"
-    onvif = "Microsoft.Onvif"
-
-
 class IdentityType(Enum):
     """
     Types of managed identity for ARM resources.
@@ -221,13 +204,6 @@ class IdentityType(Enum):
     none = "None"
 
 
-class TopicRetain(Enum):
-    """Set the retain flag for messages published to an MQTT broker."""
-
-    keep = "Keep"
-    never = "Never"
-
-
 class K8sSecretType(Enum):
     """
     Supported k8s secret types.
@@ -235,16 +211,6 @@ class K8sSecretType(Enum):
 
     opaque = "Opaque"
     tls = "kubernetes.io/tls"
-
-
-class FileType(ListableEnum):
-    """
-    Supported file types/extensions for bulk asset operations.
-    """
-
-    json = "json"
-    csv = "csv"
-    yaml = "yaml"
 
 
 class BundleResourceKind(Enum):

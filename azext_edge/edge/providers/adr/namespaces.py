@@ -8,15 +8,15 @@ from rich.console import Console
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 from knack.log import get_logger
 
-from ....util.az_client import (
+from ...util.az_client import (
     get_registry_mgmt_client, get_resource_client, wait_for_terminal_state, DeviceRegistryMgmtApiVersion
 )
-from ....util.common import should_continue_prompt
-from ....util.queryable import Queryable
+from ...util.common import should_continue_prompt
+from ...util.queryable import Queryable
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistrymgmt.operations import NamespacesOperations
-    from ....vendor.clients.resourcesmgmt.operations import ResourcesOperations
+    from ...vendor.clients.deviceregistrymgmt.operations import NamespacesOperations
+    from ...vendor.clients.resourcesmgmt.operations import ResourcesOperations
 
 
 console = Console()

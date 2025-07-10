@@ -37,7 +37,7 @@ class OpsExtensionCommandsLoader(AzCommandsLoader):
 
     def load_arguments(self, command):
         from azext_edge.edge.params import load_iotops_arguments
-        from azext_edge.edge.providers.rpsaas.adr.params import load_adr_arguments
+        from azext_edge.edge.providers.adr.params import load_adr_arguments
 
         load_iotops_arguments(self, command)
         load_adr_arguments(self, command)

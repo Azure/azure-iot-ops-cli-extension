@@ -11,16 +11,16 @@ from knack.log import get_logger
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
-from ....util.az_client import (
+from ...util.az_client import (
     get_registry_mgmt_client, get_resource_client, wait_for_terminal_state, DeviceRegistryMgmtApiVersion
 )
-from ....util.common import parse_kvp_nargs, should_continue_prompt
-from ....util.queryable import Queryable
-from ....common import ListableEnum
+from ...util.common import parse_kvp_nargs, should_continue_prompt
+from ...util.queryable import Queryable
+from ...common import ListableEnum
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistrymgmt.operations import NamespacesOperations, NamespaceDevicesOperations
-    from ....vendor.clients.resourcesmgmt.operations import ResourcesOperations
+    from ...vendor.clients.deviceregistrymgmt.operations import NamespacesOperations, NamespaceDevicesOperations
+    from ...vendor.clients.resourcesmgmt.operations import ResourcesOperations
 
 
 console = Console()
@@ -288,10 +288,12 @@ class NamespaceDevices(Queryable):
         endpoint_name: str,
         endpoint_address: str,
         endpoint_type: str,
+        endpoint_version: Optional[str] = None,  # TODO: add in version support
         certificate_reference: Optional[str] = None,
         password_reference: Optional[str] = None,
         username_reference: Optional[str] = None,
         trust_list: Optional[str] = None,
+        replace: Optional[bool] = False,
         **kwargs
     ):
         from .helpers import process_authentication, process_additional_configuration, NamespaceResource
@@ -303,11 +305,16 @@ class NamespaceDevices(Queryable):
         )
         namespace = NamespaceResource(device["id"])
         original_endpoints = _get_endpoints(device)
+        if endpoint_name in original_endpoints and not replace:
+            raise InvalidArgumentValueError(
+                f"Inbound endpoint '{endpoint_name}' already exists. Use --replace to update it."
+            )
 
         # create the new endpoint
         endpoint_body = {
             "address": endpoint_address,
             "endpointType": endpoint_type,
+            "version": endpoint_version,
             "authentication": process_authentication(
                 certificate_reference=certificate_reference,
                 password_reference=password_reference,
@@ -326,7 +333,6 @@ class NamespaceDevices(Queryable):
                 "trustList": trust_list
             }
 
-        # TODO: can add a replace endpoint functionality
         # update the endpoints with the new one
         original_endpoints[endpoint_name] = endpoint_body
 

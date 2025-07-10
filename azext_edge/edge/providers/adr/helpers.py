@@ -20,8 +20,8 @@ from .user_strings import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG,
 )
-from ...orchestration.resources import Instances
-from ....common import ADRAuthModes
+from ..orchestration.resources import Instances
+from .common import ADRAuthModes
 
 logger = get_logger(__name__)
 
@@ -150,7 +150,7 @@ def process_additional_configuration(
     Checks that the custom configuration is a valid JSON and returns the stringified JSON.
     If it is a file, it will read the content.
     """
-    from ....util import read_file_content
+    from ...util import read_file_content
     inline_json = False
 
     if not additional_configuration:

@@ -14,8 +14,8 @@ from azure.cli.core.azclierror import (
     RequiredArgumentMissingError,
 )
 
-from azext_edge.edge.providers.rpsaas.adr.namespace_devices import DeviceEndpointType
-from azext_edge.edge.providers.rpsaas.adr.namespace_assets import (
+from azext_edge.edge.providers.adr.namespace_devices import DeviceEndpointType
+from azext_edge.edge.providers.adr.namespace_assets import (
     _build_destination,
     _create_datapoint,
     _get_event,
@@ -32,7 +32,7 @@ from ....generators import generate_random_string
 
 @pytest.fixture()
 def mocked_logger(mocker):
-    yield mocker.patch("azext_edge.edge.providers.rpsaas.adr.namespace_assets.logger")
+    yield mocker.patch("azext_edge.edge.providers.adr.namespace_assets.logger")
 
 
 @pytest.mark.parametrize("test_case", [
@@ -294,7 +294,7 @@ def test_get_event_error(test_case):
 def test_create_datapoint(test_case, mocker):
     # Setup mocks if needed
     mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr.namespace_assets.process_additional_configuration",
+        "azext_edge.edge.providers.adr.namespace_assets.process_additional_configuration",
         return_value='{"customSetting": "value"}'
     )
 
@@ -391,7 +391,7 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         # ensure we can test all possible null values
         return_value = choice(["", [], None]) if null_values else generate_random_string()
         mocks[func_name] = mocker.patch(
-            f"azext_edge.edge.providers.rpsaas.adr.namespace_assets.{func_name}",
+            f"azext_edge.edge.providers.adr.namespace_assets.{func_name}",
             return_value=return_value
         )
 

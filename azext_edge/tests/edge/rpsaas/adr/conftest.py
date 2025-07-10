@@ -8,7 +8,7 @@ import pytest
 from copy import deepcopy
 from typing import Optional
 
-from azext_edge.edge.providers.rpsaas.adr.helpers import NamespaceResource
+from azext_edge.edge.providers.adr.helpers import NamespaceResource
 from ....generators import generate_random_string, get_zeroed_subscription
 from ....helpers import run
 
@@ -72,7 +72,7 @@ def mocked_get_extended_location(mocker):
         )
     }
     mock = mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr.helpers.get_extended_location",
+        "azext_edge.edge.providers.adr.helpers.get_extended_location",
         return_value=result,
         autospec=True
     )
@@ -83,7 +83,7 @@ def mocked_get_extended_location(mocker):
 @pytest.fixture()
 def mocked_check_cluster_connectivity(mocker):
     yield mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr.helpers.check_cluster_connectivity",
+        "azext_edge.edge.providers.adr.helpers.check_cluster_connectivity",
         # autospec=True  # TODO: uncomment when GA
     )
 
@@ -91,7 +91,7 @@ def mocked_check_cluster_connectivity(mocker):
 @pytest.fixture()
 def mocked_get_namespace_for_instance(mocker):
     mock = mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr.helpers.get_namespace_for_instance",
+        "azext_edge.edge.providers.adr.helpers.get_namespace_for_instance",
         return_value=NamespaceResource(
             resource_id=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/{generate_random_string()}"
             f"/providers/Microsoft.DeviceRegistry/namespaces/{generate_random_string()}"
@@ -185,7 +185,7 @@ def get_profile_record(
 
 
 # Paths for mocking
-ASSETS_PATH = "azext_edge.edge.providers.rpsaas.adr.assets"
+ASSETS_PATH = "azext_edge.edge.providers.adr.assets"
 
 # Generic objects
 # Assets

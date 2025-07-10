@@ -9,13 +9,8 @@ from azure.cli.core.commands.parameters import (
     get_three_state_flag,
     tags_type,
 )
-from ....common import (
-    ADRAuthModes,
-    FileType,
-    TopicRetain,
-)
 from .specs import MediaFormat, MediaTaskType, SecurityPolicy, SecurityMode
-from .common import ActionType
+from .common import ActionType, ADRAuthModes, FileType, TopicRetain
 
 
 def load_adr_arguments(self, _):
@@ -696,13 +691,18 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "endpoint_name",
-            options_list=["--name"],
+            options_list=["--name", "-n"],
             help="Endpoint name.",
         )
         context.argument(
             "endpoint_address",
             options_list=["--endpoint-address", "--address"],
             help="Endpoint address to connect to.",
+        )
+        context.argument(
+            "endpoint_version",
+            options_list=["--version"],
+            help="Endpoint version.",
         )
         context.argument(
             "certificate_reference",
@@ -726,6 +726,12 @@ def load_adr_arguments(self, _):
             "trust_list",
             options_list=["--trust-list"],
             help="List of trusted certificates for the endpoint.",
+        )
+        context.argument(
+            "replace",
+            options_list=["--replace"],
+            help="Replace the endpoint if another endpoint with the same name is present already.",
+            arg_type=get_three_state_flag(),
         )
 
     with self.argument_context("iot ops ns device endpoint list") as context:

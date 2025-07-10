@@ -15,14 +15,14 @@ from knack.log import get_logger
 from rich.console import Console
 
 from .helpers import get_default_dataset
-from ....common import FileType
-from ....util import assemble_nargs_to_dict
-from ....util.az_client import (
+from .common import FileType
+from ...util import assemble_nargs_to_dict
+from ...util.az_client import (
     DeviceRegistryMgmtApiVersion,
     get_registry_mgmt_client,
     wait_for_terminal_state,
 )
-from ....util.queryable import Queryable
+from ...util.queryable import Queryable
 from .user_strings import (
     DUPLICATE_EVENT_ERROR,
     DUPLICATE_POINT_ERROR,
@@ -30,7 +30,7 @@ from .user_strings import (
 )
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistrymgmt.operations import AssetsOperations
+    from ...vendor.clients.deviceregistrymgmt.operations import AssetsOperations
 
 
 console = Console()
@@ -384,7 +384,7 @@ class Assets(Queryable):
         output_dir: str = ".",
         replace: Optional[bool] = False
     ):
-        from ....util import dump_content_to_file
+        from ...util import dump_content_to_file
         asset = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name
@@ -551,7 +551,7 @@ class Assets(Queryable):
         output_dir: str = ".",
         replace: Optional[bool] = False
     ):
-        from ....util import dump_content_to_file
+        from ...util import dump_content_to_file
         asset_props = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
@@ -676,7 +676,7 @@ def _process_asset_sub_points_file_path(
     point_key: Optional[str] = None,
     replace: bool = False
 ) -> List[Dict[str, str]]:
-    from ....util import deserialize_file_content
+    from ...util import deserialize_file_content
     file_points = list(deserialize_file_content(file_path=file_path))
     _convert_sub_points_from_csv(file_points)
 

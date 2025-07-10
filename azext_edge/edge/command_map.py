@@ -359,7 +359,7 @@ def load_iotops_commands(self, _):
             cmd_group.show_command("show", "show_namespace_asset_stream")
             cmd_group.command("update", f"update_namespace_{asset_type}_asset_stream")
 
-    # management group actions
+    # management group
     for asset_type in ["custom", "opcua", "onvif"]:
         with self.command_group(
             f"iot ops ns asset {asset_type} mgmt",
@@ -371,6 +371,8 @@ def load_iotops_commands(self, _):
             cmd_group.show_command("show", "show_namespace_asset_management_group")
             cmd_group.command("update", f"update_namespace_{asset_type}_asset_management_group")
 
+    # management group actions
+    for asset_type in ["custom", "opcua"]:
         with self.command_group(
             f"iot ops ns asset {asset_type} mgmt action",
             command_type=namespace_resource_ops,

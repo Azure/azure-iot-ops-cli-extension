@@ -93,7 +93,7 @@ def get_namespace_record(
 
 @pytest.fixture()
 def mocked_logger(mocker):
-    return mocker.patch("azext_edge.edge.providers.rpsaas.adr.namespaces.logger", autospec=True)
+    return mocker.patch("azext_edge.edge.providers.adr.namespaces.logger", autospec=True)
 
 
 @pytest.mark.parametrize("response_status", [200, 400])

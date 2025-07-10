@@ -16,21 +16,21 @@ from azure.cli.core.azclierror import (
     RequiredArgumentMissingError,
 )
 
-from ....util.common import parse_kvp_nargs, should_continue_prompt
-from ....util.az_client import (
+from ...util.common import parse_kvp_nargs, should_continue_prompt
+from ...util.az_client import (
     get_registry_mgmt_client, get_resource_client, wait_for_terminal_state, DeviceRegistryMgmtApiVersion
 )
-from ....util.queryable import Queryable
+from ...util.queryable import Queryable
 from .helpers import (
     process_additional_configuration, ensure_schema_structure, get_default_dataset, NamespaceResource
 )
 from .namespace_devices import DeviceEndpointType
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistrymgmt.operations import (
+    from ...vendor.clients.deviceregistrymgmt.operations import (
         NamespaceAssetsOperations, NamespaceDevicesOperations
     )
-    from ....vendor.clients.resourcesmgmt.operations import ResourcesOperations
+    from ...vendor.clients.resourcesmgmt.operations import ResourcesOperations
 
 
 console = Console()
@@ -1638,16 +1638,16 @@ def _build_destination(
             raise RequiredArgumentMissingError(
                 "For MQTT destinations, 'topic', 'retain', 'qos', and 'ttl' must be provided."
             )
-        from .common import DestinationQos, DestinationRetain
+        from .common import DestinationQos, TopicRetain
         qos = destination_args.pop("qos")
         if qos not in DestinationQos.list():
             raise InvalidArgumentValueError(
                 f"Invalid QoS value '{qos}'. Allowed values are: {', '.join(DestinationQos.list())}."
             )
         retain = destination_args.pop("retain")
-        if retain not in DestinationRetain.list():
+        if retain not in TopicRetain.list():
             raise InvalidArgumentValueError(
-                f"Invalid retain value '{retain}'. Allowed values are: {', '.join(DestinationRetain.list())}."
+                f"Invalid retain value '{retain}'. Allowed values are: {', '.join(TopicRetain.list())}."
             )
 
         destination = {

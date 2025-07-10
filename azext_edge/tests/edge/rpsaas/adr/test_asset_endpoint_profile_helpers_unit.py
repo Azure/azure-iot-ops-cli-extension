@@ -12,15 +12,15 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
 )
 
-from azext_edge.edge.providers.rpsaas.adr.specs import SecurityPolicy, SecurityMode
-from azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles import (
+from azext_edge.edge.providers.adr.specs import SecurityPolicy, SecurityMode
+from azext_edge.edge.providers.adr.asset_endpoint_profiles import (
     _assert_above_min,
     _build_opcua_config,
     _build_query_body,
     _update_properties,
     ADRAuthModes
 )
-from azext_edge.edge.providers.rpsaas.adr.helpers import process_authentication
+from azext_edge.edge.providers.adr.helpers import process_authentication
 from ....generators import generate_random_string
 
 
@@ -277,7 +277,7 @@ def test_build_query_body(
 ])
 def test_update_properties(mocker, properties, req):
     # remove logger warnings
-    mocker.patch("azext_edge.edge.providers.rpsaas.adr.asset_endpoint_profiles.logger")
+    mocker.patch("azext_edge.edge.providers.adr.asset_endpoint_profiles.logger")
     # lazy way of copying to avoid having to make sure we copy possible the lists
     original_properties = deepcopy(properties)
     _update_properties(

@@ -756,9 +756,9 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --user-ref "secretRef:username" --pass-ref "secretRef:password"
 
-        - name: Add a custom endpoint with certificate authentication
+        - name: Add a custom endpoint with certificate authentication and a version
           text: >
-            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref "secretRef:certificate"
+            az iot ops ns device endpoint inbound add custom --device myDevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref "secretRef:certificate" --version "1.0"
 
         - name: Add a custom endpoint with additional configuration
           text: >
@@ -1990,73 +1990,6 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset onvif mgmt remove --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
             --name myManagementGroup
-    """
-
-    helps[
-        "iot ops ns asset onvif mgmt action"
-    ] = """
-        type: group
-        short-summary: Manage actions within ONVIF asset management groups.
-        long-summary: |
-          Actions within management groups define specific operations that can be performed on ONVIF assets.
-          Each action has a target URI and can include timeout and topic configuration.
-    """
-
-    helps[
-        "iot ops ns asset onvif mgmt action add"
-    ] = """
-        type: command
-        short-summary: Add an action to an ONVIF asset management group.
-
-        examples:
-        - name: Add a basic action to a management group.
-          text: >
-            az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "device/ptz/move"
-
-        - name: Add an action with timeout and topic.
-          text: >
-            az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "device/ptz/move"
-            --timeout 45 --topic factory/onvif/actions
-
-        - name: Add an action with specific action type.
-          text: >
-            az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "device/ptz/move"
-            --action-type "control" --timeout 30
-
-        - name: Replace an existing action with the same name.
-          text: >
-            az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "device/ptz/zoom"
-            --timeout 60 --replace
-    """
-
-    helps[
-        "iot ops ns asset onvif mgmt action list"
-    ] = """
-        type: command
-        short-summary: List actions in an ONVIF asset management group.
-
-        examples:
-        - name: List all actions in a management group.
-          text: >
-            az iot ops ns asset onvif mgmt action list --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup
-    """
-
-    helps[
-        "iot ops ns asset onvif mgmt action remove"
-    ] = """
-        type: command
-        short-summary: Remove an action from an ONVIF asset management group.
-
-        examples:
-        - name: Remove an action from a management group.
-          text: >
-            az iot ops ns asset onvif mgmt action remove --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction
     """
 
     helps[
