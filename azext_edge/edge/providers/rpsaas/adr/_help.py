@@ -1481,25 +1481,25 @@ def load_iotops_adr_help():
         - name: Add a basic action to a management group.
           text: >
             az iot ops ns asset custom mgmt action add --asset myAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
 
         - name: Add an action with custom configuration and timeout.
           text: >
             az iot ops ns asset custom mgmt action add --asset myAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
             --custom-config '{"method": "start", "parameters": {"speed": 100}}'
             --timeout 45
 
         - name: Add an action with specific action type and topic.
           text: >
             az iot ops ns asset custom mgmt action add --asset myAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
             --action-type "control" --topic factory/control/actions --timeout 30
 
         - name: Replace an existing action with the same name.
           text: >
             az iot ops ns asset custom mgmt action add --asset myAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=UpdatedMethodNode"
+            --group myManagementGroup --name myAction --target-uri "ns=3;s=UpdatedMethodNode"
             --custom-config '{"method": "restart", "priority": "high"}' --replace
     """
 
@@ -1513,7 +1513,7 @@ def load_iotops_adr_help():
         - name: List all actions in a management group.
           text: >
             az iot ops ns asset custom mgmt action list --asset myAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup
+            --group myManagementGroup
     """
 
     helps[
@@ -1526,7 +1526,7 @@ def load_iotops_adr_help():
         - name: Remove an action from a management group.
           text: >
             az iot ops ns asset custom mgmt action remove --asset myAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction
+            --group myManagementGroup --name myAction
     """
 
     helps[
@@ -2012,24 +2012,24 @@ def load_iotops_adr_help():
         - name: Add a basic action to a management group.
           text: >
             az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "device/ptz/move"
+            --group myManagementGroup --name myAction --target-uri "device/ptz/move"
 
         - name: Add an action with timeout and topic.
           text: >
             az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "device/ptz/move"
+            --group myManagementGroup --name myAction --target-uri "device/ptz/move"
             --timeout 45 --topic factory/onvif/actions
 
         - name: Add an action with specific action type.
           text: >
             az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "device/ptz/move"
+            --group myManagementGroup --name myAction --target-uri "device/ptz/move"
             --action-type "control" --timeout 30
 
         - name: Replace an existing action with the same name.
           text: >
             az iot ops ns asset onvif mgmt action add --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "device/ptz/zoom"
+            --group myManagementGroup --name myAction --target-uri "device/ptz/zoom"
             --timeout 60 --replace
     """
 
@@ -2043,7 +2043,7 @@ def load_iotops_adr_help():
         - name: List all actions in a management group.
           text: >
             az iot ops ns asset onvif mgmt action list --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup
+            --group myManagementGroup
     """
 
     helps[
@@ -2056,7 +2056,7 @@ def load_iotops_adr_help():
         - name: Remove an action from a management group.
           text: >
             az iot ops ns asset onvif mgmt action remove --asset myOnvifAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction
+            --group myManagementGroup --name myAction
     """
 
     helps[
@@ -2509,24 +2509,24 @@ def load_iotops_adr_help():
         - name: Add a basic action to a management group.
           text: >
             az iot ops ns asset opcua mgmt action add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
 
         - name: Add an action with timeout and topic.
           text: >
             az iot ops ns asset opcua mgmt action add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
             --timeout 45 --topic factory/opcua/actions
 
         - name: Add an action with specific action type.
           text: >
             az iot ops ns asset opcua mgmt action add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
             --action-type "call" --timeout 30
 
         - name: Replace an existing action with the same name.
           text: >
             az iot ops ns asset opcua mgmt action add --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction --target-uri "ns=3;s=UpdatedMethodNode"
+            --group myManagementGroup --name myAction --target-uri "ns=3;s=UpdatedMethodNode"
             --timeout 60 --replace
     """
 
@@ -2540,7 +2540,7 @@ def load_iotops_adr_help():
         - name: List all actions in a management group.
           text: >
             az iot ops ns asset opcua mgmt action list --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup
+            --group myManagementGroup
     """
 
     helps[
@@ -2553,5 +2553,5 @@ def load_iotops_adr_help():
         - name: Remove an action from a management group.
           text: >
             az iot ops ns asset opcua mgmt action remove --asset myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
-            --group-name myManagementGroup --name myAction
+            --group myManagementGroup --name myAction
     """
