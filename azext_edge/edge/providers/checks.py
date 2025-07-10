@@ -18,7 +18,6 @@ from .check.deviceregistry import check_deviceregistry_deployment
 from .check.mq import check_mq_deployment
 from .check.opcua import check_opcua_deployment
 from .check.summary import check_summary
-from .edge_api.akri import AkriResourceKinds
 from .edge_api.dataflow import DataflowResourceKinds
 from .edge_api.deviceregistry import DeviceRegistryResourceKinds
 from .edge_api.mq import MqResourceKinds
@@ -85,7 +84,6 @@ def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: Lis
         OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
         OpsServiceType.dataflow.value: DataflowResourceKinds,
-        OpsServiceType.akri.value: AkriResourceKinds,
     }
 
     valid_resource_kinds = service_kinds_dict[ops_service].list() if ops_service in service_kinds_dict else []

@@ -33,11 +33,7 @@ def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, 
     try:
         assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
     except ArgumentUsageError as e:
-        if len(resource_kinds) == 1:
-            kinds_str = resource_kinds[0]
-        else:
-            kinds_str = ", ".join(resource_kinds) if resource_kinds else resource_kinds
-        assert f"Resource kind {kinds_str} is not supported for service {ops_service}. " in str(e)
+        assert "Resource filtering is not supported for service akri." in str(e)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
