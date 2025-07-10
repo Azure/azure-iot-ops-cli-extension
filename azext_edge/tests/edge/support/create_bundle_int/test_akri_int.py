@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
 AKRI_PREFIXES = ["aio-akri"]
-AKRI_WORKLOAD_TYPES = ["deployment", "pod", "replicaset"]
+AKRI_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "statefulset", "service"]
 
 
 def test_create_bundle_akri(cluster_connection, tracked_files):

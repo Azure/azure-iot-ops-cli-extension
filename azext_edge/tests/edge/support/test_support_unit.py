@@ -17,6 +17,7 @@ from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import (
     ARCCONTAINERSTORAGE_API_V1,
+    AKRI_ACTIVE_API,
     CLUSTER_CONFIG_API_V1,
     DEVICEREGISTRY_API_V1,
     MQ_ACTIVE_API,
@@ -54,6 +55,7 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
     [
         [MQTT_BROKER_API_V1],
         [MQTT_BROKER_API_V1, MQ_ACTIVE_API],
+        [MQTT_BROKER_API_V1, AKRI_ACTIVE_API],
         [MQTT_BROKER_API_V1, DEVICEREGISTRY_API_V1],
         [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1],
         [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1],
@@ -323,7 +325,7 @@ def test_create_bundle_crd_work(
 
     if mocked_cluster_resources["param"] == []:
         mocked_root_logger.warning.assert_called_with(
-            "The following API(s) were not detected mqttbroker.iotoperations.azure.com/[v1]. "
+            "The following API(s) were not detected mqttbroker.iotoperations.azure.com/[v1,v1beta1]. "
             "CR capture for broker will be skipped. Still attempting capture of runtime resources..."
         )
         mocked_assemble_crd_work.assert_not_called()

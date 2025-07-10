@@ -16,6 +16,8 @@ from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_deployments,
     assert_list_pods,
     assert_list_replica_sets,
+    assert_list_services,
+    assert_list_stateful_sets,
 )
 
 from ...generators import generate_random_string
@@ -31,6 +33,8 @@ def test_create_bundle_akri(
     mocked_list_deployments,
     mocked_list_pods,
     mocked_list_replicasets,
+    mocked_list_services,
+    mocked_list_statefulsets,
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
@@ -66,5 +70,18 @@ def test_create_bundle_akri(
         mocked_client,
         mocked_zipfile,
         label_selector=AKRI_NAME_LABEL_V2,
+        directory_path=AKRI_DIRECTORY_PATH,
+    )
+    assert_list_services(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=AKRI_NAME_LABEL_V2,
+        directory_path=AKRI_DIRECTORY_PATH,
+    )
+    assert_list_stateful_sets(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=AKRI_NAME_LABEL_V2,
+        field_selector=None,
         directory_path=AKRI_DIRECTORY_PATH,
     )
