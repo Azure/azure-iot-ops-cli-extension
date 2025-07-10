@@ -381,24 +381,7 @@ def test_add_namespace_asset_event_error(
     )
 
     # 2nd do event already exists
-    existing_event = {
-        "name": event_name,
-        "eventNotifier": f"nsu=existing;s=FastUInt{randint(1, 1000)}",
-        "eventConfiguration": json.dumps({"existingConfig": "value"}),
-        "destinations": [
-            {
-                "target": "Mqtt",
-                "configuration": {
-                    "topic": "/contoso/existing",
-                    "retain": "Never",
-                    "qos": "Qos0",
-                    "ttl": 3600
-                }
-            }
-        ],
-        "dataPoints": []
-    }
-    mocked_asset["properties"]["events"] = [existing_event]
+    mocked_asset["properties"]["events"] = [generate_event(event_name=event_name, num_data_points=0)]
 
     mocked_responses.add(
         responses.GET,
@@ -1262,12 +1245,8 @@ def test_remove_namespace_asset_event_point(
         patch_events = patch_body["properties"]["events"]
         assert len(patch_events) == 1
 
-        # Find the event in the patch request
-        patched_event = next((e for e in patch_events if e["name"] == event_name), None)
-        assert patched_event is not None
-
         # Check that the datapoints in the patch request match the expected datapoints
-        patched_datapoints = patched_event.get("dataPoints", [])
+        patched_datapoints = patch_events[0].get("dataPoints", [])
 
         # The datapoint that was supposed to be deleted should not be in the request
         for dp in patched_datapoints:

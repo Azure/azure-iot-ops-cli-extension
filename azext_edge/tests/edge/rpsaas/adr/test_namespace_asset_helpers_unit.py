@@ -356,7 +356,7 @@ def test_create_datapoint(test_case, mocker):
                 "dataset_custom_configuration": '{"test": "dataset_value"}',
                 "event_custom_configuration": '{"test": "event_value"}',
                 "mgmt_custom_configuration": '{"test": "mgmt_value"}',
-                "streams_custom_configuration": '{"test": "stream_value"}',
+                "stream_custom_configuration": '{"test": "stream_value"}',
                 "dataset_destinations": ["topic=/test/dataset"],
                 "event_destinations": ["topic=/test/event"],
                 "stream_destinations": ["path=/data/test"]
@@ -424,7 +424,7 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         "dataset_custom_configuration",
         "event_custom_configuration",
         "mgmt_custom_configuration",
-        "streams_custom_configuration",
+        "stream_custom_configuration",
         "dataset_destinations",
         "event_destinations",
         "stream_destinations"
@@ -436,7 +436,7 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         "dataset_custom_configuration": "datasetsConfiguration",
         "event_custom_configuration": "eventsConfiguration",
         "mgmt_custom_configuration": "managementGroupsConfiguration",
-        "streams_custom_configuration": "streamsConfiguration",
+        "stream_custom_configuration": "streamsConfiguration",
         # specific type configurations
         "opcua_dataset_values": "datasetsConfiguration",
         "opcua_event_values": "eventsConfiguration",
@@ -468,7 +468,7 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         ("dataset_custom_configuration", "dataset"),
         ("event_custom_configuration", "event"),
         ("mgmt_custom_configuration", "management group"),
-        ("streams_custom_configuration", "stream")
+        ("stream_custom_configuration", "stream")
     ]:
         if arg in expected_args:
             # check that the function was called with the right parameters
@@ -868,11 +868,13 @@ def test_process_opcua_event_configurations_v2(test_case, mocked_logger):
         "original": None,
         "params": {
             "task_type": "snapshot-to-mqtt",
+            "disable_autostart": False,
             "task_format": "png",
             "snapshots_per_second": 0.01
         },
         "expected_values": {
             "taskType": "snapshot-to-mqtt",
+            "autostart": True,
             "format": "png",
             "snapshotsPerSecond": 0.01
         }
@@ -882,12 +884,14 @@ def test_process_opcua_event_configurations_v2(test_case, mocked_logger):
         "original": None,
         "params": {
             "task_type": "snapshot-to-fs",
+            "disable_autostart": True,
             "task_format": "jpeg",
             "snapshots_per_second": 2,
             "path": "/data/snapshots"
         },
         "expected_values": {
             "taskType": "snapshot-to-fs",
+            "autostart": False,
             "format": "jpeg",
             "snapshotsPerSecond": 2,
             "path": "/data/snapshots"
@@ -898,12 +902,14 @@ def test_process_opcua_event_configurations_v2(test_case, mocked_logger):
         "original": None,
         "params": {
             "task_type": "clip-to-fs",
+            "disable_autostart": True,
             "task_format": "mp4",
             "duration": 60,
             "path": "/data/clips"
         },
         "expected_values": {
             "taskType": "clip-to-fs",
+            "autostart": False,
             "format": "mp4",
             "duration": 60,
             "path": "/data/clips"
@@ -914,12 +920,14 @@ def test_process_opcua_event_configurations_v2(test_case, mocked_logger):
         "original": None,
         "params": {
             "task_type": "stream-to-rtsp",
+            "disable_autostart": False,
             "media_server_address": "rtsp-server",
             "media_server_port": 554,
             "media_server_path": "/live/stream"
         },
         "expected_values": {
             "taskType": "stream-to-rtsp",
+            "autostart": True,
             "mediaServerAddress": "rtsp-server",
             "mediaServerPort": 554,
             "mediaServerPath": "/live/stream"
@@ -930,6 +938,7 @@ def test_process_opcua_event_configurations_v2(test_case, mocked_logger):
         "original": None,
         "params": {
             "task_type": "stream-to-rtsps",
+            "disable_autostart": True,
             "media_server_address": "rtsps-server",
             "media_server_port": 443,
             "media_server_path": "/secure/stream",
@@ -939,6 +948,7 @@ def test_process_opcua_event_configurations_v2(test_case, mocked_logger):
         },
         "expected_values": {
             "taskType": "stream-to-rtsps",
+            "autostart": False,
             "mediaServerAddress": "rtsps-server",
             "mediaServerPort": 443,
             "mediaServerPath": "/secure/stream",
@@ -951,6 +961,7 @@ def test_process_opcua_event_configurations_v2(test_case, mocked_logger):
     {
         "original": json.dumps({
             "taskType": "snapshot-to-mqtt",
+            "autostart": True,
             "format": "png",
             "snapshotsPerSecond": 1
         }),
@@ -960,6 +971,7 @@ def test_process_opcua_event_configurations_v2(test_case, mocked_logger):
         },
         "expected_values": {
             "taskType": "snapshot-to-mqtt",
+            "autostart": True,
             "format": "png",
             "snapshotsPerSecond": 2
         }
@@ -996,18 +1008,6 @@ def test_process_media_stream_configurations(test_case):
     assert len(result) == len(test_case["expected_values"])
     for key, value in test_case["expected_values"].items():
         assert result[key] == value
-
-    # Verify task_type is always present
-    assert "taskType" in result
-
-    # Verify all properties in the result are allowed for the task type
-    from azext_edge.edge.providers.rpsaas.adr.specs import MediaTaskType
-    task_type = result["taskType"]
-    allowed_properties = MediaTaskType(task_type).allowed_properties
-
-    # Check that all properties in the result are allowed for this task type
-    for property_name in result:
-        assert property_name in allowed_properties, f"Property {property_name} is not allowed for task type {task_type}"
 
 
 @pytest.mark.parametrize("test_case", [

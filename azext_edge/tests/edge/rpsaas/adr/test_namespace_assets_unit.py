@@ -142,55 +142,54 @@ def add_device_get_call(
     ["opcua", {}],
     # CUSTOM
     [
-        "custom", {
+        "custom",
+        {
             "default_dataset_custom_configuration": json.dumps({"testConfig": "value"}),
             "default_dataset_destinations": ["key=test-key"],
             "default_event_custom_configuration": json.dumps({"eventsConfig": "value"}),
             "default_event_destinations": ["path=/data/test"],
             "default_mgmtg_custom_configuration": json.dumps({"mgmtgConfig": "value"}),
-            "default_streams_custom_configuration": json.dumps({"streamsConfig": "value"}),
+            "default_stream_custom_configuration": json.dumps({"streamsConfig": "value"}),
             "default_stream_destinations": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
     # Media task type: snapshot-to-mqtt with all allowed parameters
     [
-        "media", {
-            "default_streams_custom_configuration": json.dumps({
-                "taskType": "snapshot-to-mqtt",
-                "format": "jpeg",
-                "snapshotsPerSecond": 1
-            }),
+        "media",
+        {
+            "task_type": "snapshot-to-mqtt",
+            "format": "jpeg",
+            "snapshots_per_second": 1,
             "default_stream_destinations": ["topic=/contoso/snapshots", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
     # Media task type: clip-to-fs with all allowed parameters
     [
-        "media", {
-            "default_streams_custom_configuration": json.dumps({
-                "taskType": "clip-to-fs",
-                "format": "mp4",
-                "duration": 60,
-                "path": "/data/clips"
-            }),
+        "media",
+        {
+            "task_type": "clip-to-fs",
+            "format": "mp4",
+            "duration": 60,
+            "path": "/data/clips",
             "default_stream_destinations": ["path=/contoso/clips"]
         }
     ],
     # Media task type: stream-to-rtsp with all allowed parameters
     [
-        "media", {
-            "default_streams_custom_configuration": json.dumps({
-                "taskType": "stream-to-rtsp",
-                "mediaServerAddress": "media-server.svc.cluster.local",
-                "mediaServerPort": 8554,
-                "mediaServerPath": "/live/stream1",
-                "mediaServerUsernameRef": "streamuser",
-                "mediaServerPasswordRef": "streampassword"
-            })
+        "media",
+        {
+            "task_type": "stream-to-rtsp",
+            "media_server_address": "media-server.svc.cluster.local",
+            "media_server_port": 8554,
+            "media_server_path": "/live/stream1",
+            "media_server_username": "streamuser",
+            "media_server_password": "streampassword",
         }
     ],
     # OPCUA
     [
-        "opcua", {
+        "opcua",
+        {
             "default_dataset_publishing_interval": 2000,
             "default_dataset_sampling_interval": 1000,
             "default_dataset_queue_size": 2,
@@ -526,7 +525,7 @@ def test_show_namespace_asset(
 @pytest.mark.parametrize("reqs", [
     {},
     {
-        "asset_type_refs": ["testTypeRef1", "testTypeRef2"],
+        "asset_types": ["testTypeRef1", "testTypeRef2"],
         "attributes": ["key1=value1", "key2=value2"],
         "description": "Updated description",
         "disabled": True,
@@ -555,55 +554,54 @@ def test_show_namespace_asset(
     ["opcua", {}],
     # Custom
     [
-        "custom", {
+        "custom",
+        {
             "default_dataset_custom_configuration": json.dumps({"testConfig": "value"}),
             "default_dataset_destinations": ["key=test-key"],
             "default_event_custom_configuration": json.dumps({"eventsConfig": "value"}),
             "default_event_destinations": ["path=/data/test"],
             "default_mgmtg_custom_configuration": json.dumps({"mgmtgConfig": "value"}),
-            "default_streams_custom_configuration": json.dumps({"streamsConfig": "value"}),
+            "default_stream_custom_configuration": json.dumps({"streamsConfig": "value"}),
             "default_stream_destinations": ["topic=/contoso/test", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
     # Media task type: snapshot-to-mqtt with all allowed parameters
     [
-        "media", {
-            "default_streams_custom_configuration": json.dumps({
-                "taskType": "snapshot-to-mqtt",
-                "format": "jpeg",
-                "snapshotsPerSecond": 1
-            }),
+        "media",
+        {
+            "task_type": "snapshot-to-mqtt",
+            "format": "jpeg",
+            "snapshots_per_second": 1,
             "default_stream_destinations": ["topic=/contoso/snapshots", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ],
     # Media task type: clip-to-fs with all allowed parameters
     [
-        "media", {
-            "default_streams_custom_configuration": json.dumps({
-                "taskType": "clip-to-fs",
-                "format": "mp4",
-                "duration": 60,
-                "path": "/data/clips"
-            }),
+        "media",
+        {
+            "task_type": "clip-to-fs",
+            "format": "mp4",
+            "duration": 60,
+            "path": "/data/clips",
             "default_stream_destinations": ["path=/contoso/clips"]
         }
     ],
     # Media task type: stream-to-rtsp with all allowed parameters
     [
-        "media", {
-            "default_streams_custom_configuration": json.dumps({
-                "taskType": "stream-to-rtsp",
-                "mediaServerAddress": "media-server.svc.cluster.local",
-                "mediaServerPort": 8554,
-                "mediaServerPath": "/live/stream1",
-                "mediaServerUsernameRef": "streamuser",
-                "mediaServerPasswordRef": "streampassword"
-            })
+        "media",
+        {
+            "task_type": "stream-to-rtsp",
+            "media_server_address": "media-server.svc.cluster.local",
+            "media_server_port": 8554,
+            "media_server_path": "/live/stream1",
+            "media_server_username": "streamuser",
+            "media_server_password": "streampassword",
         }
     ],
     # Opcua
     [
-        "opcua", {
+        "opcua",
+        {
             "default_dataset_publishing_interval": 2000,
             "default_dataset_sampling_interval": 1000,
             "default_dataset_queue_size": 2,
