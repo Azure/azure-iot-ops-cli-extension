@@ -175,6 +175,11 @@ def create_instance(
     broker_frontend_workers: int = 2,
     broker_frontend_replicas: int = 2,
     add_insecure_listener: Optional[bool] = None,
+    # Broker data persistence
+    persist_max_size: Optional[str] = None,
+    persist_pvc_sc: Optional[str] = None,
+    persist_mode: Optional[List[str]] = None,
+    # Tags
     tags: Optional[dict] = None,
     no_progress: Optional[bool] = None,
     **kwargs,
@@ -227,6 +232,10 @@ def create_instance(
         broker_backend_redundancy_factor=broker_backend_redundancy_factor,
         broker_frontend_workers=broker_frontend_workers,
         broker_frontend_replicas=broker_frontend_replicas,
+        # Broker data persistence
+        persist_max_size=persist_max_size,
+        persist_pvc_sc=persist_pvc_sc,
+        persist_mode=persist_mode,
         tags=tags,
         **kwargs,
     )

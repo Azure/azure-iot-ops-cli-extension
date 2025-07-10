@@ -23,6 +23,7 @@ from ..orchestration.common import (
     TRUST_SETTING_KEYS,
 )
 from ..orchestration.resources.instances import parse_feature_kvp_nargs
+from ..orchestration.resources.brokers import Brokers
 from .template import (
     TEMPLATE_BLUEPRINT_ENABLEMENT,
     TEMPLATE_BLUEPRINT_INSTANCE,
@@ -86,6 +87,10 @@ class InitTargets:
         broker_frontend_workers: Optional[int] = None,
         broker_frontend_replicas: Optional[int] = None,
         add_insecure_listener: Optional[bool] = None,
+        # Broker data persistence
+        persist_max_size: Optional[str] = None,
+        persist_pvc_sc: Optional[str] = None,
+        persist_mode: Optional[List[str]] = None,
         # User Trust Config
         user_trust: Optional[bool] = None,
         trust_settings: Optional[List[str]] = None,
@@ -141,8 +146,11 @@ class InitTargets:
         self.broker_backend_redundancy_factor = self._sanitize_int(broker_backend_redundancy_factor)
         self.broker_frontend_workers = self._sanitize_int(broker_frontend_workers)
         self.broker_frontend_replicas = self._sanitize_int(broker_frontend_replicas)
-        self.broker_config = self.get_broker_config_target_map()
         self.custom_broker_config = custom_broker_config
+        self.persist_max_size = persist_max_size
+        self.persist_pvc_sc = persist_pvc_sc
+        self.persist_mode = parse_kvp_nargs(persist_mode)
+        self.broker_config = self.get_broker_config_target_map()
 
     def _sanitize_k8s_name(self, name: Optional[str]) -> Optional[str]:
         if not name:
@@ -355,6 +363,14 @@ class InitTargets:
 
         if validation_errors:
             raise InvalidArgumentValueError("\n".join(validation_errors))
+
+        built_config = Brokers.build_broker_config(
+            persist_max_size=self.persist_max_size,
+            persist_pvc_sc=self.persist_pvc_sc,
+            persist_mode=self.persist_mode,
+        )
+        if built_config:
+            processed_config_map.update(built_config)
 
         return processed_config_map
 

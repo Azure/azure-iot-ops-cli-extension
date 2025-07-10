@@ -54,9 +54,17 @@ def get_schema_registry_id():
     )
 
 
+def get_ns_resource_id(resource_group_name: Optional[str] = None):
+    return get_resource_id(
+        resource_path="/namespaces/mynamespace",
+        resource_group_name=resource_group_name or generate_random_string(),
+        resource_provider="Microsoft.DeviceRegistry",
+    )
+
+
 K8S_NAME_KEYS = frozenset(["cluster_namespace", "custom_location_name", "instance_name"])
 KEY_CONVERSION_MAP = {"enable_rsync_rules": "deploy_resource_sync_rules"}
-KVP_KEYS = frozenset(["ops_config", "ssc_config", "acs_config", "trust_settings"])
+KVP_KEYS = frozenset(["ops_config", "ssc_config", "acs_config", "trust_settings", "persist_mode"])
 ENABLEMENT_PARAM_CONVERSION_MAP = {
     "clusterName": "cluster_name",
     "trustConfig": "trust_config",
@@ -70,6 +78,7 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "customLocationName": "custom_location_name",
     "deployResourceSyncRules": "deploy_resource_sync_rules",
     "schemaRegistryId": "schema_registry_resource_id",
+    "adrNamespaceId": "adr_namespace_resource_id",
     "defaultDataflowinstanceCount": "dataflow_profile_instances",
     "brokerConfig": "broker_config",
     "trustConfig": "trust_config",
@@ -92,9 +101,28 @@ INSTANCE_FEATURE_ATTR = "instance_features"
         ),
         build_target_scenario(
             cluster_name=generate_random_string(),
-            resource_group_name=generate_random_string(),
+            resource_group_name="myresourcegroup",
             schema_registry_resource_id=get_schema_registry_id(),
+            adr_namespace_resource_id=get_ns_resource_id("myresourcegroup"),
             user_trust=True,
+        ),
+        build_target_scenario(
+            instance_name=generate_random_string(),
+            cluster_name=generate_random_string(),
+            resource_group_name="myresourcegroup",
+            schema_registry_resource_id=get_schema_registry_id(),
+            adr_namespace_resource_id=get_ns_resource_id("myresourcegroup"),
+            persist_max_size="10Gi",
+            persist_pvc_sc=generate_random_string(),
+        ),
+        build_target_scenario(
+            instance_name=generate_random_string(),
+            cluster_name=generate_random_string(),
+            resource_group_name="myresourcegroup",
+            schema_registry_resource_id=get_schema_registry_id(),
+            adr_namespace_resource_id=get_ns_resource_id("myresourcegroup"),
+            persist_max_size="10Gi",
+            persist_mode=["stateStore=All", "retain=Custom", "subscriberQueue=None"],
         ),
         build_target_scenario(
             cluster_name=generate_random_string(),
@@ -272,7 +300,7 @@ def test_init_targets(target_scenario: dict):
         )
 
 
-def verify_broker_config(target_scenario: dict, parameters):
+def verify_broker_config(target_scenario: dict, parameters: dict):
     assert "serviceType" not in parameters["brokerConfig"]["value"]
     for target_pair in [
         ("broker_frontend_replicas", "frontendReplicas"),
@@ -284,6 +312,31 @@ def verify_broker_config(target_scenario: dict, parameters):
     ]:
         if target_pair[0] in target_scenario:
             assert parameters["brokerConfig"]["value"][target_pair[1]] == target_scenario[target_pair[0]]
+
+    if "persist_max_size" not in target_scenario:
+        assert "persistence" not in parameters["brokerConfig"]["value"]
+        return
+
+    explicit_mode_keys = {"stateStore": False, "retain": False, "subscriberQueue": False}
+    assert parameters["brokerConfig"]["value"]["persistence"]["maxSize"] == target_scenario["persist_max_size"]
+
+    if "persist_pvc_sc" in target_scenario:
+        assert parameters["brokerConfig"]["value"]["persistence"]["persistentVolumeClaimSpec"] == {
+            "storageClassName": target_scenario["persist_pvc_sc"],
+            "accessModes": ["ReadWriteOncePod"],
+        }
+
+    if "persist_mode" in target_scenario:
+        for k, v in target_scenario["persist_mode"].items():
+            assert parameters["brokerConfig"]["value"]["persistence"][k] == {"mode": v}
+            explicit_mode_keys[k] = True
+
+    for k in explicit_mode_keys:
+        if not explicit_mode_keys[k]:
+            assert parameters["brokerConfig"]["value"]["persistence"][k] == {
+                "mode": "Custom",
+                k + "Settings": {"dynamic": {"mode": "Enabled"}},
+            }
 
 
 def verify_trust_config(target_scenario: dict, parameters: dict, template: Optional[dict] = None):
@@ -428,6 +481,32 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
             "frontendReplicas value range min:1 max:16\n"
             "backendRedundancyFactor value range min:2 max:5\n"
             "backendWorkers value range min:1 max:16",
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                persist_mode=["a=b", "c=d"],
+            ),
+            "Provide a persist max size value to enable and customize broker data persistence.",
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                persist_max_size="10Gi",
+                persist_mode=["a=b", "c=d"],
+            ),
+            "Invalid persistence mode key: a. Valid keys are ['stateStore', 'retain', 'subscriberQueue'].",
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                persist_max_size="10Gi",
+                persist_mode=["stateStore=All", "retain=d"],
+            ),
+            "Invalid persistence mode value: d. Valid values are ['None', 'All', 'Custom'].",
         ),
     ],
 )

@@ -1171,7 +1171,9 @@ def load_iotops_arguments(self, _):
                 "enable_rsync_rules",
                 options_list=["--enable-rsync"],
                 arg_type=get_three_state_flag(),
-                deprecate_info=context.deprecate(target="--enable-rsync", redirect="az iot ops rsync enable"),
+                deprecate_info=context.deprecate(
+                    target="--enable-rsync", redirect="az iot ops rsync enable", hide=True
+                ),
                 help="Resource sync rules will be included in the IoT Operations deployment.",
             )
             context.argument(
@@ -1264,7 +1266,8 @@ def load_iotops_arguments(self, _):
                 "broker_backend_redundancy_factor",
                 type=int,
                 options_list=["--broker-backend-rf", "--br"],
-                help="Mqtt broker backend redundancy factor. Min value: 1, max value: 5.",
+                help="Mqtt broker backend redundancy factor. Indicates the desired numbers of backend replicas (pods)"
+                " in a physical partition. Min value: 1, max value: 5.",
                 arg_group="Broker",
             )
             context.argument(
@@ -1287,6 +1290,32 @@ def load_iotops_arguments(self, _):
                 options_list=["--broker-mem-profile", "--mp"],
                 help="Mqtt broker memory profile.",
                 arg_group="Broker",
+            )
+            context.argument(
+                "persist_max_size",
+                options_list=["--persist-max-size"],
+                help="The max size of the message buffer on disk. Setting a value will enable disk persistence. "
+                "Kubernetes resource units must be used e.g. the following value suffixes are supported: "
+                "E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.",
+                arg_group="Disk Persistence",
+            )
+            context.argument(
+                "persist_pvc_sc",
+                options_list=["--persist-pvc-sc"],
+                help="Name of the storage class required by the persistent volume claim.",
+                arg_group="Disk Persistence",
+            )
+            context.argument(
+                "persist_mode",
+                options_list=["--persist-mode"],
+                nargs="+",
+                action="extend",
+                help="Configure disk persistence mode for state store, retain messages and subscriber queues. "
+                "Format is space-separated key=value pairs. Supported keys include: 'stateStore', "
+                "'retain', 'subscriberQueue'. Supported values for each key include: 'None', 'All', 'Custom'. "
+                "By default each mode is set to min Custom with dynamic persistence enabled. "
+                "This option can be used one or more times.",
+                arg_group="Disk Persistence",
             )
             context.argument(
                 "enable_fault_tolerance",
@@ -1323,30 +1352,29 @@ def load_iotops_arguments(self, _):
 
             for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
                 alias = EXTENSION_MONIKER_TO_ALIAS_MAP[moniker]
-                if alias in ["acs", "ssc", "ops"]:
-                    context.argument(
-                        f"{alias}_config",
-                        options_list=[f"--{alias}-config"],
-                        nargs="+",
-                        action="extend",
-                        help=f"{moniker} arc extension custom config. Format is space-separated key=value pairs "
-                        f"or just the key. This option can be used one or more times.",
-                        arg_group="Extension Config",
-                    )
-                    context.argument(
-                        f"{alias}_version",
-                        options_list=[f"--{alias}-version"],
-                        help=f"Use to override the built-in {moniker} arc extension version.",
-                        arg_group="Extension Config",
-                        deprecate_info=context.deprecate(hide=True),
-                    )
-                    context.argument(
-                        f"{alias}_train",
-                        options_list=[f"--{alias}-train"],
-                        help=f"Use to override the built-in {moniker} arc extension release train.",
-                        arg_group="Extension Config",
-                        deprecate_info=context.deprecate(hide=True),
-                    )
+                context.argument(
+                    f"{alias}_config",
+                    options_list=[f"--{alias}-config"],
+                    nargs="+",
+                    action="extend",
+                    help=f"{moniker} arc extension custom config. Format is space-separated key=value pairs "
+                    f"or just the key. This option can be used one or more times.",
+                    arg_group="Extension Config",
+                )
+                context.argument(
+                    f"{alias}_version",
+                    options_list=[f"--{alias}-version"],
+                    help=f"Use to override the built-in {moniker} arc extension version.",
+                    arg_group="Extension Config",
+                    deprecate_info=context.deprecate(hide=True),
+                )
+                context.argument(
+                    f"{alias}_train",
+                    options_list=[f"--{alias}-train"],
+                    help=f"Use to override the built-in {moniker} arc extension release train.",
+                    arg_group="Extension Config",
+                    deprecate_info=context.deprecate(hide=True),
+                )
 
     for cmd_space in ["iot ops create", "iot ops update"]:
         with self.argument_context(cmd_space) as context:
