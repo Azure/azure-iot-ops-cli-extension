@@ -5,59 +5,66 @@
 # ----------------------------------------------------------------------------------------------
 
 from copy import deepcopy
-import pytest
-import json
 from random import randint
 from typing import Dict, Optional
+import pytest
 import responses
+import json
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.commands_namespaces import (
-    add_namespace_custom_asset_dataset,
-    add_namespace_opcua_asset_dataset,
-    list_namespace_asset_datasets,
-    remove_namespace_asset_dataset,
-    show_namespace_asset_dataset,
-    update_namespace_custom_asset_dataset,
-    update_namespace_opcua_asset_dataset,
-    add_namespace_custom_asset_dataset_point,
-    add_namespace_opcua_asset_dataset_point,
-    list_namespace_asset_dataset_points,
-    remove_namespace_asset_dataset_point
+    add_namespace_custom_asset_event,
+    add_namespace_onvif_asset_event,
+    add_namespace_opcua_asset_event,
+    list_namespace_asset_events,
+    show_namespace_asset_event,
+    remove_namespace_asset_event,
+    update_namespace_custom_asset_event,
+    update_namespace_onvif_asset_event,
+    update_namespace_opcua_asset_event,
+    add_namespace_custom_asset_event_point,
+    add_namespace_opcua_asset_event_point,
+    list_namespace_asset_event_points,
+    remove_namespace_asset_event_point
 )
 
-from .namespace_helpers import check_dataset_configuration, check_destinations
 from .test_namespace_assets_unit import (
     get_namespace_asset_mgmt_uri, get_namespace_asset_record, add_device_get_call
 )
-from ....generators import generate_random_string
+from .namespace_helpers import check_event_configuration, check_destinations
+from ...generators import generate_random_string
 
 
-def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 0) -> dict:
-    """Generates a dataset with the given name and number of data points."""
-    dataset_name = dataset_name or generate_random_string()
-    return {
-        "name": dataset_name,
-        "dataSource": f"nsu=http://microsoft.com/Opc/OpcPlc/Oven;i={randint(1, 1000)}",
-        "typeRef": "datasetTypeRef",
-        "datasetConfiguration": json.dumps({
+# note I am trying to minimize duplicate unit tests - so no response status code checks (already present for base asset)
+# and no event not there checks (test_get_event_error does that)
+def generate_event(
+    event_name: Optional[str] = None, num_data_points: int = 0, event_configuration: Optional[str] = None
+) -> dict:
+    """Generate a mock event with the specified name and number of data points."""
+    event_name = event_name or f"tev{generate_random_string(12)}"
+    if not event_configuration:
+        event_configuration = json.dumps({
             "publishingInterval": randint(1, 10),
             "samplingInterval": randint(1, 10),
             "queueSize": randint(1, 10)
-        }),
+        })
+    event = {
+        "name": event_name,
+        "eventNotifier": f"nsu=test;s=FastUInt{randint(1, 1000)}",
+        "eventConfiguration": event_configuration,
         "destinations": [
             {
                 "target": "Mqtt",
                 "configuration": {
-                    "topic": f"/contoso/{generate_random_string()}",
-                    "retain": "Never",
-                    "qos": "Qos1",
-                    "ttl": randint(1, 60)
+                    "topic": f"/contoso/{event_name}",
+                    "retain": "Keep",
+                    "qos": "Qos0",
+                    "ttl": 7200
                 }
             }
         ],
         "dataPoints": [
             {
-                "name": f"{dataset_name}DataPoint{i + 1}",
+                "name": f"{event_name}DataPoint{i + 1}",
                 "dataSource": f"nsu=subtest;s=FastUInt{i + 1}",
                 "dataPointConfiguration": json.dumps(
                     {
@@ -66,115 +73,103 @@ def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 
                         "queueSize": randint(1, 10)
                     }
                 )
-            }for i in range(num_data_points)
+            } for i in range(num_data_points)
         ]
     }
+
+    return event
 
 
 @pytest.mark.parametrize("asset_type, command_func, config_params", [
     # Custom asset dataset with configuration
-    ("custom", add_namespace_custom_asset_dataset, {
-        "dataset_custom_configuration": json.dumps({
+    ("custom", add_namespace_custom_asset_event, {
+        "event_custom_configuration": json.dumps({
             "customSetting": "test",
             "priority": "high"
         })
     }),
     # Custom asset dataset with minimal config
-    ("custom", add_namespace_custom_asset_dataset, {}),
+    ("custom", add_namespace_custom_asset_event, {}),
     # OPCUA asset dataset with full parameters
-    ("opcua", add_namespace_opcua_asset_dataset, {
-        "opcua_dataset_publishing_interval": 1500,
-        "opcua_dataset_sampling_interval": 750,
-        "opcua_dataset_queue_size": 100,
-        "opcua_dataset_key_frame_count": 3,
+    ("opcua", add_namespace_opcua_asset_event, {
+        "opcua_event_publishing_interval": 1500,
+        "opcua_event_queue_size": 100,
     }),
     # OPCUA asset dataset with minimal config
-    ("opcua", add_namespace_opcua_asset_dataset, {})
+    ("opcua", add_namespace_opcua_asset_event, {}),
+    # ONVIF asset dataset with minimal config
+    ("onvif", add_namespace_onvif_asset_event, {})
 ])
 @pytest.mark.parametrize("destination_params", [
     {},  # No destinations
     # Single destination
     {
-        "topic": "/contoso/test",
+        "topic": "/contoso/events/test",
         "retain": "Keep",
         "qos": "Qos0",
         "ttl": 3600
     },
 ])
-@pytest.mark.parametrize("previous_datasets, replace", [
-    (False, True),  # No previous datasets, replace should not matter
-    (False, False),
-    (True, True),  # Previous datasets exist, replace should overwrite
+@pytest.mark.parametrize("has_previous_events, replace_event", [
+    (False, False),  # No previous events, no replace
+    (True, False),   # Has previous events, no replace
+    (True, True)     # Has previous events, with replace
 ])
-def test_add_namespace_asset_dataset(
+def test_add_namespace_asset_event(
     mocked_cmd,
     mocked_responses: responses,
     asset_type: str,
     command_func,
     config_params: dict,
     destination_params: Dict[str, str],
-    previous_datasets: bool,
-    replace: bool,
+    has_previous_events: bool,
+    replace_event: bool,
     mocked_check_cluster_connectivity,
     mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
-    dataset_name = "default"  # Currently only one dataset with name "default" is supported
-    data_source = f"nsu=http://microsoft.com/Opc/OpcPlc/Oven;i={randint(1, 1000)}"
+    event_name = f"testEvent{generate_random_string(5)}"
+    event_notifier = f"nsu=test;s=FastUInt{randint(1, 1000)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
-    # Create the expected dataset
-    expected_dataset = {
-        "name": dataset_name,
-        "dataSource": data_source,
+    # Create the expected event
+    expected_event = {
+        "name": event_name,
+        "eventNotifier": event_notifier,
         "dataPoints": []
     }
 
     config_params = deepcopy(config_params)
-    # Add configuration based on asset type
+    # Add optional configuration parameters based on test case
     if config_params:
-        if asset_type == "custom":
-            expected_dataset["datasetConfiguration"] = config_params.get("dataset_custom_configuration")
-        elif asset_type == "opcua":
-            config = {}
-            if "opcua_dataset_publishing_interval" in config_params:
-                config["publishingInterval"] = config_params["opcua_dataset_publishing_interval"]
-            if "opcua_dataset_sampling_interval" in config_params:
-                config["samplingInterval"] = config_params["opcua_dataset_sampling_interval"]
-            if "opcua_dataset_queue_size" in config_params:
-                config["queueSize"] = config_params["opcua_dataset_queue_size"]
-            if "opcua_dataset_key_frame_count" in config_params:
-                config["keyFrameCount"] = config_params["opcua_dataset_key_frame_count"]
-            if config:
-                expected_dataset["datasetConfiguration"] = json.dumps(config)
+        if asset_type == "opcua":
+            expected_event["eventConfiguration"] = json.dumps({
+                "publishingInterval": config_params["opcua_event_publishing_interval"],
+                "queueSize": config_params["opcua_event_queue_size"],
+            })
+        elif asset_type == "custom":
+            expected_event["eventConfiguration"] = config_params.get("event_custom_configuration")
 
-    # TODO: should be helper
-    # Add destination if provided in either case
+    # Add optional destination parameters based on test case
     if destination_params:
         dest = {}
         if "topic" in destination_params:
             dest = {"target": "Mqtt", "configuration": destination_params}
-        expected_dataset["destinations"] = [dest]
-        config_params["dataset_destinations"] = [f"{key}={value}" for key, value in dest["configuration"].items()]
+        expected_event["destinations"] = [dest]
+        config_params["event_destinations"] = [f"{key}={value}" for key, value in dest["configuration"].items()]
 
-    # Create mock asset record
+    # Generate mock asset
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
-
-    # Add previous datasets if needed for the test case
-    if previous_datasets:
-        mocked_asset["properties"]["datasets"] = [generate_dataset(num_data_points=randint(0, 2))]
-
-    # Mock the device endpoint check
     add_device_get_call(
         mocked_responses,
         resource_group_name=resource_group_name,
@@ -183,6 +178,17 @@ def test_add_namespace_asset_dataset(
         endpoint_name=mocked_asset["properties"]["deviceRef"]["endpointName"],
         endpoint_type=asset_type
     )
+
+    # Add previous events if needed for the test case
+    if has_previous_events:
+        # Add 2 existing events
+        mocked_asset["properties"]["events"] = [
+            generate_event(num_data_points=randint(0, 2)) for _ in range(2)
+        ]
+
+        # If testing replace, add an event with the same name to be replaced
+        if replace_event:
+            mocked_asset["properties"]["events"].append(generate_event(event_name=event_name))
 
     # Mock GET request to get the asset
     mocked_responses.add(
@@ -198,9 +204,15 @@ def test_add_namespace_asset_dataset(
 
     # Create updated asset for mock response
     updated_asset = deepcopy(mocked_asset)
+    updated_asset["properties"]["events"] = updated_asset["properties"].get("events", [])
 
-    # Since we have singular support for now
-    updated_asset["properties"]["datasets"] = [expected_dataset]
+    # If replacing, keep only non-matching events
+    if replace_event:
+        updated_asset["properties"]["events"] = [
+            e for e in mocked_asset["properties"]["events"] if e["name"] != event_name
+        ]
+
+    updated_asset["properties"]["events"].append(expected_event)
 
     # Mock PATCH request
     mocked_responses.add(
@@ -231,46 +243,46 @@ def test_add_namespace_asset_dataset(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        dataset_name=dataset_name,
-        dataset_data_source=data_source,
-        replace=replace,
+        event_name=event_name,
+        event_notifier=event_notifier,
+        replace=replace_event,
         wait_sec=0,
         **config_params
     )
 
-    # Verify the result matches the dataset we added
-    assert result == expected_dataset
+    # Verify the result matches the event we added
+    assert result == expected_event
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == 4  # GET device + GET asset + PATCH asset + GET Asset
-    assert mocked_responses.calls[0].request.method == "GET"  # Device GET call
-    assert mocked_responses.calls[1].request.method == "GET"  # Asset GET call
-    assert mocked_responses.calls[2].request.method == "PATCH"  # Asset PATCH call
-    assert mocked_responses.calls[3].request.method == "GET"  # Asset GET call
+    assert len(mocked_responses.calls) == 4
+    assert mocked_responses.calls[0].request.method == "GET"
+    assert mocked_responses.calls[1].request.method == "GET"
+    assert mocked_responses.calls[2].request.method == "PATCH"
+    assert mocked_responses.calls[3].request.method == "GET"
 
-    # Verify the PATCH request body contains the expected dataset structure
+    # Verify the PATCH request body contains the expected event structure
     patch_body = json.loads(mocked_responses.calls[2].request.body)
 
-    # Datasets should be in the properties section
-    assert "datasets" in patch_body["properties"]
-    datasets = patch_body["properties"]["datasets"]
+    # Events should be in the properties section
+    assert "events" in patch_body["properties"]
+    events = patch_body["properties"]["events"]
 
     # Count should match expected
-    assert len(datasets) == len(updated_asset["properties"]["datasets"])
+    assert len(events) == len(updated_asset["properties"]["events"])
 
-    # Find our dataset in the list
-    added_dataset = next((d for d in datasets if d["name"] == dataset_name), None)
-    assert added_dataset is not None, "Added dataset not found in the list of datasets"
-    assert added_dataset["dataSource"] == data_source
+    # Find our event in the list
+    added_event = next((e for e in events if e["name"] == event_name), None)
+    assert added_event is not None, "Added event not found in the list of events"
+    assert added_event["eventNotifier"] == event_notifier
 
     # Check configuration and destinations using helper functions
-    check_dataset_configuration(added_dataset, expected_dataset)
-    check_destinations(added_dataset, expected_dataset)
+    check_event_configuration(added_event, expected_event)
+    check_destinations(added_event, expected_event)
 
-    # Verify all other datasets are preserved if applicable
-    dataset_map = {d["name"]: d for d in updated_asset["properties"].get("datasets", [])}
-    for dataset in datasets:
-        assert dataset["name"] in dataset_map, f"Dataset {dataset['name']} not found in updated asset"
+    # Verify all other events are preserved
+    event_map = {e["name"]: e for e in updated_asset["properties"].get("events", [])}
+    for event in events:
+        assert event["name"] in event_map, f"Event {event['name']} not found in updated asset"
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
@@ -281,10 +293,11 @@ def test_add_namespace_asset_dataset(
 
 
 @pytest.mark.parametrize("asset_type, command_func", [
-    ("custom", add_namespace_custom_asset_dataset),
-    ("opcua", add_namespace_opcua_asset_dataset)
+    ("custom", add_namespace_custom_asset_event),
+    ("opcua", add_namespace_opcua_asset_event),
+    ("onvif", add_namespace_onvif_asset_event)
 ])
-def test_add_namespace_asset_dataset_error(
+def test_add_namespace_asset_event_error(
     mocked_cmd,
     mocked_responses: responses,
     asset_type: str,
@@ -292,24 +305,22 @@ def test_add_namespace_asset_dataset_error(
     mocked_check_cluster_connectivity,
     mocked_get_namespace_for_instance
 ):
-    """Test error cases for adding asset datasets with different asset types.
+    """Test error cases for adding asset events with different asset types.
 
     Tests the following scenarios:
-    - Adding dataset not named "default"
     - Mismatch between asset type and device endpoint type
-    - Adding dataset to an asset where there is already an existing dataset (more than one dataset)
+    - Event exists but replace flag not set
     """
-
     asset_name = "testAsset"
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
-    dataset_name = "default"
-    data_source = f"nsu=http://microsoft.com/Opc/OpcPlc/Oven;i={randint(1, 1000)}"
+    event_name = f"testEvent{generate_random_string(5)}"
+    event_notifier = f"nsu=test;s=FastUInt{randint(1, 1000)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     # Create base parameters for all test cases
     base_params = {
@@ -317,24 +328,11 @@ def test_add_namespace_asset_dataset_error(
         "instance_name": instance_name,
         "instance_resource_group": instance_resource_group,
         "asset_name": asset_name,
-        "dataset_name": dataset_name,
-        "dataset_data_source": data_source,
+        "event_name": event_name,
+        "event_notifier": event_notifier,
         "wait_sec": 0
     }
 
-    # 1st non default dataset name
-    with pytest.raises(InvalidArgumentValueError) as exc_info:
-        command_func(
-            # awkward dict update
-            **{**base_params, "dataset_name": generate_random_string()}
-        )
-    error_msg = (
-        "Currently only one dataset with the name 'default' is supported. "
-        "Please use 'default' as the dataset name."
-    )
-    assert error_msg in str(exc_info.value)
-
-    # 2nd mismatch between asset type and device endpoint type
     # Generate mock asset
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
@@ -354,7 +352,8 @@ def test_add_namespace_asset_dataset_error(
     )
 
     if asset_type != "custom":
-        # use media since it is not a valid type for opcua
+        # 1st do the device endpoint type mismatch
+        # use media since it is not a valid type for opcua/onvif
         add_device_get_call(
             mocked_responses,
             resource_group_name=resource_group_name,
@@ -371,7 +370,6 @@ def test_add_namespace_asset_dataset_error(
 
     mocked_responses.reset()
 
-    # 3rd adding dataset to an asset where there is already an existing dataset
     # replace device call with valid asset type
     add_device_get_call(
         mocked_responses,
@@ -382,9 +380,8 @@ def test_add_namespace_asset_dataset_error(
         endpoint_type=asset_type
     )
 
-    mocked_asset["properties"]["datasets"] = [
-        generate_dataset(dataset_name=dataset_name, num_data_points=randint(0, 2))
-    ]
+    # 2nd do event already exists
+    mocked_asset["properties"]["events"] = [generate_event(event_name=event_name, num_data_points=0)]
 
     mocked_responses.add(
         responses.GET,
@@ -400,8 +397,7 @@ def test_add_namespace_asset_dataset_error(
     with pytest.raises(InvalidArgumentValueError) as excinfo:
         command_func(**base_params)
 
-    error_msg += " If you want to update the dataset properties, please use the update command."
-    assert error_msg in str(excinfo.value)
+    assert f"Event '{event_name}' already exists in asset '{asset_name}'. " in str(excinfo.value)
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_with(
@@ -411,12 +407,9 @@ def test_add_namespace_asset_dataset_error(
     )
 
 
-@pytest.mark.parametrize("num_datasets", [0, 1, 3])
-def test_list_namespace_asset_datasets(
-    mocked_cmd,
-    mocked_responses: responses,
-    num_datasets: int,
-    mocked_get_namespace_for_instance
+@pytest.mark.parametrize("num_events", [0, 1, 3])
+def test_list_namespace_asset_events(
+    mocked_cmd, mocked_responses: responses, num_events: int, mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
     instance_name = "testInstance"
@@ -424,24 +417,20 @@ def test_list_namespace_asset_datasets(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
-    # Generate expected datasets
-    expected_datasets = [generate_dataset(num_data_points=randint(0, 2)) for _ in range(num_datasets)]
-
-    # Create mock asset record
+    expected_events = [generate_event(num_data_points=randint(0, 2)) for _ in range(num_events)]
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
 
-    # Add datasets to the asset if any expected
-    if expected_datasets:
-        mocked_asset["properties"]["datasets"] = expected_datasets
+    # ensure we can have the option of no event property
+    if expected_events:
+        mocked_asset["properties"]["events"] = expected_events
 
-    # Mock GET request to get the asset
     mocked_responses.add(
         responses.GET,
         get_namespace_asset_mgmt_uri(
@@ -453,40 +442,26 @@ def test_list_namespace_asset_datasets(
         status=200
     )
 
-    # Call the function being tested
-    datasets = list_namespace_asset_datasets(
+    events = list_namespace_asset_events(
         cmd=mocked_cmd,
-        asset_name=asset_name,
         instance_name=instance_name,
-        instance_resource_group=instance_resource_group
+        instance_resource_group=instance_resource_group,
+        asset_name=asset_name
     )
-
-    # Verify the result
-    assert len(datasets) == num_datasets
-
-    # Create a map of dataset name to dataset for easy lookup
-    expected_dataset_map = {dataset["name"]: dataset for dataset in expected_datasets}
-
-    # Verify each returned dataset matches the expected one
-    for dataset in datasets:
-        assert dataset["name"] in expected_dataset_map
-        expected_dataset = expected_dataset_map[dataset["name"]]
-
-        # Verify key properties
-        assert dataset["dataSource"] == expected_dataset["dataSource"]
-        assert dataset["datasetConfiguration"] == expected_dataset["datasetConfiguration"]
-        assert dataset["destinations"] == expected_dataset["destinations"]
+    assert len(events) == num_events
+    expected_event_map = {event["name"]: event for event in expected_events}
+    for event in events:
+        assert event["name"] in expected_event_map
+        expected_event = expected_event_map[event["name"]]
+        assert event["eventNotifier"] == expected_event["eventNotifier"]
+        assert event["eventConfiguration"] == expected_event["eventConfiguration"]
+        assert event["destinations"] == expected_event["destinations"]
 
         # Check data points if any
-        if "dataPoints" in expected_dataset:
-            assert len(dataset.get("dataPoints", [])) == len(expected_dataset["dataPoints"])
-            for dp in dataset.get("dataPoints", []):
-                expected_dp = next(
-                    (point for point in expected_dataset["dataPoints"] if point["name"] == dp["name"]), None
-                )
-                assert expected_dp is not None
-                assert dp["dataSource"] == expected_dp["dataSource"]
-                assert dp["dataPointConfiguration"] == expected_dp["dataPointConfiguration"]
+        if "dataPoints" in expected_event:
+            assert len(event.get("dataPoints", [])) == len(expected_event["dataPoints"])
+            for dp in event.get("dataPoints", []):
+                assert dp in expected_event["dataPoints"]
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
@@ -496,50 +471,25 @@ def test_list_namespace_asset_datasets(
     )
 
 
-@pytest.mark.parametrize("datasets_present", [True, False])
-@pytest.mark.parametrize("dataset_deleted", [True, False])
-def test_remove_namespace_asset_dataset(
-    mocked_cmd,
-    mocked_responses: responses,
-    datasets_present: bool,
-    dataset_deleted: bool,
-    mocked_check_cluster_connectivity,
-    mocked_get_namespace_for_instance
-):
+def test_show_namespace_asset_event(mocked_cmd, mocked_responses: responses, mocked_get_namespace_for_instance):
     asset_name = "testAsset"
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
-    dataset_name = "default"  # Currently only one dataset with name "default" is supported
+    event_name = generate_random_string()
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
-    # Create mock asset
+    expected_event = generate_event(event_name=event_name, num_data_points=randint(0, 2))
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
+    mocked_asset["properties"]["events"] = [expected_event]
 
-    # Add some other datasets that should remain after deletion (for future compatibility)
-    # Currently only one dataset is supported, but the code should handle multiple datasets
-    if datasets_present:
-        mocked_asset["properties"]["datasets"] = [
-            generate_dataset(f"otherDataset{i}", num_data_points=randint(0, 2))
-            for i in range(2)
-        ]
-    expected_datasets = deepcopy(mocked_asset["properties"].get("datasets", []))
-
-    # Add the dataset to be deleted if needed for testing
-    if dataset_deleted:
-        mocked_asset["properties"]["datasets"] = mocked_asset["properties"].get("datasets", [])
-        mocked_asset["properties"]["datasets"].append(
-            generate_dataset(dataset_name=dataset_name, num_data_points=randint(0, 2))
-        )
-
-    # Mock the GET request to get the asset
     mocked_responses.add(
         responses.GET,
         get_namespace_asset_mgmt_uri(
@@ -551,10 +501,90 @@ def test_remove_namespace_asset_dataset(
         status=200
     )
 
-    if dataset_deleted:
+    event = show_namespace_asset_event(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        asset_name=asset_name,
+        event_name=event_name
+    )
+    assert event["name"] == expected_event["name"]
+    assert event["eventNotifier"] == expected_event["eventNotifier"]
+    assert event["eventConfiguration"] == expected_event["eventConfiguration"]
+    assert event["destinations"] == expected_event["destinations"]
+
+    # Check data points if any
+    if "dataPoints" in expected_event:
+        result_data_points = event.get("dataPoints", [])
+        assert len(result_data_points) == len(expected_event["dataPoints"])
+        expected_dp_map = {dp["name"]: dp for dp in expected_event["dataPoints"]}
+        for dp in result_data_points:
+            assert dp["name"] in expected_dp_map
+            assert dp["dataSource"] == expected_dp_map[dp["name"]]["dataSource"]
+            assert dp["dataPointConfiguration"] == expected_dp_map[dp["name"]]["dataPointConfiguration"]
+
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
+
+@pytest.mark.parametrize("events_present", [True, False])
+@pytest.mark.parametrize("event_deleted", [True, False])
+def test_remove_namespace_asset_event(
+    mocked_cmd,
+    mocked_responses: responses,
+    events_present: bool,
+    event_deleted: bool,
+    mocked_check_cluster_connectivity,
+    mocked_get_namespace_for_instance
+):
+    asset_name = "testAsset"
+    instance_name = "testInstance"
+    instance_resource_group = "testInstanceResourceGroup"
+    event_name = generate_random_string()
+
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
+
+    mocked_asset = get_namespace_asset_record(
+        asset_name=asset_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+    # make some other events, have the event prop there
+    if events_present:
+        mocked_asset["properties"]["events"] = [
+            generate_event(num_data_points=randint(0, 2)),
+            generate_event(num_data_points=randint(0, 2))
+        ]
+    expected_events = deepcopy(mocked_asset["properties"].get("events", []))
+    # the remove should not fail even if the event is not there
+    if event_deleted:
+        mocked_asset["properties"]["events"] = mocked_asset["properties"].get("events", [])
+        mocked_asset["properties"]["events"].append(
+            generate_event(event_name=event_name, num_data_points=randint(0, 2))
+        )
+
+    mocked_responses.add(
+        responses.GET,
+        get_namespace_asset_mgmt_uri(
+            resource_group_name=resource_group_name,
+            namespace_name=namespace_name,
+            asset_name=asset_name
+        ),
+        json=mocked_asset,
+        status=200
+    )
+
+    if event_deleted:
         # Mock the PATCH request to update the asset
         updated_asset = deepcopy(mocked_asset)
-        updated_asset["properties"]["datasets"] = expected_datasets
+        updated_asset["properties"]["events"] = expected_events
         mocked_responses.add(
             responses.PATCH,
             get_namespace_asset_mgmt_uri(
@@ -577,112 +607,35 @@ def test_remove_namespace_asset_dataset(
             content_type="application/json",
         )
 
-    # Call the function being tested
-    result = remove_namespace_asset_dataset(
+    result_events = remove_namespace_asset_event(
         cmd=mocked_cmd,
-        asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        dataset_name=dataset_name,
+        asset_name=asset_name,
+        event_name=event_name,
         wait_sec=0
     )
 
-    # Verify the result is the updated datasets list
-    assert result == expected_datasets
+    # Verify result matches the mock updated namespace
+    assert result_events == expected_events
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == (3 if dataset_deleted else 1)
+    assert len(mocked_responses.calls) == (3 if event_deleted else 1)
     assert mocked_responses.calls[0].request.method == "GET"
-
-    # If the dataset was deleted, there should be a PATCH + GET request
-    if dataset_deleted:
+    if event_deleted:
         assert mocked_responses.calls[1].request.method == "PATCH"
         assert mocked_responses.calls[2].request.method == "GET"
 
-        # Verify the PATCH request body contains the expected datasets
-        patch_body = json.loads(mocked_responses.calls[1].request.body)
-        patch_datasets = patch_body["properties"]["datasets"]
-
-        # The dataset that was supposed to be deleted should not be in the request
-        for ds in patch_datasets:
-            assert ds["name"] != dataset_name
-
-        # All expected datasets should be present
-        assert len(patch_datasets) == len(expected_datasets)
-        for ds in expected_datasets:
-            assert ds in patch_datasets
-
-    # Verify that mocked_get_namespace_for_instance was called with correct parameters
-    mocked_get_namespace_for_instance.assert_called_once_with(
-        cmd=mocked_cmd,
-        instance_name=instance_name,
-        instance_resource_group=instance_resource_group
-    )
-
-
-def test_show_namespace_asset_dataset(
-    mocked_cmd,
-    mocked_responses: responses,
-    mocked_get_namespace_for_instance
-):
-    asset_name = "testAsset"
-    instance_name = "testInstance"
-    instance_resource_group = "testInstanceResourceGroup"
-    dataset_name = "default"  # Currently only one dataset with name "default" is supported
-
-    # Get the namespace from the mocked function
-    namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
-
-    # Generate expected dataset with random number of data points
-    expected_dataset = generate_dataset(dataset_name=dataset_name, num_data_points=randint(0, 2))
-
-    # Create mock asset record
-    mocked_asset = get_namespace_asset_record(
-        asset_name=asset_name,
-        namespace_name=namespace_name,
-        resource_group_name=resource_group_name,
-    )
-    # Add the dataset to the asset
-    mocked_asset["properties"]["datasets"] = [expected_dataset]
-
-    # Mock GET request to get the asset
-    mocked_responses.add(
-        responses.GET,
-        get_namespace_asset_mgmt_uri(
-            resource_group_name=resource_group_name,
-            namespace_name=namespace_name,
-            asset_name=asset_name
-        ),
-        json=mocked_asset,
-        status=200
-    )
-
-    # Call the function being tested
-    dataset = show_namespace_asset_dataset(
-        cmd=mocked_cmd,
-        asset_name=asset_name,
-        instance_name=instance_name,
-        instance_resource_group=instance_resource_group,
-        dataset_name=dataset_name
-    )
-
-    # Verify the result matches the expected dataset
-    assert dataset["name"] == expected_dataset["name"]
-    assert dataset["dataSource"] == expected_dataset["dataSource"]
-    assert dataset["datasetConfiguration"] == expected_dataset["datasetConfiguration"]
-    assert dataset["destinations"] == expected_dataset["destinations"]
-
-    # Check data points if any
-    if "dataPoints" in expected_dataset:
-        result_data_points = dataset.get("dataPoints", [])
-        assert len(result_data_points) == len(expected_dataset["dataPoints"])
-        expected_dp_map = {dp["name"]: dp for dp in expected_dataset["dataPoints"]}
-        for dp in result_data_points:
-            assert dp["name"] in expected_dp_map
-            assert dp["dataSource"] == expected_dp_map[dp["name"]]["dataSource"]
-            assert dp["dataPointConfiguration"] == expected_dp_map[dp["name"]]["dataPointConfiguration"]
+        call_body = json.loads(mocked_responses.calls[1].request.body)
+        call_events = call_body["properties"].get("events", [])
+        expected_event_map = {event["name"]: event for event in expected_events}
+        assert len(expected_events) == len(call_events)
+        for event in call_events:
+            assert event["name"] in expected_event_map
+            expected_event = expected_event_map[event["name"]]
+            assert event["eventNotifier"] == expected_event["eventNotifier"]
+            assert event["eventConfiguration"] == expected_event["eventConfiguration"]
+            assert event["destinations"] == expected_event["destinations"]
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
@@ -695,38 +648,34 @@ def test_show_namespace_asset_dataset(
 @pytest.mark.parametrize("common_reqs", [
     # No specific common requirements
     {},
-    # With dataset data source
-    {"dataset_data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Sensor;i=2000"},
-    # Both data source and destinations
+    # With event notifier
+    {"event_notifier": "nsu=test5;s=FastUInt999"},
+    # both notifier and event configuration
     {
-        "dataset_destinations": "",  # TODO- change. currently will be set in the test
-        "dataset_data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Device;i=3000",
+        "event_destinations": "",  # will be set in the test
+        "event_notifier": "nsu=test3;s=FastUInt999",
     }
 ])
 @pytest.mark.parametrize("asset_type, command_func, unique_reqs", [
-    # Custom asset dataset with no specific config
-    ("custom", update_namespace_custom_asset_dataset, {}),
-    # Custom asset dataset with custom configuration
-    ("custom", update_namespace_custom_asset_dataset, {
-        "dataset_custom_configuration": json.dumps({
+    # Custom asset event
+    ("custom", update_namespace_custom_asset_event, {}),
+    # Custom asset event
+    ("custom", update_namespace_custom_asset_event, {
+        "event_custom_configuration": json.dumps({
             "customSetting": "updated",
             "priority": "critical"
         })
     }),
-    # OPCUA asset dataset with basic parameters
-    ("opcua", update_namespace_opcua_asset_dataset, {
-        "opcua_dataset_publishing_interval": 2000,
-        "opcua_dataset_queue_size": 10,
+    # OPCUA asset event - note that there are more unit tests for ensuring opcua event schemas
+    # get updated correctly. This is just a simple test to ensure the command works
+    ("opcua", update_namespace_opcua_asset_event, {
+        "opcua_event_publishing_interval": 2000,
+        "opcua_event_queue_size": 10,
     }),
-    # OPCUA asset dataset with full parameters
-    ("opcua", update_namespace_opcua_asset_dataset, {
-        "opcua_dataset_publishing_interval": 1500,
-        "opcua_dataset_sampling_interval": 750,
-        "opcua_dataset_queue_size": 100,
-        "opcua_dataset_key_frame_count": 3,
-    })
+    # ONVIF asset event
+    ("onvif", update_namespace_onvif_asset_event, {})
 ])
-def test_update_namespace_asset_dataset(
+def test_update_namespace_asset_event(
     mocked_cmd,
     mocked_responses: responses,
     asset_type: str,
@@ -739,21 +688,21 @@ def test_update_namespace_asset_dataset(
     asset_name = "testAsset"
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
-    dataset_name = "default"  # Currently only one dataset with name "default" is supported
+    event_name = f"testEvent{generate_random_string(5)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
-    # Generate mock asset with the dataset already in it
+    # Generate mock asset with the event already in it
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
 
-    # Add device endpoint check
+    # device call
     add_device_get_call(
         mocked_responses,
         resource_group_name=resource_group_name,
@@ -763,11 +712,22 @@ def test_update_namespace_asset_dataset(
         endpoint_type=asset_type
     )
 
-    # Create the initial dataset with random data points
-    initial_dataset = generate_dataset(dataset_name=dataset_name, num_data_points=randint(0, 2))
+    # add some random events
+    mocked_asset["properties"]["events"] = [
+        {
+            "name": f"tev{generate_random_string(12)}",
+            "eventNotifier": f"nsu=test;s=FastUInt{randint(1, 1000)}",
+            "destinations": [],
+            "eventConfiguration": "{}",
+            "dataPoints": []
+        } for _ in range(randint(0, 3))
+    ]
 
-    # Add the dataset to the asset
-    mocked_asset["properties"]["datasets"] = [initial_dataset]
+    # Create the initial event
+    initial_event = generate_event(event_name=event_name, num_data_points=randint(0, 2), event_configuration="{}")
+
+    # add in initial event to the end for ease
+    mocked_asset["properties"]["events"].append(initial_event)
 
     # Mock GET request to get the asset
     mocked_responses.add(
@@ -781,50 +741,42 @@ def test_update_namespace_asset_dataset(
         status=200
     )
 
-    # Create the expected updated dataset
-    expected_dataset = deepcopy(initial_dataset)
+    # Create the expected updated event
+    expected_event = deepcopy(initial_event)
 
-    # Update data source if specified
-    if "dataset_data_source" in common_reqs:
-        expected_dataset["dataSource"] = common_reqs["dataset_data_source"]
+    # Update notifier if specified
+    if "event_notifier" in common_reqs:
+        expected_event["eventNotifier"] = common_reqs["event_notifier"]
 
     # Update configuration if specified
     if unique_reqs:
-        if asset_type == "custom" and "dataset_custom_configuration" in unique_reqs:
-            expected_dataset["datasetConfiguration"] = unique_reqs["dataset_custom_configuration"]
+        if asset_type == "custom":
+            expected_event["eventConfiguration"] = unique_reqs["event_custom_configuration"]
         elif asset_type == "opcua":
-            config = json.loads(expected_dataset.get("datasetConfiguration", "{}"))
-
-            if "opcua_dataset_publishing_interval" in unique_reqs:
-                config["publishingInterval"] = unique_reqs["opcua_dataset_publishing_interval"]
-            if "opcua_dataset_sampling_interval" in unique_reqs:
-                config["samplingInterval"] = unique_reqs["opcua_dataset_sampling_interval"]
-            if "opcua_dataset_queue_size" in unique_reqs:
-                config["queueSize"] = unique_reqs["opcua_dataset_queue_size"]
-            if "opcua_dataset_key_frame_count" in unique_reqs:
-                config["keyFrameCount"] = unique_reqs["opcua_dataset_key_frame_count"]
-
-            expected_dataset["datasetConfiguration"] = json.dumps(config)
+            expected_event["eventConfiguration"] = json.dumps({
+                "publishingInterval": unique_reqs.get("opcua_event_publishing_interval"),
+                "queueSize": unique_reqs.get("opcua_event_queue_size")
+            })
 
     # Update destinations if specified
-    if "dataset_destinations" in common_reqs:
+    if "event_destinations" in common_reqs:
         destination = {
             "target": "Mqtt",
             "configuration": {
-                "topic": "/contoso/datasets/updated",
-                "retain": "Never",
+                "topic": "/contoso/events/updated",
+                "retain": "Keep",
                 "qos": "Qos1",
                 "ttl": randint(1, 60)  # Random TTL for testing
             }
         }
-        expected_dataset["destinations"] = [destination]
-        common_reqs["dataset_destinations"] = [
+        expected_event["destinations"] = [destination]
+        common_reqs["event_destinations"] = [
             f"{key}={value}" for key, value in destination["configuration"].items()
         ]
 
     # Create updated asset for mock response
     updated_asset = deepcopy(mocked_asset)
-    updated_asset["properties"]["datasets"] = [expected_dataset]
+    updated_asset["properties"]["events"] = [expected_event]
 
     # Mock PATCH request
     mocked_responses.add(
@@ -855,53 +807,45 @@ def test_update_namespace_asset_dataset(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        dataset_name=dataset_name,
+        event_name=event_name,
         wait_sec=0,
         **common_reqs,
         **unique_reqs,
     )
 
-    # Verify the result matches the expected dataset
-    assert result == expected_dataset
+    assert result == expected_event
 
     # Verify API calls were made correctly
     assert len(mocked_responses.calls) == 4
-    assert mocked_responses.calls[0].request.method == "GET"  # Device endpoint check
-    assert mocked_responses.calls[1].request.method == "GET"  # Asset get
-    assert mocked_responses.calls[2].request.method == "PATCH"  # Update asset
-    assert mocked_responses.calls[3].request.method == "GET"  # Asset get
+    assert mocked_responses.calls[0].request.method == "GET"
+    assert mocked_responses.calls[1].request.method == "GET"
+    assert mocked_responses.calls[2].request.method == "PATCH"
+    assert mocked_responses.calls[3].request.method == "GET"
 
-    # Verify the PATCH request body contains the expected updated dataset
+    # Verify the PATCH request body contains the expected updated event
     patch_body = json.loads(mocked_responses.calls[2].request.body)
 
-    # Datasets should be in the properties section
-    assert "datasets" in patch_body["properties"]
-    datasets = patch_body["properties"]["datasets"]
+    events = patch_body["properties"]["events"]
+    assert len(events) == len(mocked_asset["properties"]["events"])
 
-    # Verify there's only one dataset (the updated one)
-    assert len(datasets) == 1
+    # Get the updated event
+    patch_event = events[-1]
 
-    # Check basic properties
-    patch_dataset = datasets[0]
-    assert patch_dataset["name"] == dataset_name
+    # Check basic event properties
+    assert patch_event["name"] == event_name
 
-    # Check data source update if applicable
-    if "dataset_data_source" in common_reqs:
-        assert patch_dataset["dataSource"] == common_reqs["dataset_data_source"]
-    else:
-        assert patch_dataset["dataSource"] == initial_dataset["dataSource"]
+    # Check notifier update if applicable
+    assert patch_event["eventNotifier"] == expected_event["eventNotifier"]
 
     # Check configuration and destinations using helper functions
-    check_dataset_configuration(patch_dataset, expected_dataset)
-    check_destinations(patch_dataset, expected_dataset)
+    check_event_configuration(patch_event, expected_event)
+    check_destinations(patch_event, expected_event)
 
     # Check data points preservation
-    assert len(patch_dataset["dataPoints"]) == len(initial_dataset["dataPoints"])
-    data_points_map = {dp["name"]: dp for dp in initial_dataset["dataPoints"]}
-    for dp in patch_dataset["dataPoints"]:
-        assert dp["name"] in data_points_map
-        assert dp["dataSource"] == data_points_map[dp["name"]]["dataSource"]
-        assert dp["dataPointConfiguration"] == data_points_map[dp["name"]]["dataPointConfiguration"]
+    assert len(patch_event["dataPoints"]) == len(initial_event["dataPoints"])
+    for i, dp in enumerate(patch_event["dataPoints"]):
+        assert dp["name"] == initial_event["dataPoints"][i]["name"]
+        assert dp["dataSource"] == initial_event["dataPoints"][i]["dataSource"]
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
@@ -912,17 +856,37 @@ def test_update_namespace_asset_dataset(
 
 
 @pytest.mark.parametrize("asset_type, command_func, config_params", [
-    ("custom", add_namespace_custom_asset_dataset_point, {"custom_configuration": json.dumps({"test": "value"})}),
-    ("opcua", add_namespace_opcua_asset_dataset_point, {"queue_size": 5, "sampling_interval": 100}),
-    ("custom", add_namespace_custom_asset_dataset_point, {}),
-    ("opcua", add_namespace_opcua_asset_dataset_point, {})
+    # Custom asset event point with custom configuration
+    (
+        "custom",
+        add_namespace_custom_asset_event_point,
+        {"custom_configuration": json.dumps({"customSetting": "value", "priority": "high"})}
+    ),
+    # Custom asset event point without custom configuration
+    (
+        "custom",
+        add_namespace_custom_asset_event_point,
+        {}
+    ),
+    # OPCUA asset event point with all parameters
+    (
+        "opcua",
+        add_namespace_opcua_asset_event_point,
+        {"queue_size": 10, "sampling_interval": 500}
+    ),
+    # OPCUA asset event point with minimal parameters
+    (
+        "opcua",
+        add_namespace_opcua_asset_event_point,
+        {}
+    )
 ])
 @pytest.mark.parametrize("has_points, replace", [
     (False, False),  # No previous points, no replace
     (True, False),   # Has previous points, no replace
     (True, True)     # Has previous points, with replace
 ])
-def test_add_namespace_asset_dataset_point(
+def test_add_namespace_asset_event_point(
     mocked_cmd,
     mocked_responses: responses,
     asset_type: str,
@@ -933,44 +897,45 @@ def test_add_namespace_asset_dataset_point(
     mocked_check_cluster_connectivity,
     mocked_get_namespace_for_instance
 ):
+    # Setup test variables
     asset_name = "testAsset"
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
-    dataset_name = "default"  # Currently only one dataset with name "default" is supported
-    datapoint_name = generate_random_string()
-    data_source = f"nsu=test;s=DataPoint{generate_random_string()}"
+    event_name = f"testEvent{generate_random_string(5)}"
+    datapoint_name = f"testPoint{generate_random_string(5)}"
+    data_source = f"nsu=test;s=Point{randint(1, 1000)}"
 
-    # Resolved namespace and resource group from the mocked fixture
-    namespace_name = mocked_get_namespace_for_instance.return_value.name
-    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
-    # Create mock asset record
+    # Generate mock asset with an event
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
 
-    # Create a dataset with the specified number of previous data points
-    dataset = generate_dataset(
-        dataset_name=dataset_name, num_data_points=randint(1, 3) if has_points else 0
+    # Create the event within the asset
+    event = generate_event(
+        event_name=event_name, num_data_points=randint(1, 3) if has_points else 0
     )
-    mocked_asset["properties"]["datasets"] = [dataset]
 
-    # If we're testing replace=True, add a datapoint with the same name to be replaced
+    # add in point to replace
     if replace:
-        existing_point = {
+        event["dataPoints"].append({
             "name": datapoint_name,
-            "dataSource": f"nsu=test;s=Existing{generate_random_string()}",
-            "dataPointConfiguration": json.dumps(
-                {
-                    "publishingInterval": randint(1, 10),
-                    "samplingInterval": randint(1, 10),
-                    "queueSize": randint(1, 10)
-                }
-            )
-        }
-        mocked_asset["properties"]["datasets"][0]["dataPoints"].append(existing_point)
+            "dataSource": f"nsu=test;s=SameName{randint(1, 1000)}",
+            "dataPointConfiguration": json.dumps({  # since replace should remove old point, we can have any config
+                "publishingInterval": 2000,
+                "samplingInterval": 1000,
+                "queueSize": 5
+            })
+        })
+
+    # Add the event to the asset properties
+    mocked_asset["properties"]["events"] = [event]
 
     # Mock the device endpoint check
     add_device_get_call(
@@ -1014,15 +979,15 @@ def test_add_namespace_asset_dataset_point(
 
     # Create the updated asset for the mock response
     updated_asset = deepcopy(mocked_asset)
-    updated_dataset = updated_asset["properties"]["datasets"][0]
-
-    # If replacing, remove the existing point with the same name
+    updated_event = updated_asset["properties"]["events"][0]
+    updated_event["dataPoints"] = updated_event.get("dataPoints", [])
     if replace:
-        updated_dataset["dataPoints"] = [
-            dp for dp in updated_dataset["dataPoints"] if dp["name"] != datapoint_name
+        # If replacing, remove the existing point with the same name
+        updated_event["dataPoints"] = [
+            dp for dp in updated_event["dataPoints"] if dp["name"] != datapoint_name
         ]
 
-    updated_dataset["dataPoints"].append(expected_datapoint)
+    updated_event["dataPoints"].append(expected_datapoint)
 
     # Mock PATCH request
     mocked_responses.add(
@@ -1047,13 +1012,12 @@ def test_add_namespace_asset_dataset_point(
         content_type="application/json",
     )
 
-    # Call the function being tested
     result = command_func(
         cmd=mocked_cmd,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         asset_name=asset_name,
-        dataset_name=dataset_name,
+        event_name=event_name,
         datapoint_name=datapoint_name,
         data_source=data_source,
         replace=replace,
@@ -1061,9 +1025,9 @@ def test_add_namespace_asset_dataset_point(
         **config_params
     )
 
-    # Result should be a list of datapoints from the patch response
+    # result should be a list of datapoints from the patch response
     assert isinstance(result, list)
-    assert result == updated_asset["properties"]["datasets"][0]["dataPoints"]
+    assert result == updated_asset["properties"]["events"][0]["dataPoints"]
 
     # Verify API calls were made correctly
     assert len(mocked_responses.calls) == 4  # GET device + GET asset + PATCH asset + GET asset
@@ -1074,16 +1038,16 @@ def test_add_namespace_asset_dataset_point(
 
     # Verify the PATCH request payload contains the expected data point
     patch_body = json.loads(mocked_responses.calls[2].request.body)
-    patch_dataset = patch_body["properties"]["datasets"][0]
-    assert len(patch_dataset["dataPoints"]) == len(updated_dataset["dataPoints"])
+    patch_event = patch_body["properties"]["events"][0]
+    assert len(patch_event["dataPoints"]) == len(updated_event["dataPoints"])
 
-    # Check the added datapoint
-    patched_point = next((p for p in patch_dataset["dataPoints"] if p["name"] == datapoint_name), None)
+    # check the added datapoint
+    patched_point = next((p for p in patch_event["dataPoints"] if p["name"] == datapoint_name), None)
     assert patched_point is not None, f"Data point '{datapoint_name}' not found in PATCH request"
     assert patched_point["dataSource"] == data_source
     assert patched_point["dataPointConfiguration"] == expected_datapoint.get("dataPointConfiguration", "{}")
 
-    # Verify the fixture was called with the correct parameters
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
         cmd=mocked_cmd,
         instance_name=instance_name,
@@ -1092,30 +1056,27 @@ def test_add_namespace_asset_dataset_point(
 
 
 @pytest.mark.parametrize("num_points", [0, 1, 3])
-def test_list_namespace_asset_dataset_points(
+def test_list_namespace_asset_event_points(
     mocked_cmd, mocked_responses: responses, num_points: int, mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
-    dataset_name = "default"  # Currently only one dataset with name "default" is supported
+    event_name = generate_random_string()
 
-    # Resolved namespace and resource group from the mocked fixture
-    namespace_name = mocked_get_namespace_for_instance.return_value.name
-    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
-    # Create mock asset record
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
+    mocked_asset["properties"]["events"] = [generate_event(event_name=event_name, num_data_points=num_points)]
+    expected_points = mocked_asset["properties"]["events"][0].get("dataPoints", [])
 
-    # Generate a dataset with the specified number of data points
-    mocked_asset["properties"]["datasets"] = [generate_dataset(dataset_name=dataset_name, num_data_points=num_points)]
-    expected_points = mocked_asset["properties"]["datasets"][0].get("dataPoints", [])
-
-    # Mock GET request to get the asset
     mocked_responses.add(
         responses.GET,
         get_namespace_asset_mgmt_uri(
@@ -1127,39 +1088,32 @@ def test_list_namespace_asset_dataset_points(
         status=200
     )
 
-    # Call the function being tested
-    points = list_namespace_asset_dataset_points(
+    points = list_namespace_asset_event_points(
         cmd=mocked_cmd,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         asset_name=asset_name,
-        dataset_name=dataset_name
+        event_name=event_name
     )
-
-    # Verify the fixture was called with the correct parameters
-    mocked_get_namespace_for_instance.assert_called_once_with(
-        cmd=mocked_cmd,
-        instance_name=instance_name,
-        instance_resource_group=instance_resource_group
-    )
-
-    # Verify the result
     assert len(points) == num_points
-
-    # Create a map of point name to point for easy lookup
     expected_point_map = {point["name"]: point for point in expected_points}
-
-    # Verify each returned point matches the expected one
     for point in points:
         assert point["name"] in expected_point_map
         expected_point = expected_point_map[point["name"]]
         assert point["dataSource"] == expected_point["dataSource"]
         assert point["dataPointConfiguration"] == expected_point["dataPointConfiguration"]
 
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )
+
 
 @pytest.mark.parametrize("points_present", [True, False])
 @pytest.mark.parametrize("point_deleted", [True, False])
-def test_remove_namespace_asset_dataset_point(
+def test_remove_namespace_asset_event_point(
     mocked_cmd,
     mocked_responses: responses,
     points_present: bool,
@@ -1170,25 +1124,26 @@ def test_remove_namespace_asset_dataset_point(
     asset_name = "testAsset"
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
-    dataset_name = "default"  # Currently only one dataset with name "default" is supported
+    event_name = generate_random_string()
     datapoint_name = generate_random_string()
 
-    # Resolved namespace and resource group from the mocked fixture
-    namespace_name = mocked_get_namespace_for_instance.return_value.name
-    resource_group_name = mocked_get_namespace_for_instance.return_value.resource_group
+    # Get the namespace from the mocked function
+    namespace_resource = mocked_get_namespace_for_instance.return_value
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
-    # Create mock asset with a dataset
+    # Create mock asset with an event
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
 
-    # Create the dataset with or without datapoints
-    dataset = generate_dataset(dataset_name=dataset_name)
+    # Create the event with or without datapoints
+    event = generate_event(event_name=event_name)
     if points_present:
         # Add some other datapoints that should remain after deletion
-        dataset["dataPoints"] = [
+        event["dataPoints"] = [
             {
                 "name": f"otherDataPoint{i}",
                 "dataSource": f"nsu=subtest;s=FastUInt{i}",
@@ -1203,11 +1158,11 @@ def test_remove_namespace_asset_dataset_point(
         ]
 
     # Save the expected datapoints (the ones that should remain after deletion)
-    expected_datapoints = deepcopy(dataset.get("dataPoints", []))
+    expected_datapoints = deepcopy(event.get("dataPoints", []))
 
     # Add the datapoint to be deleted if needed for testing
     if point_deleted:
-        dataset["dataPoints"].append({
+        event["dataPoints"].append({
             "name": datapoint_name,
             "dataSource": "nsu=subtest;s=ToBeDeleted",
             "dataPointConfiguration": json.dumps(
@@ -1219,8 +1174,8 @@ def test_remove_namespace_asset_dataset_point(
             )
         })
 
-    # Add the dataset to the asset
-    mocked_asset["properties"]["datasets"] = [dataset]
+    # Add the event to the asset
+    mocked_asset["properties"]["events"] = [event]
 
     # Mock the GET request to get the asset
     mocked_responses.add(
@@ -1237,8 +1192,8 @@ def test_remove_namespace_asset_dataset_point(
     if point_deleted:
         # Mock the PATCH request to update the asset
         updated_asset = deepcopy(mocked_asset)
-        updated_dataset = updated_asset["properties"]["datasets"][0]
-        updated_dataset["dataPoints"] = expected_datapoints
+        updated_event = updated_asset["properties"]["events"][0]
+        updated_event["dataPoints"] = expected_datapoints
 
         mocked_responses.add(
             responses.PATCH,
@@ -1263,21 +1218,14 @@ def test_remove_namespace_asset_dataset_point(
         )
 
     # Call the function being tested
-    result = remove_namespace_asset_dataset_point(
+    result = remove_namespace_asset_event_point(
         cmd=mocked_cmd,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         asset_name=asset_name,
-        dataset_name=dataset_name,
+        event_name=event_name,
         datapoint_name=datapoint_name,
         wait_sec=0
-    )
-
-    # Verify the fixture was called with the correct parameters
-    mocked_get_namespace_for_instance.assert_called_once_with(
-        cmd=mocked_cmd,
-        instance_name=instance_name,
-        instance_resource_group=instance_resource_group
     )
 
     # Verify the result is the updated datapoints list
@@ -1287,22 +1235,18 @@ def test_remove_namespace_asset_dataset_point(
     assert len(mocked_responses.calls) == (3 if point_deleted else 1)
     assert mocked_responses.calls[0].request.method == "GET"
 
-    # If the point was deleted, there should be a PATCH + GET request
+    # If the point was deleted, there should be a PATCH request
     if point_deleted:
         assert mocked_responses.calls[1].request.method == "PATCH"
         assert mocked_responses.calls[2].request.method == "GET"
 
         # Verify the PATCH request body contains the expected datapoints
         patch_body = json.loads(mocked_responses.calls[1].request.body)
-        patch_datasets = patch_body["properties"]["datasets"]
-        assert len(patch_datasets) == 1
-
-        # Find the dataset in the patch request
-        patched_dataset = next((d for d in patch_datasets if d["name"] == dataset_name), None)
-        assert patched_dataset is not None
+        patch_events = patch_body["properties"]["events"]
+        assert len(patch_events) == 1
 
         # Check that the datapoints in the patch request match the expected datapoints
-        patched_datapoints = patched_dataset.get("dataPoints", [])
+        patched_datapoints = patch_events[0].get("dataPoints", [])
 
         # The datapoint that was supposed to be deleted should not be in the request
         for dp in patched_datapoints:
@@ -1312,3 +1256,10 @@ def test_remove_namespace_asset_dataset_point(
         assert len(patched_datapoints) == len(expected_datapoints)
         for dp in expected_datapoints:
             assert dp in patched_datapoints
+
+    # Verify that mocked_get_namespace_for_instance was called with correct parameters
+    mocked_get_namespace_for_instance.assert_called_once_with(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
+    )

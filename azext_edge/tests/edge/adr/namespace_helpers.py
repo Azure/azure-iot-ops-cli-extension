@@ -7,8 +7,8 @@
 from functools import partial
 import json
 from typing import Optional, Callable, Tuple
-from ....generators import generate_random_string
-from ....helpers import create_file
+from ...generators import generate_random_string
+from ...helpers import create_file
 
 """Helpers for ADR v2 tests."""
 

@@ -17,15 +17,13 @@ from azext_edge.edge.commands_namespaces import (
     show_namespace,
     update_namespace,
 )
-from ...orchestration.resources.conftest import get_base_endpoint
+from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion
+from ..orchestration.resources.conftest import get_base_endpoint
 
-from ....generators import generate_random_string, BASE_URL, get_zeroed_subscription
+from ...generators import generate_random_string, BASE_URL, get_zeroed_subscription
 
 
 RESOURCES_API_VERSION = "2024-03-01"
-ADR_REFRESH_API_VERSION = "2025-07-01-preview"
-EVENTGRIDTOPIC_API_VERSION = "2025-02-15"
-EVENTGRIDTOPIC_RESOURCE_TYPE = "Microsoft.EventGrid/topics"
 
 
 def convert_dict_to_nargs(input_dict: Dict[str, str]) -> List[str]:
@@ -49,7 +47,7 @@ def get_namespace_mgmt_uri(
         f"Microsoft.DeviceRegistry/namespaces{namespace_name}"
     )
     if include_api:
-        namespace_id += f"?api-version={ADR_REFRESH_API_VERSION}"
+        namespace_id += f"?api-version={DeviceRegistryMgmtApiVersion.V20250701_preview.value}"
     return f"{BASE_URL}{namespace_id}"
 
 

@@ -27,7 +27,7 @@ from azext_edge.edge.providers.adr.assets import (
     VALID_EVENT_OBSERVABILITY_MODES
 )
 
-from ....generators import generate_random_string
+from ...generators import generate_random_string
 
 
 @pytest.mark.parametrize("data_source", [None, generate_random_string()])

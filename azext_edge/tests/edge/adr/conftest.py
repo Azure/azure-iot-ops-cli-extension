@@ -8,9 +8,9 @@ import pytest
 from copy import deepcopy
 from typing import Optional
 
-from azext_edge.edge.providers.adr.helpers import NamespaceResource
-from ....generators import generate_random_string, get_zeroed_subscription
-from ....helpers import run
+from azext_edge.edge.util.id_tools import parse_resource_id
+from ...generators import generate_random_string, get_zeroed_subscription
+from ...helpers import run
 
 
 @pytest.fixture()
@@ -66,8 +66,8 @@ def mocked_get_extended_location(mocker):
         "type": "CustomLocation",
         "name": generate_random_string(),
         "cluster_location": generate_random_string(),
-        "namespace": NamespaceResource(
-            resource_id=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/{generate_random_string()}"
+        "namespace": parse_resource_id(
+            rid=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/{generate_random_string()}"
             f"/providers/Microsoft.DeviceRegistry/namespaces/{generate_random_string()}"
         )
     }
@@ -84,7 +84,7 @@ def mocked_get_extended_location(mocker):
 def mocked_check_cluster_connectivity(mocker):
     yield mocker.patch(
         "azext_edge.edge.providers.adr.helpers.check_cluster_connectivity",
-        # autospec=True  # TODO: uncomment when GA
+        autospec=True  # TODO: uncomment when GA
     )
 
 
@@ -92,9 +92,9 @@ def mocked_check_cluster_connectivity(mocker):
 def mocked_get_namespace_for_instance(mocker):
     mock = mocker.patch(
         "azext_edge.edge.providers.adr.helpers.get_namespace_for_instance",
-        return_value=NamespaceResource(
-            resource_id=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/{generate_random_string()}"
-            f"/providers/Microsoft.DeviceRegistry/namespaces/{generate_random_string()}"
+        return_value=parse_resource_id(
+            rid=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/rg{generate_random_string(size=5)}"
+            f"/providers/Microsoft.DeviceRegistry/namespaces/ns{generate_random_string(size=5)}"
         ),
         autospec=True
     )
@@ -320,7 +320,7 @@ MINIMUM_AEP = {
     "resourceGroup": generate_random_string(),
     "type": "microsoft.deviceregistry/assetendpointprofiles"
 }
-# TODO: add in additional config
+
 FULL_AEP = {
     "extendedLocation": {
         "name": generate_random_string(),

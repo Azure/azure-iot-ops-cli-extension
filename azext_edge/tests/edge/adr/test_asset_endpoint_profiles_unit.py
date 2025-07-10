@@ -23,7 +23,7 @@ from azext_edge.edge.commands_asset_endpoint_profiles import (
 from azext_edge.edge.providers.adr.common import AEPTypes
 
 from .conftest import get_profile_id, get_profile_record, get_mgmt_uri
-from ....generators import generate_random_string
+from ...generators import generate_random_string
 
 
 # TODO: add in additional config args
@@ -126,7 +126,7 @@ def test_create_error(mocked_cmd, mocked_get_extended_location):
         )
 
 
-@pytest.mark.parametrize("discovered", [False])  # TODO: discovered
+@pytest.mark.parametrize("discovered", [False])
 def test_delete(mocked_cmd, mocked_check_cluster_connectivity, mocked_responses: responses, discovered: bool):
     profile_name = generate_random_string()
     resource_group_name = generate_random_string()

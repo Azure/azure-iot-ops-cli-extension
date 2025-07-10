@@ -22,16 +22,9 @@ from .user_strings import (
 )
 from ..orchestration.resources import Instances
 from .common import ADRAuthModes
+from ...util.id_tools import parse_resource_id
 
 logger = get_logger(__name__)
-
-
-class NamespaceResource:
-    def __init__(self, resource_id: str):
-        # unit test? do I unit test?
-        resource_id = resource_id.split("/")
-        self.name = resource_id[8]
-        self.resource_group = resource_id[4]
 
 
 def check_cluster_connectivity(cmd, resource: dict):
@@ -52,7 +45,7 @@ def get_extended_location(
     instance_name: str,
     instance_resource_group: str,
     instance_subscription: Optional[str] = None,
-) -> Dict[str, Optional[Union[str, NamespaceResource]]]:
+) -> Dict[str, Optional[Union[str, Dict[str, str]]]]:
     """
     Returns the extended location object with cluster location.
 
@@ -76,7 +69,7 @@ def get_extended_location(
     # for the new adr
     namespace = instance["properties"].get("adrNamespaceRef", {}).get("resourceId")
     if namespace:
-        namespace = NamespaceResource(resource_id=namespace)
+        namespace = parse_resource_id(rid=namespace)
 
     return {
         "type": "CustomLocation",
@@ -91,7 +84,7 @@ def get_namespace_for_instance(
     instance_name: str,
     instance_resource_group: str,
     instance_subscription: Optional[str] = None,
-) -> NamespaceResource:
+) -> Dict[str, str]:
     """
     Returns the namespace resource for the given instance.
     """
@@ -107,7 +100,7 @@ def get_namespace_for_instance(
             "Please update your instance to use new Device Registry features."
         )
 
-    return NamespaceResource(resource_id=namespace)
+    return parse_resource_id(rid=namespace)
 
 
 def get_default_dataset(asset: dict, dataset_name: str, create_if_none: bool = False):

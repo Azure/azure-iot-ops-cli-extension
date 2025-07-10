@@ -21,7 +21,7 @@ from azext_edge.edge.providers.adr.asset_endpoint_profiles import (
     ADRAuthModes
 )
 from azext_edge.edge.providers.adr.helpers import process_authentication
-from ....generators import generate_random_string
+from ...generators import generate_random_string
 
 
 @pytest.mark.parametrize("value", [-1, 100])

@@ -32,7 +32,7 @@ from azext_edge.edge.commands_assets import (
 from azext_edge.edge.providers.adr.common import FileType
 
 from .conftest import get_asset_mgmt_uri, get_asset_record
-from ....generators import generate_random_string
+from ...generators import generate_random_string
 
 
 @pytest.mark.parametrize("req", [

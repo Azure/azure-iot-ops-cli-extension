@@ -12,8 +12,12 @@ from knack.log import get_logger
 from azure.cli.core.azclierror import InvalidArgumentValueError
 
 from ...util.az_client import (
-    get_registry_mgmt_client, get_resource_client, wait_for_terminal_state, DeviceRegistryMgmtApiVersion
+    get_registry_mgmt_client,
+    get_resource_client,
+    wait_for_terminal_state,
+    DeviceRegistryMgmtApiVersion
 )
+from ...util.id_tools import parse_resource_id
 from ...util.common import parse_kvp_nargs, should_continue_prompt
 from ...util.queryable import Queryable
 from ...common import ListableEnum
@@ -85,8 +89,8 @@ class NamespaceDevices(Queryable):
             )
         # get the location of the namespace
         location = self.namespace_ops.get(
-            resource_group_name=namespace.resource_group,
-            namespace_name=namespace.name
+            resource_group_name=namespace["resource_group"],
+            namespace_name=namespace["name"]
         )["location"]
 
         device_body = {
@@ -105,8 +109,8 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Creating {device_name}..."):
             poller = self.ops.begin_create_or_replace(
-                resource_group_name=namespace.resource_group,
-                namespace_name=namespace.name,
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
                 device_name=device_name,
                 resource=device_body
             )
@@ -133,8 +137,8 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Deleting {device_name}..."):
             poller = self.ops.begin_delete(
-                resource_group_name=namespace.resource_group,
-                namespace_name=namespace.name,
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
                 device_name=device_name
             )
             return wait_for_terminal_state(poller, **kwargs)
@@ -163,8 +167,8 @@ class NamespaceDevices(Queryable):
                 instance_name=instance_name,
                 instance_resource_group=resource_group
             )
-            namespace_name = namespace.name
-            resource_group = namespace.resource_group
+            namespace_name = namespace["name"]
+            resource_group = namespace["resource_group"]
 
         device = self.ops.get(
             resource_group_name=resource_group, namespace_name=namespace_name, device_name=device_name
@@ -179,7 +183,6 @@ class NamespaceDevices(Queryable):
         self,
         device_name: Optional[str] = None,
         custom_query: Optional[str] = None,
-        resource_group_name: Optional[str] = None,  # TODO remove this to avoid confusion with instance resource group
         manufacturer: Optional[str] = None,
         model: Optional[str] = None,
         operating_system: Optional[str] = None,
@@ -194,15 +197,12 @@ class NamespaceDevices(Queryable):
         # instance names
         def _build_query_body(
             device_name: Optional[str] = None,
-            resource_group_name: Optional[str] = None,
             manufacturer: Optional[str] = None,
             model: Optional[str] = None,
             operating_system: Optional[str] = None
         ) -> str:
             query_body = ""
             # add filters
-            if resource_group_name:
-                query_body += f' | where resourceGroup =~ "{resource_group_name}"'
             if device_name:
                 query_body += f' | where name =~ "{device_name}"'
             if manufacturer:
@@ -211,21 +211,10 @@ class NamespaceDevices(Queryable):
                 query_body += f' | where properties.model =~ "{model}"'
             if operating_system:
                 query_body += f' | where properties.operatingSystem =~ "{operating_system}"'
-            return (
-                f"{query_body} | extend customLocation = tostring(extendedLocation.name) "
-                "| extend provisioningState = properties.provisioningState "
-                "| extend enabled = properties.enabled "
-                "| extend manufacturer = properties.manufacturer "
-                "| extend model = properties.model "
-                "| extend operatingSystem = properties.operatingSystem "
-                # TODO: I can prob remove the project
-                "| project id, customLocation, location, name, resourceGroup, provisioningState, "
-                "enabled, manufacturer, model, operatingSystem, tags, type, subscriptionId"
-            )
+            return query_body
 
         query += custom_query or _build_query_body(
             device_name=device_name,
-            resource_group_name=resource_group_name,
             manufacturer=manufacturer,
             model=model,
             operating_system=operating_system
@@ -268,16 +257,16 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Updating {device_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=namespace.resource_group,
-                namespace_name=namespace.name,
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
                 device_name=device_name,
                 properties=update_payload
             )
             wait_for_terminal_state(poller, **kwargs)
             return self.show(
                 device_name=device_name,
-                namespace_name=namespace.name,
-                resource_group=namespace.resource_group,
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"],
             )
 
     def add_inbound_endpoint(
@@ -288,7 +277,7 @@ class NamespaceDevices(Queryable):
         endpoint_name: str,
         endpoint_address: str,
         endpoint_type: str,
-        endpoint_version: Optional[str] = None,  # TODO: add in version support
+        endpoint_version: Optional[str] = None,
         certificate_reference: Optional[str] = None,
         password_reference: Optional[str] = None,
         username_reference: Optional[str] = None,
@@ -296,14 +285,14 @@ class NamespaceDevices(Queryable):
         replace: Optional[bool] = False,
         **kwargs
     ):
-        from .helpers import process_authentication, process_additional_configuration, NamespaceResource
+        from .helpers import process_authentication, process_additional_configuration
         # get the original inbound endpoints
         device = self.show(
             device_name=device_name,
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        namespace = NamespaceResource(device["id"])
+        namespace = parse_resource_id(device["id"])
         original_endpoints = _get_endpoints(device)
         if endpoint_name in original_endpoints and not replace:
             raise InvalidArgumentValueError(
@@ -347,16 +336,16 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Updating inbound endpoints for {device_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=namespace.resource_group,
-                namespace_name=namespace.name,
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
                 device_name=device_name,
                 properties=update_payload
             )
             wait_for_terminal_state(poller, **kwargs)
             result = self.show(
                 device_name=device_name,
-                namespace_name=namespace.name,
-                resource_group=namespace.resource_group
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"]
             )
             return result["properties"].get("endpoints", {}).get("inbound", {})
 
@@ -387,14 +376,13 @@ class NamespaceDevices(Queryable):
         if not should_continue_prompt(confirm_yes):
             return
 
-        from .helpers import NamespaceResource
         # get the original inbound endpoints
         device = self.show(
             device_name=device_name,
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        namespace = NamespaceResource(device["id"])
+        namespace = parse_resource_id(device["id"])
         original_endpoints = _get_endpoints(device)
         # remove the endpoints from the endpoint list by key
         remaining_endpoints = {
@@ -413,16 +401,16 @@ class NamespaceDevices(Queryable):
 
         with console.status(f"Updating inbound endpoints for {device_name}..."):
             poller = self.ops.begin_update(
-                resource_group_name=namespace.resource_group,
-                namespace_name=namespace.name,
+                resource_group_name=namespace["resource_group"],
+                namespace_name=namespace["name"],
                 device_name=device_name,
                 properties=update_payload
             )
             wait_for_terminal_state(poller, **kwargs)
             result = self.show(
                 device_name=device_name,
-                namespace_name=namespace.name,
-                resource_group=namespace.resource_group
+                namespace_name=namespace["name"],
+                resource_group=namespace["resource_group"]
             )
             return result["properties"].get("endpoints", {}).get("inbound", {})
 

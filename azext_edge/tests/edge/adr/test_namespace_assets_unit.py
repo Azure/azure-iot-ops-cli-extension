@@ -26,14 +26,14 @@ from azext_edge.edge.commands_namespaces import (
 )
 from azext_edge.edge.providers.adr.namespace_assets import _process_configs
 from azext_edge.edge.util.common import parse_kvp_nargs
+from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion
 
 from .test_namespace_devices_unit import get_namespace_device_record, get_namespace_device_mgmt_uri
 from .test_namespaces_unit import get_namespace_mgmt_uri
-from ....generators import BASE_URL, generate_random_string
+from ...generators import BASE_URL, generate_random_string
 
 # TODO: consolidate all these ADR refresh apis
 NAMESPACE_ASSET_RESOURCE_TYPE = "Microsoft.DeviceRegistry/namespaces/assets"
-ADR_REFRESH_API_VERSION = "2025-07-01-preview"
 
 
 def get_namespace_asset_mgmt_uri(
@@ -46,7 +46,7 @@ def get_namespace_asset_mgmt_uri(
         namespace_name=namespace_name, resource_group_name=resource_group_name, include_api=False
     )
     base_uri += "/assets" + (f"/{asset_name}" if asset_name else "")
-    return f"{base_uri}?api-version={ADR_REFRESH_API_VERSION}"
+    return f"{base_uri}?api-version={DeviceRegistryMgmtApiVersion.V20250701_preview.value}"
 
 
 def get_namespace_asset_record(
@@ -223,8 +223,8 @@ def test_create_namespace_asset(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    namespace_resource_group = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    namespace_resource_group = namespace_resource["resource_group"]
 
     # Merge shared and unique requirements
     all_reqs = {**reqs, **unique_reqs}
@@ -324,8 +324,8 @@ def test_create_namespace_asset_error(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    namespace_resource_group = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    namespace_resource_group = namespace_resource["resource_group"]
 
     # Create mock device record
     mock_device_record = get_namespace_device_record(
@@ -395,8 +395,8 @@ def test_delete_namespace_asset(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    namespace_resource_group = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    namespace_resource_group = namespace_resource["resource_group"]
 
     # Create mock response
     mock_response = {} if response_status == 202 else {"error": {"code": "NotFound", "message": "Asset not found"}}
@@ -462,8 +462,8 @@ def test_show_namespace_asset(
 
     # Setup mock for get_namespace_for_instance to return the namespace_name
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    namespace_resource_group = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    namespace_resource_group = namespace_resource["resource_group"]
 
     # Create mock response
     mock_asset_record = get_namespace_asset_record(
@@ -664,8 +664,8 @@ def test_update_namespace_asset(
     instance_resource_group = generate_random_string()
 
     # Get the namespace from the mocked function
-    namespace_name = mocked_get_namespace_for_instance.return_value.name
-    namespace_resource_group = mocked_get_namespace_for_instance.return_value.resource_group
+    namespace_name = mocked_get_namespace_for_instance.return_value["name"]
+    namespace_resource_group = mocked_get_namespace_for_instance.return_value["resource_group"]
     print("test", namespace_name, namespace_resource_group)
 
     # Merge shared and unique requirements

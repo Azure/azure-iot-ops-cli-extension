@@ -22,7 +22,7 @@ from azext_edge.edge.providers.adr.specs import (
     NAMESPACE_DEVICE_ONVIF_ENDPOINT_SCHEMA,
     NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA,
 )
-from ....generators import generate_random_string, BASE_URL, generate_resource_id
+from ...generators import generate_random_string, BASE_URL, generate_resource_id
 
 CONNECTED_CLUSTER_API = "2024-07-15-preview"
 
@@ -169,8 +169,8 @@ def test_get_extended_location(
     assert mocked_logger.warning.called is not connected
 
     if namespace_name:
-        assert result["namespace"].name == namespace_name
-        assert result["namespace"].resource_group == namespace_resource_group
+        assert result["namespace"]["name"] == namespace_name
+        assert result["namespace"]["resource_group"] == namespace_resource_group
     else:
         assert result["namespace"] is None
 
@@ -183,7 +183,7 @@ def test_get_namespace_for_instance(
     subscription: str,
     namespace_name: str
 ):
-    from azext_edge.edge.providers.adr.helpers import get_namespace_for_instance, NamespaceResource
+    from azext_edge.edge.providers.adr.helpers import get_namespace_for_instance
 
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
@@ -227,9 +227,8 @@ def test_get_namespace_for_instance(
     )
 
     # Verify the result
-    assert isinstance(result, NamespaceResource)
-    assert result.name == namespace_name
-    assert result.resource_group == namespace_resource_group
+    assert result["name"] == namespace_name
+    assert result["resource_group"] == namespace_resource_group
 
 
 @pytest.mark.parametrize("subscription", [None, generate_random_string()])

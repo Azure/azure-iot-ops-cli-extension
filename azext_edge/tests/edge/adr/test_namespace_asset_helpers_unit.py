@@ -27,7 +27,7 @@ from azext_edge.edge.providers.adr.namespace_assets import (
     _process_media_stream_configurations
 )
 from azext_edge.edge.util.common import parse_kvp_nargs
-from ....generators import generate_random_string
+from ...generators import generate_random_string
 
 
 @pytest.fixture()
@@ -120,7 +120,7 @@ def test_build_destination(test_case: dict, allowed_types: Optional[List[str]]):
         "args": ["topic=/contoso/test", "retain=InvalidRetain", "qos=Qos0", "ttl=3600"],
         "expected_error": InvalidArgumentValueError,
         "expected_msg": [
-            "Invalid retain value 'InvalidRetain'. Allowed values are: Never, Keep."
+            "Invalid retain value 'InvalidRetain'. Allowed values are: Keep, Never."
         ]
     },
 ])

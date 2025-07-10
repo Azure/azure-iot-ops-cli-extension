@@ -6,8 +6,8 @@
 
 from typing import List
 
-from ....generators import generate_random_string
-from ....helpers import run
+from ...generators import generate_random_string
+from ...helpers import run
 from .namespace_helpers import create_config_file, check_stream_configuration, check_destinations
 
 

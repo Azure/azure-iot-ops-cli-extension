@@ -11,8 +11,8 @@ from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.util.common import parse_kvp_nargs
 
-from ....generators import generate_random_string
-from ....helpers import run
+from ...generators import generate_random_string
+from ...helpers import run
 
 logger = get_logger(__name__)
 

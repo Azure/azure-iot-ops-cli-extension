@@ -31,7 +31,7 @@ from azext_edge.edge.commands_namespaces import (
 from .test_namespace_assets_unit import (
     get_namespace_asset_mgmt_uri, get_namespace_asset_record, add_device_get_call
 )
-from ....generators import generate_random_string
+from ...generators import generate_random_string
 
 
 def generate_management_group(
@@ -136,8 +136,8 @@ def test_add_namespace_asset_management_group(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     # Build expected management group
     expected_group = {
@@ -303,8 +303,8 @@ def test_add_namespace_asset_management_group_error(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     # Create base parameters for all test cases
     base_params = {
@@ -401,8 +401,8 @@ def test_list_namespace_asset_management_groups(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     expected_groups = [generate_management_group() for _ in range(num_management_groups)]
     mocked_asset = get_namespace_asset_record(
@@ -461,8 +461,8 @@ def test_show_namespace_asset_management_group(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     expected_group = generate_management_group(group_name=group_name, asset_type="custom")
     mocked_asset = get_namespace_asset_record(
@@ -521,8 +521,8 @@ def test_remove_namespace_asset_management_group(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
@@ -684,8 +684,8 @@ def test_update_namespace_asset_management_group(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     initial_management_group = generate_management_group(
         group_name=group_name,
@@ -891,8 +891,8 @@ def test_add_namespace_asset_management_group_action(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     # Generate mock asset with a management group
     mocked_asset = get_namespace_asset_record(
@@ -1062,8 +1062,8 @@ def test_list_namespace_asset_management_group_actions(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     # Generate management group with specified number of actions
     management_group = generate_management_group(
@@ -1137,8 +1137,8 @@ def test_remove_namespace_asset_management_group_action(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,

@@ -8,8 +8,8 @@ from time import sleep
 from typing import List
 from azext_edge.edge.util.common import parse_kvp_nargs
 
-from ....generators import generate_random_string
-from ....helpers import run
+from ...generators import generate_random_string
+from ...helpers import run
 
 
 def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: List[str]):

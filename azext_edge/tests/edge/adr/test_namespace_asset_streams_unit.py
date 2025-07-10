@@ -25,7 +25,7 @@ from .test_namespace_assets_unit import (
     add_device_get_call, get_namespace_asset_mgmt_uri, get_namespace_asset_record
 )
 from .namespace_helpers import check_destinations, check_stream_configuration
-from ....generators import generate_random_string
+from ...generators import generate_random_string
 
 
 def generate_stream(
@@ -178,8 +178,8 @@ def test_add_namespace_asset_stream(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
     expected_stream = {}
 
     # Build expected stream configuration based on asset type
@@ -373,8 +373,8 @@ def test_add_namespace_asset_stream_error(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     # Create base parameters for all test cases
     base_params = {
@@ -469,8 +469,8 @@ def test_list_namespace_asset_streams(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     expected_streams = [generate_stream() for _ in range(num_streams)]
     mocked_asset = get_namespace_asset_record(
@@ -524,8 +524,8 @@ def test_show_namespace_asset_stream(mocked_cmd, mocked_responses: responses, mo
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     expected_stream = generate_stream(stream_name=stream_name, asset_type="media")
     mocked_asset = get_namespace_asset_record(
@@ -582,8 +582,8 @@ def test_remove_namespace_asset_stream(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
@@ -802,8 +802,8 @@ def test_update_namespace_asset_stream(
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
-    namespace_name = namespace_resource.name
-    resource_group_name = namespace_resource.resource_group
+    namespace_name = namespace_resource["name"]
+    resource_group_name = namespace_resource["resource_group"]
 
     # Generate mock asset with existing stream
     mocked_asset = get_namespace_asset_record(
