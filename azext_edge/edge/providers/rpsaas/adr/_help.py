@@ -1391,13 +1391,13 @@ def load_iotops_adr_help():
         - name: Add a management group with custom configuration.
           text: >
             az iot ops ns asset custom mgmt add --asset myAsset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup --custom-config '{"groupType": "sensor-control", "priority": "high"}'
+            --name myManagementGroup --config '{"groupType": "sensor-control", "priority": "high"}'
             --default-topic factory/control/commands --default-timeout 60
 
         - name: Replace an existing management group with the same name.
           text: >
             az iot ops ns asset custom mgmt add --asset myAsset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup --custom-config '{"groupType": "updated-control", "version": "2.0"}' --replace
+            --name myManagementGroup --config '{"groupType": "updated-control", "version": "2.0"}' --replace
     """
 
     helps[
@@ -1440,12 +1440,12 @@ def load_iotops_adr_help():
         - name: Update the custom configuration for a management group.
           text: >
             az iot ops ns asset custom mgmt update --asset myAsset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup --custom-config '{"groupType": "advanced-control", "features": ["logging", "retry"]}'
+            --name myManagementGroup --config '{"groupType": "advanced-control", "features": ["logging", "retry"]}'
 
         - name: Clear the custom configuration for a management group.
           text: >
             az iot ops ns asset custom mgmt update --asset myAsset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup --custom-config ""
+            --name myManagementGroup --config ""
     """
 
     helps[
@@ -1487,7 +1487,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset custom mgmt action add --asset myAsset --instance myInstance -g myInstanceResourceGroup
             --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
-            --custom-config '{"method": "start", "parameters": {"speed": 100}}'
+            --config '{"method": "start", "parameters": {"speed": 100}}'
             --timeout 45
 
         - name: Add an action with specific action type and topic.
@@ -1500,7 +1500,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset custom mgmt action add --asset myAsset --instance myInstance -g myInstanceResourceGroup
             --group myManagementGroup --name myAction --target-uri "ns=3;s=UpdatedMethodNode"
-            --custom-config '{"method": "restart", "priority": "high"}' --replace
+            --config '{"method": "restart", "priority": "high"}' --replace
     """
 
     helps[
