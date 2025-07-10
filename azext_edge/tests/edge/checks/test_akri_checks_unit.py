@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from azext_edge.edge.providers.edge_api.akri import AkriResourceKinds
 import pytest
 from azure.cli.core.azclierror import ArgumentUsageError
 from azext_edge.edge.providers.check.akri import evaluate_core_service_runtime
@@ -23,14 +22,12 @@ from ...generators import generate_random_string
 @pytest.mark.parametrize(
     "resource_kinds",
     [None, [], ["test"]],
-    # [AkriResourceKinds.CONNECTORINSTANCE.value],
-    # [AkriResourceKinds.CONNECTORINSTANCE.value, AkriResourceKinds.CONNECTORTEMPLATE.value],
-    # [AkriResourceKinds.list()],
 )
 @pytest.mark.parametrize("ops_service", ["akri"])
 def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        CoreServiceResourceKinds.RUNTIME_RESOURCE.value: "azext_edge.edge.providers.check.akri.evaluate_core_service_runtime",
+        CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
+            "azext_edge.edge.providers.check.akri.evaluate_core_service_runtime",
     }
 
     try:

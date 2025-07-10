@@ -8,7 +8,6 @@ import random
 
 from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api.akri import AKRI_ACTIVE_API, AkriResourceKinds
 from azext_edge.edge.providers.support.akri import (
     AKRI_DIRECTORY_PATH,
     AKRI_NAME_LABEL_V2,
