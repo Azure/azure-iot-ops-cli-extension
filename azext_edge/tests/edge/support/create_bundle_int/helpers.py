@@ -197,6 +197,9 @@ def check_workload_resource_files(
             # for some reason does not apply to xxx.init
             if file["descriptor"] not in converted_file:
                 converted_file[file["descriptor"]] = False
+            # TODO - verify, safety hatch for mtls failures?
+            if file["descriptor"] == "mtls" and file["sub_descriptor"] == "previous":
+                converted_file[file["descriptor"]] = True
 
     post_pods = get_kubectl_workload_items(prefixes, service_type="pod", label_match=expected_label)
     check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))

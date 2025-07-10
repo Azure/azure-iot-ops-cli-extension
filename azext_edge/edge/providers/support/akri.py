@@ -11,13 +11,28 @@ from knack.log import get_logger
 
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
 
-from .base import DAY_IN_SECONDS, assemble_crd_work, process_deployments, process_replicasets, process_v1_pods
+from .base import (
+    DAY_IN_SECONDS,
+    assemble_crd_work,
+    process_deployments,
+    process_replicasets,
+    process_services,
+    process_statefulset,
+    process_v1_pods,
+)
 from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
 AKRI_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-akri")
 AKRI_DIRECTORY_PATH = "akri"
+
+
+def fetch_services():
+    return process_services(
+        directory_path=AKRI_DIRECTORY_PATH,
+        label_selector=AKRI_NAME_LABEL_V2,
+    )
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
@@ -35,6 +50,13 @@ def fetch_deployments():
     )
 
 
+def fetch_statefulsets():
+    return process_statefulset(
+        directory_path=AKRI_DIRECTORY_PATH,
+        label_selector=AKRI_NAME_LABEL_V2,
+    )
+
+
 def fetch_replicasets():
     return process_replicasets(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2)
 
@@ -42,6 +64,8 @@ def fetch_replicasets():
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
+    "statefulsets": fetch_statefulsets,
+    "services": fetch_services,
 }
 
 

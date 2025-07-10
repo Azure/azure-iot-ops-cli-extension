@@ -89,6 +89,8 @@ def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: Lis
     }
 
     valid_resource_kinds = service_kinds_dict[ops_service].list() if ops_service in service_kinds_dict else []
+    if not valid_resource_kinds:
+        raise ArgumentUsageError(f"Resource filtering is not supported for service {ops_service}.")
 
     for resource_kind in resource_kinds:
         if resource_kind not in valid_resource_kinds:

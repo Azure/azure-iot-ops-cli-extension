@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 
+from azext_edge.edge.providers.edge_api.akri import AkriResourceKinds
 import pytest
 from azure.cli.core.azclierror import ArgumentUsageError
 from azext_edge.edge.providers.check.akri import evaluate_core_service_runtime
@@ -22,18 +23,24 @@ from ...generators import generate_random_string
 @pytest.mark.parametrize(
     "resource_kinds",
     [None, [], ["test"]],
+    # [AkriResourceKinds.CONNECTORINSTANCE.value],
+    # [AkriResourceKinds.CONNECTORINSTANCE.value, AkriResourceKinds.CONNECTORTEMPLATE.value],
+    # [AkriResourceKinds.list()],
 )
 @pytest.mark.parametrize("ops_service", ["akri"])
 def test_check_akri_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
-        "azext_edge.edge.providers.check.akri.evaluate_core_service_runtime",
+        CoreServiceResourceKinds.RUNTIME_RESOURCE.value: "azext_edge.edge.providers.check.akri.evaluate_core_service_runtime",
     }
 
     try:
         assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
     except ArgumentUsageError as e:
-        assert "--resources is not supported for service akri." in str(e)
+        if len(resource_kinds) == 1:
+            kinds_str = resource_kinds[0]
+        else:
+            kinds_str = ", ".join(resource_kinds) if resource_kinds else resource_kinds
+        assert f"Resource kind {kinds_str} is not supported for service {ops_service}. " in str(e)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
@@ -101,8 +108,6 @@ def test_evaluate_core_service_runtime(
     for namespace in target:
         assert namespace in result["targets"][CoreServiceResourceKinds.RUNTIME_RESOURCE.value]
 
-        target[namespace]["conditions"] = (
-            [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
-        )
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)
         assert_evaluations(target[namespace], namespace_evaluations)
