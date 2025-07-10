@@ -185,7 +185,6 @@ def create_instance(
     _ = container_runtime_socket
     _ = kubernetes_distro
 
-    # TODO - temporary.
     if instance_features and not feature_config.is_enabled(FeatureFlag.SUPERUSER_MODE):
         logger.warning("Instance feature config is not supported in this version of the Azure IoT Operations CLI.")
         return
@@ -336,7 +335,6 @@ def update_instance(
     **kwargs,
 ) -> dict:
 
-    # TODO - temporary.
     if instance_features and not feature_config.is_enabled(FeatureFlag.SUPERUSER_MODE):
         logger.warning("Instance feature config is not supported in this version of the Azure IoT Operations CLI.")
         return

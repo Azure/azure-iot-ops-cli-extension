@@ -381,7 +381,6 @@ def test_instance_update(
         },
     ],
 )
-# TODO - temporary.
 def test_instance_update_block_feature_config(
     mocked_cmd,
     mocker,

@@ -29,9 +29,7 @@ class Features:
     Set feature flags for the app and check if specific feature flags are enabled.
     """
 
-    def __init__(
-        self,
-    ):
+    def __init__(self):
         self.refresh()
 
     def refresh(self) -> None:
