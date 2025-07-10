@@ -6,6 +6,7 @@
 
 from typing import Iterable, Optional
 
+from .common import DEFAULT_DATAFLOW_PROFILE
 from .providers.orchestration.common import (
     AIO_MQTT_DEFAULT_CONFIG_MAP,
     DataflowEndpointKafkaAcksType,
@@ -17,7 +18,6 @@ from .providers.orchestration.common import (
     MqttRetainType,
 )
 from .providers.orchestration.resources import DataFlowEndpoints, DataFlowProfiles
-from .common import DEFAULT_DATAFLOW_PROFILE
 
 
 def create_dataflow_profile(

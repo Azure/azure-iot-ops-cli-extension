@@ -12,6 +12,7 @@ from azure.cli.core.commands import CliCommandType
 schema_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_schema#{}")
 mq_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_mq#{}")
 dataflow_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_dataflow#{}")
+registry_endpoint_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_registry_endpoints#{}")
 edge_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_edge#{}")
 secretsync_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_secretsync#{}")
 asset_resource_ops = CliCommandType(operations_tmpl="azext_edge.edge.commands_assets#{}")
@@ -36,6 +37,7 @@ def load_iotops_commands(self, _):
         cmd_group.command("list", "list_instances")
         cmd_group.command("delete", "delete")
         cmd_group.command("clone", "clone_instance", is_preview=True)
+        cmd_group.command("get-versions", "get_versions", is_experimental=True)
 
     with self.command_group(
         "iot ops rsync",
@@ -177,6 +179,17 @@ def load_iotops_commands(self, _):
         cmd_group.command("custom-mqtt", "update_dataflow_endpoint_custom_mqtt")
 
     with self.command_group(
+        "iot ops registry",
+        command_type=registry_endpoint_resource_ops,
+        is_preview=True,
+    ) as cmd_group:
+        cmd_group.command("list", "list_registry_endpoints")
+        cmd_group.command("add", "add_registry_endpoint")
+        cmd_group.command("update", "update_registry_endpoint")
+        cmd_group.command("remove", "remove_registry_endpoint")
+        cmd_group.show_command("show", "show_registry_endpoint")
+
+    with self.command_group(
         "iot ops asset",
         command_type=asset_resource_ops,
     ) as cmd_group:
@@ -229,9 +242,7 @@ def load_iotops_commands(self, _):
         cmd_group.command(
             "custom", "create_custom_asset_endpoint_profile", deprecate_info=cmd_group.deprecate(hide=True)
         )
-        cmd_group.command(
-            "onvif", "create_onvif_asset_endpoint_profile", deprecate_info=cmd_group.deprecate(hide=True)
-        )
+        cmd_group.command("onvif", "create_onvif_asset_endpoint_profile", deprecate_info=cmd_group.deprecate(hide=True))
         cmd_group.command("opcua", "create_opcua_asset_endpoint_profile")
 
     with self.command_group(
