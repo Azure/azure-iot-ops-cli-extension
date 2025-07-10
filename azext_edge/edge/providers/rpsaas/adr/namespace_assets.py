@@ -2030,7 +2030,7 @@ def _process_media_stream_configurations(
         # Skip None values
         if param_value is None:
             continue
-        elif property_name == "autostart":
+        if property_name == "autostart":
             param_value = not param_value  # Convert to 'enabled' property
 
         # Check if this property is allowed for the current task type
