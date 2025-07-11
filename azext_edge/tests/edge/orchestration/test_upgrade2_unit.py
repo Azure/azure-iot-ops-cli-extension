@@ -115,6 +115,7 @@ class UpgradeScenario:
         self.patch_record: Dict[str, dict] = {}
         self.ext_type_response_map: Dict[str, Tuple[int, Optional[dict]]] = {}
         self.expect_exception: Optional[Exception] = None
+        self.last_correlation_id: str = ""
         self.description = description
         self.confirm_yes = confirm_yes
         self.cluster_connected_status = ClusterConnectStatus.CONNECTED.value
@@ -234,6 +235,7 @@ class UpgradeScenario:
     def patch_extension_response(self, request: requests.PreparedRequest) -> Optional[tuple]:
         ext_moniker = request.path_url.split("?")[0].split("/")[-1]
         assert_upgrade_headers(request.headers)
+        self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
             if EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] == ext_moniker:
                 status_code, response_body, headers = self.ext_type_response_map.get(ext_type) or (
@@ -489,6 +491,10 @@ def test_ops_upgrade(
     if expect_exception:
         with pytest.raises(expect_exception) as err:
             upgrade_instance(**call_kwargs)
+        if isinstance(err.value, HttpResponseError):
+            mocked_logger.error.assert_called_once_with(
+                f"Correlation Id for failed upgrade operation: {target_scenario.last_correlation_id}"
+            )
         assert_displays(spy_upgrade_displays, no_progress, error_context=err)
         return
 
