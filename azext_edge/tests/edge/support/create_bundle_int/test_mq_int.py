@@ -7,11 +7,12 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import MQ_ACTIVE_API
+from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
 from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
+    get_all_kinds_from_manager,
     get_file_map,
     run_bundle_command,
 )
@@ -49,9 +50,9 @@ def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
         assert len(diagnostic) == 1
         assert diagnostic[0]["extension"] == "txt"
 
-    check_custom_resource_files(file_objs=file_map, resource_api=MQ_ACTIVE_API)
+    check_custom_resource_files(file_objs=file_map, resource_apis=COMPAT_MQTT_BROKER_APIS.resource_apis)
 
-    expected_types = set(MQ_WORKLOAD_TYPES).union(MQ_ACTIVE_API.kinds)
+    expected_types = set(MQ_WORKLOAD_TYPES).union(get_all_kinds_from_manager(COMPAT_MQTT_BROKER_APIS))
     assert set(file_map.keys()).issubset(expected_types)
 
     # There is a chance that traces are not present even if mq_traces is true

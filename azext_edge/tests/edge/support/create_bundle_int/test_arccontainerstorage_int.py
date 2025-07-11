@@ -86,6 +86,7 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
     # ACS azure-arc-containerstorage
     acs_file_map = file_map["acs"]
 
+    # TODO: may not be able to use EdgeApiManager due to the files being in different folders
     expected_types = set(ACS_WORKLOAD_TYPES).union(ARCCONTAINERSTORAGE_API_V1.kinds)
     assert set(acs_file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(
@@ -94,7 +95,9 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
         prefixes=acs_workload_resource_prefixes,
         bundle_path=bundle_path,
     )
-    check_custom_resource_files(file_objs=acs_file_map, resource_api=ARCCONTAINERSTORAGE_API_V1)
+    check_custom_resource_files(
+        file_objs=acs_file_map, resource_apis=ARCCONTAINERSTORAGE_API_V1
+    )
 
     # ACSTOR validate azure-arc-acstor if exists
     if "acstor" not in file_map:
@@ -112,4 +115,6 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
         bundle_path=bundle_path,
     )
 
-    check_custom_resource_files(file_objs=acstor_file_map, resource_api=CONTAINERSTORAGE_API_V1)
+    check_custom_resource_files(
+        file_objs=acstor_file_map, resource_apis=CONTAINERSTORAGE_API_V1
+    )
