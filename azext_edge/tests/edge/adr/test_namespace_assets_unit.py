@@ -496,9 +496,9 @@ def test_show_namespace_asset(
             )
         # Verify the namespace resolution mock was called
         mocked_get_namespace_for_instance.assert_called_once_with(
-            mocked_cmd,
-            instance_name,
-            instance_resource_group
+            cmd=mocked_cmd,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
         )
         return
 
@@ -516,9 +516,9 @@ def test_show_namespace_asset(
 
     # Verify the namespace resolution mock was called
     mocked_get_namespace_for_instance.assert_called_once_with(
-        mocked_cmd,
-        instance_name,
-        instance_resource_group
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group
     )
 
 
@@ -666,7 +666,6 @@ def test_update_namespace_asset(
     # Get the namespace from the mocked function
     namespace_name = mocked_get_namespace_for_instance.return_value["name"]
     namespace_resource_group = mocked_get_namespace_for_instance.return_value["resource_group"]
-    print("test", namespace_name, namespace_resource_group)
 
     # Merge shared and unique requirements
     all_reqs = {**reqs, **unique_reqs}
@@ -818,7 +817,7 @@ def test_query_namespace_assets(mocked_cmd, mocker, reqs):
     if custom:
         assert reqs["custom_query"] in query
 
-    # Check that each specified parameter is included in the query if the quesy is not custom
+    # Check that each specified parameter is included in the query if the query is not custom
     # otherwise, the specified parameter should not be there
     if "asset_name" in reqs:
         assert (f'| where name =~ "{reqs["asset_name"]}"' in query) is not custom
