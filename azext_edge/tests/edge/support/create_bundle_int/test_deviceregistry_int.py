@@ -7,7 +7,7 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import DEVICEREGISTRY_API_V1
+from azext_edge.edge.providers.edge_api import DEVICEREGISTRY_API_V1, DEVICEREGISTRY_API_V1B1
 from .helpers import (
     check_custom_resource_files,
     BASE_ZIP_PATH,
@@ -34,4 +34,10 @@ def test_create_bundle_deviceregistry(cluster_connection, tracked_files):
         file_objs=file_map,
         resource_api=DEVICEREGISTRY_API_V1
     )
-    assert set(file_map.keys()).issubset(DEVICEREGISTRY_API_V1.kinds)
+    check_custom_resource_files(
+        file_objs=file_map,
+        resource_api=DEVICEREGISTRY_API_V1B1
+    )
+    total_kinds = set(DEVICEREGISTRY_API_V1.kinds).union(DEVICEREGISTRY_API_V1B1.kinds)
+    print(f"Total kinds: {total_kinds}")
+    assert set(file_map.keys()).issubset(total_kinds)
