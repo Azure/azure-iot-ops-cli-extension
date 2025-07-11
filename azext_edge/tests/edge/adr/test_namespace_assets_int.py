@@ -4,12 +4,16 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from time import sleep
 from typing import List
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 from ...generators import generate_random_string
 from ...helpers import run
+
+
+pytestmark = pytest.mark.rpsaas
 
 
 def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: List[str]):

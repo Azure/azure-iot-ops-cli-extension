@@ -6,9 +6,14 @@
 
 from typing import List
 
+import pytest
+
 from ...generators import generate_random_string
 from ...helpers import run
 from .namespace_helpers import create_config_file, check_stream_configuration, check_destinations
+
+
+pytestmark = pytest.mark.rpsaas
 
 
 def test_namespace_custom_asset_stream_lifecycle_operations(

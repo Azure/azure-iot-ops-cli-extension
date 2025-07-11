@@ -4,11 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from typing import List
 
 from ...generators import generate_random_string
 from ...helpers import run
 from .namespace_helpers import create_config_file
+
+
+pytestmark = pytest.mark.rpsaas
 
 
 def test_namespace_custom_asset_management_group_lifecycle_operations(

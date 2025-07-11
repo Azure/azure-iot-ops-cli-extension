@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 import json
 from time import sleep
 from typing import List
@@ -15,6 +16,7 @@ from ...generators import generate_random_string
 from ...helpers import run
 
 logger = get_logger(__name__)
+pytestmark = pytest.mark.rpsaas
 
 
 def test_namespace_device_lifecycle_operations(require_init, tracked_resources: List[str]):
