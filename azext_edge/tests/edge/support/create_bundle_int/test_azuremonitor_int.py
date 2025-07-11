@@ -7,11 +7,12 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import AZUREMONITOR_API_V1
+from azext_edge.edge.providers.support_bundle import COMPAT_AZUREMONITOR_APIS
 from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
+    get_all_kinds_from_manager,
     get_file_map,
     run_bundle_command
 )
@@ -34,16 +35,17 @@ def test_create_bundle_azuremonitor(cluster_connection, tracked_files):
     command = f"az iot ops support create-bundle --ops-service {ops_service}"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
-
-    check_custom_resource_files(
-        file_objs=file_map[OpsServiceType.azuremonitor.value], resource_api=AZUREMONITOR_API_V1
-    )
+    arc_files = file_map[OpsServiceType.azuremonitor.value]
 
     # arc namespace
-    expected_types = set(AZUREMONITOR_WORKLOAD_TYPES).union(AZUREMONITOR_API_V1.kinds)
-    assert set(file_map[OpsServiceType.azuremonitor.value].keys()).issubset(expected_types)
+    check_custom_resource_files(
+        file_objs=arc_files, resource_apis=COMPAT_AZUREMONITOR_APIS.resource_apis
+    )
+
+    expected_types = set(AZUREMONITOR_WORKLOAD_TYPES).union(get_all_kinds_from_manager(COMPAT_AZUREMONITOR_APIS))
+    assert set(arc_files.keys()).issubset(expected_types)
     check_workload_resource_files(
-        file_objs=file_map[OpsServiceType.azuremonitor.value],
+        file_objs=arc_files,
         pre_bundle_items=pre_bundle_workload_items,
         prefixes=AZUREMONITOR_PREFIXES,
         bundle_path=bundle_path,

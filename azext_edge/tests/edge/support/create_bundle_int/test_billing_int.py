@@ -41,10 +41,11 @@ def test_create_bundle_billing(cluster_connection, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
 
+    # TODO: may not be able to use EdgeApiManager due to the files being in different folders
     # AIO
     check_custom_resource_files(
         file_objs=file_map["aio"],
-        resource_api=CLUSTER_CONFIG_API_V1,
+        resource_apis=CLUSTER_CONFIG_API_V1,
         namespace=file_map["__namespaces__"]["aio"]
     )
     expected_types = set(AIO_WORKLOAD_TYPES).union(CLUSTER_CONFIG_API_V1.kinds)
@@ -59,7 +60,7 @@ def test_create_bundle_billing(cluster_connection, tracked_files):
     # USAGE
     check_custom_resource_files(
         file_objs=file_map["usage"],
-        resource_api=CLUSTER_CONFIG_API_V1,
+        resource_apis=CLUSTER_CONFIG_API_V1,
         namespace=file_map["__namespaces__"]["usage"]
     )
     expected_types = set(USAGE_WORKLOAD_TYPES).union(CLUSTER_CONFIG_API_V1.kinds)

@@ -5,13 +5,13 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 from os import path
 from zipfile import ZipFile
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
+from azext_edge.edge.providers.edge_api.base import EdgeApiManager, EdgeResourceApi
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from ....helpers import (
     PLURAL_KEY,
@@ -138,29 +138,62 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
 
 def check_custom_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
-    resource_api: EdgeResourceApi,
+    resource_apis: Union[EdgeResourceApi, Iterable[EdgeResourceApi]],
     namespace: Optional[str] = None,
     exclude_kinds: Optional[List[str]] = None,
 ):
-    # skip validation if resource is not deployed
-    if not resource_api.is_deployed():
-        return
+    """
+    Helper function to check custom resource files against cluster resources.
 
-    resource_map = get_kubectl_custom_items(resource_api=resource_api, namespace=namespace, include_plural=True)
-    resource_kinds = set(resource_api.kinds) - set(exclude_kinds or [])
-    for kind in resource_kinds:
-        cluster_resources = resource_map[kind]
-        # subresources like scale will not have a plural
-        if cluster_resources.get(PLURAL_KEY):
-            assert len(cluster_resources.keys()) - 1 == len(file_objs.get(kind, [])), (
-                f"Mismatch between file objs and cluster resources for kind {kind}:\n"
-                + f"{cluster_resources.keys()=}\n{file_objs.get(kind, [])=}"
-            )
-            for resource in file_objs.get(kind, []):
-                assert (
-                    resource["name"] in cluster_resources.keys()
-                ), f"Resource {resource['name']} of kind {kind} not found in resource map"
-                assert resource["version"] == resource_api.version
+    Will check by version, kind, and name and ensure the kinds match up.
+
+    :param file_objs: Dict of file objects, where key is the kind and value is a list of dicts with file info.
+    :param resource_apis: EdgeResourceApi or iterable of EdgeResourceApi to check against cluster resources.
+    :param namespace: Namespace to check resources in, if applicable.
+    :param exclude_kinds: List of kinds to exclude from the check.
+    """
+    # make sure we are dealing with an iterable of EdgeResourceApi
+    if isinstance(resource_apis, EdgeResourceApi):
+        resource_apis = [resource_apis]
+
+    # first get all the cluster resources
+    # since there are mutliple apis now, key is (kind, version) and value is set of resource names
+    cluster_resource_names: Dict[Tuple[str, str], set] = {}
+    for api in resource_apis:
+        # skip validation if resource is not deployed
+        if not api.is_deployed():
+            continue
+
+        resource_map = get_kubectl_custom_items(resource_api=api, namespace=namespace, include_plural=True)
+        resource_kinds = set(api.kinds) - set(exclude_kinds or [])
+        for kind in resource_kinds:
+            cluster_resources = resource_map[kind]
+            resources = {r for r in cluster_resources if r != "_plural_"}
+            # only add if there is a plural key and resources found
+            # subresources like scale will not have a plural
+            if cluster_resources.get(PLURAL_KEY) and resources:
+                kind_version_key = (kind, api.version)
+                cluster_resource_names.setdefault(kind_version_key, set()).update(resources)
+
+    # second, build up the file resource names in the same manor
+    file_resource_names: Dict[Tuple[str, str], set] = {}
+    for kind, objs in file_objs.items():
+        for obj in objs:
+            kind_version_key = (kind, obj.get("version", "v1"))
+            file_resource_names.setdefault(kind_version_key, set()).add(obj["name"])
+
+    # this will only check the custom crds so if there are workload types, will need to have an extra check
+    # outside of this function
+    assert set(cluster_resource_names.keys()).issubset(set(file_resource_names.keys())), (
+        f"Expected cluster resources types not found in files:\n"
+        f"{file_resource_names.keys()=}\n{cluster_resource_names.keys()=}"
+    )
+    for key, resource_names in cluster_resource_names.items():
+        find_extra_or_missing_names(
+            result_names=file_resource_names[key],
+            pre_expected_names=resource_names,
+            post_expected_names=resource_names
+        )
 
 
 def check_workload_resource_files(
@@ -263,6 +296,24 @@ def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]])
                 with zip.open(file_path) as pod_content:
                     log_content = pod_content.read().decode("utf-8")
                     assert "Evicted" not in log_content, f"Evicted pod {name} log found in bundle."
+
+
+def get_all_kinds_from_manager(
+    manager: EdgeApiManager,
+    exclude_kinds: Optional[List[str]] = None,
+) -> set:
+    """
+    Get all kinds from EdgeApiManager, excluding specified kinds.
+
+    :param manager: EdgeApiManager instance to get kinds from.
+    :param exclude_kinds: List of kinds to exclude.
+    :return: List of kinds excluding the specified ones.
+    """
+    exclude_kinds = exclude_kinds or []
+    result = set()
+    for api in manager.resource_apis:
+        result.update(api.kinds)
+    return result - set(exclude_kinds)
 
 
 def get_file_map(
