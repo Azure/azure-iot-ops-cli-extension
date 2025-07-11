@@ -1807,7 +1807,7 @@ def evaluate_registry_endpoints(
                 status=host_status.value,
                 resource_name=registry_endpoint_name,
                 resource_kind=DataflowResourceKinds.REGISTRYENDPOINT.value,
-                value={"endsWith(spec.host, 'azurecr.io')": host.endswith("azurecr.io")},
+                value={"spec.host": host},
             )
 
             # display host information always

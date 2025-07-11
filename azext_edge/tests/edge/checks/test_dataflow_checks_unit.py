@@ -65,16 +65,11 @@ dataflow_conditions = [
 @pytest.mark.parametrize("ops_service", ["dataflow"])
 def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
-            "azext_edge.edge.providers.check.dataflow.evaluate_core_service_runtime",
-        DataflowResourceKinds.DATAFLOW.value:
-            "azext_edge.edge.providers.check.dataflow.evaluate_dataflows",
-        DataflowResourceKinds.DATAFLOWENDPOINT.value:
-            "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_endpoints",
-        DataflowResourceKinds.DATAFLOWPROFILE.value:
-            "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_profiles",
-        DataflowResourceKinds.REGISTRYENDPOINT.value:
-            "azext_edge.edge.providers.check.dataflow.evaluate_registry_endpoints",
+        CoreServiceResourceKinds.RUNTIME_RESOURCE.value: "azext_edge.edge.providers.check.dataflow.evaluate_core_service_runtime",
+        DataflowResourceKinds.DATAFLOW.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflows",
+        DataflowResourceKinds.DATAFLOWENDPOINT.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_endpoints",
+        DataflowResourceKinds.DATAFLOWPROFILE.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_profiles",
+        DataflowResourceKinds.REGISTRYENDPOINT.value: "azext_edge.edge.providers.check.dataflow.evaluate_registry_endpoints",
     }
 
     assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
@@ -1391,57 +1386,33 @@ def test_evaluate_core_service_runtime(
             [
                 [
                     ("status", "success"),
-                    (
-                        "name",
-                        "registry-endpoint-1",
-                    ),
-                    ("value", {"endsWith(spec.host, 'azurecr.io')": True}),
+                    ("name", "registry-endpoint-1"),
+                    ("value/spec.host", "myregistry.azurecr.io"),
                 ],
                 [
                     ("status", "success"),
-                    (
-                        "name",
-                        "registry-endpoint-1",
-                    ),
-                    ("value", {"spec.authentication.method": "ServiceAccountToken"}),
+                    ("name", "registry-endpoint-1"),
+                    ("value/spec.authentication.method", "ServiceAccountToken"),
                 ],
                 [
                     ("status", "error"),
-                    (
-                        "name",
-                        "registry-endpoint-2",
-                    ),
-                    ("value", {"endsWith(spec.host, 'azurecr.io')": False}),
+                    ("name", "registry-endpoint-2"),
+                    ("value/spec.host", "docker.io"),
                 ],
                 [
                     ("status", "success"),
-                    (
-                        "name",
-                        "registry-endpoint-2",
-                    ),
-                    (
-                        "value",
-                        {"spec.authentication.method": "UserAssignedManagedIdentity"},
-                    ),
+                    ("name", "registry-endpoint-2"),
+                    ("value/spec.authentication.method", "UserAssignedManagedIdentity"),
                 ],
                 [
                     ("status", "success"),
-                    (
-                        "name",
-                        "registry-endpoint-3",
-                    ),
-                    ("value", {"endsWith(spec.host, 'azurecr.io')": True}),
+                    ("name", "registry-endpoint-3"),
+                    ("value/spec.host", "testregistry.azurecr.io"),
                 ],
                 [
                     ("status", "success"),
-                    (
-                        "name",
-                        "registry-endpoint-3",
-                    ),
-                    (
-                        "value",
-                        {"spec.authentication.method": "SystemAssignedManagedIdentity"},
-                    ),
+                    ("name", "registry-endpoint-3"),
+                    ("value/spec.authentication.method", "SystemAssignedManagedIdentity"),
                 ],
             ],
         ),
