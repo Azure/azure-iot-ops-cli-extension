@@ -9,10 +9,6 @@ import pytest
 from azext_edge.edge.util import get_timestamp_now_utc
 
 
-def pytest_configure(config):
-    config.addinivalue_line("markers", "init_scenario_test: mark tests that will run az iot ops init")
-
-
 @pytest.fixture
 def mocked_deploy_template(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.base.deploy_template", autospec=True)

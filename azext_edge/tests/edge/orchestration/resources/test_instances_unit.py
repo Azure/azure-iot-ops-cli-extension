@@ -372,6 +372,37 @@ def test_instance_update(
     assert result == updated_record
 
 
+@pytest.mark.no_global_setup
+@pytest.mark.parametrize(
+    "features_scenario",
+    [
+        {
+            "inputs": ["connectors.settings.preview=Enabled"],
+        },
+    ],
+)
+def test_instance_update_block_feature_config(
+    mocked_cmd,
+    mocker,
+    mocked_responses: responses,
+    features_scenario: Optional[dict],
+):
+    mocked_logger: Mock = mocker.patch("azext_edge.edge.commands_edge.logger")
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+
+    result = update_instance(
+        cmd=mocked_cmd,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        instance_features=features_scenario.get("inputs"),
+    )
+    assert not result
+    mocked_logger.warning.assert_called_once_with(
+        "Instance feature config is not supported in this version of the Azure IoT Operations CLI."
+    )
+
+
 @pytest.mark.parametrize(
     "feature_scenario",
     [

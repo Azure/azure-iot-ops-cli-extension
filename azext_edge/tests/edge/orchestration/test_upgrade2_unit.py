@@ -581,6 +581,74 @@ def test_ops_upgrade_retry_assertion(
     assert len(mock_response.calls) == 4  # Default retry logic should retry 3 times
 
 
+@pytest.mark.no_global_setup
+@pytest.mark.parametrize(
+    "target_scenario,expected_patched_ext_types",
+    [
+        (
+            UpgradeScenario("Version patches are not supported in this build.")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.2.0")
+            .set_expected_exception(ValidationError),
+            {},
+        ),
+        (
+            UpgradeScenario("Version patches are not supported in this build even explicitly.")
+            .set_user_kwargs(ops_version="1.2.3")
+            .set_expected_exception(ValidationError),
+            {},
+        ),
+        (
+            UpgradeScenario("Config changes OK.").set_user_kwargs(ops_config=["a=b"]),
+            {
+                EXTENSION_TYPE_OPS: {
+                    "properties": {"extensionType": EXTENSION_TYPE_OPS, "configurationSettings": {"a": "b"}}
+                }
+            },
+        ),
+    ],
+)
+def test_ops_upgrade_block_version_change(
+    mocked_cmd: Mock,
+    mocked_responses: responses,
+    target_scenario: UpgradeScenario,
+    expected_patched_ext_types: Dict[str, dict],
+    mocked_logger: Mock,
+    mocked_sleep: Mock,
+    spy_upgrade_displays: Dict[str, Mock],
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+
+    resource_group_name = generate_random_string()
+    instance_name = generate_random_string()
+
+    target_scenario.set_instance_mock(
+        mocked_responses=mocked_responses, instance_name=instance_name, resource_group_name=resource_group_name
+    )
+    call_kwargs = {
+        "cmd": mocked_cmd,
+        "resource_group_name": resource_group_name,
+        "instance_name": instance_name,
+        "no_progress": True,
+        "confirm_yes": True,
+    }
+    call_kwargs.update(target_scenario.user_kwargs)
+
+    expect_exception = target_scenario.expect_exception
+    if expect_exception:
+        with pytest.raises(expect_exception) as err:
+            upgrade_instance(**call_kwargs)
+        assert str(err.value) == (
+            "Version upgrades are not allowed in this Azure IoT Operations CLI version.\n"
+            "A new instance must be deployed."
+        )
+        return
+
+    upgrade_result = upgrade_instance(**call_kwargs)
+    assert_patch_order(upgrade_result, expected_patched_ext_types)
+    assert_result(target_scenario, upgrade_result, expected_patched_ext_types)
+    assert_displays(spy_upgrade_displays, True, patched_ext_types=expected_patched_ext_types)
+
+
 def assert_result(
     target_scenario: UpgradeScenario, upgrade_result: List[dict], expected_types: Optional[Dict[str, dict]] = None
 ):
