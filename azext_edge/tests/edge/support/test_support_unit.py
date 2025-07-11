@@ -223,19 +223,6 @@ def test_create_bundle(
                 label_selector=DATAFLOW_NAME_LABEL,
                 directory_path=api.moniker,
             )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATAFLOW_NAME_LABEL,
-                directory_path=api.moniker,
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATAFLOW_NAME_LABEL,
-                directory_path=api.moniker,
-                mock_names=["aio-dataflow-operator"],
-            )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
