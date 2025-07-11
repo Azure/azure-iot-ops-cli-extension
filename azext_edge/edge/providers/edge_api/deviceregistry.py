@@ -25,4 +25,8 @@ DEVICEREGISTRY_API_V1B1 = EdgeResourceApi(
     group="deviceregistry.microsoft.com", version="v1beta1", moniker="deviceregistry"
 )
 
-DEVICEREGISTRY_ACTIVE_API = DEVICEREGISTRY_API_V1B1
+NAMESPACED_DEVICEREGISTRY_API_V1B1 = EdgeResourceApi(
+    group="namespaces.deviceregistry.microsoft.com", version="v1beta1", moniker="deviceregistry"
+)
+
+DEVICEREGISTRY_ACTIVE_API = NAMESPACED_DEVICEREGISTRY_API_V1B1
