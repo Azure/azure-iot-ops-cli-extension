@@ -826,7 +826,7 @@ def test_iot_ops_create(
         assert_exception(expected_exc_meta=exc_meta, call_func=create_instance, call_kwargs=create_call_kwargs)
         return
 
-    create_result = create_instance(**create_call_kwargs)  # pylint: disable=assignment-from-no-return
+    create_result = create_instance(**create_call_kwargs)  # pylint: disable=assignment-from-none
 
     expected_call_count_map = {
         CallKey.CONNECT_RESOURCE_MANAGER: 1,
@@ -849,6 +849,42 @@ def test_iot_ops_create(
     # TODO - @digimaun
     if target_scenario["noProgress"]:
         assert create_result is None
+
+
+@pytest.mark.no_global_setup
+@pytest.mark.parametrize(
+    "target_scenario",
+    [
+        build_target_scenario(instance_features=["connectors.settings.preview=Enabled"]),
+    ],
+)
+def test_iot_ops_create_block_feature_config(
+    mocked_cmd: Mock,
+    mocker,
+    mocked_responses: responses,
+    mocked_sleep: Mock,
+    mocked_confirm: Mock,
+    spy_work_displays: Dict[str, Mock],
+    target_scenario: Dict[str, Union[bool, dict]],
+):
+    from azext_edge.edge.commands_edge import create_instance
+
+    mocked_logger: Mock = mocker.patch("azext_edge.edge.commands_edge.logger")
+
+    create_call_kwargs = {
+        "cmd": mocked_cmd,
+        "cluster_name": target_scenario["cluster"]["name"],
+        "resource_group_name": target_scenario["resourceGroup"],
+        "instance_name": target_scenario["instance"]["name"],
+        "schema_registry_resource_id": target_scenario["schemaRegistry"]["id"],
+        "adr_namespace_resource_id": target_scenario["adrNamespace"]["id"],
+        "instance_features": target_scenario["instance_features"],
+    }
+
+    create_instance(**create_call_kwargs)
+    mocked_logger.warning.assert_called_once_with(
+        "Instance feature config is not supported in this version of the Azure IoT Operations CLI."
+    )
 
 
 def assert_logger(mocked_logger: Mock, target_scenario: dict):
