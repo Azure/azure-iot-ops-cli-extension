@@ -42,7 +42,7 @@ from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_NAME_LABE
 from azext_edge.edge.providers.support.common import (
     COMPONENT_LABEL_FORMAT,
 )
-from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL, DATAFLOW_DEPLOYMENT_FIELD_SELECTOR
+from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL
 from azext_edge.edge.providers.support.schemaregistry import SCHEMAS_DIRECTORY_PATH, SCHEMAS_NAME_LABEL
 from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
 from azext_edge.tests.edge.support.conftest import add_pod_to_mocked_pods
@@ -226,9 +226,14 @@ def test_create_bundle(
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=None,
+                label_selector=DATAFLOW_NAME_LABEL,
                 directory_path=api.moniker,
-                field_selector=DATAFLOW_DEPLOYMENT_FIELD_SELECTOR,
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
                 mock_names=["aio-dataflow-operator"],
             )
             assert_list_replica_sets(
