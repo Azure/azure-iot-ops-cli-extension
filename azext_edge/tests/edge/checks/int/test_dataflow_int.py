@@ -27,7 +27,16 @@ DATAFLOW_PREFIX = "aio-dataflow-operator-"
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("resource_kind", DataflowResourceKinds.list() + [None])
+@pytest.mark.parametrize(
+    "resource_kind",
+    [
+        None,
+        DataflowResourceKinds.DATAFLOW.value,
+        DataflowResourceKinds.DATAFLOWENDPOINT.value,
+        DataflowResourceKinds.DATAFLOWPROFILE.value,
+        DataflowResourceKinds.REGISTRYENDPOINT.value,
+    ],
+)
 def test_dataflow_check(cluster_connection, detail_level, resource_kind):
     pre_check_pods = get_pods(pod_prefix=DATAFLOW_PREFIX)
     post_deployment, dataflow_present = run_check_command(

@@ -65,11 +65,16 @@ dataflow_conditions = [
 @pytest.mark.parametrize("ops_service", ["dataflow"])
 def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_types, resource_kinds):
     eval_lookup = {
-        CoreServiceResourceKinds.RUNTIME_RESOURCE.value: "azext_edge.edge.providers.check.dataflow.evaluate_core_service_runtime",
-        DataflowResourceKinds.DATAFLOW.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflows",
-        DataflowResourceKinds.DATAFLOWENDPOINT.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_endpoints",
-        DataflowResourceKinds.DATAFLOWPROFILE.value: "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_profiles",
-        DataflowResourceKinds.REGISTRYENDPOINT.value: "azext_edge.edge.providers.check.dataflow.evaluate_registry_endpoints",
+        CoreServiceResourceKinds.RUNTIME_RESOURCE.value:
+            "azext_edge.edge.providers.check.dataflow.evaluate_core_service_runtime",
+        DataflowResourceKinds.DATAFLOW.value:
+            "azext_edge.edge.providers.check.dataflow.evaluate_dataflows",
+        DataflowResourceKinds.DATAFLOWENDPOINT.value:
+            "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_endpoints",
+        DataflowResourceKinds.DATAFLOWPROFILE.value:
+            "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_profiles",
+        DataflowResourceKinds.REGISTRYENDPOINT.value:
+            "azext_edge.edge.providers.check.dataflow.evaluate_registry_endpoints",
     }
 
     assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
