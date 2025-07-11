@@ -11,7 +11,7 @@ from zipfile import ZipFile
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
+from azext_edge.edge.providers.edge_api.base import EdgeApiManager, EdgeResourceApi
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from ....helpers import (
     PLURAL_KEY,
@@ -152,7 +152,6 @@ def check_custom_resource_files(
     :param namespace: Namespace to check resources in, if applicable.
     :param exclude_kinds: List of kinds to exclude from the check.
     """
-    # TODO: may make sense to change this to EdgeApiManager
     # make sure we are dealing with an iterable of EdgeResourceApi
     if isinstance(resource_apis, EdgeResourceApi):
         resource_apis = [resource_apis]
@@ -183,52 +182,18 @@ def check_custom_resource_files(
             kind_version_key = (kind, obj.get("version", "v1"))
             file_resource_names.setdefault(kind_version_key, set()).add(obj["name"])
 
-    assert len(file_resource_names) == len(cluster_resource_names)
-    assert file_resource_names.keys() == cluster_resource_names.keys()
+    # this will only check the custom crds so if there are workload types, will need to have an extra check
+    # outside of this function
+    assert set(cluster_resource_names.keys()).issubset(set(file_resource_names.keys())), (
+        f"Expected cluster resources types not found in files:\n"
+        f"{file_resource_names.keys()=}\n{cluster_resource_names.keys()=}"
+    )
     for key, resource_names in cluster_resource_names.items():
         find_extra_or_missing_names(
             result_names=file_resource_names[key],
             pre_expected_names=resource_names,
             post_expected_names=resource_names
         )
-
-    # # check if all file resources are present in cluster resources
-    # for key, resource_names in cluster_resource_names:
-    #     kind, version = key
-    #     file_resources = [obj["name"] for obj in file_objs.get(kind, []) if obj["version"] == version]
-
-
-
-    # cluster_resource_names = {}
-    # checked_file_resources = {}
-    # for api in resource_apis:
-    #     # skip validation if resource is not deployed
-    #     if not api.is_deployed():
-    #         continue
-
-    #     resource_map = get_kubectl_custom_items(resource_api=api, namespace=namespace, include_plural=True)
-    #     resource_kinds = set(api.kinds) - set(exclude_kinds or [])
-    #     for kind in resource_kinds:
-    #         cluster_resources = resource_map[kind]
-    #         # subresources like scale will not have a plural
-    #         if cluster_resources.get(PLURAL_KEY):
-    #             kind_version_key = f"{kind}.{api.version}"
-    #             # add all file resources found in the kind to expected - we want to track all versions
-    #             checked_file_resources.setdefault(kind_version_key, {}).extend(file_objs.get(kind, []))
-    #             # add the kubectl resources found in the kind to expected - this should be only for that exact version
-    #             checked_cluster_resources.setdefault(kind_version_key, set()).update({r for r in cluster_resources if r != "_plural_"})
-
-    #             file_resources = [obj for obj in file_objs.get(kind, []) if obj["version"] == resource_apis.version]
-
-    #             assert len(cluster_resources.keys()) - 1 == len(file_objs.get(kind, [])), (
-    #                 f"Mismatch between file objs and cluster resources for kind {kind}:\n"
-    #                 + f"{cluster_resources.keys()=}\n{file_objs.get(kind, [])=}"
-    #             )
-    #             for resource in file_objs.get(kind, []):
-    #                 assert (
-    #                     resource["name"] in cluster_resources.keys()
-    #                 ), f"Resource {resource['name']} of kind {kind} not found in resource map"
-    #                 assert resource["version"] == resource_apis.version
 
 
 def check_workload_resource_files(
@@ -331,6 +296,24 @@ def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]])
                 with zip.open(file_path) as pod_content:
                     log_content = pod_content.read().decode("utf-8")
                     assert "Evicted" not in log_content, f"Evicted pod {name} log found in bundle."
+
+
+def get_all_kinds_from_manager(
+    manager: EdgeApiManager,
+    exclude_kinds: Optional[List[str]] = None,
+) -> set:
+    """
+    Get all kinds from EdgeApiManager, excluding specified kinds.
+
+    :param manager: EdgeApiManager instance to get kinds from.
+    :param exclude_kinds: List of kinds to exclude.
+    :return: List of kinds excluding the specified ones.
+    """
+    exclude_kinds = exclude_kinds or []
+    result = set()
+    for api in manager.resource_apis:
+        result.update(api.kinds)
+    return result - set(exclude_kinds)
 
 
 def get_file_map(
