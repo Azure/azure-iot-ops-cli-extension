@@ -30,20 +30,10 @@ DATAFLOW_PROFILE_POD_PREFIX = "aio-dataflow-"
 
 
 def fetch_deployments():
-    processed = process_deployments(
+    return process_deployments(
         directory_path=DATAFLOW_DIRECTORY_PATH,
         label_selector=DATAFLOW_NAME_LABEL,
     )
-
-    # TODO: remove this once dataflow deployment label is fixed
-    processed.extend(
-        process_deployments(
-            directory_path=DATAFLOW_DIRECTORY_PATH,
-            field_selector=DATAFLOW_DEPLOYMENT_FIELD_SELECTOR,
-        )
-    )
-
-    return processed
 
 
 def fetch_replicasets():
