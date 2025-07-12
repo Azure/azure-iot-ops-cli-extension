@@ -18,7 +18,6 @@ class Flag(NamedTuple):
 
 
 class FeatureFlag(Enum):
-    SUPERUSER_MODE = Flag(key=f"{FLAG_PREFIX}SUPERUSER_MODE", description="Overcome preview limitations.")
     PREFLIGHT_DISABLED = Flag(
         key=f"{FLAG_PREFIX}INIT_PREFLIGHT_DISABLED", description="Disable preflight checks during init."
     )
@@ -34,7 +33,6 @@ class Features:
 
     def refresh(self) -> None:
         self.flags: dict[FeatureFlag, bool] = {}
-        self.set_flag(FeatureFlag.SUPERUSER_MODE)
         self.set_flag(FeatureFlag.PREFLIGHT_DISABLED)
 
     def set_flag(self, flag: FeatureFlag) -> None:

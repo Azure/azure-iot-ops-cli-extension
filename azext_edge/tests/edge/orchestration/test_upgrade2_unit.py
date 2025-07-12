@@ -484,6 +484,14 @@ def test_ops_upgrade(
         "no_progress": no_progress,
         "confirm_yes": target_scenario.confirm_yes,
     }
+    # TODO remove post preview. Specific for preview blocking version upgrade by default.
+    if (
+        target_scenario.cluster_connected_status == ClusterConnectStatus.CONNECTED.value
+        and "force" not in target_scenario.user_kwargs
+        and target_scenario.expect_exception is not ValidationError
+    ):
+        call_kwargs["force"] = True
+
     call_kwargs.update(target_scenario.user_kwargs)
 
     expect_exception = target_scenario.expect_exception
@@ -560,6 +568,7 @@ def test_ops_upgrade_retry_assertion(
         "instance_name": instance_name,
         "no_progress": True,
         "confirm_yes": True,
+        "force": True,  # TODO: Remove post preview.
     }
     patch_status_code = target_scenario.ext_type_response_map[EXTENSION_TYPE_PLATFORM][0]
     if patch_status_code == 202:
@@ -587,7 +596,6 @@ def test_ops_upgrade_retry_assertion(
     assert len(mock_response.calls) == 4  # Default retry logic should retry 3 times
 
 
-@pytest.mark.no_global_setup
 @pytest.mark.parametrize(
     "target_scenario,expected_patched_ext_types",
     [
@@ -721,7 +729,10 @@ def assert_displays(
         if isinstance(error_context, ValidationError):
             validation_err_str = str(error_context)
             progress_count = 1
-            if validation_err_str.endswith("downgrade which is not supported.") and no_progress:
+            if (
+                validation_err_str.endswith("downgrade which is not supported.")
+                or validation_err_str.endswith("A new instance must be deployed.")  # TODO: remove post preview
+            ) and no_progress:
                 # Error is raised in first get_patch(). Table render is skipped if no_progress.
                 progress_count += 1
 

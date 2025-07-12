@@ -185,10 +185,6 @@ def create_instance(
     _ = container_runtime_socket
     _ = kubernetes_distro
 
-    if instance_features and not feature_config.is_enabled(FeatureFlag.SUPERUSER_MODE):
-        logger.warning("Instance feature config is not supported in this version of the Azure IoT Operations CLI.")
-        return
-
     # TODO - @digimaun
     custom_broker_config = None
     if custom_broker_config_file:
@@ -334,11 +330,6 @@ def update_instance(
     instance_features: Optional[List[str]] = None,
     **kwargs,
 ) -> dict:
-
-    if instance_features and not feature_config.is_enabled(FeatureFlag.SUPERUSER_MODE):
-        logger.warning("Instance feature config is not supported in this version of the Azure IoT Operations CLI.")
-        return
-
     return Instances(cmd).update(
         name=instance_name,
         resource_group_name=resource_group_name,

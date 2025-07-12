@@ -771,6 +771,7 @@ def test_iot_ops_create(
     mocked_sleep: Mock,
     mocked_confirm: Mock,
     mocked_logger: Mock,
+    mocked_feature_keys: Mock,
     spy_work_displays: Dict[str, Mock],
     target_scenario: Dict[str, Union[bool, dict]],
 ):
@@ -851,7 +852,6 @@ def test_iot_ops_create(
         assert create_result is None
 
 
-@pytest.mark.no_global_setup
 @pytest.mark.parametrize(
     "target_scenario",
     [
@@ -869,8 +869,6 @@ def test_iot_ops_create_block_feature_config(
 ):
     from azext_edge.edge.commands_edge import create_instance
 
-    mocked_logger: Mock = mocker.patch("azext_edge.edge.commands_edge.logger")
-
     create_call_kwargs = {
         "cmd": mocked_cmd,
         "cluster_name": target_scenario["cluster"]["name"],
@@ -881,10 +879,10 @@ def test_iot_ops_create_block_feature_config(
         "instance_features": target_scenario["instance_features"],
     }
 
-    create_instance(**create_call_kwargs)
-    mocked_logger.warning.assert_called_once_with(
-        "Instance feature config is not supported in this version of the Azure IoT Operations CLI."
-    )
+    with pytest.raises(ValidationError) as exc:
+        create_instance(**create_call_kwargs)
+    exc_msg = str(exc.value)
+    assert "No feature keys are supported in this version of IoT Operations." == exc_msg
 
 
 def assert_logger(mocked_logger: Mock, target_scenario: dict):
