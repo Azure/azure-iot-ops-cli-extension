@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
 from azure.cli.core.azclierror import ValidationError
+from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
 from rich.console import Console
 from rich.json import JSON
@@ -34,7 +35,7 @@ from .targets import InitTargets
 
 logger = get_logger(__name__)
 
-DEFAULT_CONSOLE = Console()
+console = Console()
 
 
 def upgrade_ops_instance(
@@ -144,16 +145,22 @@ class UpgradeManager:
                 ext for ext in upgrade_state.extension_upgrades if ext.can_upgrade()
             ]
             return_payload = []
-            headers = {"x-ms-correlation-request-id": str(uuid4()), "CommandName": "iot ops upgrade"}
+            correlation_id = str(uuid4())
+            headers = {"x-ms-correlation-request-id": correlation_id, "CommandName": "iot ops upgrade"}
             upgrade_task = progress.add_task("Applying changes...", total=len(upgradeable_extensions))
             for ext in upgradeable_extensions:
-                updated = self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
-                    resource_group_name=self.resource_group_name,
-                    cluster_name=self.resource_map.connected_cluster.cluster_name,
-                    extension_name=ext.extension["name"],
-                    update_payload=ext.get_patch(),
-                    headers=headers,
-                )
+                try:
+                    updated = self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
+                        resource_group_name=self.resource_group_name,
+                        cluster_name=self.resource_map.connected_cluster.cluster_name,
+                        extension_name=ext.extension["name"],
+                        update_payload=ext.get_patch(),
+                        headers=headers,
+                    )
+                except HttpResponseError as e:
+                    progress.stop()
+                    logger.error(f"Correlation Id for failed upgrade operation: {correlation_id}")
+                    raise e
                 return_payload.append(updated)
                 progress.advance(upgrade_task)
 
@@ -178,7 +185,7 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):
         )
         table.add_section()
 
-    DEFAULT_CONSOLE.print(table)
+    console.print(table)
 
 
 def build_override_map(**override_kwargs: dict) -> Dict[str, "ConfigOverride"]:
@@ -358,7 +365,7 @@ class ExtensionUpgradeState:
         if self.force:
             return
         # TODO - temporary.
-        from ...features import feature_config, FeatureFlag
+        from ...features import FeatureFlag, feature_config
 
         if not feature_config.is_enabled(FeatureFlag.SUPERUSER_MODE):
             if self._has_delta_in_version():
