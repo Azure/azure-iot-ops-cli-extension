@@ -356,6 +356,7 @@ class NamespaceDevices(Queryable):
         instance_resource_group: str,
         inbound: bool = False
     ) -> dict:
+        # TODO: for inbound endponts, see if we can also filter by type
         device = self.show(
             device_name=device_name,
             instance_name=instance_name,
