@@ -194,48 +194,14 @@ class ResourceTypeMapping(Enum):
         return mapping[self]
 
 
-class AEPAuthModes(Enum):
+class IdentityType(Enum):
     """
-    Authentication modes for asset endpoints
+    Types of managed identity for ARM resources.
     """
-
-    anonymous = "Anonymous"
-    certificate = "Certificate"
-    userpass = "UsernamePassword"
-
-
-class AEPTypes(ListableEnum):
-    """Asset Endpoint Profile (connector) Types"""
-
-    opcua = "Microsoft.OpcUa"
-    onvif = "Microsoft.Onvif"
-
-
-class TopicRetain(Enum):
-    """Set the retain flag for messages published to an MQTT broker."""
-
-    keep = "Keep"
-    never = "Never"
-
-
-class SecurityModes(Enum):
-    """Security modes for OPCUA connector."""
-
-    none = "none"
-    sign = "sign"
-    sign_and_encrypt = "signAndEncrypt"
-
-
-class SecurityPolicies(Enum):
-    """Security policies for the OPCUA connector."""
-
-    # TODO: add in user friendly input mapping
-    none = "none"
-    basic128 = "Basic128Rsa15"
-    basic256 = "Basic256"
-    basic256sha256 = "Basic256Sha256"
-    aes128 = "Aes128_Sha256_RsaOaep"
-    aes256 = "Aes256_Sha256_RsaPss"
+    system_assigned = "SystemAssigned"
+    user_assigned = "UserAssigned"
+    system_assigned_user_assigned = "SystemAssigned, UserAssigned"
+    none = "None"
 
 
 class K8sSecretType(Enum):
@@ -245,16 +211,6 @@ class K8sSecretType(Enum):
 
     opaque = "Opaque"
     tls = "kubernetes.io/tls"
-
-
-class FileType(ListableEnum):
-    """
-    Supported file types/extensions for bulk asset operations.
-    """
-
-    json = "json"
-    csv = "csv"
-    yaml = "yaml"
 
 
 class BundleResourceKind(Enum):

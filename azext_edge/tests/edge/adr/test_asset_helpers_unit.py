@@ -11,7 +11,7 @@ import pytest
 from azure.cli.core.azclierror import InvalidArgumentValueError, RequiredArgumentMissingError
 from azext_edge.edge.util.common import assemble_nargs_to_dict
 
-from azext_edge.edge.providers.rpsaas.adr.assets import (
+from azext_edge.edge.providers.adr.assets import (
     _build_asset_sub_point,
     _build_ordered_csv_conversion_map,
     _build_default_configuration,
@@ -19,7 +19,6 @@ from azext_edge.edge.providers.rpsaas.adr.assets import (
     _build_topic,
     _convert_sub_points_from_csv,
     _convert_sub_points_to_csv,
-    _get_dataset,
     _process_asset_sub_points,
     _process_asset_sub_points_file_path,
     _process_custom_attributes,
@@ -28,7 +27,7 @@ from azext_edge.edge.providers.rpsaas.adr.assets import (
     VALID_EVENT_OBSERVABILITY_MODES
 )
 
-from ....generators import generate_random_string
+from ...generators import generate_random_string
 
 
 @pytest.mark.parametrize("data_source", [None, generate_random_string()])
@@ -443,41 +442,6 @@ def test_convert_sub_points_to_csv(default_configuration, portal_friendly, sub_p
             )
 
 
-@pytest.mark.parametrize("datasets", [
-    [{"name": "", "dataPoints": generate_random_string()}],
-    [{"name": "default", "dataPoints": generate_random_string()}],
-])
-@pytest.mark.parametrize("dataset_name", ["default", generate_random_string()])
-def test_get_dataset(datasets, dataset_name):
-    expected = deepcopy(datasets[0])
-    if dataset_name != "default":
-        expected = {"name": dataset_name, "dataPoints": generate_random_string()}
-        datasets.append(expected)
-    result = _get_dataset(
-        asset={"properties": {"datasets": datasets}},
-        dataset_name=dataset_name
-    )
-    assert result["name"] == dataset_name
-    assert result["dataPoints"] == expected["dataPoints"]
-
-
-@pytest.mark.parametrize("dataset_name", ["default", generate_random_string()])
-def test_get_dataset_error(dataset_name):
-    with pytest.raises(InvalidArgumentValueError):
-        _get_dataset(
-            asset={"name": generate_random_string(), "properties": {}},
-            dataset_name=dataset_name
-        )
-    with pytest.raises(InvalidArgumentValueError):
-        _get_dataset(
-            asset={
-                "name": generate_random_string(),
-                "properties": {"datasets": [{"name": generate_random_string()}]}
-            },
-            dataset_name=dataset_name
-        )
-
-
 @pytest.mark.parametrize("required_arg", ["data_source", "event_notifier"])
 @pytest.mark.parametrize("sub_points", [
     None,
@@ -582,7 +546,7 @@ def test_process_asset_sub_points_error(required_arg):
 @pytest.mark.parametrize("duplicates", [False, True])
 def test_process_asset_sub_points_file_path(mocker, req, duplicates):
     # remove logger warnings
-    mocker.patch("azext_edge.edge.providers.rpsaas.adr.assets.logger")
+    mocker.patch("azext_edge.edge.providers.adr.assets.logger")
     # make things simplier with just using name
     point_key = "name" if req else None
     file_path = generate_random_string()

@@ -14,14 +14,15 @@ from azure.cli.core.azclierror import (
 from knack.log import get_logger
 from rich.console import Console
 
-from ....common import FileType
-from ....util import assemble_nargs_to_dict
-from ....util.az_client import (
+from .helpers import get_default_dataset
+from .common import FileType
+from ...util import assemble_nargs_to_dict
+from ...util.az_client import (
     DeviceRegistryMgmtApiVersion,
     get_registry_mgmt_client,
     wait_for_terminal_state,
 )
-from ....util.queryable import Queryable
+from ...util.queryable import Queryable
 from .user_strings import (
     DUPLICATE_EVENT_ERROR,
     DUPLICATE_POINT_ERROR,
@@ -29,7 +30,7 @@ from .user_strings import (
 )
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistrymgmt.operations import AssetsOperations
+    from ...vendor.clients.deviceregistrymgmt.operations import AssetsOperations
 
 
 console = Console()
@@ -91,6 +92,7 @@ class Assets(Queryable):
             instance_subscription=instance_subscription
         )
         cluster_location = extended_location.pop("cluster_location")
+        extended_location.pop("namespace", None)
 
         # Properties
         properties = {
@@ -323,7 +325,7 @@ class Assets(Queryable):
             asset_name=asset_name,
             resource_group_name=resource_group_name
         )
-        return _get_dataset(asset, dataset_name)
+        return get_default_dataset(asset, dataset_name)
 
     # Data points
     def add_dataset_data_point(
@@ -344,7 +346,7 @@ class Assets(Queryable):
             resource_group_name=resource_group_name,
             check_cluster=True
         )
-        dataset = _get_dataset(asset, dataset_name, create_if_none=True)
+        dataset = get_default_dataset(asset, dataset_name, create_if_none=True)
         dataset["dataPoints"] = dataset.get("dataPoints", [])
         point_names = [point["name"] for point in dataset["dataPoints"]]
         if not replace and data_point_name in point_names:
@@ -371,7 +373,7 @@ class Assets(Queryable):
         if not isinstance(asset, dict):
             asset = asset.as_dict()
 
-        return _get_dataset(asset, dataset_name)["dataPoints"]
+        return get_default_dataset(asset, dataset_name)["dataPoints"]
 
     def export_dataset_data_points(
         self,
@@ -382,12 +384,12 @@ class Assets(Queryable):
         output_dir: str = ".",
         replace: Optional[bool] = False
     ):
-        from ....util import dump_content_to_file
+        from ...util import dump_content_to_file
         asset = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name
         )
-        dataset = _get_dataset(asset, dataset_name)
+        dataset = get_default_dataset(asset, dataset_name)
         fieldnames = None
         if extension in [FileType.csv.value]:
             default_configuration = dataset.get("datasetConfiguration", "{}")
@@ -425,7 +427,7 @@ class Assets(Queryable):
             check_cluster=True
         )
         # should get the direct object so this should be enough
-        dataset = _get_dataset(asset, dataset_name, create_if_none=True)
+        dataset = get_default_dataset(asset, dataset_name, create_if_none=True)
         dataset["dataPoints"] = _process_asset_sub_points_file_path(
             file_path=file_path,
             original_items=dataset.get("dataPoints", []),
@@ -443,7 +445,7 @@ class Assets(Queryable):
             asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
-        return _get_dataset(asset, dataset_name)["dataPoints"]
+        return get_default_dataset(asset, dataset_name)["dataPoints"]
 
     def list_dataset_data_points(
         self,
@@ -471,7 +473,7 @@ class Assets(Queryable):
             resource_group_name=resource_group_name,
             check_cluster=True
         )
-        dataset = _get_dataset(asset, dataset_name)
+        dataset = get_default_dataset(asset, dataset_name)
 
         dataset["dataPoints"] = [dp for dp in dataset.get("dataPoints", []) if dp["name"] != data_point_name]
 
@@ -486,7 +488,7 @@ class Assets(Queryable):
         if not isinstance(asset, dict):
             asset = asset.as_dict()
 
-        return _get_dataset(asset, dataset_name)["dataPoints"]
+        return get_default_dataset(asset, dataset_name)["dataPoints"]
 
     # Events
     def add_event(
@@ -549,7 +551,7 @@ class Assets(Queryable):
         output_dir: str = ".",
         replace: Optional[bool] = False
     ):
-        from ....util import dump_content_to_file
+        from ...util import dump_content_to_file
         asset_props = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
@@ -648,28 +650,6 @@ class Assets(Queryable):
 
 
 # New Helpers
-def _get_dataset(asset: dict, dataset_name: str, create_if_none: bool = False):
-    # ensure datasets will get populated if not there
-    asset["properties"]["datasets"] = asset["properties"].get("datasets", [])
-    datasets = asset["properties"]["datasets"]
-    matched_datasets = [dset for dset in datasets if dset["name"] == dataset_name]
-    # Temporary convert empty names to default
-    if not matched_datasets and dataset_name == "default":
-        matched_datasets = [dset for dset in datasets if dset["name"] == ""]
-    # create if add or import (and no datasets yet)
-    if not matched_datasets and create_if_none:
-        if dataset_name != "default":
-            raise InvalidArgumentValueError("Currently only one dataset with the name default is supported.")
-        matched_datasets = [{}]
-        datasets.extend(matched_datasets)
-    elif not matched_datasets:
-        raise InvalidArgumentValueError(f"Dataset {dataset_name} not found in asset {asset['name']}.")
-    # note: right now we can have datasets with the same name but this will not be allowed later
-    # part of the temporary convert
-    matched_datasets[0]["name"] = dataset_name
-    return matched_datasets[0]
-
-
 def _build_topic(
     original_topic: Optional[Dict[str, str]] = None,
     topic_path: Optional[str] = None,
@@ -696,7 +676,7 @@ def _process_asset_sub_points_file_path(
     point_key: Optional[str] = None,
     replace: bool = False
 ) -> List[Dict[str, str]]:
-    from ....util import deserialize_file_content
+    from ...util import deserialize_file_content
     file_points = list(deserialize_file_content(file_path=file_path))
     _convert_sub_points_from_csv(file_points)
 

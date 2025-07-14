@@ -9,10 +9,10 @@ import os
 import pytest
 from time import sleep
 from knack.log import get_logger
-from azext_edge.edge.common import FileType
+from azext_edge.edge.providers.adr.common import FileType
 from azext_edge.edge.util.common import assemble_nargs_to_dict
-from ....generators import generate_random_string
-from ....helpers import run
+from ...generators import generate_random_string
+from ...helpers import run
 
 logger = get_logger(__name__)
 QUERY_RETRIES = 4
