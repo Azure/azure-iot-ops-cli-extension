@@ -82,6 +82,12 @@ def load_iotops_commands(self, _):
         cmd_group.command("delete", "delete_broker", deprecate_info=cmd_group.deprecate(hide=True))
 
     with self.command_group(
+        "iot ops broker persist",
+        command_type=mq_resource_ops,
+    ) as cmd_group:
+        cmd_group.command("update", "update_broker_persist", is_preview=True)
+
+    with self.command_group(
         "iot ops broker listener",
         command_type=mq_resource_ops,
     ) as cmd_group:

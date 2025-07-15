@@ -289,8 +289,8 @@ def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
     if len(parts) < 9:
         raise ValidationError(
             f"Malformed resource Id '{resource_id}'. An Azure resource Id has the form:\n"
-            "/subscription/{subscriptionId}/resourceGroups/{resourceGroup}"
-            "/providers/Microsoft.Provider/{resourcePath}/{resourceName}"
+            "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}"
+            "/providers/Microsoft.Provider/{resourceType}/{resourceName}"
         )
 
     # Extract the subscription, resource group, and resource name

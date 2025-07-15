@@ -191,12 +191,36 @@ def load_iotops_help():
         short-summary: Delete an mqtt broker.
 
         examples:
-        - name: Delete an mqtt broker from the instance.
+        - name: Delete the default mqtt broker from the instance.
           text: >
-            az iot ops broker delete -n default --in myinstance -g myresourcegroup
+            az iot ops broker delete --in myinstance -g myresourcegroup
         - name: Same as prior example but skipping the confirmation prompt.
           text: >
-            az iot ops broker delete -n default --in myinstance -g myresourcegroup -y
+            az iot ops broker delete --in myinstance -g myresourcegroup -y
+    """
+
+    helps[
+        "iot ops broker persist"
+    ] = """
+        type: group
+        short-summary: Mqtt broker disk persistence management.
+    """
+
+    helps[
+        "iot ops broker persist update"
+    ] = """
+        type: command
+        short-summary: Update an mqtt broker's disk persistence settings.
+        long-summary: |
+          Configuring disk persistence depends on enablement at broker create time.
+
+        examples:
+        - name: Update the persistence mode of subscriber message queues, retain topics and state store.
+          text: >
+            az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode subscriberQueue=All retain=All stateStore=All
+        - name: Update a custom persistence policy for retain messages.
+          text: >
+            az iot ops broker persist update --in myinstance -g myresourcegroup --retain-topics mytopic1 mytopic2
     """
 
     helps[

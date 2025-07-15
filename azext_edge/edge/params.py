@@ -939,6 +939,84 @@ def load_iotops_arguments(self, _):
             help="Broker name.",
         )
 
+    with self.argument_context("iot ops broker persist") as context:
+        context.argument(
+            "user_property_key",
+            options_list=["--user-key"],
+            help="The user property key to enable persistence dynamically. In addition to 'aio-persistence'. "
+            "Assign empty string to remove.",
+            arg_group="Dynamic Persistence",
+        )
+        context.argument(
+            "user_property_value",
+            options_list=["--user-value"],
+            help="The user property value to enable persistence dynamically. In addition to 'true'. "
+            "Assign empty string to remove.",
+            arg_group="Dynamic Persistence",
+        )
+        context.argument(
+            "disable_dynamic",
+            nargs="+",
+            options_list=["--disable-dynamic"],
+            help="Disable dynamic persistence. Supported values include: 'stateStore', 'retain', 'subscriberQueue'.",
+            arg_group="Dynamic Persistence",
+        )
+        context.argument(
+            "persist_mode",
+            options_list=["--persist-mode"],
+            nargs="+",
+            action="extend",
+            help="Configure disk persistence mode for state store, retain messages and subscriber queues. "
+            "Format is space-separated key=value pairs. Supported keys include: 'stateStore', "
+            "'retain', 'subscriberQueue'. Supported values for each key include: 'None', 'All', 'Custom'. "
+            "By default each mode is set to min Custom with dynamic persistence enabled. "
+            "This option can be used one or more times.",
+        )
+        context.argument(
+            "retain_topics",
+            options_list=["--retain-topics"],
+            nargs="+",
+            help="Space-separated list of topics under which retained messages would be persisted to disk. "
+            "Wildcards # and + supported.",
+            arg_group="Retained Messages",
+        )
+        context.argument(
+            "state_store_bin_keys",
+            options_list=["--state-store-bin-keys"],
+            nargs="+",
+            action="append",
+            help="Space-separated list of binary keys that would be persisted to disk. "
+            "Can be used multiple times, where each occurrence appends to the state store policy collection.",
+            arg_group="State Store",
+        )
+        context.argument(
+            "state_store_glob_keys",
+            options_list=["--state-store-glob-keys"],
+            nargs="+",
+            action="append",
+            help="Space-separated list of glob-style pattern matching keys that would be persisted to disk. "
+            "Can be used multiple times, where each occurrence appends to the state store policy collection.",
+            arg_group="State Store",
+        )
+        context.argument(
+            "state_store_str_keys",
+            options_list=["--state-store-str-keys"],
+            nargs="+",
+            action="append",
+            help="Space-separated list of string keys that would be persisted to disk. "
+            "String keys are used to do an exact match, for example, when a key contains characters that might be "
+            "otherwise matched as a pattern (*, ?, [0-9]). "
+            "Can be used multiple times, where each occurrence appends to the state store policy collection.",
+            arg_group="State Store",
+        )
+        context.argument(
+            "subscriber_queue_client_ids",
+            options_list=["--subscriber-client-ids"],
+            nargs="+",
+            help="Space-separated list of subscriber client IDs, wildcard * supported.",
+            arg_group="Subscriber Queue",
+        )
+
     with self.argument_context("iot ops broker listener") as context:
         context.argument(
             "listener_name",
@@ -1296,7 +1374,7 @@ def load_iotops_arguments(self, _):
                 options_list=["--persist-max-size"],
                 help="The max size of the message buffer on disk. Setting a value will enable disk persistence. "
                 "Kubernetes resource units must be used e.g. the following value suffixes are supported: "
-                "E, P, T, G, M, k. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.",
+                "E, P, T, G, M, K. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.",
                 arg_group="Disk Persistence",
             )
             context.argument(

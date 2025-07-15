@@ -98,9 +98,22 @@ class InitTargets:
     ):
         self.cluster_name = cluster_name
         self.resource_group_name = resource_group_name
-        self.schema_registry_resource_id = ensure_resource_id(schema_registry_resource_id)
+        self.schema_registry_resource_id = ensure_resource_id(
+            schema_registry_resource_id,
+            match_context={
+                "resource_provider": "Microsoft.DeviceRegistry",
+                "resource_type": "schemaRegistries",
+            },
+            parameter="--sr-resource-id",
+        )
         self.adr_namespace_resource_id = ensure_resource_id(
-            adr_namespace_resource_id, match_context={"resource_group": resource_group_name}
+            adr_namespace_resource_id,
+            match_context={
+                "resource_group": resource_group_name,
+                "resource_provider": "Microsoft.DeviceRegistry",
+                "resource_type": "namespaces",
+            },
+            parameter="--ns-resource-id",
         )
         self.cluster_namespace = self._sanitize_k8s_name(cluster_namespace)
         self.location = location
@@ -467,24 +480,37 @@ def get_default_instance_config(
     }
 
 
-def ensure_resource_id(resource_id: Optional[str], match_context: Optional[dict] = None) -> Optional[str]:
+def ensure_resource_id(
+    resource_id: Optional[str], match_context: Optional[dict] = None, parameter: Optional[str] = None
+) -> Optional[str]:
     if not resource_id:
         return
+    parameter = parameter or f"Resource Id '{resource_id}'"
     if is_valid_resource_id(resource_id):
         parsed_id = parse_resource_id(resource_id)  # Validate the resource ID format
         resource_name = parsed_id.get("name")
         if resource_name:
             if match_context:
                 match_resource_group: str = match_context.get("resource_group", "")
+                match_rp = match_context.get("resource_provider", "")
+                match_type = match_context.get("resource_type", "")
                 if match_resource_group:
                     if parsed_id.get("resource_group", "").lower() != match_resource_group.lower():
                         raise InvalidArgumentValueError(
-                            f"Resource Id '{resource_id}' does not match the "
-                            f"instance resource group '{match_resource_group}'."
+                            f"{parameter} value must match the resource group '{match_resource_group}'."
                         )
+                if match_rp and match_type:
+                    if any(
+                        [
+                            parsed_id.get("namespace", "").lower() != match_rp.lower(),
+                            parsed_id.get("type", "").lower() != match_type.lower(),
+                        ]
+                    ):
+                        raise InvalidArgumentValueError(f"{parameter} value must be of type {match_rp}/{match_type}.")
             return resource_id
+
     raise InvalidArgumentValueError(
-        f"Malformed resource Id '{resource_id}'. An Azure resource Id has the form:\n"
-        "/subscription/{subscriptionId}/resourceGroups/{resourceGroup}"
-        "/providers/Microsoft.Provider/{resourcePath}/{resourceName}"
+        f"{parameter} is malformed. An Azure resource Id has the form:\n"
+        "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}"
+        "/providers/Microsoft.Provider/{resourceType}/{resourceName}"
     )
