@@ -11,6 +11,7 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.meso import (
     MESO_DIRECTORY_PATH,
     MESO_NAME_LABEL,
+    MESO_CLUSTER_METRICS_LABEL,
 )
 from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_cluster_role_bindings,
@@ -99,5 +100,59 @@ def test_create_bundle_meso(
         mocked_client,
         mocked_zipfile,
         label_selector=MESO_NAME_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+
+    # Test MESO_CLUSTER_METRICS_LABEL
+    assert_list_pods(
+        mocked_client,
+        mocked_zipfile,
+        mocked_list_pods,
+        label_selector=MESO_CLUSTER_METRICS_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+        since_seconds=since_seconds,
+    )
+    assert_list_config_maps(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_CLUSTER_METRICS_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+    assert_list_deployments(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_CLUSTER_METRICS_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+    assert_list_replica_sets(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_CLUSTER_METRICS_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+    assert_list_services(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_CLUSTER_METRICS_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+    assert_list_cluster_roles(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_CLUSTER_METRICS_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+    assert_list_cluster_role_bindings(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_CLUSTER_METRICS_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+
+    # Test specific cluster role by field selector
+    assert_list_cluster_roles(
+        mocked_client,
+        mocked_zipfile,
+        field_selector="metadata.name=aio-observability-operator-manager-role",
         directory_path=MESO_DIRECTORY_PATH,
     )
