@@ -20,7 +20,7 @@ from knack.log import get_logger
 logger = get_logger(__name__)
 
 
-def parse_kvp_nargs(kvp_nargs: List[str]) -> dict:
+def parse_kvp_nargs(kvp_nargs: Optional[List[str]]) -> dict:
     """
     Parses kvp nargs into a dict handling values of null and empty string.
     """

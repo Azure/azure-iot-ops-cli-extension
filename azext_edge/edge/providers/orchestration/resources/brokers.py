@@ -88,7 +88,7 @@ class Brokers(Queryable):
                 "Use 'az iot ops create' with '--persist-max-size' to enable."
             )
         new_persist_config = self.build_broker_config(
-            persist_mode=persist_mode,
+            persist_mode=parse_kvp_nargs(persist_mode),
             retain_topics=retain_topics,
             subscriber_queue_client_ids=subscriber_queue_client_ids,
             state_store_str_keys=state_store_str_keys,
@@ -113,11 +113,11 @@ class Brokers(Queryable):
             return wait_for_terminal_state(poller, **kwargs)
 
     @classmethod
-    def build_broker_config(
+    def build_broker_config(  # noqa: C901
         cls,
         persist_max_size: Optional[str] = None,
         persist_pvc_sc: Optional[str] = None,
-        persist_mode: Optional[List[str]] = None,
+        persist_mode: Optional[dict[str, str]] = None,
         retain_topics: Optional[List[str]] = None,
         subscriber_queue_client_ids: Optional[List[str]] = None,
         state_store_str_keys: Optional[List[List[str]]] = None,
@@ -160,8 +160,6 @@ class Brokers(Queryable):
 
         config = {}
         persistence = existing_persist_config or {}
-        if isinstance(persist_mode, list):
-            persist_mode = parse_kvp_nargs(persist_mode)
 
         # Initialize new persistence when max size is provided
         if not existing_persist_config:
