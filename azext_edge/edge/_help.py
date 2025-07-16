@@ -221,12 +221,12 @@ def load_iotops_help():
             az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode subscriberQueue=All retain=All stateStore=All
         - name: Update a custom persistence policy for retain messages.
           text: >
-            az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode retain=Custom --retain-topics sensor1 factor/# groundfloor/+/temperature
-        - name: Set up state store persistence with multiple key groups including string, pattern, and binary keys.
+            az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode retain=Custom --retain-topics "sensor1" "factory/#" "groundfloor/+/temperature"
+        - name: Set up state store persistence with multiple key groups including string, pattern, and binary (base64 encoded) keys.
           text: >
             az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode stateStore=Custom
-            --state-store-str-keys "device-001" "device-002" --state-store-glob-keys "sensors/*" --state-store-bin-keys "image:thumbnail" "cert:device"
-        - name: Configure subscriber queue persistence for specific client IDs with custom user properties for dynamic control.
+            --state-store-str-keys "device-001" "device-002" --state-store-glob-keys "sensors/*" --state-store-bin-keys "bXlrZXkx" "bXlrZXky"
+        - name: Configure subscriber queue persistence for specific client IDs and apply user property key and value for dynamic persistence.
           text: >
             az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode subscriberQueue=Custom
             --subscriber-client-ids "factory-client-*" "sensor-gateway-01" --user-key disk-persistence --user-value disk
@@ -234,8 +234,8 @@ def load_iotops_help():
           text: >
             az iot ops broker persist update --in myinstance -g myresourcegroup --name default --persist-mode retain=Custom stateStore=Custom subscriberQueue=All
             --retain-topics "alerts/#" "diagnostics/#" --state-store-str-keys "user:admin" "session:active" --state-store-str-keys "config:database" "config:security"
-            --state-store-glob-keys "logs/*.txt" "backups/*" --disable-dynamic stateStore
-        - name: Disable all persistence modes and remove custom user properties.
+            --state-store-glob-keys "logs/*" "backups/*" --disable-dynamic stateStore
+        - name: Disable all persistence modes and remove user properties for dynamic persistence.
           text: >
             az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode retain=None stateStore=None subscriberQueue=None
             --user-key="" --user-value=""

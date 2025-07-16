@@ -985,7 +985,7 @@ def load_iotops_arguments(self, _):
             options_list=["--state-store-bin-keys"],
             nargs="+",
             action="append",
-            help="Space-separated list of binary keys that would be persisted to disk. "
+            help="Space-separated list of binary keys in base-64 encoded format that would be persisted to disk. "
             "Can be used multiple times, where each occurrence appends to the state store policy collection.",
             arg_group="State Store",
         )
