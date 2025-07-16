@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 
 import pytest
 from azure.cli.core.azclierror import InvalidArgumentValueError
+from unittest.mock import Mock
 
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_ACS,
@@ -162,7 +163,7 @@ INSTANCE_FEATURE_ATTR = "instance_features"
         ),
     ],
 )
-def test_init_targets(target_scenario: dict):
+def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
     targets = InitTargets(**target_scenario)
 
     for scenario_key in target_scenario:

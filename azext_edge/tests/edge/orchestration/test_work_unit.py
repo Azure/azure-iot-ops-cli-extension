@@ -771,6 +771,7 @@ def test_iot_ops_create(
     mocked_sleep: Mock,
     mocked_confirm: Mock,
     mocked_logger: Mock,
+    mocked_feature_keys: Mock,
     spy_work_displays: Dict[str, Mock],
     target_scenario: Dict[str, Union[bool, dict]],
 ):
@@ -849,6 +850,39 @@ def test_iot_ops_create(
     # TODO - @digimaun
     if target_scenario["noProgress"]:
         assert create_result is None
+
+
+@pytest.mark.parametrize(
+    "target_scenario",
+    [
+        build_target_scenario(instance_features=["connectors.settings.preview=Enabled"]),
+    ],
+)
+def test_iot_ops_create_block_feature_config(
+    mocked_cmd: Mock,
+    mocker,
+    mocked_responses: responses,
+    mocked_sleep: Mock,
+    mocked_confirm: Mock,
+    spy_work_displays: Dict[str, Mock],
+    target_scenario: Dict[str, Union[bool, dict]],
+):
+    from azext_edge.edge.commands_edge import create_instance
+
+    create_call_kwargs = {
+        "cmd": mocked_cmd,
+        "cluster_name": target_scenario["cluster"]["name"],
+        "resource_group_name": target_scenario["resourceGroup"],
+        "instance_name": target_scenario["instance"]["name"],
+        "schema_registry_resource_id": target_scenario["schemaRegistry"]["id"],
+        "adr_namespace_resource_id": target_scenario["adrNamespace"]["id"],
+        "instance_features": target_scenario["instance_features"],
+    }
+
+    with pytest.raises(ValidationError) as exc:
+        create_instance(**create_call_kwargs)
+    exc_msg = str(exc.value)
+    assert "No feature keys are supported in this version of IoT Operations." == exc_msg
 
 
 def assert_logger(mocked_logger: Mock, target_scenario: dict):

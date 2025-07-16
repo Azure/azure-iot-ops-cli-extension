@@ -8,8 +8,8 @@ from typing import Dict, List, Optional
 
 from knack.log import get_logger
 
-from .providers.rpsaas.adr.asset_endpoint_profiles import AssetEndpointProfiles
-from .common import AEPTypes
+from .providers.adr.asset_endpoint_profiles import AssetEndpointProfiles
+from .providers.adr.common import AEPTypes
 
 logger = get_logger(__name__)
 

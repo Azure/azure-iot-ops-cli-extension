@@ -11,6 +11,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 from azure.cli.core.azclierror import ArgumentUsageError
 from knack.log import get_logger
 
+from .features import FeatureFlag, feature_config
 from .providers.base import DEFAULT_NAMESPACE, load_config_context
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import META_API_V1
@@ -113,18 +114,12 @@ def init(
     ssc_train: Optional[str] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
-    from .common import INIT_NO_PREFLIGHT_ENV_KEY
     from .providers.orchestration.work import WorkManager
-    from .util import (
-        is_env_flag_enabled,
-    )
-
-    no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
 
     work_manager = WorkManager(cmd)
     result_payload = work_manager.execute_ops_init(
         show_progress=not no_progress,
-        pre_flight=not no_pre_flight,
+        pre_flight=not feature_config.is_enabled(FeatureFlag.PREFLIGHT_DISABLED),
         cluster_name=cluster_name,
         context_name=context_name,
         resource_group_name=resource_group_name,
@@ -184,14 +179,8 @@ def create_instance(
     no_progress: Optional[bool] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
-    from .common import INIT_NO_PREFLIGHT_ENV_KEY
     from .providers.orchestration.work import WorkManager
-    from .util import (
-        is_env_flag_enabled,
-        read_file_content,
-    )
-
-    no_pre_flight = is_env_flag_enabled(INIT_NO_PREFLIGHT_ENV_KEY)
+    from .util import read_file_content
 
     _ = container_runtime_socket
     _ = kubernetes_distro
@@ -204,7 +193,7 @@ def create_instance(
     work_manager = WorkManager(cmd)
     result_payload = work_manager.execute_ops_init(
         show_progress=not no_progress,
-        pre_flight=not no_pre_flight,
+        pre_flight=not feature_config.is_enabled(FeatureFlag.PREFLIGHT_DISABLED),
         apply_foundation=False,
         cluster_name=cluster_name,
         resource_group_name=resource_group_name,
@@ -482,6 +471,7 @@ def get_versions():
     import webbrowser
 
     from rich.console import Console
+
     from .common import GET_VERSIONS_URL
 
     console = Console(stderr=True)

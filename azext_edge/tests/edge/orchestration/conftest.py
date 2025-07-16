@@ -115,3 +115,12 @@ def mocked_logger(mocker):
 def mocked_verify_arc_cluster_config(mocker):
     patched = mocker.patch("azext_edge.edge.providers.orchestration.work.verify_arc_cluster_config", autospec=True)
     yield patched
+
+
+@pytest.fixture
+def mocked_feature_keys(mocker):
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.instances.COMPAT_FEAT_KEY_SET",
+        {"connectors.settings.preview"},
+    )
+    yield patched
