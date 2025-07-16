@@ -232,7 +232,7 @@ def load_iotops_help():
             --subscriber-client-ids "factory-client-*" "sensor-gateway-01" --user-key disk-persistence --user-value disk
         - name: Advanced configuration with multiple persistence modes, state store key groupings, and dynamic settings for a custom broker.
           text: >
-            az iot ops broker persist update --in myinstance -g myresourcegroup --broker default --persist-mode retain=Custom stateStore=Custom subscriberQueue=All
+            az iot ops broker persist update --in myinstance -g myresourcegroup --name default --persist-mode retain=Custom stateStore=Custom subscriberQueue=All
             --retain-topics "alerts/#" "diagnostics/#" --state-store-str-keys "user:admin" "session:active" --state-store-str-keys "config:database" "config:security"
             --state-store-glob-keys "logs/*.txt" "backups/*" --disable-dynamic stateStore
         - name: Disable all persistence modes and remove custom user properties.
