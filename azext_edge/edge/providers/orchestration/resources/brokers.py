@@ -154,12 +154,16 @@ class Brokers(Queryable):
             InvalidArgumentValueError: If persistence is enabled but max size is not provided,
                 or if invalid modes are specified.
         """
+        # Constants
+        VALID_MODE_KEYS = ["stateStore", "retain", "subscriberQueue"]
+        VALID_MODE_VALUES = ["None", "All", "Custom"]
 
         config = {}
         persistence = existing_persist_config or {}
         if isinstance(persist_mode, list):
             persist_mode = parse_kvp_nargs(persist_mode)
 
+        # Initialize new persistence when max size is provided
         if not existing_persist_config:
             if any([persist_pvc_sc, persist_mode]) and not persist_max_size:
                 raise InvalidArgumentValueError(
@@ -167,83 +171,95 @@ class Brokers(Queryable):
                 )
             if persist_max_size:
                 persistence["maxSize"] = persist_max_size
-                persistence["retain"] = {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}}
-                persistence["stateStore"] = {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}}
-                persistence["subscriberQueue"] = {
-                    "mode": "Custom",
-                    "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}},
-                }
+                # Create default Custom persistence modes with dynamic enabled
+                for key in VALID_MODE_KEYS:
+                    persistence[key] = {"mode": "Custom", f"{key}Settings": {"dynamic": {"mode": "Enabled"}}}
             if persist_pvc_sc:
                 persistence["persistentVolumeClaimSpec"] = {
                     "storageClassName": persist_pvc_sc,
                     "accessModes": ["ReadWriteOncePod"],
                 }
 
-        valid_mode_keys = ["stateStore", "retain", "subscriberQueue"]
+        # Handle persistence mode updates
         if persist_mode:
-            valid_mode_values = ["None", "All", "Custom"]
             for key, value in persist_mode.items():
-                if key not in valid_mode_keys:
+                if key not in VALID_MODE_KEYS:
                     raise InvalidArgumentValueError(
-                        f"Invalid persistence mode key: {key}. Valid keys are {valid_mode_keys}."
+                        f"Invalid persistence mode key: {key}. Valid keys are {VALID_MODE_KEYS}."
                     )
-                if value not in valid_mode_values:
+                if value not in VALID_MODE_VALUES:
                     raise InvalidArgumentValueError(
-                        f"Invalid persistence mode value: {value}. Valid values are {valid_mode_values}."
+                        f"Invalid persistence mode value: {value}. Valid values are {VALID_MODE_VALUES}."
                     )
                 persistence[key] = {"mode": value}
                 if value == "Custom":
                     persistence[key][f"{key}Settings"] = {"dynamic": {"mode": "Enabled"}}
 
+        # Custom mode validations with specific error messages
+        custom_validations = [
+            (
+                retain_topics,
+                "retain",
+                "To set retain topics for persistence, retain mode must be set to 'Custom'.",
+            ),
+            (
+                subscriber_queue_client_ids,
+                "subscriberQueue",
+                "To set subscriber queue client Ids for persistence, subscriberQueue mode must be set to 'Custom'.",
+            ),
+            (
+                any([state_store_str_keys, state_store_glob_keys, state_store_bin_keys]),
+                "stateStore",
+                "To set state store keys for persistence, stateStore mode must be set to 'Custom'.",
+            ),
+        ]
+
+        for condition, mode_key, error_msg in custom_validations:
+            if condition and persistence[mode_key]["mode"] != "Custom":
+                raise InvalidArgumentValueError(error_msg)
+
+        # Configure retain topics
         if retain_topics:
-            if persistence["retain"]["mode"] != "Custom":
-                raise InvalidArgumentValueError(
-                    "To set retain topics for persistence, the retain mode must be set to 'Custom'."
-                )
             persistence["retain"]["retainSettings"] = {"topics": retain_topics}
 
+        # Configure subscriber queue client IDs
         if subscriber_queue_client_ids:
-            if persistence["subscriberQueue"]["mode"] != "Custom":
-                raise InvalidArgumentValueError(
-                    "To set subscriber queue client Ids for persistence, the subscriber queue mode must be set to 'Custom'."
-                )
             persistence["subscriberQueue"]["subscriberQueueSettings"] = {
                 "subscriberClientIds": subscriber_queue_client_ids
             }
 
+        # Configure state store keys
         if any([state_store_str_keys, state_store_glob_keys, state_store_bin_keys]):
-            if persistence["stateStore"]["mode"] != "Custom":
-                raise InvalidArgumentValueError(
-                    "To set state store keys for persistence, the state store mode must be set to 'Custom'."
-                )
-            state_store_resources: list[dict] = []
+            state_store_resources = []
+            # Process each key type collection
             for collection, key_type in [
                 (state_store_str_keys, "String"),
                 (state_store_glob_keys, "Pattern"),
                 (state_store_bin_keys, "Binary"),
             ]:
-                for items in collection or []:
-                    state_store_resources.append({"keys": items, "keyType": key_type})
+                if collection:
+                    state_store_resources.extend([{"keys": items, "keyType": key_type} for items in collection])
             persistence["stateStore"]["stateStoreSettings"] = {"stateStoreResources": state_store_resources}
 
-        if any([user_property_key is not None, user_property_value is not None]):
-            if (user_property_key is None) != (user_property_value is None):
+        # Handle user properties (both must be provided or both must be None)
+        if user_property_key is not None or user_property_value is not None:
+            if user_property_key is None or user_property_value is None:
                 raise InvalidArgumentValueError("Both --user-key and --user-value must be set or both must be unset.")
-            persistence["dynamicSettings"] = {}
-            if user_property_key is not None:
-                persistence["dynamicSettings"]["userPropertyKey"] = user_property_key
-            if user_property_value is not None:
-                persistence["dynamicSettings"]["userPropertyValue"] = user_property_value
+            persistence["dynamicSettings"] = {
+                "userPropertyKey": user_property_key,
+                "userPropertyValue": user_property_value,
+            }
 
+        # Handle dynamic disabling
         if disable_dynamic:
             for key in disable_dynamic:
-                if key not in valid_mode_keys:
+                if key not in VALID_MODE_KEYS:
                     raise InvalidArgumentValueError(
-                        f"Invalid disable dynamic key: {key}. Valid keys are {valid_mode_keys}."
+                        f"Invalid disable dynamic key: {key}. Valid keys are {VALID_MODE_KEYS}."
                     )
                 if persistence[key]["mode"] != "Custom":
                     raise InvalidArgumentValueError(
-                        f"To disable dynamic persistence for {key}, the {key} mode must be set to 'Custom'."
+                        f"To disable dynamic persistence for {key}, {key} mode must be set to 'Custom'."
                     )
                 persistence[key][f"{key}Settings"]["dynamic"] = {"mode": "Disabled"}
 

@@ -189,7 +189,8 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
             "persistence_required": True,
             "error": (
                 ValidationError,
-                "The broker is not enabled for disk persistence which must be configured at create time.\nUse 'az iot ops create' with '--persist-max-size' to enable.",
+                "The broker is not enabled for disk persistence which must be configured at create time.\n"
+                "Use 'az iot ops create' with '--persist-max-size' to enable.",
             ),
         },
         # Test basic mode updates
@@ -352,21 +353,21 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
             "input": {"retain_topics": ["topic1"]},
             "error": (
                 InvalidArgumentValueError,
-                "To set retain topics for persistence, the retain mode must be set to 'Custom'.",
+                "To set retain topics for persistence, retain mode must be set to 'Custom'.",
             ),
         },
         {
             "input": {"subscriber_queue_client_ids": ["client1"]},
             "error": (
                 InvalidArgumentValueError,
-                "To set subscriber queue client Ids for persistence, the subscriber queue mode must be set to 'Custom'.",
+                "To set subscriber queue client Ids for persistence, subscriberQueue mode must be set to 'Custom'.",
             ),
         },
         {
             "input": {"state_store_str_keys": [["key1"]]},
             "error": (
                 InvalidArgumentValueError,
-                "To set state store keys for persistence, the state store mode must be set to 'Custom'.",
+                "To set state store keys for persistence, stateStore mode must be set to 'Custom'.",
             ),
         },
         {
@@ -381,7 +382,7 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
             "input": {"persist_mode": ["retain=All"], "disable_dynamic": ["retain"]},
             "error": (
                 InvalidArgumentValueError,
-                "To disable dynamic persistence for retain, the retain mode must be set to 'Custom'.",
+                "To disable dynamic persistence for retain, retain mode must be set to 'Custom'.",
             ),
         },
         {
@@ -416,7 +417,7 @@ def test_update_broker_persist(
     # Setup test data
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
-    scenario_inputs = scenario.get("input", {})
+    scenario_inputs: dict = scenario.get("input", {})
     broker_name = scenario_inputs.get("broker_name", DEFAULT_BROKER)
     test_inputs = {k: v for k, v in scenario_inputs.items() if k != "broker_name"}
 
@@ -520,8 +521,5 @@ def test_update_broker_persist(
 
         # Verify PUT request payload
         request_payload = mocked_responses.calls[1].request.body
-        if isinstance(request_payload, bytes):
-            request_payload = json.loads(request_payload.decode())
-        else:
-            request_payload = json.loads(request_payload)
+        request_payload = json.loads(request_payload)
         assert request_payload == expected_broker_record
