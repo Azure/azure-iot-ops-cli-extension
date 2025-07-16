@@ -77,7 +77,7 @@ class Brokers(Queryable):
         state_store_bin_keys: Optional[List[List[str]]] = None,
         user_property_key: Optional[str] = None,
         user_property_value: Optional[str] = None,
-        disable_dynamic: Optional[List[bool]] = None,
+        disable_dynamic: Optional[List[str]] = None,
         **kwargs,
     ) -> dict:
         broker_config = self.show(name=name, instance_name=instance_name, resource_group_name=resource_group_name)
@@ -88,7 +88,6 @@ class Brokers(Queryable):
                 "Use 'az iot ops create' with '--persist-max-size' to enable."
             )
         new_persist_config = self.build_broker_config(
-            persist_max_size=existing_persist_config["maxSize"],
             persist_mode=persist_mode,
             retain_topics=retain_topics,
             subscriber_queue_client_ids=subscriber_queue_client_ids,
@@ -98,6 +97,7 @@ class Brokers(Queryable):
             user_property_key=user_property_key,
             user_property_value=user_property_value,
             disable_dynamic=disable_dynamic,
+            existing_persist_config=existing_persist_config,
         )
         for key in new_persist_config["persistence"]:
             if key not in ["maxSize", "persistentVolumeClaimSpec"]:
@@ -154,29 +154,32 @@ class Brokers(Queryable):
             InvalidArgumentValueError: If persistence is enabled but max size is not provided,
                 or if invalid modes are specified.
         """
-        if any([persist_pvc_sc, persist_mode]) and not persist_max_size:
-            raise InvalidArgumentValueError(
-                "Provide a persist max size value to enable and customize broker disk persistence."
-            )
-        if isinstance(persist_mode, list):
-            persist_mode = parse_kvp_nargs(persist_mode)
 
         config = {}
         persistence = existing_persist_config or {}
+        if isinstance(persist_mode, list):
+            persist_mode = parse_kvp_nargs(persist_mode)
+
+        if not existing_persist_config:
+            if any([persist_pvc_sc, persist_mode]) and not persist_max_size:
+                raise InvalidArgumentValueError(
+                    "Provide a persist max size value to enable and customize broker disk persistence."
+                )
+            if persist_max_size:
+                persistence["maxSize"] = persist_max_size
+                persistence["retain"] = {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}}
+                persistence["stateStore"] = {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}}
+                persistence["subscriberQueue"] = {
+                    "mode": "Custom",
+                    "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}},
+                }
+            if persist_pvc_sc:
+                persistence["persistentVolumeClaimSpec"] = {
+                    "storageClassName": persist_pvc_sc,
+                    "accessModes": ["ReadWriteOncePod"],
+                }
+
         valid_mode_keys = ["stateStore", "retain", "subscriberQueue"]
-        if persist_max_size:
-            persistence["maxSize"] = persist_max_size
-            persistence["retain"] = {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}}
-            persistence["stateStore"] = {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}}
-            persistence["subscriberQueue"] = {
-                "mode": "Custom",
-                "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}},
-            }
-        if persist_pvc_sc:
-            persistence["persistentVolumeClaimSpec"] = {
-                "storageClassName": persist_pvc_sc,
-                "accessModes": ["ReadWriteOncePod"],
-            }
         if persist_mode:
             valid_mode_values = ["None", "All", "Custom"]
             for key, value in persist_mode.items():
@@ -219,8 +222,8 @@ class Brokers(Queryable):
                 (state_store_glob_keys, "Pattern"),
                 (state_store_bin_keys, "Binary"),
             ]:
-                for item in collection or []:
-                    state_store_resources.append({"key": item, "type": key_type})
+                for items in collection or []:
+                    state_store_resources.append({"keys": items, "keyType": key_type})
             persistence["stateStore"]["stateStoreSettings"] = {"stateStoreResources": state_store_resources}
 
         if any([user_property_key is not None, user_property_value is not None]):
