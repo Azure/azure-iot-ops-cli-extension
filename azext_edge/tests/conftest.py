@@ -11,6 +11,11 @@ import pytest
 import responses
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers", "init_scenario_test: mark tests that will run az iot ops init.")
+    config.addinivalue_line("markers", "no_global_setup: mark tests that will not use global setup.")
+
+
 # Sets current working directory to the directory of the executing file
 @pytest.fixture
 def set_cwd(request):

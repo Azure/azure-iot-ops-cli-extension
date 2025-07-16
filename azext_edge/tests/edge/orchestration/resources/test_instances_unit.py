@@ -314,6 +314,7 @@ def test_instance_update(
     description: Optional[str],
     tags: Optional[dict],
     features_scenario: Optional[dict],
+    mocked_feature_keys: Mock,
 ):
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -370,6 +371,47 @@ def test_instance_update(
 
     assert update_request == updated_record
     assert result == updated_record
+
+
+@pytest.mark.parametrize(
+    "features_scenario",
+    [
+        {
+            "inputs": ["connectors.settings.preview=Enabled"],
+        },
+    ],
+)
+def test_instance_update_block_feature_config(
+    mocked_cmd,
+    mocker,
+    mocked_responses: responses,
+    features_scenario: Optional[dict],
+):
+    instance_name = generate_random_string()
+    resource_group_name = generate_random_string()
+
+    instance_endpoint = get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name)
+    initial_record = get_mock_instance_record(
+        name=instance_name,
+        resource_group_name=resource_group_name,
+    )
+    mocked_responses.add(
+        method=responses.GET,
+        url=instance_endpoint,
+        json=initial_record,
+        status=200,
+        content_type="application/json",
+    )
+
+    with pytest.raises(ValidationError) as exc:
+        update_instance(
+            cmd=mocked_cmd,
+            instance_name=instance_name,
+            resource_group_name=resource_group_name,
+            instance_features=features_scenario.get("inputs"),
+        )
+    exc_str = str(exc.value)
+    assert "No feature keys are supported in this version of IoT Operations." == exc_str
 
 
 @pytest.mark.parametrize(
@@ -451,7 +493,7 @@ def test_instance_update(
         },
     ],
 )
-def test_parse_feature_kvp_nargs(feature_scenario: Optional[dict]):
+def test_parse_feature_kvp_nargs(feature_scenario: Optional[dict], mocked_feature_keys: Mock):
     kwargs = {}
     strict = feature_scenario.get("strict")
     if strict:

@@ -16,13 +16,12 @@ from azure.cli.core.azclierror import (
 from knack.log import get_logger
 from rich.console import Console
 
-from ....common import AEPAuthModes, AEPTypes
-from ....util.az_client import (
+from ...util.az_client import (
     DeviceRegistryMgmtApiVersion,
     get_registry_mgmt_client,
     wait_for_terminal_state,
 )
-from ....util.queryable import Queryable
+from ...util.queryable import Queryable
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
     GENERAL_AUTH_REF_MISMATCH_ERROR,
@@ -30,9 +29,10 @@ from .user_strings import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG,
 )
+from .common import ADRAuthModes, AEPTypes
 
 if TYPE_CHECKING:
-    from ....vendor.clients.deviceregistrymgmt.operations import (
+    from ...vendor.clients.deviceregistrymgmt.operations import (
         AssetEndpointProfilesOperations as AEPOperations,
     )
 
@@ -75,10 +75,11 @@ class AssetEndpointProfiles(Queryable):
             instance_subscription=instance_subscription
         )
         cluster_location = extended_location.pop("cluster_location")
+        extended_location.pop("namespace", None)
 
         auth_mode = None
         if not any([username_reference, password_reference, certificate_reference]):
-            auth_mode = AEPAuthModes.anonymous.value
+            auth_mode = ADRAuthModes.anonymous.value
 
         # Properties
         properties = {"endpointProfileType": endpoint_profile_type}
@@ -355,7 +356,7 @@ def _build_query_body(
 
 
 def _process_additional_configuration(configuration: str) -> Optional[str]:
-    from ....util import read_file_content
+    from ...util import read_file_content
     inline_json = False
     if not configuration:
         return
@@ -395,13 +396,13 @@ def _process_authentication(
     if certificate_reference and (username_reference or password_reference):
         raise MutuallyExclusiveArgumentError(AUTH_REF_MISMATCH_ERROR)
 
-    if certificate_reference and auth_mode in [None, AEPAuthModes.certificate.value]:
-        auth_props["method"] = AEPAuthModes.certificate.value
+    if certificate_reference and auth_mode in [None, ADRAuthModes.certificate.value]:
+        auth_props["method"] = ADRAuthModes.certificate.value
         auth_props["x509Credentials"] = {"certificateSecretName": certificate_reference}
         if auth_props.pop("usernamePasswordCredentials", None):
             logger.warning(REMOVED_USERPASS_REF_MSG)
-    elif (username_reference or password_reference) and auth_mode in [None, AEPAuthModes.userpass.value]:
-        auth_props["method"] = AEPAuthModes.userpass.value
+    elif (username_reference or password_reference) and auth_mode in [None, ADRAuthModes.userpass.value]:
+        auth_props["method"] = ADRAuthModes.userpass.value
         user_creds = auth_props.get("usernamePasswordCredentials", {})
         user_creds["usernameSecretName"] = username_reference
         user_creds["passwordSecretName"] = password_reference
@@ -410,10 +411,10 @@ def _process_authentication(
         auth_props["usernamePasswordCredentials"] = user_creds
         if auth_props.pop("x509Credentials", None):
             logger.warning(REMOVED_CERT_REF_MSG)
-    elif auth_mode == AEPAuthModes.anonymous.value and not any(
+    elif auth_mode == ADRAuthModes.anonymous.value and not any(
         [certificate_reference, username_reference, password_reference]
     ):
-        auth_props["method"] = AEPAuthModes.anonymous.value
+        auth_props["method"] = ADRAuthModes.anonymous.value
         if auth_props.pop("x509Credentials", None):
             logger.warning(REMOVED_CERT_REF_MSG)
         if auth_props.pop("usernamePasswordCredentials", None):

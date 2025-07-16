@@ -1,0 +1,89 @@
+# coding=utf-8
+# ----------------------------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License file in the project root for license information.
+# ----------------------------------------------------------------------------------------------
+
+from functools import partial
+import json
+from typing import Optional, Callable, Tuple
+from ...generators import generate_random_string
+from ...helpers import create_file
+
+"""Helpers for ADR v2 tests."""
+
+
+def assert_point_properties(result, **expected):
+    """Verify datapoint properties match expected values.
+
+    Minimal checks since unit tests already validate the command structure."""
+    result_map = {point["name"]: point for point in result}
+    result_point = result_map.get(expected["name"])
+    assert result_point["name"] == expected["name"]
+
+    if "data_source" in expected:
+        assert result_point["dataSource"] == expected["data_source"]
+    if "custom_configuration" in expected:
+        assert result_point["dataPointConfiguration"] == expected["custom_configuration"]
+
+
+def check_configuration(config_key: str, added: dict, expected: dict):
+    """Helper function to check dataset/event configuration."""
+    if expected and config_key in expected:
+        added_config = json.loads(added.get(config_key) or "{}")
+        expected_config = json.loads(expected[config_key] or "{}")
+        assert len(added_config) == len(expected_config)
+        for key in expected_config:
+            assert key in added_config
+            assert added_config[key] == expected_config[key]
+
+
+check_dataset_configuration: Callable = partial(check_configuration, "datasetConfiguration")
+check_event_configuration: Callable = partial(check_configuration, "eventConfiguration")
+check_stream_configuration: Callable = partial(check_configuration, "streamConfiguration")
+
+
+def check_destinations(added: dict, expected: Optional[dict] = None):
+    """Helper function to check destinations."""
+    if not expected or "destinations" not in expected:
+        return
+
+    added_destinations = added.get("destinations", [])
+    assert len(added_destinations) == len(expected["destinations"])
+    destination = added_destinations[0]
+    expected_destination = expected["destinations"][0]
+    assert destination.get("target") == expected_destination.get("target")
+
+    if destination.get("target") == "Mqtt":
+        result_config = destination.get("configuration", {})
+        expected_config = expected_destination.get("configuration", {})
+        assert result_config.get("topic") == expected_config.get("topic")
+        assert result_config.get("retain") == expected_config.get("retain")
+        assert result_config.get("qos") == expected_config.get("qos")
+        assert result_config.get("ttl") == expected_config.get("ttl")
+    elif destination.get("target") == "Storage":
+        result_config = destination.get("configuration", {})
+        expected_config = expected_destination.get("configuration", {})
+        assert result_config.get("path") == expected_config.get("path")
+    else:
+        result_config = destination.get("configuration", {})
+        expected_config = expected_destination.get("configuration", {})
+        assert result_config.get("key") == expected_config.get("key")
+
+
+def create_config_file(tracked_files: list) -> Tuple[str, str]:
+    """Create a JSON configuration file with random content."""
+    json_content = json.dumps({
+        generate_random_string(): generate_random_string(),
+        generate_random_string(): {
+            generate_random_string(): generate_random_string()
+        },
+        generate_random_string(): generate_random_string()
+    })
+    file_path = create_file(
+        file_name=f"test_add_config_{generate_random_string(size=4)}.json",
+        module_file=__file__,
+        tracked_files=tracked_files,
+        content=json_content
+    )
+    return file_path, json_content

@@ -7,8 +7,10 @@
 import pytest
 from copy import deepcopy
 from typing import Optional
-from ....generators import generate_random_string, get_zeroed_subscription
-from ....helpers import run
+
+from azext_edge.edge.util.id_tools import parse_resource_id
+from ...generators import generate_random_string, get_zeroed_subscription
+from ...helpers import run
 
 
 @pytest.fixture()
@@ -63,10 +65,14 @@ def mocked_get_extended_location(mocker):
     result = {
         "type": "CustomLocation",
         "name": generate_random_string(),
-        "cluster_location": generate_random_string()
+        "cluster_location": generate_random_string(),
+        "namespace": parse_resource_id(
+            rid=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/{generate_random_string()}"
+            f"/providers/Microsoft.DeviceRegistry/namespaces/{generate_random_string()}"
+        )
     }
     mock = mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr.helpers.get_extended_location",
+        "azext_edge.edge.providers.adr.helpers.get_extended_location",
         return_value=result,
         autospec=True
     )
@@ -77,9 +83,22 @@ def mocked_get_extended_location(mocker):
 @pytest.fixture()
 def mocked_check_cluster_connectivity(mocker):
     yield mocker.patch(
-        "azext_edge.edge.providers.rpsaas.adr.helpers.check_cluster_connectivity",
+        "azext_edge.edge.providers.adr.helpers.check_cluster_connectivity",
+        autospec=True  # TODO: uncomment when GA
+    )
+
+
+@pytest.fixture()
+def mocked_get_namespace_for_instance(mocker):
+    mock = mocker.patch(
+        "azext_edge.edge.providers.adr.helpers.get_namespace_for_instance",
+        return_value=parse_resource_id(
+            rid=f"/subscriptions/{get_zeroed_subscription()}/resourceGroups/rg{generate_random_string(size=5)}"
+            f"/providers/Microsoft.DeviceRegistry/namespaces/ns{generate_random_string(size=5)}"
+        ),
         autospec=True
     )
+    yield mock
 
 
 def get_asset_id(
@@ -116,7 +135,6 @@ def get_mgmt_uri(resource_id: str):
     return f"https://management.azure.com{resource_id}"
 
 
-# TODO: clean up
 def get_asset_mgmt_uri(
     asset_name: Optional[str] = None,
     asset_resource_group: Optional[str] = None,
@@ -167,7 +185,7 @@ def get_profile_record(
 
 
 # Paths for mocking
-ASSETS_PATH = "azext_edge.edge.providers.rpsaas.adr.assets"
+ASSETS_PATH = "azext_edge.edge.providers.adr.assets"
 
 # Generic objects
 # Assets
@@ -176,7 +194,6 @@ MINIMUM_ASSET = {
         "name": generate_random_string(),
         "type": generate_random_string(),
     },
-    "id": generate_random_string(),
     "location": "westus3",
     "name": "props-test-min",
     "properties": {
@@ -194,13 +211,11 @@ MINIMUM_ASSET = {
     "resourceGroup": generate_random_string(),
     "type": "microsoft.deviceregistry/assets"
 }
-# TODO: update to have datatsets
 FULL_ASSET = {
     "extendedLocation": {
         "name": generate_random_string(),
         "type": generate_random_string(),
     },
-    "id": generate_random_string(),
     "location": "westus3",
     "name": "props-test-max",
     "properties": {
@@ -305,7 +320,7 @@ MINIMUM_AEP = {
     "resourceGroup": generate_random_string(),
     "type": "microsoft.deviceregistry/assetendpointprofiles"
 }
-# TODO: add in additional config
+
 FULL_AEP = {
     "extendedLocation": {
         "name": generate_random_string(),

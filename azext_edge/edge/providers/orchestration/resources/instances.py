@@ -47,7 +47,7 @@ KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
 MANAGED_IDENTITY_API_VERSION = "2023-01-31"
 
-COMPAT_FEAT_KEY_SET = {"connectors.settings.preview"}
+COMPAT_FEAT_KEY_SET = {}
 
 
 def get_user_msg_warn_ra(prefix: str, principal_id: str, scope: str) -> str:
@@ -614,6 +614,8 @@ class Instances(Queryable):
 
 
 def ensure_feature_key_compat(features: Dict[str, str]):
+    if not COMPAT_FEAT_KEY_SET:
+        raise ValidationError("No feature keys are supported in this version of IoT Operations.")
     for feat in features:
         if feat not in COMPAT_FEAT_KEY_SET:
             raise InvalidArgumentValueError(f"Supported feature keys: {', '.join(COMPAT_FEAT_KEY_SET)}")

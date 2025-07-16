@@ -115,6 +115,7 @@ class UpgradeScenario:
         self.patch_record: Dict[str, dict] = {}
         self.ext_type_response_map: Dict[str, Tuple[int, Optional[dict]]] = {}
         self.expect_exception: Optional[Exception] = None
+        self.last_correlation_id: str = ""
         self.description = description
         self.confirm_yes = confirm_yes
         self.cluster_connected_status = ClusterConnectStatus.CONNECTED.value
@@ -234,6 +235,7 @@ class UpgradeScenario:
     def patch_extension_response(self, request: requests.PreparedRequest) -> Optional[tuple]:
         ext_moniker = request.path_url.split("?")[0].split("/")[-1]
         assert_upgrade_headers(request.headers)
+        self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
             if EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] == ext_moniker:
                 status_code, response_body, headers = self.ext_type_response_map.get(ext_type) or (
@@ -482,6 +484,14 @@ def test_ops_upgrade(
         "no_progress": no_progress,
         "confirm_yes": target_scenario.confirm_yes,
     }
+    # TODO remove post preview. Specific for preview blocking version upgrade by default.
+    if (
+        target_scenario.cluster_connected_status == ClusterConnectStatus.CONNECTED.value
+        and "force" not in target_scenario.user_kwargs
+        and target_scenario.expect_exception is not ValidationError
+    ):
+        call_kwargs["force"] = True
+
     call_kwargs.update(target_scenario.user_kwargs)
 
     expect_exception = target_scenario.expect_exception
@@ -489,6 +499,10 @@ def test_ops_upgrade(
     if expect_exception:
         with pytest.raises(expect_exception) as err:
             upgrade_instance(**call_kwargs)
+        if isinstance(err.value, HttpResponseError):
+            mocked_logger.error.assert_called_once_with(
+                f"Correlation Id for failed upgrade operation: {target_scenario.last_correlation_id}"
+            )
         assert_displays(spy_upgrade_displays, no_progress, error_context=err)
         return
 
@@ -554,6 +568,7 @@ def test_ops_upgrade_retry_assertion(
         "instance_name": instance_name,
         "no_progress": True,
         "confirm_yes": True,
+        "force": True,  # TODO: Remove post preview.
     }
     patch_status_code = target_scenario.ext_type_response_map[EXTENSION_TYPE_PLATFORM][0]
     if patch_status_code == 202:
@@ -579,6 +594,73 @@ def test_ops_upgrade_retry_assertion(
 
     assert err.value.status_code == error_status_code, f"Expected {error_status_code} but got {err.value.status_code}"
     assert len(mock_response.calls) == 4  # Default retry logic should retry 3 times
+
+
+@pytest.mark.parametrize(
+    "target_scenario,expected_patched_ext_types",
+    [
+        (
+            UpgradeScenario("Version patches are not supported in this build.")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.2.0")
+            .set_expected_exception(ValidationError),
+            {},
+        ),
+        (
+            UpgradeScenario("Version patches are not supported in this build even explicitly.")
+            .set_user_kwargs(ops_version="1.2.3")
+            .set_expected_exception(ValidationError),
+            {},
+        ),
+        (
+            UpgradeScenario("Config changes OK.").set_user_kwargs(ops_config=["a=b"]),
+            {
+                EXTENSION_TYPE_OPS: {
+                    "properties": {"extensionType": EXTENSION_TYPE_OPS, "configurationSettings": {"a": "b"}}
+                }
+            },
+        ),
+    ],
+)
+def test_ops_upgrade_block_version_change(
+    mocked_cmd: Mock,
+    mocked_responses: responses,
+    target_scenario: UpgradeScenario,
+    expected_patched_ext_types: Dict[str, dict],
+    mocked_logger: Mock,
+    mocked_sleep: Mock,
+    spy_upgrade_displays: Dict[str, Mock],
+):
+    from azext_edge.edge.commands_edge import upgrade_instance
+
+    resource_group_name = generate_random_string()
+    instance_name = generate_random_string()
+
+    target_scenario.set_instance_mock(
+        mocked_responses=mocked_responses, instance_name=instance_name, resource_group_name=resource_group_name
+    )
+    call_kwargs = {
+        "cmd": mocked_cmd,
+        "resource_group_name": resource_group_name,
+        "instance_name": instance_name,
+        "no_progress": True,
+        "confirm_yes": True,
+    }
+    call_kwargs.update(target_scenario.user_kwargs)
+
+    expect_exception = target_scenario.expect_exception
+    if expect_exception:
+        with pytest.raises(expect_exception) as err:
+            upgrade_instance(**call_kwargs)
+        assert str(err.value) == (
+            "Version upgrades are not allowed in this Azure IoT Operations CLI version.\n"
+            "A new instance must be deployed."
+        )
+        return
+
+    upgrade_result = upgrade_instance(**call_kwargs)
+    assert_patch_order(upgrade_result, expected_patched_ext_types)
+    assert_result(target_scenario, upgrade_result, expected_patched_ext_types)
+    assert_displays(spy_upgrade_displays, True, patched_ext_types=expected_patched_ext_types)
 
 
 def assert_result(
@@ -647,7 +729,10 @@ def assert_displays(
         if isinstance(error_context, ValidationError):
             validation_err_str = str(error_context)
             progress_count = 1
-            if validation_err_str.endswith("downgrade which is not supported.") and no_progress:
+            if (
+                validation_err_str.endswith("downgrade which is not supported.")
+                or validation_err_str.endswith("A new instance must be deployed.")  # TODO: remove post preview
+            ) and no_progress:
                 # Error is raised in first get_patch(). Table render is skipped if no_progress.
                 progress_count += 1
 
