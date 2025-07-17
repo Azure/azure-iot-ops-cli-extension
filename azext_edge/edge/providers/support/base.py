@@ -24,6 +24,8 @@ from kubernetes.client.models import (
     V1PersistentVolumeClaimList,
     V1JobList,
     V1CronJobList,
+    V1MutatingWebhookConfigurationList,
+    V1ValidatingWebhookConfigurationList
 )
 
 from ..edge_api import EdgeResourceApi
@@ -47,6 +49,8 @@ K8sRuntimeResources = TypeVar(
     V1PersistentVolumeClaimList,
     V1JobList,
     V1CronJobList,
+    V1MutatingWebhookConfigurationList,
+    V1ValidatingWebhookConfigurationList
 )
 
 
@@ -530,6 +534,44 @@ def process_cron_jobs(
         resources=cron_jobs,
         prefix_names=prefix_names,
         kind=BundleResourceKind.cronjob.value,
+    )
+
+
+def process_mutating_webhook_configurations(
+    directory_path: str,
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+) -> List[dict]:
+    admission_api = client.AdmissionregistrationV1Api()
+    webhooks: V1MutatingWebhookConfigurationList = admission_api.list_mutating_webhook_configuration(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    return _process_kubernetes_resources(
+        directory_path=directory_path,
+        resources=webhooks,
+        prefix_names=prefix_names,
+        kind=BundleResourceKind.mutatingwebhook.value,
+    )
+
+
+def process_validating_webhook_configurations(
+    directory_path: str,
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    prefix_names: Optional[List[str]] = None,
+) -> List[dict]:
+    admission_api = client.AdmissionregistrationV1Api()
+    webhooks: V1ValidatingWebhookConfigurationList = admission_api.list_validating_webhook_configuration(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    return _process_kubernetes_resources(
+        directory_path=directory_path,
+        resources=webhooks,
+        prefix_names=prefix_names,
+        kind=BundleResourceKind.validatingwebhook.value,
     )
 
 
