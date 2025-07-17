@@ -768,6 +768,48 @@ def assert_list_cluster_role_bindings(
         )
 
 
+def assert_list_mutating_webhooks(
+    mocked_client,
+    mocked_zipfile,
+    directory_path: str,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+    mock_names: Optional[List[str]] = None,
+):
+    mocked_client.AdmissionregistrationV1Api().list_mutating_webhook_configuration.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    mock_names = mock_names or ["mock_mutating_webhook"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{directory_path}/mwc.{name}.yaml",
+            data=f"kind: MutatingWebhookConfiguration\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+        )
+
+
+def assert_list_validating_webhooks(
+    mocked_client,
+    mocked_zipfile,
+    directory_path: str,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+    mock_names: Optional[List[str]] = None,
+):
+    mocked_client.AdmissionregistrationV1Api().list_validating_webhook_configuration.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    mock_names = mock_names or ["mock_validating_webhook"]
+    for name in mock_names:
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{directory_path}/vwc.{name}.yaml",
+            data=f"kind: ValidatingWebhookConfiguration\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+        )
+
+
 def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
     for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_jobs]:
         kwargs = {

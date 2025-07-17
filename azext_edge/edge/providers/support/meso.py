@@ -8,10 +8,18 @@ from functools import partial
 
 from knack.log import get_logger
 
-from .base import (DAY_IN_SECONDS, process_cluster_role_bindings,
-                   process_cluster_roles, process_config_maps,
-                   process_deployments, process_replicasets, process_services,
-                   process_v1_pods)
+from .base import (
+    DAY_IN_SECONDS,
+    process_cluster_role_bindings,
+    process_cluster_roles,
+    process_config_maps,
+    process_deployments,
+    process_mutating_webhook_configurations,
+    process_replicasets,
+    process_services,
+    process_v1_pods,
+    process_validating_webhook_configurations,
+)
 from .common import NAME_LABEL_FORMAT, RESOURCE_NAME_FORMAT
 
 logger = get_logger(__name__)
@@ -28,76 +36,113 @@ MESO_LABEL_SELECTORS = [MESO_NAME_LABEL, MESO_CLUSTER_METRICS_LABEL]
 def fetch_deployments():
     results = []
     for label_selector in MESO_LABEL_SELECTORS:
-        results.extend(process_deployments(
-            directory_path=MESO_DIRECTORY_PATH,
-            label_selector=label_selector,
-        ))
+        results.extend(
+            process_deployments(
+                directory_path=MESO_DIRECTORY_PATH,
+                label_selector=label_selector,
+            )
+        )
     return results
 
 
 def fetch_replicasets():
     results = []
     for label_selector in MESO_LABEL_SELECTORS:
-        results.extend(process_replicasets(
-            directory_path=MESO_DIRECTORY_PATH,
-            label_selector=label_selector,
-        ))
+        results.extend(
+            process_replicasets(
+                directory_path=MESO_DIRECTORY_PATH,
+                label_selector=label_selector,
+            )
+        )
     return results
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     results = []
     for label_selector in MESO_LABEL_SELECTORS:
-        results.extend(process_v1_pods(
-            directory_path=MESO_DIRECTORY_PATH,
-            label_selector=label_selector,
-            since_seconds=since_seconds,
-        ))
+        results.extend(
+            process_v1_pods(
+                directory_path=MESO_DIRECTORY_PATH,
+                label_selector=label_selector,
+                since_seconds=since_seconds,
+            )
+        )
     return results
 
 
 def fetch_services():
     results = []
     for label_selector in MESO_LABEL_SELECTORS:
-        results.extend(process_services(
-            directory_path=MESO_DIRECTORY_PATH,
-            label_selector=label_selector,
-        ))
+        results.extend(
+            process_services(
+                directory_path=MESO_DIRECTORY_PATH,
+                label_selector=label_selector,
+            )
+        )
     return results
 
 
 def fetch_config_maps():
     results = []
     for label_selector in MESO_LABEL_SELECTORS:
-        results.extend(process_config_maps(
-            directory_path=MESO_DIRECTORY_PATH,
-            label_selector=label_selector,
-        ))
+        results.extend(
+            process_config_maps(
+                directory_path=MESO_DIRECTORY_PATH,
+                label_selector=label_selector,
+            )
+        )
     return results
 
 
 def fetch_cluster_roles():
     results = []
     for label_selector in MESO_LABEL_SELECTORS:
-        results.extend(process_cluster_roles(
-            directory_path=MESO_DIRECTORY_PATH,
-            label_selector=label_selector,
-        ))
+        results.extend(
+            process_cluster_roles(
+                directory_path=MESO_DIRECTORY_PATH,
+                label_selector=label_selector,
+            )
+        )
     # Fetch specific cluster role by name
-    results.extend(process_cluster_roles(
-        directory_path=MESO_DIRECTORY_PATH,
-        field_selector=MESO_OPERATOR_MANAGER_FIELD_SELECTOR
-    ))
+    results.extend(
+        process_cluster_roles(directory_path=MESO_DIRECTORY_PATH, field_selector=MESO_OPERATOR_MANAGER_FIELD_SELECTOR)
+    )
     return results
 
 
 def fetch_cluster_role_bindings():
     results = []
     for label_selector in MESO_LABEL_SELECTORS:
-        results.extend(process_cluster_role_bindings(
-            directory_path=MESO_DIRECTORY_PATH,
-            label_selector=label_selector,
-        ))
+        results.extend(
+            process_cluster_role_bindings(
+                directory_path=MESO_DIRECTORY_PATH,
+                label_selector=label_selector,
+            )
+        )
+    return results
+
+
+def fetch_mutating_webhooks():
+    results = []
+    for label_selector in MESO_LABEL_SELECTORS:
+        results.extend(
+            process_mutating_webhook_configurations(
+                directory_path=MESO_DIRECTORY_PATH,
+                label_selector=label_selector,
+            )
+        )
+    return results
+
+
+def fetch_validating_webhooks():
+    results = []
+    for label_selector in MESO_LABEL_SELECTORS:
+        results.extend(
+            process_validating_webhook_configurations(
+                directory_path=MESO_DIRECTORY_PATH,
+                label_selector=label_selector,
+            )
+        )
     return results
 
 
@@ -108,6 +153,8 @@ support_runtime_elements = {
     "services": fetch_services,
     "clusterroles": fetch_cluster_roles,
     "clusterrolebindings": fetch_cluster_role_bindings,
+    "mutatingwebhooks": fetch_mutating_webhooks,
+    "validatingwebhooks": fetch_validating_webhooks,
 }
 
 
