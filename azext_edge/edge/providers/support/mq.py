@@ -23,6 +23,7 @@ from .base import (
     process_services,
     process_statefulset,
     process_v1_pods,
+    process_validating_webhook_configurations,
 )
 from .common import NAME_LABEL_FORMAT
 
@@ -110,6 +111,13 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     )
 
 
+def fetch_validating_webhook_configurations():
+    return process_validating_webhook_configurations(
+        directory_path=MQ_DIRECTORY_PATH,
+        label_selector=MQ_NAME_LABEL,
+    )
+
+
 support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
     "configmaps": fetch_configmaps,
@@ -117,6 +125,7 @@ support_runtime_elements = {
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "daemonsets": fetch_daemonsets,
+    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 

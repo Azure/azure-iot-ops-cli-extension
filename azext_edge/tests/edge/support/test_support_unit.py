@@ -226,6 +226,12 @@ def test_create_bundle(
                 label_selector=MQ_NAME_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
             )
+            assert_list_validating_webhooks(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=MQ_NAME_LABEL,
+                directory_path=MQ_DIRECTORY_PATH,
+            )
 
         if api in COMPAT_DATAFLOW_APIS.resource_apis:
             assert_list_services(
