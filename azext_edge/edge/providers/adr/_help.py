@@ -1481,25 +1481,25 @@ def load_iotops_adr_help():
         - name: Add a basic action to a management group.
           text: >
             az iot ops ns asset custom mgmt action add --asset myasset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --group myManagementGroup --name myAction --target-uri /custom/device_service?Profile=Profile1
 
         - name: Add an action with custom configuration and timeout.
           text: >
             az iot ops ns asset custom mgmt action add --asset myasset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --group myManagementGroup --name myAction --target-uri /custom/device_service?Profile=Profile1
             --config '{"method": "start", "parameters": {"speed": 100}}'
             --timeout 45
 
         - name: Add an action with specific action type and topic.
           text: >
             az iot ops ns asset custom mgmt action add --asset myasset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
-            --action-type "control" --topic factory/control/actions --timeout 30
+            --group myManagementGroup --name myAction --target-uri /custom/device_service?Profile=Profile1
+            --action-type Control --topic factory/control/actions --timeout 30
 
         - name: Replace an existing action with the same name.
           text: >
             az iot ops ns asset custom mgmt action add --asset myasset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "ns=3;s=UpdatedMethodNode"
+            --group myManagementGroup --name myAction --target-uri /custom/device_service?Profile=Profile2
             --config '{"method": "restart", "priority": "high"}' --replace
     """
 
@@ -2442,24 +2442,24 @@ def load_iotops_adr_help():
         - name: Add a basic action to a management group.
           text: >
             az iot ops ns asset opcua mgmt action add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --group myManagementGroup --name myAction --target-uri /opcua/device_service?OPCUAProfile=Profile1
 
         - name: Add an action with timeout and topic.
           text: >
             az iot ops ns asset opcua mgmt action add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
+            --group myManagementGroup --name myAction --target-uri /opcua/device_service?OPCUAProfile=Profile1
             --timeout 45 --topic factory/opcua/actions
 
         - name: Add an action with specific action type.
           text: >
             az iot ops ns asset opcua mgmt action add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "ns=3;s=MethodNode"
-            --action-type "call" --timeout 30
+            --group myManagementGroup --name myAction --target-uri /opcua/device_service?OPCUAProfile=Profile1
+            --action-type Call --timeout 30
 
         - name: Replace an existing action with the same name.
           text: >
             az iot ops ns asset opcua mgmt action add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --group myManagementGroup --name myAction --target-uri "ns=3;s=UpdatedMethodNode"
+            --group myManagementGroup --name myAction --target-uri /opcua/device_service?OPCUAProfile=Profile2
             --timeout 60 --replace
     """
 

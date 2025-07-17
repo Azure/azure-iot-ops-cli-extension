@@ -8,7 +8,7 @@ from typing import List
 
 from ...generators import generate_random_string
 from ...helpers import run
-from .namespace_helpers import create_config_file, assert_point_properties
+from .namespace_helpers import create_config_file, assert_point_properties, assert_event_properties
 
 
 # TODO fix up tests to work with linux
@@ -249,14 +249,14 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     tracked_resources.append(asset_opcua["id"])
 
     # 1. CREATE EVENT WITH FULL OPCUA CONFIGURATION
-    event_notifier = "ns=2,i=1000"
+    event_notifier = "ns=2;i=1000"
     event_destinations = "topic=factory/opcua/events qos=Qos0 retain=Keep ttl=7200"
     publishing_interval = 500
     queue_size = 10
 
     event_result = run(
         f"az iot ops ns asset opcua event add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
+        f"-g {resource_group} --name {event_name} --event-notifier \"{event_notifier}\" "
         f"--destination {event_destinations} --publish-int {publishing_interval} "
         f"--queue-size {queue_size}"
     )
@@ -290,13 +290,13 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     )
 
     # 4. UPDATE EVENT
-    updated_event_notifier = "ns=3,i=1000"
+    updated_event_notifier = "ns=3;i=1000"
     updated_publishing_interval = 1000
     updated_queue_size = 15
 
     updated_event = run(
         f"az iot ops ns asset opcua event update --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_name} --event-notifier {updated_event_notifier} "
+        f"-g {resource_group} --name {event_name} --event-notifier \"{updated_event_notifier}\" "
         f"--publish-int {updated_publishing_interval} --queue-size {updated_queue_size} "
     )
 
@@ -307,10 +307,10 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     )
 
     # 5. CREATE EVENT WITH REPLACE
-    replaced_event_notifier = "ns=4,i=1000"
+    replaced_event_notifier = "ns=4;i=1000"
     replaced_event = run(
         f"az iot ops ns asset opcua event add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_name} --event-notifier {replaced_event_notifier} "
+        f"-g {resource_group} --name {event_name} --event-notifier \"{replaced_event_notifier}\" "
         f"--replace"
     )
 
@@ -451,15 +451,3 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
 
     remaining_event_names = [ev["name"] for ev in remaining_events]
     assert event_name not in remaining_event_names
-
-
-def assert_event_properties(result, **expected):
-    """Verify event properties match expected values.
-
-    Minimal checks since unit tests already validate the command structure."""
-    assert result["name"] == expected["name"]
-
-    if "event_notifier" in expected:
-        assert result["eventNotifier"] == expected["event_notifier"]
-    if "custom_configuration" in expected:
-        assert result["eventConfiguration"] == expected["custom_configuration"]

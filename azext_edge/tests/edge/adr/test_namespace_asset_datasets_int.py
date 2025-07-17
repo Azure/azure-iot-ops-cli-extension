@@ -8,7 +8,7 @@ from typing import List
 
 from ...generators import generate_random_string
 from ...helpers import run
-from .namespace_helpers import create_config_file, assert_point_properties
+from .namespace_helpers import create_config_file, assert_point_properties, assert_dataset_properties
 
 
 # TODO fix up tests to work with linux
@@ -272,14 +272,14 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     tracked_resources.append(asset_opcua["id"])
 
     # 1. CREATE DATASET
-    dataset_data_source = "ns=2,i=1001"
+    dataset_data_source = "ns=2;i=1001"
     dataset_destinations = "topic=factory/opcua/temperature qos=Qos1 retain=Keep ttl=3600"
 
     # Add OPCUA asset dataset with specific OPCUA parameters
     dataset_result = run(
         f"az iot ops ns asset opcua dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
-        f"--data-source {dataset_data_source} "
+        f"--data-source \"{dataset_data_source}\" "
         f"--destination {dataset_destinations} "
         f"--publish-int 1000 "
         f"--sampling-int 500 "
@@ -320,13 +320,13 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     )
 
     # 4. UPDATE DATASET
-    updated_data_source = "ns=2,i=1002"
+    updated_data_source = "ns=2;i=1002"
     updated_destinations = "topic=factory/opcua/temperature_v2 qos=Qos0 retain=Never ttl=1800"
 
     updated_dataset = run(
         f"az iot ops ns asset opcua dataset update --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
-        f"--data-source {updated_data_source} "
+        f"--data-source \"{updated_data_source}\" "
         f"--destination {updated_destinations} "
         f"--publish-int 2000 "
         f"--sampling-int 1000 "
@@ -343,12 +343,12 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
     # 5. TEST DATASET REPLACE FUNCTIONALITY
     # Replace dataset with --replace flag
-    replaced_data_source = "ns=2,i=1003"
+    replaced_data_source = "ns=2;i=1003"
 
     replaced_dataset = run(
         f"az iot ops ns asset opcua dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
-        f"--data-source {replaced_data_source} "
+        f"--data-source \"{replaced_data_source}\" "
         f"--publish-int 3000 --replace"
     )
 
@@ -362,12 +362,12 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
     # 6. ADD DATASET DATAPOINTS
     # Add first datapoint
-    datapoint_data_source_1 = "ns=2,i=2001"
+    datapoint_data_source_1 = "ns=2;i=2001"
 
     datapoint_result_1 = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--name {datapoint_name_1} --data-source {datapoint_data_source_1} "
+        f"--name {datapoint_name_1} --data-source \"{datapoint_data_source_1}\" "
         f"--queue-size 5 --sampling-int 250"
     )
 
@@ -378,12 +378,12 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     )
 
     # Add second datapoint
-    datapoint_data_source_2 = "ns=2,i=2002"
+    datapoint_data_source_2 = "ns=2;i=2002"
 
     datapoint_result_2 = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--name {datapoint_name_2} --data-source {datapoint_data_source_2} "
+        f"--name {datapoint_name_2} --data-source \"{datapoint_data_source_2}\" "
         f"--queue-size 3 --sampling-int 500"
     )
 
@@ -406,12 +406,12 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
     # 8. TEST DATAPOINT REPLACE FUNCTIONALITY
     # Replace first datapoint with --replace flag
-    replaced_datapoint_data_source = "ns=2,i=2003"
+    replaced_datapoint_data_source = "ns=2;i=2003"
 
     replaced_datapoint = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--name {datapoint_name_1} --data-source {replaced_datapoint_data_source} "
+        f"--name {datapoint_name_1} --data-source \"{replaced_datapoint_data_source}\" "
         f"--queue-size 15 --sampling-int 100 --replace"
     )
 
@@ -452,15 +452,3 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
     remaining_dataset_names = [dataset["name"] for dataset in datasets_list_after_remove]
     assert dataset_name not in remaining_dataset_names
-
-
-def assert_dataset_properties(result, **expected):
-    """Verify dataset properties match expected values.
-
-    Minimal checks since unit tests already validate the command structure."""
-    assert result["name"] == expected["name"]
-
-    if "data_source" in expected:
-        assert result["dataSource"] == expected["data_source"]
-    if "custom_configuration" in expected:
-        assert result["datasetConfiguration"] == expected["custom_configuration"]
