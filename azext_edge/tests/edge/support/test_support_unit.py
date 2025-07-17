@@ -49,10 +49,11 @@ from azext_edge.edge.providers.support.billing import (
 )
 from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT
 from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL
-from azext_edge.edge.providers.support.meta import META_NAME_LABEL, META_PREFIX_NAMES
+from azext_edge.edge.providers.support.meta import META_DIRECTORY_PATH, META_NAME_LABEL, META_PREFIX_NAMES
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.schemaregistry import SCHEMAS_DIRECTORY_PATH, SCHEMAS_NAME_LABEL
 from azext_edge.edge.providers.support_bundle import (
+    COMPAT_META_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DATAFLOW_APIS,
     COMPAT_MQTT_BROKER_APIS,
@@ -102,6 +103,8 @@ def test_create_bundle(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
+    mocked_list_mutating_webhooks,
+    mocked_list_validating_webhooks,
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_namespaced_custom_objects,
@@ -332,6 +335,52 @@ def test_create_bundle(
                 directory_path=api.moniker,
             )
 
+        if api in COMPAT_META_APIS.resource_apis:
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+                since_seconds=since_seconds,
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+                mock_names=[META_PREFIX_NAMES],
+            )
+            assert_list_jobs(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+            )
+            assert_list_mutating_webhooks(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+            )
+            assert_list_validating_webhooks(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+            )
     # assert shared KPIs regardless of service
     assert_shared_kpis(mocked_client, mocked_zipfile)
     # assert meta KPIs

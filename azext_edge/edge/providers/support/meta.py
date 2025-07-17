@@ -20,6 +20,8 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
+    process_mutating_webhook_configurations,
+    process_validating_webhook_configurations,
 )
 from .common import NAME_LABEL_FORMAT
 
@@ -72,11 +74,27 @@ def fetch_jobs():
     )
 
 
+def fetch_mutating_webhook_configurations():
+    return process_mutating_webhook_configurations(
+        directory_path=META_DIRECTORY_PATH,
+        label_selector=META_NAME_LABEL,
+    )
+
+
+def fetch_validating_webhook_configurations():
+    return process_validating_webhook_configurations(
+        directory_path=META_DIRECTORY_PATH,
+        label_selector=META_NAME_LABEL,
+    )
+
+
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "jobs": fetch_jobs,
+    "mutatingwebhooks": fetch_mutating_webhook_configurations,
+    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 
