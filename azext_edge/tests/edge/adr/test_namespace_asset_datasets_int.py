@@ -272,7 +272,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     tracked_resources.append(asset_opcua["id"])
 
     # 1. CREATE DATASET
-    dataset_data_source = "ns=2;i=1001"
+    dataset_data_source = "ns=2,i=1001"
     dataset_destinations = "topic=factory/opcua/temperature qos=Qos1 retain=Keep ttl=3600"
 
     # Add OPCUA asset dataset with specific OPCUA parameters
@@ -320,7 +320,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     )
 
     # 4. UPDATE DATASET
-    updated_data_source = "ns=2;i=1002"
+    updated_data_source = "ns=2,i=1002"
     updated_destinations = "topic=factory/opcua/temperature_v2 qos=Qos0 retain=Never ttl=1800"
 
     updated_dataset = run(
@@ -343,7 +343,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
     # 5. TEST DATASET REPLACE FUNCTIONALITY
     # Replace dataset with --replace flag
-    replaced_data_source = "ns=2;i=1003"
+    replaced_data_source = "ns=2,i=1003"
 
     replaced_dataset = run(
         f"az iot ops ns asset opcua dataset add --asset {asset_name} "
@@ -362,7 +362,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
     # 6. ADD DATASET DATAPOINTS
     # Add first datapoint
-    datapoint_data_source_1 = "ns=2;i=2001"
+    datapoint_data_source_1 = "ns=2,i=2001"
 
     datapoint_result_1 = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
@@ -378,7 +378,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     )
 
     # Add second datapoint
-    datapoint_data_source_2 = "ns=2;i=2002"
+    datapoint_data_source_2 = "ns=2,i=2002"
 
     datapoint_result_2 = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
@@ -406,7 +406,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
     # 8. TEST DATAPOINT REPLACE FUNCTIONALITY
     # Replace first datapoint with --replace flag
-    replaced_datapoint_data_source = "ns=2;i=2003"
+    replaced_datapoint_data_source = "ns=2,i=2003"
 
     replaced_datapoint = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "

@@ -129,7 +129,7 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     )
 
     # 6. ADD MANAGEMENT GROUP ACTION
-    action_target_uri = "ns=3;s=StartMethod"
+    action_target_uri = "ns=3,s=StartMethod"
     action_type = "Call"
     action_timeout = 60
     action_topic = "factory/custom/actions/control"
@@ -153,7 +153,7 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     )
 
     # 7. ADD ANOTHER MANAGEMENT GROUP ACTION
-    action_target_uri_2 = "ns=3;s=StopMethod"
+    action_target_uri_2 = "ns=3,s=StopMethod"
     action_type_2 = "Read"
     action_timeout_2 = 45
     custom_config_path, custom_config = create_config_file(tracked_files)
@@ -186,7 +186,7 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     assert action_name_2 in action_names
 
     # 9. REPLACE MANAGEMENT GROUP ACTION
-    replaced_action_target_uri = "ns=3;s=ReplacedStartMethod"
+    replaced_action_target_uri = "ns=3,s=ReplacedStartMethod"
     replaced_action = run(
         f"az iot ops ns asset custom mgmt action add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name_1} "
@@ -338,7 +338,7 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     )
 
     # 6. ADD MANAGEMENT GROUP ACTION
-    action_target_uri = "ns=2;s=StartProduction"
+    action_target_uri = "ns=2,s=StartProduction"
     action_type = "Call"
     action_timeout = 30
     action_topic = "factory/opcua/actions/production"
@@ -370,7 +370,7 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     assert action_name in action_names
 
     # 8. REPLACE MANAGEMENT GROUP ACTION
-    replaced_action_target_uri = "ns=2;s=StopProduction"
+    replaced_action_target_uri = "ns=2,s=StopProduction"
     replaced_action = run(
         f"az iot ops ns asset opcua mgmt action add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name} "
