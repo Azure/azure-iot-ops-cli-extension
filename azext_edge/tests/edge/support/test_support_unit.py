@@ -260,6 +260,12 @@ def test_create_bundle(
                 directory_path=api.moniker,
                 since_seconds=since_seconds,
             )
+            assert_list_validating_webhooks(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
+            )
 
         if api in [ARCCONTAINERSTORAGE_API_V1]:
             assert_list_deployments(

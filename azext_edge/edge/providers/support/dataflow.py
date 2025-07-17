@@ -17,6 +17,7 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
+    process_validating_webhook_configurations,
 )
 from .common import NAME_LABEL_FORMAT
 
@@ -58,10 +59,18 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     )
 
 
+def fetch_validating_webhook_configurations():
+    return process_validating_webhook_configurations(
+        directory_path=DATAFLOW_DIRECTORY_PATH,
+        label_selector=DATAFLOW_NAME_LABEL,
+    )
+
+
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "services": fetch_services,
     "replicasets": fetch_replicasets,
+    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 
