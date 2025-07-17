@@ -8,22 +8,17 @@ from functools import partial
 
 from knack.log import get_logger
 
-from .base import (
-    DAY_IN_SECONDS,
-    process_cluster_role_bindings,
-    process_cluster_roles,
-    process_config_maps,
-    process_deployments,
-    process_replicasets,
-    process_services,
-    process_v1_pods,
-)
-from .common import NAME_LABEL_FORMAT
+from .base import (DAY_IN_SECONDS, process_cluster_role_bindings,
+                   process_cluster_roles, process_config_maps,
+                   process_deployments, process_replicasets, process_services,
+                   process_v1_pods)
+from .common import NAME_LABEL_FORMAT, RESOURCE_NAME_FORMAT
 
 logger = get_logger(__name__)
 
 MESO_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-observability")
 MESO_CLUSTER_METRICS_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-observability-cluster-metrics")
+MESO_OPERATOR_MANAGER_FIELD_SELECTOR = RESOURCE_NAME_FORMAT.format(name="aio-observability-operator-manager-role")
 MESO_DIRECTORY_PATH = "meso"
 
 # List of label selectors to iterate through for most resources
@@ -91,7 +86,7 @@ def fetch_cluster_roles():
     # Fetch specific cluster role by name
     results.extend(process_cluster_roles(
         directory_path=MESO_DIRECTORY_PATH,
-        field_selector="metadata.name=aio-observability-operator-manager-role",
+        field_selector=MESO_OPERATOR_MANAGER_FIELD_SELECTOR
     ))
     return results
 

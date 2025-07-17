@@ -7,3 +7,4 @@
 # resource label formats
 COMPONENT_LABEL_FORMAT = "app.kubernetes.io/component in ({label})"
 NAME_LABEL_FORMAT = "app.kubernetes.io/name in ({label})"
+RESOURCE_NAME_FORMAT = "metadata.name={name}"
