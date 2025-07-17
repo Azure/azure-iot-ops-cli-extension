@@ -40,7 +40,7 @@ from azext_edge.edge.providers.edge_api.meta import META_API_V1
 from azext_edge.edge.providers.support.akri import AKRI_NAME_LABEL_V2
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.arccontainerstorage import STORAGE_NAMESPACE
-from azext_edge.edge.providers.support.base import get_bundle_path
+from azext_edge.edge.providers.support.base import get_bundle_path, assemble_crd_work
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
     ARC_BILLING_DIRECTORY_PATH,
@@ -1126,3 +1126,37 @@ def test_create_bundle_schemas(
         directory_path=SCHEMAS_DIRECTORY_PATH,
         label_selector=SCHEMAS_NAME_LABEL,
     )
+
+
+def test_kind_to_dir_override_functionality():
+    from unittest.mock import Mock, patch
+
+    # Mock CRD data
+    mock_crd_data = {
+        "items": [{"metadata": {"name": "test-resource", "namespace": "test-ns"}, "spec": {"test": "data"}}]
+    }
+
+    # Mock API with two different resource kinds
+    mock_api = Mock()
+    mock_api.group = "test.group"
+    mock_api.version = "v1"
+    mock_api.moniker = "testapi"
+    mock_api.kinds = ["OverrideKind", "RegularKind"]
+    mock_api._kinds = {"OverrideKind": "OverrideKinds", "RegularKind": "RegularKinds"}
+
+    # Define mapping: only OverrideKind gets special path, RegularKind uses default
+    kind_to_dir_map = {"OverrideKind": "override"}
+
+    with patch("azext_edge.edge.providers.support.base.get_custom_objects") as mock_get_custom_objects:
+        mock_get_custom_objects.return_value = mock_crd_data
+
+        work_items = assemble_crd_work(apis=[mock_api], directory_path="default/path", kind_to_dir=kind_to_dir_map)
+
+        override_result = work_items["testapi v1 OverrideKind"]()
+        regular_result = work_items["testapi v1 RegularKind"]()
+
+        # OverrideKind should use the overridden path from kind_to_dir
+        assert override_result[0]["zinfo"] == "test-ns/override/OverrideKind.v1.test-resource.yaml"
+
+        # RegularKind should use the default path (not in kind_to_dir mapping)
+        assert regular_result[0]["zinfo"] == "test-ns/default/path/RegularKind.v1.test-resource.yaml"

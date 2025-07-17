@@ -62,6 +62,7 @@ def process_crd(
     directory_path: str,
     file_prefix: Optional[str] = None,
     fallback_namespace: Optional[str] = None,
+    kind_to_dir: Optional[Dict[str, str]] = None
 ) -> List[dict]:
     result: dict = get_custom_objects(
         group=group,
@@ -71,6 +72,9 @@ def process_crd(
     )
     if not file_prefix:
         file_prefix = kind
+
+    if kind_to_dir and kind in kind_to_dir:
+        directory_path = kind_to_dir[kind]
 
     processed = []
     for r in result.get("items", []):
@@ -580,6 +584,7 @@ def assemble_crd_work(
     file_prefix_map: Optional[Dict[str, str]] = None,
     directory_path: Optional[str] = None,
     fallback_namespace: Optional[str] = None,
+    kind_to_dir: Optional[Dict[str, str]] = None
 ) -> dict:
     if not file_prefix_map:
         file_prefix_map = {}
@@ -598,6 +603,7 @@ def assemble_crd_work(
                 directory_path=path,
                 file_prefix=file_prefix,
                 fallback_namespace=fallback_namespace,
+                kind_to_dir=kind_to_dir,
             )
 
     return result
