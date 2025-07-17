@@ -19,6 +19,7 @@ from .base import (
     process_services,
     process_statefulset,
     process_v1_pods,
+    process_validating_webhook_configurations,
 )
 from .common import NAME_LABEL_FORMAT
 
@@ -61,11 +62,19 @@ def fetch_replicasets():
     return process_replicasets(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2)
 
 
+def fetch_validating_webhook_configurations():
+    return process_validating_webhook_configurations(
+        directory_path=AKRI_DIRECTORY_PATH,
+        label_selector=AKRI_NAME_LABEL_V2,
+    )
+
+
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "statefulsets": fetch_statefulsets,
     "services": fetch_services,
+    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 
