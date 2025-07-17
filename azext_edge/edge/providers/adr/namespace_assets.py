@@ -1733,7 +1733,6 @@ def _get_mgmt_group(asset: dict, management_group_name: str) -> dict:
     return matched_mgmt_groups[0]
 
 
-# maybe move the config processing functions to specs?
 def _process_configs(
     asset_type: str,
     default: bool = True,
@@ -1747,19 +1746,14 @@ def _process_configs(
     result = {}
     asset_type = asset_type.lower()
     if asset_type == DeviceEndpointType.OPCUA.value.lower():
-        # allowed: datasets, events, mgmt groups, destinations must be mqtt
+        # allowed: datasets, events, mgmt groups (no schema?), destinations must be mqtt
         # not allowed: streams
-        # still waiting on opcua mgmt group schemas
         result = {
             "datasetsConfiguration": _process_opcua_dataset_configurations_v1(
                 **kwargs
             ),
             "eventsConfiguration": _process_opcua_event_configurations_v1(
                 **kwargs
-            ),
-            "managementGroupsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("mgmt_custom_configuration"),
-                config_type="management group"
             ),
             "datasetsDestinations": _build_destination(
                 destination_args=kwargs.get("dataset_destinations", []),
@@ -1771,14 +1765,9 @@ def _process_configs(
             ),
         }
     elif asset_type == DeviceEndpointType.ONVIF.value.lower():
-        # allowed: events (no schema), mgmt groups, destinations must be mqtt
+        # allowed: events (no schema), mgmt groups (no schema), destinations must be mqtt
         # not allowed: datasets, streams
-        # still waiting on onvif mgmt group schemas
         result = {
-            "managementGroupsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("mgmt_custom_configuration"),
-                config_type="management group"
-            ),
             "eventsDestinations": _build_destination(
                 destination_args=kwargs.get("event_destinations", []),
                 allowed_types=["Mqtt"]
