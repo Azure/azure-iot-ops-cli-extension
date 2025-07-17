@@ -46,6 +46,7 @@ from azext_edge.edge.providers.support.billing import (
     ARC_BILLING_DIRECTORY_PATH,
     ARC_BILLING_EXTENSION_COMP_LABEL,
     BILLING_RESOURCE_KIND,
+    BILLING_WEBHOOK_COMP_LABEL,
 )
 from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT
 from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL
@@ -188,6 +189,12 @@ def test_create_bundle(
                 mocked_client,
                 mocked_zipfile,
                 label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
+                directory_path=ARC_BILLING_DIRECTORY_PATH,
+            )
+            assert_list_validating_webhooks(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=BILLING_WEBHOOK_COMP_LABEL,
                 directory_path=ARC_BILLING_DIRECTORY_PATH,
             )
 
