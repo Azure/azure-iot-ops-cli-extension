@@ -82,7 +82,7 @@ def mocked_cluster_resources(request, mocker):
         MQTT_BROKER_API_V1,
         DEVICEREGISTRY_API_V1,
         CLUSTER_CONFIG_API_V1,
-        DATAFLOW_ACTIVE_API
+        DATAFLOW_ACTIVE_API,
     )
 
     requested_resource_apis = getattr(request, "param", [])
@@ -393,9 +393,7 @@ def mocked_list_storage_classes(mocked_client):
     from kubernetes.client.models import V1StorageClassList, V1StorageClass, V1ObjectMeta
 
     def _handle_list_storage_classes(*args, **kwargs):
-        storage_class = V1StorageClass(
-            provisioner="mock_provisioner", metadata=V1ObjectMeta(name="mock_storage_class")
-        )
+        storage_class = V1StorageClass(provisioner="mock_provisioner", metadata=V1ObjectMeta(name="mock_storage_class"))
         storage_class_list = V1StorageClassList(items=[storage_class])
 
         return storage_class_list
@@ -562,7 +560,11 @@ def mocked_get_config_map(mocker):
 
 @pytest.fixture
 def mocked_list_mutating_webhooks(mocked_client):
-    from kubernetes.client.models import V1MutatingWebhookConfigurationList, V1MutatingWebhookConfiguration, V1ObjectMeta
+    from kubernetes.client.models import (
+        V1MutatingWebhookConfigurationList,
+        V1MutatingWebhookConfiguration,
+        V1ObjectMeta,
+    )
 
     def _handle_list_mutating_webhooks(*args, **kwargs):
         webhook = V1MutatingWebhookConfiguration(
@@ -572,14 +574,20 @@ def mocked_list_mutating_webhooks(mocked_client):
 
         return webhook_list
 
-    mocked_client.AdmissionregistrationV1Api().list_mutating_webhook_configuration.side_effect = _handle_list_mutating_webhooks
+    mocked_client.AdmissionregistrationV1Api().list_mutating_webhook_configuration.side_effect = (
+        _handle_list_mutating_webhooks
+    )
 
     yield mocked_client
 
 
 @pytest.fixture
 def mocked_list_validating_webhooks(mocked_client):
-    from kubernetes.client.models import V1ValidatingWebhookConfigurationList, V1ValidatingWebhookConfiguration, V1ObjectMeta
+    from kubernetes.client.models import (
+        V1ValidatingWebhookConfigurationList,
+        V1ValidatingWebhookConfiguration,
+        V1ObjectMeta,
+    )
 
     def _handle_list_validating_webhooks(*args, **kwargs):
         webhook = V1ValidatingWebhookConfiguration(
@@ -589,6 +597,8 @@ def mocked_list_validating_webhooks(mocked_client):
 
         return webhook_list
 
-    mocked_client.AdmissionregistrationV1Api().list_validating_webhook_configuration.side_effect = _handle_list_validating_webhooks
+    mocked_client.AdmissionregistrationV1Api().list_validating_webhook_configuration.side_effect = (
+        _handle_list_validating_webhooks
+    )
 
     yield mocked_client
