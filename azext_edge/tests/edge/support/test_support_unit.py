@@ -23,6 +23,8 @@ from azext_edge.edge.providers.edge_api import (
     MQ_ACTIVE_API,
     MQTT_BROKER_API_V1,
     DATAFLOW_API_V1,
+    DATAFLOW_API_V1B1,
+    DATAFLOW_ACTIVE_API,
     EdgeResourceApi,
 )
 from azext_edge.edge.providers.edge_api.meta import META_API_V1
@@ -40,9 +42,11 @@ from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_NAME_LABE
 from azext_edge.edge.providers.support.common import (
     COMPONENT_LABEL_FORMAT,
 )
+from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL
 from azext_edge.edge.providers.support.schemaregistry import SCHEMAS_DIRECTORY_PATH, SCHEMAS_NAME_LABEL
 from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
 from azext_edge.tests.edge.support.conftest import add_pod_to_mocked_pods
+
 
 from ...generators import generate_random_string
 
@@ -59,6 +63,8 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
         [MQTT_BROKER_API_V1, DEVICEREGISTRY_API_V1],
         [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1],
         [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1],
+        [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1, DATAFLOW_ACTIVE_API],
+        [MQ_ACTIVE_API, DATAFLOW_API_V1, DATAFLOW_ACTIVE_API],
     ],
     indirect=True,
 )
@@ -204,38 +210,31 @@ def test_create_bundle(
                 directory_path=MQ_DIRECTORY_PATH,
             )
 
-        if api in [DATAFLOW_API_V1]:
+        if api in [DATAFLOW_API_V1, DATAFLOW_API_V1B1, DATAFLOW_ACTIVE_API]:
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_API_V1.label,
-                directory_path=DATAFLOW_API_V1.moniker,
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_API_V1.label,
-                directory_path=DATAFLOW_API_V1.moniker,
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATAFLOW_API_V1.label,
-                directory_path=DATAFLOW_API_V1.moniker,
-                mock_names=["aio-dataflow-operator"],
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_API_V1.label,
-                directory_path=DATAFLOW_API_V1.moniker,
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
             )
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=DATAFLOW_API_V1.label,
-                directory_path=DATAFLOW_API_V1.moniker,
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
                 since_seconds=since_seconds,
             )
 

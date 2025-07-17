@@ -248,6 +248,7 @@ def load_iotops_arguments(self, _):
                         DataflowResourceKinds.DATAFLOW.value,
                         DataflowResourceKinds.DATAFLOWENDPOINT.value,
                         DataflowResourceKinds.DATAFLOWPROFILE.value,
+                        DataflowResourceKinds.REGISTRYENDPOINT.value,
                     ]
                 )
             ),

@@ -23,57 +23,87 @@ from .common import NAME_LABEL_FORMAT
 logger = get_logger(__name__)
 
 MESO_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-observability")
+MESO_CLUSTER_METRICS_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-observability-cluster-metrics")
 MESO_DIRECTORY_PATH = "meso"
+
+# List of label selectors to iterate through for most resources
+MESO_LABEL_SELECTORS = [MESO_NAME_LABEL, MESO_CLUSTER_METRICS_LABEL]
 
 
 def fetch_deployments():
-    return process_deployments(
-        directory_path=MESO_DIRECTORY_PATH,
-        label_selector=MESO_NAME_LABEL,
-    )
+    results = []
+    for label_selector in MESO_LABEL_SELECTORS:
+        results.extend(process_deployments(
+            directory_path=MESO_DIRECTORY_PATH,
+            label_selector=label_selector,
+        ))
+    return results
 
 
 def fetch_replicasets():
-    return process_replicasets(
-        directory_path=MESO_DIRECTORY_PATH,
-        label_selector=MESO_NAME_LABEL,
-    )
+    results = []
+    for label_selector in MESO_LABEL_SELECTORS:
+        results.extend(process_replicasets(
+            directory_path=MESO_DIRECTORY_PATH,
+            label_selector=label_selector,
+        ))
+    return results
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
-    return process_v1_pods(
-        directory_path=MESO_DIRECTORY_PATH,
-        label_selector=MESO_NAME_LABEL,
-        since_seconds=since_seconds,
-    )
+    results = []
+    for label_selector in MESO_LABEL_SELECTORS:
+        results.extend(process_v1_pods(
+            directory_path=MESO_DIRECTORY_PATH,
+            label_selector=label_selector,
+            since_seconds=since_seconds,
+        ))
+    return results
 
 
 def fetch_services():
-    return process_services(
-        directory_path=MESO_DIRECTORY_PATH,
-        label_selector=MESO_NAME_LABEL,
-    )
+    results = []
+    for label_selector in MESO_LABEL_SELECTORS:
+        results.extend(process_services(
+            directory_path=MESO_DIRECTORY_PATH,
+            label_selector=label_selector,
+        ))
+    return results
 
 
 def fetch_config_maps():
-    return process_config_maps(
-        directory_path=MESO_DIRECTORY_PATH,
-        label_selector=MESO_NAME_LABEL,
-    )
+    results = []
+    for label_selector in MESO_LABEL_SELECTORS:
+        results.extend(process_config_maps(
+            directory_path=MESO_DIRECTORY_PATH,
+            label_selector=label_selector,
+        ))
+    return results
 
 
 def fetch_cluster_roles():
-    return process_cluster_roles(
+    results = []
+    for label_selector in MESO_LABEL_SELECTORS:
+        results.extend(process_cluster_roles(
+            directory_path=MESO_DIRECTORY_PATH,
+            label_selector=label_selector,
+        ))
+    # Fetch specific cluster role by name
+    results.extend(process_cluster_roles(
         directory_path=MESO_DIRECTORY_PATH,
-        label_selector=MESO_NAME_LABEL,
-    )
+        field_selector="metadata.name=aio-observability-operator-manager-role",
+    ))
+    return results
 
 
 def fetch_cluster_role_bindings():
-    return process_cluster_role_bindings(
-        directory_path=MESO_DIRECTORY_PATH,
-        label_selector=MESO_NAME_LABEL,
-    )
+    results = []
+    for label_selector in MESO_LABEL_SELECTORS:
+        results.extend(process_cluster_role_bindings(
+            directory_path=MESO_DIRECTORY_PATH,
+            label_selector=label_selector,
+        ))
+    return results
 
 
 support_runtime_elements = {

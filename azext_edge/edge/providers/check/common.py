@@ -138,6 +138,7 @@ class DataflowEndpointType(ListableEnum):
     kafka = "kafka"
     local_storage = "localstorage"
     mqtt = "mqtt"
+    open_telemetry = "opentelemetry"
 
 
 class CheckResult(NamedTuple):

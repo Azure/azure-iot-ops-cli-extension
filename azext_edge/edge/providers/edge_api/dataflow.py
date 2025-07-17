@@ -12,6 +12,8 @@ class DataflowResourceKinds(ListableEnum):
     DATAFLOWENDPOINT = "dataflowendpoint"
     DATAFLOWPROFILE = "dataflowprofile"
     DATAFLOW = "dataflow"
+    REGISTRYENDPOINT = "registryendpoint"
+    DATAFLOWGRAPH = "dataflowgraph"
 
 
 DATAFLOW_API_V1 = EdgeResourceApi(

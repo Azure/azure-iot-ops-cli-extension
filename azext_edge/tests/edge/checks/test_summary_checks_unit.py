@@ -10,7 +10,7 @@ from azure.cli.core.azclierror import ArgumentUsageError
 from azext_edge.edge.commands_edge import check
 from azext_edge.edge.providers.checks import run_checks
 from azext_edge.edge.providers.edge_api import (
-    DATAFLOW_API_V1,
+    DATAFLOW_ACTIVE_API,
     DEVICEREGISTRY_API_V1,
     MQ_ACTIVE_API,
 )
@@ -276,7 +276,7 @@ def test_summary_checks(
         (MQ_ACTIVE_API.as_str(), broker_status),
         (DEVICEREGISTRY_API_V1.as_str(), deviceregistry_status),
         ("OPCUA", opcua_status),
-        (DATAFLOW_API_V1.as_str(), dataflow_status),
+        (DATAFLOW_ACTIVE_API.as_str(), dataflow_status),
     ]:
         assert service in result["postDeployment"][0]["targets"]
         assert result["postDeployment"][0]["targets"][service]["_all_"]["status"] == status

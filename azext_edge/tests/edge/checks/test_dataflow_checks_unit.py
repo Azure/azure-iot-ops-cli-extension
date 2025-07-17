@@ -13,6 +13,7 @@ from azext_edge.edge.providers.check.dataflow import (
     evaluate_core_service_runtime,
     evaluate_dataflow_profiles,
     evaluate_dataflows,
+    evaluate_registry_endpoints,
 )
 from azext_edge.edge.providers.check.common import (
     CoreServiceResourceKinds,
@@ -53,6 +54,12 @@ dataflow_conditions = [
             DataflowResourceKinds.DATAFLOWENDPOINT.value,
             DataflowResourceKinds.DATAFLOWPROFILE.value,
         ],
+        [
+            DataflowResourceKinds.DATAFLOW.value,
+            DataflowResourceKinds.DATAFLOWENDPOINT.value,
+            DataflowResourceKinds.DATAFLOWPROFILE.value,
+            DataflowResourceKinds.REGISTRYENDPOINT.value,
+        ],
     ],
 )
 @pytest.mark.parametrize("ops_service", ["dataflow"])
@@ -66,6 +73,8 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
             "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_endpoints",
         DataflowResourceKinds.DATAFLOWPROFILE.value:
             "azext_edge.edge.providers.check.dataflow.evaluate_dataflow_profiles",
+        DataflowResourceKinds.REGISTRYENDPOINT.value:
+            "azext_edge.edge.providers.check.dataflow.evaluate_registry_endpoints",
     }
 
     assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
@@ -178,7 +187,10 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-2",
                     ),
-                    ("value", {"spec.operations[*].sourceSettings.endpointRef": "dataflow-endpoint-1"}),
+                    (
+                        "value",
+                        {"spec.operations[*].sourceSettings.endpointRef": "dataflow-endpoint-1"},
+                    ),
                 ],
                 [
                     ("status", "success"),
@@ -186,7 +198,10 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-2",
                     ),
-                    ("value", {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": "mqtt"}),
+                    (
+                        "value",
+                        {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": "mqtt"},
+                    ),
                 ],
                 [
                     ("status", "success"),
@@ -194,7 +209,10 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-2",
                     ),
-                    ("value", {"spec.operations[*].destinationSettings.endpointRef": "dataflow-endpoint-2"}),
+                    (
+                        "value",
+                        {"spec.operations[*].destinationSettings.endpointRef": "dataflow-endpoint-2"},
+                    ),
                 ],
             ],
         ),
@@ -324,7 +342,10 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-1",
                     ),
-                    ("value", {"spec.operations[*].destinationSettings.endpointRef": "invalid-endpoint"}),
+                    (
+                        "value",
+                        {"spec.operations[*].destinationSettings.endpointRef": "invalid-endpoint"},
+                    ),
                 ],
                 [
                     ("status", "error"),
@@ -364,7 +385,10 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-2",
                     ),
-                    ("value", {"spec.operations[*].sourceSettings.endpointRef": "invalid-endpoint"}),
+                    (
+                        "value",
+                        {"spec.operations[*].sourceSettings.endpointRef": "invalid-endpoint"},
+                    ),
                 ],
                 [
                     ("status", "error"),
@@ -372,7 +396,10 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-2",
                     ),
-                    ("value", {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": None}),
+                    (
+                        "value",
+                        {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": None},
+                    ),
                 ],
                 [
                     ("status", "success"),
@@ -380,7 +407,10 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-2",
                     ),
-                    ("value", {"spec.operations[*].destinationSettings.endpointRef": "real-endpoint"}),
+                    (
+                        "value",
+                        {"spec.operations[*].destinationSettings.endpointRef": "real-endpoint"},
+                    ),
                 ],
                 [
                     ("status", "success"),
@@ -420,7 +450,10 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-3",
                     ),
-                    ("value", {"spec.operations[*].sourceSettings.endpointRef": "bad-source-endpoint"}),
+                    (
+                        "value",
+                        {"spec.operations[*].sourceSettings.endpointRef": "bad-source-endpoint"},
+                    ),
                 ],
                 [
                     ("status", "error"),
@@ -428,7 +461,10 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-3",
                     ),
-                    ("value", {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": "fabriconelake"}),
+                    (
+                        "value",
+                        {"ref(spec.operations[*].sourceSettings.endpointRef).endpointType": "fabriconelake"},
+                    ),
                 ],
                 [
                     ("status", "success"),
@@ -436,7 +472,10 @@ def test_check_dataflow_by_resource_types(ops_service, mocker, mock_resource_typ
                         "name",
                         "dataflow-3",
                     ),
-                    ("value", {"spec.operations[*].destinationSettings.endpointRef": "real-endpoint"}),
+                    (
+                        "value",
+                        {"spec.operations[*].destinationSettings.endpointRef": "real-endpoint"},
+                    ),
                 ],
                 [
                     ("status", "success"),
@@ -666,7 +705,10 @@ def test_evaluate_dataflows(
                                 "method": "XS509Certificate",
                                 "x509CertificateSettings": {"secretRef": "secret"},
                             },
-                            "names": {"lakehouseName": "lakehouse", "workspaceName": "workspaceName"},
+                            "names": {
+                                "lakehouseName": "lakehouse",
+                                "workspaceName": "workspaceName",
+                            },
                             "batching": {"latencySeconds": 2},
                         },
                     },
@@ -682,7 +724,10 @@ def test_evaluate_dataflows(
                             "host": "datalakeHost",
                             "authentication": {
                                 "method": "Sasl",
-                                "saslSettings": {"saslType": "scramSha256", "secretRef": "secret"},
+                                "saslSettings": {
+                                    "saslType": "scramSha256",
+                                    "secretRef": "secret",
+                                },
                             },
                             "batching": {"latencySeconds": 12},
                         },
@@ -696,7 +741,10 @@ def test_evaluate_dataflows(
                     "spec": {
                         "endpointType": "dataExplorer",
                         "dataExplorerSettings": {
-                            "authentication": {"method": "AccessToken", "accessTokenSettings": {"secretRef": "secret"}},
+                            "authentication": {
+                                "method": "AccessToken",
+                                "accessTokenSettings": {"secretRef": "secret"},
+                            },
                             "database": "databse",
                             "host": "data_explorer_host",
                             "batching": {"latencySeconds": 3},
@@ -725,14 +773,36 @@ def test_evaluate_dataflows(
                             "clientIdPrefix": None,
                             "qos": 3,
                             "maxInflightMessages": 100,
-                            "tls": {"mode": "Enabled", "trustedCaCertificateConfigMapRef": "ref"},
+                            "tls": {
+                                "mode": "Enabled",
+                                "trustedCaCertificateConfigMapRef": "ref",
+                            },
+                        },
+                    },
+                },
+                # opentelemetry
+                {
+                    "metadata": {
+                        "name": "endpoint-7",
+                    },
+                    "spec": {
+                        "endpointType": "opentelemetry",
+                        "openTelemetrySettings": {
+                            "host": "otelHost",
+                            "authentication": {
+                                "method": "ServiceAccountToken",
+                                "serviceAccountTokenSettings": {"audience": "audience"},
+                            },
+                            "protocol": "Grpc",
+                            "headers": {"custom-header": "value"},
+                            "batching": {"latencyMs": 100},
                         },
                     },
                 },
                 # invalid endpoint type
                 {
                     "metadata": {
-                        "name": "endpoint-7",
+                        "name": "endpoint-8",
                     },
                     "spec": {
                         "endpointType": "invalid",
@@ -794,10 +864,18 @@ def test_evaluate_dataflows(
                     ("value", {"spec.endpointType": "mqtt"}),
                 ],
                 [
-                    ("status", "error"),
+                    ("status", "success"),
                     (
                         "name",
                         "endpoint-7",
+                    ),
+                    ("value", {"spec.endpointType": "opentelemetry"}),
+                ],
+                [
+                    ("status", "error"),
+                    (
+                        "name",
+                        "endpoint-8",
                     ),
                     ("value", {"spec.endpointType": "invalid"}),
                 ],
@@ -917,7 +995,7 @@ def test_evaluate_dataflow_endpoints(
                         "name",
                         DEFAULT_DATAFLOW_PROFILE,
                     ),
-                    ("value", {'status.provisioningStatus.status': 'success'}),
+                    ("value", {"status.provisioningStatus.status": "success"}),
                 ],
                 [
                     ("status", "success"),
@@ -925,7 +1003,7 @@ def test_evaluate_dataflow_endpoints(
                         "name",
                         DEFAULT_DATAFLOW_PROFILE,
                     ),
-                    ("value", {'status.runtimeStatus.level': 'ok'}),
+                    ("value", {"status.runtimeStatus.level": "ok"}),
                 ],
                 [
                     ("status", "success"),
@@ -1080,7 +1158,10 @@ def test_evaluate_dataflow_endpoints(
                     (
                         "value",
                         {
-                            "status.provisioningStatus.error": {"code": "123", "message": "error message"},
+                            "status.provisioningStatus.error": {
+                                "code": "123",
+                                "message": "error message",
+                            },
                             "status.provisioningStatus.status": "error",
                         },
                     ),
@@ -1143,7 +1224,8 @@ def test_evaluate_dataflow_profiles(
 ):
 
     mocker.patch(
-        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources", side_effect=[{"items": profiles}]
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": profiles}],
     )
     mocker.patch(
         "azext_edge.edge.providers.check.dataflow.get_namespaced_pods_by_prefix",
@@ -1247,3 +1329,141 @@ def test_evaluate_core_service_runtime(
         target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
         assert_conditions(target[namespace], namespace_conditions)
         assert_evaluations(target[namespace], namespace_evaluations)
+
+
+@pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
+@pytest.mark.parametrize(
+    "registryendpoints, conditions, evaluations",
+    [
+        (
+            # registryendpoints
+            [
+                # azure container registry endpoint
+                {
+                    "metadata": {
+                        "name": "registry-endpoint-1",
+                    },
+                    "spec": {
+                        "host": "myregistry.azurecr.io",
+                        "authentication": {
+                            "method": "ServiceAccountToken",
+                            "serviceAccountTokenSettings": {"audience": "audience"},
+                        },
+                    },
+                },
+                # non-azure container registry endpoint
+                {
+                    "metadata": {
+                        "name": "registry-endpoint-2",
+                    },
+                    "spec": {
+                        "host": "docker.io",
+                        "authentication": {
+                            "method": "UserAssignedManagedIdentity",
+                            "userAssignedManagedIdentitySettings": {
+                                "clientId": "clientId",
+                                "scope": "scope",
+                                "tenantId": "tenantId",
+                            },
+                        },
+                    },
+                },
+                # azure container registry endpoint with SAMI authentication
+                {
+                    "metadata": {
+                        "name": "registry-endpoint-3",
+                    },
+                    "spec": {
+                        "host": "testregistry.azurecr.io",
+                        "authentication": {
+                            "method": "SystemAssignedManagedIdentity",
+                            "systemAssignedManagedIdentitySettings": {"audience": "audience"},
+                        },
+                    },
+                },
+            ],
+            # conditions
+            [
+                "endsWith(spec.host, 'azurecr.io')",
+                "spec.authentication.method",
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    ("name", "registry-endpoint-1"),
+                    ("value/spec.host", "myregistry.azurecr.io"),
+                ],
+                [
+                    ("status", "success"),
+                    ("name", "registry-endpoint-1"),
+                    ("value/spec.authentication.method", "ServiceAccountToken"),
+                ],
+                [
+                    ("status", "error"),
+                    ("name", "registry-endpoint-2"),
+                    ("value/spec.host", "docker.io"),
+                ],
+                [
+                    ("status", "success"),
+                    ("name", "registry-endpoint-2"),
+                    ("value/spec.authentication.method", "UserAssignedManagedIdentity"),
+                ],
+                [
+                    ("status", "success"),
+                    ("name", "registry-endpoint-3"),
+                    ("value/spec.host", "testregistry.azurecr.io"),
+                ],
+                [
+                    ("status", "success"),
+                    ("name", "registry-endpoint-3"),
+                    ("value/spec.authentication.method", "SystemAssignedManagedIdentity"),
+                ],
+            ],
+        ),
+        # no registry endpoints
+        (
+            # registryendpoints
+            [],
+            # conditions
+            [],
+            # evaluations
+            [
+                [
+                    ("status", "skipped"),
+                    (
+                        "value/registryEndpoints",
+                        "No Registry Endpoints detected in any namespace.",
+                    ),
+                ]
+            ],
+        ),
+    ],
+)
+def test_evaluate_registry_endpoints(
+    mocker,
+    registryendpoints,
+    conditions,
+    evaluations,
+    detail_level,
+):
+    mocker = mocker.patch(
+        "azext_edge.edge.providers.edge_api.base.EdgeResourceApi.get_resources",
+        side_effect=[{"items": registryendpoints}],
+    )
+
+    namespace = generate_random_string()
+    for endpoint in registryendpoints:
+        endpoint["metadata"]["namespace"] = namespace
+    result = evaluate_registry_endpoints(detail_level=detail_level)
+
+    assert result["name"] == "evalRegistryEndpoints"
+    assert result["targets"]["registryendpoints.connectivity.iotoperations.azure.com"]
+    target = result["targets"]["registryendpoints.connectivity.iotoperations.azure.com"]
+
+    for namespace in target:
+        assert namespace in result["targets"]["registryendpoints.connectivity.iotoperations.azure.com"]
+
+        target[namespace]["conditions"] = [] if not target[namespace]["conditions"] else target[namespace]["conditions"]
+        assert_conditions(target[namespace], conditions)
+        assert_evaluations(target[namespace], evaluations)
