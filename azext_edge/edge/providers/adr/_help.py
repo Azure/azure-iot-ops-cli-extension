@@ -2691,8 +2691,7 @@ def load_iotops_adr_help():
         - name: Update dataset data source and sampling interval
           text: >
             az iot ops ns asset rest dataset update --asset myRestAsset --instance myInstance
-            -g myInstanceResourceGroup --name temperatureData --data-source "/api/v2/temperature"
-            --sampling-int 60000
+            -g myInstanceResourceGroup --name temperatureData --sampling-int 60000
 
         - name: Update dataset sampling interval only
           text: >
