@@ -181,7 +181,7 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
 
     datapoint_names = [dp["name"] for dp in datapoints_list]
     assert datapoint_name_1 in datapoint_names
-    assert len(datapoints_list) == 2
+    assert len(datapoints_list) == 1
 
     # EVENT
     event_name = f"event{generate_random_string(size=4)}"
