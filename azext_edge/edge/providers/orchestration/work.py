@@ -526,7 +526,7 @@ class WorkManager:
                 "[light_slate_gray]Azure IoT Operations",
                 style=Style(bold=True),
             )
-            header_grid.add_row(f"Workflow Id: [dark_orange3]{self._work_id}")
+            header_grid.add_row(f"Workflow correlation Id: [dark_orange3]{self._work_id}")
             header_grid.add_row(NewLine(1))
 
             content_grid = Table.grid(expand=False)
