@@ -6,7 +6,6 @@
 
 import pytest
 import json
-from time import sleep
 from typing import List
 from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
