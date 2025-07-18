@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from typing import List
 
 from ...generators import generate_random_string
@@ -12,7 +13,7 @@ from .namespace_helpers import create_config_file, assert_point_properties, asse
 
 
 # TODO fix up tests to work with linux
-# pytestmark = pytest.mark.rpsaas
+pytestmark = pytest.mark.rpsaas
 
 
 def test_namespace_custom_asset_dataset_lifecycle_operations(
