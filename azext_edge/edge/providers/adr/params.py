@@ -1274,6 +1274,23 @@ def load_adr_arguments(self, _):
                 arg_group="Default Event",
             )
 
+        with self.argument_context(f"iot ops ns asset rest {command}") as context:
+            context.argument(
+                "rest_dataset_sampling_interval",
+                options_list=["--sampling-int", "--si"],
+                help="Sampling interval for datasets in milliseconds. Minimum: -1.",
+                type=int,
+            )
+            context.argument(
+                "dataset_destinations",
+                options_list=["--dataset-dest", "--dsd"],
+                help="Key=value pairs representing the destination for datasets. "
+                "Allowed arguments include: `key` for BrokerStateStore or "
+                "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are "
+                "`Never` and `Keep` and allowed values for `qos` are `Qos0` and `Qos1`.",
+                nargs="+",
+            )
+
     # shared dataset, event, stream, management arguments
     for asset_type in ("custom", "opcua", "onvif", "media", "rest"):
         with self.argument_context(f"iot ops ns asset {asset_type} dataset") as context:

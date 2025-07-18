@@ -2528,7 +2528,7 @@ def load_iotops_adr_help():
         - name: Create a REST asset with dataset configuration
           text: >
             az iot ops ns asset rest create --name myRestAsset --instance myInstance -g myInstanceResourceGroup
-            --device myRestDevice --endpoint-name myRestEndpoint --rest-dataset-sampling-int 5000
+            --device myRestDevice --endpoint-name myRestEndpoint --sampling-int 5000
 
         - name: Create a REST asset with dataset destination
           text: >
@@ -2539,7 +2539,7 @@ def load_iotops_adr_help():
         - name: Create a REST asset with custom configuration and BrokerStateStore destination
           text: >
             az iot ops ns asset rest create --name myRestAsset --instance myInstance -g myInstanceResourceGroup
-            --device myRestDevice --endpoint-name myRestEndpoint --rest-dataset-sampling-int 2000
+            --device myRestDevice --endpoint-name myRestEndpoint --sampling-int 2000
             --dataset-dest key="rest-data-cache"
 
         - name: Create a REST asset with additional metadata
@@ -2568,11 +2568,6 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset rest update --name myRestAsset --instance myInstance -g myInstanceResourceGroup
             --description "Updated temperature sensor API" --display-name "Main Warehouse Temperature"
-
-        - name: Update a REST asset's dataset configuration
-          text: >
-            az iot ops ns asset rest update --name myRestAsset --instance myInstance -g myInstanceResourceGroup
-            --rest-dataset-sampling-int 10000
 
         - name: Update a REST asset's dataset destination to MQTT
           text: >

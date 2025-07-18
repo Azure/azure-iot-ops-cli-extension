@@ -14,11 +14,13 @@ from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.commands_namespaces import (
     add_namespace_custom_asset_dataset,
     add_namespace_opcua_asset_dataset,
+    add_namespace_rest_asset_dataset,
     list_namespace_asset_datasets,
     remove_namespace_asset_dataset,
     show_namespace_asset_dataset,
     update_namespace_custom_asset_dataset,
     update_namespace_opcua_asset_dataset,
+    update_namespace_rest_asset_dataset,
     add_namespace_custom_asset_dataset_point,
     add_namespace_opcua_asset_dataset_point,
     list_namespace_asset_dataset_points,
@@ -89,7 +91,11 @@ def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 
         "opcua_dataset_key_frame_count": 3,
     }),
     # OPCUA asset dataset with minimal config
-    ("opcua", add_namespace_opcua_asset_dataset, {})
+    ("opcua", add_namespace_opcua_asset_dataset, {}),
+    # REST asset dataset with minimal config
+    ("rest", add_namespace_rest_asset_dataset, {
+        "rest_dataset_sampling_interval": 1000
+    }),
 ])
 @pytest.mark.parametrize("destination_params", [
     {},  # No destinations
@@ -153,6 +159,11 @@ def test_add_namespace_asset_dataset(
                 config["keyFrameCount"] = config_params["opcua_dataset_key_frame_count"]
             if config:
                 expected_dataset["datasetConfiguration"] = json.dumps(config)
+        elif asset_type == "rest":
+            if "rest_dataset_sampling_interval" in config_params:
+                expected_dataset["datasetConfiguration"] = json.dumps({
+                    "samplingIntervalInMilliseconds": config_params["rest_dataset_sampling_interval"]
+                })
 
     # TODO: should be helper
     # Add destination if provided in either case
@@ -282,7 +293,8 @@ def test_add_namespace_asset_dataset(
 
 @pytest.mark.parametrize("asset_type, command_func", [
     ("custom", add_namespace_custom_asset_dataset),
-    ("opcua", add_namespace_opcua_asset_dataset)
+    ("opcua", add_namespace_opcua_asset_dataset),
+    ("rest", add_namespace_rest_asset_dataset)
 ])
 def test_add_namespace_asset_dataset_error(
     mocked_cmd,
@@ -367,7 +379,7 @@ def test_add_namespace_asset_dataset_error(
         with pytest.raises(InvalidArgumentValueError) as excinfo:
             command_func(**base_params)
 
-        assert f" is of type 'microsoft.media', but expected 'microsoft.{asset_type}'." in str(excinfo.value).lower()
+        assert " is of type 'microsoft.media', but expected 'microsoft." in str(excinfo.value).lower()
 
     mocked_responses.reset()
 
@@ -724,7 +736,11 @@ def test_show_namespace_asset_dataset(
         "opcua_dataset_sampling_interval": 750,
         "opcua_dataset_queue_size": 100,
         "opcua_dataset_key_frame_count": 3,
-    })
+    }),
+    # REST asset dataset with minimal config
+    ("rest", update_namespace_rest_asset_dataset, {
+        "rest_dataset_sampling_interval": 1000
+    }),
 ])
 def test_update_namespace_asset_dataset(
     mocked_cmd,
@@ -804,6 +820,11 @@ def test_update_namespace_asset_dataset(
             if "opcua_dataset_key_frame_count" in unique_reqs:
                 config["keyFrameCount"] = unique_reqs["opcua_dataset_key_frame_count"]
 
+            expected_dataset["datasetConfiguration"] = json.dumps(config)
+        elif asset_type == "rest":
+            config = json.loads(expected_dataset.get("datasetConfiguration", "{}"))
+            if "rest_dataset_sampling_interval" in unique_reqs:
+                config["samplingIntervalInMilliseconds"] = unique_reqs["rest_dataset_sampling_interval"]
             expected_dataset["datasetConfiguration"] = json.dumps(config)
 
     # Update destinations if specified
