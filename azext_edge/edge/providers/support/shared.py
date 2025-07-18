@@ -4,11 +4,20 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from functools import partial
+
+from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 
 from ..k8s.config_map import get_config_map
 from ..orchestration.base import ARC_CONFIG_MAP, ARC_NAMESPACE
-from .base import process_events, process_nodes, process_storage_classes, get_custom_objects
+from .base import (
+    process_events,
+    process_nodes,
+    process_storage_classes,
+    get_custom_objects,
+    process_cluster_resources_by_type,
+)
 
 logger = get_logger(__name__)
 
@@ -52,6 +61,12 @@ support_shared_elements = {
     "extensionconfigs": process_extension_configs,
     "storageclasses": process_storage_classes,
     "arc": process_arc_kpis,
+    "validatingwebhooks": partial(
+        process_cluster_resources_by_type, resource_type=BundleResourceKind.validatingwebhook
+    ),
+    "mutatingwebhooks": partial(
+        process_cluster_resources_by_type, resource_type=BundleResourceKind.mutatingwebhook
+    ),
 }
 
 

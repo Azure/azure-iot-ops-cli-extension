@@ -7,6 +7,7 @@
 from functools import partial
 from typing import Iterable, Optional
 
+from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 
 from ..edge_api import DATAFLOW_ACTIVE_API, EdgeResourceApi
@@ -59,18 +60,10 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     )
 
 
-def fetch_validating_webhook_configurations():
-    return process_validating_webhook_configurations(
-        directory_path=DATAFLOW_DIRECTORY_PATH,
-        label_selector=DATAFLOW_NAME_LABEL,
-    )
-
-
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "services": fetch_services,
     "replicasets": fetch_replicasets,
-    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 
@@ -87,3 +80,9 @@ def prepare_bundle(
     dataflow_to_run.update(support_runtime_elements)
 
     return dataflow_to_run
+
+
+def get_cluster_resource_selectors():
+    return {
+        BundleResourceKind.validatingwebhook.value: [DATAFLOW_NAME_LABEL],
+    }

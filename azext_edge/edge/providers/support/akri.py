@@ -7,6 +7,7 @@
 from functools import partial
 from typing import Iterable, Optional
 
+from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 
 from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
@@ -62,19 +63,11 @@ def fetch_replicasets():
     return process_replicasets(directory_path=AKRI_DIRECTORY_PATH, label_selector=AKRI_NAME_LABEL_V2)
 
 
-def fetch_validating_webhook_configurations():
-    return process_validating_webhook_configurations(
-        directory_path=AKRI_DIRECTORY_PATH,
-        label_selector=AKRI_NAME_LABEL_V2,
-    )
-
-
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "statefulsets": fetch_statefulsets,
     "services": fetch_services,
-    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 
@@ -88,3 +81,10 @@ def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS, apis: Optional[Iterabl
     akri_to_run.update(support_runtime_elements)
 
     return akri_to_run
+
+
+def get_cluster_resource_selectors():
+    """Return configuration for cluster-wide resources this module wants to collect."""
+    return {
+        BundleResourceKind.validatingwebhook.value: [AKRI_NAME_LABEL_V2],
+    }

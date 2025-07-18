@@ -7,6 +7,7 @@
 from functools import partial
 from typing import Iterable, Optional
 
+from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 
 from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT
@@ -99,20 +100,12 @@ def fetch_services():
     )
 
 
-def fetch_validating_webhook_configurations():
-    return process_validating_webhook_configurations(
-        directory_path=ARC_BILLING_DIRECTORY_PATH,
-        label_selector=BILLING_WEBHOOK_COMP_LABEL,
-    )
-
-
 support_runtime_elements = {
     "cronjobs": fetch_cron_jobs,
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "jobs": fetch_jobs,
-    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 
@@ -129,3 +122,10 @@ def prepare_bundle(
     billing_to_run.update(support_runtime_elements)
 
     return billing_to_run
+
+
+def get_cluster_resource_selectors():
+    """Return configuration for cluster-wide resources this module wants to collect."""
+    return {
+        BundleResourceKind.validatingwebhook.value: [BILLING_WEBHOOK_COMP_LABEL],
+    }

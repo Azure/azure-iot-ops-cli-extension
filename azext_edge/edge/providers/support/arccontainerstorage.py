@@ -7,6 +7,7 @@
 from functools import partial
 from typing import Iterable, Optional
 
+from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 
 from ..edge_api import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1, EdgeResourceApi
@@ -130,11 +131,11 @@ def fetch_configmaps():
     )
 
 
-def fetch_validating_webhook_configurations():
-    return process_validating_webhook_configurations(
-        directory_path=STORAGE_DIRECTORY_PATH,
-        label_selector=ARCCONTAINERSTORAGE_WEBHOOK_LABEL,
-    )
+def get_cluster_resource_selectors():
+    """Return configuration for cluster-wide resources this module wants to collect."""
+    return {
+        BundleResourceKind.validatingwebhook.value: [ARCCONTAINERSTORAGE_WEBHOOK_LABEL],
+    }
 
 
 support_runtime_elements = {
@@ -144,7 +145,6 @@ support_runtime_elements = {
     "persistentvolumeclaims": fetch_peristent_volume_claims,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
-    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 

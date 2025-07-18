@@ -6,6 +6,7 @@
 
 from functools import partial
 
+from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 
 from .base import (
@@ -122,30 +123,6 @@ def fetch_cluster_role_bindings():
     return results
 
 
-def fetch_mutating_webhooks():
-    results = []
-    for label_selector in MESO_LABEL_SELECTORS:
-        results.extend(
-            process_mutating_webhook_configurations(
-                directory_path=MESO_DIRECTORY_PATH,
-                label_selector=label_selector,
-            )
-        )
-    return results
-
-
-def fetch_validating_webhooks():
-    results = []
-    for label_selector in MESO_LABEL_SELECTORS:
-        results.extend(
-            process_validating_webhook_configurations(
-                directory_path=MESO_DIRECTORY_PATH,
-                label_selector=label_selector,
-            )
-        )
-    return results
-
-
 support_runtime_elements = {
     "configmaps": fetch_config_maps,
     "deployments": fetch_deployments,
@@ -153,8 +130,6 @@ support_runtime_elements = {
     "services": fetch_services,
     "clusterroles": fetch_cluster_roles,
     "clusterrolebindings": fetch_cluster_role_bindings,
-    "mutatingwebhooks": fetch_mutating_webhooks,
-    "validatingwebhooks": fetch_validating_webhooks,
 }
 
 
@@ -165,3 +140,12 @@ def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS) -> dict:
     meso_to_run.update(support_runtime_elements)
 
     return meso_to_run
+
+
+def get_cluster_resource_selectors():
+    return {
+        BundleResourceKind.mutatingwebhook.value: MESO_LABEL_SELECTORS,
+        BundleResourceKind.validatingwebhook.value: MESO_LABEL_SELECTORS,
+        BundleResourceKind.clusterrole.value: MESO_LABEL_SELECTORS,
+        BundleResourceKind.clusterrolebinding.value: MESO_LABEL_SELECTORS,
+    }

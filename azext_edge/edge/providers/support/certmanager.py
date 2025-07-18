@@ -7,6 +7,7 @@
 from functools import partial
 from typing import Iterable, Optional
 
+from azext_edge.edge.common import BundleResourceKind
 from azext_edge.edge.providers.support.common import NAME_LABEL_FORMAT, RESOURCE_NAME_FORMAT
 from knack.log import get_logger
 
@@ -78,29 +79,11 @@ def fetch_configmaps():
     return processed
 
 
-def fetch_validating_webhooks():
-    results = []
-    results.extend(
-        process_validating_webhook_configurations(
-            directory_path=CERT_DIRECTORY_PATH,
-            label_selector=TRUST_MANAGER_WEBHOOK_LABEL,
-        )
-    )
-    results.extend(
-        process_validating_webhook_configurations(
-            directory_path=CERT_DIRECTORY_PATH,
-            label_selector=CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
-        )
-    )
-    return results
-
-
 support_runtime_elements = {
     "configmaps": fetch_configmaps,
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
-    "validatingwebhooks": fetch_validating_webhooks,
 }
 
 
@@ -117,3 +100,12 @@ def prepare_bundle(
     monitor_to_run.update(support_runtime_elements)
 
     return monitor_to_run
+
+
+def get_cluster_resource_selectors():
+    return {
+        BundleResourceKind.validatingwebhook.value: [
+            TRUST_MANAGER_WEBHOOK_LABEL,
+            CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
+        ],
+    }

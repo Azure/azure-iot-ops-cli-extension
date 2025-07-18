@@ -7,6 +7,7 @@
 from functools import partial
 from typing import Iterable, Optional
 
+from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 
 from ..edge_api import META_API_V1, EdgeResourceApi, MesoResourceKinds
@@ -73,28 +74,11 @@ def fetch_jobs():
         exclude_prefixes=[AIO_USAGE_PREFIX, BILLING_RESOURCE_KIND],
     )
 
-
-def fetch_mutating_webhook_configurations():
-    return process_mutating_webhook_configurations(
-        directory_path=META_DIRECTORY_PATH,
-        label_selector=META_NAME_LABEL,
-    )
-
-
-def fetch_validating_webhook_configurations():
-    return process_validating_webhook_configurations(
-        directory_path=META_DIRECTORY_PATH,
-        label_selector=META_NAME_LABEL,
-    )
-
-
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "jobs": fetch_jobs,
-    "mutatingwebhooks": fetch_mutating_webhook_configurations,
-    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 
@@ -110,3 +94,10 @@ def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS, apis: Optional[Iterabl
     meta_to_run.update(support_runtime_elements)
 
     return meta_to_run
+
+
+def get_cluster_resource_selectors():
+    return {
+        BundleResourceKind.mutatingwebhook.value: [META_NAME_LABEL],
+        BundleResourceKind.validatingwebhook.value: [META_NAME_LABEL],
+    }
