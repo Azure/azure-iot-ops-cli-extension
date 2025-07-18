@@ -698,6 +698,7 @@ def load_adr_arguments(self, _):
             options_list=["--version"],
             help="Endpoint version.",
         )
+        # TODO: add description of how to use these in the wiki
         context.argument(
             "certificate_reference",
             options_list=["--certificate-ref", "--cert-ref"],
