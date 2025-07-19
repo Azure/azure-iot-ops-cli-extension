@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
@@ -18,9 +18,8 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
-    process_validating_webhook_configurations,
 )
-from .common import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT, ResourceSelectors
 
 logger = get_logger(__name__)
 
@@ -82,7 +81,9 @@ def prepare_bundle(
     return dataflow_to_run
 
 
-def get_cluster_resource_selectors():
+def get_cluster_resource_selectors() -> Dict[str, ResourceSelectors]:
     return {
-        BundleResourceKind.validatingwebhook.value: [DATAFLOW_NAME_LABEL],
+        BundleResourceKind.validatingwebhook.value: ResourceSelectors(
+            label_selectors=[DATAFLOW_NAME_LABEL],
+        ),
     }

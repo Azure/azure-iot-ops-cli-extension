@@ -5,13 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
-from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 
+from ...common import BundleResourceKind
 from ..edge_api import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1, EdgeResourceApi
-from .common import NAME_LABEL_FORMAT
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
@@ -22,8 +21,8 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
-    process_validating_webhook_configurations,
 )
+from .common import NAME_LABEL_FORMAT, ResourceSelectors
 
 logger = get_logger(__name__)
 
@@ -131,10 +130,11 @@ def fetch_configmaps():
     )
 
 
-def get_cluster_resource_selectors():
-    """Return configuration for cluster-wide resources this module wants to collect."""
+def get_cluster_resource_selectors() -> Dict[str, ResourceSelectors]:
     return {
-        BundleResourceKind.validatingwebhook.value: [ARCCONTAINERSTORAGE_WEBHOOK_LABEL],
+        BundleResourceKind.validatingwebhook.value: ResourceSelectors(
+            label_selectors=[ARCCONTAINERSTORAGE_WEBHOOK_LABEL],
+        ),
     }
 
 

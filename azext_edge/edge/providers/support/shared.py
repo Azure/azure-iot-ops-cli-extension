@@ -16,7 +16,7 @@ from .base import (
     process_nodes,
     process_storage_classes,
     get_custom_objects,
-    process_cluster_resources_by_type,
+    bundle_cluster_resources_by_type,
 )
 
 logger = get_logger(__name__)
@@ -62,10 +62,10 @@ support_shared_elements = {
     "storageclasses": process_storage_classes,
     "arc": process_arc_kpis,
     "validatingwebhooks": partial(
-        process_cluster_resources_by_type, resource_type=BundleResourceKind.validatingwebhook
+        bundle_cluster_resources_by_type, resource_type=BundleResourceKind.validatingwebhook
     ),
     "mutatingwebhooks": partial(
-        process_cluster_resources_by_type, resource_type=BundleResourceKind.mutatingwebhook
+        bundle_cluster_resources_by_type, resource_type=BundleResourceKind.mutatingwebhook
     ),
 }
 

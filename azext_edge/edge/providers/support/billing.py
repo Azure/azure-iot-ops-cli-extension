@@ -5,12 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 
-from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT
+from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT, NAME_LABEL_FORMAT, ResourceSelectors
 
 from ..edge_api import CLUSTER_CONFIG_API_V1, EdgeResourceApi
 from .base import (
@@ -22,7 +22,6 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
-    process_validating_webhook_configurations,
 )
 
 logger = get_logger(__name__)
@@ -124,8 +123,9 @@ def prepare_bundle(
     return billing_to_run
 
 
-def get_cluster_resource_selectors():
-    """Return configuration for cluster-wide resources this module wants to collect."""
+def get_cluster_resource_selectors() -> Dict[str, ResourceSelectors]:
     return {
-        BundleResourceKind.validatingwebhook.value: [BILLING_WEBHOOK_COMP_LABEL],
+        BundleResourceKind.validatingwebhook.value: ResourceSelectors(
+            label_selectors=[BILLING_WEBHOOK_COMP_LABEL],
+        ),
     }

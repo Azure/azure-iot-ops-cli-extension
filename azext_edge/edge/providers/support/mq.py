@@ -5,9 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 from zipfile import ZipInfo
 
+from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
 
 from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi
@@ -23,9 +24,8 @@ from .base import (
     process_services,
     process_statefulset,
     process_v1_pods,
-    process_validating_webhook_configurations,
 )
-from .common import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT, ResourceSelectors
 
 logger = get_logger(__name__)
 
@@ -111,11 +111,13 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     )
 
 
-def fetch_validating_webhook_configurations():
-    return process_validating_webhook_configurations(
-        directory_path=MQ_DIRECTORY_PATH,
-        label_selector=MQ_NAME_LABEL,
-    )
+def get_cluster_resource_selectors() -> Dict[str, ResourceSelectors]:
+    return {
+        BundleResourceKind.validatingwebhook.value: ResourceSelectors(
+            label_selectors=[MQ_NAME_LABEL],
+        ),
+    }
+
 
 
 support_runtime_elements = {
@@ -125,7 +127,6 @@ support_runtime_elements = {
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "daemonsets": fetch_daemonsets,
-    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 

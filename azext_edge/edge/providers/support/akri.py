@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
@@ -20,9 +20,8 @@ from .base import (
     process_services,
     process_statefulset,
     process_v1_pods,
-    process_validating_webhook_configurations,
 )
-from .common import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT, ResourceSelectors
 
 logger = get_logger(__name__)
 
@@ -83,8 +82,9 @@ def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS, apis: Optional[Iterabl
     return akri_to_run
 
 
-def get_cluster_resource_selectors():
-    """Return configuration for cluster-wide resources this module wants to collect."""
+def get_cluster_resource_selectors() -> Dict[str, ResourceSelectors]:
     return {
-        BundleResourceKind.validatingwebhook.value: [AKRI_NAME_LABEL_V2],
+        BundleResourceKind.validatingwebhook.value: ResourceSelectors(
+            label_selectors=[AKRI_NAME_LABEL_V2],
+        ),
     }

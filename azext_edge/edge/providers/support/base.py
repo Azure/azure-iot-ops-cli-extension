@@ -4,34 +4,35 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from pathlib import PurePath
-from typing import Callable, List, Dict, Optional, Iterable, Tuple, TypeVar, Union
 from functools import partial
+from pathlib import PurePath
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, TypeVar, Union
 
-from azext_edge.edge.common import BundleResourceKind, PodState
-from azext_edge.edge.providers.support.common import ClusterResourceConfig
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import (
     V1Container,
-    V1ObjectMeta,
-    V1PodSpec,
-    V1PodList,
-    V1ServiceList,
-    V1DeploymentList,
-    V1StatefulSetList,
-    V1ReplicaSetList,
-    V1DaemonSetList,
-    V1PersistentVolumeClaimList,
-    V1JobList,
     V1CronJobList,
+    V1DaemonSetList,
+    V1DeploymentList,
+    V1JobList,
     V1MutatingWebhookConfigurationList,
+    V1ObjectMeta,
+    V1PersistentVolumeClaimList,
+    V1PodList,
+    V1PodSpec,
+    V1ReplicaSetList,
+    V1ServiceList,
+    V1StatefulSetList,
     V1ValidatingWebhookConfigurationList,
 )
 
-from ..edge_api import EdgeResourceApi
-from ..base import client, get_custom_objects
+from azext_edge.edge.common import BundleResourceKind, PodState
+from azext_edge.edge.providers.support.common import ClusterResourceConfig, ResourceSelectors
+
 from ...util import get_timestamp_now_utc
+from ..base import client, get_custom_objects
+from ..edge_api import EdgeResourceApi
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
@@ -542,44 +543,6 @@ def process_cron_jobs(
     )
 
 
-def process_mutating_webhook_configurations(
-    directory_path: str,
-    field_selector: Optional[str] = None,
-    label_selector: Optional[str] = None,
-    prefix_names: Optional[List[str]] = None,
-) -> List[dict]:
-    admission_api = client.AdmissionregistrationV1Api()
-    webhooks: V1MutatingWebhookConfigurationList = admission_api.list_mutating_webhook_configuration(
-        label_selector=label_selector, field_selector=field_selector
-    )
-
-    return _process_kubernetes_resources(
-        directory_path=directory_path,
-        resources=webhooks,
-        prefix_names=prefix_names,
-        kind=BundleResourceKind.mutatingwebhook.value,
-    )
-
-
-def process_validating_webhook_configurations(
-    directory_path: str,
-    field_selector: Optional[str] = None,
-    label_selector: Optional[str] = None,
-    prefix_names: Optional[List[str]] = None,
-) -> List[dict]:
-    admission_api = client.AdmissionregistrationV1Api()
-    webhooks: V1ValidatingWebhookConfigurationList = admission_api.list_validating_webhook_configuration(
-        label_selector=label_selector, field_selector=field_selector
-    )
-
-    return _process_kubernetes_resources(
-        directory_path=directory_path,
-        resources=webhooks,
-        prefix_names=prefix_names,
-        kind=BundleResourceKind.validatingwebhook.value,
-    )
-
-
 def assemble_crd_work(
     apis: Iterable[EdgeResourceApi],
     file_prefix_map: Optional[Dict[str, str]] = None,
@@ -728,29 +691,37 @@ def _get_cluster_resource_configs() -> Dict[str, ClusterResourceConfig]:
     """Get configuration for supported cluster resource types."""
     return {
         BundleResourceKind.mutatingwebhook.value: ClusterResourceConfig(
-            api_call=lambda api, selector: api.list_mutating_webhook_configuration(label_selector=selector),
-            api_client=client.AdmissionregistrationV1Api,
-            list_type=V1MutatingWebhookConfigurationList,
+            api_call=lambda label_selector, field_selector: client.AdmissionregistrationV1Api().list_mutating_webhook_configuration(
+                label_selector=label_selector, field_selector=field_selector
+            ),
             filename="mutating-webhook-configurations.yaml",
         ),
         BundleResourceKind.validatingwebhook.value: ClusterResourceConfig(
-            api_call=lambda api, selector: api.list_validating_webhook_configuration(label_selector=selector),
-            api_client=client.AdmissionregistrationV1Api,
-            list_type=V1ValidatingWebhookConfigurationList,
+            api_call=lambda label_selector, field_selector: client.AdmissionregistrationV1Api().list_validating_webhook_configuration(
+                label_selector=label_selector, field_selector=field_selector
+            ),
             filename="validating-webhook-configurations.yaml",
         ),
     }
 
 
-def _collect_label_selectors_for_resource_type(resource_type_str: str) -> List[str]:
-    """Collect cluster-wide resources by selectors from all service modules."""
-    from .meso import get_cluster_resource_selectors as get_meso_resource_selectors
-    from .meta import get_cluster_resource_selectors as get_meta_resource_selectors
+def _collect_selectors_for_resource_type(resource_type_str: str) -> Tuple[List[str], List[str]]:
+    """
+    Collect label and field selectors for cluster-wide resources from all service modules.
+
+    Returns:
+        Tuple[List[str], List[str]]: (label_selectors, field_selectors)
+
+    Note: Label selectors represent OR logic (any of these labels should match),
+    so they cannot be combined into a single API call.
+    """
     from .akri import get_cluster_resource_selectors as get_akri_resource_selectors
     from .arccontainerstorage import get_cluster_resource_selectors as get_arccontainerstorage_resource_selectors
     from .billing import get_cluster_resource_selectors as get_billing_resource_selectors
     from .certmanager import get_cluster_resource_selectors as get_certmanager_resource_selectors
     from .dataflow import get_cluster_resource_selectors as get_dataflow_resource_selectors
+    from .meso import get_cluster_resource_selectors as get_meso_resource_selectors
+    from .meta import get_cluster_resource_selectors as get_meta_resource_selectors
 
     # List of all service selector functions
     service_selector_functions = [
@@ -764,78 +735,88 @@ def _collect_label_selectors_for_resource_type(resource_type_str: str) -> List[s
     ]
 
     all_label_selectors = []
+    all_field_selectors = []
 
     for get_selectors_func in service_selector_functions:
         try:
-            resource_label_selectors = get_selectors_func()
-            if resource_type_str in resource_label_selectors:
-                selectors = resource_label_selectors[resource_type_str]
-                if isinstance(selectors, list):
-                    all_label_selectors.extend(selectors)
-                elif selectors:  # Handle single string selector
-                    all_label_selectors.append(selectors)
+            resource_selectors = get_selectors_func()
+            if resource_type_str in resource_selectors:
+                selectors: ResourceSelectors = resource_selectors[resource_type_str]
+                label_selectors = selectors.get("label_selectors", [])
+                field_selectors = selectors.get("field_selectors", [])
+
+                all_label_selectors.extend(label_selectors)
+                all_field_selectors.extend(field_selectors)
+
         except (ImportError, AttributeError) as e:
             logger.debug(f"Skipping selector function {get_selectors_func.__name__}: {e}")
 
-    return all_label_selectors
+    return all_label_selectors, all_field_selectors
 
 
-def _process_resource_config(api_client: Callable, api_call: Callable, label_selectors: List[str]) -> Optional[object]:
+def _fetch_grouped_resources_by_selectors(
+    api_call: Callable[[Optional[str], Optional[str]], Any], label_selectors: List[str], field_selectors: List[str]
+) -> Optional[object]:
     """
-    Processes and deduplicates resources returned by an API call based on provided label selectors.
-    This function iterates over a list of label selectors, invoking the given API call for each selector.
-    It collects resources, ensuring that each resource (identified by its metadata.name) is only included once.
-    The resulting deduplicated list of resources is returned in the structure of the first API response.
+    Queries Kubernetes API for resources based on provided label and field selectors.
+
     Args:
-        api_client (Callable): The API client instance used to make the API call.
-        api_call (Callable): A function that takes (api_client, label_selector) and returns a resource list.
-        label_selectors (List[str]): A list of label selector strings to filter resources.
+        api_call: A function that takes (label_selector, field_selector) and returns a resource list.
+        label_selectors: List of individual label selector strings (OR logic).
+        field_selectors: List of individual field selector strings (OR logic).
     Returns:
-        Optional[object]: A resource list object containing deduplicated resources, or None if no resources are found.
+        Optional[object]: A resource list object containing all resources, or None if no resources found.
     """
+    all_resources = []
+    resource_container = None
 
-    filtered_resources = []
-    seen_names = set()
-    resource_list = None 
-    
-    # TODO - smelly
-    for label_selector in label_selectors:
+    # Default to empty lists if no selectors provided
+    label_selectors = label_selectors or []
+    field_selectors = field_selectors or []
+
+    # If no selectors at all, return all API results
+    if not label_selectors and not field_selectors:
         try:
-            resources = api_call(api_client, label_selector)
-            # Store the first response to preserve the list structure
-            if resource_list is None:
-                resource_list = resources
-                resource_list.items = []
-
-            for resource in resources.items:
-                if resource.metadata.name not in seen_names:
-                    seen_names.add(resource.metadata.name)
-                    filtered_resources.append(resource)
+            result = api_call()
+            return result
         except Exception as e:
-            logger.debug(f"Error fetching resources with selector {label_selector}: {e}")
+            logger.debug(f"Error fetching resources with no selectors: {e}")
+            return None
 
-    # Populate the list with deduplicated items
-    if resource_list is not None:
-        resource_list.items = filtered_resources
-        return resource_list
+    # Process all label selectors
+    for label_selector in label_selectors:
+        fetched = api_call(label_selector, None)
+        if fetched and fetched.items:
+            all_resources.extend(fetched.items)
+        # Get a container object from any successful call
+        # TODO - remove need for this hacky container / type reference
+        if fetched and not resource_container:
+            resource_container = fetched
+            resource_container.items = []
+
+    # Process all field selectors
+    for field_selector in field_selectors:
+        fetched = api_call(None, field_selector)
+        if fetched and fetched.items:
+            all_resources.extend(fetched.items)
+        # Get a container object from any successful call
+        # TODO - remove need for this hacky container / type reference
+        if fetched and not resource_container:
+            resource_container = fetched
+            resource_container.items = []
+
+    # Return the container with all collected resources
+    if resource_container:
+        resource_container.items = all_resources
+        # TODO - do we need to deduplicate resources that may share labels between selectors
+        return resource_container
 
     return None
 
 
-def _create_cluster_resource_bundle_entry(resources: Optional[object], filename: str) -> Dict[str, Union[dict, str]]:
-    """Create a bundle entry for cluster resources."""
-    if resources:
-        data = generic.sanitize_for_serialization(obj=resources)
-        return {
-            "data": data,
-            "zinfo": filename,
-        }
-    return {}
-
-
-def process_cluster_resources_by_type(resource_type: Union[str, BundleResourceKind]) -> Dict[str, Union[dict, str]]:
+def bundle_cluster_resources_by_type(resource_type: Union[str, BundleResourceKind]) -> Dict[str, Union[dict, str]]:
     """
-    Generic function to process any cluster-wide resources by type using label selectors.
+    Generic function to process any cluster-wide resources by type using label and field selectors.
 
     Args:
         resource_type: The type of cluster resource to collect. Can be either a BundleResourceKind enum
@@ -852,17 +833,23 @@ def process_cluster_resources_by_type(resource_type: Union[str, BundleResourceKi
         logger.warning(f"Resource type '{resource_type_str}' not supported as a cluster-wide resource query")
         return {}
 
-    config = resource_configs[resource_type_str]
+    resource_config = resource_configs[resource_type_str]
 
-    # Collect label selectors from service modules
-    label_selectors = _collect_label_selectors_for_resource_type(resource_type_str)
-    if not label_selectors:
+    # Collect label and field selectors from service modules
+    label_selectors, field_selectors = _collect_selectors_for_resource_type(resource_type_str)
+    if not label_selectors and not field_selectors:
         return {}
 
-    # Fetch and deduplicate resources
-    filtered_items = _process_resource_config(
-        api_client=config["api_client"](), api_call=config["api_call"], label_selectors=label_selectors
+    # Fetch resources with multiple API calls (for OR logic) and deduplicate
+    items = _fetch_grouped_resources_by_selectors(
+        api_call=resource_config["api_call"], label_selectors=label_selectors, field_selectors=field_selectors
     )
 
     # Create bundle entry
-    return _create_cluster_resource_bundle_entry(filtered_items, config["filename"])
+    if items:
+        data = generic.sanitize_for_serialization(obj=items)
+        return {
+            "data": data,
+            "zinfo": resource_config["filename"],
+        }
+    return {}

@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
@@ -16,14 +16,12 @@ from .base import (
     assemble_crd_work,
     process_deployments,
     process_jobs,
-    process_mutating_webhook_configurations,
     process_replicasets,
     process_services,
     process_v1_pods,
-    process_validating_webhook_configurations,
 )
 from .billing import AIO_USAGE_PREFIX, BILLING_RESOURCE_KIND
-from .common import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT, ResourceSelectors
 from .meso import MESO_DIRECTORY_PATH
 
 logger = get_logger(__name__)
@@ -74,6 +72,7 @@ def fetch_jobs():
         exclude_prefixes=[AIO_USAGE_PREFIX, BILLING_RESOURCE_KIND],
     )
 
+
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
@@ -96,8 +95,12 @@ def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS, apis: Optional[Iterabl
     return meta_to_run
 
 
-def get_cluster_resource_selectors():
+def get_cluster_resource_selectors() -> Dict[str, ResourceSelectors]:
     return {
-        BundleResourceKind.mutatingwebhook.value: [META_NAME_LABEL],
-        BundleResourceKind.validatingwebhook.value: [META_NAME_LABEL],
+        BundleResourceKind.mutatingwebhook.value: ResourceSelectors(
+            label_selectors=[META_NAME_LABEL],
+        ),
+        BundleResourceKind.validatingwebhook.value: ResourceSelectors(
+            label_selectors=[META_NAME_LABEL],
+        ),
     }

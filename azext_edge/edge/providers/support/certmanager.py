@@ -5,10 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 from azext_edge.edge.common import BundleResourceKind
-from azext_edge.edge.providers.support.common import NAME_LABEL_FORMAT, RESOURCE_NAME_FORMAT
+from azext_edge.edge.providers.support.common import NAME_LABEL_FORMAT, RESOURCE_NAME_FORMAT, ResourceSelectors
 from knack.log import get_logger
 
 from ..edge_api import CERTMANAGER_API_V1, EdgeResourceApi
@@ -20,7 +20,6 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
-    process_validating_webhook_configurations,
 )
 
 logger = get_logger(__name__)
@@ -102,10 +101,12 @@ def prepare_bundle(
     return monitor_to_run
 
 
-def get_cluster_resource_selectors():
+def get_cluster_resource_selectors() -> Dict[str, ResourceSelectors]:
     return {
-        BundleResourceKind.validatingwebhook.value: [
-            TRUST_MANAGER_WEBHOOK_LABEL,
-            CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
-        ],
+        BundleResourceKind.validatingwebhook.value: ResourceSelectors(
+            label_selectors=[
+                TRUST_MANAGER_WEBHOOK_LABEL,
+                CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
+            ],
+        ),
     }

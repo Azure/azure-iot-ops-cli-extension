@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from functools import partial
+from typing import Dict
 
 from azext_edge.edge.common import BundleResourceKind
 from knack.log import get_logger
@@ -15,13 +16,11 @@ from .base import (
     process_cluster_roles,
     process_config_maps,
     process_deployments,
-    process_mutating_webhook_configurations,
     process_replicasets,
     process_services,
     process_v1_pods,
-    process_validating_webhook_configurations,
 )
-from .common import NAME_LABEL_FORMAT, RESOURCE_NAME_FORMAT
+from .common import NAME_LABEL_FORMAT, RESOURCE_NAME_FORMAT, ResourceSelectors
 
 logger = get_logger(__name__)
 
@@ -142,10 +141,12 @@ def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS) -> dict:
     return meso_to_run
 
 
-def get_cluster_resource_selectors():
+def get_cluster_resource_selectors() -> Dict[str, ResourceSelectors]:
     return {
-        BundleResourceKind.mutatingwebhook.value: MESO_LABEL_SELECTORS,
-        BundleResourceKind.validatingwebhook.value: MESO_LABEL_SELECTORS,
-        BundleResourceKind.clusterrole.value: MESO_LABEL_SELECTORS,
-        BundleResourceKind.clusterrolebinding.value: MESO_LABEL_SELECTORS,
+        BundleResourceKind.mutatingwebhook.value: ResourceSelectors(
+            label_selectors=MESO_LABEL_SELECTORS,
+        ),
+        BundleResourceKind.validatingwebhook.value: ResourceSelectors(
+            label_selectors=MESO_LABEL_SELECTORS,
+        ),
     }
