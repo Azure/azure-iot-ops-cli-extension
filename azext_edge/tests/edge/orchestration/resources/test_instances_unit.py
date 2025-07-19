@@ -20,8 +20,11 @@ from azext_edge.edge.commands_edge import (
     show_instance,
     update_instance,
 )
-from azext_edge.edge.commands_secretsync import secretsync_enable, secretsync_disable
-from azext_edge.edge.providers.orchestration.common import IdentityUsageType
+from azext_edge.edge.commands_secretsync import secretsync_disable, secretsync_enable
+from azext_edge.edge.providers.orchestration.common import (
+    CONTRIBUTOR_ROLE_ID,
+    IdentityUsageType,
+)
 from azext_edge.edge.providers.orchestration.resources import Instances
 from azext_edge.edge.providers.orchestration.resources.instances import (
     KEYVAULT_ROLE_ID_READER,
@@ -45,10 +48,10 @@ from .conftest import (
     BASE_URL,
     ZEROED_SUBSCRIPTION,
     append_role_assignment_endpoint,
+    echo_callback,
     get_base_endpoint,
     get_mock_resource,
     get_resource_id,
-    echo_callback,
 )
 from .test_clusters_unit import get_cluster_url, get_federated_creds_url
 from .test_custom_locations_unit import (
@@ -1098,6 +1101,14 @@ def test_secretsync_disable(
         },
     ],
 )
+@pytest.mark.parametrize(
+    "skip_sr_ra",
+    [None, True],
+)
+@pytest.mark.parametrize(
+    "custom_sr_role_id",
+    [None, "/custom/schema/role/id"],
+)
 def test_add_mi_user_assigned(
     mocked_cmd,
     mocked_responses: responses,
@@ -1105,6 +1116,8 @@ def test_add_mi_user_assigned(
     use_self_hosted_issuer: Optional[bool],
     fc_name: Optional[str],
     initial_identities: Optional[dict],
+    skip_sr_ra: Optional[bool],
+    custom_sr_role_id: Optional[str],
 ):
     oidc_issuer_def = {
         "oidcIssuerProfile": {
@@ -1215,6 +1228,35 @@ def test_add_mi_user_assigned(
         content_type="application/json",
     )
 
+    schema_ra_capture = None
+    instance_update_call_index = -1  # If no role assignment, instance update is last API call.
+    if usage_type == IdentityUsageType.SCHEMA.value and not skip_sr_ra:
+        instance_update_call_index = -3  # Role assignment adds 2 calls.
+        schema_registry_resource_id = instance_record["properties"]["schemaRegistryRef"]["resourceId"]
+        schema_ra_get_endpoint = append_role_assignment_endpoint(
+            resource_endpoint=f"{BASE_URL}{schema_registry_resource_id}",
+            filter_query=f"principalId eq '{principal_id}'",
+        )
+        mocked_responses.add(
+            method=responses.GET,
+            url=schema_ra_get_endpoint,
+            json={"value": []},
+            status=200,
+            content_type="application/json",
+        )
+
+        # Schema registry role assignment PUT mock
+        schema_ra_put_endpoint = append_role_assignment_endpoint(
+            resource_endpoint=f"{BASE_URL}{schema_registry_resource_id}", ra_name=".*"
+        )
+        schema_ra_capture = mocked_responses.add(
+            method=responses.PUT,
+            url=re.compile(schema_ra_put_endpoint),
+            json={},
+            status=200,
+            content_type="application/json",
+        )
+
     # Instance PUT
     mocked_responses.add_callback(method=responses.PUT, url=instance_endpoint, callback=echo_callback)
     result = instance_identity_assign(
@@ -1225,9 +1267,12 @@ def test_add_mi_user_assigned(
         federated_credential_name=fc_name,
         usage_type=usage_type,
         use_self_hosted_issuer=use_self_hosted_issuer,
+        skip_sr_ra=skip_sr_ra,
+        custom_sr_role_id=custom_sr_role_id,
         wait_sec=0.1,
     )
-    instance_put_request = list(mocked_responses.calls)[-1].request
+
+    instance_put_request = list(mocked_responses.calls)[instance_update_call_index].request
     instance_payload: dict = json.loads(instance_put_request.body)
     identity_payload = instance_payload.get("identity")
 
@@ -1246,3 +1291,27 @@ def test_add_mi_user_assigned(
     assert federation_payload["properties"]["subject"] == subject
     assert federation_payload["properties"]["issuer"] == oidc_issuer
     assert federation_payload["properties"]["audiences"] == ["api://AzureADTokenExchange"]
+
+    # Assert schema registry role assignment behavior
+    if usage_type == IdentityUsageType.SCHEMA.value:
+        if skip_sr_ra:
+            # Should not have called role assignment
+            assert not schema_ra_capture or not schema_ra_capture.calls
+            return
+
+        # Should have called role assignment
+        assert schema_ra_capture.calls
+        schema_ra_payload = json.loads(schema_ra_capture.calls[0].request.body)
+        assert schema_ra_payload["properties"]["principalId"] == principal_id
+        assert schema_ra_payload["properties"]["principalType"] == "ServicePrincipal"
+
+        # Check the correct role ID was used
+        if custom_sr_role_id:
+            assert schema_ra_payload["properties"]["roleDefinitionId"] == custom_sr_role_id
+        else:
+            # Should use default Contributor role
+            expected_role_id = (
+                f"/subscriptions/{ZEROED_SUBSCRIPTION}/providers/Microsoft.Authorization/roleDefinitions"
+                f"/{CONTRIBUTOR_ROLE_ID}"
+            )
+            assert schema_ra_payload["properties"]["roleDefinitionId"] == expected_role_id

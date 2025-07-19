@@ -143,7 +143,7 @@ def load_iotops_arguments(self, _):
             "custom_role_id",
             options_list=["--custom-role-id"],
             help="Fully qualified role definition Id in the following format: "
-            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}",
+            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}.",
         )
         context.argument(
             "skip_role_assignments",
@@ -158,6 +158,20 @@ def load_iotops_arguments(self, _):
             options_list=["--usage"],
             arg_type=get_enum_type(IdentityUsageType),
             help="Indicates the usage type of the associated identity.",
+        )
+        context.argument(
+            "skip_sr_ra",
+            options_list=["--skip-sr-ra"],
+            arg_type=get_three_state_flag(),
+            help="When used the role assignment step of the operation will be skipped. Only applicable "
+            "when --usage is set to 'schema'.",
+        )
+        context.argument(
+            "custom_sr_role_id",
+            options_list=["--custom-sr-role-id"],
+            help="Fully qualified role definition Id in the following format: "
+            "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}. Only "
+            "applicable when --usage is set to 'schema'.",
         )
 
     with self.argument_context("iot ops show") as context:
