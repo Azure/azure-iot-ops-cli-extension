@@ -1935,7 +1935,10 @@ def load_iotops_help():
         type: command
         short-summary: Assign a user-assigned managed identity with the instance.
         long-summary: |
-            This operation includes federation of the identity.
+            This operation includes federation of the identity for the applicable purpose.
+
+            When --usage 'schema' is present, by default, a role assignment of the identity against the
+            instance schema registry will be made if the expected role does not already exist.
 
         examples:
         - name: Assign and federate a desired user-assigned managed identity for use with dataflows.
@@ -1944,6 +1947,16 @@ def load_iotops_help():
         - name: Assign and federate a desired user-assigned managed identity for use with schema registry.
           text: >
             az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID --usage schema
+        - name: Assign and federate a desired user-assigned managed identity for use with schema registry with a
+            custom role to be used for the identity role assignment.
+          text: >
+            az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID --usage schema
+            --custom-sr-role-id $CUSTOM_ROLE_ID
+        - name: Assign and federate a desired user-assigned managed identity for use with schema registry but
+            skip the role assignment step of the operation.
+          text: >
+            az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID --usage schema
+            --skip-sr-ra
     """
 
     helps[
