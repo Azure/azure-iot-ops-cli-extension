@@ -9,7 +9,12 @@ from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
 from ....helpers import get_multi_kubectl_workload_items
-from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
+from .helpers import (
+    check_custom_resource_files,
+    check_workload_resource_files,
+    get_file_map,
+    run_bundle_command
+)
 
 logger = get_logger(__name__)
 
@@ -39,30 +44,30 @@ def test_create_bundle_billing(cluster_connection, tracked_files):
     # TODO: may not be able to use EdgeApiManager due to the files being in different folders
     # AIO
     check_custom_resource_files(
-        file_objs=file_map["aio"], resource_apis=CLUSTER_CONFIG_API_V1, namespace=file_map["__namespaces__"]["aio"]
+        file_objs=file_map["aio"],
+        resource_apis=CLUSTER_CONFIG_API_V1,
+        namespace=file_map["__namespaces__"]["aio"]
     )
     expected_types = set(AIO_WORKLOAD_TYPES).union(CLUSTER_CONFIG_API_V1.kinds)
     assert set(file_map["aio"].keys()).issubset(set(expected_types))
     check_workload_resource_files(
-        file_objs=file_map["aio"], pre_bundle_items=aio_workload_items, prefixes=AIO_PREFIXES, bundle_path=bundle_path
+        file_objs=file_map["aio"],
+        pre_bundle_items=aio_workload_items,
+        prefixes=AIO_PREFIXES,
+        bundle_path=bundle_path
     )
 
     # USAGE
     check_custom_resource_files(
-        file_objs=file_map["usage"], resource_apis=CLUSTER_CONFIG_API_V1, namespace=file_map["__namespaces__"]["usage"]
+        file_objs=file_map["usage"],
+        resource_apis=CLUSTER_CONFIG_API_V1,
+        namespace=file_map["__namespaces__"]["usage"]
     )
-
-    # Core billing workload types that should be present
-    core_billing_types = set(USAGE_WORKLOAD_TYPES)
-    actual_types = set(file_map["usage"].keys())
-
-    # Validate that core billing workload types are present (allow additional types)
-    assert core_billing_types.issubset(actual_types), "Missing core billing types. Expected core types "
-    f"{core_billing_types} to be subset of actual types {actual_types}"
-
+    expected_types = set(USAGE_WORKLOAD_TYPES).union(CLUSTER_CONFIG_API_V1.kinds)
+    assert set(file_map["usage"].keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=file_map["usage"],
         pre_bundle_items=usage_workload_items,
         prefixes=USAGE_PREFIXES,
-        bundle_path=bundle_path,
+        bundle_path=bundle_path
     )
