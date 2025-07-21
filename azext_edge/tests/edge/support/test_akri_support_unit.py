@@ -18,7 +18,6 @@ from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_replica_sets,
     assert_list_services,
     assert_list_stateful_sets,
-    assert_list_validating_webhooks,
 )
 
 from ...generators import generate_random_string
@@ -87,3 +86,18 @@ def test_create_bundle_akri(
         field_selector=None,
         directory_path=AKRI_DIRECTORY_PATH,
     )
+
+
+def test_get_cluster_resource_selectors():
+    from azext_edge.edge.common import BundleResourceKind
+    from azext_edge.edge.providers.support.akri import get_cluster_resource_selectors
+    
+    selectors = get_cluster_resource_selectors()
+
+    # Should have validating webhook selectors
+    assert BundleResourceKind.validatingwebhook.value in selectors
+    
+    # Validating webhook selectors should have expected structure
+    vwc_selectors = selectors[BundleResourceKind.validatingwebhook.value]
+    assert "label_selectors" in vwc_selectors
+    assert AKRI_NAME_LABEL_V2 in vwc_selectors["label_selectors"]

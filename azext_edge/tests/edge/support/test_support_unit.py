@@ -46,7 +46,6 @@ from azext_edge.edge.providers.support.billing import (
     ARC_BILLING_DIRECTORY_PATH,
     ARC_BILLING_EXTENSION_COMP_LABEL,
     BILLING_RESOURCE_KIND,
-    BILLING_WEBHOOK_COMP_LABEL,
 )
 from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT
 from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL

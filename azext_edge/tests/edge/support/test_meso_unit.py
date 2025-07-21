@@ -18,11 +18,9 @@ from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_cluster_roles,
     assert_list_config_maps,
     assert_list_deployments,
-    assert_list_mutating_webhooks,
     assert_list_pods,
     assert_list_replica_sets,
     assert_list_services,
-    assert_list_validating_webhooks,
 )
 
 from ...generators import generate_random_string
@@ -160,3 +158,21 @@ def test_create_bundle_meso(
         field_selector="metadata.name=aio-observability-operator-manager-role",
         directory_path=MESO_DIRECTORY_PATH,
     )
+
+
+def test_get_cluster_resource_selectors():
+    from azext_edge.edge.common import BundleResourceKind
+    from azext_edge.edge.providers.support.meso import get_cluster_resource_selectors
+
+    selectors = get_cluster_resource_selectors()
+
+    # Should have both mutating and validating webhook selectors
+    assert BundleResourceKind.mutatingwebhook.value in selectors
+    assert BundleResourceKind.validatingwebhook.value in selectors
+
+    # Both should have expected structure with MESO label selectors
+    for resource_type in [BundleResourceKind.mutatingwebhook.value, BundleResourceKind.validatingwebhook.value]:
+        webhook_selectors = selectors[resource_type]
+        assert "label_selectors" in webhook_selectors
+        assert MESO_NAME_LABEL in webhook_selectors["label_selectors"]
+        assert MESO_CLUSTER_METRICS_LABEL in webhook_selectors["label_selectors"]

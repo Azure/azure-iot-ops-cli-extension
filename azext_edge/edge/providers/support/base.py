@@ -691,14 +691,23 @@ def _get_cluster_resource_configs() -> Dict[str, ClusterResourceConfig]:
     """Get configuration for supported cluster resource types."""
     return {
         BundleResourceKind.mutatingwebhook.value: ClusterResourceConfig(
-            api_call=lambda label_selector, field_selector: client.AdmissionregistrationV1Api().list_mutating_webhook_configuration(
-                label_selector=label_selector, field_selector=field_selector
+            api_call=(
+                lambda label_selector, field_selector: (
+                    client.AdmissionregistrationV1Api().list_mutating_webhook_configuration(
+                        label_selector=label_selector,
+                        field_selector=field_selector,
+                    )
+                )
             ),
             filename="mutating-webhook-configurations.yaml",
         ),
         BundleResourceKind.validatingwebhook.value: ClusterResourceConfig(
-            api_call=lambda label_selector, field_selector: client.AdmissionregistrationV1Api().list_validating_webhook_configuration(
-                label_selector=label_selector, field_selector=field_selector
+            api_call=(
+                lambda label_selector, field_selector: (
+                    client.AdmissionregistrationV1Api().list_validating_webhook_configuration(
+                        label_selector=label_selector, field_selector=field_selector
+                    )
+                )
             ),
             filename="validating-webhook-configurations.yaml",
         ),
@@ -820,7 +829,8 @@ def bundle_cluster_resources_by_type(resource_type: Union[str, BundleResourceKin
 
     Args:
         resource_type: The type of cluster resource to collect. Can be either a BundleResourceKind enum
-                      or its string value (e.g., BundleResourceKind.validatingwebhook or "ValidatingWebhookConfiguration")
+                      or its string value
+                      (e.g., BundleResourceKind.validatingwebhook or "ValidatingWebhookConfiguration")
 
     Returns:
         Dict containing the serialized resource data and filename for the support bundle.

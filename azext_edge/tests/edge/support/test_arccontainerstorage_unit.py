@@ -10,7 +10,6 @@ from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.arccontainerstorage import (
     ARCCONTAINERSTORAGE_API_V1,
-    ARCCONTAINERSTORAGE_WEBHOOK_LABEL,
     ACSTOR_NAMESPACE,
     ACSTOR_DIRECTORY_PATH,
     CONTAINERSTORAGE_API_V1,
@@ -25,7 +24,6 @@ from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_pods,
     assert_list_replica_sets,
     assert_list_services,
-    assert_list_validating_webhooks,
 )
 
 from ...generators import generate_random_string
@@ -119,3 +117,21 @@ def test_create_bundle_acsa(
         directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
         namespace=STORAGE_NAMESPACE,
     )
+
+
+def test_get_cluster_resource_selectors():
+    from azext_edge.edge.common import BundleResourceKind
+    from azext_edge.edge.providers.support.arccontainerstorage import (
+        get_cluster_resource_selectors,
+        ARCCONTAINERSTORAGE_WEBHOOK_LABEL,
+    )
+    
+    selectors = get_cluster_resource_selectors()
+    
+    # Should have validating webhook selectors
+    assert BundleResourceKind.validatingwebhook.value in selectors
+    
+    # Validating webhook selectors should have expected structure
+    vwc_selectors = selectors[BundleResourceKind.validatingwebhook.value]
+    assert "label_selectors" in vwc_selectors
+    assert ARCCONTAINERSTORAGE_WEBHOOK_LABEL in vwc_selectors["label_selectors"]

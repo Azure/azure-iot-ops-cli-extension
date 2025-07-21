@@ -11,9 +11,7 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.certmanager import (
     CERT_DIRECTORY_PATH,
     CERT_MANAGER_NAMESPACE,
-    CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
     TRUST_BUNDLE_LABEL,
-    TRUST_MANAGER_WEBHOOK_LABEL,
 )
 from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_config_maps,
@@ -21,7 +19,6 @@ from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_pods,
     assert_list_replica_sets,
     assert_list_services,
-    assert_list_validating_webhooks,
 )
 
 from ...generators import generate_random_string
@@ -101,3 +98,23 @@ def test_create_bundle_certmanager(
         directory_path=CERT_DIRECTORY_PATH,
         namespace=CERT_MANAGER_NAMESPACE,
     )
+
+
+def test_get_cluster_resource_selectors():
+    from azext_edge.edge.common import BundleResourceKind
+    from azext_edge.edge.providers.support.certmanager import (
+        get_cluster_resource_selectors,
+        TRUST_MANAGER_WEBHOOK_LABEL,
+        CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
+    )
+    
+    selectors = get_cluster_resource_selectors()
+    
+    # Should have validating webhook selectors
+    assert BundleResourceKind.validatingwebhook.value in selectors
+    
+    # Validating webhook selectors
+    vwc_selectors = selectors[BundleResourceKind.validatingwebhook.value]
+    assert "label_selectors" in vwc_selectors
+    assert TRUST_MANAGER_WEBHOOK_LABEL in vwc_selectors["label_selectors"]
+    assert CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR in vwc_selectors["label_selectors"]
