@@ -119,7 +119,6 @@ def get_cluster_resource_selectors() -> Dict[str, ResourceSelectors]:
     }
 
 
-
 support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
     "configmaps": fetch_configmaps,

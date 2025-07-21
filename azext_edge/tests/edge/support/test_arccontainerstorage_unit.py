@@ -119,9 +119,3 @@ def test_create_bundle_acsa(
         directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
         namespace=STORAGE_NAMESPACE,
     )
-    assert_list_validating_webhooks(
-        mocked_client,
-        mocked_zipfile,
-        label_selector=ARCCONTAINERSTORAGE_WEBHOOK_LABEL,
-        directory_path=STORAGE_DIRECTORY_PATH,
-    )

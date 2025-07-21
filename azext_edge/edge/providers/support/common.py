@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from typing import Any, Callable, Dict, List, Optional, TypedDict
+from typing import Any, Callable, List, Optional, TypedDict
 
 # resource label formats
 COMPONENT_LABEL_FORMAT = "app.kubernetes.io/component in ({label})"

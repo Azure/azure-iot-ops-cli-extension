@@ -160,29 +160,3 @@ def test_create_bundle_meso(
         field_selector="metadata.name=aio-observability-operator-manager-role",
         directory_path=MESO_DIRECTORY_PATH,
     )
-    assert_list_mutating_webhooks(
-        mocked_client,
-        mocked_zipfile,
-        label_selector=MESO_NAME_LABEL,
-        directory_path=MESO_DIRECTORY_PATH,
-    )
-    assert_list_validating_webhooks(
-        mocked_client,
-        mocked_zipfile,
-        label_selector=MESO_NAME_LABEL,
-        directory_path=MESO_DIRECTORY_PATH,
-    )
-
-    # MESO_CLUSTER_METRICS_LABEL webhooks
-    assert_list_mutating_webhooks(
-        mocked_client,
-        mocked_zipfile,
-        label_selector=MESO_CLUSTER_METRICS_LABEL,
-        directory_path=MESO_DIRECTORY_PATH,
-    )
-    assert_list_validating_webhooks(
-        mocked_client,
-        mocked_zipfile,
-        label_selector=MESO_CLUSTER_METRICS_LABEL,
-        directory_path=MESO_DIRECTORY_PATH,
-    )

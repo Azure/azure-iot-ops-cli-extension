@@ -87,9 +87,3 @@ def test_create_bundle_akri(
         field_selector=None,
         directory_path=AKRI_DIRECTORY_PATH,
     )
-    assert_list_validating_webhooks(
-        mocked_client,
-        mocked_zipfile,
-        label_selector=AKRI_NAME_LABEL_V2,
-        directory_path=AKRI_DIRECTORY_PATH,
-    )

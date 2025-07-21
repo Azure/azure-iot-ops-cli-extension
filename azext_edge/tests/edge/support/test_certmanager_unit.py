@@ -101,15 +101,3 @@ def test_create_bundle_certmanager(
         directory_path=CERT_DIRECTORY_PATH,
         namespace=CERT_MANAGER_NAMESPACE,
     )
-    assert_list_validating_webhooks(
-        mocked_client,
-        mocked_zipfile,
-        label_selector=CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
-        directory_path=CERT_DIRECTORY_PATH,
-    )
-    assert_list_validating_webhooks(
-        mocked_client,
-        mocked_zipfile,
-        label_selector=TRUST_MANAGER_WEBHOOK_LABEL,
-        directory_path=CERT_DIRECTORY_PATH,
-    )

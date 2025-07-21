@@ -6,7 +6,7 @@
 
 from functools import partial
 from pathlib import PurePath
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException

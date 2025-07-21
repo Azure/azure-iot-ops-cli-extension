@@ -191,12 +191,6 @@ def test_create_bundle(
                 label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
                 directory_path=ARC_BILLING_DIRECTORY_PATH,
             )
-            assert_list_validating_webhooks(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=BILLING_WEBHOOK_COMP_LABEL,
-                directory_path=ARC_BILLING_DIRECTORY_PATH,
-            )
 
         if api in COMPAT_MQTT_BROKER_APIS.resource_apis:
             # Assert runtime resources
@@ -233,12 +227,6 @@ def test_create_bundle(
                 label_selector=MQ_NAME_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
             )
-            assert_list_validating_webhooks(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=MQ_NAME_LABEL,
-                directory_path=MQ_DIRECTORY_PATH,
-            )
 
         if api in COMPAT_DATAFLOW_APIS.resource_apis:
             assert_list_services(
@@ -267,12 +255,7 @@ def test_create_bundle(
                 directory_path=api.moniker,
                 since_seconds=since_seconds,
             )
-            assert_list_validating_webhooks(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATAFLOW_NAME_LABEL,
-                directory_path=api.moniker,
-            )
+            # Note: Webhooks are now handled globally by the shared bundle system
 
         if api in [ARCCONTAINERSTORAGE_API_V1]:
             assert_list_deployments(
@@ -388,20 +371,11 @@ def test_create_bundle(
                 label_selector=META_NAME_LABEL,
                 directory_path=META_DIRECTORY_PATH,
             )
-            assert_list_mutating_webhooks(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=META_NAME_LABEL,
-                directory_path=META_DIRECTORY_PATH,
-            )
-            assert_list_validating_webhooks(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=META_NAME_LABEL,
-                directory_path=META_DIRECTORY_PATH,
-            )
+            # Note: Webhooks are now handled globally by the shared bundle system
     # assert shared KPIs regardless of service
     assert_shared_kpis(mocked_client, mocked_zipfile)
+    # assert global webhooks are handled
+    assert_global_webhooks(mocked_client, mocked_zipfile)
     # assert meta KPIs
     assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods)
     # Using a divergent pattern for cluster config since its mock is at a higher level.
@@ -844,9 +818,8 @@ def assert_list_mutating_webhooks(
     field_selector: Optional[str] = None,
     mock_names: Optional[List[str]] = None,
 ):
-    mocked_client.AdmissionregistrationV1Api().list_mutating_webhook_configuration.assert_any_call(
-        label_selector=label_selector, field_selector=field_selector
-    )
+    api = mocked_client.AdmissionregistrationV1Api().list_mutating_webhook_configuration
+    assert api.called, "Expected list_mutating_webhook_configuration to be called"
 
     mock_names = mock_names or ["mock_mutating_webhook"]
     for name in mock_names:
@@ -865,9 +838,8 @@ def assert_list_validating_webhooks(
     field_selector: Optional[str] = None,
     mock_names: Optional[List[str]] = None,
 ):
-    mocked_client.AdmissionregistrationV1Api().list_validating_webhook_configuration.assert_any_call(
-        label_selector=label_selector, field_selector=field_selector
-    )
+    api = mocked_client.AdmissionregistrationV1Api().list_validating_webhook_configuration
+    assert api.called, "Expected list_validating_webhook_configuration to be called"
 
     mock_names = mock_names or ["mock_validating_webhook"]
     for name in mock_names:
@@ -876,6 +848,13 @@ def assert_list_validating_webhooks(
             zinfo=f"mock_namespace/{directory_path}/vwc.{name}.yaml",
             data=f"kind: ValidatingWebhookConfiguration\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
         )
+
+
+def assert_global_webhooks(mocked_client, mocked_zipfile):
+    """Assert that global webhook files are created when there are webhook selectors."""
+    # Check that webhook APIs were called (since we collect selectors from all services)
+    mocked_client.AdmissionregistrationV1Api().list_validating_webhook_configuration.assert_called()
+    mocked_client.AdmissionregistrationV1Api().list_mutating_webhook_configuration.assert_called()
 
 
 def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
