@@ -5,14 +5,14 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List
+import pytest
 
 from ...generators import generate_random_string
 from ...helpers import run
 from .namespace_helpers import create_config_file, assert_point_properties, assert_event_properties
 
 
-# TODO fix up tests to work with linux
-# pytestmark = pytest.mark.rpsaas
+pytestmark = pytest.mark.rpsaas_long_running
 
 
 def test_namespace_custom_asset_event_lifecycle_operations(

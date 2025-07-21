@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List
+import pytest
 
 from ...generators import generate_random_string
 from ...helpers import run
@@ -13,7 +14,7 @@ from .namespace_helpers import (
 )
 
 
-# pytestmark = pytest.mark.rpsaas
+pytestmark = pytest.mark.rpsaas_long_running
 
 
 def test_namespace_custom_asset_stream_lifecycle_operations(

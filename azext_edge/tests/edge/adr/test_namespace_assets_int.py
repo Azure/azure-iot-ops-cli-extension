@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 import pytest
-from time import sleep
 from typing import List
 from azext_edge.edge.util.common import parse_kvp_nargs
 
@@ -21,11 +20,11 @@ from .namespace_helpers import (
     assert_dataset_properties
 )
 
-# TODO fix up tests to work with linux
 pytestmark = pytest.mark.rpsaas
 
 
 def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], tracked_files: List[str]):
+    """Smoke test for namespace asset operations using custom asset type."""
     # 12 put/patch/delete calls
     # Setup test variables
     instance_name = require_init["instanceName"]
@@ -287,131 +286,6 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
         f"az iot ops ns asset delete --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} -y"
     )
-
-
-@pytest.mark.skip("no point since this is the same as above")
-def test_namespace_asset_custom_operations(require_init, tracked_resources: List[str]):
-    # Setup test variables
-    instance_name = require_init["instanceName"]
-    resource_group = require_init["resourceGroup"]
-    custom_location = require_init["customLocationId"]
-    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
-    endpoint_name_custom = f"custom-{generate_random_string(8)}"
-    asset_name_custom = f"custom-{generate_random_string(8, force_lower=True)}"
-
-    # Tags and attributes
-    common_tags = {"env": "test", "purpose": "automation"}
-    common_attrs = ["location=building1", "floor=3"]
-
-    # Create Device
-    result = run(
-        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-    tracked_resources.append(result["id"])
-
-    # Create device endpoints
-    for endpoint_name, endpoint_type in [
-        (endpoint_name_custom, "custom")
-    ]:
-        command = (
-            f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
-            f"--instance {instance_name} -g {resource_group} --device {device_name} "
-            f"--endpoint-address 'http://192.168.1.100:8000/onvif/device_service'"
-        )
-        if endpoint_type == "custom":
-            command += " --endpoint-type custom"
-        run(command)
-
-    # Create Custom asset with maximum inputs
-    asset_custom = run(
-        f"az iot ops ns asset custom create --name {asset_name_custom} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_custom} "
-        f"--description \"Custom Device\" --display-name \"Multi-Sensor\" --model \"Custom-MS100\" "
-        f"--manufacturer \"CustomDevices\" --serial-number \"CUST123456\" "
-        f"--dataset-config \"{{\\\"publishingInterval\\\": 1000}}\" "
-        f"--event-config \"{{\\\"queueSize\\\": 5}}\" "
-        f"--dataset-dest topic=\"custom/data\" qos=Qos1 retain=Keep ttl=3600 "
-        f"--event-dest topic=\"custom/events\" qos=Qos0 retain=Never ttl=3600 "
-        f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
-    )
-    tracked_resources.append(asset_custom["id"])
-
-    assert_asset_properties(
-        asset_custom,
-        name=asset_name_custom,
-        device=device_name,
-        endpoint=endpoint_name_custom,
-        description="Custom Device",
-        display_name="Multi-Sensor",
-        custom_location=custom_location
-    )
-
-    # Test show operation for an asset
-    shown_asset = run(
-        f"az iot ops ns asset show --name {asset_name_custom} --instance {instance_name} "
-        f"-g {resource_group}"
-    )
-
-    assert_asset_properties(
-        shown_asset,
-        name=asset_name_custom,
-        device=device_name,
-        endpoint=endpoint_name_custom,
-    )
-
-    # Update Custom asset
-    updated_custom = run(
-        f"az iot ops ns asset custom update --name {asset_name_custom} --instance {instance_name} "
-        f"-g {resource_group} --dataset-config \"{{\\\"publishingInterval\\\": 2000}}\" "
-        f"--event-config \"{{\\\"queueSize\\\": 10}}\" --software-revision \"v2.0\" "
-
-    )
-
-    assert_asset_properties(
-        updated_custom,
-        name=asset_name_custom,
-        software_revision="v2.0",
-    )
-
-    # Test query operation
-    queried_assets = run(
-        "az iot ops ns asset query"
-    )
-
-    asset_names = [asset["name"] for asset in queried_assets]
-    assert asset_name_custom in asset_names
-
-    # Query by specific device
-    device_assets = run(
-        f"az iot ops ns asset query --device {device_name}"
-    )
-
-    asset_names = [asset["name"] for asset in device_assets]
-    assert asset_name_custom in asset_names
-
-    # Query by asset name
-    named_asset = run(
-        f"az iot ops ns asset query --name {asset_name_custom}"
-    )
-
-    assert len(named_asset) == 1
-    assert named_asset[0]["name"] == asset_name_custom
-
-    # Test delete operation
-    run(
-        f"az iot ops ns asset delete --name {asset_name_custom} --instance {instance_name} "
-        f"-g {resource_group} -y"
-    )
-
-    sleep(30)  # Wait for deletion to propagate
-    # Verify deletion by querying
-    deleted_query = run(
-        "az iot ops ns asset query"
-    )
-
-    asset_names = [asset["name"] for asset in deleted_query]
-    assert asset_name_custom not in asset_names
 
 
 def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
