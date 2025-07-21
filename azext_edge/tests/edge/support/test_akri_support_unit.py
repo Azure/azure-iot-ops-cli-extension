@@ -91,12 +91,12 @@ def test_create_bundle_akri(
 def test_get_cluster_resource_selectors():
     from azext_edge.edge.common import BundleResourceKind
     from azext_edge.edge.providers.support.akri import get_cluster_resource_selectors
-    
+
     selectors = get_cluster_resource_selectors()
 
     # Should have validating webhook selectors
     assert BundleResourceKind.validatingwebhook.value in selectors
-    
+
     # Validating webhook selectors should have expected structure
     vwc_selectors = selectors[BundleResourceKind.validatingwebhook.value]
     assert "label_selectors" in vwc_selectors

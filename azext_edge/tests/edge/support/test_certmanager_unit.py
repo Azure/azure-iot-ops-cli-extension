@@ -107,12 +107,12 @@ def test_get_cluster_resource_selectors():
         TRUST_MANAGER_WEBHOOK_LABEL,
         CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
     )
-    
+
     selectors = get_cluster_resource_selectors()
-    
+
     # Should have validating webhook selectors
     assert BundleResourceKind.validatingwebhook.value in selectors
-    
+
     # Validating webhook selectors
     vwc_selectors = selectors[BundleResourceKind.validatingwebhook.value]
     assert "label_selectors" in vwc_selectors

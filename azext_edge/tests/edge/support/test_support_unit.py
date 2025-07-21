@@ -8,13 +8,13 @@ import copy
 import random
 from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from zipfile import ZipInfo
 
 import pytest
 
 from azext_edge.edge.commands_edge import support_bundle
-from azext_edge.edge.common import OpsServiceType
+from azext_edge.edge.common import BundleResourceKind, OpsServiceType
 from azext_edge.edge.providers.edge_api import (
     AKRI_ACTIVE_API,
     ARCCONTAINERSTORAGE_API_V1,
@@ -39,23 +39,29 @@ from azext_edge.edge.providers.edge_api import (
 from azext_edge.edge.providers.edge_api.meta import META_API_V1
 from azext_edge.edge.providers.support.akri import AKRI_NAME_LABEL_V2
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
-from azext_edge.edge.providers.support.arccontainerstorage import STORAGE_NAMESPACE
-from azext_edge.edge.providers.support.base import get_bundle_path, assemble_crd_work
+from azext_edge.edge.providers.support.arccontainerstorage import ARCCONTAINERSTORAGE_WEBHOOK_LABEL, STORAGE_NAMESPACE
+from azext_edge.edge.providers.support.base import assemble_crd_work, get_bundle_path
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
     ARC_BILLING_DIRECTORY_PATH,
     ARC_BILLING_EXTENSION_COMP_LABEL,
     BILLING_RESOURCE_KIND,
+    BILLING_WEBHOOK_COMP_LABEL,
+)
+from azext_edge.edge.providers.support.certmanager import (
+    CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
+    TRUST_MANAGER_WEBHOOK_LABEL,
 )
 from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT
 from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL
+from azext_edge.edge.providers.support.meso import MESO_CLUSTER_METRICS_LABEL, MESO_NAME_LABEL
 from azext_edge.edge.providers.support.meta import META_DIRECTORY_PATH, META_NAME_LABEL, META_PREFIX_NAMES
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_NAME_LABEL
 from azext_edge.edge.providers.support.schemaregistry import SCHEMAS_DIRECTORY_PATH, SCHEMAS_NAME_LABEL
 from azext_edge.edge.providers.support_bundle import (
-    COMPAT_META_APIS,
     COMPAT_CLUSTER_CONFIG_APIS,
     COMPAT_DATAFLOW_APIS,
+    COMPAT_META_APIS,
     COMPAT_MQTT_BROKER_APIS,
 )
 from azext_edge.tests.edge.support.conftest import add_pod_to_mocked_pods
@@ -1107,8 +1113,6 @@ def test_create_bundle_schemas(
 
 
 def test_kind_to_dir_override_functionality():
-    from unittest.mock import Mock, patch
-
     # Mock CRD data
     mock_crd_data = {
         "items": [{"metadata": {"name": "test-resource", "namespace": "test-ns"}, "spec": {"test": "data"}}]
@@ -1138,3 +1142,268 @@ def test_kind_to_dir_override_functionality():
 
         # RegularKind should use the default path (not in kind_to_dir mapping)
         assert regular_result[0]["zinfo"] == "test-ns/default/path/RegularKind.v1.test-resource.yaml"
+
+
+def test_get_cluster_resource_configs():
+    from azext_edge.edge.providers.support.base import _get_cluster_resource_configs
+
+    configs = _get_cluster_resource_configs()
+
+    # Check that we have configs for both webhook types
+    expected_keys = [
+        BundleResourceKind.mutatingwebhook.value,
+        BundleResourceKind.validatingwebhook.value,
+    ]
+    assert sorted(configs.keys()) == sorted(expected_keys)
+
+    # Check mutating webhook config
+    mutating_config = configs[BundleResourceKind.mutatingwebhook.value]
+    assert mutating_config["filename"] == "mutating-webhook-configurations.yaml"
+    assert callable(mutating_config["api_call"])
+
+    # Check validating webhook config
+    validating_config = configs[BundleResourceKind.validatingwebhook.value]
+    assert validating_config["filename"] == "validating-webhook-configurations.yaml"
+    assert callable(validating_config["api_call"])
+
+
+def test_collect_selectors_for_resource_type():
+    from azext_edge.edge.providers.support.base import _collect_selectors_for_resource_type
+
+    # Test ValidatingWebhookConfiguration
+    label_selectors, field_selectors = _collect_selectors_for_resource_type(BundleResourceKind.validatingwebhook.value)
+
+    # Expected selectors for ValidatingWebhookConfiguration
+    expected_validating_label_selectors = [
+        MESO_NAME_LABEL,
+        MESO_CLUSTER_METRICS_LABEL,
+        AIO_BILLING_USAGE_NAME_LABEL,
+        AKRI_NAME_LABEL_V2,
+        ARCCONTAINERSTORAGE_WEBHOOK_LABEL,
+        BILLING_WEBHOOK_COMP_LABEL,
+        TRUST_MANAGER_WEBHOOK_LABEL,
+        CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
+        DATAFLOW_NAME_LABEL,
+    ]
+    expected_validating_field_selectors = []
+
+    assert sorted(label_selectors) == sorted(
+        expected_validating_label_selectors
+    ), f"ValidatingWebhook label mismatch. Expected: {expected_validating_label_selectors}, Got: {label_selectors}"
+    assert sorted(field_selectors) == sorted(
+        expected_validating_field_selectors
+    ), f"ValidatingWebhook field mismatch. Expected: {expected_validating_field_selectors}, Got: {field_selectors}"
+
+    # Test MutatingWebhookConfiguration
+    label_selectors, field_selectors = _collect_selectors_for_resource_type(BundleResourceKind.mutatingwebhook.value)
+
+    # Expected selectors for MutatingWebhookConfiguration (using actual constants from support modules)
+    expected_mutating_label_selectors = [
+        MESO_NAME_LABEL,
+        MESO_CLUSTER_METRICS_LABEL,
+        AIO_BILLING_USAGE_NAME_LABEL,
+    ]
+    expected_mutating_field_selectors = []
+
+    assert sorted(label_selectors) == sorted(
+        expected_mutating_label_selectors
+    ), f"MutatingWebhook label mismatch. Expected: {expected_mutating_label_selectors}, Got: {label_selectors}"
+    assert sorted(field_selectors) == sorted(
+        expected_mutating_field_selectors
+    ), f"MutatingWebhook field mismatch. Expected: {expected_mutating_field_selectors}, Got: {field_selectors}"
+
+    # Test unsupported resource type
+    label_selectors, field_selectors = _collect_selectors_for_resource_type("UnsupportedResource")
+    assert not label_selectors
+    assert not field_selectors
+
+
+@pytest.mark.parametrize(
+    "label_selectors,field_selectors,expected_calls,mock_webhooks_per_call,expected_webhook_names",
+    [
+        # Test with label selectors only - should collect webhooks from both calls
+        (
+            ["app.kubernetes.io/name=service1", "app.kubernetes.io/name=service2"],
+            [],
+            [
+                ("app.kubernetes.io/name=service1", None),
+                ("app.kubernetes.io/name=service2", None),
+            ],
+            [
+                ["service1-webhook-1", "service1-webhook-2"],  # First call returns these webhooks
+                ["service2-webhook-1", "service2-webhook-2"],  # Second call returns these webhooks
+            ],
+            ["service1-webhook-1", "service1-webhook-2", "service2-webhook-1", "service2-webhook-2"],
+        ),
+        # Test with field selectors only - should collect webhooks from both calls
+        (
+            [],
+            ["metadata.name=webhook1", "metadata.name=webhook2"],
+            [
+                (None, "metadata.name=webhook1"),
+                (None, "metadata.name=webhook2"),
+            ],
+            [
+                ["field-webhook-1"],  # First call returns this webhook
+                ["field-webhook-2"],  # Second call returns this webhook
+            ],
+            ["field-webhook-1", "field-webhook-2"],
+        ),
+        # Test with both label and field selectors - separate calls for each
+        (
+            ["app.kubernetes.io/name=service1"],
+            ["metadata.name=webhook1"],
+            [
+                ("app.kubernetes.io/name=service1", None),
+                (None, "metadata.name=webhook1"),
+            ],
+            [
+                ["label-webhook"],  # Label selector call
+                ["field-webhook"],  # Field selector call
+            ],
+            ["label-webhook", "field-webhook"],
+        ),
+        # Test with no selectors - single call with no parameters, returns directly
+        (
+            [],
+            [],
+            [()],  # Called with no arguments
+            [
+                ["all-webhook-1", "all-webhook-2", "all-webhook-3"],
+            ],
+            ["all-webhook-1", "all-webhook-2", "all-webhook-3"],
+        ),
+    ],
+)
+def test_fetch_grouped_resources_by_selectors(
+    label_selectors, field_selectors, expected_calls, mock_webhooks_per_call, expected_webhook_names
+):
+    from azext_edge.edge.providers.support.base import _fetch_grouped_resources_by_selectors
+
+    def create_mock_webhook(name):
+        """Create a mock webhook with identifiable metadata."""
+        mock_webhook = Mock()
+        mock_webhook.metadata.name = name
+        mock_webhook.kind = "ValidatingWebhookConfiguration"
+        return mock_webhook
+
+    # Mock API call function that returns different webhooks based on call index
+    mock_api_call = Mock()
+    call_index = 0
+
+    def mock_api_side_effect(*args):
+        nonlocal call_index
+        webhook_names = mock_webhooks_per_call[call_index]
+        mock_resource_list = Mock()
+        mock_resource_list.items = [create_mock_webhook(name) for name in webhook_names]
+        call_index += 1
+        return mock_resource_list
+
+    mock_api_call.side_effect = mock_api_side_effect
+
+    result = _fetch_grouped_resources_by_selectors(mock_api_call, label_selectors, field_selectors)
+
+    # Verify the API was called with the expected parameters
+    assert mock_api_call.call_count == len(expected_calls)
+
+    actual_calls = [call.args for call in mock_api_call.call_args_list]
+    assert actual_calls == expected_calls
+
+    # Verify result structure and webhook selection
+    if expected_calls and expected_calls != [()]:  # If we have real selectors (aggregation case)
+        assert result is not None
+        assert hasattr(result, "items")
+
+        # Check that we got the expected webhooks by name
+        actual_webhook_names = [webhook.metadata.name for webhook in result.items]
+        assert sorted(actual_webhook_names) == sorted(expected_webhook_names)
+
+        # Verify each webhook has the expected properties
+        for webhook in result.items:
+            assert webhook.kind == "ValidatingWebhookConfiguration"
+            assert webhook.metadata.name in expected_webhook_names
+
+    elif expected_calls == [()]:  # No selectors case (direct return)
+        assert result is not None
+        assert hasattr(result, "items")
+
+        # When no selectors, it returns the result directly from api_call()
+        actual_webhook_names = [webhook.metadata.name for webhook in result.items]
+        assert sorted(actual_webhook_names) == sorted(expected_webhook_names)
+
+    else:
+        assert result is None
+
+
+def test_bundle_cluster_resources_by_type():
+    from azext_edge.edge.providers.support.base import bundle_cluster_resources_by_type
+
+    # Mock the internal functions
+    with patch("azext_edge.edge.providers.support.base._get_cluster_resource_configs") as mock_get_configs, patch(
+        "azext_edge.edge.providers.support.base._collect_selectors_for_resource_type"
+    ) as mock_collect_selectors, patch(
+        "azext_edge.edge.providers.support.base._fetch_grouped_resources_by_selectors"
+    ) as mock_fetch_resources, patch(
+        "azext_edge.edge.providers.support.base.generic.sanitize_for_serialization"
+    ) as mock_serialize:
+
+        # Setup mock returns
+        mock_configs = {
+            BundleResourceKind.validatingwebhook.value: {
+                "api_call": Mock(),
+                "filename": "validating-webhook-configurations.yaml",
+            }
+        }
+        mock_get_configs.return_value = mock_configs
+
+        mock_label_selectors = ["app.kubernetes.io/name=service1", "app.kubernetes.io/name=service2"]
+        mock_field_selectors = ["metadata.name=webhook1"]
+        mock_collect_selectors.return_value = (mock_label_selectors, mock_field_selectors)
+
+        mock_resource_list = Mock()
+        mock_resource_list.items = [Mock(), Mock()]
+        mock_fetch_resources.return_value = mock_resource_list
+
+        mock_serialized_data = {"items": [{"name": "webhook1"}, {"name": "webhook2"}]}
+        mock_serialize.return_value = mock_serialized_data
+
+        # Test with BundleResourceKind enum
+        result = bundle_cluster_resources_by_type(BundleResourceKind.validatingwebhook)
+
+        # Verify function calls
+        mock_get_configs.assert_called_once()
+        mock_collect_selectors.assert_called_once_with(BundleResourceKind.validatingwebhook.value)
+        mock_fetch_resources.assert_called_once_with(
+            api_call=mock_configs[BundleResourceKind.validatingwebhook.value]["api_call"],
+            label_selectors=mock_label_selectors,
+            field_selectors=mock_field_selectors,
+        )
+        mock_serialize.assert_called_once_with(obj=mock_resource_list)
+
+        # Verify result structure
+        assert "data" in result
+        assert "zinfo" in result
+        assert result["data"] == mock_serialized_data
+        assert result["zinfo"] == "validating-webhook-configurations.yaml"
+
+        # Test with string resource type
+        mock_get_configs.reset_mock()
+        mock_collect_selectors.reset_mock()
+        mock_fetch_resources.reset_mock()
+        mock_serialize.reset_mock()
+
+        result = bundle_cluster_resources_by_type("ValidatingWebhookConfiguration")
+
+        # Verify function calls with string type
+        mock_collect_selectors.assert_called_once_with("ValidatingWebhookConfiguration")
+
+        # Test with unsupported resource type
+        mock_get_configs.return_value = {}
+        result = bundle_cluster_resources_by_type("UnsupportedResourceType")
+        assert not result
+
+        # Test with no resources found
+        mock_get_configs.return_value = mock_configs
+        mock_fetch_resources.return_value = None
+        result = bundle_cluster_resources_by_type(BundleResourceKind.validatingwebhook)
+        assert not result
