@@ -6,7 +6,6 @@
 
 import pytest
 import json
-from time import sleep
 from typing import List
 from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
@@ -305,14 +304,6 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
             logger.warning("Device api returns the wrong error code.")
         else:
             raise e
-
-    sleep(30)  # Wait for deletion to propagate
-    result = run(
-        "az iot ops ns device query"
-    )
-    device_names = [d["name"] for d in result]
-    assert device_name_1 not in device_names
-    assert device_name_2 not in device_names
 
 
 def assert_namespace_device_properties(

@@ -65,7 +65,7 @@ def generate_management_group_action(
     asset_type: str = "custom"
 ) -> dict:
     """Generate a mock management group action with the specified name and type."""
-    action_name = action_name or f"action{randint(1, 100)}"
+    action_name = action_name or f"action{generate_random_string(12)}"
     action = {
         "name": action_name,
         "targetUri": f"ns=2;s=Action{randint(1, 100)}",

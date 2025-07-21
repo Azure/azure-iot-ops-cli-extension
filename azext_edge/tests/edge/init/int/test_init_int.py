@@ -64,8 +64,7 @@ def init_test_setup(settings, tracked_resources):
     if not adr_ns_id:
         ns_name = f"init-adr-ns-{generate_random_string(force_lower=True, size=6)}"
         adr_ns_id = run(
-            f"az resource create -g {settings.env.azext_edge_rg} -n {ns_name} --api-version 2025-07-01-preview"
-            " --resource-type Microsoft.DeviceRegistry/namespaces --properties '{}'"
+            f"az iot ops ns create -n {ns_name} -g {settings.env.azext_edge_rg}"
         )["id"]
         if cleanup:
             tracked_resources.append(adr_ns_id)
