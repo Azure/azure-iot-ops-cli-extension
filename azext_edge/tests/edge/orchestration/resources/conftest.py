@@ -148,6 +148,7 @@ def get_request_kpis(request: requests.PreparedRequest) -> "RequestKPIs":
         params=request.params,
         path_url=request.path_url.split("?")[0],
         body_str=request.body,
+        headers=request.headers,
     )
 
 
@@ -156,7 +157,8 @@ class RequestKPIs(NamedTuple):
     url: str
     params: dict
     path_url: str
-    body_str: str
+    body_str: Optional[str] = None
+    headers: Optional[dict] = None
 
     @classmethod
     def respond_with(

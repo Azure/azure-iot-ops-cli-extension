@@ -86,8 +86,9 @@ class PermissionManager:
         )
 
     def apply_role_assignment(
-        self, scope: str, principal_id: str, role_def_id: str, principal_type: Optional[str] = None
+        self, scope: str, principal_id: str, role_def_id: str, principal_type: Optional[str] = None, **kwargs
     ) -> Optional[dict]:
+        headers = kwargs.pop("headers", {})
         role_assignments_iter = self.authz_client.role_assignments.list_for_scope(
             scope=scope, filter=f"principalId eq '{principal_id}'"
         )
@@ -106,6 +107,7 @@ class PermissionManager:
             scope=scope,
             role_assignment_name=str(uuid4()),
             parameters=props,
+            headers=headers,
         )
 
     def can_apply_role_assignment(

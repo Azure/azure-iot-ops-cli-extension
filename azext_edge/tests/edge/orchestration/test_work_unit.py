@@ -46,7 +46,9 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
+    CONTRIBUTOR_ROLE_ID,
 )
+from azext_edge.edge.providers.orchestration.permissions import ROLE_DEF_FORMAT_STR
 from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET
 from azext_edge.edge.providers.orchestration.targets import (
     InstancePhase,
@@ -58,7 +60,11 @@ from azext_edge.edge.providers.orchestration.work import (
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
 
-from ...generators import generate_random_string, get_zeroed_subscription, generate_resource_id
+from ...generators import (
+    generate_random_string,
+    generate_resource_id,
+    get_zeroed_subscription,
+)
 from .resources.conftest import RequestKPIs, get_request_kpis
 from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS
 
@@ -171,6 +177,7 @@ class ServiceGenerator:
                 path_pattern_base + url_deployment_seg + r"/whatIf$",
                 request_kpis.path_url,
             ):
+                self._assert_correlation_headers(request_kpis, action="init")
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
                 assert_init_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
@@ -183,6 +190,7 @@ class ServiceGenerator:
                 path_pattern_base + url_deployment_seg,
                 request_kpis.path_url,
             ):
+                self._assert_correlation_headers(request_kpis, action="init")
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
                 assert_init_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
@@ -191,6 +199,7 @@ class ServiceGenerator:
 
     def _handle_cl_create(self, request_kpis: RequestKPIs):
         if request_kpis.method == responses.PUT:
+            self._assert_correlation_headers(request_kpis)
             scenario_cl_name = self.scenario["customLocation"]["name"]
             scenario_namespace = self.scenario["instance"]["namespace"] or "azure-iot-operations"
             if not scenario_cl_name:
@@ -247,6 +256,7 @@ class ServiceGenerator:
                 return (200, STANDARD_HEADERS, json.dumps(self.scenario["cluster"]["extensions"]))
 
         if request_kpis.method == responses.PUT:
+            self._assert_correlation_headers(request_kpis)
             url_resources_seg = get_deployment_path_regex("extension")
             if re.match(
                 path_pattern_base + url_resources_seg,
@@ -293,6 +303,13 @@ class ServiceGenerator:
             ):
                 ops_ext_identity = self._get_extension_identity()
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.AUTHORIZATION.value
+                body = json.loads(request_kpis.body_str)
+                assert body["properties"]["roleDefinitionId"] == ROLE_DEF_FORMAT_STR.format(
+                    subscription_id=ZEROED_SUBSCRIPTION,
+                    role_id=CONTRIBUTOR_ROLE_ID,
+                )
+                assert body["properties"]["principalId"] == ops_ext_identity["principalId"]
+                assert body["properties"]["principalType"] == "ServicePrincipal"
                 self.call_map[CallKey.PUT_SCHEMA_REGISTRY_RA].append(request_kpis)
                 api_control = self.scenario["apiControl"][CallKey.PUT_SCHEMA_REGISTRY_RA]
 
@@ -310,6 +327,12 @@ class ServiceGenerator:
         for ext in self.scenario["cluster"]["extensions"]["value"]:
             if ext["properties"]["extensionType"] == extension_type:
                 return ext.get("identity")
+
+    def _assert_correlation_headers(self, request_kpis: RequestKPIs, action: str = "create"):
+        if request_kpis.method not in [responses.PUT, responses.POST]:
+            return
+        assert request_kpis.headers["x-ms-correlation-request-id"]
+        assert request_kpis.headers["CommandName"] == f"iot ops {action}"
 
 
 def get_deployment_path_regex(kind="instance") -> str:
