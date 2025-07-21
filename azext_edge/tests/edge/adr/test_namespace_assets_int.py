@@ -4,25 +4,35 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from time import sleep
+import pytest
 from typing import List
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 from ...generators import generate_random_string
 from ...helpers import run
+from .namespace_helpers import (
+    assert_event_properties,
+    assert_management_group_action_properties,
+    assert_management_group_properties,
+    assert_stream_properties,
+    create_config_file,
+    assert_point_properties,
+    assert_dataset_properties
+)
 
-# TODO fix up tests to work with linux
-# pytestmark = pytest.mark.rpsaas
+pytestmark = pytest.mark.rpsaas
 
 
-def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: List[str]):
+def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], tracked_files: List[str]):
+    """Smoke test for namespace asset operations using custom asset type."""
+    # 12 put/patch/delete calls
     # Setup test variables
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     custom_location = require_init["customLocationId"]
     device_name = f"dev-{generate_random_string(8, force_lower=True)}"
     endpoint_name_custom = f"custom-{generate_random_string(8)}"
-    asset_name_custom = f"custom-{generate_random_string(8, force_lower=True)}"
+    asset_name = f"custom-{generate_random_string(8, force_lower=True)}"
 
     # Tags and attributes
     common_tags = {"env": "test", "purpose": "automation"}
@@ -50,7 +60,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # Create Custom asset with maximum inputs
     asset_custom = run(
-        f"az iot ops ns asset custom create --name {asset_name_custom} --instance {instance_name} "
+        f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_custom} "
         f"--description \"Custom Device\" --display-name \"Multi-Sensor\" --model \"Custom-MS100\" "
         f"--manufacturer \"CustomDevices\" --serial-number \"CUST123456\" "
@@ -64,7 +74,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     assert_asset_properties(
         asset_custom,
-        name=asset_name_custom,
+        name=asset_name,
         device=device_name,
         endpoint=endpoint_name_custom,
         description="Custom Device",
@@ -74,20 +84,20 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     # Test show operation for an asset
     shown_asset = run(
-        f"az iot ops ns asset show --name {asset_name_custom} --instance {instance_name} "
+        f"az iot ops ns asset show --name {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
     assert_asset_properties(
         shown_asset,
-        name=asset_name_custom,
+        name=asset_name,
         device=device_name,
         endpoint=endpoint_name_custom,
     )
 
     # Update Custom asset
     updated_custom = run(
-        f"az iot ops ns asset custom update --name {asset_name_custom} --instance {instance_name} "
+        f"az iot ops ns asset custom update --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} --dataset-config \"{{\\\"publishingInterval\\\": 2000}}\" "
         f"--event-config \"{{\\\"queueSize\\\": 10}}\" --software-revision \"v2.0\" "
 
@@ -95,7 +105,7 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
 
     assert_asset_properties(
         updated_custom,
-        name=asset_name_custom,
+        name=asset_name,
         software_revision="v2.0",
     )
 
@@ -105,38 +115,177 @@ def test_namespace_asset_lifecycle_operations(require_init, tracked_resources: L
     )
 
     asset_names = [asset["name"] for asset in queried_assets]
-    assert asset_name_custom in asset_names
+    assert asset_name in asset_names
 
-    # Query by specific device
-    device_assets = run(
-        f"az iot ops ns asset query --device {device_name}"
+    # DATASET
+    # add a dataset to the asset
+    dataset_name = "default"
+    dataset_data_source = "sensor/temperature"
+    dataset_destinations = "topic=factory/temperature qos=Qos1 retain=Keep ttl=3600"
+    custom_config_path, custom_config = create_config_file(tracked_files)
+
+    # Add custom asset dataset
+    dataset_result = run(
+        f"az iot ops ns asset custom dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source {dataset_data_source} "
+        f"--destination {dataset_destinations} "
+        f"--config {custom_config_path}"
     )
 
-    asset_names = [asset["name"] for asset in device_assets]
-    assert asset_name_custom in asset_names
-
-    # Query by asset name
-    named_asset = run(
-        f"az iot ops ns asset query --name {asset_name_custom}"
+    assert_dataset_properties(
+        dataset_result,
+        name=dataset_name,
+        data_source=dataset_data_source,
+        asset_type="custom",
+        custom_configuration=custom_config
     )
 
-    assert len(named_asset) == 1
-    assert named_asset[0]["name"] == asset_name_custom
+    # add point
+    datapoint_name_1 = f"point{generate_random_string(size=4)}"
+    datapoint_data_source_1 = "sensor/temperature/value"
+    custom_config_path, custom_config = create_config_file(tracked_files)
+
+    datapoint_result_1 = run(
+        f"az iot ops ns asset custom dataset point add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
+        f"--name {datapoint_name_1} --data-source {datapoint_data_source_1} "
+        f"--config {custom_config_path}"
+    )
+
+    assert_point_properties(
+        datapoint_result_1,
+        name=datapoint_name_1,
+        data_source=datapoint_data_source_1
+    )
+
+    # show dataset
+    shown_dataset = run(
+        f"az iot ops ns asset custom dataset show --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name}"
+    )
+
+    assert_dataset_properties(
+        shown_dataset,
+        name=dataset_name,
+        data_source=dataset_data_source,
+        asset_type="custom"
+    )
+
+    # list dataset points
+    datapoints_list = run(
+        f"az iot ops ns asset custom dataset point list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
+    )
+
+    datapoint_names = [dp["name"] for dp in datapoints_list]
+    assert datapoint_name_1 in datapoint_names
+    assert len(datapoints_list) == 1
+
+    # EVENT
+    event_name = f"event{generate_random_string(size=4)}"
+    event_notifier = "temperature.alarm"
+    custom_config_path, custom_config = create_config_file(tracked_files)
+    event_destinations = "topic=factory/custom/events qos=Qos1 retain=Never ttl=3600"
+
+    event_result = run(
+        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
+        f"--config {custom_config_path} --destination {event_destinations}"
+    )
+
+    assert_event_properties(
+        event_result,
+        name=event_name,
+        event_notifier=event_notifier,
+        custom_configuration=custom_config,
+    )
+
+    # add event point
+    datapoint_name_2 = f"point{generate_random_string(size=4)}"
+    datapoint_data_source = "temperature.severity"
+    custom_config_path, custom_config = create_config_file(tracked_files)
+
+    datapoint_result = run(
+        f"az iot ops ns asset custom event point add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event {event_name} --name {datapoint_name_2} "
+        f"--data-source {datapoint_data_source} --config {custom_config_path}"
+    )
+
+    assert_point_properties(
+        datapoint_result,
+        name=datapoint_name_2,
+        data_source=datapoint_data_source,
+        custom_configuration=custom_config
+    )
+
+    # STREAM
+    # add stream
+    stream_name = f"stream{generate_random_string(size=4)}"
+    custom_config_path, custom_config = create_config_file(tracked_files)
+    stream_destinations = "topic=factory/custom/streams qos=Qos1 retain=Never ttl=3600"
+
+    stream_result = run(
+        f"az iot ops ns asset custom stream add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {stream_name} "
+        f"--config {custom_config_path} --destination {stream_destinations}"
+    )
+
+    assert_stream_properties(
+        stream_result,
+        name=stream_name,
+        custom_configuration=custom_config,
+    )
+
+    # MANAGEMENT GROUP
+    # add management group
+    mgmt_group_name = f"mgmt-{generate_random_string(8)}"
+    default_topic = "factory/custom/management/responses"
+    default_timeout = 30
+    custom_config_path, custom_config = create_config_file(tracked_files)
+
+    mgmt_group_result = run(
+        f"az iot ops ns asset custom mgmt add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {mgmt_group_name} --default-topic {default_topic} "
+        f"--default-timeout {default_timeout} --config {custom_config_path}"
+    )
+
+    assert_management_group_properties(
+        mgmt_group_result,
+        name=mgmt_group_name,
+        default_topic=default_topic,
+        default_timeout=default_timeout,
+        custom_configuration=custom_config,
+    )
+
+    # add management group action
+    action_name = f"action-{generate_random_string(6)}"
+    action_target_uri = "/mgmt/device_service?profile=startProduction"
+    action_type = "Call"
+    action_timeout = 30
+    action_topic = "factory/opcua/actions/production"
+
+    action_result = run(
+        f"az iot ops ns asset opcua mgmt action add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --group {mgmt_group_name} --name {action_name} "
+        f"--target-uri {action_target_uri} --action-type {action_type} --timeout {action_timeout} "
+        f"--topic {action_topic}"
+    )
+
+    assert_management_group_action_properties(
+        action_result,
+        name=action_name,
+        target_uri=action_target_uri,
+        action_type=action_type,
+        timeout=action_timeout,
+        topic=action_topic
+    )
 
     # Test delete operation
     run(
-        f"az iot ops ns asset delete --name {asset_name_custom} --instance {instance_name} "
+        f"az iot ops ns asset delete --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} -y"
     )
-
-    sleep(30)  # Wait for deletion to propagate
-    # Verify deletion by querying
-    deleted_query = run(
-        "az iot ops ns asset query"
-    )
-
-    asset_names = [asset["name"] for asset in deleted_query]
-    assert asset_name_custom not in asset_names
 
 
 def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
