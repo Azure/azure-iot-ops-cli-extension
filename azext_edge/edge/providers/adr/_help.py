@@ -333,58 +333,6 @@ def load_iotops_adr_help():
     """
 
     helps[
-        "iot ops asset endpoint create custom"
-    ] = """
-        type: command
-        short-summary: Create an asset endpoint profile for a custom connector.
-        examples:
-        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
-          text: >
-            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
-            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-        - name: Create an asset endpoint with username-password user authentication using the given instance in a different resource group but same subscription. The additional
-                configuration is provided as an inline json.
-          text: >
-            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
-            --instance-resource-group myinstanceresourcegroup
-            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --username-ref rest-server-auth-creds/username --password-ref rest-server-auth-creds/password
-            --additional-config addition_configuration.json
-        - name: Create an asset endpoint with certificate authentication using the given instance in the same resource group.
-          text: >
-            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
-            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --certificate-ref mycertificate.pem
-        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group. The inline content is a bash syntax example. For more examples, see https://aka.ms/inline-json-examples
-          text: >
-            az iot ops asset endpoint create custom --name myprofile -g myresourcegroup --instance myinstance
-            --target-address http://rest-server-service.azure-iot-operations.svc.cluster.local:80 --endpoint-type rest-thermostat
-            --additional-config '{"displayName": "myconnector", "maxItems": 100}'
-    """
-
-    helps[
-        "iot ops asset endpoint create onvif"
-    ] = """
-        type: command
-        short-summary: Create an asset endpoint profile for an Onvif connector.
-        long-summary: |
-                      Certificate authentication is not supported yet for Onvif Connectors.
-
-                      For more information on how to create an Onvif connector, please see https://aka.ms/aio-onvif-quickstart
-        examples:
-        - name: Create an asset endpoint with anonymous user authentication using the given instance in the same resource group.
-          text: >
-            az iot ops asset endpoint create onvif --name myprofile -g myresourcegroup --instance myinstance
-            --target-address http://onvif-rtsp-simulator:8000
-        - name: Create an asset endpoint with username-password user authentication using the given instance in a different resource group but same subscription.
-          text: >
-            az iot ops asset endpoint create onvif --name myprofile -g myresourcegroup --instance myinstance
-            --instance-resource-group myinstanceresourcegroup
-            --target-address http://onvif-rtsp-simulator:8000
-            --username-ref rest-server-auth-creds/username --password-ref rest-server-auth-creds/password
-    """
-
-    helps[
         "iot ops asset endpoint create opcua"
     ] = """
         type: command
