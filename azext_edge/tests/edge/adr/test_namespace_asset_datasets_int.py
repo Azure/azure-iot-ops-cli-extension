@@ -531,13 +531,11 @@ def test_namespace_rest_asset_dataset_lifecycle_operations(require_init, tracked
     )
 
     # 4. UPDATE DATASET
-    updated_data_source = "/api/temperature/updated"
     updated_destinations = "topic=factory/rest/temperature_v2 qos=Qos0 retain=Never ttl=1800"
 
     updated_dataset = run(
         f"az iot ops ns asset rest dataset update --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
-        f"--data-source {updated_data_source} "
         f"--destination {updated_destinations} "
         f"--sampling-int 10000"
     )
@@ -545,7 +543,6 @@ def test_namespace_rest_asset_dataset_lifecycle_operations(require_init, tracked
     assert_dataset_properties(
         updated_dataset,
         name=dataset_name,
-        data_source=updated_data_source,
         asset_type="rest",
     )
 

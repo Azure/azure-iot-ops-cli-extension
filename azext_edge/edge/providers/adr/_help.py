@@ -792,11 +792,11 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic rest endpoint to a device
           text: >
-            az iot ops ns device endpoint inbound add rest --device myDevice --instance myInstance -g myInstanceResourceGroup --name myEndpoint --endpoint-address "https://api.example.com/data"
+            az iot ops ns device endpoint inbound add rest --device mydevice --instance myInstance -g myInstanceResourceGroup --name myEndpoint --endpoint-address "https://api.example.com/data"
 
         - name: Add a rest endpoint with authentication
           text: >
-            az iot ops ns device endpoint inbound add rest --device myDevice --instance myInstance -g myInstanceResourceGroup --name myEndpoint --endpoint-address "https://api.example.com/data" --user-ref "secretRef:username" --pass-ref "secretRef:password"
+            az iot ops ns device endpoint inbound add rest --device mydevice --instance myInstance -g myInstanceResourceGroup --name myEndpoint --endpoint-address "https://api.example.com/data" --user-ref usernameSecret --pass-ref passwordSecret
     """
 
     helps[
@@ -1572,7 +1572,7 @@ def load_iotops_adr_help():
 
         - name: Update a media asset's destination and metadata
           text: >
-            az iot ops ns asset media update --name mycameraasset --instance myInstance -g myInstanceResourceGroup
+            az iot ops ns asset media update --name mymediaasset --instance myInstance -g myInstanceResourceGroup
             --stream-dest topic="security/cameras/main" qos=Qos1 retain=Never ttl=300
             --manufacturer "SecureCam Inc." --model "HD-8000" --serial-number "CAM9876"
     """
@@ -2470,37 +2470,37 @@ def load_iotops_adr_help():
         examples:
         - name: Create a basic REST asset
           text: >
-            az iot ops ns asset rest create --name myRestAsset --instance myInstance -g myInstanceResourceGroup
-            --device myRestDevice --endpoint-name myRestEndpoint
+            az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
+            --device myrestdevice --endpoint-name myRestEndpoint
 
         - name: Create a REST asset with dataset configuration
           text: >
-            az iot ops ns asset rest create --name myRestAsset --instance myInstance -g myInstanceResourceGroup
-            --device myRestDevice --endpoint-name myRestEndpoint --sampling-int 5000
+            az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
+            --device myrestdevice --endpoint-name myRestEndpoint --sampling-int 5000
 
         - name: Create a REST asset with dataset destination
           text: >
-            az iot ops ns asset rest create --name myRestAsset --instance myInstance -g myInstanceResourceGroup
-            --device myRestDevice --endpoint-name myRestEndpoint
+            az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
+            --device myrestdevice --endpoint-name myRestEndpoint
             --dataset-dest topic="factory/rest/data" retain=Never qos=Qos1 ttl=3600
 
         - name: Create a REST asset with custom configuration and BrokerStateStore destination
           text: >
-            az iot ops ns asset rest create --name myRestAsset --instance myInstance -g myInstanceResourceGroup
-            --device myRestDevice --endpoint-name myRestEndpoint --sampling-int 2000
+            az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
+            --device myrestdevice --endpoint-name myRestEndpoint --sampling-int 2000
             --dataset-dest key="rest-data-cache"
 
         - name: Create a REST asset with additional metadata
           text: >
-            az iot ops ns asset rest create --name myRestAsset --instance myInstance -g myInstanceResourceGroup
-            --device myRestDevice --endpoint-name myRestEndpoint --description "Temperature sensor API"
+            az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
+            --device myrestdevice --endpoint-name myRestEndpoint --description "Temperature sensor API"
             --display-name "Facility Temperature Monitor" --model "TempSensor-3000" --manufacturer "SensorCorp"
             --serial-number "TS-12345" --documentation-uri "https://example.com/docs/api"
 
         - name: Create a REST asset with custom attributes
           text: >
-            az iot ops ns asset rest create --name myRestAsset --instance myInstance -g myInstanceResourceGroup
-            --device myRestDevice --endpoint-name myRestEndpoint --attribute location=warehouse
+            az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
+            --device myrestdevice --endpoint-name myRestEndpoint --attribute location=warehouse
             --attribute sensor-type=temperature --attribute units=celsius
     """
 
@@ -2514,33 +2514,33 @@ def load_iotops_adr_help():
         examples:
         - name: Update a REST asset's basic properties
           text: >
-            az iot ops ns asset rest update --name myRestAsset --instance myInstance -g myInstanceResourceGroup
+            az iot ops ns asset rest update --name myrestasset --instance myInstance -g myInstanceResourceGroup
             --description "Updated temperature sensor API" --display-name "Main Warehouse Temperature"
 
         - name: Update a REST asset's dataset destination to MQTT
           text: >
-            az iot ops ns asset rest update --name myRestAsset --instance myInstance -g myInstanceResourceGroup
+            az iot ops ns asset rest update --name myrestasset --instance myInstance -g myInstanceResourceGroup
             --dataset-dest topic="factory/rest/updated/data" retain=Keep qos=Qos1 ttl=7200
 
         - name: Update a REST asset's dataset destination to BrokerStateStore
           text: >
-            az iot ops ns asset rest update --name myRestAsset --instance myInstance -g myInstanceResourceGroup
+            az iot ops ns asset rest update --name myrestasset --instance myInstance -g myInstanceResourceGroup
             --dataset-dest key="updated-rest-cache"
 
         - name: Update a REST asset's metadata
           text: >
-            az iot ops ns asset rest update --name myRestAsset --instance myInstance -g myInstanceResourceGroup
+            az iot ops ns asset rest update --name myrestasset --instance myInstance -g myInstanceResourceGroup
             --model "TempSensor-4000" --manufacturer "SensorCorp" --serial-number "TS-67890"
             --documentation-uri "https://example.com/docs/api/v2"
 
         - name: Update a REST asset's custom attributes
           text: >
-            az iot ops ns asset rest update --name myRestAsset --instance myInstance -g myInstanceResourceGroup
+            az iot ops ns asset rest update --name myrestasset --instance myInstance -g myInstanceResourceGroup
             --attribute location=main-warehouse sensor-type=temperature units=fahrenheit accuracy=high
 
         - name: Disable a REST asset and update its reference information
           text: >
-            az iot ops ns asset rest update --name myRestAsset --instance myInstance -g myInstanceResourceGroup
+            az iot ops ns asset rest update --name myrestasset --instance myInstance -g myInstanceResourceGroup
             --disable --external-asset-id "TEMP-MAIN-01" --hardware-revision "v2.1"
     """
 
@@ -2562,30 +2562,30 @@ def load_iotops_adr_help():
         examples:
         - name: Add a basic REST dataset
           text: >
-            az iot ops ns asset rest dataset add --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset add --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData --data-source "/api/temperature"
 
         - name: Add a REST dataset with sampling interval
           text: >
-            az iot ops ns asset rest dataset add --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset add --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name sensorData --data-source "/api/sensors/all"
             --sampling-int 30000
 
         - name: Add a REST dataset with MQTT destination
           text: >
-            az iot ops ns asset rest dataset add --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset add --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name weatherData --data-source "/api/weather"
             --dest topic="factory/rest/weather" retain=Never qos=Qos1 ttl=1800
 
         - name: Add a REST dataset with BrokerStateStore destination
           text: >
-            az iot ops ns asset rest dataset add --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset add --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name metricsData --data-source "/api/metrics"
             --dest key="rest-metrics-cache"
 
         - name: Add a REST dataset and replace existing one with same name
           text: >
-            az iot ops ns asset rest dataset add --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset add --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData --data-source "/api/v2/temperature"
             --replace
     """
@@ -2599,7 +2599,7 @@ def load_iotops_adr_help():
         examples:
         - name: List all datasets for a REST asset
           text: >
-            az iot ops ns asset rest dataset list --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset list --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup
     """
 
@@ -2612,7 +2612,7 @@ def load_iotops_adr_help():
         examples:
         - name: Remove a dataset from a REST asset
           text: >
-            az iot ops ns asset rest dataset remove --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset remove --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData
     """
 
@@ -2625,7 +2625,7 @@ def load_iotops_adr_help():
         examples:
         - name: Show dataset details
           text: >
-            az iot ops ns asset rest dataset show --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset show --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData
     """
 
@@ -2638,23 +2638,23 @@ def load_iotops_adr_help():
         examples:
         - name: Update dataset data source and sampling interval
           text: >
-            az iot ops ns asset rest dataset update --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset update --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData --sampling-int 60000
 
         - name: Update dataset sampling interval only
           text: >
-            az iot ops ns asset rest dataset update --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset update --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name sensorData --sampling-int 15000
 
         - name: Update dataset destination to MQTT
           text: >
-            az iot ops ns asset rest dataset update --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset update --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData
             --dest topic="factory/rest/updated/temperature" retain=Keep qos=Qos1 ttl=3600
 
         - name: Update dataset destination to BrokerStateStore
           text: >
-            az iot ops ns asset rest dataset update --asset myRestAsset --instance myInstance
+            az iot ops ns asset rest dataset update --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name metricsData
             --dest key="updated-rest-metrics"
     """
