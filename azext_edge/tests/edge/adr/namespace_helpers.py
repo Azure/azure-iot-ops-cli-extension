@@ -13,6 +13,59 @@ from ...helpers import create_file
 """Helpers for ADR v2 tests."""
 
 
+def assert_dataset_properties(result, **expected):
+    """Verify dataset properties match expected values.
+
+    Minimal checks since unit tests already validate the command structure."""
+    assert result["name"] == expected["name"]
+
+    if "data_source" in expected:
+        assert result["dataSource"] == expected["data_source"]
+    if "custom_configuration" in expected:
+        assert result["datasetConfiguration"] == expected["custom_configuration"]
+
+
+def assert_event_properties(result, **expected):
+    """Verify event properties match expected values.
+
+    Minimal checks since unit tests already validate the command structure."""
+    assert result["name"] == expected["name"]
+
+    if "event_notifier" in expected:
+        assert result["eventNotifier"] == expected["event_notifier"]
+    if "custom_configuration" in expected:
+        assert result["eventConfiguration"] == expected["custom_configuration"]
+
+
+def assert_management_group_properties(result, **expected):
+    """Verify management group properties match expected values."""
+    assert result["name"] == expected["name"]
+
+    if "default_topic" in expected:
+        assert result["defaultTopic"] == expected["default_topic"]
+    if "default_timeout" in expected:
+        assert result["defaultTimeoutInSeconds"] == expected["default_timeout"]
+    if "custom_configuration" in expected:
+        assert result["managementGroupConfiguration"] == expected["custom_configuration"]
+
+
+def assert_management_group_action_properties(result, **expected):
+    """Verify management group action properties match expected values."""
+    result = next((ac for ac in result if ac["name"] == expected["name"]), None)
+    assert result, f"Action '{expected['name']}' not found in result"
+
+    if "target_uri" in expected:
+        assert result["targetUri"] == expected["target_uri"]
+    if "action_type" in expected:
+        assert result["actionType"] == expected["action_type"]
+    if "timeout" in expected:
+        assert result["timeoutInSeconds"] == expected["timeout"]
+    if "topic" in expected:
+        assert result["topic"] == expected["topic"]
+    if "custom_configuration" in expected:
+        assert result["actionConfiguration"] == expected["custom_configuration"]
+
+
 def assert_point_properties(result, **expected):
     """Verify datapoint properties match expected values.
 
@@ -25,6 +78,14 @@ def assert_point_properties(result, **expected):
         assert result_point["dataSource"] == expected["data_source"]
     if "custom_configuration" in expected:
         assert result_point["dataPointConfiguration"] == expected["custom_configuration"]
+
+
+def assert_stream_properties(result, **expected):
+    """Verify custom stream properties match expected values."""
+    assert result["name"] == expected["name"]
+
+    if "custom_configuration" in expected:
+        check_stream_configuration(result, expected)
 
 
 def check_configuration(config_key: str, added: dict, expected: dict):

@@ -4,16 +4,12 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from functools import partial
 from typing import Dict, Optional
 import json
 import pytest
 import responses
 
-from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.commands_asset_endpoint_profiles import (
-    create_custom_asset_endpoint_profile,
-    create_onvif_asset_endpoint_profile,
     create_opcua_asset_endpoint_profile,
     delete_asset_endpoint_profile,
     list_asset_endpoint_profiles,
@@ -43,13 +39,11 @@ from ...generators import generate_random_string
         "additional_configuration": json.dumps({generate_random_string(): generate_random_string()})
     }
 ])
-@pytest.mark.parametrize("endpoint_type", AEPTypes.list() + [generate_random_string()])
 def test_create(
     mocked_cmd,
     mocked_get_extended_location,
     mocked_responses: responses,
     req: Dict[str, str],
-    endpoint_type: str
 ):
     profile_name = generate_random_string()
     target_address = generate_random_string()
@@ -67,12 +61,7 @@ def test_create(
         content_type="application/json",
     )
 
-    create_command = partial(create_custom_asset_endpoint_profile, endpoint_profile_type=endpoint_type)
-    if endpoint_type == AEPTypes.opcua.value:
-        create_command = create_opcua_asset_endpoint_profile
-    elif endpoint_type == AEPTypes.onvif.value:
-        create_command = create_onvif_asset_endpoint_profile
-    result = create_command(
+    result = create_opcua_asset_endpoint_profile(
         cmd=mocked_cmd,
         asset_endpoint_profile_name=profile_name,
         target_address=target_address,
@@ -90,7 +79,7 @@ def test_create(
 
     call_body_props = call_body["properties"]
     # TODO: will change later
-    assert call_body_props["endpointProfileType"] == endpoint_type
+    assert call_body_props["endpointProfileType"] == AEPTypes.opcua.value
     assert call_body_props["targetAddress"] == target_address
 
     auth_props = call_body_props["authentication"]
@@ -105,25 +94,7 @@ def test_create(
     else:
         assert auth_props["method"] == "Anonymous"
 
-    if "additional_configuration" in req and endpoint_type not in AEPTypes.list():
-        assert call_body_props["additionalConfiguration"] == req["additional_configuration"]
-    elif endpoint_type == AEPTypes.opcua.value:
-        assert call_body_props["additionalConfiguration"] == "{}"
-    else:
-        assert "additional_configuration" not in call_body_props
-
-
-def test_create_error(mocked_cmd, mocked_get_extended_location):
-    with pytest.raises(InvalidArgumentValueError):
-        create_custom_asset_endpoint_profile(
-            cmd=mocked_cmd,
-            asset_endpoint_profile_name=generate_random_string(),
-            target_address=generate_random_string(),
-            resource_group_name=generate_random_string(),
-            instance_name=generate_random_string(),
-            endpoint_profile_type=generate_random_string(),
-            additional_configuration=generate_random_string()
-        )
+    assert call_body_props["additionalConfiguration"] == "{}"
 
 
 @pytest.mark.parametrize("discovered", [False])

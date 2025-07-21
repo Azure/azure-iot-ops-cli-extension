@@ -407,12 +407,10 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         DeviceEndpointType.OPCUA.value: [
             "opcua_dataset_values",
             "opcua_event_values",
-            "mgmt_custom_configuration",
             "dataset_destinations",
             "event_destinations"
         ],
         DeviceEndpointType.ONVIF.value: [
-            "mgmt_custom_configuration",
             "event_destinations"
         ],
         DeviceEndpointType.MEDIA.value: [

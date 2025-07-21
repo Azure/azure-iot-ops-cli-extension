@@ -8,7 +8,6 @@
 from .v20250701_preview.operations import (
     AkriConnectorOperations,
     AkriConnectorTemplateOperations,
-    AkriDiscoveryHandlerOperations,
     BrokerAuthenticationOperations,
     BrokerAuthorizationOperations,
     BrokerListenerOperations,
@@ -24,7 +23,6 @@ from .v20250701_preview.operations import (
 __all__ = [
     "AkriConnectorOperations",
     "AkriConnectorTemplateOperations",
-    "AkriDiscoveryHandlerOperations",
     "BrokerAuthenticationOperations",
     "BrokerAuthorizationOperations",
     "BrokerListenerOperations",
