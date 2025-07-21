@@ -4,15 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+import pytest
 from typing import List
 
 from ...generators import generate_random_string
 from ...helpers import run
-from .namespace_helpers import create_config_file, assert_point_properties
+from .namespace_helpers import create_config_file, assert_point_properties, assert_dataset_properties
 
 
-# TODO fix up tests to work with linux
-# pytestmark = pytest.mark.rpsaas
+pytestmark = pytest.mark.rpsaas_long_running
 
 
 def test_namespace_custom_asset_dataset_lifecycle_operations(
@@ -279,7 +279,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     dataset_result = run(
         f"az iot ops ns asset opcua dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
-        f"--data-source {dataset_data_source} "
+        f"--data-source \"{dataset_data_source}\" "
         f"--destination {dataset_destinations} "
         f"--publish-int 1000 "
         f"--sampling-int 500 "
@@ -326,7 +326,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     updated_dataset = run(
         f"az iot ops ns asset opcua dataset update --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
-        f"--data-source {updated_data_source} "
+        f"--data-source \"{updated_data_source}\" "
         f"--destination {updated_destinations} "
         f"--publish-int 2000 "
         f"--sampling-int 1000 "
@@ -348,7 +348,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     replaced_dataset = run(
         f"az iot ops ns asset opcua dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
-        f"--data-source {replaced_data_source} "
+        f"--data-source \"{replaced_data_source}\" "
         f"--publish-int 3000 --replace"
     )
 
@@ -367,7 +367,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     datapoint_result_1 = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--name {datapoint_name_1} --data-source {datapoint_data_source_1} "
+        f"--name {datapoint_name_1} --data-source \"{datapoint_data_source_1}\" "
         f"--queue-size 5 --sampling-int 250"
     )
 
@@ -383,7 +383,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     datapoint_result_2 = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--name {datapoint_name_2} --data-source {datapoint_data_source_2} "
+        f"--name {datapoint_name_2} --data-source \"{datapoint_data_source_2}\" "
         f"--queue-size 3 --sampling-int 500"
     )
 
@@ -411,7 +411,7 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
     replaced_datapoint = run(
         f"az iot ops ns asset opcua dataset point add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
-        f"--name {datapoint_name_1} --data-source {replaced_datapoint_data_source} "
+        f"--name {datapoint_name_1} --data-source \"{replaced_datapoint_data_source}\" "
         f"--queue-size 15 --sampling-int 100 --replace"
     )
 
@@ -452,15 +452,3 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
     remaining_dataset_names = [dataset["name"] for dataset in datasets_list_after_remove]
     assert dataset_name not in remaining_dataset_names
-
-
-def assert_dataset_properties(result, **expected):
-    """Verify dataset properties match expected values.
-
-    Minimal checks since unit tests already validate the command structure."""
-    assert result["name"] == expected["name"]
-
-    if "data_source" in expected:
-        assert result["dataSource"] == expected["data_source"]
-    if "custom_configuration" in expected:
-        assert result["datasetConfiguration"] == expected["custom_configuration"]

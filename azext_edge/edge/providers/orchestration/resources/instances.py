@@ -7,8 +7,12 @@
 import re
 from typing import Dict, Iterable, List, Optional
 
-from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
-from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
+from azure.cli.core.azclierror import (
+    AzureResponseError,
+    InvalidArgumentValueError,
+    ValidationError,
+)
+from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
 from knack.log import get_logger
 from rich import print
 from rich.console import Console
@@ -29,8 +33,18 @@ from ....util.common import (
     url_safe_hash_phrase,
 )
 from ....util.queryable import Queryable
-from ..common import CUSTOM_LOCATIONS_API_VERSION, KEYVAULT_CLOUD_API_VERSION, IdentityUsageType
-from ..permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
+from ..common import (
+    CONTRIBUTOR_ROLE_ID,
+    CUSTOM_LOCATIONS_API_VERSION,
+    KEYVAULT_CLOUD_API_VERSION,
+    IdentityUsageType,
+)
+from ..permissions import (
+    ROLE_DEF_FORMAT_STR,
+    PermissionManager,
+    PrincipalType,
+    get_ra_user_error_msg,
+)
 from ..resource_map import IoTOperationsResourceMap
 
 logger = get_logger(__name__)
@@ -226,13 +240,15 @@ class Instances(Queryable):
         usage_type: str,
         federated_credential_name: Optional[str] = None,
         use_self_hosted_issuer: Optional[bool] = None,
+        skip_sr_ra: Optional[bool] = None,
+        custom_sr_role_id: Optional[str] = None,
         **kwargs,
     ):
         """
         Responsible for federating and building the instance identity object.
         """
         mi_resource_id_container = parse_resource_id(mi_user_assigned)
-        self.resource_client.resources.get_by_id(
+        mi_resource = self.resource_client.resources.get_by_id(
             resource_id=mi_resource_id_container.resource_id, api_version=MANAGED_IDENTITY_API_VERSION
         )
 
@@ -265,7 +281,36 @@ class Instances(Queryable):
         identity["userAssignedIdentities"][mi_user_assigned] = {}
 
         instance["identity"] = identity
-        return self.update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
+        updated_instance = self.update(name=name, resource_group_name=resource_group_name, instance=instance, **kwargs)
+        if usage_type == IdentityUsageType.SCHEMA.value and not skip_sr_ra:
+            schema_registry_id = instance.get("properties", {}).get("schemaRegistryRef", {}).get("resourceId")
+            if not schema_registry_id:
+                logger.warning("There is no schema registry associated with the instance.")
+                return updated_instance
+
+            try:
+                schema_registry_id_parts = parse_resource_id(schema_registry_id)
+                self.permission_manager.apply_role_assignment(
+                    scope=schema_registry_id,
+                    principal_id=mi_resource["properties"]["principalId"],
+                    role_def_id=custom_sr_role_id
+                    or ROLE_DEF_FORMAT_STR.format(
+                        subscription_id=schema_registry_id_parts.subscription_id,
+                        role_id=CONTRIBUTOR_ROLE_ID,
+                    ),
+                    principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
+                )
+            except HttpResponseError as http_exc:
+                raise AzureResponseError(
+                    get_ra_user_error_msg(
+                        error_str=str(http_exc),
+                        sp_name=mi_resource_id_container.resource_name,
+                        sp_id=mi_resource["properties"]["principalId"],
+                        expected_role="Contributor",
+                        scope=schema_registry_id,
+                    )
+                )
+        return updated_instance
 
     def enable_secretsync(
         self,

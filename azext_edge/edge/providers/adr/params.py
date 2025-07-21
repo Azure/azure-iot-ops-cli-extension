@@ -463,20 +463,6 @@ def load_adr_arguments(self, _):
             arg_type=tags_type,
         )
 
-    with self.argument_context("iot ops asset endpoint create custom") as context:
-        context.argument(
-            "endpoint_profile_type",
-            options_list=["--endpoint-type", "--et"],
-            help="Endpoint Profile Type for the Connector.",
-            arg_group="Connector",
-        )
-        context.argument(
-            "additional_configuration",
-            options_list=["--additional-config", "--ac"],
-            help="File path containing or inline json for the additional configuration.",
-            arg_group="Connector",
-        )
-
     with self.argument_context("iot ops asset endpoint create opcua") as context:
         context.argument(
             "application_name",
@@ -644,12 +630,6 @@ def load_adr_arguments(self, _):
             help="The device operating system version.",
         )
         context.argument(
-            "tags",
-            options_list=["--tags"],
-            help="Space-separated tags in 'key[=value]' format. Use '' to clear existing tags.",
-            arg_type=tags_type,
-        )
-        context.argument(
             "manufacturer",
             options_list=["--manufacturer"],
             help="The device manufacturer.",
@@ -704,6 +684,7 @@ def load_adr_arguments(self, _):
             options_list=["--version"],
             help="Endpoint version.",
         )
+        # TODO: add description of how to use these in the wiki
         context.argument(
             "certificate_reference",
             options_list=["--certificate-ref", "--cert-ref"],
@@ -1001,12 +982,6 @@ def load_adr_arguments(self, _):
             arg_group="Additional Info"
         )
         context.argument(
-            "tags",
-            options_list=["--tags"],
-            help="Space-separated tags in 'key[=value]' format.",
-            arg_type=tags_type,
-        )
-        context.argument(
             "custom_query",
             options_list=["--custom-query", "--cq"],
             help="Custom query to use. All other query arguments will be ignored.",
@@ -1087,7 +1062,7 @@ def load_adr_arguments(self, _):
             context.argument(
                 "task_format",
                 options_list=["--task-format", "--format"],
-                help="Media format. Only allowed for only " + (
+                help="Media format. Only allowed for " + (
                     ', '.join([
                         MediaTaskType.snapshot_to_mqtt.value,
                         MediaTaskType.snapshot_to_fs.value,
@@ -1108,7 +1083,7 @@ def load_adr_arguments(self, _):
             context.argument(
                 "snapshots_per_second",
                 options_list=["--snapshots-per-sec", "--sps"],
-                help=f"Number of snapshots per second. Only allowed for only {MediaTaskType.snapshot_to_mqtt.value} "
+                help=f"Number of snapshots per second. Only allowed for {MediaTaskType.snapshot_to_mqtt.value} "
                 f"and {MediaTaskType.snapshot_to_fs.value}. Minimum: 0",
                 type=float,
                 arg_group="Default Stream Configuration",
@@ -1116,35 +1091,35 @@ def load_adr_arguments(self, _):
             context.argument(
                 "path",
                 options_list=["--path", "-p"],
-                help="File system path for snapshots or clips. Only allowed for only "
+                help="File system path for snapshots or clips. Only allowed for "
                 f"{MediaTaskType.snapshot_to_fs.value} and {MediaTaskType.clip_to_fs.value}.",
                 arg_group="Default Stream Configuration",
             )
             context.argument(
                 "duration",
                 options_list=["--duration"],
-                help=f"Duration of clip in seconds. Only allowed for only {MediaTaskType.clip_to_fs.value}. Minimum: 0",
+                help=f"Duration of clip in seconds. Only allowed for {MediaTaskType.clip_to_fs.value}. Minimum: 0",
                 type=int,
                 arg_group="Default Stream Configuration",
             )
             context.argument(
                 "media_server_address",
                 options_list=["--media-server-address", "--ms-addr"],
-                help=f"Media server address for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                help=f"Media server address for streaming. Only allowed for {MediaTaskType.stream_to_rtsp.value} "
                 f"and {MediaTaskType.stream_to_rtsps.value}.",
                 arg_group="Default Stream Configuration",
             )
             context.argument(
                 "media_server_path",
                 options_list=["--media-server-path", "--ms-path"],
-                help=f"Media server path for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                help=f"Media server path for streaming. Only allowed for {MediaTaskType.stream_to_rtsp.value} "
                 f"and {MediaTaskType.stream_to_rtsps.value}.",
                 arg_group="Default Stream Configuration",
             )
             context.argument(
                 "media_server_port",
                 options_list=["--media-server-port", "--ms-port"],
-                help=f"Media server port for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                help=f"Media server port for streaming. Only allowed for {MediaTaskType.stream_to_rtsp.value} "
                 f"and {MediaTaskType.stream_to_rtsps.value}. Minimum: 1",
                 type=int,
                 arg_group="Default Stream Configuration",
@@ -1152,21 +1127,21 @@ def load_adr_arguments(self, _):
             context.argument(
                 "media_server_username",
                 options_list=["--media-server-user", "--ms-user"],
-                help=f"Media server username reference. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                help=f"Media server username reference. Only allowed for {MediaTaskType.stream_to_rtsp.value} "
                 f"and {MediaTaskType.stream_to_rtsps.value}.",
                 arg_group="Default Stream Configuration",
             )
             context.argument(
                 "media_server_password",
                 options_list=["--media-server-pass", "--ms-pass"],
-                help=f"Media server password reference. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+                help=f"Media server password reference. Only allowed for {MediaTaskType.stream_to_rtsp.value} "
                 f"and {MediaTaskType.stream_to_rtsps.value}.",
                 arg_group="Default Stream Configuration",
             )
             context.argument(
                 "media_server_certificate",
                 options_list=["--media-server-cert", "--ms-cert"],
-                help="Media server certificate reference. Only allowed for only "
+                help="Media server certificate reference. Only allowed for "
                 f"{MediaTaskType.stream_to_rtsps.value}.",
                 arg_group="Default Stream Configuration",
             )
@@ -1660,7 +1635,7 @@ def load_adr_arguments(self, _):
         context.argument(
             "task_format",
             options_list=["--task-format", "--format"],
-            help="Media format. Only allowed for only " + (
+            help="Media format. Only allowed for " + (
                 ', '.join([
                     MediaTaskType.snapshot_to_mqtt.value,
                     MediaTaskType.snapshot_to_fs.value,
@@ -1681,7 +1656,7 @@ def load_adr_arguments(self, _):
         context.argument(
             "snapshots_per_second",
             options_list=["--snapshots-per-sec", "--sps"],
-            help=f"Number of snapshots per second. Only allowed for only {MediaTaskType.snapshot_to_mqtt.value} "
+            help=f"Number of snapshots per second. Only allowed for {MediaTaskType.snapshot_to_mqtt.value} "
             f"and {MediaTaskType.snapshot_to_fs.value}. Minimum: 0",
             type=float,
             arg_group="Snapshot and Clip Configuration",
@@ -1689,35 +1664,35 @@ def load_adr_arguments(self, _):
         context.argument(
             "path",
             options_list=["--path", "-p"],
-            help="File system path for snapshots or clips. Only allowed for only "
+            help="File system path for snapshots or clips. Only allowed for "
             f"{MediaTaskType.snapshot_to_fs.value} and {MediaTaskType.clip_to_fs.value}.",
             arg_group="Snapshot and Clip Configuration",
         )
         context.argument(
             "duration",
             options_list=["--duration"],
-            help=f"Duration of clip in seconds. Only allowed for only {MediaTaskType.clip_to_fs.value}. Minimum: 0",
+            help=f"Duration of clip in seconds. Only allowed for {MediaTaskType.clip_to_fs.value}. Minimum: 0",
             type=int,
             arg_group="Snapshot and Clip Configuration",
         )
         context.argument(
             "media_server_address",
             options_list=["--media-server-address", "--ms-addr"],
-            help=f"Media server address for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+            help=f"Media server address for streaming. Only allowed for {MediaTaskType.stream_to_rtsp.value} "
             f"and {MediaTaskType.stream_to_rtsps.value}.",
             arg_group="Stream to RTSP and RTSPS Configuration",
         )
         context.argument(
             "media_server_path",
             options_list=["--media-server-path", "--ms-path"],
-            help=f"Media server path for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+            help=f"Media server path for streaming. Only allowed for {MediaTaskType.stream_to_rtsp.value} "
             f"and {MediaTaskType.stream_to_rtsps.value}.",
             arg_group="Stream to RTSP and RTSPS Configuration",
         )
         context.argument(
             "media_server_port",
             options_list=["--media-server-port", "--ms-port"],
-            help=f"Media server port for streaming. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+            help=f"Media server port for streaming. Only allowed for {MediaTaskType.stream_to_rtsp.value} "
             f"and {MediaTaskType.stream_to_rtsps.value}. Minimum: 1",
             arg_group="Stream to RTSP and RTSPS Configuration",
             type=int,
@@ -1725,21 +1700,21 @@ def load_adr_arguments(self, _):
         context.argument(
             "media_server_username",
             options_list=["--media-server-user", "--ms-user"],
-            help=f"Media server username reference. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+            help=f"Media server username reference. Only allowed for {MediaTaskType.stream_to_rtsp.value} "
             f"and {MediaTaskType.stream_to_rtsps.value}.",
             arg_group="Stream to RTSP and RTSPS Configuration",
         )
         context.argument(
             "media_server_password",
             options_list=["--media-server-pass", "--ms-pass"],
-            help=f"Media server password reference. Only allowed for only {MediaTaskType.stream_to_rtsp.value} "
+            help=f"Media server password reference. Only allowed for {MediaTaskType.stream_to_rtsp.value} "
             f"and {MediaTaskType.stream_to_rtsps.value}.",
             arg_group="Stream to RTSP and RTSPS Configuration",
         )
         context.argument(
             "media_server_certificate",
             options_list=["--media-server-cert", "--ms-cert"],
-            help="Media server certificate reference. Only allowed for only "
+            help="Media server certificate reference. Only allowed for "
             f"{MediaTaskType.stream_to_rtsps.value}.",
             arg_group="Stream to RTSP and RTSPS Configuration",
         )
