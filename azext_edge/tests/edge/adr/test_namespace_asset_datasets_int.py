@@ -12,8 +12,7 @@ from ...helpers import run
 from .namespace_helpers import create_config_file, assert_point_properties, assert_dataset_properties
 
 
-# TODO fix up tests to work with linux
-pytestmark = pytest.mark.rpsaas
+pytestmark = pytest.mark.rpsaas_long_running
 
 
 def test_namespace_custom_asset_dataset_lifecycle_operations(
