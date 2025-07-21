@@ -1951,7 +1951,7 @@ def load_iotops_help():
             custom role to be used for the identity role assignment.
           text: >
             az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID --usage schema
-            --custom-role-id $CUSTOM_ROLE_ID
+            --custom-sr-role-id $CUSTOM_ROLE_ID
         - name: Assign and federate a desired user-assigned managed identity for use with schema registry but
             skip the role assignment step of the operation.
           text: >
