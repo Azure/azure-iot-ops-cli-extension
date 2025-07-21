@@ -945,7 +945,7 @@ def load_iotops_adr_help():
             az iot ops ns asset custom create --name myCustomAsset --instance myInstance -g myInstanceResourceGroupmyResourceGroup
             --device myDevice --endpoint-name myEndpoint
             --dataset-dest key="myKey"
-            --event-dest topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
+            --event-dest topic="factory/events/temperature/updated" qos=Qos0 retain=Never ttl=3600
             --stream-dest path="my/storage/path"
     """
 
@@ -975,7 +975,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset custom update --name myCustomAsset --instance myInstance -g myInstanceResourceGroup
             --dataset-dest key="myKey"
-            --event-dest topic="factory/events/temperature/updated" qos=2 retain=false ttl=3600
+            --event-dest topic="factory/events/temperature/updated" qos=Qos0 retain=Never ttl=3600
             --stream-dest path="my/storage/path"
 
         - name: Update a custom asset's custom attributes
@@ -1015,7 +1015,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset custom dataset add --asset myCustomAsset --instance myInstance
             -g myInstanceResourceGroup --name default --data-source "sensor/temp"
-            --destination topic="factory/temperature" retain=true qos=1 ttl=3600
+            --destination topic="factory/temperature" retain=Keep qos=Qos1 ttl=3600
 
         - name: Add a custom dataset with BrokerStateStore destination
           text: >
@@ -1086,7 +1086,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset custom dataset update --asset myCustomAsset --instance myInstance
             -g myInstanceResourceGroup --name default
-            --destination topic="factory/updated/temperature" retain=false qos=2 ttl=7200
+            --destination topic="factory/updated/temperature" retain=Never qos=Qos0 ttl=7200
     """
 
     helps[
@@ -1170,7 +1170,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset custom event add --asset myCustomAsset --instance myInstance
             -g myInstanceResourceGroup --name statusEvent --event-notifier "status.change"
-            --destination topic="factory/custom/events" retain=false qos=1 ttl=1800
+            --destination topic="factory/custom/events" retain=Never qos=Qos1 ttl=1800
 
         - name: Replace a custom event with same name
           text: >
@@ -1234,7 +1234,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset custom event update --asset myCustomAsset --instance myInstance
             -g myInstanceResourceGroup --name temperatureAlert
-            --destination topic="factory/custom/alerts/updated" retain=true qos=2 ttl=3600
+            --destination topic="factory/custom/alerts/updated" retain=Keep qos=Qos0 ttl=3600
     """
 
     helps[
@@ -1571,7 +1571,7 @@ def load_iotops_adr_help():
             az iot ops ns asset media create --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
             --device myCamera --endpoint-name myCameraEndpoint --task-type snapshot-to-mqtt
             --task-format jpeg --snapshots-per-sec 1
-            --stream-dest topic="factory/cameras/snapshots" qos=1 retain=false ttl=60
+            --stream-dest topic="factory/cameras/snapshots" qos=Qos1 retain=Never ttl=60
 
         - name: Create a media asset for file system snapshots
           text: >
@@ -1625,7 +1625,7 @@ def load_iotops_adr_help():
         - name: Update a media asset's destination and metadata
           text: >
             az iot ops ns asset media update --name myCameraAsset --instance myInstance -g myInstanceResourceGroup
-            --stream-dest topic="security/cameras/main" qos=1 retain=false ttl=300
+            --stream-dest topic="security/cameras/main" qos=Qos1 retain=Never ttl=300
             --manufacturer "SecureCam Inc." --model "HD-8000" --serial-number "CAM9876"
     """
 
@@ -1852,7 +1852,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset onvif event add --asset myOnvifAsset --instance myInstance
             -g myInstanceResourceGroup --name lineDetection --event-notifier "line.crossing"
-            --destination topic="factory/onvif/events" retain=false qos=1 ttl=1800
+            --destination topic="factory/onvif/events" retain=Never qos=Qos1 ttl=1800
 
         - name: Repalce an ONVIF event with same name
           text: >
@@ -1916,7 +1916,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset onvif event update --asset myOnvifAsset --instance myInstance
             -g myInstanceResourceGroup --name lineDetection
-            --destination topic="factory/onvif/security/updated" retain=true qos=2 ttl=3600
+            --destination topic="factory/onvif/security/updated" retain=Keep qos=Qos0 ttl=3600
     """
 
     helps[
@@ -2045,8 +2045,8 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset opcua create --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
             --device myOpcuaDevice --endpoint-name myOpcuaEndpoint
-            --dataset-dest topic="factory/opcua/data" retain=true qos=1 ttl=3600
-            --event-dest topic="factory/opcua/events" retain=false qos=1 ttl=3600
+            --dataset-dest topic="factory/opcua/data" retain=Keep qos=Qos1 ttl=3600
+            --event-dest topic="factory/opcua/events" retain=Never qos=Qos1 ttl=3600
     """
 
     helps[
@@ -2076,8 +2076,8 @@ def load_iotops_adr_help():
         - name: Update an OPC UA asset's destination configurations
           text: >
             az iot ops ns asset opcua update --name myOpcuaAsset --instance myInstance -g myInstanceResourceGroup
-            --dataset-dest topic="factory/opcua/data/updated" retain=true qos=1 ttl=7200
-            --event-dest topic="factory/opcua/events/updated" retain=false qos=1 ttl=3600
+            --dataset-dest topic="factory/opcua/data/updated" retain=Keep qos=Qos1 ttl=7200
+            --event-dest topic="factory/opcua/events/updated" retain=Never qos=Qos1 ttl=3600
 
         - name: Update an OPC UA asset's metadata and attributes
           text: >
@@ -2123,7 +2123,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset opcua dataset add --asset myOpcuaAsset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData --data-source "ns=2;s=Temperature"
-            --dest topic="factory/opcua/temperature" retain=true qos=1 ttl=3600
+            --dest topic="factory/opcua/temperature" retain=Keep qos=Qos1 ttl=3600
 
         - name: Add an OPC UA dataset and replace existing one with same name
           text: >
@@ -2193,7 +2193,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset opcua dataset update --asset myOpcuaAsset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData
-            --dest topic="factory/opcua/updated/temperature" retain=false qos=2 ttl=7200
+            --dest topic="factory/opcua/updated/temperature" retain=Never qos=Qos0 ttl=7200
     """
 
     helps[
@@ -2283,7 +2283,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset opcua event add --asset myOpcuaAsset --instance myInstance
             -g myInstanceResourceGroup --name criticalAlarm --event-notifier "ns=2;i=4000"
-            --dest topic="factory/opcua/alarms" retain=true qos=2 ttl=7200
+            --dest topic="factory/opcua/alarms" retain=Keep qos=Qos0 ttl=7200
 
         - name: Replace an OPC UA event with same name
           text: >
@@ -2347,7 +2347,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset opcua event update --asset myOpcuaAsset --instance myInstance
             -g myInstanceResourceGroup --name systemEvent
-            --dest topic="factory/opcua/system/updated" retain=false qos=1 ttl=3600
+            --dest topic="factory/opcua/system/updated" retain=Never qos=Qos1 ttl=3600
     """
 
     helps[
@@ -2534,7 +2534,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset rest create --name myRestAsset --instance myInstance -g myInstanceResourceGroup
             --device myRestDevice --endpoint-name myRestEndpoint
-            --dataset-dest topic="factory/rest/data" retain=false qos=1 ttl=3600
+            --dataset-dest topic="factory/rest/data" retain=Never qos=Qos1 ttl=3600
 
         - name: Create a REST asset with custom configuration and BrokerStateStore destination
           text: >
@@ -2572,7 +2572,7 @@ def load_iotops_adr_help():
         - name: Update a REST asset's dataset destination to MQTT
           text: >
             az iot ops ns asset rest update --name myRestAsset --instance myInstance -g myInstanceResourceGroup
-            --dataset-dest topic="factory/rest/updated/data" retain=true qos=1 ttl=7200
+            --dataset-dest topic="factory/rest/updated/data" retain=Keep qos=Qos1 ttl=7200
 
         - name: Update a REST asset's dataset destination to BrokerStateStore
           text: >
@@ -2627,7 +2627,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset rest dataset add --asset myRestAsset --instance myInstance
             -g myInstanceResourceGroup --name weatherData --data-source "/api/weather"
-            --dest topic="factory/rest/weather" retain=false qos=1 ttl=1800
+            --dest topic="factory/rest/weather" retain=Never qos=Qos1 ttl=1800
 
         - name: Add a REST dataset with BrokerStateStore destination
           text: >
@@ -2702,7 +2702,7 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset rest dataset update --asset myRestAsset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData
-            --dest topic="factory/rest/updated/temperature" retain=true qos=1 ttl=3600
+            --dest topic="factory/rest/updated/temperature" retain=Keep qos=Qos1 ttl=3600
 
         - name: Update dataset destination to BrokerStateStore
           text: >
