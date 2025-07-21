@@ -1760,7 +1760,9 @@ def load_iotops_arguments(self, _):
         )
 
     with self.argument_context("iot ops schema version") as context:
-        context.argument("version_name", options_list=["--name", "-n"], help="Schema version name.", type=int)
+        context.argument(
+            "version_name", options_list=["--version", "-v"], help="Schema version name.", type=int
+        )
         context.argument(
             "schema_name",
             options_list=["--schema"],
