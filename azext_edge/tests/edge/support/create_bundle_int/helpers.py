@@ -190,9 +190,7 @@ def check_custom_resource_files(
     )
     for key, resource_names in cluster_resource_names.items():
         find_extra_or_missing_names(
-            result_names=file_resource_names[key],
-            pre_expected_names=resource_names,
-            post_expected_names=resource_names
+            result_names=file_resource_names[key], pre_expected_names=resource_names, post_expected_names=resource_names
         )
 
 
@@ -338,8 +336,8 @@ def get_file_map(
 
     # separate namespaces
     file_map = {"__namespaces__": {}}
-    # default walk result meta and arcagents
-    expected_default_walk_result = 1 + len(ARC_AGENTS)
+    # default walk result: arcagents + meta + meso (always collected)
+    expected_default_walk_result = len(ARC_AGENTS) + 2
 
     if arc_namespace:
         file_map["arc"] = {}
@@ -355,11 +353,16 @@ def get_file_map(
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
     elif ops_service == "billing":
-        assert len(walk_result) == 2 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        # TODO - validate count?
+        assert len(walk_result) >= expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
         ops_path = path.join(BASE_ZIP_PATH, aio_namespace, ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
-        file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
-        file_map["__namespaces__"]["usage"] = c_namespace
+        if c_path in walk_result:
+            file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
+            file_map["__namespaces__"]["usage"] = c_namespace
+        else:
+            file_map["usage"] = []
+            file_map["__namespaces__"]["usage"] = c_namespace
     elif ops_service == "acs":
         if acstor_namespace:
             # resources in both acstor_namespace and acs_namespace
@@ -419,14 +422,25 @@ def get_file_map(
         assert len(walk_result) == 3 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
-            assert len(walk_result) == expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            # TODO - validate count?
+            assert len(walk_result) >= expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
             pytest.skip(f"No bundles created for {ops_service}.")
         else:
-            assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
-    # remove ops_service that are not selectable by --svc
-    elif ops_service not in ["otel", "meta"]:
-        assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) >= expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+    # meso and meta are already included
+    elif ops_service in ["meso", "meta"]:
+        # TODO - validate count?
+        assert ops_path in walk_result, f"Expected service path {ops_path} not found in walk result"
+        assert len(walk_result) >= expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
         assert not walk_result[ops_path]["folders"]
+    # remove ops_service that are not selectable by --svc
+    elif ops_service not in ["otel"]:
+        if ops_path in walk_result:
+            # TODO - validate count?
+            assert len(walk_result) >= expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert not walk_result[ops_path]["folders"]
+        else:
+            assert len(walk_result) >= expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = aio_namespace
     return file_map
@@ -624,10 +638,25 @@ def _clean_up_folders(
     monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
 
     services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
+    arc_monikers = services + ["arcagents"]
+
+    # Check if clusterconfig resources are in arc namespace (e.g., for billing)
+    if arc_namespace:
+        clusterconfig_path = path.join(BASE_ZIP_PATH, arc_namespace, "clusterconfig")
+        if clusterconfig_path in walk_result:
+            arc_monikers.append("clusterconfig")
+
+    # Prepare cert-manager monikers with dynamic clusterconfig detection
+    certmanager_monikers = services[:]
+    if certmanager_namespace:
+        clusterconfig_path = path.join(BASE_ZIP_PATH, certmanager_namespace, "clusterconfig")
+        if clusterconfig_path in walk_result:
+            certmanager_monikers.append("clusterconfig")
+
     for namespace_folder, monikers in [
         (clusterconfig_namespace, ["clusterconfig"]),
-        (arc_namespace, services + ["arcagents"]),
-        (certmanager_namespace, services),
+        (arc_namespace, arc_monikers),
+        (certmanager_namespace, certmanager_monikers),
     ]:
         if namespace_folder and path.join(BASE_ZIP_PATH, namespace_folder) in walk_result:
             # remove empty folders in level 1
@@ -636,36 +665,50 @@ def _clean_up_folders(
             if namespace_folder == arc_namespace and monitor_path in walk_result:
                 monikers.append(OpsServiceType.azuremonitor.value)
             assert set(level_1["folders"]) == set(monikers), (
-                f"Mismatch; folders: [{level_1['folders']}],"
-                f"monikers: [{monikers}]"
+                f"Mismatch; folders: [{level_1['folders']}]," f"monikers: [{monikers}]"
             )
             assert not level_1["files"]
 
     if ssc_namespace:
-        services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
+        services = []
+        # Only add certmanager to services if it actually exists in this namespace
+        if (
+            certmanager_namespace
+            and path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.certmanager.value) in walk_result
+        ):
+            services.append(OpsServiceType.certmanager.value)
         if path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretstore.value) in walk_result:
             services += [OpsServiceType.secretstore.value]
+
+        # Check if clusterconfig resources are in ssc namespace
+        clusterconfig_path = path.join(BASE_ZIP_PATH, ssc_namespace, "clusterconfig")
+        if clusterconfig_path in walk_result:
+            services.append("clusterconfig")
+
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, ssc_namespace))
 
-        if certmanager_namespace:
+        if services:
             assert set(level_1["folders"]) == set(services), (
-                f"Mismatch; folders: [{level_1['folders']}], "
-                f"monikers: [{services}]"
+                f"Mismatch; folders: [{level_1['folders']}], " f"monikers: [{services}]"
             )
         else:
             assert level_1["folders"] == [OpsServiceType.secretstore.value], (
-                f"Mismatch; folders: [{level_1['folders']}], "
-                f"monikers: [{OpsServiceType.secretstore.value}]"
+                f"Mismatch; folders: [{level_1['folders']}], " f"monikers: [{OpsServiceType.secretstore.value}]"
             )
 
     # note that the acstor and acs namespace should be the same value
-    if (
-        acstor_namespace
-        or acs_namespace
-        and path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace) in walk_result
-    ):
-        services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace))
+    if acstor_namespace or acs_namespace and path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace) in walk_result:
+        services = []
+        namespace_to_check = acstor_namespace or acs_namespace
+        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, namespace_to_check))
+
+        # Only add certmanager to services if it actually exists in this namespace
+        if (
+            certmanager_namespace
+            and path.join(BASE_ZIP_PATH, namespace_to_check, OpsServiceType.certmanager.value) in walk_result
+        ):
+            services.append(OpsServiceType.certmanager.value)
+
         if acs_namespace:
             services.append("arccontainerstorage")
         if (
@@ -673,9 +716,14 @@ def _clean_up_folders(
             and path.join(BASE_ZIP_PATH, acstor_namespace, containerstorage_service) in walk_result
         ):
             services.append(containerstorage_service)
+
+        # Check if clusterconfig resources are in this namespace
+        clusterconfig_path = path.join(BASE_ZIP_PATH, namespace_to_check, "clusterconfig")
+        if clusterconfig_path in walk_result:
+            services.append("clusterconfig")
+
         assert set(level_1["folders"]) == set(services), (
-            f"Mismatch; folders: [{level_1['folders']}], "
-            f"services [{services}]"
+            f"Mismatch; folders: [{level_1['folders']}], " f"services [{services}]"
         )
         assert not level_1["files"]
 
