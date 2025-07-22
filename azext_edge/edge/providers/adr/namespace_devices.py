@@ -43,9 +43,13 @@ class DeviceEndpointType(ListableEnum):
     REST = "Microsoft.Http"
 
     @classmethod
-    def get_type_from_keyword(cls, keyword: str) -> Optional[str]:
+    def get_type_from_keyword(cls, keyword: str, return_custom_keyword: bool = True) -> Optional[str]:
         """
-        Returns the endpoint type based on the keyword. Mainly used for testing.
+        Returns the endpoint type based on the keyword.
+
+        For listing endpoint purposes, if the keyword does not match any known type, it will return
+        the keyword itself.
+        For testing purposes, if the keyword does not match any known type, it will return "custom".
         """
         mapped_types = {
             "opcua": cls.OPCUA.value,
@@ -53,7 +57,7 @@ class DeviceEndpointType(ListableEnum):
             "media": cls.MEDIA.value,
             "rest": cls.REST.value
         }
-        return mapped_types.get(keyword.lower(), "custom")
+        return mapped_types.get(keyword.lower(), "custom" if return_custom_keyword else keyword)
 
 
 class NamespaceDevices(Queryable):
@@ -368,15 +372,25 @@ class NamespaceDevices(Queryable):
         device_name: str,
         instance_name: str,
         instance_resource_group: str,
-        inbound: bool = False
+        inbound: bool = False,
+        inbound_endpoint_type: Optional[str] = None
     ) -> dict:
-        # TODO: for inbound endponts, see if we can also filter by type
         device = self.show(
             device_name=device_name,
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        return _get_endpoints(device, inbound=inbound)
+        endpoints = _get_endpoints(device, inbound=inbound)
+        if inbound and inbound_endpoint_type:
+            # support inputs of just "opcua", "onvif", etc.
+            inbound_endpoint_type = DeviceEndpointType.get_type_from_keyword(
+                inbound_endpoint_type, return_custom_keyword=False
+            )
+            endpoints = {
+                name: body for name, body in endpoints.items()
+                if body.get("endpointType", "").lower() == inbound_endpoint_type.lower()
+            }
+        return endpoints
 
     def inbound_remove_endpoint(
         self,

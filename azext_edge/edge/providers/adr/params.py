@@ -723,6 +723,14 @@ def load_adr_arguments(self, _):
             arg_type=get_three_state_flag(),
         )
 
+    with self.argument_context("iot ops ns device endpoint inbound list") as context:
+        context.argument(
+            "inbound_endpoint_type",
+            options_list=["--endpoint-type", "--et"],
+            help="Filter inbound endpoints by type. Both full endpoint name `Microsoft.OpcUa` "
+            "and short name `opcua` are supported.",
+        )
+
     with self.argument_context("iot ops ns device endpoint inbound remove") as context:
         context.argument(
             "endpoint_names",
@@ -893,7 +901,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "device_endpoint_name",
-            options_list=["--endpoint-name", "--endpoint", "--ep"],
+            options_list=["--endpoint", "--ep"],
             help="Device endpoint name.",
         )
         context.argument(

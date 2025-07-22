@@ -371,13 +371,15 @@ def list_inbound_device_endpoints(
     cmd,
     device_name: str,
     instance_name: str,
-    instance_resource_group: str
+    instance_resource_group: str,
+    inbound_endpoint_type: Optional[str] = None,
 ) -> dict:
     return NamespaceDevices(cmd).list_endpoints(
         device_name=device_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        inbound=True
+        inbound=True,
+        inbound_endpoint_type=inbound_endpoint_type
     )
 
 

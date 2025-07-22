@@ -20,6 +20,7 @@ from azext_edge.edge.commands_namespaces import (
     update_namespace_device,
     list_namespace_device_endpoints,
     remove_inbound_device_endpoints,
+    list_inbound_device_endpoints,
     add_inbound_custom_device_endpoint,
     add_inbound_media_device_endpoint,
     add_inbound_onvif_device_endpoint,
@@ -552,10 +553,12 @@ def test_namespace_device_update(
         }
     }
 ])
+@pytest.mark.parametrize("inbound", [True, False])
 def test_list_namespace_device_endpoints(
     mocked_cmd,
     mocked_responses: responses,
     endpoints: dict,
+    inbound: bool,
     response_status: int,
     mocked_get_namespace_for_instance
 ):
@@ -597,6 +600,7 @@ def test_list_namespace_device_endpoints(
                 device_name=device_name,
                 instance_name=instance_name,
                 instance_resource_group=instance_resource_group,
+                inbound=inbound
             )
         return
 
@@ -606,10 +610,129 @@ def test_list_namespace_device_endpoints(
         device_name=device_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
+        inbound=inbound
     )
 
     # Verify result matches the endpoints in the mock response
-    assert result == {"inbound": endpoints}
+    assert result == (endpoints if inbound else {"inbound": endpoints})
+
+    # Verify the GET call was made
+    assert len(mocked_responses.calls) == 1
+    assert mocked_responses.calls[0].request.method == "GET"
+
+
+@pytest.mark.parametrize("response_status", [200, 443])
+@pytest.mark.parametrize("endpoints", [
+    {},
+    {  # Test with one endpoint
+        "endpoint1": {
+            "endpointType": "Microsoft.Media",
+            "address": "mqtt://example.com:1883",
+            "authentication": {"type": "Anonymous"},
+            "additionalConfiguration": "{\"publishingInterval\": 500, \"samplingInterval\": 500, \"queueSize\": 1}"
+        }
+    },
+    {  # Test with multiple endpoints
+        "endpoint1": {
+            "endpointType": "Microsoft.Media",
+            "address": "mqtt://example.com:1883",
+            "authentication": {"type": "Anonymous"},
+            "additionalConfiguration": "{\"publishingInterval\": 500, \"samplingInterval\": 500, \"queueSize\": 1}"
+        },
+        "endpoint2": {
+            "endpointType": "Microsoft.Media",
+            "address": "mqtt://example.com:1883",
+            "authentication": {"type": "Anonymous"},
+            "additionalConfiguration": "{\"publishingInterval\": 500, \"samplingInterval\": 500, \"queueSize\": 1}"
+        },
+        "endpoint3": {
+            "endpointType": "MyCustomType",
+            "address": "mqtt://example.com:1883",
+            "authentication": {"type": "Anonymous"},
+            "additionalConfiguration": "{\"publishingInterval\": 500, \"samplingInterval\": 500, \"queueSize\": 1}"
+        },
+        "endpoint4": {
+            "endpointType": "Microsoft.Onvif",
+            "address": "mqtt://example.com:1883",
+            "authentication": {"type": "Anonymous"},
+            "additionalConfiguration": "{\"publishingInterval\": 500, \"samplingInterval\": 500, \"queueSize\": 1}"
+        },
+    },
+])
+@pytest.mark.parametrize("endpoint_type", [
+    None,
+    "media",
+    "Microsoft.Media",
+    "mEdia",
+    "mycustomtype"
+])
+def test_list_namespace_device_inbound_endpoints(
+    mocked_cmd,
+    mocked_responses: responses,
+    endpoints: dict,
+    endpoint_type: Optional[str],
+    response_status: int,
+    mocked_get_namespace_for_instance
+):
+    # Setup test data
+    device_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value["name"]
+    resource_group_name = mocked_get_namespace_for_instance.return_value["resource_group"]
+
+    # Create mock device record with the specified endpoints
+    device_record = get_namespace_device_record(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+    device_record["properties"]["endpoints"] = {"inbound": endpoints}
+
+    # Mock the GET call to show_namespace_device
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=device_record if response_status == 200 else {"error": "Unauthorized"},
+        status=response_status,
+        content_type="application/json",
+    )
+
+    # Execute test based on status code
+    if response_status != 200:
+        with pytest.raises(Exception):
+            list_inbound_device_endpoints(
+                cmd=mocked_cmd,
+                device_name=device_name,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
+                inbound_endpoint_type=endpoint_type
+            )
+        return
+
+    # Test list_inbound_device_endpoints for success case
+    result = list_inbound_device_endpoints(
+        cmd=mocked_cmd,
+        device_name=device_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        inbound_endpoint_type=endpoint_type
+    )
+
+    # Verify result matches the endpoints in the mock response
+    if endpoint_type:
+        endpoint_type = DeviceEndpointType.get_type_from_keyword(endpoint_type, return_custom_keyword=False)
+        endpoints = {
+            name: endpoint for name, endpoint in endpoints.items()
+            if not endpoint_type or endpoint["endpointType"].lower() == endpoint_type.lower()
+        }
+    assert result == endpoints
 
     # Verify the GET call was made
     assert len(mocked_responses.calls) == 1
