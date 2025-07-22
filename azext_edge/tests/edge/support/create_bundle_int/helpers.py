@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, TypedDict, Union
 from os import path
 from zipfile import ZipFile
 import pytest
@@ -40,6 +40,17 @@ WORKLOAD_TYPES = [
     "service",
     "statefulset",
 ]
+
+
+class Namespaces(TypedDict):
+    """Dictionary for namespaces determined from the support bundle."""
+    arc: Optional[str] = None
+    aio: Optional[str] = None
+    acs: Optional[str] = None
+    acstor: Optional[str] = None
+    ssc: Optional[str] = None
+    usage_system: Optional[str] = None
+    certmanager: Optional[str] = None
 
 
 def assert_file_names(files: List[str]):
@@ -441,14 +452,8 @@ def process_top_levels(
         assert file in level_0["files"]
     if not level_0["folders"]:
         pytest.skip(f"No bundles created for {ops_service}.")
-    namespaces = level_0["folders"]
-    namespace = None
-    clusterconfig_namespace = None
-    arc_namespace = None
-    acs_namespace = None
-    acstor_namespace = None
-    ssc_namespace = None
-    certmanager_namespace = None
+    namespace_folders = level_0["folders"]
+    namespaces = Namespaces()
 
     def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
@@ -457,69 +462,69 @@ def process_top_levels(
     cert_resource_namespaces = []
     containerstorage_service = ""
 
-    for name in namespaces:
+    for name in namespace_folders:
         # determine which namespace belongs to aio vs billing
         if _get_namespace_determinating_files(
             name=name, folder=path.join("clusterconfig", "billing"), file_prefix="deployment"
         ):
             # if there is a deployment, should be azure-extensions-usage-system
-            clusterconfig_namespace = name
+            namespaces["usage_system"] = name
         elif _get_namespace_determinating_files(
             name=name, folder=path.join("arcagents", ARC_AGENTS[0][0]), file_prefix="pod"
         ):
-            arc_namespace = name
+            namespaces["arc"] = name
         elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
-            acs_namespace = name
+            namespaces["acs"] = name
         elif _get_namespace_determinating_files(
             name=name, folder=path.join("containerstorage"), file_prefix="configmap"
         ):
             containerstorage_service = "containerstorage"
-            acstor_namespace = name
+            namespaces["acstor"] = name
         elif _get_namespace_determinating_files(
             name=name, folder=OpsServiceType.secretstore.value, file_prefix="deployment"
         ):
-            ssc_namespace = name
+            namespaces["ssc"] = name
         elif _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="deployment"):
-            certmanager_namespace = name
+            namespaces["certmanager"] = name
         elif _get_namespace_determinating_files(name=name, folder="meta", file_prefix="instance"):
-            namespace = name
+            namespaces["aio"] = name
 
         if _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="configmap"):
             cert_resource_namespaces.append(name)
 
     # find the acstor namespace if fault tolerance is enabled,
     # but support bundle only getting certmanager resources
-    if not acstor_namespace:
+    if not namespaces.get("acstor"):
         # acstor_namespace should be the namespace besides certmanager, arc, and aio namespace
-        acstor_namespace = next(
+        namespaces["acstor"] = next(
             (
                 name
                 for name in cert_resource_namespaces
-                if name not in [certmanager_namespace, arc_namespace, namespace, ssc_namespace]
+                if name not in [
+                    namespaces.get("certmanager"),
+                    namespaces.get("arc"),
+                    namespaces.get("aio"),
+                    namespaces.get("ssc")
+                ]
             ),
             None,
         )
 
-    if not ssc_namespace:
+    if not namespaces.get("ssc"):
         # ssc_namespace should be the namespace besides certmanager, arc, and aio namespace
-        ssc_namespace = next(
+        namespaces["ssc"] = next(
             (
                 name
                 for name in cert_resource_namespaces
-                if name not in [certmanager_namespace, arc_namespace, namespace, acstor_namespace]
+                if name not in [
+                    namespaces.get("certmanager"),
+                    namespaces.get("arc"),
+                    namespaces.get("aio"),
+                    namespaces.get("acstor")
+                ]
             ),
             None,
         )
-
-    namespaces = {
-        "arc": arc_namespace,
-        "aio": namespace,
-        "acs": acs_namespace,
-        "acstor": acstor_namespace,
-        "ssc": ssc_namespace,
-        "usage_system": clusterconfig_namespace,
-        "certmanager": certmanager_namespace,
-    }
 
     _clean_up_folders(
         walk_result=walk_result,
@@ -528,13 +533,13 @@ def process_top_levels(
     )
 
     logger.debug("Determined the following namespaces:")
-    logger.debug(f"AIO namespace: {namespace}")
-    logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
-    logger.debug(f"ARC namespace: {arc_namespace}")
-    logger.debug(f"ACS namespace: {acs_namespace}")
-    logger.debug(f"ACSTOR namespace: {acstor_namespace}")
-    logger.debug(f"SSC namespace: {ssc_namespace}")
-    logger.debug(f"Certmanager namespace: {certmanager_namespace}")
+    logger.debug(f"AIO namespace: {namespaces['aio']}")
+    logger.debug(f"Usage system namespace: {namespaces['usage_system']}")
+    logger.debug(f"ARC namespace: {namespaces['arc']}")
+    logger.debug(f"ACS namespace: {namespaces['acs']}")
+    logger.debug(f"ACSTOR namespace: {namespaces['acstor']}")
+    logger.debug(f"SSC namespace: {namespaces['ssc']}")
+    logger.debug(f"Certmanager namespace: {namespaces['certmanager']}")
 
     return namespaces
 
