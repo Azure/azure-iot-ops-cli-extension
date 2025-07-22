@@ -30,6 +30,7 @@ from ...util.az_client import (
     get_resource_client,
     parse_resource_id,
     wait_for_terminal_state,
+    get_api_error_str,
 )
 from ...util.common import insert_newlines
 from .common import (
@@ -280,7 +281,7 @@ class WorkManager:
         except HttpResponseError as e:
             self._warnings.append(
                 get_user_msg_warn_ra(
-                    prefix=f"Role assignment failed with:\n{str(e)}",
+                    prefix=f"Role assignment failed with:\n{get_api_error_str(e)}",
                     principal_id=ops_ext_principal_id,
                     scope=self._targets.schema_registry_resource_id,
                 )
@@ -430,12 +431,16 @@ class WorkManager:
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
                 self._headers["CommandName"] = "iot ops create"
-                # Ensure schema registry exists.
-                self.resource_client.resources.get_by_id(
-                    resource_id=self._targets.schema_registry_resource_id,
-                    # TODO: Is this preview version still necessary?
-                    api_version=DeviceRegistryMgmtApiVersion.V20240901_preview.value,
-                )
+                # Ensure schema registry and namespace resources exist.
+                for resource_id_pair in [
+                    (self._targets.schema_registry_resource_id, DeviceRegistryMgmtApiVersion.V20240901_preview.value),
+                    (self._targets.adr_namespace_resource_id, DeviceRegistryMgmtApiVersion.V20250701_preview.value),
+                ]:
+                    self.resource_client.resources.get_by_id(
+                        resource_id=resource_id_pair[0],
+                        api_version=resource_id_pair[1],
+                    )
+
                 self._process_extension_dependencies()
                 self._raise_if_ops_deployed()
                 dependency_ext_ids = [self.ops_extension_dependencies[EXTENSION_TYPE_SSC]["id"]]
@@ -498,8 +503,7 @@ class WorkManager:
 
             return self._get_user_result()
         except HttpResponseError as e:
-            # TODO: repeated error messages.
-            raise AzureResponseError(e.message)
+            raise AzureResponseError(get_api_error_str(e))
         except KeyboardInterrupt:
             return
         finally:

@@ -42,11 +42,11 @@ from azext_edge.edge.common import (
 from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
 from azext_edge.edge.providers.orchestration.common import (
     ARM_ENDPOINT,
+    CONTRIBUTOR_ROLE_ID,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
-    CONTRIBUTOR_ROLE_ID,
 )
 from azext_edge.edge.providers.orchestration.permissions import ROLE_DEF_FORMAT_STR
 from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET
@@ -80,6 +80,7 @@ class ExpectedAPIVersion(Enum):
     CLUSTER_EXTENSION = "2023-05-01"
     RESOURCE = "2024-03-01"
     SCHEMA_REGISTRY = "2024-09-01-preview"
+    ADR_NAMESPACE = "2025-07-01-preview"
     AUTHORIZATION = "2022-04-01"
     CUSTOM_LOCATION = "2021-08-31-preview"
     GRAPH = "2022-10-01"
@@ -92,6 +93,7 @@ class CallKey(Enum):
     DEPLOY_INIT_WHATIF = "deployInitWhatIf"
     DEPLOY_INIT = "deployInit"
     GET_SCHEMA_REGISTRY = "getSchemaRegistry"
+    GET_ADR_NAMESPACE = "getAdrNamespace"
     GET_CLUSTER_EXTENSIONS = "getClusterExtensions"
     GET_EXISTING_DEPLOYMENTS = "getExistingDeployments"
     GET_SCHEMA_REGISTRY_RA = "getSchemaRegistryRoleAssignments"
@@ -227,13 +229,25 @@ class ServiceGenerator:
 
     def _handle_create(self, request_kpis: RequestKPIs):
         if request_kpis.method == responses.GET:
-            if request_kpis.path_url == (
-                f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{self.scenario['resourceGroup']}"
-                f"/providers/microsoft.deviceregistry/schemaRegistries/{self.scenario['schemaRegistry']['name']}"
-            ):
+            if request_kpis.path_url == self.scenario["schemaRegistry"]["id"]:
+                api_control: dict = self.scenario["apiControl"][CallKey.GET_SCHEMA_REGISTRY]
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.SCHEMA_REGISTRY.value
                 self.call_map[CallKey.GET_SCHEMA_REGISTRY].append(request_kpis)
-                return (200, STANDARD_HEADERS, json.dumps(self.scenario["schemaRegistry"]))
+                return (
+                    api_control.get("code", 200),
+                    STANDARD_HEADERS,
+                    json.dumps(api_control.get("body", self.scenario["schemaRegistry"])),
+                )
+
+            if request_kpis.path_url == self.scenario["adrNamespace"]["id"]:
+                api_control: dict = self.scenario["apiControl"][CallKey.GET_ADR_NAMESPACE]
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.ADR_NAMESPACE.value
+                self.call_map[CallKey.GET_ADR_NAMESPACE].append(request_kpis)
+                return (
+                    api_control.get("code", 200),
+                    STANDARD_HEADERS,
+                    json.dumps(api_control.get("body", self.scenario["adrNamespace"])),
+                )
 
             if request_kpis.path_url == (
                 f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{self.scenario['resourceGroup']}"
@@ -432,6 +446,8 @@ def build_target_scenario(
             CallKey.DEPLOY_CREATE_WHATIF: {"code": 200, "body": {"status": PROVISIONING_STATE_SUCCESS}},
             CallKey.PUT_SCHEMA_REGISTRY_RA: {"code": 200, "body": {}},
             CallKey.GET_EXISTING_DEPLOYMENTS: {"code": 200, "body": {"data": []}},
+            CallKey.GET_SCHEMA_REGISTRY: {"code": 200, "body": {}},
+            CallKey.GET_ADR_NAMESPACE: {"code": 200, "body": {}},
         },
     }
     if "cluster_properties" in kwargs:
@@ -786,6 +802,42 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             ),
             omit_http_methods=frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD]),
         ),
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_ADR_NAMESPACE: {
+                    "code": 404,
+                    "body": {
+                        "error": {
+                            "code": "ResourceNotFound",
+                            "message": "The Resource was not found.",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=AzureResponseError,
+                exc_msg="The Resource was not found.",
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_SCHEMA_REGISTRY: {
+                    "code": 404,
+                    "body": {
+                        "error": {
+                            "code": "ResourceNotFound",
+                            "message": "The Resource was not found.",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=AzureResponseError,
+                exc_msg="The Resource was not found.",
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
     ],
 )
 def test_iot_ops_create(
@@ -857,6 +909,7 @@ def test_iot_ops_create(
         CallKey.GET_RESOURCE_PROVIDERS: 1,
         CallKey.GET_CLUSTER: 1,
         CallKey.GET_SCHEMA_REGISTRY: 1,
+        CallKey.GET_ADR_NAMESPACE: 1,
         CallKey.GET_CLUSTER_EXTENSIONS: 2,
         CallKey.GET_EXISTING_DEPLOYMENTS: 1,
         CallKey.GET_SCHEMA_REGISTRY_RA: 1,

@@ -32,6 +32,7 @@ logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
+    from azure.core.exceptions import HttpResponseError
 
     from ..vendor.clients.authzmgmt import AuthorizationManagementClient
     from ..vendor.clients.clusterconfigmgmt import KubernetesConfigurationClient
@@ -304,3 +305,11 @@ def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
         resource_name=resource_name,
         resource_id=resource_id,
     )
+
+
+def get_api_error_str(exception: "HttpResponseError") -> str:
+    if hasattr(exception, "error") and hasattr(exception.error, "message"):
+        return exception.error.message
+    if hasattr(exception, "message"):
+        return exception.message
+    return str(exception)
