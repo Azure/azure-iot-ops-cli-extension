@@ -67,7 +67,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
 
     # SHOW VERSION
     version_show = run(
-        f"az iot ops schema version show -n {version_num} --schema {schema_name1} -g {registry_rg} "
+        f"az iot ops schema version show --version {version_num} --schema {schema_name1} -g {registry_rg} "
         f"--registry {registry_name}"
     )
     assert_schema_version(
@@ -134,7 +134,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     # fun stuff to make sure the inline is actually formatted correctly in the command
     test_content = inline_content.replace('"', '\\"')
     version_add = run(
-        f"az iot ops schema version add -n {version_num2} --schema {schema_name2} -g {registry_rg} "
+        f"az iot ops schema version add --version {version_num2} --schema {schema_name2} -g {registry_rg} "
         f"--registry {registry_name} --content \"{test_content}\""
     )
     assert_schema_version(
@@ -208,7 +208,7 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
 
     # REMOVE VERSION
     run(
-        f"az iot ops schema version remove -n {version_num} --schema {schema_name2} -g {registry_rg} "
+        f"az iot ops schema version remove --version {version_num} --schema {schema_name2} -g {registry_rg} "
         f"--registry {registry_name}"
     )
 

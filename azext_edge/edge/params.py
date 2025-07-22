@@ -1669,6 +1669,30 @@ def load_iotops_arguments(self, _):
             help="Storage account container name where schemas will be stored.",
         )
 
+    with self.argument_context("iot ops schema version") as context:
+        context.argument(
+            "version_name",
+            options_list=["--version", "--ver", "--name", "-n"],
+            help="Schema version name.",
+            type=int
+        )
+        context.argument(
+            "schema_name",
+            options_list=["--schema"],
+            help="Schema name.",
+        )
+        context.argument(
+            "description",
+            options_list=["--desc"],
+            help="Description for the schema version.",
+        )
+        context.argument(
+            "schema_version_content",
+            options_list=["--content"],
+            help="File path containing or inline content for the version.",
+            arg_group=None,
+        )
+
     with self.argument_context("iot ops connector opcua") as context:
         context.argument(
             "instance_name",
@@ -1771,25 +1795,6 @@ def load_iotops_arguments(self, _):
             options_list=["--private-key-secret-name", "--prks"],
             help="Private key secret name in the Key Vault. If not provided, the "
             "certificate file name will be used to generate the secret name.",
-        )
-
-    with self.argument_context("iot ops schema version") as context:
-        context.argument("version_name", options_list=["--name", "-n"], help="Schema version name.", type=int)
-        context.argument(
-            "schema_name",
-            options_list=["--schema"],
-            help="Schema name.",
-        )
-        context.argument(
-            "description",
-            options_list=["--desc"],
-            help="Description for the schema version.",
-        )
-        context.argument(
-            "schema_version_content",
-            options_list=["--content"],
-            help="File path containing or inline content for the version.",
-            arg_group=None,
         )
 
     with self.argument_context("iot ops clone") as context:

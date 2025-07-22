@@ -2486,7 +2486,7 @@ def load_iotops_help():
         examples:
         - name: Show details of target schema version 1.
           text: >
-            az iot ops schema version show --name 1 --schema myschema --registry myregistry -g myresourcegroup
+            az iot ops schema version show --version 1 --schema myschema --registry myregistry -g myresourcegroup
     """
 
     helps[
@@ -2508,7 +2508,7 @@ def load_iotops_help():
         examples:
         - name: Remove schema version 1.
           text: >
-            az iot ops schema version remove -n 1 -g myresourcegroup --registry myregistry --schema myschema
+            az iot ops schema version remove --version 1 -g myresourcegroup --registry myregistry --schema myschema
     """
 
     helps[
@@ -2523,19 +2523,19 @@ def load_iotops_help():
         - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
                 minimum inputs. The content is inline json (powershell syntax example).
           text: >
-            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{\\\"hello\\\": \\\"world\\\"}'
+            az iot ops schema version add --version 1 -g myresourcegroup --registry myregistry --schema myschema --content '{\\\"hello\\\": \\\"world\\\"}'
         - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
                 minimum inputs. The content is inline json (cmd syntax example).
           text: >
-            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content "{\\\"hello\\\": \\\"world\\\"}"
+            az iot ops schema version add --version 1 -g myresourcegroup --registry myregistry --schema myschema --content "{\\\"hello\\\": \\\"world\\\"}"
         - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
                 minimum inputs. The content is inline json (bash syntax example).
           text: >
-            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{"hello": "world"}'
+            az iot ops schema version add --version 1 -g myresourcegroup --registry myregistry --schema myschema --content '{"hello": "world"}'
         - name: Add a schema version 2 to a schema called 'myschema' within the registry 'myregistry' with
                 a description. The file should contain the schema content.
           text: >
-            az iot ops schema version add -n 2 -g myresourcegroup --registry myregistry --schema myschema --content myschemav2.json --desc "New schema"
+            az iot ops schema version add --version 2 -g myresourcegroup --registry myregistry --schema myschema --content myschemav2.json --desc "New schema"
     """
 
     helps[
