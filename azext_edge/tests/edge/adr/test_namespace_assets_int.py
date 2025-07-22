@@ -297,9 +297,11 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     endpoint_name_onvif = f"onvif-{generate_random_string(8)}"
     endpoint_name_opcua = f"opcua-{generate_random_string(8)}"
     endpoint_name_media = f"media-{generate_random_string(8)}"
+    endpoint_name_rest = f"rest-{generate_random_string(8)}"
     asset_name_onvif = f"onvif-{generate_random_string(8, force_lower=True)}"
     asset_name_opcua = f"opcua-{generate_random_string(8, force_lower=True)}"
     asset_name_media = f"media-{generate_random_string(8, force_lower=True)}"
+    asset_name_rest = f"rest-{generate_random_string(8, force_lower=True)}"
 
     # Tags and attributes
     common_tags = {"env": "test", "purpose": "automation"}
@@ -317,6 +319,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
         (endpoint_name_onvif, "onvif"),
         (endpoint_name_opcua, "opcua"),
         (endpoint_name_media, "media"),
+        (endpoint_name_rest, "rest"),
     ]:
         command = (
             f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
@@ -413,6 +416,37 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
         custom_location=custom_location,
     )
 
+    # 4. Create Rest asset with maximum inputs
+    asset_rest = run(
+        f"az iot ops ns asset rest create --name {asset_name_rest} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_rest} "
+        "--description \"Rest Camera\" --display-name \"Main Entrance Camera\" "
+        "--model \"Camera-X1\" --manufacturer \"SecurityCo\" --serial-number \"CAM123456\" "
+        "--documentation-uri \"https://example.com/docs/camera\" "
+        "--external-asset-id \"EXT-CAM-01\" --hardware-revision \"v1.2\" "
+        f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])} "
+        "--sampling-int 1000"
+    )
+    tracked_resources.append(asset_media["id"])
+
+    assert_asset_properties(
+        asset_rest,
+        name=asset_name_rest,
+        device=device_name,
+        endpoint=endpoint_name_rest,
+        description="Rest Camera",
+        display_name="Main Entrance Camera",
+        model="Camera-X1",
+        manufacturer="SecurityCo",
+        serial_number="CAM123456",
+        documentation_uri="https://example.com/docs/camera",
+        external_asset_id="EXT-CAM-01",
+        attributes=common_attrs,
+        tags=common_tags,
+        hardware_revision="v1.2",
+        custom_location=custom_location,
+    )
+
     # 1. Update ONVIF asset
     updated_onvif = run(
         f"az iot ops ns asset onvif update --name {asset_name_onvif} --instance {instance_name} "
@@ -455,6 +489,19 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
         updated_media,
         name=asset_name_media,
         serial_number="MEDIA567890-UPDATED",
+    )
+
+    # 4. Update Rest asset
+    updated_rest = run(
+        f"az iot ops ns asset rest update --name {asset_name_rest} --instance {instance_name} "
+        f"-g {resource_group} --description \"Updated Rest Camera\" "
+        "--sampling-int 500"
+    )
+    assert_asset_properties(
+        updated_rest,
+        name=asset_name_rest,
+        description="Updated Rest Camera",
+        sampling_int=500,
     )
 
 

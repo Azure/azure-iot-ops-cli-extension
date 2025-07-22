@@ -24,7 +24,8 @@ from azext_edge.edge.providers.adr.namespace_assets import (
     _process_opcua_event_configurations_v1,
     _process_opcua_dataset_configurations_v2,
     _process_opcua_event_configurations_v2,
-    _process_media_stream_configurations
+    _process_media_stream_configurations,
+    _process_rest_dataset_configurations
 )
 from azext_edge.edge.util.common import parse_kvp_nargs
 from ...generators import generate_random_string
@@ -349,6 +350,14 @@ def test_create_datapoint(test_case, mocker):
                 "stream_destinations": ["topic=/test/stream", "path=/data/test"]
             },
         ),
+        # Test REST
+        (
+            DeviceEndpointType.REST.value,
+            {
+                "rest_dataset_sampling_interval": 1000,
+                "dataset_destinations": ["topic=/test/dataset"]
+            },
+        ),
         # Test Custom
         (
             "Custom",
@@ -385,6 +394,7 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         "_process_opcua_dataset_configurations_v1",
         "_process_opcua_event_configurations_v1",
         "_process_media_stream_configurations",
+        "_process_rest_dataset_configurations",
         "process_additional_configuration",
         "_build_destination"
     ]:
@@ -416,6 +426,10 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         DeviceEndpointType.MEDIA.value: [
             "media_stream_values",
             "stream_destinations"
+        ],
+        DeviceEndpointType.REST.value: [
+            "rest_dataset_values",
+            "dataset_destinations"
         ]
     }
     expected_args = asset_type_to_args.get(asset_type, [
@@ -439,6 +453,7 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         "opcua_dataset_values": "datasetsConfiguration",
         "opcua_event_values": "eventsConfiguration",
         "media_stream_values": "streamsConfiguration",
+        "rest_dataset_values": "datasetsConfiguration",
         # destinations
         "dataset_destinations": "datasetsDestinations",
         "event_destinations": "eventsDestinations",
@@ -481,7 +496,8 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
     for arg, func in [
         ("opcua_dataset_values", "_process_opcua_dataset_configurations_v1"),
         ("opcua_event_values", "_process_opcua_event_configurations_v1"),
-        ("media_stream_values", "_process_media_stream_configurations")
+        ("media_stream_values", "_process_media_stream_configurations"),
+        ("rest_dataset_values", "_process_rest_dataset_configurations"),
     ]:
         if arg in expected_args:
             # check that the function was called with the right parameters
@@ -500,6 +516,7 @@ def test_process_configs(mocker, asset_type: str, test_case: dict, default: bool
         DeviceEndpointType.OPCUA.value: {"dataset_destinations": ["Mqtt"], "event_destinations": ["Mqtt"]},
         DeviceEndpointType.ONVIF.value: {"event_destinations": ["Mqtt"]},
         DeviceEndpointType.MEDIA.value: {"stream_destinations": ["Storage", "Mqtt"]},
+        DeviceEndpointType.REST.value: {"dataset_destinations": ["BrokerStateStore", "Mqtt"]},
     }
     expected_dest_args = asset_to_dest_args.get(asset_type, {
         "dataset_destinations": None,
@@ -1053,3 +1070,47 @@ def test_process_media_stream_configurations_error(test_case):
         )
 
     assert test_case["expected_msg"] in str(excinfo.value)
+
+
+@pytest.mark.parametrize("test_case", [
+    # Empty configuration
+    {
+        "original": None,
+        "params": {},
+        "expected_values": {}
+    },
+    # Set sampling interval
+    {
+        "original": None,
+        "params": {
+            "rest_dataset_sampling_interval": 1000,
+        },
+        "expected_values": {
+            "samplingIntervalInMilliseconds": 1000,
+        }
+    },
+    # Update existing configuration
+    {
+        "original": json.dumps({"samplingIntervalInMilliseconds": 500}),
+        "params": {"rest_dataset_sampling_interval": 1000},
+        "expected_values": {
+            "samplingIntervalInMilliseconds": 1000,
+        }
+    }
+])
+def test_process_rest_dataset_configurations(test_case):
+    """Test processing REST dataset configurations with various parameters."""
+    result_json = _process_rest_dataset_configurations(
+        original_dataset_configuration=test_case["original"],
+        **test_case["params"]
+    )
+
+    # Verify the result is a json
+    result = json.loads(result_json)
+
+    # Check that all expected values are correct
+    for key, value in test_case["expected_values"].items():
+        assert result[key] == value
+
+    # Check that no unexpected keys are present
+    assert len(result) == len(test_case["expected_values"])

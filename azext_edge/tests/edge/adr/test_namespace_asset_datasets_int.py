@@ -452,3 +452,159 @@ def test_namespace_opcua_asset_dataset_lifecycle_operations(require_init, tracke
 
     remaining_dataset_names = [dataset["name"] for dataset in datasets_list_after_remove]
     assert dataset_name not in remaining_dataset_names
+
+
+def test_namespace_rest_asset_dataset_lifecycle_operations(require_init, tracked_resources: List[str]):
+    """Test complete lifecycle of REST asset dataset operations."""
+    # Setup test variables
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"rest-{generate_random_string(8)}"
+    asset_name = f"rest-{generate_random_string(8, force_lower=True)}"
+    dataset_name = "default"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create device endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add rest --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'https://api.example.com/sensors/data'"
+    )
+
+    # Create REST asset
+    asset_rest = run(
+        f"az iot ops ns asset rest create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"REST API for Dataset Testing\" --display \"Temperature API\" "
+        f"--model \"REST-API-v1\" --manufacturer \"APIDevices\""
+    )
+    tracked_resources.append(asset_rest["id"])
+
+    # 1. CREATE DATASET
+    dataset_data_source = "/api/temperature"
+    dataset_destinations = "topic=factory/rest/temperature qos=Qos1 retain=Keep ttl=3600"
+
+    # Add REST asset dataset with specific REST parameters
+    dataset_result = run(
+        f"az iot ops ns asset rest dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source {dataset_data_source} "
+        f"--destination {dataset_destinations} "
+        f"--sampling-int 5000"
+    )
+
+    assert_dataset_properties(
+        dataset_result,
+        name=dataset_name,
+        data_source=dataset_data_source,
+        asset_type="rest",
+    )
+
+    # 2. LIST DATASETS
+    datasets_list = run(
+        f"az iot ops ns asset rest dataset list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+
+    dataset_names = [dataset["name"] for dataset in datasets_list]
+    assert dataset_name in dataset_names
+    assert len(datasets_list) >= 1
+
+    # 3. SHOW DATASET
+    shown_dataset = run(
+        f"az iot ops ns asset rest dataset show --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name}"
+    )
+
+    assert_dataset_properties(
+        shown_dataset,
+        name=dataset_name,
+        data_source=dataset_data_source,
+        asset_type="rest",
+    )
+
+    # 4. UPDATE DATASET
+    updated_destinations = "topic=factory/rest/temperature_v2 qos=Qos0 retain=Never ttl=1800"
+
+    updated_dataset = run(
+        f"az iot ops ns asset rest dataset update --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--destination {updated_destinations} "
+        f"--sampling-int 10000"
+    )
+
+    assert_dataset_properties(
+        updated_dataset,
+        name=dataset_name,
+        asset_type="rest",
+    )
+
+    # 5. TEST DATASET REPLACE FUNCTIONALITY
+    # Replace dataset with --replace flag
+    replaced_data_source = "/api/temperature/replaced"
+    broker_destinations = "key=rest-data-cache"
+
+    replaced_dataset = run(
+        f"az iot ops ns asset rest dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source {replaced_data_source} --dest {broker_destinations} "
+        f"--sampling-int 15000 --replace"
+    )
+
+    assert_dataset_properties(
+        replaced_dataset,
+        name=dataset_name,
+        data_source=replaced_data_source,
+        asset_type="rest",
+    )
+
+    # Verify the destination was updated
+    shown_broker_dataset = run(
+        f"az iot ops ns asset rest dataset show --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name}"
+    )
+
+    # Check that destination target is BrokerStateStore
+    destinations = shown_broker_dataset.get("destinations", [])
+    assert len(destinations) == 1
+    assert destinations[0]["target"] == "BrokerStateStore"
+    assert destinations[0]["configuration"]["key"] == "rest-data-cache"
+
+    # 7. TEST WITH MINIMAL CONFIGURATION
+    # Test creating dataset with minimal parameters
+    minimal_data_source = "/api/minimal"
+
+    minimal_dataset = run(
+        f"az iot ops ns asset rest dataset add --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
+        f"--data-source {minimal_data_source} --replace"
+    )
+
+    assert_dataset_properties(
+        minimal_dataset,
+        name=dataset_name,
+        data_source=minimal_data_source,
+        asset_type="rest"
+    )
+
+    # 8. REMOVE DATASET
+    run(
+        f"az iot ops ns asset rest dataset remove --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group} --name {dataset_name}"
+    )
+
+    # Verify dataset removal
+    datasets_list_after_remove = run(
+        f"az iot ops ns asset rest dataset list --asset {asset_name} "
+        f"--instance {instance_name} -g {resource_group}"
+    )
+
+    remaining_dataset_names = [dataset["name"] for dataset in datasets_list_after_remove]
+    assert dataset_name not in remaining_dataset_names

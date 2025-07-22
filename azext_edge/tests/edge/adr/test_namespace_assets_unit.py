@@ -16,15 +16,18 @@ from azext_edge.edge.commands_namespaces import (
     create_namespace_media_asset,
     create_namespace_onvif_asset,
     create_namespace_opcua_asset,
+    create_namespace_rest_asset,
     show_namespace_asset,
     delete_namespace_asset,
     update_namespace_custom_asset,
     update_namespace_media_asset,
     update_namespace_onvif_asset,
     update_namespace_opcua_asset,
+    update_namespace_rest_asset,
     query_namespace_assets
 )
 from azext_edge.edge.providers.adr.namespace_assets import _process_configs
+from azext_edge.edge.providers.adr.namespace_devices import DeviceEndpointType
 from azext_edge.edge.util.common import parse_kvp_nargs
 from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion
 
@@ -140,6 +143,7 @@ def add_device_get_call(
     ["media", {}],
     ["onvif", {}],
     ["opcua", {}],
+    ["rest", {}],
     # CUSTOM
     [
         "custom",
@@ -198,6 +202,13 @@ def add_device_get_call(
             "default_events_publishing_interval": 1500,
             "default_events_queue_size": 4,
             "default_event_destinations": ["topic=/contoso/test2", "retain=Never", "qos=1", "ttl=400"]
+        }
+    ],
+    # REST
+    [
+        "rest",
+        {
+            "rest_dataset_sampling_interval": 1000,
         }
     ]
 ])
@@ -262,7 +273,8 @@ def test_create_namespace_asset(
         "custom": create_namespace_custom_asset,
         "media": create_namespace_media_asset,
         "onvif": create_namespace_onvif_asset,
-        "opcua": create_namespace_opcua_asset
+        "opcua": create_namespace_opcua_asset,
+        "rest": create_namespace_rest_asset,
     }
     result = type_to_command[asset_type](
         cmd=mocked_cmd,
@@ -289,7 +301,7 @@ def test_create_namespace_asset(
     assert request_body["properties"]["deviceRef"]["deviceName"] == device_name
     assert request_body["properties"]["deviceRef"]["endpointName"] == device_endpoint_name
 
-    all_reqs["asset_type"] = f"Microsoft.{asset_type}"
+    all_reqs["asset_type"] = DeviceEndpointType.get_type_from_keyword(asset_type)
     assert request_body.get("tags") == all_reqs.get("tags")
 
     assert_asset_properties(request_body["properties"], all_reqs)
@@ -305,7 +317,8 @@ def test_create_namespace_asset(
 @pytest.mark.parametrize("asset_type, create_command", [
     ["media", create_namespace_media_asset],
     ["onvif", create_namespace_onvif_asset],
-    ["opcua", create_namespace_opcua_asset]
+    ["opcua", create_namespace_opcua_asset],
+    ["rest", create_namespace_rest_asset]
 ])
 def test_create_namespace_asset_error(
     mocked_cmd,
@@ -337,9 +350,10 @@ def test_create_namespace_asset_error(
     # Add the endpoint but with an incompatible type
     # For each asset type, use a different incorrect type
     incorrect_types = {
-        "media": "Microsoft.opcua",
-        "onvif": "Microsoft.media",
-        "opcua": "Microsoft.onvif"
+        "media": DeviceEndpointType.REST.value,
+        "onvif": DeviceEndpointType.MEDIA.value,
+        "opcua": DeviceEndpointType.ONVIF.value,
+        "rest": DeviceEndpointType.OPCUA.value
     }
     mock_device_record["properties"]["endpoints"]["inbound"] = {
         device_endpoint_name: {"endpointType": incorrect_types[asset_type]}
@@ -552,6 +566,7 @@ def test_show_namespace_asset(
     ["media", {}],
     ["onvif", {}],
     ["opcua", {}],
+    ["rest", {}],
     # Custom
     [
         "custom",
@@ -610,6 +625,13 @@ def test_show_namespace_asset(
             "default_events_publishing_interval": 1500,
             "default_events_queue_size": 4,
             "default_event_destinations": ["topic=/contoso/test2", "retain=Never", "qos=1", "ttl=400"]
+        }
+    ],
+    # REST
+    [
+        "rest",
+        {
+            "rest_dataset_sampling_interval": 1000,
         }
     ]
 ])
@@ -734,7 +756,8 @@ def test_update_namespace_asset(
         "custom": update_namespace_custom_asset,
         "media": update_namespace_media_asset,
         "onvif": update_namespace_onvif_asset,
-        "opcua": update_namespace_opcua_asset
+        "opcua": update_namespace_opcua_asset,
+        "rest": update_namespace_rest_asset,
     }
 
     # Execute the update command
