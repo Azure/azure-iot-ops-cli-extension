@@ -6,6 +6,7 @@
 
 import copy
 import random
+import yaml
 from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
 from unittest.mock import Mock
@@ -40,7 +41,8 @@ from azext_edge.edge.providers.edge_api.meta import META_API_V1
 from azext_edge.edge.providers.support.akri import AKRI_NAME_LABEL_V2
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.arccontainerstorage import STORAGE_NAMESPACE
-from azext_edge.edge.providers.support.base import get_bundle_path, assemble_crd_work
+from azext_edge.edge.providers.support.base import get_bundle_path, assemble_crd_work, _get_resource_type_prefix
+from azext_edge.edge.common import BundleResourceKind
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
     ARC_BILLING_DIRECTORY_PATH,
@@ -850,10 +852,19 @@ def assert_list_mutating_webhooks(
 
     mock_names = mock_names or ["mock_mutating_webhook"]
     for name in mock_names:
+        resource_type = _get_resource_type_prefix(BundleResourceKind.mutatingwebhook.value)
+        expected_data = {
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-namespace": "mock_namespace"
+                },
+                "name": name
+            }
+        }
         assert_zipfile_write(
             mocked_zipfile,
-            zinfo=f"mock_namespace/{directory_path}/mwc.{name}.yaml",
-            data=f"kind: MutatingWebhookConfiguration\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+            zinfo=f"mock_namespace/{directory_path}/{resource_type}.{name}.yaml",
+            data=yaml.safe_dump(expected_data, indent=2),
         )
 
 
@@ -871,10 +882,19 @@ def assert_list_validating_webhooks(
 
     mock_names = mock_names or ["mock_validating_webhook"]
     for name in mock_names:
+        resource_type = _get_resource_type_prefix(BundleResourceKind.validatingwebhook.value)
+        expected_data = {
+            "metadata": {
+                "annotations": {
+                    "meta.helm.sh/release-namespace": "mock_namespace"
+                },
+                "name": name
+            }
+        }
         assert_zipfile_write(
             mocked_zipfile,
-            zinfo=f"mock_namespace/{directory_path}/vwc.{name}.yaml",
-            data=f"kind: ValidatingWebhookConfiguration\nmetadata:\n  name: {name}\n  namespace: mock_namespace\n",
+            zinfo=f"mock_namespace/{directory_path}/{resource_type}.{name}.yaml",
+            data=yaml.safe_dump(expected_data, indent=2),
         )
 
 

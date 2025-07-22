@@ -11,7 +11,7 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.certmanager import (
     CERT_DIRECTORY_PATH,
     CERT_MANAGER_NAMESPACE,
-    CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
+    CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
     TRUST_BUNDLE_LABEL,
     TRUST_MANAGER_WEBHOOK_LABEL,
 )
@@ -104,7 +104,7 @@ def test_create_bundle_certmanager(
     assert_list_validating_webhooks(
         mocked_client,
         mocked_zipfile,
-        label_selector=CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
+        field_selector=CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
         directory_path=CERT_DIRECTORY_PATH,
     )
     assert_list_validating_webhooks(

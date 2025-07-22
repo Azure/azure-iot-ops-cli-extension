@@ -25,11 +25,11 @@ from kubernetes.client.models import (
     V1JobList,
     V1CronJobList,
     V1MutatingWebhookConfigurationList,
-    V1ValidatingWebhookConfigurationList
+    V1ValidatingWebhookConfigurationList,
 )
 
 from ..edge_api import EdgeResourceApi
-from ..base import client, get_custom_objects
+from ..base import DEFAULT_NAMESPACE, client, get_custom_objects
 from ...util import get_timestamp_now_utc
 
 logger = get_logger(__name__)
@@ -50,7 +50,7 @@ K8sRuntimeResources = TypeVar(
     V1JobList,
     V1CronJobList,
     V1MutatingWebhookConfigurationList,
-    V1ValidatingWebhookConfigurationList
+    V1ValidatingWebhookConfigurationList,
 )
 
 
@@ -62,7 +62,7 @@ def process_crd(
     directory_path: str,
     file_prefix: Optional[str] = None,
     fallback_namespace: Optional[str] = None,
-    kind_to_dir: Optional[Dict[str, str]] = None
+    kind_to_dir: Optional[Dict[str, str]] = None,
 ) -> List[dict]:
     result: dict = get_custom_objects(
         group=group,
@@ -385,7 +385,8 @@ def process_cluster_roles(
         label_selector=label_selector, field_selector=field_selector
     )
     for role in cluster_roles.items:
-        namespace = getattr(role.metadata, "annotations", {}).get("meta.helm.sh/release-namespace")
+        annotations = getattr(role.metadata, "annotations", {}) or {}
+        namespace = annotations.get("meta.helm.sh/release-namespace")
         name = role.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.clusterrole.value)
 
@@ -414,7 +415,8 @@ def process_cluster_role_bindings(
         label_selector=label_selector, field_selector=field_selector
     )
     for binding in cluster_role_bindings.items:
-        namespace = getattr(binding.metadata, "annotations", {}).get("meta.helm.sh/release-namespace")
+        annotations = getattr(binding.metadata, "annotations", {}) or {}
+        namespace = annotations.get("meta.helm.sh/release-namespace")
         name = binding.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.clusterrolebinding.value)
 
@@ -545,38 +547,52 @@ def process_mutating_webhook_configurations(
     directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
-    prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
     admission_api = client.AdmissionregistrationV1Api()
     webhooks: V1MutatingWebhookConfigurationList = admission_api.list_mutating_webhook_configuration(
         label_selector=label_selector, field_selector=field_selector
     )
+    processed = []
+    for webhook in webhooks.items:
+        # TODO - replace DEFAULT_NAMESPACE with broker namespace
+        annotations = getattr(webhook.metadata, "annotations", {}) or {}
+        namespace = annotations.get("meta.helm.sh/release-namespace") or DEFAULT_NAMESPACE
+        name = webhook.metadata.name
+        resource_type = _get_resource_type_prefix(BundleResourceKind.mutatingwebhook.value)
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=webhook),
+                "zinfo": f"{namespace}/{directory_path}/{resource_type}.{name}.yaml",
+            }
+        )
 
-    return _process_kubernetes_resources(
-        directory_path=directory_path,
-        resources=webhooks,
-        prefix_names=prefix_names,
-        kind=BundleResourceKind.mutatingwebhook.value,
-    )
+    return processed
 
 
 def process_validating_webhook_configurations(
     directory_path: str,
     field_selector: Optional[str] = None,
     label_selector: Optional[str] = None,
-    prefix_names: Optional[List[str]] = None,
 ) -> List[dict]:
     admission_api = client.AdmissionregistrationV1Api()
     webhooks: V1ValidatingWebhookConfigurationList = admission_api.list_validating_webhook_configuration(
         label_selector=label_selector, field_selector=field_selector
     )
+    processed = []
+    for webhook in webhooks.items:
+        # TODO - replace DEFAULT_NAMESPACE with broker namespace
+        annotations = getattr(webhook.metadata, "annotations", {}) or {}
+        namespace = annotations.get("meta.helm.sh/release-namespace") or DEFAULT_NAMESPACE
+        name = webhook.metadata.name
+        resource_type = _get_resource_type_prefix(BundleResourceKind.validatingwebhook.value)
 
-    return _process_kubernetes_resources(
-        directory_path=directory_path,
-        resources=webhooks,
-        prefix_names=prefix_names,
-        kind=BundleResourceKind.validatingwebhook.value,
-    )
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=webhook),
+                "zinfo": f"{namespace}/{directory_path}/{resource_type}.{name}.yaml",
+            }
+        )
+    return processed
 
 
 def assemble_crd_work(
@@ -584,7 +600,7 @@ def assemble_crd_work(
     file_prefix_map: Optional[Dict[str, str]] = None,
     directory_path: Optional[str] = None,
     fallback_namespace: Optional[str] = None,
-    kind_to_dir: Optional[Dict[str, str]] = None
+    kind_to_dir: Optional[Dict[str, str]] = None,
 ) -> dict:
     if not file_prefix_map:
         file_prefix_map = {}

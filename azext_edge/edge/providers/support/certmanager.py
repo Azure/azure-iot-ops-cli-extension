@@ -7,7 +7,7 @@
 from functools import partial
 from typing import Iterable, Optional
 
-from azext_edge.edge.providers.support.common import NAME_LABEL_FORMAT, RESOURCE_NAME_FORMAT
+from azext_edge.edge.providers.support.common import NAME_LABEL_FORMAT, RESOURCE_NAME_FIELD_FORMAT
 from knack.log import get_logger
 
 from ..edge_api import CERTMANAGER_API_V1, EdgeResourceApi
@@ -29,7 +29,7 @@ CERT_DIRECTORY_PATH = CERTMANAGER_API_V1.moniker
 CERT_MANAGER_NAMESPACE = "cert-manager"
 TRUST_BUNDLE_LABEL = "trust.cert-manager.io/bundle"
 CERT_MANAGER_WEBHOOK_NAME = "aio-cert-manager-webhook"
-CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR = RESOURCE_NAME_FORMAT.format(name=CERT_MANAGER_WEBHOOK_NAME)
+CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR = RESOURCE_NAME_FIELD_FORMAT.format(name=CERT_MANAGER_WEBHOOK_NAME)
 TRUST_MANAGER_WEBHOOK_LABEL = NAME_LABEL_FORMAT.format(label="aio-trust-manager")
 
 
@@ -89,7 +89,7 @@ def fetch_validating_webhooks():
     results.extend(
         process_validating_webhook_configurations(
             directory_path=CERT_DIRECTORY_PATH,
-            label_selector=CERT_MANAGER_WEBHOOK_NAME_LABEL_SELECTOR,
+            field_selector=CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
         )
     )
     return results

@@ -568,7 +568,10 @@ def mocked_list_mutating_webhooks(mocked_client):
 
     def _handle_list_mutating_webhooks(*args, **kwargs):
         webhook = V1MutatingWebhookConfiguration(
-            metadata=V1ObjectMeta(name="mock_mutating_webhook")  # No namespace - cluster-scoped
+            metadata=V1ObjectMeta(
+                name="mock_mutating_webhook",
+                annotations={"meta.helm.sh/release-namespace": "mock_namespace"}
+            )
         )
         webhook_list = V1MutatingWebhookConfigurationList(items=[webhook])
 
@@ -591,7 +594,10 @@ def mocked_list_validating_webhooks(mocked_client):
 
     def _handle_list_validating_webhooks(*args, **kwargs):
         webhook = V1ValidatingWebhookConfiguration(
-            metadata=V1ObjectMeta(name="mock_validating_webhook")  # No namespace - cluster-scoped
+            metadata=V1ObjectMeta(
+                name="mock_validating_webhook",
+                annotations={"meta.helm.sh/release-namespace": "mock_namespace"}
+            )
         )
         webhook_list = V1ValidatingWebhookConfigurationList(items=[webhook])
 

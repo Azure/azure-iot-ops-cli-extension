@@ -19,6 +19,7 @@ from .base import (
     process_config_maps,
     process_daemonsets,
     process_jobs,
+    process_mutating_webhook_configurations,
     process_replicasets,
     process_services,
     process_statefulset,
@@ -118,6 +119,13 @@ def fetch_validating_webhook_configurations():
     )
 
 
+def fetch_mutating_webhook_configurations():
+    return process_mutating_webhook_configurations(
+        directory_path=MQ_DIRECTORY_PATH,
+        label_selector=MQ_NAME_LABEL,
+    )
+
+
 support_runtime_elements = {
     "statefulsets": fetch_statefulsets,
     "configmaps": fetch_configmaps,
@@ -126,6 +134,7 @@ support_runtime_elements = {
     "services": fetch_services,
     "daemonsets": fetch_daemonsets,
     "validatingwebhooks": fetch_validating_webhook_configurations,
+    "mutatingwebhooks": fetch_mutating_webhook_configurations,
 }
 
 

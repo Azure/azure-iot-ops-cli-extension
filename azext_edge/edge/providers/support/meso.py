@@ -20,13 +20,13 @@ from .base import (
     process_v1_pods,
     process_validating_webhook_configurations,
 )
-from .common import NAME_LABEL_FORMAT, RESOURCE_NAME_FORMAT
+from .common import NAME_LABEL_FORMAT, RESOURCE_NAME_FIELD_FORMAT
 
 logger = get_logger(__name__)
 
 MESO_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-observability")
 MESO_CLUSTER_METRICS_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-observability-cluster-metrics")
-MESO_OPERATOR_MANAGER_FIELD_SELECTOR = RESOURCE_NAME_FORMAT.format(name="aio-observability-operator-manager-role")
+MESO_OPERATOR_MANAGER_FIELD_SELECTOR = RESOURCE_NAME_FIELD_FORMAT.format(name="aio-observability-operator-manager-role")
 MESO_DIRECTORY_PATH = "meso"
 
 # List of label selectors to iterate through for most resources
