@@ -486,6 +486,17 @@ class Instances(Queryable):
                     **kwargs,
                 )
 
+    def get_default_spc(self, instance_name: str, resource_group_name: str) -> dict:
+        instance = self.show(name=instance_name, resource_group_name=resource_group_name)
+        default_spc_resource_id = instance["properties"].get("defaultSecretProviderClassRef", {}).get("resourceId")
+        if not default_spc_resource_id:
+            raise ValidationError(f"Secret sync not enabled.\n{get_enable_syntax(instance_name, resource_group_name)}")
+        parsed_resource_id = parse_resource_id(default_spc_resource_id)
+        return self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.get(
+            resource_group_name=parsed_resource_id.resource_group_name,
+            azure_key_vault_secret_provider_class_name=parsed_resource_id.resource_name,
+        )
+
     def find_existing_resources(
         self,
         cl_resources: List[dict],
