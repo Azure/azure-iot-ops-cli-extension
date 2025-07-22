@@ -4,39 +4,43 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from pathlib import PurePath
-from typing import List, Dict, Optional, Iterable, Tuple, TypeVar, Union
 from functools import partial
+from pathlib import PurePath
+from typing import Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
-from azext_edge.edge.common import BundleResourceKind, PodState
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import (
     V1Container,
-    V1ObjectMeta,
-    V1PodSpec,
-    V1PodList,
-    V1ServiceList,
-    V1DeploymentList,
-    V1StatefulSetList,
-    V1ReplicaSetList,
-    V1DaemonSetList,
-    V1PersistentVolumeClaimList,
-    V1JobList,
     V1CronJobList,
+    V1DaemonSetList,
+    V1DeploymentList,
+    V1JobList,
     V1MutatingWebhookConfigurationList,
+    V1ObjectMeta,
+    V1PersistentVolumeClaimList,
+    V1PodList,
+    V1PodSpec,
+    V1ReplicaSetList,
+    V1ServiceList,
+    V1StatefulSetList,
     V1ValidatingWebhookConfigurationList,
 )
 
-from ..edge_api import EdgeResourceApi
-from ..base import DEFAULT_NAMESPACE, client, get_custom_objects
+from azext_edge.edge.common import DEFAULT_BROKER, BundleResourceKind, PodState
+
 from ...util import get_timestamp_now_utc
+from ..base import DEFAULT_NAMESPACE, client, get_custom_objects
+from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi, MqResourceKinds
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
 
 DAY_IN_SECONDS: int = 60 * 60 * 24
 POD_STATUS_FAILED_EVICTED: str = "evicted"
+
+# Cache for broker namespace used for resources with no namespace annotation
+_cached_broker_namespace: Optional[str] = None
 
 K8sRuntimeResources = TypeVar(
     "K8sRuntimeResources",
@@ -543,6 +547,42 @@ def process_cron_jobs(
     )
 
 
+def _get_broker_namespace() -> str:
+    """
+    Get the namespace of the main broker resource with caching.
+    Returns DEFAULT_NAMESPACE if no broker is found.
+    """
+    global _cached_broker_namespace
+
+    # Return cached value if available
+    if _cached_broker_namespace:
+        return _cached_broker_namespace
+
+    # Fetch broker resource using internal API call
+    try:
+        # Get all broker resources
+        broker_resources = MQ_ACTIVE_API.get_resources(kind=MqResourceKinds.BROKER)
+        if broker_resources and broker_resources.get("items"):
+            # Filter for the default broker by name
+            for broker in broker_resources["items"]:
+                broker_metadata = broker.get("metadata", {})
+                broker_name = broker_metadata.get("name")
+                if broker_name == DEFAULT_BROKER:
+                    broker_namespace = broker_metadata.get("namespace")
+                    if broker_namespace:
+                        _cached_broker_namespace = broker_namespace
+                        logger.debug(f"Cached broker namespace: {broker_namespace}")
+                        return broker_namespace
+
+    except Exception as e:
+        logger.debug(f"Failed to fetch broker namespace: {e}")
+
+    # Fallback to default namespace
+    _cached_broker_namespace = DEFAULT_NAMESPACE
+    logger.debug(f"Using fallback default namespace: {DEFAULT_NAMESPACE}")
+    return DEFAULT_NAMESPACE
+
+
 def process_mutating_webhook_configurations(
     directory_path: str,
     field_selector: Optional[str] = None,
@@ -554,9 +594,8 @@ def process_mutating_webhook_configurations(
     )
     processed = []
     for webhook in webhooks.items:
-        # TODO - replace DEFAULT_NAMESPACE with broker namespace
         annotations = getattr(webhook.metadata, "annotations", {}) or {}
-        namespace = annotations.get("meta.helm.sh/release-namespace") or DEFAULT_NAMESPACE
+        namespace = annotations.get("meta.helm.sh/release-namespace") or _get_broker_namespace()
         name = webhook.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.mutatingwebhook.value)
         processed.append(
@@ -580,9 +619,8 @@ def process_validating_webhook_configurations(
     )
     processed = []
     for webhook in webhooks.items:
-        # TODO - replace DEFAULT_NAMESPACE with broker namespace
         annotations = getattr(webhook.metadata, "annotations", {}) or {}
-        namespace = annotations.get("meta.helm.sh/release-namespace") or DEFAULT_NAMESPACE
+        namespace = annotations.get("meta.helm.sh/release-namespace") or _get_broker_namespace()
         name = webhook.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.validatingwebhook.value)
 

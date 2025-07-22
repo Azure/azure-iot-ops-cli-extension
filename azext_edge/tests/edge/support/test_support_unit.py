@@ -41,7 +41,12 @@ from azext_edge.edge.providers.edge_api.meta import META_API_V1
 from azext_edge.edge.providers.support.akri import AKRI_NAME_LABEL_V2
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.arccontainerstorage import STORAGE_NAMESPACE
-from azext_edge.edge.providers.support.base import get_bundle_path, assemble_crd_work, _get_resource_type_prefix
+from azext_edge.edge.providers.support.base import (
+    get_bundle_path,
+    assemble_crd_work,
+    _get_resource_type_prefix,
+    _get_broker_namespace,
+)
 from azext_edge.edge.common import BundleResourceKind
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
@@ -854,12 +859,7 @@ def assert_list_mutating_webhooks(
     for name in mock_names:
         resource_type = _get_resource_type_prefix(BundleResourceKind.mutatingwebhook.value)
         expected_data = {
-            "metadata": {
-                "annotations": {
-                    "meta.helm.sh/release-namespace": "mock_namespace"
-                },
-                "name": name
-            }
+            "metadata": {"annotations": {"meta.helm.sh/release-namespace": "mock_namespace"}, "name": name}
         }
         assert_zipfile_write(
             mocked_zipfile,
@@ -884,12 +884,7 @@ def assert_list_validating_webhooks(
     for name in mock_names:
         resource_type = _get_resource_type_prefix(BundleResourceKind.validatingwebhook.value)
         expected_data = {
-            "metadata": {
-                "annotations": {
-                    "meta.helm.sh/release-namespace": "mock_namespace"
-                },
-                "name": name
-            }
+            "metadata": {"annotations": {"meta.helm.sh/release-namespace": "mock_namespace"}, "name": name}
         }
         assert_zipfile_write(
             mocked_zipfile,
@@ -1180,3 +1175,57 @@ def test_kind_to_dir_override_functionality():
 
         # RegularKind should use the default path (not in kind_to_dir mapping)
         assert regular_result[0]["zinfo"] == "test-ns/default/path/RegularKind.v1.test-resource.yaml"
+
+
+@pytest.mark.parametrize(
+    "broker_resources, expected_namespace, exception_side_effect, test_scenario",
+    [
+        # Test case 1: Broker found with valid namespace
+        (
+            [{"metadata": {"name": "broker", "namespace": "azure-iot-operations"}}],
+            "azure-iot-operations",
+            None,
+            "valid_broker_found",
+        ),
+        # Test case 2: No broker found, should return DEFAULT_NAMESPACE
+        ([], "azure-iot-operations", None, "no_broker_found"),
+        # Test case 3: Broker found but no namespace metadata
+        ([{"metadata": {"name": "broker"}}], "azure-iot-operations", None, "broker_no_namespace"),
+        # Test case 5: Exception handling
+        ([], "azure-iot-operations", Exception("API call failed"), "exception_handling"),
+    ],
+)
+def test_get_broker_namespace(mocker, broker_resources, expected_namespace, exception_side_effect, test_scenario):
+    """Test _get_broker_namespace function with different scenarios including caching."""
+    from azext_edge.edge.providers.support import base
+
+    # Reset the cache before each test
+    base._cached_broker_namespace = None
+
+    # Mock the MQ_ACTIVE_API.get_resources function
+    if exception_side_effect:
+        mock_get_resources = mocker.patch(
+            "azext_edge.edge.providers.support.base.MQ_ACTIVE_API.get_resources",
+            side_effect=exception_side_effect,
+        )
+    else:
+        mock_get_resources = mocker.patch(
+            "azext_edge.edge.providers.support.base.MQ_ACTIVE_API.get_resources",
+            return_value={"items": broker_resources},
+        )
+
+    # Call the function
+    result = _get_broker_namespace()
+
+    # Verify the result
+    assert result == expected_namespace
+
+    # Verify caching behavior - should always cache the result
+    assert base._cached_broker_namespace == expected_namespace
+
+    # Call again to test cache hit
+    result_cached = _get_broker_namespace()
+    assert result_cached == expected_namespace
+
+    # Verify cache hit didn't get resources again
+    assert mock_get_resources.call_count == 1
