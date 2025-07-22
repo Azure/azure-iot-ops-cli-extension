@@ -1538,6 +1538,7 @@ class NamespaceAssets(Queryable):
 
         if isinstance(asset_type, str):
             asset_type = [asset_type]
+
         # asset type must be the same as endpoint type unless either is custom
         device_type_list = [d.lower() for d in DeviceEndpointType.list()]
         allowed = True
@@ -1783,6 +1784,17 @@ def _process_configs(
             "streamsDestinations": _build_destination(
                 destination_args=kwargs.get("stream_destinations", []),
                 allowed_types=["Storage", "Mqtt"]
+            )
+        }
+    elif asset_type == DeviceEndpointType.REST.value.lower():
+        # allowed only datasets
+        result = {
+            "datasetsConfiguration": _process_rest_dataset_configurations(
+                **kwargs
+            ),
+            "datasetsDestinations": _build_destination(
+                destination_args=kwargs.get("dataset_destinations", []),
+                allowed_types=["BrokerStateStore", "Mqtt"]
             )
         }
     else:
@@ -2054,6 +2066,24 @@ def _process_media_stream_configurations(
     # Final schema validation
     ensure_schema_structure(
         schema=NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA,
+        input_data=result
+    )
+    return json.dumps(result)
+
+
+def _process_rest_dataset_configurations(
+    original_dataset_configuration: Optional[str] = None,
+    rest_dataset_sampling_interval: Optional[int] = None,
+    **_
+) -> str:
+    from .specs import NAMESPACE_ASSET_REST_DATASET_CONFIGURATION_SCHEMA
+
+    result = json.loads(original_dataset_configuration) if original_dataset_configuration else {}
+    if rest_dataset_sampling_interval is not None:
+        result["samplingIntervalInMilliseconds"] = rest_dataset_sampling_interval
+
+    ensure_schema_structure(
+        schema=NAMESPACE_ASSET_REST_DATASET_CONFIGURATION_SCHEMA,
         input_data=result
     )
     return json.dumps(result)

@@ -40,6 +40,20 @@ class DeviceEndpointType(ListableEnum):
     OPCUA = "Microsoft.OpcUa"
     ONVIF = "Microsoft.Onvif"
     MEDIA = "Microsoft.Media"
+    REST = "Microsoft.Http"
+
+    @classmethod
+    def get_type_from_keyword(cls, keyword: str) -> Optional[str]:
+        """
+        Returns the endpoint type based on the keyword. Mainly used for testing.
+        """
+        mapped_types = {
+            "opcua": cls.OPCUA.value,
+            "onvif": cls.ONVIF.value,
+            "media": cls.MEDIA.value,
+            "rest": cls.REST.value
+        }
+        return mapped_types.get(keyword.lower(), "custom")
 
 
 class NamespaceDevices(Queryable):
