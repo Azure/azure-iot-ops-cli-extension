@@ -4,35 +4,37 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from copy import deepcopy
 import json
-from rich.console import Console
+from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
-from knack.log import get_logger
 
 from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
 )
+from knack.log import get_logger
+from rich.console import Console
 
-from ...util.common import parse_kvp_nargs, should_continue_prompt
 from ...util.az_client import (
     get_registry_mgmt_client,
     get_resource_client,
     wait_for_terminal_state,
-    DeviceRegistryMgmtApiVersion
 )
+from ...util.common import parse_kvp_nargs, should_continue_prompt
 from ...util.id_tools import parse_resource_id
 from ...util.queryable import Queryable
 from .helpers import (
-    process_additional_configuration, ensure_schema_structure, get_default_dataset
+    ensure_schema_structure,
+    get_default_dataset,
+    process_additional_configuration,
 )
 from .namespace_devices import DeviceEndpointType
 
 if TYPE_CHECKING:
     from ...vendor.clients.deviceregistrymgmt.operations import (
-        NamespaceAssetsOperations, NamespaceDevicesOperations
+        NamespaceAssetsOperations,
+        NamespaceDevicesOperations,
     )
     from ...vendor.clients.resourcesmgmt.operations import ResourcesOperations
 
@@ -46,8 +48,7 @@ class NamespaceAssets(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id,
-            api_version=DeviceRegistryMgmtApiVersion.V20250701_preview
+            subscription_id=self.default_subscription_id
         )
         self.resource_mgmt_client = get_resource_client(
             subscription_id=self.default_subscription_id
@@ -1984,7 +1985,11 @@ def _process_media_stream_configurations(
     media_server_certificate: Optional[str] = None,
     **_
 ) -> str:
-    from .specs import NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA, MediaFormat, MediaTaskType
+    from .specs import (
+        NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA,
+        MediaFormat,
+        MediaTaskType,
+    )
     result = json.loads(original_stream_configuration) if original_stream_configuration else {}
 
     task_type = task_type or result.get("taskType")

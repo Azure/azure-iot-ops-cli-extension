@@ -144,7 +144,7 @@ class DeviceRegistryMgmtApiVersion(Enum):
 
 def get_registry_mgmt_client(
     subscription_id: str,
-    api_version: Union[DeviceRegistryMgmtApiVersion, str] = DeviceRegistryMgmtApiVersion.V20241101,
+    api_version: Union[DeviceRegistryMgmtApiVersion, str] = DeviceRegistryMgmtApiVersion.V20250701_preview,
     **kwargs,
 ) -> "MicrosoftDeviceRegistryManagementService":
     from ..vendor.clients.deviceregistrymgmt import (

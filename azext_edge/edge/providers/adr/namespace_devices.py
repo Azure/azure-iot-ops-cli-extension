@@ -5,25 +5,27 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
-from rich.console import Console
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional
-from knack.log import get_logger
 
 from azure.cli.core.azclierror import InvalidArgumentValueError
+from knack.log import get_logger
+from rich.console import Console
 
+from ...common import ListableEnum
 from ...util.az_client import (
     get_registry_mgmt_client,
     get_resource_client,
     wait_for_terminal_state,
-    DeviceRegistryMgmtApiVersion
 )
-from ...util.id_tools import parse_resource_id
 from ...util.common import parse_kvp_nargs, should_continue_prompt
+from ...util.id_tools import parse_resource_id
 from ...util.queryable import Queryable
-from ...common import ListableEnum
 
 if TYPE_CHECKING:
-    from ...vendor.clients.deviceregistrymgmt.operations import NamespacesOperations, NamespaceDevicesOperations
+    from ...vendor.clients.deviceregistrymgmt.operations import (
+        NamespaceDevicesOperations,
+        NamespacesOperations,
+    )
     from ...vendor.clients.resourcesmgmt.operations import ResourcesOperations
 
 
@@ -60,8 +62,7 @@ class NamespaceDevices(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id,
-            api_version=DeviceRegistryMgmtApiVersion.V20250701_preview
+            subscription_id=self.default_subscription_id
         )
         self.resource_mgmt_client = get_resource_client(
             subscription_id=self.default_subscription_id
@@ -299,7 +300,7 @@ class NamespaceDevices(Queryable):
         replace: Optional[bool] = False,
         **kwargs
     ):
-        from .helpers import process_authentication, process_additional_configuration
+        from .helpers import process_additional_configuration, process_authentication
         # get the original inbound endpoints
         device = self.show(
             device_name=device_name,
@@ -487,8 +488,8 @@ def _process_opcua_configuration(
     Creates a stringified JSON that follows the OPC UA endpoint schema specifications
     defined in NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA.
     """
-    from .specs import NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA
     from .helpers import ensure_schema_structure
+    from .specs import NAMESPACE_DEVICE_OPCUA_ENDPOINT_SCHEMA
 
     if security_policy:
         security_policy = "http://opcfoundation.org/UA/SecurityPolicy#" + security_policy
