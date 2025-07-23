@@ -39,8 +39,6 @@ generic = client.ApiClient()
 DAY_IN_SECONDS: int = 60 * 60 * 24
 POD_STATUS_FAILED_EVICTED: str = "evicted"
 
-# Cache for broker namespace used for resources with no namespace annotation
-_cached_broker_namespace: Optional[str] = None
 
 K8sRuntimeResources = TypeVar(
     "K8sRuntimeResources",
@@ -442,11 +440,11 @@ def process_nodes() -> Dict[str, Union[dict, str]]:
     }
 
 
-def get_mq_namespaces() -> List[str]:
+def get_mq_namespaces(use_cache: Optional[bool] = False) -> List[str]:
     from ..edge_api import MQ_ACTIVE_API, MqResourceKinds
 
     namespaces = []
-    cluster_brokers = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER)
+    cluster_brokers = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER, use_cache=use_cache)
     if cluster_brokers and cluster_brokers["items"]:
         namespaces.extend([b["metadata"]["namespace"] for b in cluster_brokers["items"]])
 
@@ -547,42 +545,6 @@ def process_cron_jobs(
     )
 
 
-def _get_broker_namespace() -> str:
-    """
-    Get the namespace of the main broker resource with caching.
-    Returns DEFAULT_NAMESPACE if no broker is found.
-    """
-    global _cached_broker_namespace
-
-    # Return cached value if available
-    if _cached_broker_namespace:
-        return _cached_broker_namespace
-
-    # Fetch broker resource using internal API call
-    try:
-        # Get all broker resources
-        broker_resources = MQ_ACTIVE_API.get_resources(kind=MqResourceKinds.BROKER)
-        if broker_resources and broker_resources.get("items"):
-            # Filter for the default broker by name
-            for broker in broker_resources["items"]:
-                broker_metadata = broker.get("metadata", {})
-                broker_name = broker_metadata.get("name")
-                if broker_name == DEFAULT_BROKER:
-                    broker_namespace = broker_metadata.get("namespace")
-                    if broker_namespace:
-                        _cached_broker_namespace = broker_namespace
-                        logger.debug(f"Cached broker namespace: {broker_namespace}")
-                        return broker_namespace
-
-    except Exception as e:
-        logger.debug(f"Failed to fetch broker namespace: {e}")
-
-    # Fallback to default namespace
-    _cached_broker_namespace = DEFAULT_NAMESPACE
-    logger.debug(f"Using fallback default namespace: {DEFAULT_NAMESPACE}")
-    return DEFAULT_NAMESPACE
-
-
 def process_mutating_webhook_configurations(
     directory_path: str,
     field_selector: Optional[str] = None,
@@ -595,7 +557,10 @@ def process_mutating_webhook_configurations(
     processed = []
     for webhook in webhooks.items:
         annotations = getattr(webhook.metadata, "annotations", {}) or {}
-        namespace = annotations.get("meta.helm.sh/release-namespace") or _get_broker_namespace()
+        namespace = annotations.get("meta.helm.sh/release-namespace")
+        if not namespace:
+            broker_namespaces = get_mq_namespaces(use_cache=True)
+            namespace = broker_namespaces[0] if broker_namespaces else DEFAULT_NAMESPACE
         name = webhook.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.mutatingwebhook.value)
         processed.append(
@@ -620,7 +585,10 @@ def process_validating_webhook_configurations(
     processed = []
     for webhook in webhooks.items:
         annotations = getattr(webhook.metadata, "annotations", {}) or {}
-        namespace = annotations.get("meta.helm.sh/release-namespace") or _get_broker_namespace()
+        namespace = annotations.get("meta.helm.sh/release-namespace")
+        if not namespace:
+            broker_namespaces = get_mq_namespaces(use_cache=True)
+            namespace = broker_namespaces[0] if broker_namespaces else DEFAULT_NAMESPACE
         name = webhook.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.validatingwebhook.value)
 
