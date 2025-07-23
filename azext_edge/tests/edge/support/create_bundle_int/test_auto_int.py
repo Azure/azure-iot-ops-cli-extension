@@ -137,9 +137,7 @@ def test_create_bundle(cluster_connection, ops_service, bundle_dir, mq_traces, t
             )
 
 
-def _get_expected_services(
-    walk_result: Dict[str, Dict[str, List[str]]], ops_service: str, namespace: str
-) -> List[str]:
+def _get_expected_services(walk_result: Dict[str, Dict[str, List[str]]], ops_service: str, namespace: str) -> List[str]:
     expected_services = [ops_service] if ops_service else OpsServiceType.list()
 
     # remove services that are not created in aio namespace
@@ -154,5 +152,5 @@ def _get_expected_services(
 
     expected_services.append("meta")
     expected_services.append("meso")
-    
+
     return expected_services

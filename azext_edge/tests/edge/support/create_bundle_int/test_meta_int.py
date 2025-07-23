@@ -13,7 +13,7 @@ from .helpers import (
     check_workload_resource_files,
     get_all_kinds_from_manager,
     get_file_map,
-    run_bundle_command
+    run_bundle_command,
 )
 
 logger = get_logger(__name__)
@@ -38,11 +38,15 @@ def test_create_bundle_meta(cluster_connection, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, "meta")["aio"]
 
-    check_custom_resource_files(file_objs=file_map, resource_apis=COMPAT_META_APIS.resource_apis, exclude_kinds=["observability"])
+    check_custom_resource_files(
+        file_objs=file_map, resource_apis=COMPAT_META_APIS.resource_apis, exclude_kinds=["observability"]
+    )
 
-    expected_types = set(META_WORKLOAD_TYPES + META_OPTIONAL_WORKLOAD_TYPES).union(
-        get_all_kinds_from_manager(COMPAT_META_APIS)
-    ).union({"mwc", "vwc"})
+    expected_types = (
+        set(META_WORKLOAD_TYPES + META_OPTIONAL_WORKLOAD_TYPES)
+        .union(get_all_kinds_from_manager(COMPAT_META_APIS))
+        .union({"mwc", "vwc"})
+    )
     assert set(file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(
         file_objs=file_map,
