@@ -41,7 +41,7 @@ def test_create_bundle_certmanager(cluster_connection, tracked_files):
         resource_apis=TRUSTMANAGER_API_V1,
         namespace=file_map["__namespaces__"]["certmanager"],
     )
-    expected_types = set(CERTMGMT_WORKLOAD_TYPES).union(CERTMANAGER_API_V1.kinds).union(TRUSTMANAGER_API_V1.kinds)
+    expected_types = set(CERTMGMT_WORKLOAD_TYPES).union(CERTMANAGER_API_V1.kinds).union(TRUSTMANAGER_API_V1.kinds).union({"vwc", "mwc"})
     assert set(certmanager_file_map.keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=certmanager_file_map,

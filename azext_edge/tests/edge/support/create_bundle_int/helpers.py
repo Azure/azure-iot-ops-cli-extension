@@ -33,12 +33,14 @@ WORKLOAD_TYPES = [
     "daemonset",
     "deployment",
     "job",
+    "mwc",
     "pod",
     "podmetric",
     "pvc",
     "replicaset",
     "service",
     "statefulset",
+    "vwc",
 ]
 
 

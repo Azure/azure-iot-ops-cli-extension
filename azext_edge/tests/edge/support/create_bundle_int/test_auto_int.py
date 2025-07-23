@@ -153,4 +153,6 @@ def _get_expected_services(
             expected_services.remove(service)
 
     expected_services.append("meta")
+    expected_services.append("meso")
+    
     return expected_services
