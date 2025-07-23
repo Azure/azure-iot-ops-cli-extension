@@ -186,6 +186,7 @@ class SecurityMode(Enum):
 
 
 # ASSETS
+# OPCUA
 NAMESPACE_ASSET_OPCUA_DATASET_CONFIGURATION_SCHEMA_V1 = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://azure-iot-operations/schemas/asset/datasetconfiguration/opcua/1.1.0.json",
@@ -328,6 +329,28 @@ NAMESPACE_ASSET_OPCUA_EVENT_CONFIGURATION_SCHEMA_V2 = {
 }
 
 
+NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://azure-iot-operations/schemas/asset/datapointconfiguration/opcua/1.0.0.json",
+    "title": "AIO OPC UA Asset Data-Point Additional Configuration Schema",
+    "description": "Schema for the additional configuration of OPC UA asset data-point in Azure Industrial Operations",
+    "type": "object",
+    "properties": {
+        "samplingInterval": {
+            "type": "integer",
+            "minimum" : -1,
+            "default": 1000
+        },
+        "queueSize": {
+            "type": "integer",
+            "minimum" : 0,
+            "default": 1
+        }
+    }
+}
+
+
+# MEDIA
 NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
     "$id": "https://azure-iot-operations/schemas/asset/streamconfiguration/media.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -520,24 +543,19 @@ NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA = {
 }
 
 
-NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA = {
+# REST
+NAMESPACE_ASSET_REST_DATASET_CONFIGURATION_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://azure-iot-operations/schemas/asset/datapointconfiguration/opcua/1.0.0.json",
-    "title": "AIO OPC UA Asset Data-Point Additional Configuration Schema",
-    "description": "Schema for the additional configuration of OPC UA asset data-point in Azure Industrial Operations",
+    "title": "REST Dataset Config Schema",
+    "description": "The JSON schema for both the default dataset configuration field on an asset and "
+    "dataset-specific configuration fields",
     "type": "object",
     "properties": {
-        "samplingInterval": {
+        "samplingIntervalInMilliseconds": {
+            "description": "How frequently to sample each dataset in milliseconds",
             "type": "integer",
-            "minimum" : -1,
-            "default": 1000
         },
-        "queueSize": {
-            "type": "integer",
-            "minimum" : 0,
-            "default": 1
-        }
-    }
+    },
 }
 
 

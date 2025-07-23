@@ -18,6 +18,7 @@ from .deviceregistry import (
     NAMESPACED_DEVICEREGISTRY_API_V1B1,
     DeviceRegistryResourceKinds,
 )
+from .meso import MesoResourceKinds
 from .keyvault import KEYVAULT_API_V1, KeyVaultResourceKinds
 from .meta import META_ACTIVE_API, META_API_V1, META_API_V1B1, MetaResourceKinds
 from .mq import MQ_ACTIVE_API, MQTT_BROKER_API_V1, MQTT_BROKER_API_V1B1, MqResourceKinds
@@ -36,6 +37,7 @@ __all__ = [
     "CONTAINERSTORAGE_API_V1",
     "EdgeResourceApi",
     "EdgeApiManager",
+    "MesoResourceKinds",
     "MqResourceKinds",
     "MQ_ACTIVE_API",
     "MQTT_BROKER_API_V1",

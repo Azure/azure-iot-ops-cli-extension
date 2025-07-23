@@ -162,7 +162,7 @@ class RegistryEndpoints(Queryable):
         # Ensure mutual exclusivity
         if trusted_signing_configmap_key and trusted_signing_secret_key:
             raise MutuallyExclusiveArgumentError(
-                "Cannot specify both config map and secret for trusted signing key settings."
+                "Cannot specify both config map and secret for trusted signing key settings. "
                 "Choose one trusted signing key type."
             )
 

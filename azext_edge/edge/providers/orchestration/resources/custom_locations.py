@@ -41,6 +41,7 @@ class CustomLocations(Queryable):
         tags: Optional[dict] = None,
         **kwargs
     ) -> dict:
+        headers = kwargs.pop("headers", {})
         properties = {
             "hostResourceId": host_resource_id,
             "namespace": namespace,
@@ -61,6 +62,7 @@ class CustomLocations(Queryable):
             resource_group_name=resource_group_name,
             resource_name=name,
             parameters=parameters,
+            headers=headers,
         )
 
         return wait_for_terminal_state(poller, **kwargs)

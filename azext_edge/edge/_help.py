@@ -195,12 +195,54 @@ def load_iotops_help():
         short-summary: Delete an mqtt broker.
 
         examples:
-        - name: Delete an mqtt broker from the instance.
+        - name: Delete the default mqtt broker from the instance.
           text: >
-            az iot ops broker delete -n default --in myinstance -g myresourcegroup
+            az iot ops broker delete --in myinstance -g myresourcegroup
         - name: Same as prior example but skipping the confirmation prompt.
           text: >
-            az iot ops broker delete -n default --in myinstance -g myresourcegroup -y
+            az iot ops broker delete --in myinstance -g myresourcegroup -y
+    """
+
+    helps[
+        "iot ops broker persist"
+    ] = """
+        type: group
+        short-summary: Mqtt broker disk persistence management.
+    """
+
+    helps[
+        "iot ops broker persist update"
+    ] = """
+        type: command
+        short-summary: Update an mqtt broker's disk persistence settings.
+        long-summary: |
+          Updating disk persistence depends on enablement at broker create time.
+          Setting the persistence mode of a broker component will reset its configuration.
+
+        examples:
+        - name: Update the persistence mode of subscriber message queues, retain topics and state store.
+          text: >
+            az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode subscriberQueue=All retain=All stateStore=All
+        - name: Update a custom persistence policy for retain messages.
+          text: >
+            az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode retain=Custom --retain-topics "sensor1" "factory/#" "groundfloor/+/temperature"
+        - name: Set up state store persistence with multiple key groups including string, pattern, and binary (base64 encoded) keys.
+          text: >
+            az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode stateStore=Custom
+            --state-store-str-keys "device-001" "device-002" --state-store-glob-keys "sensors/*" --state-store-bin-keys "bXlrZXkx" "bXlrZXky"
+        - name: Configure subscriber queue persistence for specific client IDs and apply user property key and value for dynamic persistence.
+          text: >
+            az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode subscriberQueue=Custom
+            --subscriber-client-ids "factory-client-*" "sensor-gateway-01" --user-key disk-persistence --user-value disk
+        - name: Advanced configuration with multiple persistence modes, state store key groupings, and dynamic settings for a custom broker.
+          text: >
+            az iot ops broker persist update --in myinstance -g myresourcegroup --name default --persist-mode retain=Custom stateStore=Custom subscriberQueue=All
+            --retain-topics "alerts/#" "diagnostics/#" --state-store-str-keys "user:admin" "session:active" --state-store-str-keys "config:database" "config:security"
+            --state-store-glob-keys "logs/*" "backups/*" --disable-dynamic stateStore
+        - name: Disable all persistence modes and remove user properties for dynamic persistence.
+          text: >
+            az iot ops broker persist update --in myinstance -g myresourcegroup --persist-mode retain=None stateStore=None subscriberQueue=None
+            --user-key="" --user-value=""
     """
 
     helps[
@@ -1897,7 +1939,10 @@ def load_iotops_help():
         type: command
         short-summary: Assign a user-assigned managed identity with the instance.
         long-summary: |
-            This operation includes federation of the identity.
+            This operation includes federation of the identity for the applicable purpose.
+
+            When --usage 'schema' is present, by default, a role assignment of the identity against the
+            instance schema registry will be made if the expected role does not already exist.
 
         examples:
         - name: Assign and federate a desired user-assigned managed identity for use with dataflows.
@@ -1906,6 +1951,16 @@ def load_iotops_help():
         - name: Assign and federate a desired user-assigned managed identity for use with schema registry.
           text: >
             az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID --usage schema
+        - name: Assign and federate a desired user-assigned managed identity for use with schema registry with a
+            custom role to be used for the identity role assignment.
+          text: >
+            az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID --usage schema
+            --custom-sr-role-id $CUSTOM_ROLE_ID
+        - name: Assign and federate a desired user-assigned managed identity for use with schema registry but
+            skip the role assignment step of the operation.
+          text: >
+            az iot ops identity assign --name myinstance -g myresourcegroup --mi-user-assigned $UA_MI_RESOURCE_ID --usage schema
+            --skip-sr-ra
     """
 
     helps[
@@ -2435,7 +2490,7 @@ def load_iotops_help():
         examples:
         - name: Show details of target schema version 1.
           text: >
-            az iot ops schema version show --name 1 --schema myschema --registry myregistry -g myresourcegroup
+            az iot ops schema version show --version 1 --schema myschema --registry myregistry -g myresourcegroup
     """
 
     helps[
@@ -2457,7 +2512,7 @@ def load_iotops_help():
         examples:
         - name: Remove schema version 1.
           text: >
-            az iot ops schema version remove -n 1 -g myresourcegroup --registry myregistry --schema myschema
+            az iot ops schema version remove --version 1 -g myresourcegroup --registry myregistry --schema myschema
     """
 
     helps[
@@ -2472,19 +2527,19 @@ def load_iotops_help():
         - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
                 minimum inputs. The content is inline json (powershell syntax example).
           text: >
-            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{\\\"hello\\\": \\\"world\\\"}'
+            az iot ops schema version add --version 1 -g myresourcegroup --registry myregistry --schema myschema --content '{\\\"hello\\\": \\\"world\\\"}'
         - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
                 minimum inputs. The content is inline json (cmd syntax example).
           text: >
-            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content "{\\\"hello\\\": \\\"world\\\"}"
+            az iot ops schema version add --version 1 -g myresourcegroup --registry myregistry --schema myschema --content "{\\\"hello\\\": \\\"world\\\"}"
         - name: Add a schema version 1 to a schema called 'myschema' within the registry 'myregistry' with
                 minimum inputs. The content is inline json (bash syntax example).
           text: >
-            az iot ops schema version add -n 1 -g myresourcegroup --registry myregistry --schema myschema --content '{"hello": "world"}'
+            az iot ops schema version add --version 1 -g myresourcegroup --registry myregistry --schema myschema --content '{"hello": "world"}'
         - name: Add a schema version 2 to a schema called 'myschema' within the registry 'myregistry' with
                 a description. The file should contain the schema content.
           text: >
-            az iot ops schema version add -n 2 -g myresourcegroup --registry myregistry --schema myschema --content myschemav2.json --desc "New schema"
+            az iot ops schema version add --version 2 -g myresourcegroup --registry myregistry --schema myschema --content myschemav2.json --desc "New schema"
     """
 
     helps[

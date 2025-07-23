@@ -609,161 +609,6 @@ def build_akri_connector_delete_request(
     return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
 
 
-def build_akri_discovery_handler_list_by_instance_resource_request(  # pylint: disable=name-too-long
-    resource_group_name: str, instance_name: str, subscription_id: str, **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.IoTOperations/instances/{instanceName}/akriDiscoveryHandlers"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "instanceName": _SERIALIZER.url(
-            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
-        ),
-    }
-
-    _url: str = _url.format(**path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_akri_discovery_handler_get_request(
-    resource_group_name: str, instance_name: str, akri_discovery_handler_name: str, subscription_id: str, **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.IoTOperations/instances/{instanceName}/akriDiscoveryHandlers/{akriDiscoveryHandlerName}"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "instanceName": _SERIALIZER.url(
-            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
-        ),
-        "akriDiscoveryHandlerName": _SERIALIZER.url(
-            "akri_discovery_handler_name",
-            akri_discovery_handler_name,
-            "str",
-            max_length=63,
-            min_length=3,
-            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
-        ),
-    }
-
-    _url: str = _url.format(**path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="GET", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_akri_discovery_handler_create_or_update_request(  # pylint: disable=name-too-long
-    resource_group_name: str, instance_name: str, akri_discovery_handler_name: str, subscription_id: str, **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.IoTOperations/instances/{instanceName}/akriDiscoveryHandlers/{akriDiscoveryHandlerName}"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "instanceName": _SERIALIZER.url(
-            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
-        ),
-        "akriDiscoveryHandlerName": _SERIALIZER.url(
-            "akri_discovery_handler_name",
-            akri_discovery_handler_name,
-            "str",
-            max_length=63,
-            min_length=3,
-            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
-        ),
-    }
-
-    _url: str = _url.format(**path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    if content_type is not None:
-        _headers["Content-Type"] = _SERIALIZER.header("content_type", content_type, "str")
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="PUT", url=_url, params=_params, headers=_headers, **kwargs)
-
-
-def build_akri_discovery_handler_delete_request(  # pylint: disable=name-too-long
-    resource_group_name: str, instance_name: str, akri_discovery_handler_name: str, subscription_id: str, **kwargs: Any
-) -> HttpRequest:
-    _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-    _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
-
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
-    accept = _headers.pop("Accept", "application/json")
-
-    # Construct URL
-    _url = "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.IoTOperations/instances/{instanceName}/akriDiscoveryHandlers/{akriDiscoveryHandlerName}"  # pylint: disable=line-too-long
-    path_format_arguments = {
-        "subscriptionId": _SERIALIZER.url("subscription_id", subscription_id, "str"),
-        "resourceGroupName": _SERIALIZER.url(
-            "resource_group_name", resource_group_name, "str", max_length=90, min_length=1
-        ),
-        "instanceName": _SERIALIZER.url(
-            "instance_name", instance_name, "str", max_length=63, min_length=3, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
-        ),
-        "akriDiscoveryHandlerName": _SERIALIZER.url(
-            "akri_discovery_handler_name",
-            akri_discovery_handler_name,
-            "str",
-            max_length=63,
-            min_length=3,
-            pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
-        ),
-    }
-
-    _url: str = _url.format(**path_format_arguments)  # type: ignore
-
-    # Construct parameters
-    _params["api-version"] = _SERIALIZER.query("api_version", api_version, "str")
-
-    # Construct headers
-    _headers["Accept"] = _SERIALIZER.header("accept", accept, "str")
-
-    return HttpRequest(method="DELETE", url=_url, params=_params, headers=_headers, **kwargs)
-
-
 def build_broker_list_by_resource_group_request(  # pylint: disable=name-too-long
     resource_group_name: str, instance_name: str, subscription_id: str, **kwargs: Any
 ) -> HttpRequest:
@@ -4103,40 +3948,52 @@ class AkriConnectorTemplateOperations:
                         "version": "str",  # The version of the Helm chart. Required.
                         "advancedConfiguration": {
                             "delete": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "install": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "upgrade": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             }
                         },
                         "registrySettings": akri_connector_template_helm_registry_settings,
@@ -4239,8 +4096,6 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "version": "str",  # The version of the device
-                                  inbound endpoint. Required.
                                 "configurationSchemaRefs": {
                                     "additionalConfigSchemaRef": "str",  #
                                       Optional. The additional configuration schema reference.
@@ -4255,8 +4110,10 @@ class AkriConnectorTemplateOperations:
                                     "defaultStreamsConfigSchemaRef": "str"  #
                                       Optional. The default configuration schema reference for streams.
                                 },
-                                "description": "str"  # Optional. A description of
+                                "description": "str",  # Optional. A description of
                                   the device inbound endpoint.
+                                "version": "str"  # Optional. The version of the
+                                  device inbound endpoint.
                             }
                         ],
                         "runtimeConfiguration":
@@ -4420,40 +4277,52 @@ class AkriConnectorTemplateOperations:
                         "version": "str",  # The version of the Helm chart. Required.
                         "advancedConfiguration": {
                             "delete": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "install": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "upgrade": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             }
                         },
                         "registrySettings": akri_connector_template_helm_registry_settings,
@@ -4556,8 +4425,6 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "version": "str",  # The version of the device
-                                  inbound endpoint. Required.
                                 "configurationSchemaRefs": {
                                     "additionalConfigSchemaRef": "str",  #
                                       Optional. The additional configuration schema reference.
@@ -4572,8 +4439,10 @@ class AkriConnectorTemplateOperations:
                                     "defaultStreamsConfigSchemaRef": "str"  #
                                       Optional. The default configuration schema reference for streams.
                                 },
-                                "description": "str"  # Optional. A description of
+                                "description": "str",  # Optional. A description of
                                   the device inbound endpoint.
+                                "version": "str"  # Optional. The version of the
+                                  device inbound endpoint.
                             }
                         ],
                         "runtimeConfiguration":
@@ -4807,40 +4676,52 @@ class AkriConnectorTemplateOperations:
                         "version": "str",  # The version of the Helm chart. Required.
                         "advancedConfiguration": {
                             "delete": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "install": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "upgrade": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             }
                         },
                         "registrySettings": akri_connector_template_helm_registry_settings,
@@ -4943,8 +4824,6 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "version": "str",  # The version of the device
-                                  inbound endpoint. Required.
                                 "configurationSchemaRefs": {
                                     "additionalConfigSchemaRef": "str",  #
                                       Optional. The additional configuration schema reference.
@@ -4959,8 +4838,10 @@ class AkriConnectorTemplateOperations:
                                     "defaultStreamsConfigSchemaRef": "str"  #
                                       Optional. The default configuration schema reference for streams.
                                 },
-                                "description": "str"  # Optional. A description of
+                                "description": "str",  # Optional. A description of
                                   the device inbound endpoint.
+                                "version": "str"  # Optional. The version of the
+                                  device inbound endpoint.
                             }
                         ],
                         "runtimeConfiguration":
@@ -5034,40 +4915,52 @@ class AkriConnectorTemplateOperations:
                         "version": "str",  # The version of the Helm chart. Required.
                         "advancedConfiguration": {
                             "delete": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "install": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "upgrade": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             }
                         },
                         "registrySettings": akri_connector_template_helm_registry_settings,
@@ -5168,40 +5061,52 @@ class AkriConnectorTemplateOperations:
                         "version": "str",  # The version of the Helm chart. Required.
                         "advancedConfiguration": {
                             "delete": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "install": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "upgrade": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             }
                         },
                         "registrySettings": akri_connector_template_helm_registry_settings,
@@ -5304,8 +5209,6 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "version": "str",  # The version of the device
-                                  inbound endpoint. Required.
                                 "configurationSchemaRefs": {
                                     "additionalConfigSchemaRef": "str",  #
                                       Optional. The additional configuration schema reference.
@@ -5320,8 +5223,10 @@ class AkriConnectorTemplateOperations:
                                     "defaultStreamsConfigSchemaRef": "str"  #
                                       Optional. The default configuration schema reference for streams.
                                 },
-                                "description": "str"  # Optional. A description of
+                                "description": "str",  # Optional. A description of
                                   the device inbound endpoint.
+                                "version": "str"  # Optional. The version of the
+                                  device inbound endpoint.
                             }
                         ],
                         "runtimeConfiguration":
@@ -5429,40 +5334,52 @@ class AkriConnectorTemplateOperations:
                         "version": "str",  # The version of the Helm chart. Required.
                         "advancedConfiguration": {
                             "delete": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "install": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "upgrade": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             }
                         },
                         "registrySettings": akri_connector_template_helm_registry_settings,
@@ -5563,40 +5480,52 @@ class AkriConnectorTemplateOperations:
                         "version": "str",  # The version of the Helm chart. Required.
                         "advancedConfiguration": {
                             "delete": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "install": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "upgrade": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             }
                         },
                         "registrySettings": akri_connector_template_helm_registry_settings,
@@ -5699,8 +5628,6 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "version": "str",  # The version of the device
-                                  inbound endpoint. Required.
                                 "configurationSchemaRefs": {
                                     "additionalConfigSchemaRef": "str",  #
                                       Optional. The additional configuration schema reference.
@@ -5715,8 +5642,10 @@ class AkriConnectorTemplateOperations:
                                     "defaultStreamsConfigSchemaRef": "str"  #
                                       Optional. The default configuration schema reference for streams.
                                 },
-                                "description": "str"  # Optional. A description of
+                                "description": "str",  # Optional. A description of
                                   the device inbound endpoint.
+                                "version": "str"  # Optional. The version of the
+                                  device inbound endpoint.
                             }
                         ],
                         "runtimeConfiguration":
@@ -5820,40 +5749,52 @@ class AkriConnectorTemplateOperations:
                         "version": "str",  # The version of the Helm chart. Required.
                         "advancedConfiguration": {
                             "delete": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "install": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "upgrade": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             }
                         },
                         "registrySettings": akri_connector_template_helm_registry_settings,
@@ -5956,8 +5897,6 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "version": "str",  # The version of the device
-                                  inbound endpoint. Required.
                                 "configurationSchemaRefs": {
                                     "additionalConfigSchemaRef": "str",  #
                                       Optional. The additional configuration schema reference.
@@ -5972,8 +5911,10 @@ class AkriConnectorTemplateOperations:
                                     "defaultStreamsConfigSchemaRef": "str"  #
                                       Optional. The default configuration schema reference for streams.
                                 },
-                                "description": "str"  # Optional. A description of
+                                "description": "str",  # Optional. A description of
                                   the device inbound endpoint.
+                                "version": "str"  # Optional. The version of the
+                                  device inbound endpoint.
                             }
                         ],
                         "runtimeConfiguration":
@@ -6047,40 +5988,52 @@ class AkriConnectorTemplateOperations:
                         "version": "str",  # The version of the Helm chart. Required.
                         "advancedConfiguration": {
                             "delete": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "install": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "upgrade": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             }
                         },
                         "registrySettings": akri_connector_template_helm_registry_settings,
@@ -6181,40 +6134,52 @@ class AkriConnectorTemplateOperations:
                         "version": "str",  # The version of the Helm chart. Required.
                         "advancedConfiguration": {
                             "delete": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "install": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             },
                             "upgrade": {
-                                "atomic": bool,  # Optional. Atomic flag for the
-                                  operation.
-                                "disableHooks": bool,  # Optional. Disable hooks flag
-                                  for the operation.
-                                "timeout": 0,  # Optional. The timeout for the
-                                  operation in seconds.
-                                "wait": bool,  # Optional. The wait flag for the
-                                  operation.
-                                "waitForJobs": bool  # Optional. The wait for jobs
-                                  flag.
+                                "atomic": bool,  # Optional. If set, the operation
+                                  will be atomic. If the operation fails, all changes will be rolled
+                                  back.
+                                "disableHooks": bool,  # Optional. Disable pre/post
+                                  upgrade hooks for the operation.
+                                "timeout": 0,  # Optional. Time to wait for any
+                                  individual Kubernetes operation (like ``Jobs`` for hooks).
+                                "wait": bool,  # Optional. If set, the operation will
+                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
+                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
+                                  ready state before marking the release as successful.
+                                "waitForJobs": bool  # Optional. If set, the
+                                  operation will wait for jobs to complete before marking the release
+                                  as successful.
                             }
                         },
                         "registrySettings": akri_connector_template_helm_registry_settings,
@@ -6317,8 +6282,6 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "version": "str",  # The version of the device
-                                  inbound endpoint. Required.
                                 "configurationSchemaRefs": {
                                     "additionalConfigSchemaRef": "str",  #
                                       Optional. The additional configuration schema reference.
@@ -6333,8 +6296,10 @@ class AkriConnectorTemplateOperations:
                                     "defaultStreamsConfigSchemaRef": "str"  #
                                       Optional. The default configuration schema reference for streams.
                                 },
-                                "description": "str"  # Optional. A description of
+                                "description": "str",  # Optional. A description of
                                   the device inbound endpoint.
+                                "version": "str"  # Optional. The version of the
+                                  device inbound endpoint.
                             }
                         ],
                         "runtimeConfiguration":
@@ -7302,1673 +7267,6 @@ class AkriConnectorOperations:
                 instance_name=instance_name,
                 akri_connector_template_name=akri_connector_template_name,
                 connector_name=connector_name,
-                cls=lambda x, y, z: x,
-                headers=_headers,
-                params=_params,
-                **kwargs
-            )
-        kwargs.pop("error_map", None)
-
-        def get_long_running_output(pipeline_response):  # pylint: disable=inconsistent-return-statements
-            if cls:
-                return cls(pipeline_response, None, {})  # type: ignore
-
-        if polling is True:
-            polling_method: PollingMethod = cast(
-                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "location"}, **kwargs)
-            )
-        elif polling is False:
-            polling_method = cast(PollingMethod, NoPolling())
-        else:
-            polling_method = polling
-        if cont_token:
-            return LROPoller[None].from_continuation_token(
-                polling_method=polling_method,
-                continuation_token=cont_token,
-                client=self._client,
-                deserialization_callback=get_long_running_output,
-            )
-        return LROPoller[None](self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
-
-
-class AkriDiscoveryHandlerOperations:
-    """
-    .. warning::
-        **DO NOT** instantiate this class directly.
-
-        Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
-        :attr:`akri_discovery_handler` attribute.
-    """
-
-    def __init__(self, *args, **kwargs):
-        input_args = list(args)
-        self._client = input_args.pop(0) if input_args else kwargs.pop("client")
-        self._config = input_args.pop(0) if input_args else kwargs.pop("config")
-        self._serialize = input_args.pop(0) if input_args else kwargs.pop("serializer")
-        self._deserialize = input_args.pop(0) if input_args else kwargs.pop("deserializer")
-
-    @distributed_trace
-    def list_by_instance_resource(self, resource_group_name: str, instance_name: str, **kwargs: Any) -> Iterable[JSON]:
-        # pylint: disable=line-too-long
-        """List AkriDiscoveryHandlerResource resources by InstanceResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :return: An iterator like instance of JSON object
-        :rtype: ~azure.core.paging.ItemPaged[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # The response is polymorphic. The following are possible polymorphic responses based
-                  off discriminator "method":
-
-                # JSON input template for discriminator value "ServiceAccountToken":
-                akri_connectors_mqtt_authentication = {
-                    "method": "ServiceAccountToken",
-                    "serviceAccountTokenSettings": {
-                        "audience": "str"  # The audience for the service account token.
-                          Required.
-                    }
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connectors_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The container registry to use for the artifact.
-                          Required.
-                        "imagePullSecrets": [
-                            {
-                                "secretRef": "str"  # The name of the image pull
-                                  secret. Required.
-                            }
-                        ]
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connectors_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
-                # JSON input template for discriminator value "Digest":
-                akri_connectors_tag_digest_settings = {
-                    "digest": "str",  # The digest of the image. Required.
-                    "tagDigestType": "Digest"
-                }
-
-                # JSON input template for discriminator value "Tag":
-                akri_connectors_tag_digest_settings = {
-                    "tag": "str",  # The tag of the image. Required.
-                    "tagDigestType": "Tag"
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "discoverableDeviceEndpointTypes": [
-                            {
-                                "endpointType": "str",  # The type of the endpoint.
-                                  Required.
-                                "version": "str"  # The version of the endpoint.
-                                  Required.
-                            }
-                        ],
-                        "imageConfiguration": {
-                            "imageName": "str",  # The image name without any registry
-                              reference, tag or digest. Required.
-                            "imagePullPolicy": "str",  # Optional. The pull policy of the
-                              image. Known values are: "Always", "IfNotPresent", and "Never".
-                            "registrySettings": akri_connectors_registry_settings,
-                            "replicas": 0,  # Optional. The number of replicas to be set
-                              up.
-                            "tagDigestSettings": akri_connectors_tag_digest_settings
-                        },
-                        "schedule": akri_discovery_handler_schedule,
-                        "additionalConfiguration": {
-                            "str": "str"  # Optional. Additional configuration for the
-                              AkriDiscoveryHandler.
-                        },
-                        "aioMetadata": {
-                            "aioMaxVersion": "str",  # Optional. The maximum version of
-                              AIO required for the connector.
-                            "aioMinVersion": "str"  # Optional. The minimum version of
-                              AIO required for the connector.
-                        },
-                        "diagnostics": {
-                            "logs": {
-                                "level": "info"  # Optional. Default value is "info".
-                                  The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
-                            }
-                        },
-                        "mode": "str",  # Optional. Mode of the AkriDiscoveryHandler. Known
-                          values are: "Enabled" and "Disabled".
-                        "mqttConnectionConfiguration": {
-                            "authentication": akri_connectors_mqtt_authentication,
-                            "host": "str",  # Optional. Host of the Broker in the form of
-                              :code:`<hostname>`::code:`<port>`.
-                            "keepAliveSeconds": 0,  # Optional. KeepAlive for connection
-                              in seconds.
-                            "maxInflightMessages": 0,  # Optional. The max number of
-                              messages to keep in flight. For subscribe, this is the receive maximum.
-                              For publish, this is the maximum number of messages to send before
-                              waiting for an ack.
-                            "protocol": "str",  # Optional. The protocol to use for the
-                              connection. Currently only ``mqtt`` is supported. "Mqtt"
-                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
-                              seconds.
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
-                            }
-                        },
-                        "provisioningState": "str",  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "secrets": [
-                            {
-                                "secretAlias": "str",  # The application-defined
-                                  alias for the secret. Required.
-                                "secretKey": "str",  # The key in the secret to be
-                                  mounted. Required.
-                                "secretRef": "str"  # The name of the secret to be
-                                  mounted. Required.
-                            }
-                        ]
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = kwargs.pop("params", {}) or {}
-
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        def prepare_request(next_link=None):
-            if not next_link:
-
-                _request = build_akri_discovery_handler_list_by_instance_resource_request(
-                    resource_group_name=resource_group_name,
-                    instance_name=instance_name,
-                    subscription_id=self._config.subscription_id,
-                    api_version=self._config.api_version,
-                    headers=_headers,
-                    params=_params,
-                )
-                _request.url = self._client.format_url(_request.url)
-
-            else:
-                # make call to next link with the client's api-version
-                _parsed_next_link = urllib.parse.urlparse(next_link)
-                _next_request_params = case_insensitive_dict(
-                    {
-                        key: [urllib.parse.quote(v) for v in value]
-                        for key, value in urllib.parse.parse_qs(_parsed_next_link.query).items()
-                    }
-                )
-                _next_request_params["api-version"] = self._config.api_version
-                _request = HttpRequest(
-                    "GET", urllib.parse.urljoin(next_link, _parsed_next_link.path), params=_next_request_params
-                )
-                _request.url = self._client.format_url(_request.url)
-
-            return _request
-
-        def extract_data(pipeline_response):
-            deserialized = pipeline_response.http_response.json()
-            list_of_elem = deserialized["value"]
-            if cls:
-                list_of_elem = cls(list_of_elem)  # type: ignore
-            return deserialized.get("nextLink") or None, iter(list_of_elem)
-
-        def get_next(next_link=None):
-            _request = prepare_request(next_link)
-
-            _stream = False
-            pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-                _request, stream=_stream, **kwargs
-            )
-            response = pipeline_response.http_response
-
-            if response.status_code not in [200]:
-                if _stream:
-                    response.read()  # Load the body in memory and close the socket
-                map_error(status_code=response.status_code, response=response, error_map=error_map)
-                raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-            return pipeline_response
-
-        return ItemPaged(get_next, extract_data)
-
-    @distributed_trace
-    def get(
-        self, resource_group_name: str, instance_name: str, akri_discovery_handler_name: str, **kwargs: Any
-    ) -> JSON:
-        # pylint: disable=line-too-long
-        """Get a AkriDiscoveryHandlerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param akri_discovery_handler_name: Name of AkriDiscoveryHandler resource. Required.
-        :type akri_discovery_handler_name: str
-        :return: JSON object
-        :rtype: JSON
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # The response is polymorphic. The following are possible polymorphic responses based
-                  off discriminator "method":
-
-                # JSON input template for discriminator value "ServiceAccountToken":
-                akri_connectors_mqtt_authentication = {
-                    "method": "ServiceAccountToken",
-                    "serviceAccountTokenSettings": {
-                        "audience": "str"  # The audience for the service account token.
-                          Required.
-                    }
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connectors_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The container registry to use for the artifact.
-                          Required.
-                        "imagePullSecrets": [
-                            {
-                                "secretRef": "str"  # The name of the image pull
-                                  secret. Required.
-                            }
-                        ]
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connectors_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
-                # JSON input template for discriminator value "Digest":
-                akri_connectors_tag_digest_settings = {
-                    "digest": "str",  # The digest of the image. Required.
-                    "tagDigestType": "Digest"
-                }
-
-                # JSON input template for discriminator value "Tag":
-                akri_connectors_tag_digest_settings = {
-                    "tag": "str",  # The tag of the image. Required.
-                    "tagDigestType": "Tag"
-                }
-
-                # response body for status code(s): 200
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "discoverableDeviceEndpointTypes": [
-                            {
-                                "endpointType": "str",  # The type of the endpoint.
-                                  Required.
-                                "version": "str"  # The version of the endpoint.
-                                  Required.
-                            }
-                        ],
-                        "imageConfiguration": {
-                            "imageName": "str",  # The image name without any registry
-                              reference, tag or digest. Required.
-                            "imagePullPolicy": "str",  # Optional. The pull policy of the
-                              image. Known values are: "Always", "IfNotPresent", and "Never".
-                            "registrySettings": akri_connectors_registry_settings,
-                            "replicas": 0,  # Optional. The number of replicas to be set
-                              up.
-                            "tagDigestSettings": akri_connectors_tag_digest_settings
-                        },
-                        "schedule": akri_discovery_handler_schedule,
-                        "additionalConfiguration": {
-                            "str": "str"  # Optional. Additional configuration for the
-                              AkriDiscoveryHandler.
-                        },
-                        "aioMetadata": {
-                            "aioMaxVersion": "str",  # Optional. The maximum version of
-                              AIO required for the connector.
-                            "aioMinVersion": "str"  # Optional. The minimum version of
-                              AIO required for the connector.
-                        },
-                        "diagnostics": {
-                            "logs": {
-                                "level": "info"  # Optional. Default value is "info".
-                                  The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
-                            }
-                        },
-                        "mode": "str",  # Optional. Mode of the AkriDiscoveryHandler. Known
-                          values are: "Enabled" and "Disabled".
-                        "mqttConnectionConfiguration": {
-                            "authentication": akri_connectors_mqtt_authentication,
-                            "host": "str",  # Optional. Host of the Broker in the form of
-                              :code:`<hostname>`::code:`<port>`.
-                            "keepAliveSeconds": 0,  # Optional. KeepAlive for connection
-                              in seconds.
-                            "maxInflightMessages": 0,  # Optional. The max number of
-                              messages to keep in flight. For subscribe, this is the receive maximum.
-                              For publish, this is the maximum number of messages to send before
-                              waiting for an ack.
-                            "protocol": "str",  # Optional. The protocol to use for the
-                              connection. Currently only ``mqtt`` is supported. "Mqtt"
-                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
-                              seconds.
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
-                            }
-                        },
-                        "provisioningState": "str",  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "secrets": [
-                            {
-                                "secretAlias": "str",  # The application-defined
-                                  alias for the secret. Required.
-                                "secretKey": "str",  # The key in the secret to be
-                                  mounted. Required.
-                                "secretRef": "str"  # The name of the secret to be
-                                  mounted. Required.
-                            }
-                        ]
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = kwargs.pop("params", {}) or {}
-
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        _request = build_akri_discovery_handler_get_request(
-            resource_group_name=resource_group_name,
-            instance_name=instance_name,
-            akri_discovery_handler_name=akri_discovery_handler_name,
-            subscription_id=self._config.subscription_id,
-            api_version=self._config.api_version,
-            headers=_headers,
-            params=_params,
-        )
-        _request.url = self._client.format_url(_request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            _request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200]:
-            if _stream:
-                response.read()  # Load the body in memory and close the socket
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        if response.content:
-            deserialized = response.json()
-        else:
-            deserialized = None
-
-        if cls:
-            return cls(pipeline_response, cast(JSON, deserialized), {})  # type: ignore
-
-        return cast(JSON, deserialized)  # type: ignore
-
-    def _create_or_update_initial(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        akri_discovery_handler_name: str,
-        resource: Union[JSON, IO[bytes]],
-        **kwargs: Any
-    ) -> JSON:
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = kwargs.pop("params", {}) or {}
-
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-
-        content_type = content_type or "application/json"
-        _json = None
-        _content = None
-        if isinstance(resource, (IOBase, bytes)):
-            _content = resource
-        else:
-            _json = resource
-
-        _request = build_akri_discovery_handler_create_or_update_request(
-            resource_group_name=resource_group_name,
-            instance_name=instance_name,
-            akri_discovery_handler_name=akri_discovery_handler_name,
-            subscription_id=self._config.subscription_id,
-            content_type=content_type,
-            api_version=self._config.api_version,
-            json=_json,
-            content=_content,
-            headers=_headers,
-            params=_params,
-        )
-        _request.url = self._client.format_url(_request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            _request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [200, 201]:
-            if _stream:
-                response.read()  # Load the body in memory and close the socket
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        response_headers = {}
-        if response.status_code == 200:
-            if response.content:
-                deserialized = response.json()
-            else:
-                deserialized = None
-
-        if response.status_code == 201:
-            response_headers["Azure-AsyncOperation"] = self._deserialize(
-                "str", response.headers.get("Azure-AsyncOperation")
-            )
-            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
-
-            if response.content:
-                deserialized = response.json()
-            else:
-                deserialized = None
-
-        if cls:
-            return cls(pipeline_response, cast(JSON, deserialized), response_headers)  # type: ignore
-
-        return cast(JSON, deserialized)  # type: ignore
-
-    @overload
-    def begin_create_or_update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        akri_discovery_handler_name: str,
-        resource: JSON,
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> LROPoller[JSON]:
-        # pylint: disable=line-too-long
-        """Create a AkriDiscoveryHandlerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param akri_discovery_handler_name: Name of AkriDiscoveryHandler resource. Required.
-        :type akri_discovery_handler_name: str
-        :param resource: Resource create parameters. Required.
-        :type resource: JSON
-        :keyword content_type: Body Parameter content-type. Content type parameter for JSON body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: An instance of LROPoller that returns JSON object
-        :rtype: ~azure.core.polling.LROPoller[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # The input is polymorphic. The following are possible polymorphic inputs based off
-                  discriminator "method":
-
-                # JSON input template for discriminator value "ServiceAccountToken":
-                akri_connectors_mqtt_authentication = {
-                    "method": "ServiceAccountToken",
-                    "serviceAccountTokenSettings": {
-                        "audience": "str"  # The audience for the service account token.
-                          Required.
-                    }
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connectors_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The container registry to use for the artifact.
-                          Required.
-                        "imagePullSecrets": [
-                            {
-                                "secretRef": "str"  # The name of the image pull
-                                  secret. Required.
-                            }
-                        ]
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connectors_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
-                # JSON input template for discriminator value "Digest":
-                akri_connectors_tag_digest_settings = {
-                    "digest": "str",  # The digest of the image. Required.
-                    "tagDigestType": "Digest"
-                }
-
-                # JSON input template for discriminator value "Tag":
-                akri_connectors_tag_digest_settings = {
-                    "tag": "str",  # The tag of the image. Required.
-                    "tagDigestType": "Tag"
-                }
-
-                # JSON input template you can fill out and use as your body input.
-                resource = {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "discoverableDeviceEndpointTypes": [
-                            {
-                                "endpointType": "str",  # The type of the endpoint.
-                                  Required.
-                                "version": "str"  # The version of the endpoint.
-                                  Required.
-                            }
-                        ],
-                        "imageConfiguration": {
-                            "imageName": "str",  # The image name without any registry
-                              reference, tag or digest. Required.
-                            "imagePullPolicy": "str",  # Optional. The pull policy of the
-                              image. Known values are: "Always", "IfNotPresent", and "Never".
-                            "registrySettings": akri_connectors_registry_settings,
-                            "replicas": 0,  # Optional. The number of replicas to be set
-                              up.
-                            "tagDigestSettings": akri_connectors_tag_digest_settings
-                        },
-                        "schedule": akri_discovery_handler_schedule,
-                        "additionalConfiguration": {
-                            "str": "str"  # Optional. Additional configuration for the
-                              AkriDiscoveryHandler.
-                        },
-                        "aioMetadata": {
-                            "aioMaxVersion": "str",  # Optional. The maximum version of
-                              AIO required for the connector.
-                            "aioMinVersion": "str"  # Optional. The minimum version of
-                              AIO required for the connector.
-                        },
-                        "diagnostics": {
-                            "logs": {
-                                "level": "info"  # Optional. Default value is "info".
-                                  The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
-                            }
-                        },
-                        "mode": "str",  # Optional. Mode of the AkriDiscoveryHandler. Known
-                          values are: "Enabled" and "Disabled".
-                        "mqttConnectionConfiguration": {
-                            "authentication": akri_connectors_mqtt_authentication,
-                            "host": "str",  # Optional. Host of the Broker in the form of
-                              :code:`<hostname>`::code:`<port>`.
-                            "keepAliveSeconds": 0,  # Optional. KeepAlive for connection
-                              in seconds.
-                            "maxInflightMessages": 0,  # Optional. The max number of
-                              messages to keep in flight. For subscribe, this is the receive maximum.
-                              For publish, this is the maximum number of messages to send before
-                              waiting for an ack.
-                            "protocol": "str",  # Optional. The protocol to use for the
-                              connection. Currently only ``mqtt`` is supported. "Mqtt"
-                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
-                              seconds.
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
-                            }
-                        },
-                        "provisioningState": "str",  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "secrets": [
-                            {
-                                "secretAlias": "str",  # The application-defined
-                                  alias for the secret. Required.
-                                "secretKey": "str",  # The key in the secret to be
-                                  mounted. Required.
-                                "secretRef": "str"  # The name of the secret to be
-                                  mounted. Required.
-                            }
-                        ]
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-
-                # The response is polymorphic. The following are possible polymorphic responses based
-                  off discriminator "method":
-
-                # JSON input template for discriminator value "ServiceAccountToken":
-                akri_connectors_mqtt_authentication = {
-                    "method": "ServiceAccountToken",
-                    "serviceAccountTokenSettings": {
-                        "audience": "str"  # The audience for the service account token.
-                          Required.
-                    }
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connectors_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The container registry to use for the artifact.
-                          Required.
-                        "imagePullSecrets": [
-                            {
-                                "secretRef": "str"  # The name of the image pull
-                                  secret. Required.
-                            }
-                        ]
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connectors_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
-                # JSON input template for discriminator value "Digest":
-                akri_connectors_tag_digest_settings = {
-                    "digest": "str",  # The digest of the image. Required.
-                    "tagDigestType": "Digest"
-                }
-
-                # JSON input template for discriminator value "Tag":
-                akri_connectors_tag_digest_settings = {
-                    "tag": "str",  # The tag of the image. Required.
-                    "tagDigestType": "Tag"
-                }
-
-                # The response is polymorphic. The following are possible polymorphic responses based
-                  off discriminator "method":
-
-                # JSON input template for discriminator value "ServiceAccountToken":
-                akri_connectors_mqtt_authentication = {
-                    "method": "ServiceAccountToken",
-                    "serviceAccountTokenSettings": {
-                        "audience": "str"  # The audience for the service account token.
-                          Required.
-                    }
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connectors_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The container registry to use for the artifact.
-                          Required.
-                        "imagePullSecrets": [
-                            {
-                                "secretRef": "str"  # The name of the image pull
-                                  secret. Required.
-                            }
-                        ]
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connectors_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
-                # JSON input template for discriminator value "Digest":
-                akri_connectors_tag_digest_settings = {
-                    "digest": "str",  # The digest of the image. Required.
-                    "tagDigestType": "Digest"
-                }
-
-                # JSON input template for discriminator value "Tag":
-                akri_connectors_tag_digest_settings = {
-                    "tag": "str",  # The tag of the image. Required.
-                    "tagDigestType": "Tag"
-                }
-
-                # response body for status code(s): 200, 201
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "discoverableDeviceEndpointTypes": [
-                            {
-                                "endpointType": "str",  # The type of the endpoint.
-                                  Required.
-                                "version": "str"  # The version of the endpoint.
-                                  Required.
-                            }
-                        ],
-                        "imageConfiguration": {
-                            "imageName": "str",  # The image name without any registry
-                              reference, tag or digest. Required.
-                            "imagePullPolicy": "str",  # Optional. The pull policy of the
-                              image. Known values are: "Always", "IfNotPresent", and "Never".
-                            "registrySettings": akri_connectors_registry_settings,
-                            "replicas": 0,  # Optional. The number of replicas to be set
-                              up.
-                            "tagDigestSettings": akri_connectors_tag_digest_settings
-                        },
-                        "schedule": akri_discovery_handler_schedule,
-                        "additionalConfiguration": {
-                            "str": "str"  # Optional. Additional configuration for the
-                              AkriDiscoveryHandler.
-                        },
-                        "aioMetadata": {
-                            "aioMaxVersion": "str",  # Optional. The maximum version of
-                              AIO required for the connector.
-                            "aioMinVersion": "str"  # Optional. The minimum version of
-                              AIO required for the connector.
-                        },
-                        "diagnostics": {
-                            "logs": {
-                                "level": "info"  # Optional. Default value is "info".
-                                  The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
-                            }
-                        },
-                        "mode": "str",  # Optional. Mode of the AkriDiscoveryHandler. Known
-                          values are: "Enabled" and "Disabled".
-                        "mqttConnectionConfiguration": {
-                            "authentication": akri_connectors_mqtt_authentication,
-                            "host": "str",  # Optional. Host of the Broker in the form of
-                              :code:`<hostname>`::code:`<port>`.
-                            "keepAliveSeconds": 0,  # Optional. KeepAlive for connection
-                              in seconds.
-                            "maxInflightMessages": 0,  # Optional. The max number of
-                              messages to keep in flight. For subscribe, this is the receive maximum.
-                              For publish, this is the maximum number of messages to send before
-                              waiting for an ack.
-                            "protocol": "str",  # Optional. The protocol to use for the
-                              connection. Currently only ``mqtt`` is supported. "Mqtt"
-                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
-                              seconds.
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
-                            }
-                        },
-                        "provisioningState": "str",  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "secrets": [
-                            {
-                                "secretAlias": "str",  # The application-defined
-                                  alias for the secret. Required.
-                                "secretKey": "str",  # The key in the secret to be
-                                  mounted. Required.
-                                "secretRef": "str"  # The name of the secret to be
-                                  mounted. Required.
-                            }
-                        ]
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @overload
-    def begin_create_or_update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        akri_discovery_handler_name: str,
-        resource: IO[bytes],
-        *,
-        content_type: str = "application/json",
-        **kwargs: Any
-    ) -> LROPoller[JSON]:
-        # pylint: disable=line-too-long
-        """Create a AkriDiscoveryHandlerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param akri_discovery_handler_name: Name of AkriDiscoveryHandler resource. Required.
-        :type akri_discovery_handler_name: str
-        :param resource: Resource create parameters. Required.
-        :type resource: IO[bytes]
-        :keyword content_type: Body Parameter content-type. Content type parameter for binary body.
-         Default value is "application/json".
-        :paramtype content_type: str
-        :return: An instance of LROPoller that returns JSON object
-        :rtype: ~azure.core.polling.LROPoller[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # The response is polymorphic. The following are possible polymorphic responses based
-                  off discriminator "method":
-
-                # JSON input template for discriminator value "ServiceAccountToken":
-                akri_connectors_mqtt_authentication = {
-                    "method": "ServiceAccountToken",
-                    "serviceAccountTokenSettings": {
-                        "audience": "str"  # The audience for the service account token.
-                          Required.
-                    }
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connectors_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The container registry to use for the artifact.
-                          Required.
-                        "imagePullSecrets": [
-                            {
-                                "secretRef": "str"  # The name of the image pull
-                                  secret. Required.
-                            }
-                        ]
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connectors_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
-                # JSON input template for discriminator value "Digest":
-                akri_connectors_tag_digest_settings = {
-                    "digest": "str",  # The digest of the image. Required.
-                    "tagDigestType": "Digest"
-                }
-
-                # JSON input template for discriminator value "Tag":
-                akri_connectors_tag_digest_settings = {
-                    "tag": "str",  # The tag of the image. Required.
-                    "tagDigestType": "Tag"
-                }
-
-                # The response is polymorphic. The following are possible polymorphic responses based
-                  off discriminator "method":
-
-                # JSON input template for discriminator value "ServiceAccountToken":
-                akri_connectors_mqtt_authentication = {
-                    "method": "ServiceAccountToken",
-                    "serviceAccountTokenSettings": {
-                        "audience": "str"  # The audience for the service account token.
-                          Required.
-                    }
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connectors_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The container registry to use for the artifact.
-                          Required.
-                        "imagePullSecrets": [
-                            {
-                                "secretRef": "str"  # The name of the image pull
-                                  secret. Required.
-                            }
-                        ]
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connectors_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
-                # JSON input template for discriminator value "Digest":
-                akri_connectors_tag_digest_settings = {
-                    "digest": "str",  # The digest of the image. Required.
-                    "tagDigestType": "Digest"
-                }
-
-                # JSON input template for discriminator value "Tag":
-                akri_connectors_tag_digest_settings = {
-                    "tag": "str",  # The tag of the image. Required.
-                    "tagDigestType": "Tag"
-                }
-
-                # response body for status code(s): 200, 201
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "discoverableDeviceEndpointTypes": [
-                            {
-                                "endpointType": "str",  # The type of the endpoint.
-                                  Required.
-                                "version": "str"  # The version of the endpoint.
-                                  Required.
-                            }
-                        ],
-                        "imageConfiguration": {
-                            "imageName": "str",  # The image name without any registry
-                              reference, tag or digest. Required.
-                            "imagePullPolicy": "str",  # Optional. The pull policy of the
-                              image. Known values are: "Always", "IfNotPresent", and "Never".
-                            "registrySettings": akri_connectors_registry_settings,
-                            "replicas": 0,  # Optional. The number of replicas to be set
-                              up.
-                            "tagDigestSettings": akri_connectors_tag_digest_settings
-                        },
-                        "schedule": akri_discovery_handler_schedule,
-                        "additionalConfiguration": {
-                            "str": "str"  # Optional. Additional configuration for the
-                              AkriDiscoveryHandler.
-                        },
-                        "aioMetadata": {
-                            "aioMaxVersion": "str",  # Optional. The maximum version of
-                              AIO required for the connector.
-                            "aioMinVersion": "str"  # Optional. The minimum version of
-                              AIO required for the connector.
-                        },
-                        "diagnostics": {
-                            "logs": {
-                                "level": "info"  # Optional. Default value is "info".
-                                  The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
-                            }
-                        },
-                        "mode": "str",  # Optional. Mode of the AkriDiscoveryHandler. Known
-                          values are: "Enabled" and "Disabled".
-                        "mqttConnectionConfiguration": {
-                            "authentication": akri_connectors_mqtt_authentication,
-                            "host": "str",  # Optional. Host of the Broker in the form of
-                              :code:`<hostname>`::code:`<port>`.
-                            "keepAliveSeconds": 0,  # Optional. KeepAlive for connection
-                              in seconds.
-                            "maxInflightMessages": 0,  # Optional. The max number of
-                              messages to keep in flight. For subscribe, this is the receive maximum.
-                              For publish, this is the maximum number of messages to send before
-                              waiting for an ack.
-                            "protocol": "str",  # Optional. The protocol to use for the
-                              connection. Currently only ``mqtt`` is supported. "Mqtt"
-                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
-                              seconds.
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
-                            }
-                        },
-                        "provisioningState": "str",  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "secrets": [
-                            {
-                                "secretAlias": "str",  # The application-defined
-                                  alias for the secret. Required.
-                                "secretKey": "str",  # The key in the secret to be
-                                  mounted. Required.
-                                "secretRef": "str"  # The name of the secret to be
-                                  mounted. Required.
-                            }
-                        ]
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-
-    @distributed_trace
-    def begin_create_or_update(
-        self,
-        resource_group_name: str,
-        instance_name: str,
-        akri_discovery_handler_name: str,
-        resource: Union[JSON, IO[bytes]],
-        **kwargs: Any
-    ) -> LROPoller[JSON]:
-        # pylint: disable=line-too-long
-        """Create a AkriDiscoveryHandlerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param akri_discovery_handler_name: Name of AkriDiscoveryHandler resource. Required.
-        :type akri_discovery_handler_name: str
-        :param resource: Resource create parameters. Is either a JSON type or a IO[bytes] type.
-         Required.
-        :type resource: JSON or IO[bytes]
-        :return: An instance of LROPoller that returns JSON object
-        :rtype: ~azure.core.polling.LROPoller[JSON]
-        :raises ~azure.core.exceptions.HttpResponseError:
-
-        Example:
-            .. code-block:: python
-
-                # The input is polymorphic. The following are possible polymorphic inputs based off
-                  discriminator "method":
-
-                # JSON input template for discriminator value "ServiceAccountToken":
-                akri_connectors_mqtt_authentication = {
-                    "method": "ServiceAccountToken",
-                    "serviceAccountTokenSettings": {
-                        "audience": "str"  # The audience for the service account token.
-                          Required.
-                    }
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connectors_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The container registry to use for the artifact.
-                          Required.
-                        "imagePullSecrets": [
-                            {
-                                "secretRef": "str"  # The name of the image pull
-                                  secret. Required.
-                            }
-                        ]
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connectors_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
-                # JSON input template for discriminator value "Digest":
-                akri_connectors_tag_digest_settings = {
-                    "digest": "str",  # The digest of the image. Required.
-                    "tagDigestType": "Digest"
-                }
-
-                # JSON input template for discriminator value "Tag":
-                akri_connectors_tag_digest_settings = {
-                    "tag": "str",  # The tag of the image. Required.
-                    "tagDigestType": "Tag"
-                }
-
-                # JSON input template you can fill out and use as your body input.
-                resource = {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "discoverableDeviceEndpointTypes": [
-                            {
-                                "endpointType": "str",  # The type of the endpoint.
-                                  Required.
-                                "version": "str"  # The version of the endpoint.
-                                  Required.
-                            }
-                        ],
-                        "imageConfiguration": {
-                            "imageName": "str",  # The image name without any registry
-                              reference, tag or digest. Required.
-                            "imagePullPolicy": "str",  # Optional. The pull policy of the
-                              image. Known values are: "Always", "IfNotPresent", and "Never".
-                            "registrySettings": akri_connectors_registry_settings,
-                            "replicas": 0,  # Optional. The number of replicas to be set
-                              up.
-                            "tagDigestSettings": akri_connectors_tag_digest_settings
-                        },
-                        "schedule": akri_discovery_handler_schedule,
-                        "additionalConfiguration": {
-                            "str": "str"  # Optional. Additional configuration for the
-                              AkriDiscoveryHandler.
-                        },
-                        "aioMetadata": {
-                            "aioMaxVersion": "str",  # Optional. The maximum version of
-                              AIO required for the connector.
-                            "aioMinVersion": "str"  # Optional. The minimum version of
-                              AIO required for the connector.
-                        },
-                        "diagnostics": {
-                            "logs": {
-                                "level": "info"  # Optional. Default value is "info".
-                                  The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
-                            }
-                        },
-                        "mode": "str",  # Optional. Mode of the AkriDiscoveryHandler. Known
-                          values are: "Enabled" and "Disabled".
-                        "mqttConnectionConfiguration": {
-                            "authentication": akri_connectors_mqtt_authentication,
-                            "host": "str",  # Optional. Host of the Broker in the form of
-                              :code:`<hostname>`::code:`<port>`.
-                            "keepAliveSeconds": 0,  # Optional. KeepAlive for connection
-                              in seconds.
-                            "maxInflightMessages": 0,  # Optional. The max number of
-                              messages to keep in flight. For subscribe, this is the receive maximum.
-                              For publish, this is the maximum number of messages to send before
-                              waiting for an ack.
-                            "protocol": "str",  # Optional. The protocol to use for the
-                              connection. Currently only ``mqtt`` is supported. "Mqtt"
-                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
-                              seconds.
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
-                            }
-                        },
-                        "provisioningState": "str",  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "secrets": [
-                            {
-                                "secretAlias": "str",  # The application-defined
-                                  alias for the secret. Required.
-                                "secretKey": "str",  # The key in the secret to be
-                                  mounted. Required.
-                                "secretRef": "str"  # The name of the secret to be
-                                  mounted. Required.
-                            }
-                        ]
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-
-                # The response is polymorphic. The following are possible polymorphic responses based
-                  off discriminator "method":
-
-                # JSON input template for discriminator value "ServiceAccountToken":
-                akri_connectors_mqtt_authentication = {
-                    "method": "ServiceAccountToken",
-                    "serviceAccountTokenSettings": {
-                        "audience": "str"  # The audience for the service account token.
-                          Required.
-                    }
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connectors_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The container registry to use for the artifact.
-                          Required.
-                        "imagePullSecrets": [
-                            {
-                                "secretRef": "str"  # The name of the image pull
-                                  secret. Required.
-                            }
-                        ]
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connectors_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
-                # JSON input template for discriminator value "Digest":
-                akri_connectors_tag_digest_settings = {
-                    "digest": "str",  # The digest of the image. Required.
-                    "tagDigestType": "Digest"
-                }
-
-                # JSON input template for discriminator value "Tag":
-                akri_connectors_tag_digest_settings = {
-                    "tag": "str",  # The tag of the image. Required.
-                    "tagDigestType": "Tag"
-                }
-
-                # The response is polymorphic. The following are possible polymorphic responses based
-                  off discriminator "method":
-
-                # JSON input template for discriminator value "ServiceAccountToken":
-                akri_connectors_mqtt_authentication = {
-                    "method": "ServiceAccountToken",
-                    "serviceAccountTokenSettings": {
-                        "audience": "str"  # The audience for the service account token.
-                          Required.
-                    }
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connectors_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The container registry to use for the artifact.
-                          Required.
-                        "imagePullSecrets": [
-                            {
-                                "secretRef": "str"  # The name of the image pull
-                                  secret. Required.
-                            }
-                        ]
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connectors_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
-                # JSON input template for discriminator value "Digest":
-                akri_connectors_tag_digest_settings = {
-                    "digest": "str",  # The digest of the image. Required.
-                    "tagDigestType": "Digest"
-                }
-
-                # JSON input template for discriminator value "Tag":
-                akri_connectors_tag_digest_settings = {
-                    "tag": "str",  # The tag of the image. Required.
-                    "tagDigestType": "Tag"
-                }
-
-                # response body for status code(s): 200, 201
-                response == {
-                    "extendedLocation": {
-                        "name": "str",  # The name of the extended location. Required.
-                        "type": "str"  # Type of ExtendedLocation. Required. "CustomLocation"
-                    },
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
-                    "name": "str",  # Optional. The name of the resource.
-                    "properties": {
-                        "discoverableDeviceEndpointTypes": [
-                            {
-                                "endpointType": "str",  # The type of the endpoint.
-                                  Required.
-                                "version": "str"  # The version of the endpoint.
-                                  Required.
-                            }
-                        ],
-                        "imageConfiguration": {
-                            "imageName": "str",  # The image name without any registry
-                              reference, tag or digest. Required.
-                            "imagePullPolicy": "str",  # Optional. The pull policy of the
-                              image. Known values are: "Always", "IfNotPresent", and "Never".
-                            "registrySettings": akri_connectors_registry_settings,
-                            "replicas": 0,  # Optional. The number of replicas to be set
-                              up.
-                            "tagDigestSettings": akri_connectors_tag_digest_settings
-                        },
-                        "schedule": akri_discovery_handler_schedule,
-                        "additionalConfiguration": {
-                            "str": "str"  # Optional. Additional configuration for the
-                              AkriDiscoveryHandler.
-                        },
-                        "aioMetadata": {
-                            "aioMaxVersion": "str",  # Optional. The maximum version of
-                              AIO required for the connector.
-                            "aioMinVersion": "str"  # Optional. The minimum version of
-                              AIO required for the connector.
-                        },
-                        "diagnostics": {
-                            "logs": {
-                                "level": "info"  # Optional. Default value is "info".
-                                  The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
-                            }
-                        },
-                        "mode": "str",  # Optional. Mode of the AkriDiscoveryHandler. Known
-                          values are: "Enabled" and "Disabled".
-                        "mqttConnectionConfiguration": {
-                            "authentication": akri_connectors_mqtt_authentication,
-                            "host": "str",  # Optional. Host of the Broker in the form of
-                              :code:`<hostname>`::code:`<port>`.
-                            "keepAliveSeconds": 0,  # Optional. KeepAlive for connection
-                              in seconds.
-                            "maxInflightMessages": 0,  # Optional. The max number of
-                              messages to keep in flight. For subscribe, this is the receive maximum.
-                              For publish, this is the maximum number of messages to send before
-                              waiting for an ack.
-                            "protocol": "str",  # Optional. The protocol to use for the
-                              connection. Currently only ``mqtt`` is supported. "Mqtt"
-                            "sessionExpirySeconds": 0,  # Optional. Session expiry in
-                              seconds.
-                            "tls": {
-                                "mode": "str",  # Optional. Mode for TLS. Known
-                                  values are: "Enabled" and "Disabled".
-                                "trustedCaCertificateConfigMapRef": "str"  #
-                                  Optional. Trusted CA certificate config map.
-                            }
-                        },
-                        "provisioningState": "str",  # Optional. The status of the last
-                          operation. Known values are: "Succeeded", "Failed", "Canceled",
-                          "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "secrets": [
-                            {
-                                "secretAlias": "str",  # The application-defined
-                                  alias for the secret. Required.
-                                "secretKey": "str",  # The key in the secret to be
-                                  mounted. Required.
-                                "secretRef": "str"  # The name of the secret to be
-                                  mounted. Required.
-                            }
-                        ]
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
-                }
-        """
-        _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
-        _params = kwargs.pop("params", {}) or {}
-
-        content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-        cls: ClsType[JSON] = kwargs.pop("cls", None)
-        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
-        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
-        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
-        if cont_token is None:
-            raw_result = self._create_or_update_initial(
-                resource_group_name=resource_group_name,
-                instance_name=instance_name,
-                akri_discovery_handler_name=akri_discovery_handler_name,
-                resource=resource,
-                content_type=content_type,
-                cls=lambda x, y, z: x,
-                headers=_headers,
-                params=_params,
-                **kwargs
-            )
-        kwargs.pop("error_map", None)
-
-        def get_long_running_output(pipeline_response):
-            response = pipeline_response.http_response
-            if response.content:
-                deserialized = response.json()
-            else:
-                deserialized = None
-            if cls:
-                return cls(pipeline_response, deserialized, {})  # type: ignore
-            return deserialized
-
-        if polling is True:
-            polling_method: PollingMethod = cast(
-                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "azure-async-operation"}, **kwargs)
-            )
-        elif polling is False:
-            polling_method = cast(PollingMethod, NoPolling())
-        else:
-            polling_method = polling
-        if cont_token:
-            return LROPoller[JSON].from_continuation_token(
-                polling_method=polling_method,
-                continuation_token=cont_token,
-                client=self._client,
-                deserialization_callback=get_long_running_output,
-            )
-        return LROPoller[JSON](self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
-
-    def _delete_initial(  # pylint: disable=inconsistent-return-statements
-        self, resource_group_name: str, instance_name: str, akri_discovery_handler_name: str, **kwargs: Any
-    ) -> None:
-        error_map: MutableMapping[int, Type[HttpResponseError]] = {
-            401: ClientAuthenticationError,
-            404: ResourceNotFoundError,
-            409: ResourceExistsError,
-            304: ResourceNotModifiedError,
-        }
-        error_map.update(kwargs.pop("error_map", {}) or {})
-
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = kwargs.pop("params", {}) or {}
-
-        cls: ClsType[None] = kwargs.pop("cls", None)
-
-        _request = build_akri_discovery_handler_delete_request(
-            resource_group_name=resource_group_name,
-            instance_name=instance_name,
-            akri_discovery_handler_name=akri_discovery_handler_name,
-            subscription_id=self._config.subscription_id,
-            api_version=self._config.api_version,
-            headers=_headers,
-            params=_params,
-        )
-        _request.url = self._client.format_url(_request.url)
-
-        _stream = False
-        pipeline_response: PipelineResponse = self._client._pipeline.run(  # pylint: disable=protected-access
-            _request, stream=_stream, **kwargs
-        )
-
-        response = pipeline_response.http_response
-
-        if response.status_code not in [202, 204]:
-            if _stream:
-                response.read()  # Load the body in memory and close the socket
-            map_error(status_code=response.status_code, response=response, error_map=error_map)
-            raise HttpResponseError(response=response, error_format=ARMErrorFormat)
-
-        response_headers = {}
-        if response.status_code == 202:
-            response_headers["Location"] = self._deserialize("str", response.headers.get("Location"))
-            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
-
-        if cls:
-            return cls(pipeline_response, None, response_headers)  # type: ignore
-
-    @distributed_trace
-    def begin_delete(
-        self, resource_group_name: str, instance_name: str, akri_discovery_handler_name: str, **kwargs: Any
-    ) -> LROPoller[None]:
-        """Delete a AkriDiscoveryHandlerResource.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param instance_name: Name of instance. Required.
-        :type instance_name: str
-        :param akri_discovery_handler_name: Name of AkriDiscoveryHandler resource. Required.
-        :type akri_discovery_handler_name: str
-        :return: An instance of LROPoller that returns None
-        :rtype: ~azure.core.polling.LROPoller[None]
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
-        _headers = kwargs.pop("headers", {}) or {}
-        _params = kwargs.pop("params", {}) or {}
-
-        cls: ClsType[None] = kwargs.pop("cls", None)
-        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
-        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
-        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
-        if cont_token is None:
-            raw_result = self._delete_initial(  # type: ignore
-                resource_group_name=resource_group_name,
-                instance_name=instance_name,
-                akri_discovery_handler_name=akri_discovery_handler_name,
                 cls=lambda x, y, z: x,
                 headers=_headers,
                 params=_params,

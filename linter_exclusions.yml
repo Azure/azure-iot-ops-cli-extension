@@ -33,3 +33,8 @@ iot ops ns device create:
     instance_resource_group:
       rule_exclusions:
       - parameter_should_not_end_in_resource_group
+iot ops broker persist update:
+  parameters:
+    broker_name:
+      rule_exclusions:
+      - no_parameter_defaults_for_update_commands

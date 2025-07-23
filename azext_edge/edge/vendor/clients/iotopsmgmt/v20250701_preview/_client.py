@@ -19,7 +19,6 @@ from ._serialization import Deserializer, Serializer
 from .operations import (
     AkriConnectorOperations,
     AkriConnectorTemplateOperations,
-    AkriDiscoveryHandlerOperations,
     BrokerAuthenticationOperations,
     BrokerAuthorizationOperations,
     BrokerListenerOperations,
@@ -49,8 +48,6 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
     :vartype akri_connector_template: aziotops.mgmt.operations.AkriConnectorTemplateOperations
     :ivar akri_connector: AkriConnectorOperations operations
     :vartype akri_connector: aziotops.mgmt.operations.AkriConnectorOperations
-    :ivar akri_discovery_handler: AkriDiscoveryHandlerOperations operations
-    :vartype akri_discovery_handler: aziotops.mgmt.operations.AkriDiscoveryHandlerOperations
     :ivar broker: BrokerOperations operations
     :vartype broker: aziotops.mgmt.operations.BrokerOperations
     :ivar broker_authentication: BrokerAuthenticationOperations operations
@@ -121,9 +118,6 @@ class MicrosoftIoTOperationsManagementService:  # pylint: disable=client-accepts
             self._client, self._config, self._serialize, self._deserialize
         )
         self.akri_connector = AkriConnectorOperations(self._client, self._config, self._serialize, self._deserialize)
-        self.akri_discovery_handler = AkriDiscoveryHandlerOperations(
-            self._client, self._config, self._serialize, self._deserialize
-        )
         self.broker = BrokerOperations(self._client, self._config, self._serialize, self._deserialize)
         self.broker_authentication = BrokerAuthenticationOperations(
             self._client, self._config, self._serialize, self._deserialize

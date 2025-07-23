@@ -55,6 +55,16 @@ def mocked_read_file_content(mocker):
     yield patched
 
 
+@pytest.fixture
+def mocked_get_spc_name(mocker):
+    """Mock _get_spc_name to return default spc by default"""
+    patched = mocker.patch(
+        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_spc_name",
+        return_value=OPCUA_SPC_NAME,
+    )
+    yield patched
+
+
 def build_mock_cert(
     subject_name: str = "subjectname",
     uri: str = "uri",
@@ -202,6 +212,7 @@ def setup_mock_common_responses(
     opcua_secretsync_name: str,
     rg_name: str,
     secret_name: str,
+    spc_name: str = OPCUA_SPC_NAME,
 ):
     # get secrets
     mocked_responses.add(
@@ -231,7 +242,7 @@ def setup_mock_common_responses(
         # get opcua spc
         mocked_responses.add(
             method=responses.GET,
-            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+            url=get_spc_endpoint(spc_name=spc_name, resource_group_name=rg_name),  # Use parameter
             json=spc,
             status=200,
             content_type="application/json",
@@ -240,7 +251,7 @@ def setup_mock_common_responses(
         # set opcua spc
         mocked_responses.add(
             method=responses.PUT,
-            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+            url=get_spc_endpoint(spc_name=spc_name, resource_group_name=rg_name),  # Use parameter
             json={},
             status=200,
             content_type="application/json",

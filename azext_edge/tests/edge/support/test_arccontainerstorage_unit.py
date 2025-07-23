@@ -10,6 +10,7 @@ from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.arccontainerstorage import (
     ARCCONTAINERSTORAGE_API_V1,
+    ARCCONTAINERSTORAGE_WEBHOOK_LABEL,
     ACSTOR_NAMESPACE,
     ACSTOR_DIRECTORY_PATH,
     CONTAINERSTORAGE_API_V1,
@@ -24,6 +25,7 @@ from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_pods,
     assert_list_replica_sets,
     assert_list_services,
+    assert_list_validating_webhooks,
 )
 
 from ...generators import generate_random_string
@@ -43,6 +45,7 @@ def test_create_bundle_acsa(
     mocked_list_pods,
     mocked_list_replicasets,
     mocked_list_services,
+    mocked_list_validating_webhooks,
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
@@ -115,4 +118,10 @@ def test_create_bundle_acsa(
         label_selector=None,
         directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
         namespace=STORAGE_NAMESPACE,
+    )
+    assert_list_validating_webhooks(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=ARCCONTAINERSTORAGE_WEBHOOK_LABEL,
+        directory_path=STORAGE_DIRECTORY_PATH,
     )

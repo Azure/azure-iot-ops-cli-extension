@@ -18,9 +18,11 @@ from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_cluster_roles,
     assert_list_config_maps,
     assert_list_deployments,
+    assert_list_mutating_webhooks,
     assert_list_pods,
     assert_list_replica_sets,
     assert_list_services,
+    assert_list_validating_webhooks,
 )
 
 from ...generators import generate_random_string
@@ -43,6 +45,8 @@ def test_create_bundle_meso(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
+    mocked_list_mutating_webhooks,
+    mocked_list_validating_webhooks,
     mocked_root_logger,
     mocked_get_config_map,
 ):
@@ -154,5 +158,31 @@ def test_create_bundle_meso(
         mocked_client,
         mocked_zipfile,
         field_selector="metadata.name=aio-observability-operator-manager-role",
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+    assert_list_mutating_webhooks(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_NAME_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+    assert_list_validating_webhooks(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_NAME_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+
+    # MESO_CLUSTER_METRICS_LABEL webhooks
+    assert_list_mutating_webhooks(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_CLUSTER_METRICS_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+    assert_list_validating_webhooks(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_CLUSTER_METRICS_LABEL,
         directory_path=MESO_DIRECTORY_PATH,
     )

@@ -15,7 +15,7 @@ from .providers.orchestration.common import MqServiceType
 logger = get_logger(__name__)
 
 
-def show_broker(cmd, broker_name: str, instance_name: str, resource_group_name: str) -> dict:
+def show_broker(cmd, instance_name: str, resource_group_name: str, broker_name: str = DEFAULT_BROKER) -> dict:
     return Brokers(cmd).show(name=broker_name, instance_name=instance_name, resource_group_name=resource_group_name)
 
 
@@ -24,13 +24,51 @@ def list_brokers(cmd, instance_name: str, resource_group_name: str) -> Iterable[
 
 
 def delete_broker(
-    cmd, broker_name: str, instance_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None, **kwargs
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    broker_name: str = DEFAULT_BROKER,
+    confirm_yes: Optional[bool] = None,
+    **kwargs,
 ):
     return Brokers(cmd).delete(
         name=broker_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         confirm_yes=confirm_yes,
+        **kwargs,
+    )
+
+
+def update_broker_persist(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    broker_name: str = DEFAULT_BROKER,
+    persist_mode: Optional[List[str]] = None,
+    retain_topics: Optional[List[str]] = None,
+    subscriber_queue_client_ids: Optional[List[str]] = None,
+    state_store_str_keys: Optional[List[List[str]]] = None,
+    state_store_glob_keys: Optional[List[List[str]]] = None,
+    state_store_bin_keys: Optional[List[List[str]]] = None,
+    user_property_key: Optional[str] = None,
+    user_property_value: Optional[str] = None,
+    disable_dynamic: Optional[List[str]] = None,
+    **kwargs,
+) -> dict:
+    return Brokers(cmd).update_persist_config(
+        name=broker_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        persist_mode=persist_mode,
+        retain_topics=retain_topics,
+        subscriber_queue_client_ids=subscriber_queue_client_ids,
+        state_store_str_keys=state_store_str_keys,
+        state_store_glob_keys=state_store_glob_keys,
+        state_store_bin_keys=state_store_bin_keys,
+        user_property_key=user_property_key,
+        user_property_value=user_property_value,
+        disable_dynamic=disable_dynamic,
         **kwargs,
     )
 

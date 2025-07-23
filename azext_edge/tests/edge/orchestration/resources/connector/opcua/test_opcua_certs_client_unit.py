@@ -50,7 +50,7 @@ from azext_edge.tests.generators import generate_random_string
                 ],
                 "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
-            get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
             ),
@@ -90,7 +90,7 @@ from azext_edge.tests.generators import generate_random_string
                     }}
                 },
             },
-            get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
             ),
@@ -129,7 +129,7 @@ from azext_edge.tests.generators import generate_random_string
                     }}
                 },
             },
-            get_mock_spc_record(spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"),
+            get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
             ),
@@ -159,6 +159,7 @@ def test_client_add(
     mocked_logger: Mock,
     mocked_public_cert: dict,
     mocked_private_cert: dict,
+    mocked_get_spc_name: Mock,
     expected_resources_map: dict,
     client_app_spc: dict,
     client_app_secretsync: dict,
@@ -175,6 +176,7 @@ def test_client_add(
     instance_name = generate_random_string()
     rg_name = "mock-rg"
 
+    mocked_get_spc_name.return_value = "default-spc"
     assemble_resource_map_mock(
         resource_map_mock=mocked_instance.get_resource_map,
         extension=expected_resources_map["extension"],
@@ -213,7 +215,7 @@ def test_client_add(
         # set opcua spc
         mocked_responses.add(
             method=responses.PUT,
-            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+            url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
             json={},
             status=200,
             content_type="application/json",
@@ -426,6 +428,7 @@ def test_client_add_errors(
     mocked_read_file_content: Mock,
     mocked_decode_certificate: Mock,
     mocked_sleep: Mock,
+    mocked_get_spc_name: Mock,
     expected_resources_map: dict,
     client_app_spc: dict,
     client_app_secretsync: dict,
@@ -445,6 +448,7 @@ def test_client_add_errors(
     instance_name = "mock-instance"
     rg_name = "mock-rg"
 
+    mocked_get_spc_name.return_value = "default-spc"
     assemble_resource_map_mock(
         resource_map_mock=mocked_instance.get_resource_map,
         extension=expected_resources_map["extension"],
@@ -483,7 +487,7 @@ def test_client_add_errors(
         # set opcua spc
         mocked_responses.add(
             method=responses.PUT,
-            url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
+            url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
             json={},
             status=200,
             content_type="application/json",
@@ -547,7 +551,7 @@ def test_client_add_errors(
                 "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             get_mock_spc_record(
-                spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                spc_name=OPCUA_SPC_NAME,
                 resource_group_name="mock-rg",
                 objects=generate_ssc_object_string(["cert-der"]),
             ),
@@ -581,7 +585,7 @@ def test_client_add_errors(
                 "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
             get_mock_spc_record(
-                spc_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
+                spc_name=OPCUA_SPC_NAME,
                 resource_group_name="mock-rg",
                 objects=generate_ssc_object_string(["cert-der", "cert-pem"]),
             ),
@@ -602,6 +606,7 @@ def test_client_remove(
     mocker,
     mocked_cmd,
     mocked_sleep: Mock,
+    mocked_get_spc_name: Mock,
     expected_resources_map: dict,
     client_list_spc: dict,
     client_list_secretsync: dict,
@@ -816,6 +821,7 @@ def test_client_remove_error(
     mocker,
     mocked_cmd,
     mocked_sleep: Mock,
+    mocked_get_spc_name: Mock,
     expected_resources_map: dict,
     client_list_spc: dict,
     client_list_secretsync: dict,
@@ -889,6 +895,7 @@ def test_client_show(
     mocked_cmd,
     mocked_cl_resources: Mock,
     mocked_sleep: Mock,
+    mocked_get_spc_name: Mock,
     expected_resources_map: dict,
     expected_secretsync: dict,
     mocked_responses: responses,
@@ -939,6 +946,7 @@ def test_client_show_error(
     mocked_cmd,
     mocked_cl_resources: Mock,
     mocked_sleep: Mock,
+    mocked_get_spc_name: Mock,
     expected_resources_map: dict,
     expected_error: str,
 ):

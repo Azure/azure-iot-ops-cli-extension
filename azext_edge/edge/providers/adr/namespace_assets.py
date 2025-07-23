@@ -4,35 +4,37 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from copy import deepcopy
 import json
-from rich.console import Console
+from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
-from knack.log import get_logger
 
 from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
 )
+from knack.log import get_logger
+from rich.console import Console
 
-from ...util.common import parse_kvp_nargs, should_continue_prompt
 from ...util.az_client import (
     get_registry_mgmt_client,
     get_resource_client,
     wait_for_terminal_state,
-    DeviceRegistryMgmtApiVersion
 )
+from ...util.common import parse_kvp_nargs, should_continue_prompt
 from ...util.id_tools import parse_resource_id
 from ...util.queryable import Queryable
 from .helpers import (
-    process_additional_configuration, ensure_schema_structure, get_default_dataset
+    ensure_schema_structure,
+    get_default_dataset,
+    process_additional_configuration,
 )
 from .namespace_devices import DeviceEndpointType
 
 if TYPE_CHECKING:
     from ...vendor.clients.deviceregistrymgmt.operations import (
-        NamespaceAssetsOperations, NamespaceDevicesOperations
+        NamespaceAssetsOperations,
+        NamespaceDevicesOperations,
     )
     from ...vendor.clients.resourcesmgmt.operations import ResourcesOperations
 
@@ -46,8 +48,7 @@ class NamespaceAssets(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id,
-            api_version=DeviceRegistryMgmtApiVersion.V20250701_preview
+            subscription_id=self.default_subscription_id
         )
         self.resource_mgmt_client = get_resource_client(
             subscription_id=self.default_subscription_id
@@ -1538,6 +1539,7 @@ class NamespaceAssets(Queryable):
 
         if isinstance(asset_type, str):
             asset_type = [asset_type]
+
         # asset type must be the same as endpoint type unless either is custom
         device_type_list = [d.lower() for d in DeviceEndpointType.list()]
         allowed = True
@@ -1733,7 +1735,6 @@ def _get_mgmt_group(asset: dict, management_group_name: str) -> dict:
     return matched_mgmt_groups[0]
 
 
-# maybe move the config processing functions to specs?
 def _process_configs(
     asset_type: str,
     default: bool = True,
@@ -1747,19 +1748,14 @@ def _process_configs(
     result = {}
     asset_type = asset_type.lower()
     if asset_type == DeviceEndpointType.OPCUA.value.lower():
-        # allowed: datasets, events, mgmt groups, destinations must be mqtt
+        # allowed: datasets, events, mgmt groups (no schema?), destinations must be mqtt
         # not allowed: streams
-        # still waiting on opcua mgmt group schemas
         result = {
             "datasetsConfiguration": _process_opcua_dataset_configurations_v1(
                 **kwargs
             ),
             "eventsConfiguration": _process_opcua_event_configurations_v1(
                 **kwargs
-            ),
-            "managementGroupsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("mgmt_custom_configuration"),
-                config_type="management group"
             ),
             "datasetsDestinations": _build_destination(
                 destination_args=kwargs.get("dataset_destinations", []),
@@ -1771,14 +1767,9 @@ def _process_configs(
             ),
         }
     elif asset_type == DeviceEndpointType.ONVIF.value.lower():
-        # allowed: events (no schema), mgmt groups, destinations must be mqtt
+        # allowed: events (no schema), mgmt groups (no schema), destinations must be mqtt
         # not allowed: datasets, streams
-        # still waiting on onvif mgmt group schemas
         result = {
-            "managementGroupsConfiguration": process_additional_configuration(
-                additional_configuration=kwargs.get("mgmt_custom_configuration"),
-                config_type="management group"
-            ),
             "eventsDestinations": _build_destination(
                 destination_args=kwargs.get("event_destinations", []),
                 allowed_types=["Mqtt"]
@@ -1794,6 +1785,17 @@ def _process_configs(
             "streamsDestinations": _build_destination(
                 destination_args=kwargs.get("stream_destinations", []),
                 allowed_types=["Storage", "Mqtt"]
+            )
+        }
+    elif asset_type == DeviceEndpointType.REST.value.lower():
+        # allowed only datasets
+        result = {
+            "datasetsConfiguration": _process_rest_dataset_configurations(
+                **kwargs
+            ),
+            "datasetsDestinations": _build_destination(
+                destination_args=kwargs.get("dataset_destinations", []),
+                allowed_types=["BrokerStateStore", "Mqtt"]
             )
         }
     else:
@@ -1983,7 +1985,11 @@ def _process_media_stream_configurations(
     media_server_certificate: Optional[str] = None,
     **_
 ) -> str:
-    from .specs import NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA, MediaFormat, MediaTaskType
+    from .specs import (
+        NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA,
+        MediaFormat,
+        MediaTaskType,
+    )
     result = json.loads(original_stream_configuration) if original_stream_configuration else {}
 
     task_type = task_type or result.get("taskType")
@@ -2065,6 +2071,24 @@ def _process_media_stream_configurations(
     # Final schema validation
     ensure_schema_structure(
         schema=NAMESPACE_ASSET_MEDIA_STREAM_CONFIGURATION_SCHEMA,
+        input_data=result
+    )
+    return json.dumps(result)
+
+
+def _process_rest_dataset_configurations(
+    original_dataset_configuration: Optional[str] = None,
+    rest_dataset_sampling_interval: Optional[int] = None,
+    **_
+) -> str:
+    from .specs import NAMESPACE_ASSET_REST_DATASET_CONFIGURATION_SCHEMA
+
+    result = json.loads(original_dataset_configuration) if original_dataset_configuration else {}
+    if rest_dataset_sampling_interval is not None:
+        result["samplingIntervalInMilliseconds"] = rest_dataset_sampling_interval
+
+    ensure_schema_structure(
+        schema=NAMESPACE_ASSET_REST_DATASET_CONFIGURATION_SCHEMA,
         input_data=result
     )
     return json.dumps(result)

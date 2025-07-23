@@ -11,7 +11,9 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.certmanager import (
     CERT_DIRECTORY_PATH,
     CERT_MANAGER_NAMESPACE,
+    CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
     TRUST_BUNDLE_LABEL,
+    TRUST_MANAGER_WEBHOOK_LABEL,
 )
 from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_config_maps,
@@ -19,6 +21,7 @@ from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_pods,
     assert_list_replica_sets,
     assert_list_services,
+    assert_list_validating_webhooks,
 )
 
 from ...generators import generate_random_string
@@ -36,6 +39,7 @@ def test_create_bundle_certmanager(
     mocked_list_replicasets,
     mocked_list_config_maps,
     mocked_list_services,
+    mocked_list_validating_webhooks,
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
@@ -96,4 +100,16 @@ def test_create_bundle_certmanager(
         label_selector=None,
         directory_path=CERT_DIRECTORY_PATH,
         namespace=CERT_MANAGER_NAMESPACE,
+    )
+    assert_list_validating_webhooks(
+        mocked_client,
+        mocked_zipfile,
+        field_selector=CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
+        directory_path=CERT_DIRECTORY_PATH,
+    )
+    assert_list_validating_webhooks(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=TRUST_MANAGER_WEBHOOK_LABEL,
+        directory_path=CERT_DIRECTORY_PATH,
     )

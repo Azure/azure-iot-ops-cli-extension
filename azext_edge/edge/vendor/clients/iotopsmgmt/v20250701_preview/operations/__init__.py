@@ -10,7 +10,6 @@ from ._operations import Operations
 from ._operations import InstanceOperations
 from ._operations import AkriConnectorTemplateOperations
 from ._operations import AkriConnectorOperations
-from ._operations import AkriDiscoveryHandlerOperations
 from ._operations import BrokerOperations
 from ._operations import BrokerAuthenticationOperations
 from ._operations import BrokerAuthorizationOperations
@@ -30,7 +29,6 @@ __all__ = [
     "InstanceOperations",
     "AkriConnectorTemplateOperations",
     "AkriConnectorOperations",
-    "AkriDiscoveryHandlerOperations",
     "BrokerOperations",
     "BrokerAuthenticationOperations",
     "BrokerAuthorizationOperations",
