@@ -244,14 +244,24 @@ def test_create_namespace_device(
         "device_name": "test-device",
         "manufacturer": "Contoso",
         "model": "Model X",
-        "operating_system": "Linux"
+        "operating_system": "Linux",
+        "operating_system_version": "1.0",
+        "disabled": True
+    },
+    {
+        "disabled": False,
+        "instance_name": "test-instance",
+        "instance_resource_group": "test-rg"
     },
     {
         "custom_query": " | where name contains 'special' | project name, location"
     },
     {
         "device_name": "another-device",
-        "manufacturer": "Fabrikam"
+        "manufacturer": "Fabrikam",
+        "custom_query": " | where resourceGroup == 'test-rg' | project name, type",
+        "instance_name": "test-instance",
+        "instance_resource_group": "test-rg"
     }
 ])
 def test_query_namespace_devices(mocked_cmd, mocker, req: Dict):
@@ -275,27 +285,38 @@ def test_query_namespace_devices(mocked_cmd, mocker, req: Dict):
     assert mock_query.call_count == 1
 
     # Check the query string that was passed to the query method
-    actual_query = mock_query.call_args[1]["query"]
+    query = mock_query.call_args[1]["query"]
 
+    device_start = "Resources | where type =~ 'Microsoft.DeviceRegistry/namespaces/devices'"
     # Assert that the query starts with the expected base
-    assert actual_query.startswith("Resources | where type =~ 'Microsoft.DeviceRegistry/namespaces/devices'")
-
-    # Verify specific filters based on request parameters
-    if "custom_query" in req:
-        # Custom query should be used as-is after the base query
-        assert req["custom_query"] in actual_query
+    if "instance_name" in req or "instance_resource_group" in req:
+        assert query.startswith("Resources | where type =~ 'microsoft.iotoperations/instances'")
+        if "instance_name" in req:
+            assert f"| where name =~ \"{req['instance_name']}\"" in query
+        if "instance_resource_group" in req:
+            assert f"| where resourceGroup =~ \"{req['instance_resource_group']}\"" in query
+        assert device_start in query
     else:
-        # Verify individual filters are applied
-        if "device_name" in req:
-            assert f'where name =~ "{req["device_name"]}"' in actual_query
-        if "resource_group_name" in req:
-            assert f'where resourceGroup =~ "{req["resource_group_name"]}"' in actual_query
-        if "manufacturer" in req:
-            assert f'where properties.manufacturer =~ "{req["manufacturer"]}"' in actual_query
-        if "model" in req:
-            assert f'where properties.model =~ "{req["model"]}"' in actual_query
-        if "operating_system" in req:
-            assert f'where properties.operatingSystem =~ "{req["operating_system"]}"' in actual_query
+        assert query.startswith(query)
+
+    custom = "custom_query" in req
+    # Verify specific filters based on request parameters
+    if custom:
+        # Custom query should be used as-is after the base query
+        assert req["custom_query"] in query
+    # Verify individual filters are applied
+    for param, prop in [
+        ("device_name", "name"),
+        ("manufacturer", "properties.manufacturer"),
+        ("model", "properties.model"),
+        ("operating_system", "properties.operatingSystem"),
+        ("operating_system_version", "properties.operatingSystemVersion"),
+    ]:
+        if param in req:
+            assert (f'| where {prop} =~ "{req[param]}"' in query) is not custom
+
+    if "disabled" in req:
+        assert (f'| where properties.enabled == {not req["disabled"]}' in query) is not custom
 
 
 @pytest.mark.parametrize("response_status", [202, 443])

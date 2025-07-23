@@ -200,44 +200,62 @@ class NamespaceDevices(Queryable):
     def query_devices(
         self,
         device_name: Optional[str] = None,
+        instance_name: Optional[str] = None,
+        instance_resource_group: Optional[str] = None,
+        disabled: Optional[bool] = None,
         custom_query: Optional[str] = None,
         manufacturer: Optional[str] = None,
         model: Optional[str] = None,
         operating_system: Optional[str] = None,
+        operating_system_version: Optional[str] = None,
     ) -> dict:
         """
         Queries the devices using Azure Resource Graph.
         """
+        from .helpers import get_instance_query
         query = "Resources | where type =~ '{}'".format(NAMESPACE_DEVICE_RESOURCE_TYPE)
 
         # for now, keep it simple
-        # later on, add namespace (needs id parsing), location, endpoint types (will need to add joins)
-        # instance names
+        # ideas for later on, add namespace (needs id parsing), endpoint types (will need to add joins)
         def _build_query_body(
             device_name: Optional[str] = None,
+            disabled: Optional[bool] = None,
             manufacturer: Optional[str] = None,
             model: Optional[str] = None,
-            operating_system: Optional[str] = None
+            operating_system: Optional[str] = None,
+            operating_system_version: Optional[str] = None,
         ) -> str:
             query_body = ""
-            # add filters
             if device_name:
                 query_body += f' | where name =~ "{device_name}"'
+            if disabled is not None:
+                query_body += f"| where properties.enabled == {not disabled}"
             if manufacturer:
                 query_body += f' | where properties.manufacturer =~ "{manufacturer}"'
             if model:
                 query_body += f' | where properties.model =~ "{model}"'
             if operating_system:
                 query_body += f' | where properties.operatingSystem =~ "{operating_system}"'
+            if operating_system_version:
+                query_body += f' | where properties.operatingSystemVersion =~ "{operating_system_version}"'
+
             return query_body
 
         query += custom_query or _build_query_body(
             device_name=device_name,
+            disabled=disabled,
             manufacturer=manufacturer,
             model=model,
-            operating_system=operating_system
+            operating_system=operating_system,
+            operating_system_version=operating_system_version
         )
 
+        query = get_instance_query(
+            query=query,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
+        )
+        logger.info(f"Querying devices with query: {query}")
         return self.query(query=query)
 
     def update(

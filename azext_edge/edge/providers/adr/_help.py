@@ -553,6 +553,10 @@ def load_iotops_adr_help():
           manufacturer, model, and more.
 
         examples:
+        - name: Query for devices in an IoT Operations instance
+          text: >
+            az iot ops ns device query --instance myInstance -g myInstanceResourceGroup
+
         - name: Query for a specific device by name
           text: >
             az iot ops ns device query --name mydevice
@@ -662,6 +666,12 @@ def load_iotops_adr_help():
         - name: List all inbound endpoints of a device
           text: >
             az iot ops ns device endpoint inbound list --device mydevice --instance myInstance -g myInstanceResourceGroup
+        - name: List all Media endpoints of a device using a keyword
+          text: >
+            az iot ops ns device endpoint inbound list --device mydevice --instance myInstance -g myInstanceResourceGroup --endpoint-type media
+        - name: List all Media endpoints of a device using the full endpoint type
+          text: >
+            az iot ops ns device endpoint inbound list --device mydevice --instance myInstance -g myInstanceResourceGroup --endpoint-type Microsft.Media
     """
 
     helps[
@@ -832,6 +842,10 @@ def load_iotops_adr_help():
           device name, endpoint name and more.
 
         examples:
+        - name: Query for assets in an IoT Operations instance
+          text: >
+            az iot ops ns asset query --instance myInstance -g myInstanceResourceGroup
+
         - name: Query for a specific asset by name
           text: >
             az iot ops ns asset query --name myasset

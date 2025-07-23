@@ -62,12 +62,12 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     asset_custom = run(
         f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_custom} "
-        f"--description \"Custom Device\" --display-name \"Multi-Sensor\" --model \"Custom-MS100\" "
-        f"--manufacturer \"CustomDevices\" --serial-number \"CUST123456\" "
+        "--description \"Custom Device\" --display-name \"Multi-Sensor\" --model \"Custom-MS100\" "
+        "--manufacturer \"CustomDevices\" --serial-number \"CUST123456\" "
         f"--dataset-config \"{{\\\"publishingInterval\\\": 1000}}\" "
         f"--event-config \"{{\\\"queueSize\\\": 5}}\" "
-        f"--dataset-dest topic=\"custom/data\" qos=Qos1 retain=Keep ttl=3600 "
-        f"--event-dest topic=\"custom/events\" qos=Qos0 retain=Never ttl=3600 "
+        "--dataset-dest topic=\"custom/data\" qos=Qos1 retain=Keep ttl=3600 "
+        "--event-dest topic=\"custom/events\" qos=Qos0 retain=Never ttl=3600 "
         f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
     )
     tracked_resources.append(asset_custom["id"])
@@ -112,6 +112,13 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     # Test query operation
     queried_assets = run(
         "az iot ops ns asset query"
+    )
+
+    asset_names = [asset["name"] for asset in queried_assets]
+    assert asset_name in asset_names
+
+    queried_assets = run(
+        f"az iot ops ns asset query -i {instance_name} -g {resource_group}"
     )
 
     asset_names = [asset["name"] for asset in queried_assets]

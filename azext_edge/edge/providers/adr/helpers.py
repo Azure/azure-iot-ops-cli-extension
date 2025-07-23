@@ -103,6 +103,34 @@ def get_namespace_for_instance(
     return parse_resource_id(rid=namespace)
 
 
+def get_instance_query(
+    query: str,
+    instance_name: Optional[str] = None,
+    instance_resource_group: Optional[str] = None,
+    project_away_custom_location: bool = True
+) -> str:
+    """
+    Appends and returns query with instance filtering.
+    """
+    if any([instance_name, instance_resource_group]):
+        instance_query = "Resources | where type =~ 'microsoft.iotoperations/instances' "
+        if instance_name:
+            instance_query += f"| where name =~ \"{instance_name}\""
+        if instance_resource_group:
+            instance_query += f"| where resourceGroup =~ \"{instance_resource_group}\""
+
+        # fetch the custom location + join on innerunique. Then remove the extra customLocation1 generated
+        query = (
+            f"{instance_query} | extend customLocation = tostring(extendedLocation.name) "
+            "| project customLocation | join kind=innerunique "
+            f"({query} | extend customLocation = tostring(extendedLocation.name)) on customLocation "
+            "| project-away customLocation1"
+        )
+        if project_away_custom_location:
+            query += ", customLocation"
+    return query
+
+
 def get_default_dataset(asset: dict, dataset_name: str, create_if_none: bool = False):
     """
     Temporary helper function to get a dataset from an asset.
