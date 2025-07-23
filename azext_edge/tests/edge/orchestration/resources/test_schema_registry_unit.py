@@ -22,6 +22,7 @@ from azext_edge.edge.providers.orchestration.resources.schema_registries import 
     STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID,
 )
 from azext_edge.edge.providers.orchestration.rp_namespace import ADR_PROVIDER
+from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion
 
 from ....generators import generate_random_string
 from .conftest import (
@@ -33,7 +34,7 @@ from .conftest import (
 )
 
 SCHEMA_REGISTRY_RP = "Microsoft.DeviceRegistry"
-SCHEMA_REGISTRY_RP_API_VERSION = "2024-09-01-preview"
+SCHEMA_REGISTRY_RP_API_VERSION = DeviceRegistryMgmtApiVersion.V20250701_preview.value
 STORAGE_RP = "Microsoft.Storage"
 STORAGE_API_VERSION = "2023-05-01"
 RESOURCES_API_VERSION = "2024-03-01"

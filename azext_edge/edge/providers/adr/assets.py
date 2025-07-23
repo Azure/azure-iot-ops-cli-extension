@@ -14,15 +14,14 @@ from azure.cli.core.azclierror import (
 from knack.log import get_logger
 from rich.console import Console
 
-from .helpers import get_default_dataset
-from .common import FileType
 from ...util import assemble_nargs_to_dict
 from ...util.az_client import (
-    DeviceRegistryMgmtApiVersion,
     get_registry_mgmt_client,
     wait_for_terminal_state,
 )
 from ...util.queryable import Queryable
+from .common import FileType
+from .helpers import get_default_dataset
 from .user_strings import (
     DUPLICATE_EVENT_ERROR,
     DUPLICATE_POINT_ERROR,
@@ -44,8 +43,7 @@ class Assets(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id,
-            api_version=DeviceRegistryMgmtApiVersion.V20241101
+            subscription_id=self.default_subscription_id
         )
         self.ops: "AssetsOperations" = self.deviceregistry_mgmt_client.assets
 
