@@ -17,6 +17,7 @@ from typing import List, Optional, Tuple, TypeVar
 from unittest.mock import Mock, mock_open
 
 import pytest
+from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion, IoTOpsMgmtApiVersion
 import requests
 import responses
 from azure.cli.core.azclierror import ValidationError
@@ -820,10 +821,10 @@ def test_clone_manager(
         {"version": "1.1.50"},
         {"version": "1.1.19"},
         {"version": "1.0.34"},
-        {"version": "1.2.0", "error": ValidationError},
+        {"version": "1.3.0", "error": ValidationError},
         {"version": "2.0.0", "error": ValidationError},
         {"version": "1.0.9", "error": ValidationError},
-        {"version": "1.2.0", "force": True},
+        {"version": "1.3.0", "force": True},
         {"version": "1.0.9", "force": True},
     ],
 )
@@ -1460,7 +1461,8 @@ class CloneAssertor:
         self.clone_scenario = clone_scenario
         self.resource_configs = clone_scenario.resource_configs
         self.extension_name_map = {}
-        self.instance_api = VersionGuru(self.resource_configs["instance"]).get_instance_api()
+        self.instance_apis = VersionGuru(self.resource_configs["instance"]).get_instance_apis()
+        self._assert_instance_apis()
 
     def assert_content(self, content: dict):
         assert isinstance(content, dict), "content should be a dictionary"
@@ -1525,12 +1527,24 @@ class CloneAssertor:
 
         self._assert_resources(content)
 
-    def _assert_instance_api(self):
+    def _assert_instance_apis(self):
         parsed_version = parse_version(self.resource_configs["instance"]["properties"]["version"])
 
+        target_iotops_api = None
+        target_adr_api = None
+
         if parsed_version < parse_version("1.1.0"):
-            assert self.instance_api == "2024-11-01"
-        assert self.instance_api == "2025-04-01"
+            target_iotops_api = IoTOpsMgmtApiVersion.V20241101
+            target_adr_api = DeviceRegistryMgmtApiVersion.V20241101
+        elif parsed_version < parse_version("1.2.0"):
+            target_iotops_api = IoTOpsMgmtApiVersion.V20250401
+            target_adr_api = DeviceRegistryMgmtApiVersion.V20241101
+        elif parsed_version < parse_version("1.3.0"):
+            target_iotops_api = IoTOpsMgmtApiVersion.V20250701_preview
+            target_adr_api = DeviceRegistryMgmtApiVersion.V20250701_preview
+
+        assert target_iotops_api.value == self.instance_apis.iotops_mgmt_api
+        assert target_adr_api.value == self.instance_apis.registry_mgmt_api
 
     def _assert_resources(self, content: dict):
         assert isinstance(content["resources"], dict), "Resources key should be a dictionary"
@@ -1580,7 +1594,7 @@ class CloneAssertor:
                 context = {
                     "config": component_config,
                     "resource_configs": self.resource_configs,
-                    "instance_api": self.instance_api,
+                    "instance_api": self.instance_apis.iotops_mgmt_api,
                 }
                 component_replacements = component_replacements(context)
             component_config.update(component_replacements)

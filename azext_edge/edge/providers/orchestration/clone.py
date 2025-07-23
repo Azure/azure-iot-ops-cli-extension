@@ -8,7 +8,7 @@ from copy import deepcopy
 from enum import Enum
 from json import dumps
 from pathlib import Path, PurePath
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union, NamedTuple
 from uuid import uuid4
 
 from azure.cli.core.azclierror import ValidationError
@@ -33,6 +33,7 @@ from ...util import (
 )
 from ...util.az_client import (
     DeviceRegistryMgmtApiVersion,
+    IoTOpsMgmtApiVersion,
     get_msi_mgmt_client,
     get_resource_client,
     wait_for_terminal_state,
@@ -703,6 +704,7 @@ class CloneManager:
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
         self.version_guru = VersionGuru(self.instance_record)
+        self.instance_apis = self.version_guru.get_instance_apis()
         self.custom_location = self.instances.get_associated_cl(self.instance_record)
 
         self.resource_map = self.instances.get_resource_map(self.instance_record)
@@ -890,7 +892,7 @@ class CloneManager:
             )
 
     def _analyze_instance(self):
-        api_version = self.version_guru.get_instance_api()
+        api_version = self.instance_apis.iotops_mgmt_api
         custom_location = deepcopy(self.custom_location)
         custom_location["properties"]["hostResourceId"] = TEMPLATE_EXPRESSION_MAP["clusterId"]
         custom_location["properties"]["namespace"] = TEMPLATE_EXPRESSION_MAP["clusterNamespace"]
@@ -974,7 +976,7 @@ class CloneManager:
         )
 
     def _analyze_instance_resources(self):
-        api_version = self.version_guru.get_instance_api()
+        api_version = self.instance_apis.iotops_mgmt_api
         brokers_iter = self.instances.iotops_mgmt_client.broker.list_by_resource_group(
             resource_group_name=self.resource_group_name, instance_name=self.instance_name
         )
@@ -1108,7 +1110,7 @@ class CloneManager:
         asset_endpoints = self.get_resources_of_type(resource_type="microsoft.deviceregistry/assetendpointprofiles")
         self._add_deployment(
             key=StateResourceKey.ASSET_ENDPOINT_PROFILE,
-            api_version=DeviceRegistryMgmtApiVersion.V20241101.value,
+            api_version=self.instance_apis.registry_mgmt_api,
             data_iter=asset_endpoints,
             depends_on=[
                 instance_resource_id_expr,
@@ -1125,7 +1127,7 @@ class CloneManager:
         if assets and asset_endpoints:
             self._add_deployment(
                 key=StateResourceKey.ASSET,
-                api_version=DeviceRegistryMgmtApiVersion.V20241101.value,
+                api_version=self.instance_apis.registry_mgmt_api,
                 data_iter=assets,
                 depends_on=get_resource_id_by_parts(
                     "Microsoft.Resources/deployments",
@@ -1408,7 +1410,7 @@ class TemplateGen:
 
 
 def process_depends_on(
-    depends_on: Optional[Union[Iterable[str], str, Iterable[StateResourceKey], StateResourceKey]] = None
+    depends_on: Optional[Union[Iterable[str], str, Iterable[StateResourceKey], StateResourceKey]] = None,
 ) -> Optional[Iterable[str]]:
     if not depends_on:
         return
@@ -1537,7 +1539,23 @@ class VersionGuru:
             "While not recommended, you can use --force flag to continue anyway."
         )
 
-    def get_instance_api(self) -> str:
+    def get_instance_apis(self) -> "InstanceApiVersions":
         if self.parsed_version < parse_version("1.1.0"):
-            return "2024-11-01"
-        return "2025-04-01"
+            return InstanceApiVersions(
+                iotops_mgmt_api=IoTOpsMgmtApiVersion.V20241101.value,
+                registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20241101.value,
+            )
+        if self.parsed_version < parse_version("1.2.0"):
+            return InstanceApiVersions(
+                iotops_mgmt_api=IoTOpsMgmtApiVersion.V20250401.value,
+                registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20241101.value,
+            )
+        return InstanceApiVersions(
+            iotops_mgmt_api=IoTOpsMgmtApiVersion.V20250701_preview.value,
+            registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20250701_preview.value,
+        )
+
+
+class InstanceApiVersions(NamedTuple):
+    iotops_mgmt_api: str
+    registry_mgmt_api: str
