@@ -225,6 +225,8 @@ class BundleResourceKind(Enum):
     job = "Job"
     cronjob = "CronJob"
     configmap = "ConfigMap"
+    mutatingwebhook = "MutatingWebhookConfiguration"
+    validatingwebhook = "ValidatingWebhookConfiguration"
 
 
 # Broker runtime attributes

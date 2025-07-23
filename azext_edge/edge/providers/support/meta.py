@@ -9,19 +9,21 @@ from typing import Iterable, Optional
 
 from knack.log import get_logger
 
-from azext_edge.edge.providers.support.billing import BILLING_RESOURCE_KIND, AIO_USAGE_PREFIX
-
-from ..edge_api import META_API_V1, EdgeResourceApi
+from ..edge_api import META_API_V1, EdgeResourceApi, MesoResourceKinds
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
     process_deployments,
     process_jobs,
+    process_mutating_webhook_configurations,
     process_replicasets,
     process_services,
     process_v1_pods,
+    process_validating_webhook_configurations,
 )
+from .billing import AIO_USAGE_PREFIX, BILLING_RESOURCE_KIND
 from .common import NAME_LABEL_FORMAT
+from .meso import MESO_DIRECTORY_PATH
 
 logger = get_logger(__name__)
 
@@ -72,11 +74,27 @@ def fetch_jobs():
     )
 
 
+def fetch_mutating_webhook_configurations():
+    return process_mutating_webhook_configurations(
+        directory_path=META_DIRECTORY_PATH,
+        label_selector=META_NAME_LABEL,
+    )
+
+
+def fetch_validating_webhook_configurations():
+    return process_validating_webhook_configurations(
+        directory_path=META_DIRECTORY_PATH,
+        label_selector=META_NAME_LABEL,
+    )
+
+
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "jobs": fetch_jobs,
+    "mutatingwebhooks": fetch_mutating_webhook_configurations,
+    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 
@@ -84,7 +102,9 @@ def prepare_bundle(log_age_seconds: int = DAY_IN_SECONDS, apis: Optional[Iterabl
     meta_to_run = {}
 
     if apis:
-        meta_to_run.update(assemble_crd_work(apis))
+        meta_to_run.update(
+            assemble_crd_work(apis, kind_to_dir={MesoResourceKinds.OBSERVABILITY.value: MESO_DIRECTORY_PATH})
+        )
 
     support_runtime_elements["pods"] = partial(fetch_pods, since_seconds=log_age_seconds)
     meta_to_run.update(support_runtime_elements)
