@@ -4,12 +4,15 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from rich.console import Console
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
+
 from knack.log import get_logger
+from rich.console import Console
 
 from ...util.az_client import (
-    get_registry_mgmt_client, get_resource_client, wait_for_terminal_state, DeviceRegistryMgmtApiVersion
+    get_registry_mgmt_client,
+    get_resource_client,
+    wait_for_terminal_state,
 )
 from ...util.common import should_continue_prompt
 from ...util.queryable import Queryable
@@ -27,8 +30,7 @@ class Namespaces(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id,
-            api_version=DeviceRegistryMgmtApiVersion.V20250701_preview
+            subscription_id=self.default_subscription_id
         )
         self.resource_mgmt_client = get_resource_client(
             subscription_id=self.default_subscription_id
