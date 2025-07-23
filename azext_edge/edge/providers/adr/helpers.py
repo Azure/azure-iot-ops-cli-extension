@@ -115,13 +115,13 @@ def get_instance_query(
     if any([instance_name, instance_resource_group]):
         instance_query = "Resources | where type =~ 'microsoft.iotoperations/instances' "
         if instance_name:
-            instance_query += f"| where name =~ \"{instance_name}\""
+            instance_query += f"| where name =~ \"{instance_name}\" "
         if instance_resource_group:
-            instance_query += f"| where resourceGroup =~ \"{instance_resource_group}\""
+            instance_query += f"| where resourceGroup =~ \"{instance_resource_group}\" "
 
         # fetch the custom location + join on innerunique. Then remove the extra customLocation1 generated
         query = (
-            f"{instance_query} | extend customLocation = tostring(extendedLocation.name) "
+            f"{instance_query}| extend customLocation = tostring(extendedLocation.name) "
             "| project customLocation | join kind=innerunique "
             f"({query} | extend customLocation = tostring(extendedLocation.name)) on customLocation "
             "| project-away customLocation1"

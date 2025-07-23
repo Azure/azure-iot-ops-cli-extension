@@ -280,12 +280,7 @@ class NamespaceAssets(Queryable):
                 query_body += f' | where properties.serialNumber =~ "{serial_number}"'
             if software_revision:
                 query_body += f' | where properties.softwareRevision =~ "{software_revision}"'
-            return (
-                f"{query_body} | extend customLocation = tostring(extendedLocation.name) "
-                "| extend provisioningState = properties.provisioningState "
-                "| project id, customLocation, location, name, resourceGroup, provisioningState, "
-                "tags, type, subscriptionId"
-            )
+            return query_body
 
         query += custom_query or _build_query_body(
             asset_name=asset_name,
@@ -309,6 +304,11 @@ class NamespaceAssets(Queryable):
             instance_name=instance_name,
             instance_resource_group=instance_resource_group,
             project_away_custom_location=False
+        )
+        query += (
+            "| extend provisioningState = properties.provisioningState "
+            "| project id, customLocation, location, name, resourceGroup, provisioningState, "
+            "tags, type, subscriptionId"
         )
         logger.info(f"Querying assets with query: {query}")
 

@@ -61,7 +61,7 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     # Create Custom asset with maximum inputs
     asset_custom = run(
         f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_custom} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_custom} "
         "--description \"Custom Device\" --display-name \"Multi-Sensor\" --model \"Custom-MS100\" "
         "--manufacturer \"CustomDevices\" --serial-number \"CUST123456\" "
         f"--dataset-config \"{{\\\"publishingInterval\\\": 1000}}\" "
@@ -340,7 +340,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     # 1. Create ONVIF asset with maximum inputs
     asset_onvif = run(
         f"az iot ops ns asset onvif create --name {asset_name_onvif} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_onvif} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_onvif} "
         "--description \"ONVIF Camera\" --display-name \"Entrance Camera\" --model \"Camera-X1\" "
         "--manufacturer \"SecurityCo\" --serial-number \"CAM123456\" "
         "--documentation-uri \"https://example.com/docs/camera\" "
@@ -370,7 +370,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     # 2. Create OPCUA asset with maximum inputs
     asset_opcua = run(
         f"az iot ops ns asset opcua create --name {asset_name_opcua} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_opcua} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_opcua} "
         "--description \"OPC UA Sensor\" --display-name \"Temperature Sensor\" --model \"Sensor-T2000\" "
         "--manufacturer \"Contoso\" --serial-number \"OPCUA987654\" "
         "--dataset-publish-int 2000 --dataset-sampling-int 1000 --dataset-queue-size 5 "
@@ -399,7 +399,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     # 3. Create Media asset with maximum inputs
     asset_media = run(
         f"az iot ops ns asset media create --name {asset_name_media} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_media} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_media} "
         "--description \"Media Camera\" --display-name \"Monitoring Camera\" --model \"MediaCam-4K\" "
         "--manufacturer \"MediaCorp\" --serial-number \"MEDIA567890\" "
         "--task-type \"snapshot-to-mqtt\" --task-format \"jpeg\" --snapshots-per-sec 1 "
@@ -426,7 +426,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     # 4. Create Rest asset with maximum inputs
     asset_rest = run(
         f"az iot ops ns asset rest create --name {asset_name_rest} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_rest} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_rest} "
         "--description \"Rest Camera\" --display-name \"Main Entrance Camera\" "
         "--model \"Camera-X1\" --manufacturer \"SecurityCo\" --serial-number \"CAM123456\" "
         "--documentation-uri \"https://example.com/docs/camera\" "
