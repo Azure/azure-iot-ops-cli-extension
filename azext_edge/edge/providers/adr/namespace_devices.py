@@ -212,34 +212,25 @@ class NamespaceDevices(Queryable):
         """
         Queries the devices using Azure Resource Graph.
         """
-        from .helpers import get_instance_query
+        from .helpers import get_instance_query, get_query
         query = "Resources | where type =~ '{}'".format(NAMESPACE_DEVICE_RESOURCE_TYPE)
 
         # for now, keep it simple
         # ideas for later on, add namespace (needs id parsing), endpoint types (will need to add joins)
         def _build_query_body(
-            device_name: Optional[str] = None,
-            disabled: Optional[bool] = None,
-            manufacturer: Optional[str] = None,
-            model: Optional[str] = None,
-            operating_system: Optional[str] = None,
-            operating_system_version: Optional[str] = None,
+            **params: dict
         ) -> str:
-            query_body = ""
-            if device_name:
-                query_body += f' | where name =~ "{device_name}"'
-            if disabled is not None:
-                query_body += f"| where properties.enabled == {not disabled}"
-            if manufacturer:
-                query_body += f' | where properties.manufacturer =~ "{manufacturer}"'
-            if model:
-                query_body += f' | where properties.model =~ "{model}"'
-            if operating_system:
-                query_body += f' | where properties.operatingSystem =~ "{operating_system}"'
-            if operating_system_version:
-                query_body += f' | where properties.operatingSystemVersion =~ "{operating_system_version}"'
-
-            return query_body
+            param_mapping = {
+                "device_name": "name",
+                "manufacturer": "properties.manufacturer",
+                "model": "properties.model",
+                "operating_system": "properties.operatingSystem",
+                "operating_system_version": "properties.operatingSystemVersion",
+            }
+            return get_query(
+                param_mapping=param_mapping,
+                params=params,
+            )
 
         query += custom_query or _build_query_body(
             device_name=device_name,

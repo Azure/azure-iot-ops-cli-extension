@@ -228,59 +228,39 @@ class NamespaceAssets(Queryable):
         """
         Queries the asset using Azure Resource Graph.
         """
-        from .helpers import get_instance_query
+        from .helpers import get_instance_query, get_query
         query = "Resources | where type =~ '{}'".format(NAMESPACE_ASSET_RESOURCE_TYPE)
 
         # for now, keep it simple
         # ideas for later on, add namespace (needs id parsing), device endpoint type (will need to add joins)
         def _build_query_body(
-            asset_name: Optional[str] = None,
-            device_name: Optional[str] = None,
-            device_endpoint_name: Optional[str] = None,
-            disabled: Optional[bool] = None,
-            display_name: Optional[str] = None,
-            documentation_uri: Optional[str] = None,
-            external_asset_id: Optional[str] = None,
-            hardware_revision: Optional[str] = None,
-            manufacturer: Optional[str] = None,
-            manufacturer_uri: Optional[str] = None,
-            model: Optional[str] = None,
-            product_code: Optional[str] = None,
-            serial_number: Optional[str] = None,
-            software_revision: Optional[str] = None,
+            **params: dict
         ) -> str:
-            query_body = ""
-            if disabled is not None:
-                query_body += f"| where properties.enabled == {not disabled}"
-            if asset_name:
-                query_body += f' | where name =~ "{asset_name}"'
-            if device_name:
-                query_body += f' | where properties.deviceRef.deviceName =~ "{device_name}"'
-            if device_endpoint_name:
-                query_body += f' | where properties.deviceRef.endpointName =~ "{device_endpoint_name}"'
-            if disabled is not None:
-                query_body += f"| where properties.enabled == {not disabled}"
-            if display_name:
-                query_body += f' | where properties.displayName =~ "{display_name}"'
-            if documentation_uri:
-                query_body += f' | where properties.documentationUri =~ "{documentation_uri}"'
-            if external_asset_id:
-                query_body += f' | where properties.externalAssetId =~ "{external_asset_id}"'
-            if hardware_revision:
-                query_body += f' | where properties.hardwareRevision =~ "{hardware_revision}"'
-            if manufacturer:
-                query_body += f' | where properties.manufacturer =~ "{manufacturer}"'
-            if manufacturer_uri:
-                query_body += f' | where properties.manufacturerUri =~ "{manufacturer_uri}"'
-            if model:
-                query_body += f' | where properties.model =~ "{model}"'
-            if product_code:
-                query_body += f' | where properties.productCode =~ "{product_code}"'
-            if serial_number:
-                query_body += f' | where properties.serialNumber =~ "{serial_number}"'
-            if software_revision:
-                query_body += f' | where properties.softwareRevision =~ "{software_revision}"'
-            return query_body
+            param_mapping = {
+                "asset_name": "name",
+                "device_name": "properties.deviceRef.deviceName",
+                "device_endpoint_name": "properties.deviceRef.endpointName",
+                "display_name": "properties.displayName",
+                "documentation_uri": "properties.documentationUri",
+                "external_asset_id": "properties.externalAssetId",
+                "hardware_revision": "properties.hardwareRevision",
+                "manufacturer": "properties.manufacturer",
+                "manufacturer_uri": "properties.manufacturerUri",
+                "model": "properties.model",
+                "product_code": "properties.productCode",
+                "serial_number": "properties.serialNumber",
+                "software_revision": "properties.softwareRevision",
+            }
+            query_body = get_query(
+                param_mapping=param_mapping,
+                params=params
+            )
+            return (
+                query_body + " | extend customLocation = tostring(extendedLocation.name) "
+                "| extend provisioningState = properties.provisioningState "
+                "| project id, customLocation, location, name, resourceGroup, provisioningState, "
+                "tags, type, subscriptionId"
+            )
 
         query += custom_query or _build_query_body(
             asset_name=asset_name,
@@ -304,11 +284,6 @@ class NamespaceAssets(Queryable):
             instance_name=instance_name,
             instance_resource_group=instance_resource_group,
             project_away_custom_location=False
-        )
-        query += (
-            "| extend provisioningState = properties.provisioningState "
-            "| project id, customLocation, location, name, resourceGroup, provisioningState, "
-            "tags, type, subscriptionId"
         )
         logger.info(f"Querying assets with query: {query}")
 

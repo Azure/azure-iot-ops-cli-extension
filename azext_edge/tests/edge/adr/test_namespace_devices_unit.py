@@ -295,7 +295,10 @@ def test_query_namespace_devices(mocked_cmd, mocker, req: Dict):
             assert f"| where name =~ \"{req['instance_name']}\"" in query
         if "instance_resource_group" in req:
             assert f"| where resourceGroup =~ \"{req['instance_resource_group']}\"" in query
+        # there still will be the device query part
         assert device_start in query
+        # make sure both locations are projected away
+        assert "| project-away customLocation1, customLocation" in query
     else:
         assert query.startswith(query)
 

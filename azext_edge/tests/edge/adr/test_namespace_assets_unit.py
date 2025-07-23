@@ -858,7 +858,11 @@ def test_query_namespace_assets(mocked_cmd, mocker, reqs):
             assert f"| where name =~ \"{reqs['instance_name']}\"" in query
         if "instance_resource_group" in reqs:
             assert f"| where resourceGroup =~ \"{reqs['instance_resource_group']}\"" in query
+        # asset start should be included still
         assert asset_start in query
+        # project away only custom location 1
+        assert "| project-away customLocation1" in query
+        assert "| project-away customLocation1, customLocation" not in query
     else:
         assert query.startswith(asset_start)
 
