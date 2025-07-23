@@ -27,11 +27,11 @@ from kubernetes.client.models import (
     V1ValidatingWebhookConfigurationList,
 )
 
-from azext_edge.edge.common import DEFAULT_BROKER, BundleResourceKind, PodState
+from ...common import BundleResourceKind, PodState
 
 from ...util import get_timestamp_now_utc
 from ..base import DEFAULT_NAMESPACE, client, get_custom_objects
-from ..edge_api import MQ_ACTIVE_API, EdgeResourceApi, MqResourceKinds
+from ..edge_api import EdgeResourceApi
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
