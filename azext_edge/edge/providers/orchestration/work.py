@@ -432,13 +432,13 @@ class WorkManager:
             if self._targets.instance_name:
                 self._headers["CommandName"] = "iot ops create"
                 # Ensure schema registry and namespace resources exist.
-                for resource_id, api_version in [
-                    (self._targets.schema_registry_resource_id, DeviceRegistryMgmtApiVersion.V20240901_preview.value),
-                    (self._targets.adr_namespace_resource_id, DeviceRegistryMgmtApiVersion.V20250701_preview.value),
+                for resource_id in [
+                    self._targets.schema_registry_resource_id,
+                    self._targets.adr_namespace_resource_id,
                 ]:
                     self.resource_client.resources.get_by_id(
                         resource_id=resource_id,
-                        api_version=api_version,
+                        api_version=DeviceRegistryMgmtApiVersion.V20250701_preview.value,
                     )
 
                 self._process_extension_dependencies()
