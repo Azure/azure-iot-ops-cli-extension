@@ -52,7 +52,9 @@ def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
 
     check_custom_resource_files(file_objs=file_map, resource_apis=COMPAT_MQTT_BROKER_APIS.resource_apis)
 
-    expected_types = set(MQ_WORKLOAD_TYPES).union(get_all_kinds_from_manager(COMPAT_MQTT_BROKER_APIS))
+    expected_types = (
+        set(MQ_WORKLOAD_TYPES).union({"vwc", "mwc"}).union(get_all_kinds_from_manager(COMPAT_MQTT_BROKER_APIS))
+    )
     assert set(file_map.keys()).issubset(expected_types)
 
     # There is a chance that traces are not present even if mq_traces is true
@@ -91,7 +93,7 @@ def test_create_bundle_mq(cluster_connection, tracked_files, mq_traces):
         pre_bundle_items=pre_bundle_workload_items,
         prefixes=MQ_PREFIXES,
         bundle_path=bundle_path,
-        expected_label=MQ_LABEL
+        expected_label=MQ_LABEL,
     )
 
 

@@ -33,7 +33,7 @@ def test_create_bundle_meso(cluster_connection, tracked_files):
 
     file_map = get_file_map(walk_result, ops_service)["aio"]
 
-    expected_types = set(MESO_WORKLOAD_TYPES).union({"crb"})
+    expected_types = set(MESO_WORKLOAD_TYPES).union({"crb", "observability", "vwc", "mwc"})
     assert set(file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(
         file_objs=file_map,

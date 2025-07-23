@@ -29,7 +29,7 @@ def test_create_bundle_akri(cluster_connection, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)["aio"]
 
-    expected_types = set(AKRI_WORKLOAD_TYPES)
+    expected_types = set(AKRI_WORKLOAD_TYPES).union({"vwc", "mwc"})
     assert set(file_map.keys()).issubset(expected_types)
 
     check_workload_resource_files(
