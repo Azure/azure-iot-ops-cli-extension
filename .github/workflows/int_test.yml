@@ -317,7 +317,7 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "Create Storage and Schema Registry for init tests"
+      - name: "Create Storage, Schema Registry, and Namespace for init tests"
         id: "init_reqs"
         run: |
           # Remove -'s and limit name length to 20 chars for storage accounts

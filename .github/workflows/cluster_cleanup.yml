@@ -43,6 +43,7 @@ env:
   # Note these are just for the init tests since we dont delete them then
   REGISTRY_PREFIX: 'init-registry'
   STORAGE_PREFIX: 'initstore'
+  NAMESPACE_PREFIX: 'init-adr-ns'
   CUSTOM_PREFIX: ${{ inputs.custom_prefix }}
 
 permissions:
@@ -89,6 +90,11 @@ jobs:
       - name: Delete storage accounts
         run: |
           for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.STORAGE_PREFIX }}')].id" -o tsv); do
+            az resource delete -v --id $resource --verbose
+          done
+      - name: Delete namespaces
+        run: |
+          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.NAMESPACE_PREFIX }}')].id" -o tsv); do
             az resource delete -v --id $resource --verbose
           done
       - name: Delete your custom stuff
