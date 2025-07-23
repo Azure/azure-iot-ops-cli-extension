@@ -5,15 +5,16 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List
-
 import pytest
 
 from ...generators import generate_random_string
 from ...helpers import run
-from .namespace_helpers import create_config_file, check_stream_configuration, check_destinations
+from .namespace_helpers import (
+    create_config_file, assert_stream_properties, check_destinations
+)
 
 
-pytestmark = pytest.mark.rpsaas
+pytestmark = pytest.mark.rpsaas_long_running
 
 
 def test_namespace_custom_asset_stream_lifecycle_operations(
@@ -342,14 +343,6 @@ def test_namespace_media_asset_stream_lifecycle_operations(require_init, tracked
     remaining_stream_names = [stream["name"] for stream in remaining_streams]
     for removed_stream in created_streams:
         assert removed_stream not in remaining_stream_names
-
-
-def assert_stream_properties(result, **expected):
-    """Verify custom stream properties match expected values."""
-    assert result["name"] == expected["name"]
-
-    if "custom_configuration" in expected:
-        check_stream_configuration(result, expected)
 
 
 def assert_media_stream_properties(result, **expected):

@@ -32,6 +32,7 @@ logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from azure.core.polling import LROPoller
+    from azure.core.exceptions import HttpResponseError
 
     from ..vendor.clients.authzmgmt import AuthorizationManagementClient
     from ..vendor.clients.clusterconfigmgmt import KubernetesConfigurationClient
@@ -143,7 +144,7 @@ class DeviceRegistryMgmtApiVersion(Enum):
 
 def get_registry_mgmt_client(
     subscription_id: str,
-    api_version: Union[DeviceRegistryMgmtApiVersion, str] = DeviceRegistryMgmtApiVersion.V20241101,
+    api_version: Union[DeviceRegistryMgmtApiVersion, str] = DeviceRegistryMgmtApiVersion.V20250701_preview,
     **kwargs,
 ) -> "MicrosoftDeviceRegistryManagementService":
     from ..vendor.clients.deviceregistrymgmt import (
@@ -289,8 +290,8 @@ def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
     if len(parts) < 9:
         raise ValidationError(
             f"Malformed resource Id '{resource_id}'. An Azure resource Id has the form:\n"
-            "/subscription/{subscriptionId}/resourceGroups/{resourceGroup}"
-            "/providers/Microsoft.Provider/{resourcePath}/{resourceName}"
+            "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}"
+            "/providers/Microsoft.Provider/{resourceType}/{resourceName}"
         )
 
     # Extract the subscription, resource group, and resource name
@@ -304,3 +305,11 @@ def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
         resource_name=resource_name,
         resource_id=resource_id,
     )
+
+
+def get_api_error_str(exception: "HttpResponseError") -> str:
+    if hasattr(exception, "error") and hasattr(exception.error, "message"):
+        return exception.error.message
+    if hasattr(exception, "message"):
+        return exception.message
+    return str(exception)

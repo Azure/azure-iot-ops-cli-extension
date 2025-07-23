@@ -42,11 +42,13 @@ from azext_edge.edge.common import (
 from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
 from azext_edge.edge.providers.orchestration.common import (
     ARM_ENDPOINT,
+    CONTRIBUTOR_ROLE_ID,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
 )
+from azext_edge.edge.providers.orchestration.permissions import ROLE_DEF_FORMAT_STR
 from azext_edge.edge.providers.orchestration.rp_namespace import RP_NAMESPACE_SET
 from azext_edge.edge.providers.orchestration.targets import (
     InstancePhase,
@@ -58,7 +60,11 @@ from azext_edge.edge.providers.orchestration.work import (
 )
 from azext_edge.edge.util import assemble_nargs_to_dict
 
-from ...generators import generate_random_string, get_zeroed_subscription, generate_resource_id
+from ...generators import (
+    generate_random_string,
+    generate_resource_id,
+    get_zeroed_subscription,
+)
 from .resources.conftest import RequestKPIs, get_request_kpis
 from .test_template_unit import EXPECTED_EXTENSION_RESOURCE_KEYS
 
@@ -73,7 +79,8 @@ class ExpectedAPIVersion(Enum):
     CONNECTED_CLUSTER = "2024-07-15-preview"
     CLUSTER_EXTENSION = "2023-05-01"
     RESOURCE = "2024-03-01"
-    SCHEMA_REGISTRY = "2024-09-01-preview"
+    SCHEMA_REGISTRY = "2025-07-01-preview"
+    ADR_NAMESPACE = "2025-07-01-preview"
     AUTHORIZATION = "2022-04-01"
     CUSTOM_LOCATION = "2021-08-31-preview"
     GRAPH = "2022-10-01"
@@ -86,6 +93,7 @@ class CallKey(Enum):
     DEPLOY_INIT_WHATIF = "deployInitWhatIf"
     DEPLOY_INIT = "deployInit"
     GET_SCHEMA_REGISTRY = "getSchemaRegistry"
+    GET_ADR_NAMESPACE = "getAdrNamespace"
     GET_CLUSTER_EXTENSIONS = "getClusterExtensions"
     GET_EXISTING_DEPLOYMENTS = "getExistingDeployments"
     GET_SCHEMA_REGISTRY_RA = "getSchemaRegistryRoleAssignments"
@@ -171,6 +179,7 @@ class ServiceGenerator:
                 path_pattern_base + url_deployment_seg + r"/whatIf$",
                 request_kpis.path_url,
             ):
+                self._assert_correlation_headers(request_kpis, action="init")
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
                 assert_init_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
@@ -183,6 +192,7 @@ class ServiceGenerator:
                 path_pattern_base + url_deployment_seg,
                 request_kpis.path_url,
             ):
+                self._assert_correlation_headers(request_kpis, action="init")
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.RESOURCE.value
                 assert f"/resourcegroups/{self.scenario['resourceGroup']}/" in request_kpis.path_url
                 assert_init_deployment_body(body_str=request_kpis.body_str, target_scenario=self.scenario)
@@ -191,6 +201,7 @@ class ServiceGenerator:
 
     def _handle_cl_create(self, request_kpis: RequestKPIs):
         if request_kpis.method == responses.PUT:
+            self._assert_correlation_headers(request_kpis)
             scenario_cl_name = self.scenario["customLocation"]["name"]
             scenario_namespace = self.scenario["instance"]["namespace"] or "azure-iot-operations"
             if not scenario_cl_name:
@@ -218,13 +229,25 @@ class ServiceGenerator:
 
     def _handle_create(self, request_kpis: RequestKPIs):
         if request_kpis.method == responses.GET:
-            if request_kpis.path_url == (
-                f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{self.scenario['resourceGroup']}"
-                f"/providers/microsoft.deviceregistry/schemaRegistries/{self.scenario['schemaRegistry']['name']}"
-            ):
+            if request_kpis.path_url == self.scenario["schemaRegistry"]["id"]:
+                api_control: dict = self.scenario["apiControl"][CallKey.GET_SCHEMA_REGISTRY]
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.SCHEMA_REGISTRY.value
                 self.call_map[CallKey.GET_SCHEMA_REGISTRY].append(request_kpis)
-                return (200, STANDARD_HEADERS, json.dumps(self.scenario["schemaRegistry"]))
+                return (
+                    api_control.get("code", 200),
+                    STANDARD_HEADERS,
+                    json.dumps(api_control.get("body", self.scenario["schemaRegistry"])),
+                )
+
+            if request_kpis.path_url == self.scenario["adrNamespace"]["id"]:
+                api_control: dict = self.scenario["apiControl"][CallKey.GET_ADR_NAMESPACE]
+                assert request_kpis.params["api-version"] == ExpectedAPIVersion.ADR_NAMESPACE.value
+                self.call_map[CallKey.GET_ADR_NAMESPACE].append(request_kpis)
+                return (
+                    api_control.get("code", 200),
+                    STANDARD_HEADERS,
+                    json.dumps(api_control.get("body", self.scenario["adrNamespace"])),
+                )
 
             if request_kpis.path_url == (
                 f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{self.scenario['resourceGroup']}"
@@ -247,6 +270,7 @@ class ServiceGenerator:
                 return (200, STANDARD_HEADERS, json.dumps(self.scenario["cluster"]["extensions"]))
 
         if request_kpis.method == responses.PUT:
+            self._assert_correlation_headers(request_kpis)
             url_resources_seg = get_deployment_path_regex("extension")
             if re.match(
                 path_pattern_base + url_resources_seg,
@@ -293,6 +317,13 @@ class ServiceGenerator:
             ):
                 ops_ext_identity = self._get_extension_identity()
                 assert request_kpis.params["api-version"] == ExpectedAPIVersion.AUTHORIZATION.value
+                body = json.loads(request_kpis.body_str)
+                assert body["properties"]["roleDefinitionId"] == ROLE_DEF_FORMAT_STR.format(
+                    subscription_id=ZEROED_SUBSCRIPTION,
+                    role_id=CONTRIBUTOR_ROLE_ID,
+                )
+                assert body["properties"]["principalId"] == ops_ext_identity["principalId"]
+                assert body["properties"]["principalType"] == "ServicePrincipal"
                 self.call_map[CallKey.PUT_SCHEMA_REGISTRY_RA].append(request_kpis)
                 api_control = self.scenario["apiControl"][CallKey.PUT_SCHEMA_REGISTRY_RA]
 
@@ -310,6 +341,12 @@ class ServiceGenerator:
         for ext in self.scenario["cluster"]["extensions"]["value"]:
             if ext["properties"]["extensionType"] == extension_type:
                 return ext.get("identity")
+
+    def _assert_correlation_headers(self, request_kpis: RequestKPIs, action: str = "create"):
+        if request_kpis.method not in [responses.PUT, responses.POST]:
+            return
+        assert request_kpis.headers["x-ms-correlation-request-id"]
+        assert request_kpis.headers["CommandName"] == f"iot ops {action}"
 
 
 def get_deployment_path_regex(kind="instance") -> str:
@@ -409,6 +446,8 @@ def build_target_scenario(
             CallKey.DEPLOY_CREATE_WHATIF: {"code": 200, "body": {"status": PROVISIONING_STATE_SUCCESS}},
             CallKey.PUT_SCHEMA_REGISTRY_RA: {"code": 200, "body": {}},
             CallKey.GET_EXISTING_DEPLOYMENTS: {"code": 200, "body": {"data": []}},
+            CallKey.GET_SCHEMA_REGISTRY: {"code": 200, "body": {}},
+            CallKey.GET_ADR_NAMESPACE: {"code": 200, "body": {}},
         },
     }
     if "cluster_properties" in kwargs:
@@ -607,7 +646,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             persist_pvc_sc="default",
             raises=ExceptionMeta(
                 exc_type=InvalidArgumentValueError,
-                exc_msg="Provide a persist max size value to enable and customize broker data persistence.",
+                exc_msg="Provide a persist max size value to enable and customize broker disk persistence.",
             ),
             omit_http_methods=frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD]),
         ),
@@ -759,9 +798,45 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             },
             raises=ExceptionMeta(
                 exc_type=InvalidArgumentValueError,
-                exc_msg=re.compile(r"Resource Id '(.+)' does not match the instance resource group '(.+)'."),
+                exc_msg=re.compile(r"--ns-resource-id value must match the resource group '(.+)'."),
             ),
             omit_http_methods=frozenset([responses.PUT, responses.POST, responses.GET, responses.HEAD]),
+        ),
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_ADR_NAMESPACE: {
+                    "code": 404,
+                    "body": {
+                        "error": {
+                            "code": "ResourceNotFound",
+                            "message": "The Resource was not found.",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=AzureResponseError,
+                exc_msg="The Resource was not found.",
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
+        ),
+        build_target_scenario(
+            apiControl={
+                CallKey.GET_SCHEMA_REGISTRY: {
+                    "code": 404,
+                    "body": {
+                        "error": {
+                            "code": "ResourceNotFound",
+                            "message": "The Resource was not found.",
+                        }
+                    },
+                }
+            },
+            raises=ExceptionMeta(
+                exc_type=AzureResponseError,
+                exc_msg="The Resource was not found.",
+            ),
+            omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
     ],
 )
@@ -834,6 +909,7 @@ def test_iot_ops_create(
         CallKey.GET_RESOURCE_PROVIDERS: 1,
         CallKey.GET_CLUSTER: 1,
         CallKey.GET_SCHEMA_REGISTRY: 1,
+        CallKey.GET_ADR_NAMESPACE: 1,
         CallKey.GET_CLUSTER_EXTENSIONS: 2,
         CallKey.GET_EXISTING_DEPLOYMENTS: 1,
         CallKey.GET_SCHEMA_REGISTRY_RA: 1,

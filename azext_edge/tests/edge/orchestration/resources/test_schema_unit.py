@@ -12,21 +12,23 @@ import pytest
 import responses
 
 from azext_edge.edge.commands_schema import (
+    add_version,
     create_schema,
     delete_schema,
     list_schemas,
-    show_schema,
-    add_version,
-    show_version,
     list_versions,
-    remove_version
+    remove_version,
+    show_schema,
+    show_version,
 )
 from azext_edge.edge.providers.orchestration.common import SchemaFormat, SchemaType
+from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion
+
 from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
 
 SCHEMA_RP = "Microsoft.DeviceRegistry"
-SCHEMA_REGISTRY_RP_API_VERSION = "2024-09-01-preview"
+SCHEMA_REGISTRY_RP_API_VERSION = DeviceRegistryMgmtApiVersion.V20250701_preview.value
 
 
 def get_schema_endpoint(
@@ -455,7 +457,7 @@ def test_version_add(mocked_cmd, mocked_responses: responses, description: Optio
 
 
 def test_version_add_error(mocked_cmd, mocked_responses: responses):
-    from azure.cli.core.azclierror import InvalidArgumentValueError, ForbiddenError
+    from azure.cli.core.azclierror import ForbiddenError, InvalidArgumentValueError
     from azure.core.exceptions import HttpResponseError
     # bad version
     with pytest.raises(InvalidArgumentValueError):

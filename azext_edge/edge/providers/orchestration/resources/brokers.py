@@ -7,7 +7,7 @@
 from collections import defaultdict
 from typing import TYPE_CHECKING, Iterable, List, Optional
 
-from azure.cli.core.azclierror import InvalidArgumentValueError
+from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
 from azure.core.exceptions import ResourceNotFoundError
 from knack.log import get_logger
 from rich.console import Console
@@ -64,12 +64,69 @@ class Brokers(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
+    def update_persist_config(
+        self,
+        name: str,
+        instance_name: str,
+        resource_group_name: str,
+        persist_mode: Optional[List[str]] = None,
+        retain_topics: Optional[List[str]] = None,
+        subscriber_queue_client_ids: Optional[List[str]] = None,
+        state_store_str_keys: Optional[List[List[str]]] = None,
+        state_store_glob_keys: Optional[List[List[str]]] = None,
+        state_store_bin_keys: Optional[List[List[str]]] = None,
+        user_property_key: Optional[str] = None,
+        user_property_value: Optional[str] = None,
+        disable_dynamic: Optional[List[str]] = None,
+        **kwargs,
+    ) -> dict:
+        broker_config = self.show(name=name, instance_name=instance_name, resource_group_name=resource_group_name)
+        existing_persist_config = broker_config.get("properties", {}).get("persistence")
+        if not existing_persist_config:
+            raise ValidationError(
+                "The broker is not enabled for disk persistence which must be configured at create time.\n"
+                "Use 'az iot ops create' with '--persist-max-size' to enable."
+            )
+        new_persist_config = self.build_broker_config(
+            persist_mode=parse_kvp_nargs(persist_mode),
+            retain_topics=retain_topics,
+            subscriber_queue_client_ids=subscriber_queue_client_ids,
+            state_store_str_keys=state_store_str_keys,
+            state_store_glob_keys=state_store_glob_keys,
+            state_store_bin_keys=state_store_bin_keys,
+            user_property_key=user_property_key,
+            user_property_value=user_property_value,
+            disable_dynamic=disable_dynamic,
+            existing_persist_config=existing_persist_config,
+        )
+        for key in new_persist_config["persistence"]:
+            if key not in ["maxSize", "persistentVolumeClaimSpec"]:
+                existing_persist_config[key] = new_persist_config["persistence"][key]
+
+        with console.status("Working..."):
+            poller = self.ops.begin_create_or_update(
+                resource_group_name=resource_group_name,
+                instance_name=instance_name,
+                broker_name=name,
+                resource=broker_config,
+            )
+            return wait_for_terminal_state(poller, **kwargs)
+
     @classmethod
-    def build_broker_config(
+    def build_broker_config(  # noqa: C901
         cls,
         persist_max_size: Optional[str] = None,
         persist_pvc_sc: Optional[str] = None,
         persist_mode: Optional[dict[str, str]] = None,
+        retain_topics: Optional[List[str]] = None,
+        subscriber_queue_client_ids: Optional[List[str]] = None,
+        state_store_str_keys: Optional[List[List[str]]] = None,
+        state_store_glob_keys: Optional[List[List[str]]] = None,
+        state_store_bin_keys: Optional[List[List[str]]] = None,
+        user_property_key: Optional[str] = None,
+        user_property_value: Optional[str] = None,
+        disable_dynamic: Optional[List[str]] = None,
+        existing_persist_config: Optional[dict] = None,
     ) -> dict:
         """
         Build the broker configuration dict. Only data persistence is supported at the moment.
@@ -80,6 +137,15 @@ class Brokers(Queryable):
             persist_pvc_sc (str, optional): Storage class for the persistent volume claim.
             persist_mode (dict[str, str], optional): Dictionary specifying the persistence modes for state store,
                 retain, and subscriber queue.
+            retain_topics (list[str], optional): List of topics to retain for persistence.
+            subscriber_queue_client_ids (list[str], optional): List of client IDs for the subscriber queue.
+            state_store_str_keys (list[list[str]], optional): List of string keys for the state store.
+            state_store_glob_keys (list[list[str]], optional): List of glob keys for the state store.
+            state_store_bin_keys (list[list[str]], optional): List of binary keys for the state store.
+            user_property_key (str, optional): User property key for dynamic persistence.
+            user_property_value (str, optional): User property value for dynamic persistence.
+            disable_dynamic (list[str], optional): List of key types to disable dynamic persistence for.
+            existing_persist_config (dict, optional): Existing persistence configuration to update.
 
         Returns:
             dict: A dictionary representing the broker configuration.
@@ -88,39 +154,112 @@ class Brokers(Queryable):
             InvalidArgumentValueError: If persistence is enabled but max size is not provided,
                 or if invalid modes are specified.
         """
-        if any([persist_pvc_sc, persist_mode]) and not persist_max_size:
-            raise InvalidArgumentValueError(
-                "Provide a persist max size value to enable and customize broker data persistence."
-            )
+        # Constants
+        VALID_MODE_KEYS = ["stateStore", "retain", "subscriberQueue"]
+        VALID_MODE_VALUES = ["None", "All", "Custom"]
 
         config = {}
-        persistence = {}
-        if persist_max_size:
-            persistence["maxSize"] = persist_max_size
-            persistence["retain"] = {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}}
-            persistence["stateStore"] = {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}}
-            persistence["subscriberQueue"] = {
-                "mode": "Custom",
-                "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}},
-            }
-        if persist_pvc_sc:
-            persistence["persistentVolumeClaimSpec"] = {
-                "storageClassName": persist_pvc_sc,
-                "accessModes": ["ReadWriteOncePod"],
-            }
+        persistence = existing_persist_config or {}
+
+        # Initialize new persistence when max size is provided
+        if not existing_persist_config:
+            if any([persist_pvc_sc, persist_mode]) and not persist_max_size:
+                raise InvalidArgumentValueError(
+                    "Provide a persist max size value to enable and customize broker disk persistence."
+                )
+            if persist_max_size:
+                persistence["maxSize"] = persist_max_size
+                # Create default Custom persistence modes with dynamic enabled
+                for key in VALID_MODE_KEYS:
+                    persistence[key] = {"mode": "Custom", f"{key}Settings": {"dynamic": {"mode": "Enabled"}}}
+            if persist_pvc_sc:
+                persistence["persistentVolumeClaimSpec"] = {
+                    "storageClassName": persist_pvc_sc,
+                    "accessModes": ["ReadWriteOncePod"],
+                }
+
+        # Handle persistence mode updates
         if persist_mode:
-            valid_mode_keys = ["stateStore", "retain", "subscriberQueue"]
-            valid_mode_values = ["None", "All", "Custom"]
             for key, value in persist_mode.items():
-                if key not in valid_mode_keys:
+                if key not in VALID_MODE_KEYS:
                     raise InvalidArgumentValueError(
-                        f"Invalid persistence mode key: {key}. Valid keys are {valid_mode_keys}."
+                        f"Invalid persistence mode key: {key}. Valid keys are {VALID_MODE_KEYS}."
                     )
-                if value not in valid_mode_values:
+                if value not in VALID_MODE_VALUES:
                     raise InvalidArgumentValueError(
-                        f"Invalid persistence mode value: {value}. Valid values are {valid_mode_values}."
+                        f"Invalid persistence mode value: {value}. Valid values are {VALID_MODE_VALUES}."
                     )
                 persistence[key] = {"mode": value}
+                if value == "Custom":
+                    persistence[key][f"{key}Settings"] = {"dynamic": {"mode": "Enabled"}}
+
+        # Custom mode validations with specific error messages
+        custom_validations = [
+            (
+                retain_topics,
+                "retain",
+                "To set retain topics for persistence, retain mode must be set to 'Custom'.",
+            ),
+            (
+                subscriber_queue_client_ids,
+                "subscriberQueue",
+                "To set subscriber queue client Ids for persistence, subscriberQueue mode must be set to 'Custom'.",
+            ),
+            (
+                any([state_store_str_keys, state_store_glob_keys, state_store_bin_keys]),
+                "stateStore",
+                "To set state store keys for persistence, stateStore mode must be set to 'Custom'.",
+            ),
+        ]
+
+        for condition, mode_key, error_msg in custom_validations:
+            if condition and persistence[mode_key]["mode"] != "Custom":
+                raise InvalidArgumentValueError(error_msg)
+
+        # Configure retain topics
+        if retain_topics:
+            persistence["retain"]["retainSettings"] = {"topics": retain_topics}
+
+        # Configure subscriber queue client IDs
+        if subscriber_queue_client_ids:
+            persistence["subscriberQueue"]["subscriberQueueSettings"] = {
+                "subscriberClientIds": subscriber_queue_client_ids
+            }
+
+        # Configure state store keys
+        if any([state_store_str_keys, state_store_glob_keys, state_store_bin_keys]):
+            state_store_resources = []
+            # Process each key type collection
+            for collection, key_type in [
+                (state_store_str_keys, "String"),
+                (state_store_glob_keys, "Pattern"),
+                (state_store_bin_keys, "Binary"),
+            ]:
+                if collection:
+                    state_store_resources.extend([{"keys": items, "keyType": key_type} for items in collection])
+            persistence["stateStore"]["stateStoreSettings"] = {"stateStoreResources": state_store_resources}
+
+        # Handle user properties (both must be provided or both must be None)
+        if user_property_key is not None or user_property_value is not None:
+            if user_property_key is None or user_property_value is None:
+                raise InvalidArgumentValueError("Both --user-key and --user-value must be set or both must be unset.")
+            persistence["dynamicSettings"] = {
+                "userPropertyKey": user_property_key,
+                "userPropertyValue": user_property_value,
+            }
+
+        # Handle dynamic disabling
+        if disable_dynamic:
+            for key in disable_dynamic:
+                if key not in VALID_MODE_KEYS:
+                    raise InvalidArgumentValueError(
+                        f"Invalid disable dynamic key: {key}. Valid keys are {VALID_MODE_KEYS}."
+                    )
+                if persistence[key]["mode"] != "Custom":
+                    raise InvalidArgumentValueError(
+                        f"To disable dynamic persistence for {key}, {key} mode must be set to 'Custom'."
+                    )
+                persistence[key][f"{key}Settings"]["dynamic"] = {"mode": "Disabled"}
 
         if persistence:
             config["persistence"] = persistence

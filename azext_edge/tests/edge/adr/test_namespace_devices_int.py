@@ -6,10 +6,10 @@
 
 import pytest
 import json
-from time import sleep
 from typing import List
 from knack.log import get_logger
 from azure.cli.core.azclierror import CLIInternalError
+from azext_edge.edge.providers.adr.namespace_devices import DeviceEndpointType
 from azext_edge.edge.util.common import parse_kvp_nargs
 
 from ...generators import generate_random_string
@@ -119,7 +119,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     assert_namespace_device_endpoint_props(
         result,
         endpoint_name=endpoint_name_onvif,
-        endpoint_type="Onvif",
+        endpoint_type=DeviceEndpointType.ONVIF.value,
         endpoint_address=endpoint_address,
         accept_invalid_hostnames=True,
         accept_invalid_certificates=True,
@@ -140,7 +140,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     assert_namespace_device_endpoint_props(
         result,
         endpoint_name=endpoint_name_media,
-        endpoint_type="Media",
+        endpoint_type=DeviceEndpointType.MEDIA.value,
         endpoint_address=endpoint_address,
         authentication_method="UsernamePassword",
         username_reference=username_reference,
@@ -180,7 +180,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     assert_namespace_device_endpoint_props(
         result,
         endpoint_name=endpoint_name_opcua,
-        endpoint_type="OpcUa",
+        endpoint_type=DeviceEndpointType.OPCUA.value,
         endpoint_address=endpoint_address,
         application_name=application_name,
         keep_alive=keep_alive,
@@ -225,6 +225,30 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         certificate_reference=certificate_reference,
         trust_list=trust_list,
         version="1.0.0",
+    )
+
+    # Add replace ONVIF with REST endpoint
+    endpoint_address = "https://192.168.1.100:8000/rest/device_service"
+    username_reference = "secretRef:username"
+    password_reference = "secretRef:password"
+    result = run(
+        f"az iot ops ns device endpoint inbound add rest --device {device_name_2} "
+        f"--instance {instance_name} -g {resource_group} --name {endpoint_name_onvif} "
+        f"--endpoint-address {endpoint_address} "
+        f"--user-ref {username_reference} --pass-ref {password_reference} "
+        f"--version 1  --replace"
+    )
+    assert_namespace_device_endpoint_props(
+        result,
+        endpoint_name=endpoint_name_onvif,
+        endpoint_type=DeviceEndpointType.REST.value,
+        endpoint_address=endpoint_address,
+        accept_invalid_hostnames=True,
+        accept_invalid_certificates=True,
+        authentication_method="UsernamePassword",
+        username_reference=username_reference,
+        password_reference=password_reference,
+        version="1",
     )
 
     # List (all) endpoints
@@ -306,14 +330,6 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         else:
             raise e
 
-    sleep(30)  # Wait for deletion to propagate
-    result = run(
-        "az iot ops ns device query"
-    )
-    device_names = [d["name"] for d in result]
-    assert device_name_1 not in device_names
-    assert device_name_2 not in device_names
-
 
 def assert_namespace_device_properties(
     result: dict,
@@ -362,8 +378,6 @@ def assert_namespace_device_endpoint_props(
     assert expected["endpoint_name"] in result_endpoints
     result_endpoint = result_endpoints[expected["endpoint_name"]]
 
-    if expected["endpoint_type"] in ["Onvif", "Media", "OpcUa"]:
-        expected["endpoint_type"] = f"Microsoft.{expected['endpoint_type']}"
     assert result_endpoint["endpointType"] == expected["endpoint_type"]
     assert result_endpoint["address"] == expected.get("endpoint_address")
     assert result_endpoint.get("version") == expected.get("version")

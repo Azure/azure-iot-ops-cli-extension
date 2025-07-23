@@ -332,7 +332,7 @@ jobs:
           echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
 
           adr_namespace_name=$(echo "init-adr-ns-${{ env.CLUSTER_NAME }}" | cut -c 1-30)
-          adr_namespace_id=$(az resource create -g ${{ env.RESOURCE_GROUP }} -n $adr_namespace_name --api-version 2025-07-01-preview --resource-type Microsoft.DeviceRegistry/namespaces --properties '{}' --query "id" -o tsv)
+          adr_namespace_id=$(az iot ops ns create -g ${{ env.RESOURCE_GROUP }} -n $adr_namespace_name --query "id" -o tsv)
           echo "ADR_NAMESPACE_ID=$adr_namespace_id" >> $GITHUB_OUTPUT
       - name: "OIDC Token exchange service"
         run: |

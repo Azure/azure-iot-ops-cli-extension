@@ -5,14 +5,14 @@
 # ----------------------------------------------------------------------------------------------
 
 from typing import List
+import pytest
 
 from ...generators import generate_random_string
 from ...helpers import run
-from .namespace_helpers import create_config_file, assert_point_properties
+from .namespace_helpers import create_config_file, assert_point_properties, assert_event_properties
 
 
-# TODO fix up tests to work with linux
-# pytestmark = pytest.mark.rpsaas
+pytestmark = pytest.mark.rpsaas_long_running
 
 
 def test_namespace_custom_asset_event_lifecycle_operations(
@@ -256,7 +256,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
 
     event_result = run(
         f"az iot ops ns asset opcua event add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
+        f"-g {resource_group} --name {event_name} --event-notifier \"{event_notifier}\" "
         f"--destination {event_destinations} --publish-int {publishing_interval} "
         f"--queue-size {queue_size}"
     )
@@ -296,7 +296,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
 
     updated_event = run(
         f"az iot ops ns asset opcua event update --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_name} --event-notifier {updated_event_notifier} "
+        f"-g {resource_group} --name {event_name} --event-notifier \"{updated_event_notifier}\" "
         f"--publish-int {updated_publishing_interval} --queue-size {updated_queue_size} "
     )
 
@@ -310,7 +310,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     replaced_event_notifier = "ns=4;i=1000"
     replaced_event = run(
         f"az iot ops ns asset opcua event add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_name} --event-notifier {replaced_event_notifier} "
+        f"-g {resource_group} --name {event_name} --event-notifier \"{replaced_event_notifier}\" "
         f"--replace"
     )
 
@@ -451,15 +451,3 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
 
     remaining_event_names = [ev["name"] for ev in remaining_events]
     assert event_name not in remaining_event_names
-
-
-def assert_event_properties(result, **expected):
-    """Verify event properties match expected values.
-
-    Minimal checks since unit tests already validate the command structure."""
-    assert result["name"] == expected["name"]
-
-    if "event_notifier" in expected:
-        assert result["eventNotifier"] == expected["event_notifier"]
-    if "custom_configuration" in expected:
-        assert result["eventConfiguration"] == expected["custom_configuration"]

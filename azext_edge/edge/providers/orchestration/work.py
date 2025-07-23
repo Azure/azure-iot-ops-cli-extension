@@ -30,6 +30,7 @@ from ...util.az_client import (
     get_resource_client,
     parse_resource_id,
     wait_for_terminal_state,
+    get_api_error_str,
 )
 from ...util.common import insert_newlines
 from .common import (
@@ -92,7 +93,6 @@ class WorkDisplay:
     def __init__(self):
         self._categories: Dict[int, Tuple[WorkRecord, bool]] = {}
         self._steps: Dict[int, Dict[int, str]] = {}
-        self._headers: Dict[int, str] = {}
 
     def add_category(
         self, category: WorkCategoryKey, title: str, skipped: bool = False, description: Optional[str] = None
@@ -276,11 +276,12 @@ class WorkManager:
                     role_id=CONTRIBUTOR_ROLE_ID,
                 ),
                 principal_type=PrincipalType.SERVICE_PRINCIPAL.value,
+                headers=self._headers,
             )
         except HttpResponseError as e:
             self._warnings.append(
                 get_user_msg_warn_ra(
-                    prefix=f"Role assignment failed with:\n{str(e)}",
+                    prefix=f"Role assignment failed with:\n{get_api_error_str(e)}",
                     principal_id=ops_ext_principal_id,
                     scope=self._targets.schema_registry_resource_id,
                 )
@@ -299,6 +300,7 @@ class WorkManager:
                 resource_group_name=self._targets.resource_group_name,
                 deployment_name=deployment_name,
                 parameters=deployment_params,
+                headers=self._headers,
             )
             terminal_what_if_deployment = wait_for_terminal_state(what_if_poller)
             if (
@@ -312,6 +314,7 @@ class WorkManager:
             resource_group_name=self._targets.resource_group_name,
             deployment_name=deployment_name,
             parameters=deployment_params,
+            headers=self._headers,
         )
 
     def execute_ops_init(
@@ -324,8 +327,9 @@ class WorkManager:
         **kwargs,
     ):
         self._bootstrap_ux(show_progress=show_progress)
-        self._work_id = uuid4().hex
+        self._work_id = str(uuid4())
         self._work_format_str = f"aziotops.{{op}}.{self._work_id}"
+        self._headers = {"x-ms-correlation-request-id": self._work_id, "CommandName": ""}
         self._apply_foundation = apply_foundation
         self._check_cluster = check_cluster
         self._context_name = context_name
@@ -390,6 +394,7 @@ class WorkManager:
 
             # Enable IoT Ops workflow
             if self._apply_foundation:
+                self._headers["CommandName"] = "iot ops init"
                 enablement_work_name = self._work_format_str.format(op="enablement")
                 self._render_display(
                     category=WorkCategoryKey.ENABLE_IOT_OPS, active_step=WorkStepKey.WHAT_IF_ENABLEMENT
@@ -425,12 +430,17 @@ class WorkManager:
 
             # Deploy IoT Ops workflow
             if self._targets.instance_name:
-                # Ensure schema registry exists.
-                self.resource_client.resources.get_by_id(
-                    resource_id=self._targets.schema_registry_resource_id,
-                    # TODO: Is this preview version still necessary?
-                    api_version=DeviceRegistryMgmtApiVersion.V20240901_preview.value,
-                )
+                self._headers["CommandName"] = "iot ops create"
+                # Ensure schema registry and namespace resources exist.
+                for resource_id in [
+                    self._targets.schema_registry_resource_id,
+                    self._targets.adr_namespace_resource_id,
+                ]:
+                    self.resource_client.resources.get_by_id(
+                        resource_id=resource_id,
+                        api_version=DeviceRegistryMgmtApiVersion.V20250701_preview.value,
+                    )
+
                 self._process_extension_dependencies()
                 self._raise_if_ops_deployed()
                 dependency_ext_ids = [self.ops_extension_dependencies[EXTENSION_TYPE_SSC]["id"]]
@@ -493,8 +503,7 @@ class WorkManager:
 
             return self._get_user_result()
         except HttpResponseError as e:
-            # TODO: repeated error messages.
-            raise AzureResponseError(e.message)
+            raise AzureResponseError(get_api_error_str(e))
         except KeyboardInterrupt:
             return
         finally:
@@ -521,7 +530,7 @@ class WorkManager:
                 "[light_slate_gray]Azure IoT Operations",
                 style=Style(bold=True),
             )
-            header_grid.add_row(f"Workflow Id: [dark_orange3]{self._work_id}")
+            header_grid.add_row(f"Workflow correlation Id: [dark_orange3]{self._work_id}")
             header_grid.add_row(NewLine(1))
 
             content_grid = Table.grid(expand=False)
@@ -646,6 +655,7 @@ class WorkManager:
                 location=self._targets.location,
                 cluster_extension_ids=extension_ids,
                 tags=self._targets.tags,
+                headers=self._headers,
             )
         except HttpResponseError as http_exc:
             if http_exc.error.code == "UnauthorizedNamespaceError":

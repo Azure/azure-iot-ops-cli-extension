@@ -8,7 +8,6 @@ import json
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from azure.cli.core.azclierror import (
-    FileOperationError,
     InvalidArgumentValueError,
     MutuallyExclusiveArgumentError,
     RequiredArgumentMissingError,
@@ -17,11 +16,11 @@ from knack.log import get_logger
 from rich.console import Console
 
 from ...util.az_client import (
-    DeviceRegistryMgmtApiVersion,
     get_registry_mgmt_client,
     wait_for_terminal_state,
 )
 from ...util.queryable import Queryable
+from .common import ADRAuthModes, AEPTypes
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
     GENERAL_AUTH_REF_MISMATCH_ERROR,
@@ -29,7 +28,6 @@ from .user_strings import (
     REMOVED_CERT_REF_MSG,
     REMOVED_USERPASS_REF_MSG,
 )
-from .common import ADRAuthModes, AEPTypes
 
 if TYPE_CHECKING:
     from ...vendor.clients.deviceregistrymgmt.operations import (
@@ -41,13 +39,11 @@ logger = get_logger(__name__)
 AEP_RESOURCE_TYPE = "Microsoft.DeviceRegistry/assetEndpointProfiles"
 
 
-# TODO: soul searching to see if I should combine with assets class
 class AssetEndpointProfiles(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id,
-            api_version=DeviceRegistryMgmtApiVersion.V20241101
+            subscription_id=self.default_subscription_id
         )
         self.ops: "AEPOperations" = self.deviceregistry_mgmt_client.asset_endpoint_profiles
 
@@ -87,8 +83,6 @@ class AssetEndpointProfiles(Queryable):
         configuration = None
         if endpoint_profile_type == AEPTypes.opcua.value:
             configuration = _build_opcua_config(**kwargs)
-        elif "additional_configuration" in kwargs:  # custom type
-            configuration = _process_additional_configuration(kwargs["additional_configuration"])
 
         _update_properties(
             properties,
@@ -145,7 +139,6 @@ class AssetEndpointProfiles(Queryable):
             return self.ops.list_by_resource_group(resource_group_name=resource_group_name)
         return self.ops.list_by_subscription()
 
-    # TODO: unit test
     def query_asset_endpoint_profiles(
         self,
         asset_endpoint_profile_name: Optional[str] = None,
@@ -353,34 +346,6 @@ def _build_query_body(
         "| project id, customLocation, location, name, resourceGroup, provisioningState, tags, "\
         "type, subscriptionId "
     return query_body
-
-
-def _process_additional_configuration(configuration: str) -> Optional[str]:
-    from ...util import read_file_content
-    inline_json = False
-    if not configuration:
-        return
-
-    try:
-        logger.debug("Processing additional configuration.")
-        configuration = read_file_content(configuration)
-        if not configuration:
-            raise InvalidArgumentValueError("Given file is empty.")
-    except FileOperationError:
-        inline_json = True
-        logger.debug("Given additional configuration is not a file.")
-
-    # make sure it is an actual json
-    try:
-        json.loads(configuration)
-        return configuration
-    except json.JSONDecodeError as e:
-        error_msg = "Additional configuration is not a valid JSON. "
-        if inline_json:
-            error_msg += "For examples of valid JSON formating, please see https://aka.ms/inline-json-examples "
-        raise InvalidArgumentValueError(
-            f"{error_msg}\n{e.msg}"
-        )
 
 
 def _process_authentication(

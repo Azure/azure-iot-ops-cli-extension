@@ -329,7 +329,11 @@ def verify_broker_config(target_scenario: dict, parameters: dict):
 
     if "persist_mode" in target_scenario:
         for k, v in target_scenario["persist_mode"].items():
-            assert parameters["brokerConfig"]["value"]["persistence"][k] == {"mode": v}
+            expected_payload = {"mode": v}
+            if v == "Custom":
+                expected_payload[k + "Settings"] = {"dynamic": {"mode": "Enabled"}}
+
+            assert parameters["brokerConfig"]["value"]["persistence"][k] == expected_payload
             explicit_mode_keys[k] = True
 
     for k in explicit_mode_keys:
@@ -489,7 +493,7 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
                 resource_group_name=generate_random_string(),
                 persist_mode=["a=b", "c=d"],
             ),
-            "Provide a persist max size value to enable and customize broker data persistence.",
+            "Provide a persist max size value to enable and customize broker disk persistence.",
         ),
         (
             build_target_scenario(
@@ -508,6 +512,64 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
                 persist_mode=["stateStore=All", "retain=d"],
             ),
             "Invalid persistence mode value: d. Valid values are ['None', 'All', 'Custom'].",
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                schema_registry_resource_id=generate_random_string(),
+            ),
+            "--sr-resource-id is malformed. An Azure resource Id has the form:\n"
+            "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers"
+            "/Microsoft.Provider/{resourceType}/{resourceName}",
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                schema_registry_resource_id=get_schema_registry_id(),
+                adr_namespace_resource_id=generate_random_string(),
+            ),
+            "--ns-resource-id is malformed. An Azure resource Id has the form:\n"
+            "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers"
+            "/Microsoft.Provider/{resourceType}/{resourceName}",
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                schema_registry_resource_id=get_resource_id(
+                    resource_provider="Microsoft.Storage",
+                    resource_group_name=generate_random_string(),
+                    resource_path="/storageAccounts/mystorageaccount",
+                ),
+                adr_namespace_resource_id=get_ns_resource_id(
+                    resource_group_name="myresourcegroup",
+                ),
+            ),
+            "--sr-resource-id value must be of type Microsoft.DeviceRegistry/schemaRegistries.",
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name="instancegroup",
+                schema_registry_resource_id=get_schema_registry_id(),
+                adr_namespace_resource_id=get_ns_resource_id(),
+            ),
+            "--ns-resource-id value must match the resource group 'instancegroup'.",
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name="myresourcegroup",
+                schema_registry_resource_id=get_schema_registry_id(),
+                adr_namespace_resource_id=get_resource_id(
+                    resource_provider="Microsoft.Storage",
+                    resource_group_name="myresourcegroup",
+                    resource_path="/storageAccounts/mystorageaccount",
+                ),
+            ),
+            "--ns-resource-id value must be of type Microsoft.DeviceRegistry/namespaces.",
         ),
     ],
 )
