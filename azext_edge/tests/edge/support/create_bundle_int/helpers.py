@@ -350,7 +350,13 @@ def get_file_map(
     # separate namespaces
     file_map = {"__namespaces__": {}}
     # default walk result meta and arcagents
-    expected_default_walk_result = 1 + len(ARC_AGENTS)
+    num_additional_services = len(ARC_AGENTS)
+    meta_path = path.join(BASE_ZIP_PATH, aio_namespace, "meta")
+    meso_path = path.join(BASE_ZIP_PATH, aio_namespace, "meso")
+    if meta_path in walk_result:
+        num_additional_services += 1
+    if meso_path in walk_result:
+        num_additional_services += 1
 
     if arc_namespace:
         file_map["arc"] = {}
@@ -361,61 +367,66 @@ def get_file_map(
 
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
-        assert len(walk_result) == 2 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        assert len(walk_result) == 2 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
+
     elif ops_service == "billing":
-        assert len(walk_result) == 2 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        assert len(walk_result) == 2 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         ops_path = path.join(BASE_ZIP_PATH, aio_namespace, ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
+
     elif ops_service == "acs":
         if acstor_namespace:
             # resources in both acstor_namespace and acs_namespace
-            assert len(walk_result) == 2 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 2 + num_additional_services, f"walk result keys: {walk_result.keys()}"
             acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
             file_map["acstor"] = convert_file_names(walk_result[acstor_path]["files"])
             file_map["__namespaces__"]["acstor"] = acstor_namespace
         else:
             # resources only in acs_namespace
-            assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
         file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
         file_map["__namespaces__"]["acs"] = acs_namespace
 
         # no files for aio, skip the rest assertions
         return file_map
+
     elif ops_service == OpsServiceType.secretstore.value:
         ops_path = path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.secretstore.value)
         ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretstore.value)
         if ops_path not in walk_result:
             # no CR created in aio namespace
             # since CR is the only resource type under aio, skip the rest assertions
-            assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
             pytest.skip(f"No bundles created for {ops_service}.")
         else:
-            assert len(walk_result) == 2 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 2 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         file_map[OpsServiceType.secretstore.value] = convert_file_names(walk_result[ssc_path]["files"])
         file_map["__namespaces__"][OpsServiceType.secretstore.value] = ssc_namespace
+
     elif ops_service == OpsServiceType.azuremonitor.value:
         monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
-        assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         file_map[OpsServiceType.azuremonitor.value] = convert_file_names(walk_result[monitor_path]["files"])
         file_map["__namespaces__"][OpsServiceType.azuremonitor.value] = arc_namespace
 
         # no files for aio, skip the rest assertions
         return file_map
+
     elif ops_service == "certmanager":
         if acstor_namespace:
-            expected_default_walk_result += 1
+            num_additional_services += 1
             certmanager_acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "certmanager")
             file_map["certmanager_acstor"] = convert_file_names(walk_result[certmanager_acstor_path]["files"])
             file_map["__namespaces__"]["acstor"] = acstor_namespace
 
         if ssc_namespace:
-            expected_default_walk_result += 1
+            num_additional_services += 1
             certmanager_ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, "certmanager")
             file_map["certmanager_ssc"] = convert_file_names(walk_result[certmanager_ssc_path]["files"])
             file_map["__namespaces__"]["ssc"] = ssc_namespace
@@ -427,17 +438,20 @@ def get_file_map(
         certmanager_arc_path = path.join(BASE_ZIP_PATH, arc_namespace, "certmanager")
         file_map["certmanager_arc"] = convert_file_names(walk_result[certmanager_arc_path]["files"])
         file_map["__namespaces__"]["certmanager"] = certmanager_namespace
-        assert len(walk_result) == 3 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        assert len(walk_result) == 3 + num_additional_services, f"walk result keys: {walk_result.keys()}"
+
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
-            assert len(walk_result) == expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == num_additional_services, f"walk result keys: {walk_result.keys()}"
             pytest.skip(f"No bundles created for {ops_service}.")
         else:
-            assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
+
     # remove ops_service that are not selectable by --svc
     elif ops_service not in ["otel", "meta"]:
-        assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         assert not walk_result[ops_path]["folders"]
+
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = aio_namespace
     return file_map
@@ -533,13 +547,13 @@ def process_top_levels(
     )
 
     logger.debug("Determined the following namespaces:")
-    logger.debug(f"AIO namespace: {namespaces['aio']}")
-    logger.debug(f"Usage system namespace: {namespaces['usage_system']}")
-    logger.debug(f"ARC namespace: {namespaces['arc']}")
-    logger.debug(f"ACS namespace: {namespaces['acs']}")
-    logger.debug(f"ACSTOR namespace: {namespaces['acstor']}")
-    logger.debug(f"SSC namespace: {namespaces['ssc']}")
-    logger.debug(f"Certmanager namespace: {namespaces['certmanager']}")
+    logger.debug(f"AIO namespace: {namespaces.get('aio')}")
+    logger.debug(f"Usage system namespace: {namespaces.get('usage_system')}")
+    logger.debug(f"ARC namespace: {namespaces.get('arc')}")
+    logger.debug(f"ACS namespace: {namespaces.get('acs')}")
+    logger.debug(f"ACSTOR namespace: {namespaces.get('acstor')}")
+    logger.debug(f"SSC namespace: {namespaces.get('ssc')}")
+    logger.debug(f"Certmanager namespace: {namespaces.get('certmanager')}")
 
     return namespaces
 
