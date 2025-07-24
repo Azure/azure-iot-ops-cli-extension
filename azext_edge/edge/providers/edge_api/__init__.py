@@ -9,7 +9,7 @@ from .arccontainerstorage import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_AP
 from .azuremonitor import AZUREMONITOR_API_V1
 from .base import EdgeApiManager, EdgeResourceApi
 from .certmanager import CERTMANAGER_API_V1, TRUSTMANAGER_API_V1
-from .clusterconfig import CLUSTER_CONFIG_API_V1, CLUSTER_CONFIG_API_V1B1, CLUSTERCONFIG_ACTIVE_API
+from .clusterconfig import CLUSTER_CONFIG_API_V1, CLUSTERCONFIG_ACTIVE_API
 from .dataflow import DATAFLOW_ACTIVE_API, DATAFLOW_API_V1, DATAFLOW_API_V1B1, DataflowResourceKinds
 from .deviceregistry import (
     DEVICEREGISTRY_ACTIVE_API,
@@ -32,7 +32,6 @@ __all__ = [
     "AZUREMONITOR_API_V1",
     "CERTMANAGER_API_V1",
     "CLUSTER_CONFIG_API_V1",
-    "CLUSTER_CONFIG_API_V1B1",
     "CLUSTERCONFIG_ACTIVE_API",
     "CONTAINERSTORAGE_API_V1",
     "EdgeResourceApi",

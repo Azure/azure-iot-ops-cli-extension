@@ -15,4 +15,4 @@ CLUSTER_CONFIG_API_V1B1 = EdgeResourceApi(
     group="clusterconfig.azure.com", version="v1beta1", moniker="clusterconfig", label="microsoft-iotoperations"
 )
 
-CLUSTERCONFIG_ACTIVE_API = CLUSTER_CONFIG_API_V1B1
+CLUSTERCONFIG_ACTIVE_API = CLUSTER_CONFIG_API_V1
