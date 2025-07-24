@@ -63,11 +63,15 @@ def test_create_bundle_billing(cluster_connection, tracked_files):
         resource_apis=CLUSTER_CONFIG_API_V1,
         namespace=file_map["__namespaces__"]["usage"]
     )
-    expected_types = set(USAGE_WORKLOAD_TYPES).union(CLUSTER_CONFIG_API_V1.kinds)
+    expected_types = (
+        set(USAGE_WORKLOAD_TYPES)
+        .union(CLUSTER_CONFIG_API_V1.kinds)
+        .union({"vwc", "mwc", "billingerror", "billingusage", "extensionconfig", "azureextensionidentity"})
+    )
     assert set(file_map["usage"].keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=file_map["usage"],
         pre_bundle_items=usage_workload_items,
         prefixes=USAGE_PREFIXES,
-        bundle_path=bundle_path
+        bundle_path=bundle_path,
     )
