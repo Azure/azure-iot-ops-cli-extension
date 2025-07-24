@@ -17,6 +17,7 @@ from azext_edge.tests.edge.support.test_support_unit import (
     assert_list_cluster_role_bindings,
     assert_list_cluster_roles,
     assert_list_config_maps,
+    assert_list_daemon_sets,
     assert_list_deployments,
     assert_list_mutating_webhooks,
     assert_list_pods,
@@ -37,6 +38,7 @@ def test_create_bundle_meso(
     mocked_zipfile,
     mocked_list_cluster_roles,
     mocked_list_cluster_role_bindings,
+    mocked_list_daemonsets,
     mocked_list_deployments,
     mocked_list_pods,
     mocked_list_replicasets,
@@ -71,6 +73,12 @@ def test_create_bundle_meso(
         since_seconds=since_seconds,
     )
     assert_list_config_maps(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_NAME_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+    assert_list_daemon_sets(
         mocked_client,
         mocked_zipfile,
         label_selector=MESO_NAME_LABEL,
@@ -123,6 +131,12 @@ def test_create_bundle_meso(
         directory_path=MESO_DIRECTORY_PATH,
     )
     assert_list_deployments(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=MESO_CLUSTER_METRICS_LABEL,
+        directory_path=MESO_DIRECTORY_PATH,
+    )
+    assert_list_daemon_sets(
         mocked_client,
         mocked_zipfile,
         label_selector=MESO_CLUSTER_METRICS_LABEL,
