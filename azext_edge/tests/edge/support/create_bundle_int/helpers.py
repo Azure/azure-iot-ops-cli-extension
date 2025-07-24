@@ -357,7 +357,7 @@ def get_file_map(
     meso_path = path.join(BASE_ZIP_PATH, aio_namespace, "meso")
     if meta_path in walk_result:
         num_additional_services += 1
-    if meso_path in walk_result:
+    if meso_path in walk_result and ops_service != OpsServiceType.meso.value:
         num_additional_services += 1
 
     if arc_namespace:
@@ -463,6 +463,9 @@ def process_top_levels(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
 ) -> Dict[str, Union[str, None]]:
+    """
+    Mostly used to determine namespaces from the top level of the support bundle.
+    """
     level_0 = walk_result.pop(BASE_ZIP_PATH)
     for file in ["events.yaml", "nodes.yaml", "storage-classes.yaml", "azure-clusterconfig.yaml"]:
         assert file in level_0["files"]
