@@ -489,7 +489,9 @@ def process_top_levels(
             name=name, folder=path.join("arcagents", ARC_AGENTS[0][0]), file_prefix="pod"
         ):
             namespaces["arc"] = name
-        elif _get_namespace_determinating_files(name=name, folder="arccontainerstorage", file_prefix="pvc"):
+        elif _get_namespace_determinating_files(
+            name=name, folder="arccontainerstorage", file_prefix="edgestorageconfiguration"
+        ):
             namespaces["acs"] = name
         elif _get_namespace_determinating_files(
             name=name, folder="containerstorage", file_prefix="configmap"

@@ -150,10 +150,19 @@ def get_kubectl_workload_items(
     label_match: Optional[Tuple[str, str]] = None,
 ) -> Dict[str, Any]:
     """Gets workload kubectl items for a specific type (ex: pods)."""
-    if service_type == "pvc":
-        service_type = "persistentvolumeclaim"
+    # map for shorthand names to full names (something kubectl understands)
+    key_to_full_map = {
+        "pvc": "persistentvolumeclaim",
+        "vwc": "validatingwebhookconfiguration",
+        "mwc": "mutatingwebhookconfiguration",
+    }
+
+    # if the service type is in the map, use the full name
+    service_type = key_to_full_map.get(service_type, service_type)
+
     if isinstance(prefixes, str):
         prefixes = [prefixes]
+
     namespace_param = f"-n {namespace}" if namespace else "-A"
     label_param = f"--selector {label_match[0]}={label_match[1]}" if label_match else ""
     kubectl_items = run(f"kubectl get {service_type} {namespace_param} {label_param} -o json")

@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 pytestmark = pytest.mark.e2e
 
 ACS_PREFIXES = [
+    "azure-arc-containerstorage",
     "acsa-otel",
     "csi-wyvern-controller",
     "csi-wyvern-node",
@@ -35,7 +36,7 @@ ACS_OPTIONAL_PREFIXES = [
     "adr-schema-registry-cache-claim-user-pvc",
     "adr-schema-registry-cache-claim-system-pvc",
 ]
-ACS_WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service"]
+ACS_WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service", "vwc"]
 ACSTOR_PREFIXES = [
     "acstor",
     "capacity-provisioner",
@@ -86,7 +87,6 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
     # ACS azure-arc-containerstorage
     acs_file_map = file_map["acs"]
 
-    # TODO: may not be able to use EdgeApiManager due to the files being in different folders
     expected_types = set(ACS_WORKLOAD_TYPES).union(ARCCONTAINERSTORAGE_API_V1.kinds)
     assert set(acs_file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(
