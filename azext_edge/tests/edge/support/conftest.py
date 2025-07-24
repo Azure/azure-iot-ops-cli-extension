@@ -342,7 +342,16 @@ def mocked_list_services(mocked_client):
     from kubernetes.client.models import V1ServiceList, V1Service, V1ObjectMeta
 
     def _handle_list_services(*args, **kwargs):
-        service_names = ["mock_service", "opcplc-0000000", "aio-operator", "diagnostics-operator-service"]
+        service_names = [
+            "mock_service",
+            "opcplc-0000000",
+            "aio-operator",
+            "diagnostics-operator-service",
+            "aio-onvif-0000000",
+            "aio-media-0000000",
+            "onvif-0000000",
+            "media-0000000",
+        ]
         service_list = []
         for name in service_names:
             service_list.append(V1Service(metadata=V1ObjectMeta(namespace="mock_namespace", name=name)))

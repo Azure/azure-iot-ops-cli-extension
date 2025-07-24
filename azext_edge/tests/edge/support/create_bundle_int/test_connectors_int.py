@@ -17,7 +17,7 @@ from .helpers import (
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
-CONNECTOR_PREFIXES = ["aio-opc", "opcplc"]
+CONNECTOR_PREFIXES = ["aio-opc", "opcplc", "aio-onvif", "onvif", "aio-media", "media"]
 CONNECTOR_WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "replicaset", "service", "configmap"]
 # TODO: not tested yet - internal argument
 CONNECTOR_OPTIONAL_WORKLOAD_TYPES = ["podmetric"]  # note: not an actual type

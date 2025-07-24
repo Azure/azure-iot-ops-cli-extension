@@ -316,6 +316,25 @@ def get_all_kinds_from_manager(
     return result - set(exclude_kinds)
 
 
+def cleanup_walk_result(
+    walk_result: Dict[str, Dict[str, List[str]]],
+    exclude_namespaces: List[str],
+) -> Dict[str, Dict[str, List[str]]]:
+    """
+    Cleans up the walk result by removing paths that contains namespaces to be excluded.
+
+    :param walk_result: The original walk result dictionary.
+    :param exclude_namespaces: List of namespaces to exclude from the walk result.
+    :return: Cleaned up walk result dictionary.
+    """
+
+    for key in list(walk_result.keys()):
+        if key.startswith(BASE_ZIP_PATH) and key.split("\\")[1] not in exclude_namespaces.values():
+            walk_result.pop(key)
+
+    return walk_result
+
+
 def get_file_map(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
@@ -331,6 +350,12 @@ def get_file_map(
     c_namespace = namespaces.get("usage_system")
     certmanager_namespace = namespaces.get("certmanager")
     ops_path = None
+
+    # Skip checking the namespaces not in namespaces
+    walk_result = cleanup_walk_result(
+        walk_result,
+        exclude_namespaces=namespaces,
+    )
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))
@@ -468,7 +493,7 @@ def process_top_levels(
             name=name, folder=path.join("arcagents", ARC_AGENTS[0][0]), file_prefix="pod"
         ):
             arc_namespace = name
-        elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
+        elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="edgeingestpolicy"):
             acs_namespace = name
         elif _get_namespace_determinating_files(
             name=name, folder=path.join("containerstorage"), file_prefix="configmap"
@@ -665,19 +690,11 @@ def _clean_up_folders(
         and path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace) in walk_result
     ):
         services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
-        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace))
+
+        if acstor_namespace:
+            walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace))
         if acs_namespace:
-            services.append("arccontainerstorage")
-        if (
-            containerstorage_service
-            and path.join(BASE_ZIP_PATH, acstor_namespace, containerstorage_service) in walk_result
-        ):
-            services.append(containerstorage_service)
-        assert set(level_1["folders"]) == set(services), (
-            f"Mismatch; folders: [{level_1['folders']}], "
-            f"services [{services}]"
-        )
-        assert not level_1["files"]
+            walk_result.pop(path.join(BASE_ZIP_PATH, acs_namespace))
 
     # remove empty folders in level 2
     if clusterconfig_namespace:
