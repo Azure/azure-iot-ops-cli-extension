@@ -29,7 +29,7 @@ def mocked_node_client(mocked_client, mocker, request):
     nodes = []
     for node_params in params:
         arch = node_params.pop("architecture", generate_random_string(size=5))
-        operating_system = node_params.pop("operating_system", "linux")
+        operating_system = node_params.pop("operating_system", "")
         # Too annoying to make a valid one
         node_info = mocker.Mock(
             architecture=arch,
