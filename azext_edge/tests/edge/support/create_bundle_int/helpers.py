@@ -489,10 +489,10 @@ def process_top_levels(
             name=name, folder=path.join("arcagents", ARC_AGENTS[0][0]), file_prefix="pod"
         ):
             namespaces["arc"] = name
-        elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
+        elif _get_namespace_determinating_files(name=name, folder="arccontainerstorage", file_prefix="pvc"):
             namespaces["acs"] = name
         elif _get_namespace_determinating_files(
-            name=name, folder=path.join("containerstorage"), file_prefix="configmap"
+            name=name, folder="containerstorage", file_prefix="configmap"
         ):
             containerstorage_service = "containerstorage"
             namespaces["acstor"] = name
@@ -500,12 +500,12 @@ def process_top_levels(
             name=name, folder=OpsServiceType.secretstore.value, file_prefix="deployment"
         ):
             namespaces["ssc"] = name
-        elif _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="deployment"):
+        elif _get_namespace_determinating_files(name=name, folder="certmanager", file_prefix="deployment"):
             namespaces["certmanager"] = name
         elif _get_namespace_determinating_files(name=name, folder="meta", file_prefix="instance"):
             namespaces["aio"] = name
 
-        if _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="configmap"):
+        if _get_namespace_determinating_files(name=name, folder="certmanager", file_prefix="configmap"):
             cert_resource_namespaces.append(name)
 
     # find the acstor namespace if fault tolerance is enabled,
