@@ -9,7 +9,6 @@ import random
 from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.connectors import (
-    AIO_ONVIF_PREFIX,
     OPC_APP_LABEL,
     CONNECTORS_DIRECTORY_PATH,
     OPC_NAME_LABEL,
