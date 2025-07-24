@@ -334,8 +334,17 @@ def get_file_map(
     ops_service: str,
     mq_traces: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
+    """
+    Converts the walk result into a file map for the support bundle.
+
+    The number of expected folders will be checked here
+    based on the ops_service and the namespaces found in the walk result.
+    """
+
     # Remove all files that will not be checked
     namespaces = process_top_levels(walk_result, ops_service)
+
+    # get the namespaces
     arc_namespace = namespaces.get("arc")
     aio_namespace = namespaces.get("aio")
     acs_namespace = namespaces.get("acs")
@@ -351,7 +360,8 @@ def get_file_map(
 
     # separate namespaces
     file_map = {"__namespaces__": {}}
-    # default walk result meta and arcagents
+
+    # by default, there will be arc agents, meta and meso in every bundle
     num_additional_services = len(ARC_AGENTS)
     meta_path = path.join(BASE_ZIP_PATH, aio_namespace, "meta")
     meso_path = path.join(BASE_ZIP_PATH, aio_namespace, "meso")
