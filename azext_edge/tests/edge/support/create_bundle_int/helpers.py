@@ -341,7 +341,7 @@ def get_file_map(
     # separate namespaces
     file_map = {"__namespaces__": {}}
     # default walk result meta and arcagents
-    expected_default_walk_result = 2 + len(ARC_AGENTS)
+    expected_default_walk_result = 1 + len(ARC_AGENTS)
 
     if arc_namespace:
         file_map["arc"] = {}
