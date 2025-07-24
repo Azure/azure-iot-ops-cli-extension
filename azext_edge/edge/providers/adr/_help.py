@@ -671,7 +671,7 @@ def load_iotops_adr_help():
             az iot ops ns device endpoint inbound list --device mydevice --instance myInstance -g myInstanceResourceGroup --endpoint-type media
         - name: List all Media endpoints of a device using the full endpoint type
           text: >
-            az iot ops ns device endpoint inbound list --device mydevice --instance myInstance -g myInstanceResourceGroup --endpoint-type Microsft.Media
+            az iot ops ns device endpoint inbound list --device mydevice --instance myInstance -g myInstanceResourceGroup --endpoint-type Microsoft.Media
     """
 
     helps[

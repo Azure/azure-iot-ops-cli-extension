@@ -1,0 +1,3 @@
+{"dev": 1, "asset": 8}
+exact:
+{"dev0n85": {"endpoint0x3": {"dev0asset0n3": {"datasets": 4, "datasetPoints": 9, "events": 3, "eventPoints": 4, "mgmt": 2, "mgmtActions": 3, "stream": 5}, "dev0asset0n15": {"datasets": 3, "datasetPoints": 0, "events": 3, "eventPoints": 9, "mgmt": 4, "mgmtActions": 2, "stream": 7}}}}
