@@ -62,7 +62,7 @@ def init_test_setup(settings, tracked_resources):
 
     adr_ns_id = settings.env.azext_edge_adr_namespace_id
     if not adr_ns_id:
-        ns_name = f"init-adr-ns-{generate_random_string(force_lower=True, size=6)}"
+        ns_name = f"init-adr-ns-test{generate_random_string(force_lower=True, size=4)}"
         adr_ns_id = run(
             f"az iot ops ns create -n {ns_name} -g {settings.env.azext_edge_rg}"
         )["id"]

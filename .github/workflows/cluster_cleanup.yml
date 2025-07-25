@@ -43,6 +43,7 @@ env:
   # Note these are just for the init tests since we dont delete them then
   REGISTRY_PREFIX: 'init-registry'
   STORAGE_PREFIX: 'initstore'
+  NAMESPACE_PREFIX: 'init-adr-ns'
   CUSTOM_PREFIX: ${{ inputs.custom_prefix }}
 
 permissions:
@@ -76,19 +77,9 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Delete linked AIO resources
-        run: |
-          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.CLUSTER_PREFIX }}')].id" -o tsv); do
-            az resource delete -v --id $resource --verbose
-          done
-      - name: Delete schema registries
-        run: |
-          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.REGISTRY_PREFIX }}')].id" -o tsv); do
-            az resource delete -v --id $resource --verbose
-          done
-      - name: Delete storage accounts
-        run: |
-          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[?starts_with(name, '${{ env.STORAGE_PREFIX }}')].id" -o tsv); do
+      - name: Delete everything in the test resource group
+        run : |
+          for resource in $(az resource list -g ${{ env.RESOURCE_GROUP }} --query "[*].id" -o tsv); do
             az resource delete -v --id $resource --verbose
           done
       - name: Delete your custom stuff
