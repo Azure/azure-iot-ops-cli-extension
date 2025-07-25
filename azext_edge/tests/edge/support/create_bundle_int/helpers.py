@@ -201,6 +201,10 @@ def check_custom_resource_files(
         namespace (Optional[str]): Namespace to check resources in, if applicable.
         exclude_kinds (Optional[List[str]]): List of kinds to exclude from the check.
     """
+    # Note: we use the resoource api over EdgeApiManager due to some resources having multiple resource
+    # apis with respective files being in different folders, see how this function is called in certmanager
+    # and arccontainerstorage tests.
+
     # make sure we are dealing with an iterable of EdgeResourceApi
     if isinstance(resource_apis, EdgeResourceApi):
         resource_apis = [resource_apis]
