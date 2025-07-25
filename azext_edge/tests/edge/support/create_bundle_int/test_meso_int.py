@@ -15,7 +15,16 @@ logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
 MESO_PREFIXES = ["aio-observability"]
-MESO_WORKLOAD_TYPES = ["clusterrole", "configmap", "clusterrolebinding", "deployment", "pod", "replicaset", "service"]
+MESO_WORKLOAD_TYPES = [
+    "daemonset",
+    "clusterrole",
+    "configmap",
+    "clusterrolebinding",
+    "deployment",
+    "pod",
+    "replicaset",
+    "service",
+]
 
 
 def test_create_bundle_meso(cluster_connection, tracked_files):
