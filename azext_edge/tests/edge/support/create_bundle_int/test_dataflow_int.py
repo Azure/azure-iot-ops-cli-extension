@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
 DATAFLOW_PREFIXES = ["aio-dataflow"]
-DATAFLOW_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service"]
+DATAFLOW_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "vwc", "mwc"]
 
 
 def test_create_bundle_dataflow(cluster_connection, tracked_files):
@@ -38,7 +38,7 @@ def test_create_bundle_dataflow(cluster_connection, tracked_files):
     check_custom_resource_files(file_objs=file_map, resource_apis=COMPAT_DATAFLOW_APIS.resource_apis)
 
     expected_types = (
-        set(DATAFLOW_WORKLOAD_TYPES).union({"vwc", "mwc"}).union(get_all_kinds_from_manager(COMPAT_DATAFLOW_APIS))
+        set(DATAFLOW_WORKLOAD_TYPES).union(get_all_kinds_from_manager(COMPAT_DATAFLOW_APIS))
     )
     assert set(file_map.keys()).issubset(expected_types)
     check_workload_resource_files(

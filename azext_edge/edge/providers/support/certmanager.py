@@ -20,6 +20,7 @@ from .base import (
     process_services,
     process_v1_pods,
     process_validating_webhook_configurations,
+    process_mutating_webhook_configurations
 )
 
 logger = get_logger(__name__)
@@ -88,6 +89,12 @@ def fetch_validating_webhooks():
     )
     results.extend(
         process_validating_webhook_configurations(
+            directory_path=CERT_DIRECTORY_PATH,
+            field_selector=CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
+        )
+    )
+    results.extend(
+        process_mutating_webhook_configurations(
             directory_path=CERT_DIRECTORY_PATH,
             field_selector=CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
         )
