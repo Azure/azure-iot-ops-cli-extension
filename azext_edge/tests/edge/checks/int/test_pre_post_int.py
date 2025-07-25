@@ -85,10 +85,24 @@ def test_check_pre_post(cluster_connection, post, pre):
     assert "cluster/nodes" in node_result["targets"]
     assert "_all_" in node_result["targets"]["cluster/nodes"]
     node_count_target = node_result["targets"]["cluster/nodes"]["_all_"]
-    assert node_count_target["conditions"] == ["len(cluster/nodes)>=1"]
-    assert node_count_target["evaluations"][0]["status"] == get_expected_status(success_or_fail=len(kubectl_nodes) >= 1)
+    assert node_count_target["conditions"] == ["len(cluster/nodes)>=1", "any(cluster/nodes, operating_system='linux')"]
+
+    # len(cluster/nodes)
+    has_nodes = len(kubectl_nodes) >= 1
+    assert node_count_target["evaluations"][0]["status"] == get_expected_status(success_or_fail=has_nodes)
     assert node_count_target["evaluations"][0]["value"] == {"len(cluster/nodes)": len(kubectl_nodes)}
-    final_status = get_expected_status(success_or_fail=len(kubectl_nodes) >= 1)
+
+    # linux node
+    has_linux_node = False
+    if kubectl_nodes:
+        linux_nodes = [n for n in kubectl_nodes if n["status"]["nodeInfo"]["operatingSystem"] == "linux"]
+        has_linux_node = len(linux_nodes) >= 1
+        assert node_count_target["evaluations"][1]["value"] == {
+            "any(cluster/nodes, operating_system='linux')": len(linux_nodes)
+        }
+        assert node_count_target["evaluations"][1]["status"] == get_expected_status(success_or_fail=has_linux_node)
+
+    final_status = get_expected_status(success_or_fail=(has_nodes and has_linux_node))
     assert node_count_target["status"] == final_status
 
     arch_eval = 0
