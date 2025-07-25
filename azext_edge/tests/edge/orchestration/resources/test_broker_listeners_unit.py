@@ -38,12 +38,12 @@ def mocked_logger(mocker):
 
 
 def get_broker_listener_endpoint(
-    instance_name: str, broker_name: str, resource_group_name: str, listener_name: Optional[str] = None
+    instance_name: str, broker_name: str, resource_group_name: str, listener_name: Optional[str] = None, **kwargs: dict
 ) -> str:
     resource_path = f"/instances/{instance_name}/brokers/{broker_name}/listeners"
     if listener_name:
         resource_path += f"/{listener_name}"
-    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
+    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path, **kwargs)
 
 
 def get_mock_broker_listener_record(

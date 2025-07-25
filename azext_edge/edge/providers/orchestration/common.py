@@ -21,11 +21,11 @@ ARC_NAMESPACE = "azure-arc"
 AIO_MQTT_DEFAULT_CONFIG_MAP = "azure-iot-operations-aio-ca-trust-bundle"
 PROVISIONING_STATE_SUCCESS = "Succeeded"
 
-# Key Vault KPIs
+# Commonly used API versions
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
-
-# Custom Locations KPIs
 CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
+SECRET_SYNC_API_VERSION = "2024-08-21-preview"
+ROLE_ASSIGNMENT_API_VERSION = "2022-04-01"
 
 AIO_INSECURE_LISTENER_NAME = "default-insecure"
 AIO_INSECURE_LISTENER_SERVICE_NAME = "aio-broker-insecure"

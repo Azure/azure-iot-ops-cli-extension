@@ -14,7 +14,6 @@ from typing import (
     Dict,
     Iterable,
     List,
-    NamedTuple,
     Optional,
     Tuple,
     Union,
@@ -24,7 +23,6 @@ from uuid import uuid4
 from azure.cli.core.azclierror import ValidationError
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
-from packaging.version import parse as parse_version
 from rich.console import Console
 from rich.progress import (
     Progress,
@@ -59,6 +57,8 @@ from .common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
+    ROLE_ASSIGNMENT_API_VERSION,
+    SECRET_SYNC_API_VERSION,
 )
 from .common import CloneSummaryMode as SummaryMode
 from .common import CloneTemplateMode as TemplateMode
@@ -355,6 +355,7 @@ class ResourceContainer:
                     self.resource_state["name"] = TEMPLATE_EXPRESSION_MAP["instanceName"]
                 else:
                     self.resource_state["name"] = TEMPLATE_EXPRESSION_MAP["instanceNestedName"].format(suffix)
+
             if parsed_id["type"].lower() == "namespaces" and parsed_id["resource_type"].lower() in [
                 "devices",
                 "assets",
@@ -422,6 +423,7 @@ class InstanceRestore:
         self.template_mode = template_mode
         self.user_assigned_mis = user_assigned_mis
         self.no_progress = no_progress
+        self.headers = {"x-ms-correlation-request-id": str(uuid4()), "CommandName": "iot ops clone"}
 
     def _deploy_template(
         self,
@@ -431,12 +433,11 @@ class InstanceRestore:
     ) -> Optional["LROPoller"]:
         deployment_params = {"properties": {"mode": "Incremental", "template": content, "parameters": parameters}}
 
-        headers = {"x-ms-correlation-request-id": str(uuid4()), "CommandName": "iot ops clone"}
         return self.resource_client.deployments.begin_create_or_update(
             resource_group_name=self.resource_group_name,
             deployment_name=deployment_name,
             parameters=deployment_params,
-            headers=headers,
+            headers=self.headers,
         )
 
     def _handle_federation(self, use_self_hosted_issuer: Optional[bool] = None):
@@ -726,7 +727,7 @@ class CloneManager:
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
         self.version_guru = VersionGuru(self.instance_record)
-        self.instance_apis = self.version_guru.get_instance_apis()
+        self.api_config = self.version_guru.get_api_config()
         self.custom_location = self.instances.get_associated_cl(self.instance_record)
 
         self.resource_map = self.instances.get_resource_map(self.instance_record)
@@ -764,7 +765,7 @@ class CloneManager:
             self._analyze_secretsync()
             self._analyze_assets()
 
-            if self.instance_apis.iotops_mgmt_api in [IoTOpsMgmtApiVersion.V20250701_preview.value]:
+            if self.api_config.v2_enabled:
                 self._analyze_instance_resources_v2()
                 self._analyze_assets_v2()
 
@@ -859,7 +860,7 @@ class CloneManager:
                 default=True,
             )
         )
-        if self.instance_apis.iotops_mgmt_api in [IoTOpsMgmtApiVersion.V20250701_preview.value]:
+        if self.api_config.v2_enabled:
             parsed_ns_id = parse_resource_id(self.instance_record["properties"]["adrNamespaceRef"]["resourceId"])
             self.parameter_map.update(
                 build_parameter(
@@ -931,7 +932,6 @@ class CloneManager:
             )
 
     def _analyze_instance(self):
-        api_version = self.instance_apis.iotops_mgmt_api
         custom_location = deepcopy(self.custom_location)
         custom_location["properties"]["hostResourceId"] = TEMPLATE_EXPRESSION_MAP["clusterId"]
         custom_location["properties"]["namespace"] = TEMPLATE_EXPRESSION_MAP["clusterNamespace"]
@@ -983,7 +983,7 @@ class CloneManager:
                 "'Microsoft.DeviceRegistry/schemaRegistries', parameters('schemaRegistryId').name)]"
             )
 
-        if self.instance_apis.iotops_mgmt_api in [IoTOpsMgmtApiVersion.V20250701_preview.value]:
+        if self.api_config.v2_enabled:
             adr_namespace_ref = instance_copy["properties"].get("adrNamespaceRef", {})
             if adr_namespace_ref:
                 adr_namespace_ref["resourceId"] = (
@@ -995,7 +995,7 @@ class CloneManager:
 
         self._add_resource(
             key=StateResourceKey.INSTANCE,
-            api_version=api_version,
+            api_version=self.api_config.iotops_mgmt_api,
             data=instance_copy,
             depends_on=StateResourceKey.CL,
         )
@@ -1015,7 +1015,7 @@ class CloneManager:
         # Providing resource_group means a separate deployment to that resource group.
         self._add_deployment(
             key=StateResourceKey.ROLE_ASSIGNMENT,
-            api_version="2022-04-01",
+            api_version=ROLE_ASSIGNMENT_API_VERSION,
             data_iter=[get_role_assignment()],
             depends_on=EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS],
             parameters=nested_params,
@@ -1025,7 +1025,6 @@ class CloneManager:
         )
 
     def _analyze_instance_resources(self):
-        api_version = self.instance_apis.iotops_mgmt_api
         brokers_iter = self.instances.iotops_mgmt_client.broker.list_by_resource_group(
             resource_group_name=self.resource_group_name, instance_name=self.instance_name
         )
@@ -1033,7 +1032,7 @@ class CloneManager:
         default_broker = list(brokers_iter)[0]
         self._add_resource(
             key=StateResourceKey.BROKER,
-            api_version=api_version,
+            api_version=self.api_config.iotops_mgmt_api,
             data=default_broker,
             depends_on=StateResourceKey.INSTANCE,
         )
@@ -1048,7 +1047,7 @@ class CloneManager:
         # authN
         self._add_deployment(
             key=StateResourceKey.AUTHN,
-            api_version=api_version,
+            api_version=self.api_config.iotops_mgmt_api,
             data_iter=self.instances.iotops_mgmt_client.broker_authentication.list_by_resource_group(
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
@@ -1061,7 +1060,7 @@ class CloneManager:
         # authZ
         self._add_deployment(
             key=StateResourceKey.AUTHZ,
-            api_version=api_version,
+            api_version=self.api_config.iotops_mgmt_api,
             data_iter=self.instances.iotops_mgmt_client.broker_authorization.list_by_resource_group(
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
@@ -1081,7 +1080,7 @@ class CloneManager:
 
         self._add_deployment(
             key=StateResourceKey.LISTENER,
-            api_version=api_version,
+            api_version=self.api_config.iotops_mgmt_api,
             data_iter=self.instances.iotops_mgmt_client.broker_listener.list_by_resource_group(
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
@@ -1098,7 +1097,7 @@ class CloneManager:
         # endpoint
         self._add_deployment(
             key=StateResourceKey.ENDPOINT,
-            api_version=api_version,
+            api_version=self.api_config.iotops_mgmt_api,
             data_iter=self.instances.iotops_mgmt_client.dataflow_endpoint.list_by_resource_group(
                 resource_group_name=self.resource_group_name, instance_name=self.instance_name
             ),
@@ -1114,7 +1113,7 @@ class CloneManager:
         )
         self._add_deployment(
             key=StateResourceKey.PROFILE,
-            api_version=api_version,
+            api_version=self.api_config.iotops_mgmt_api,
             data_iter=profile_iter,
             depends_on=instance_resource_id_expr,
             parameters=nested_params,
@@ -1143,7 +1142,7 @@ class CloneManager:
 
             self._add_deployment(
                 key=StateResourceKey.DATAFLOW,
-                api_version=api_version,
+                api_version=self.api_config.iotops_mgmt_api,
                 data_iter=dataflows,
                 depends_on=dataflow_depends_on,
                 parameters=nested_params,
@@ -1165,7 +1164,7 @@ class CloneManager:
         )
         self._add_deployment(
             key=StateResourceKey.CONNECTOR_TEMPLATE,
-            api_version=self.instance_apis.iotops_mgmt_api,
+            api_version=self.api_config.iotops_mgmt_api,
             data_iter=connecter_template_iter,
             depends_on=instance_resource_id_expr,
             parameters=nested_params,
@@ -1183,7 +1182,7 @@ class CloneManager:
         asset_endpoints = self.get_resources_of_type(resource_type="microsoft.deviceregistry/assetendpointprofiles")
         self._add_deployment(
             key=StateResourceKey.ASSET_ENDPOINT_PROFILE,
-            api_version=self.instance_apis.registry_mgmt_api,
+            api_version=self.api_config.registry_mgmt_api,
             data_iter=asset_endpoints,
             depends_on=[
                 instance_resource_id_expr,
@@ -1200,7 +1199,7 @@ class CloneManager:
         if assets and asset_endpoints:
             self._add_deployment(
                 key=StateResourceKey.ASSET,
-                api_version=self.instance_apis.registry_mgmt_api,
+                api_version=self.api_config.registry_mgmt_api,
                 data_iter=assets,
                 depends_on=get_resource_id_by_parts(
                     "Microsoft.Resources/deployments",
@@ -1226,7 +1225,7 @@ class CloneManager:
         ns_devices = self.get_resources_of_type(resource_type="microsoft.deviceregistry/namespaces/devices")
         self._add_deployment(
             key=StateResourceKey.NS_DEVICE,
-            api_version=self.instance_apis.registry_mgmt_api,
+            api_version=self.api_config.registry_mgmt_api,
             data_iter=ns_devices,
             depends_on=[
                 instance_resource_id_expr,
@@ -1242,7 +1241,7 @@ class CloneManager:
         if ns_assets and ns_devices:
             self._add_deployment(
                 key=StateResourceKey.NS_ASSET,
-                api_version=self.instance_apis.registry_mgmt_api,
+                api_version=self.api_config.registry_mgmt_api,
                 data_iter=ns_assets,
                 depends_on=get_resource_id_by_parts(
                     "Microsoft.Resources/deployments",
@@ -1257,7 +1256,6 @@ class CloneManager:
             **build_parameter(name=TemplateParams.LOCATION.value),
         }
         ssc_client = self.instances.ssc_mgmt_client
-        ssc_api_version = ssc_client._config.api_version
         instance_resource_id_expr = get_resource_id_by_param(
             "microsoft.iotoperations/instances", TemplateParams.INSTANCE_NAME
         )
@@ -1275,7 +1273,7 @@ class CloneManager:
 
         self._add_deployment(
             key=StateResourceKey.SSC_SPC,
-            api_version=ssc_api_version,
+            api_version=SECRET_SYNC_API_VERSION,
             data_iter=ssc_spcs,
             depends_on=instance_resource_id_expr,
             parameters=nested_params,
@@ -1292,7 +1290,7 @@ class CloneManager:
         if ssc_secretsyncs and ssc_spcs:
             self._add_deployment(
                 key=StateResourceKey.SSC_SECRETSYNC,
-                api_version=ssc_api_version,
+                api_version=SECRET_SYNC_API_VERSION,
                 data_iter=ssc_secretsyncs,
                 depends_on=get_resource_id_by_parts(
                     "Microsoft.Resources/deployments", self.active_deployment[StateResourceKey.SSC_SPC][-1]
@@ -1635,19 +1633,22 @@ def get_role_assignment():
 # TODO: Work out goals, placement and version library
 class VersionGuru:
     def __init__(self, instance: dict):
+        from ...util.machinery import scoped_semver_import
+
+        self.semver = scoped_semver_import()
         self.instance = instance
         self.version: str = self.instance["properties"].get("version")
         if not self.version:
             raise ValidationError("Unable to determine version of the instance.")
-        self.parsed_version = parse_version(self.version)
+        self.parsed_version = self.semver.parse(self.version)
 
     def ensure_compat(self, force: Optional[bool] = None):
         if force:
             return
 
-        if self.parsed_version >= parse_version(CLONE_INSTANCE_VERS_MIN) and self.parsed_version < parse_version(
-            CLONE_INSTANCE_VERS_MAX
-        ):
+        if self.parsed_version >= self.semver.parse(
+            CLONE_INSTANCE_VERS_MIN
+        ) and self.parsed_version < self.semver.parse(CLONE_INSTANCE_VERS_MAX):
             return
 
         raise ValidationError(
@@ -1656,23 +1657,36 @@ class VersionGuru:
             "While not recommended, you can use --force flag to continue anyway."
         )
 
-    def get_instance_apis(self) -> "InstanceApiVersions":
-        if self.parsed_version < parse_version("1.1.0"):
-            return InstanceApiVersions(
+    def get_api_config(self) -> "InstanceApiConfig":
+        if self.parsed_version < self.semver.parse("1.1.0"):
+            return InstanceApiConfig(
                 iotops_mgmt_api=IoTOpsMgmtApiVersion.V20241101.value,
                 registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20241101.value,
             )
-        if self.parsed_version < parse_version("1.2.0"):
-            return InstanceApiVersions(
+        if self.parsed_version < self.semver.parse("1.2.0"):
+            return InstanceApiConfig(
                 iotops_mgmt_api=IoTOpsMgmtApiVersion.V20250401.value,
                 registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20241101.value,
             )
-        return InstanceApiVersions(
+        return InstanceApiConfig(
             iotops_mgmt_api=IoTOpsMgmtApiVersion.V20250701_preview.value,
             registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20250701_preview.value,
         )
 
 
-class InstanceApiVersions(NamedTuple):
-    iotops_mgmt_api: str
-    registry_mgmt_api: str
+class InstanceApiConfig:
+    def __init__(self, iotops_mgmt_api: str, registry_mgmt_api: str):
+        self._iotops_mgmt_api = iotops_mgmt_api
+        self._registry_mgmt_api = registry_mgmt_api
+        self.v2_enabled = False
+
+        if self._iotops_mgmt_api in [IoTOpsMgmtApiVersion.V20250701_preview.value]:
+            self.v2_enabled = True
+
+    @property
+    def iotops_mgmt_api(self) -> str:
+        return self._iotops_mgmt_api
+
+    @property
+    def registry_mgmt_api(self) -> str:
+        return self._registry_mgmt_api
