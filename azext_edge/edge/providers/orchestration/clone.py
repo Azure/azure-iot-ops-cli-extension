@@ -42,6 +42,7 @@ from ...util import (
 from ...util.az_client import (
     DeviceRegistryMgmtApiVersion,
     IoTOpsMgmtApiVersion,
+    get_iotops_mgmt_client,
     get_msi_mgmt_client,
     get_resource_client,
     wait_for_terminal_state,
@@ -729,9 +730,12 @@ class CloneManager:
         self.version_guru = VersionGuru(self.instance_record)
         self.api_config = self.version_guru.get_api_config()
         self.custom_location = self.instances.get_associated_cl(self.instance_record)
+        self.iotops_mgmt_client = get_iotops_mgmt_client(
+            subscription_id=self.instances.default_subscription_id, api_version=self.api_config.iotops_mgmt_api
+        )
 
         self.resource_map = self.instances.get_resource_map(self.instance_record)
-        self.resouce_graph = self.resource_map.connected_cluster.resource_graph
+        self.resource_graph = self.resource_map.connected_cluster.resource_graph
         self.rcontainer_map: Dict[str, ResourceContainer] = {}
         self.parameter_map: dict = {}
         self.variable_map: dict = {}
@@ -879,7 +883,7 @@ class CloneManager:
         self.metadata_map["clonedInstanceId"] = self.instance_record["id"]
 
     def get_resources_of_type(self, resource_type: str) -> List[dict]:
-        return self.resouce_graph.query_resources(
+        return self.resource_graph.query_resources(
             f"""
             resources
             | where extendedLocation.name =~ '{self.instance_record["extendedLocation"]["name"]}'
@@ -889,7 +893,7 @@ class CloneManager:
         )["data"]
 
     def get_identities_by_client_id(self, client_ids: List[str]) -> List[dict]:
-        return self.resouce_graph.query_resources(
+        return self.resource_graph.query_resources(
             f"""
             resources
             | where type =~ "Microsoft.ManagedIdentity/userAssignedIdentities"
@@ -1025,7 +1029,7 @@ class CloneManager:
         )
 
     def _analyze_instance_resources(self):
-        brokers_iter = self.instances.iotops_mgmt_client.broker.list_by_resource_group(
+        brokers_iter = self.iotops_mgmt_client.broker.list_by_resource_group(
             resource_group_name=self.resource_group_name, instance_name=self.instance_name
         )
         # Let us keep things simple atm
@@ -1048,7 +1052,7 @@ class CloneManager:
         self._add_deployment(
             key=StateResourceKey.AUTHN,
             api_version=self.api_config.iotops_mgmt_api,
-            data_iter=self.instances.iotops_mgmt_client.broker_authentication.list_by_resource_group(
+            data_iter=self.iotops_mgmt_client.broker_authentication.list_by_resource_group(
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
                 broker_name=default_broker["name"],
@@ -1061,7 +1065,7 @@ class CloneManager:
         self._add_deployment(
             key=StateResourceKey.AUTHZ,
             api_version=self.api_config.iotops_mgmt_api,
-            data_iter=self.instances.iotops_mgmt_client.broker_authorization.list_by_resource_group(
+            data_iter=self.iotops_mgmt_client.broker_authorization.list_by_resource_group(
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
                 broker_name=default_broker["name"],
@@ -1081,7 +1085,7 @@ class CloneManager:
         self._add_deployment(
             key=StateResourceKey.LISTENER,
             api_version=self.api_config.iotops_mgmt_api,
-            data_iter=self.instances.iotops_mgmt_client.broker_listener.list_by_resource_group(
+            data_iter=self.iotops_mgmt_client.broker_listener.list_by_resource_group(
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
                 broker_name=default_broker["name"],
@@ -1098,7 +1102,7 @@ class CloneManager:
         self._add_deployment(
             key=StateResourceKey.ENDPOINT,
             api_version=self.api_config.iotops_mgmt_api,
-            data_iter=self.instances.iotops_mgmt_client.dataflow_endpoint.list_by_resource_group(
+            data_iter=self.iotops_mgmt_client.dataflow_endpoint.list_by_resource_group(
                 resource_group_name=self.resource_group_name, instance_name=self.instance_name
             ),
             depends_on=instance_resource_id_expr,
@@ -1107,7 +1111,7 @@ class CloneManager:
 
         # profile
         profile_iter = list(
-            self.instances.iotops_mgmt_client.dataflow_profile.list_by_resource_group(
+            self.iotops_mgmt_client.dataflow_profile.list_by_resource_group(
                 resource_group_name=self.resource_group_name, instance_name=self.instance_name
             )
         )
@@ -1124,7 +1128,7 @@ class CloneManager:
             dataflows = []
             for profile in profile_iter:
                 dataflows.extend(
-                    self.instances.iotops_mgmt_client.dataflow.list_by_profile_resource(
+                    self.iotops_mgmt_client.dataflow.list_by_profile_resource(
                         resource_group_name=self.resource_group_name,
                         instance_name=self.instance_name,
                         dataflow_profile_name=profile["name"],
@@ -1157,6 +1161,7 @@ class CloneManager:
             **build_parameter(name=TemplateParams.INSTANCE_NAME.value),
         }
 
+        # Uses the new client for v2 resources
         connecter_template_iter = list(
             self.instances.iotops_mgmt_client.akri_connector_template.list_by_instance_resource(
                 resource_group_name=self.resource_group_name, instance_name=self.instance_name

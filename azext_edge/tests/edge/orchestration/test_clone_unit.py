@@ -1071,6 +1071,8 @@ def test_clone_scale(
     total_pages = aep_pages + asset_pages + 1
 
     expected_params = deepcopy(TEMPLATE_PARAMS_SET)
+    if not clone_scenario.api_config.v2_enabled:
+        expected_params.discard("adrNamespaceId")
 
     assert len(split_content) == total_pages
     for i in range(aep_pages):
