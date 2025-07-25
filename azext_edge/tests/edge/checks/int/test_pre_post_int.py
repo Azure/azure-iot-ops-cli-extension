@@ -98,7 +98,7 @@ def test_check_pre_post(cluster_connection, post, pre):
         linux_nodes = [n for n in kubectl_nodes if n["status"]["nodeInfo"]["operatingSystem"] == "linux"]
         has_linux_node = len(linux_nodes) >= 1
         assert node_count_target["evaluations"][1]["value"] == {
-            "any(cluster/nodes, operating_system='linux')": len(linux_nodes)
+            "any(cluster/nodes, operating_system='linux')": bool(linux_nodes)
         }
         assert node_count_target["evaluations"][1]["status"] == get_expected_status(success_or_fail=has_linux_node)
 
@@ -133,8 +133,8 @@ def test_check_pre_post(cluster_connection, post, pre):
 
         node_allocatable = node["status"]["allocatable"]
         node_cpu = node_target["evaluations"][cpu_eval]["value"]["allocatable.cpu"]
-        assert node_cpu == int(node_allocatable["cpu"])
-        assert node_target["evaluations"][cpu_eval]["status"] == get_expected_status(node_cpu >= int(MIN_NODE_VCPU))
+        assert node_cpu == int(parse_quantity(node_allocatable["cpu"]))
+        assert node_target["evaluations"][cpu_eval]["status"] == get_expected_status(node_cpu >= int(parse_quantity(MIN_NODE_VCPU)))
 
         node_memory = node_target["evaluations"][memory_eval]["value"]["allocatable.memory"]
         assert node_memory == f"{int(parse_quantity(node_allocatable['memory']) / DISPLAY_BYTES_PER_GIGABYTE)}G"
@@ -148,7 +148,7 @@ def test_check_pre_post(cluster_connection, post, pre):
             == f"{int(parse_quantity(node_allocatable['ephemeral-storage']) / DISPLAY_BYTES_PER_GIGABYTE)}G"
         )
         assert node_target["evaluations"][storage_eval]["status"] == get_expected_status(
-            parse_quantity(node_storage) >= parse_quantity(MIN_NODE_MEMORY)
+            parse_quantity(node_storage) >= parse_quantity(MIN_NODE_STORAGE)
         )
 
         node_status = combine_statuses([cond["status"] for cond in node_target["evaluations"]])
