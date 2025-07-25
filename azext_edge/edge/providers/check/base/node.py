@@ -24,6 +24,7 @@ from ..common import (
     NODE_CONTROL_PLANE_LABEL,
 )
 from .check_manager import CheckManager
+from .display import colorize_string
 from .user_strings import NO_NODES_MSG, UNABLE_TO_FETCH_NODES_MSG
 
 logger = get_logger(__name__)
@@ -37,7 +38,9 @@ def check_nodes(
     check_manager = CheckManager(check_name="evalClusterNodes", check_desc="Evaluate cluster nodes")
     padding = (0, 0, 0, 8)
     target = "cluster/nodes"
-    check_manager.add_target(target_name=target, conditions=["len(cluster/nodes)>=1"])
+    check_manager.add_target(
+        target_name=target, conditions=["len(cluster/nodes)>=1", "any(cluster/nodes, operating_system='linux')"]
+    )
 
     try:
         core_client = client.CoreV1Api()
@@ -64,6 +67,29 @@ def check_nodes(
         check_manager.add_target_eval(
             target_name=target, status=CheckTaskStatus.success.value, value={"len(cluster/nodes)": len(nodes.items)}
         )
+
+        # validate at least one node is a linux node
+        linux_nodes = [node for node in nodes.items if node.status.node_info.operating_system == "linux"]
+        linux_node_status = CheckTaskStatus.success if linux_nodes else CheckTaskStatus.error
+        linux_node_color = linux_node_status.color
+        check_manager.add_target_eval(
+            target_name=target,
+            status=linux_node_status.value,
+            value={"any(cluster/nodes, operating_system='linux')": bool(linux_nodes)},
+        )
+        required_display = f"{colorize_string(value='Linux nodes', color='bright_blue')} >=[cyan]{1}[/cyan]"
+        detected_display = colorize_string(value=len(linux_nodes), color=linux_node_color)
+        check_manager.add_display(
+            target_name=target,
+            display=Padding(
+                f"Required {required_display}, detected {detected_display}.",
+                padding,
+            ),
+        )
+
+        # new line
+        check_manager.add_display(target_name=target, display="")
+
         table = _generate_node_table(
             check_manager=check_manager,
             nodes=nodes,
