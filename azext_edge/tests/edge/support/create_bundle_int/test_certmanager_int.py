@@ -12,7 +12,7 @@ from .helpers import check_custom_resource_files, check_workload_resource_files,
 
 logger = get_logger(__name__)
 CERTMGMT_PREFIXES = ["aio-cert-manager", "aio-trust-manager", "kube-root-ca"]
-CERTMGMT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "configmap"]
+CERTMGMT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "configmap", "vwc", "mwc"]
 
 USER_CERTMGMT_PREFIXES = ["cert-manager", "trust-manager"]
 
@@ -45,7 +45,6 @@ def test_create_bundle_certmanager(cluster_connection, tracked_files):
         set(CERTMGMT_WORKLOAD_TYPES)
         .union(CERTMANAGER_API_V1.kinds)
         .union(TRUSTMANAGER_API_V1.kinds)
-        .union({"vwc", "mwc"})
     )
     assert set(certmanager_file_map.keys()).issubset(expected_types)
     check_workload_resource_files(

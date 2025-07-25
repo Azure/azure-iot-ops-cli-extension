@@ -55,6 +55,26 @@ class Namespaces(TypedDict):
     certmanager: Optional[str] = None
 
 
+class DeconstructedFileName(TypedDict):
+    """
+    Deconstructed file name object.
+
+    The name should reflect the same name as that when fetched from kubectl.
+    Other fields are used to help with the file name "conventions".
+    """
+    name: str
+    extension: str
+    full_name: str
+    # only for custom types
+    version: Optional[str]
+    # when there are extra parts in the name, like "msi-adapter", "init-runner"
+    # but these are not part of the name fetched from kubectl
+    descriptor: Optional[str]
+    # when there are even more parts, like "previous", "init"
+    # but these are not part of the name fetched from kubectl
+    sub_descriptor: Optional[str]
+
+
 def assert_file_names(files: List[str]):
     """
     Simple asserts for file names.
@@ -84,7 +104,7 @@ def assert_file_names(files: List[str]):
             short_name += f".{name.pop(0)}"
         if "metric" in name and extension == "yaml":
             short_name += f".{name.pop(0)}"
-        
+
         # Handle webhook configurations that include extra '.'-separated elements
         if file_type in ["vwc", "mwc"] and extension == "yaml" and name:
             # For webhook configurations, consume any remaining API group parts
@@ -102,11 +122,11 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
     """
     file_name_objs = {}
     for full_name in files:
-        name = split_name(full_name)
-        file_type = name.pop(0)
-        name_obj = {"extension": name.pop(-1), "full_name": full_name}
+        name_parts = split_name(full_name)
+        file_type = name_parts.pop(0)
+        name_obj = DeconstructedFileName({"extension": name_parts.pop(-1), "full_name": full_name})
 
-        if file_type == "pod" and name[-1] == "metric":
+        if file_type == "pod" and name_parts[-1] == "metric":
             # note: not a real type
             file_type = "podmetric"
 
@@ -117,8 +137,8 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             # aio-broker-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.otlp.pb
             # aio-broker-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.tempo.json
             name_obj["name"] = file_type
-            name_obj["action"] = name.pop(0).lower()
-            name_obj["identifier"] = name.pop(0)
+            name_obj["action"] = name_parts.pop(0).lower()
+            name_obj["identifier"] = name_parts.pop(0)
             file_name_objs["trace"].append(name_obj)
             continue
 
@@ -133,22 +153,29 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
                 # check diagnositcs.txt later
                 file_name_objs[file_type].append(name_obj)
                 continue
-            name_obj["version"] = name.pop(0)
+            name_obj["version"] = name_parts.pop(0)
             assert name_obj["version"].startswith("v")
-        name_obj["name"] = name.pop(0)
+        name_obj["name"] = name_parts.pop(0)
 
         # custom re-adding
         if name_obj["name"] == "aio-opc-opc":
-            name_obj["name"] += f".{name.pop(0)}"
+            name_obj["name"] += f".{name_parts.pop(0)}"
         if name_obj["name"] == "kube-root-ca":
-            name_obj["name"] += f".{name.pop(0)}"
+            name_obj["name"] += f".{name_parts.pop(0)}"
+
+        # for webhooks, we want the "url"
+        # ex: aio-akri-admission-webhook.akri.com
+        if file_type in ["vwc", "mwc"]:
+            # Assume the rest of the name is supposed to be in the name
+            while name_parts:
+                name_obj["name"] += f".{name_parts.pop(0)}"
 
         # something like "msi-adapter", "init-runner"
-        if name:
-            name_obj["descriptor"] = name.pop(0)
+        if name_parts:
+            name_obj["descriptor"] = name_parts.pop(0)
         # something like "previous", "init"
-        if name:
-            name_obj["sub_descriptor"] = name.pop(0)
+        if name_parts:
+            name_obj["sub_descriptor"] = name_parts.pop(0)
 
         file_name_objs[file_type].append(name_obj)
 
@@ -223,6 +250,12 @@ def check_workload_resource_files(
     expected_label: Optional[str] = None,
     pre_bundle_optional_items: Optional[Dict[str, List[str]]] = None,
 ):
+    """
+    Helper function to check workload resource files against cluster resources.
+
+    See WORKLOAD_TYPES for checked types here.
+    """
+    # TODO: improve docstring to describe how pods are handled, etc
     # pod
     file_pods = {}
     for file in file_objs.get("pod", []):
@@ -301,6 +334,7 @@ def check_workload_resource_files(
 
 
 def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]]):
+    # TODO: docstring
     # open the file using bundle_dir and check for evicted pods
     name_extension_pair = list(set([(file["name"], file["extension"]) for file in file_pods]))
     # TODO: upcoming fix will get file content earlier
@@ -383,6 +417,7 @@ def get_file_map(
             agent_path = path.join(BASE_ZIP_PATH, arc_namespace, "arcagents", agent)
             file_map["arc"][agent] = convert_file_names(walk_result[agent_path]["files"])
 
+    # TODO: explain the magic numbers (1, 2 better). Might need some refactoring too
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
         # adding two folders - one for aio and one for traces
@@ -476,6 +511,7 @@ def get_file_map(
     return file_map
 
 
+# TODO: rename this to something more appropriate
 def process_top_levels(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
@@ -498,6 +534,8 @@ def process_top_levels(
     cert_resource_namespaces = []
     containerstorage_service = ""
 
+    # TODO: most of the namespace determination logic can be removed to hardcoded namespace values
+    # AIO is the one that needs to be kept (will need to double check for other namespaces)
     for name in namespace_folders:
         # determine which namespace belongs to aio vs billing
         if _get_namespace_determinating_files(
@@ -586,6 +624,16 @@ def run_bundle_command(
     command: str,
     tracked_files: List[str],
 ) -> Tuple[Dict[str, Dict[str, List[str]]], str]:
+    """
+    Runs the support bundle command and returns the walk result.
+
+    The walk result is a dictionary representing the structure of the support bundle,
+    in which every key is a path and the value is a dictionary with 'folders' and 'files'.
+
+    :param command: The command to run.
+    :param tracked_files: List to track files created by the command.
+    :return: A tuple containing the walk result and the bundle path.
+    """
     # add in a name for more uniqueness
     command += f" --bundle-name test_bundle_{generate_random_string(size=8)}"
     result = run(command)
@@ -594,6 +642,7 @@ def run_bundle_command(
     assert result["bundlePath"]
     tracked_files.append(result["bundlePath"])
     # transform this into a walk result of an extracted zip file
+    # TODO: add in a class for this (maybe typed dict?)
     walk_result = {}
     with ZipFile(result["bundlePath"], "r") as zip:
         file_names = zip.namelist()
@@ -655,8 +704,9 @@ def _clean_up_folders(
 ):
     """
     Clean up folders from walk_result that are not needed for following
-    azure IoT operation namespace assertion.
+    IoT operation namespace assertion.
     """
+    # TODO: add in more information as to why certain folders are removed to the docstring.
     arc_namespace = namespaces.get("arc")
     acs_namespace = namespaces.get("acs")
     acstor_namespace = namespaces.get("acstor")
@@ -746,7 +796,7 @@ def _compare_support_bundle_names(
     For extra names, will split into two groups:
     1. "accepted" names - has the correct prefix so will just log. In this case, we assume that the resource
     just got created and deleted in the timespan of pre - support - post
-    2. "unaccpeted" names - does NOT have the correct prefix so will error. In this case, the prefix is not valid
+    2. "unaccepted" names - does NOT have the correct prefix so will error. In this case, the prefix is not valid
     so more investigation as to why this got captured will be needed.
 
     For missing names, try to get labels to help determine if labels are the reason.

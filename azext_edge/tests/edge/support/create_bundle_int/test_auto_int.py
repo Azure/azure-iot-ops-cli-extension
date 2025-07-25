@@ -59,6 +59,8 @@ def test_create_bundle(cluster_connection, ops_service, bundle_dir, mq_traces, t
         )
         auto_walk_result, _ = run_bundle_command(command=command, tracked_files=tracked_files)
     else:
+        # TODO: should not be mixing walk_result with auto_walk_result.
+        # This should only be the service-specific bundle
         walk_result, _ = run_bundle_command(command=command, tracked_files=tracked_files)
 
     # Level 0 - top
@@ -136,7 +138,7 @@ def test_create_bundle(cluster_connection, ops_service, bundle_dir, mq_traces, t
                 # For service-specific tests, ignore extra observability runtime resources in auto bundle
                 # Keep only the custom resource files (observability.v1.*) which should be consistent
                 auto_files_filtered = [f for f in auto_files if f.startswith('observability.v1')]
-                
+
                 assert_extra_or_missing_names(
                     resource_type=f"auto bundle files not found in {ops_service} bundle (filtered)",
                     result_names=auto_files_filtered,
@@ -164,7 +166,7 @@ def _get_expected_services(walk_result: Dict[str, Dict[str, List[str]]], ops_ser
     ]:
         check_path = path.join(BASE_ZIP_PATH, namespace, monikor)
         exists = walk_result.get(check_path) is not None
-        
+
         if not exists and service in expected_services:
             expected_services.remove(service)
 

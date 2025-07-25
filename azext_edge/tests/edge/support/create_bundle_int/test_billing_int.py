@@ -21,8 +21,8 @@ logger = get_logger(__name__)
 pytestmark = pytest.mark.e2e
 AIO_PREFIXES = ["aio-usage"]
 AIO_WORKLOAD_TYPES = ["cronjob", "job", "pod"]
-USAGE_PREFIXES = ["billing-operator"]
-USAGE_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service"]
+USAGE_PREFIXES = ["billing-operator", "billing-webhook"]
+USAGE_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "vwc", "mwc"]
 
 
 def test_create_bundle_billing(cluster_connection, tracked_files):
@@ -66,7 +66,7 @@ def test_create_bundle_billing(cluster_connection, tracked_files):
     expected_types = (
         set(USAGE_WORKLOAD_TYPES)
         .union(CLUSTER_CONFIG_API_V1.kinds)
-        .union({"vwc", "mwc", "billingerror", "billingusage", "extensionconfig", "azureextensionidentity"})
+        .union({"billingerror", "billingusage", "extensionconfig", "azureextensionidentity"})
     )
     assert set(file_map["usage"].keys()).issubset(expected_types)
     check_workload_resource_files(

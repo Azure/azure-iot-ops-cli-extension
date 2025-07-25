@@ -21,7 +21,9 @@ logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
 MQ_PREFIXES = ["aio-broker", "aio-dmqtt", "otel-collector-service"]
-MQ_WORKLOAD_TYPES = ["pod", "daemonset", "replicaset", "service", "statefulset", "job", "configmap"]
+MQ_WORKLOAD_TYPES = [
+    "pod", "daemonset", "replicaset", "service", "statefulset", "job", "configmap", "vwc", "mwc"
+]
 MQ_LABEL = ("app.kubernetes.io/name", "microsoft-iotoperations-mqttbroker")
 
 

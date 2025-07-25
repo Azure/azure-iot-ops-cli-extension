@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
 META_PREFIXES = ["aio-operator", "aio-pre-install", "aio-post-install", "aio-pre-upgrade", "aio-post-upgrade"]
-META_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service"]
+META_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "vwc", "mwc"]
 META_OPTIONAL_WORKLOAD_TYPES = ["job"]
 
 
@@ -34,6 +34,7 @@ def test_create_bundle_meta(cluster_connection, tracked_files):
         expected_workload_types=META_OPTIONAL_WORKLOAD_TYPES,
         prefixes=META_PREFIXES,
     )
+    # TODO: can we grab a smaller bundle like device registry for meta?
     command = "az iot ops support create-bundle"
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, "meta")["aio"]
@@ -45,7 +46,6 @@ def test_create_bundle_meta(cluster_connection, tracked_files):
     expected_types = (
         set(META_WORKLOAD_TYPES + META_OPTIONAL_WORKLOAD_TYPES)
         .union(get_all_kinds_from_manager(COMPAT_META_APIS))
-        .union({"mwc", "vwc"})
     )
     assert set(file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(
