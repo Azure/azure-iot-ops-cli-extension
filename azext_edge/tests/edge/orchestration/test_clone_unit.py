@@ -1163,9 +1163,7 @@ def test_clone_instance_feature_capture(
         {"subjects": {SERVICE_ACCOUNT_DATAFLOW, SERVICE_ACCOUNT_SECRETSYNC}},
     ],
 )
-@pytest.mark.parametrize(
-    "cluster_state", [{"connectivityStatus": "Connected"}, {"connectivityStatus": "Disconnected"}]
-)
+@pytest.mark.parametrize("cluster_state", [{"connectivityStatus": "Connected"}, {"connectivityStatus": "Disconnected"}])
 def test_clone_deploy_subjects(
     mocked_cmd: Mock,
     mocked_responses: responses,
@@ -1860,8 +1858,7 @@ class CloneAssertor:
             )
             template = deployment["properties"]["template"]
             assert (
-                template["$schema"]
-                == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
+                template["$schema"] == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
             )
             assert template["contentVersion"] == "1.0.0.0"
             expected_parameters = {"customLocationName": {"type": "string"}}

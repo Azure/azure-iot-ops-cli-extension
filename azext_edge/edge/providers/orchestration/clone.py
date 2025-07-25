@@ -268,9 +268,7 @@ class DeploymentContainer:
 
             for param in self.parameters:
                 target_value = (
-                    self.parameters[param]["value"]
-                    if "value" in self.parameters[param]
-                    else f"[parameters('{param}')]"
+                    self.parameters[param]["value"] if "value" in self.parameters[param] else f"[parameters('{param}')]"
                 )
                 input_param_map[param] = {"value": target_value}
                 template_param_map[param] = {"type": self.parameters[param]["type"]}
@@ -724,12 +722,14 @@ class CloneManager:
         self.resource_group_name = resource_group_name
         self.no_progress = no_progress
         self.instances = Instances(self.cmd)
+        # This instance fetch is using the latest instance API.
         self.instance_record = self.instances.show(
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
         self.version_guru = VersionGuru(self.instance_record)
         self.api_config = self.version_guru.get_api_config()
         self.custom_location = self.instances.get_associated_cl(self.instance_record)
+        # This is initializing the instance client with the API version used to construct the target instance.
         self.iotops_mgmt_client = get_iotops_mgmt_client(
             subscription_id=self.instances.default_subscription_id, api_version=self.api_config.iotops_mgmt_api
         )
@@ -779,9 +779,7 @@ class CloneManager:
                 instances=self.instances,
                 namespace=self.custom_location["properties"]["namespace"],
                 resources=self._enumerate_resources(),
-                template_gen=TemplateGen(
-                    self.rcontainer_map, self.parameter_map, self.variable_map, self.metadata_map
-                ),
+                template_gen=TemplateGen(self.rcontainer_map, self.parameter_map, self.variable_map, self.metadata_map),
                 user_assigned_mis=self.instance_identities,
             )
 
@@ -1291,9 +1289,7 @@ class CloneManager:
             ssc_client.secret_syncs.list_by_resource_group(resource_group_name=self.resource_group_name)
         )
         ssc_secretsyncs = [
-            secretsync
-            for secretsync in ssc_secretsyncs
-            if secretsync["extendedLocation"]["name"].lower() == ext_loc_id
+            secretsync for secretsync in ssc_secretsyncs if secretsync["extendedLocation"]["name"].lower() == ext_loc_id
         ]
         if ssc_secretsyncs and ssc_spcs:
             self._add_deployment(

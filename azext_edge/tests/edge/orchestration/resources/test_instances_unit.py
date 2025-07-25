@@ -646,9 +646,7 @@ def test_secretsync_enable(
 
     # Custom location fetch mock
     cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
-    cl_payload = get_mock_custom_location_record(
-        name=generate_random_string(), resource_group_name=resource_group_name
-    )
+    cl_payload = get_mock_custom_location_record(name=generate_random_string(), resource_group_name=resource_group_name)
     mocked_responses.add(
         method=responses.GET,
         url=re.compile(cl_endpoint),
@@ -928,9 +926,7 @@ def test_secretsync_enable_issuer_error(
 
     # Custom location fetch mock
     cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
-    cl_payload = get_mock_custom_location_record(
-        name=generate_random_string(), resource_group_name=resource_group_name
-    )
+    cl_payload = get_mock_custom_location_record(name=generate_random_string(), resource_group_name=resource_group_name)
     mocked_responses.add(
         method=responses.GET,
         url=re.compile(cl_endpoint),
@@ -1040,9 +1036,7 @@ def test_secretsync_disable(
 
     # Custom location fetch mock
     cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
-    cl_payload = get_mock_custom_location_record(
-        name=generate_random_string(), resource_group_name=resource_group_name
-    )
+    cl_payload = get_mock_custom_location_record(name=generate_random_string(), resource_group_name=resource_group_name)
     mocked_responses.add(
         method=responses.GET,
         url=re.compile(cl_endpoint),
@@ -1184,9 +1178,7 @@ def test_add_mi_user_assigned(
 
     # Custom location fetch mock
     cl_endpoint = get_custom_location_endpoint(resource_group_name=resource_group_name, custom_location_name=".*")
-    cl_payload = get_mock_custom_location_record(
-        name=generate_random_string(), resource_group_name=resource_group_name
-    )
+    cl_payload = get_mock_custom_location_record(name=generate_random_string(), resource_group_name=resource_group_name)
     mocked_responses.add(
         method=responses.GET,
         url=re.compile(cl_endpoint),
