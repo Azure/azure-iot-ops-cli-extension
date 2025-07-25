@@ -193,10 +193,13 @@ def check_custom_resource_files(
 
     Will check by version, kind, and name and ensure the kinds match up.
 
-    :param file_objs: Dict of file objects, where key is the kind and value is a list of dicts with file info.
-    :param resource_apis: EdgeResourceApi or iterable of EdgeResourceApi to check against cluster resources.
-    :param namespace: Namespace to check resources in, if applicable.
-    :param exclude_kinds: List of kinds to exclude from the check.
+    Args:
+        file_obs (Dict[str, List[Dict[str, str]]]): Dictionary of file objects, where key is
+            the kind and value is a list of dicts with file info.
+        resource_apis (Union[EdgeResourceApi, Iterable[EdgeResourceApi]]): EdgeResourceApi or
+            iterable of EdgeResourceApi to check against cluster resources.
+        namespace (Optional[str]): Namespace to check resources in, if applicable.
+        exclude_kinds (Optional[List[str]]): List of kinds to exclude from the check.
     """
     # make sure we are dealing with an iterable of EdgeResourceApi
     if isinstance(resource_apis, EdgeResourceApi):
@@ -358,9 +361,12 @@ def get_all_kinds_from_manager(
     """
     Get all kinds from EdgeApiManager, excluding specified kinds.
 
-    :param manager: EdgeApiManager instance to get kinds from.
-    :param exclude_kinds: List of kinds to exclude.
-    :return: List of kinds excluding the specified ones.
+    Args:
+        manager (EdgeApiManager): EdgeApiManager instance to get kinds from.
+        exclude_kinds (Optional[List[str]]): List of kinds to exclude from the result.
+
+    Returns:
+        set: Set of kinds excluding the specified ones.
     """
     exclude_kinds = exclude_kinds or []
     result = set()
@@ -380,7 +386,6 @@ def get_file_map(
     The number of expected folders will be checked here
     based on the ops_service and the namespaces found in the walk result.
     """
-
     # Remove all files that will not be checked
     namespaces = process_top_levels(walk_result, ops_service)
 
@@ -630,9 +635,11 @@ def run_bundle_command(
     The walk result is a dictionary representing the structure of the support bundle,
     in which every key is a path and the value is a dictionary with 'folders' and 'files'.
 
-    :param command: The command to run.
-    :param tracked_files: List to track files created by the command.
-    :return: A tuple containing the walk result and the bundle path.
+    Args:
+        command (str): The command to run for creating the support bundle.
+        tracked_files (List[str]): List to track files created by the command.
+    Returns:
+        Tuple[Dict[str, Dict[str, List[str]]], str]: A tuple containing the walk result and the bundle path.
     """
     # add in a name for more uniqueness
     command += f" --bundle-name test_bundle_{generate_random_string(size=8)}"
