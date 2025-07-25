@@ -76,7 +76,9 @@ def mocked_get_tenant_id(mocker):
     )
 
 
-def get_instance_endpoint(resource_group_name: Optional[str] = None, instance_name: Optional[str] = None, **kwargs: dict) -> str:
+def get_instance_endpoint(
+    resource_group_name: Optional[str] = None, instance_name: Optional[str] = None, **kwargs: dict
+) -> str:
     resource_path = "/instances"
     if instance_name:
         resource_path += f"/{instance_name}"

@@ -50,9 +50,9 @@ def get_mock_connector_template_record(
             "deviceInboundEndpointTypes": [
                 {
                     "configurationSchemaRefs": {
-                        "additionalConfigSchemaRef": "aio-sr://target4/microsoft-onvif-7722a864-b87b-4511-b170-90346879ea4d:1",
-                        "defaultEventsConfigSchemaRef": "aio-sr://target4/microsoft-onvif-51b86567-48d8-4567-af96-a479faa10c0c:1",
-                        "defaultProcessControlConfigSchemaRef": "aio-sr://target4/microsoft-onvif-52de1fd3-c9e8-4ab8-bcc9-2b76e1453381:1",
+                        "additionalConfigSchemaRef": "aio-sr://target4/microsoft-onvif-7722a864:1",
+                        "defaultEventsConfigSchemaRef": "aio-sr://target4/microsoft-onvif-51b86567:1",
+                        "defaultProcessControlConfigSchemaRef": "aio-sr://target4/microsoft-onvif-52de1fd3:1",
                     },
                     "endpointType": "Microsoft.Onvif",
                 }
