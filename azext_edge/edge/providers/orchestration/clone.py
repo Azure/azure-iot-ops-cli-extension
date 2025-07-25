@@ -972,7 +972,10 @@ class CloneManager:
             depends_on=cl_monikers,
         )
 
-        instance_copy = deepcopy(self.instance_record)
+        # Ensuring instance is fetched with the version used for deployment.
+        instance_copy = self.iotops_mgmt_client.instance.get(
+            resource_group_name=self.resource_group_name, instance_name=self.instance_name
+        )
         # A features mode should be removed if empty string or None.
         features: Dict[str, Union[dict, str]] = instance_copy["properties"].get("features", {})
         for f in features:
@@ -1596,14 +1599,14 @@ def process_to_cluster_params(to_cluster_params: Optional[List[str]]) -> dict:
     for k in kvp_map:
         if k not in TEMPLATE_PARAMS_SET:
             raise ValidationError(f"Invalid parameter '{k}'. The following set is supported {TEMPLATE_PARAMS_SET}.")
-        if k == TemplateParams.SCHEMA_REGISTRY_ID.value:
+        if k in [TemplateParams.SCHEMA_REGISTRY_ID.value, TemplateParams.ADR_NAMESPACE_ID.value]:
             if not is_valid_resource_id(kvp_map[k]):
                 raise ValidationError(f"Invalid resource Id '{kvp_map[k]}'.")
-            sr_resource_id = parse_resource_id(kvp_map[k])
+            parsed_resource_id = parse_resource_id(kvp_map[k])
             kvp_map[k] = {
-                "name": sr_resource_id["name"],
-                "resourceGroup": sr_resource_id["resource_group"],
-                "subscription": sr_resource_id["subscription"],
+                "name": parsed_resource_id["name"],
+                "resourceGroup": parsed_resource_id["resource_group"],
+                "subscription": parsed_resource_id["subscription"],
             }
         if k == TemplateParams.APPLY_ROLE_ASSIGNMENTS.value:
             try:

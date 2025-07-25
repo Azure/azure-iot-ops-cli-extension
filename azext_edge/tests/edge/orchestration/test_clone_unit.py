@@ -148,9 +148,16 @@ PLURALS = [
 ]
 SINGLETONS = ["customLocation", "instance", "roleAssignments_1", "broker"]
 
-MOCK_SR_RESOURCE_ID = (
-    f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{generate_random_string()}"
-    f"/providers/Microsoft.DeviceRegistry/schemaRegistries/{generate_random_string()}"
+MOCK_SR_RESOURCE_ID = generate_resource_id(
+    resource_group_name=generate_random_string(),
+    resource_provider="Microsoft.DeviceRegistry",
+    resource_path=f"/schemaRegistries/{generate_random_string()}",
+)
+
+MOCK_NS_RESOURCE_ID = generate_resource_id(
+    resource_group_name=generate_random_string(),
+    resource_provider="Microsoft.DeviceRegistry",
+    resource_path=f"/namespaces/{generate_random_string()}",
 )
 
 
@@ -443,16 +450,21 @@ class CloneScenario:
             self.resource_configs["adrNamespaceId"] = mock_instance_record["properties"]["adrNamespaceRef"][
                 "resourceId"
             ]
-        self.responses.add(
-            method=responses.GET,
-            url=get_instance_endpoint(
-                resource_group_name=self.resource_group_name,
-                instance_name=self.instance_name,
-            ),
-            json=mock_instance_record,
-            status=200,
-            content_type="application/json",
-        )
+        instance_fetch_by_apis = [IoTOpsMgmtApiVersion.V20250701_preview.value]
+        if not self.api_config.v2_enabled:
+            instance_fetch_by_apis.append(self.api_config.iotops_mgmt_api)
+        for api_version in instance_fetch_by_apis:
+            self.responses.add(
+                method=responses.GET,
+                url=get_instance_endpoint(
+                    resource_group_name=self.resource_group_name,
+                    instance_name=self.instance_name,
+                    api_version=api_version,
+                ),
+                json=mock_instance_record,
+                status=200,
+                content_type="application/json",
+            )
         self.resource_configs["instance"] = mock_instance_record
 
     def add_broker(self: C):
@@ -1221,6 +1233,7 @@ def test_clone_deploy_subjects(
                 f"customLocationName={generate_random_string()}",
                 f"opsExtensionName={generate_random_string()}",
                 f"schemaRegistryId={MOCK_SR_RESOURCE_ID}",
+                f"adrNamespaceId={MOCK_NS_RESOURCE_ID}",
                 f"resourceSlug={generate_random_string()}",
                 f"location={generate_random_string()}",
                 "applyRoleAssignments=true",
@@ -1234,6 +1247,7 @@ def test_clone_deploy_subjects(
             ]
         },
         {"input": ["schemaRegistryId=a"], "error": (ValidationError, "Invalid resource Id 'a'.")},
+        {"input": ["adrNamespaceId=b"], "error": (ValidationError, "Invalid resource Id 'b'.")},
         {
             "input": ["applyRoleAssignments=a"],
             "error": (ValidationError, "Invalid boolean string: a. Use 'true' or 'false'."),
@@ -1304,7 +1318,7 @@ def test_clone_deploy_params(
     }
     for param in params_input:
         key, value = param.split("=")
-        if key == "schemaRegistryId":
+        if key in ["schemaRegistryId", "adrNamespaceId"]:
             parsed_sr_id = parse_resource_id(value)
             value = {
                 "subscription": parsed_sr_id["subscription"],
