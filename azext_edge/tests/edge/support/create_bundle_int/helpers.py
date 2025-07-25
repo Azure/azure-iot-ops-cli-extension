@@ -379,6 +379,7 @@ def get_file_map(
 
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
+        # adding two folders - one for aio and one for traces
         assert len(walk_result) == 2 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
