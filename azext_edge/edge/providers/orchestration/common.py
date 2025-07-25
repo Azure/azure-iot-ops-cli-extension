@@ -345,6 +345,7 @@ class CloneTemplateParams(Enum):
     RESOURCE_SLUG = "resourceSlug"
     LOCATION = "location"
     APPLY_ROLE_ASSIGNMENTS = "applyRoleAssignments"
+    ADR_NAMESPACE_ID = "adrNamespaceId"
 
 
 class X509FileExtension(Enum):
