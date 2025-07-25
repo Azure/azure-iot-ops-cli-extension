@@ -45,9 +45,13 @@ class DeviceEndpointType(ListableEnum):
     REST = "Microsoft.Http"
 
     @classmethod
-    def get_type_from_keyword(cls, keyword: str) -> Optional[str]:
+    def get_type_from_keyword(cls, keyword: str, return_custom_keyword: bool = True) -> Optional[str]:
         """
-        Returns the endpoint type based on the keyword. Mainly used for testing.
+        Returns the endpoint type based on the keyword.
+
+        For listing endpoint purposes, if the keyword does not match any known type, it will return
+        the keyword itself.
+        For testing purposes, if the keyword does not match any known type, it will return "custom".
         """
         mapped_types = {
             "opcua": cls.OPCUA.value,
@@ -55,7 +59,7 @@ class DeviceEndpointType(ListableEnum):
             "media": cls.MEDIA.value,
             "rest": cls.REST.value
         }
-        return mapped_types.get(keyword.lower(), "custom")
+        return mapped_types.get(keyword.lower(), "custom" if return_custom_keyword else keyword)
 
 
 class NamespaceDevices(Queryable):
@@ -197,44 +201,53 @@ class NamespaceDevices(Queryable):
     def query_devices(
         self,
         device_name: Optional[str] = None,
+        instance_name: Optional[str] = None,
+        instance_resource_group: Optional[str] = None,
+        disabled: Optional[bool] = None,
         custom_query: Optional[str] = None,
         manufacturer: Optional[str] = None,
         model: Optional[str] = None,
         operating_system: Optional[str] = None,
+        operating_system_version: Optional[str] = None,
     ) -> dict:
         """
         Queries the devices using Azure Resource Graph.
         """
+        from .helpers import get_instance_query, get_query
         query = "Resources | where type =~ '{}'".format(NAMESPACE_DEVICE_RESOURCE_TYPE)
 
         # for now, keep it simple
-        # later on, add namespace (needs id parsing), location, endpoint types (will need to add joins)
-        # instance names
+        # ideas for later on, add namespace (needs id parsing), endpoint types (will need to add joins)
         def _build_query_body(
-            device_name: Optional[str] = None,
-            manufacturer: Optional[str] = None,
-            model: Optional[str] = None,
-            operating_system: Optional[str] = None
+            **params: dict
         ) -> str:
-            query_body = ""
-            # add filters
-            if device_name:
-                query_body += f' | where name =~ "{device_name}"'
-            if manufacturer:
-                query_body += f' | where properties.manufacturer =~ "{manufacturer}"'
-            if model:
-                query_body += f' | where properties.model =~ "{model}"'
-            if operating_system:
-                query_body += f' | where properties.operatingSystem =~ "{operating_system}"'
-            return query_body
+            param_mapping = {
+                "device_name": "name",
+                "manufacturer": "properties.manufacturer",
+                "model": "properties.model",
+                "operating_system": "properties.operatingSystem",
+                "operating_system_version": "properties.operatingSystemVersion",
+            }
+            return get_query(
+                param_mapping=param_mapping,
+                params=params,
+            )
 
         query += custom_query or _build_query_body(
             device_name=device_name,
+            disabled=disabled,
             manufacturer=manufacturer,
             model=model,
-            operating_system=operating_system
+            operating_system=operating_system,
+            operating_system_version=operating_system_version
         )
 
+        query = get_instance_query(
+            query=query,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group
+        )
+        logger.info(f"Querying devices with query: {query}")
         return self.query(query=query)
 
     def update(
@@ -369,15 +382,25 @@ class NamespaceDevices(Queryable):
         device_name: str,
         instance_name: str,
         instance_resource_group: str,
-        inbound: bool = False
+        inbound: bool = False,
+        inbound_endpoint_type: Optional[str] = None
     ) -> dict:
-        # TODO: for inbound endponts, see if we can also filter by type
         device = self.show(
             device_name=device_name,
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        return _get_endpoints(device, inbound=inbound)
+        endpoints = _get_endpoints(device, inbound=inbound)
+        if inbound and inbound_endpoint_type:
+            # support inputs of just "opcua", "onvif", etc.
+            inbound_endpoint_type = DeviceEndpointType.get_type_from_keyword(
+                inbound_endpoint_type, return_custom_keyword=False
+            )
+            endpoints = {
+                name: body for name, body in endpoints.items()
+                if body.get("endpointType", "").lower() == inbound_endpoint_type.lower()
+            }
+        return endpoints
 
     def inbound_remove_endpoint(
         self,

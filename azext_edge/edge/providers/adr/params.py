@@ -621,33 +621,39 @@ def load_adr_arguments(self, _):
         context.argument(
             "disabled",
             options_list=["--disabled"],
-            help="Disable the device. By default, no change will be made to the device's enabled/disabled state.",
+            help="Disable the device.",
             arg_type=get_three_state_flag(),
+            arg_group="Additional Info",
         )
         context.argument(
             "operating_system_version",
-            options_list=["--os-version"],
+            options_list=["--os-version", "--osv"],
             help="The device operating system version.",
+            arg_group="Additional Info",
         )
         context.argument(
             "manufacturer",
             options_list=["--manufacturer"],
             help="The device manufacturer.",
+            arg_group="Additional Info",
         )
         context.argument(
             "model",
             options_list=["--model"],
             help="The device model.",
+            arg_group="Additional Info",
         )
         context.argument(
             "operating_system",
             options_list=["--os"],
             help="The device operating system.",
+            arg_group="Additional Info",
         )
         context.argument(
             "custom_query",
             options_list=["--custom-query", "--cq"],
-            help="Custom query to use. All other query arguments will be ignored.",
+            help="Custom query to use. All other query arguments, aside from instance name and "
+            "resource group, will be ignored.",
         )
 
     with self.argument_context("iot ops ns device create") as context:
@@ -656,6 +662,15 @@ def load_adr_arguments(self, _):
             options_list=["--instance-subscription", "--isub"],
             help="The subscription ID of the Azure IoT Operations instance. If not provided, the current "
             "subscription will be used.",
+        )
+
+    with self.argument_context("iot ops ns device query") as context:
+        context.argument(
+            "disabled",
+            options_list=["--disabled"],
+            help="State of asset.",
+            arg_group="Additional Info",
+            arg_type=get_three_state_flag(),
         )
 
     with self.argument_context("iot ops ns device endpoint") as context:
@@ -721,6 +736,14 @@ def load_adr_arguments(self, _):
             options_list=["--inbound"],
             help="Flag to only list inbound endpoints.",
             arg_type=get_three_state_flag(),
+        )
+
+    with self.argument_context("iot ops ns device endpoint inbound list") as context:
+        context.argument(
+            "inbound_endpoint_type",
+            options_list=["--endpoint-type", "--et"],
+            help="Filter inbound endpoints by type. Both full endpoint name `Microsoft.OpcUa` "
+            "and short name `opcua` are supported.",
         )
 
     with self.argument_context("iot ops ns device endpoint inbound remove") as context:
@@ -893,7 +916,7 @@ def load_adr_arguments(self, _):
         )
         context.argument(
             "device_endpoint_name",
-            options_list=["--endpoint-name", "--endpoint", "--ep"],
+            options_list=["--endpoint", "--ep"],
             help="Device endpoint name.",
         )
         context.argument(
@@ -902,6 +925,7 @@ def load_adr_arguments(self, _):
             help="Space-separated list of asset type references.",
             nargs="+",
             action="extend",
+            arg_group="Additional Info"
         )
         context.argument(
             "attributes",
@@ -915,17 +939,20 @@ def load_adr_arguments(self, _):
             "description",
             options_list=["--description"],
             help="Description of the asset.",
+            arg_group="Additional Info"
         )
         context.argument(
             "disabled",
             options_list=["--disable"],
             help="Disable the asset.",
             arg_type=get_three_state_flag(),
+            arg_group="Additional Info"
         )
         context.argument(
             "display_name",
             options_list=["--display-name", "--dn"],
             help="Display name for the asset.",
+            arg_group="Additional Info"
         )
         context.argument(
             "documentation_uri",
@@ -984,7 +1011,17 @@ def load_adr_arguments(self, _):
         context.argument(
             "custom_query",
             options_list=["--custom-query", "--cq"],
-            help="Custom query to use. All other query arguments will be ignored.",
+            help="Custom query to use. All other query arguments, aside from instance name and "
+            "resource group, will be ignored.",
+        )
+
+    with self.argument_context("iot ops ns asset query") as context:
+        context.argument(
+            "disabled",
+            options_list=["--disabled"],
+            help="State of asset.",
+            arg_group="Additional Info",
+            arg_type=get_three_state_flag(),
         )
 
     for command in ("create", "update"):
