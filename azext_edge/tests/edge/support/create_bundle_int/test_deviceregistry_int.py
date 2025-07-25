@@ -33,6 +33,3 @@ def test_create_bundle_deviceregistry(cluster_connection, tracked_files):
         file_objs=file_map,
         resource_apis=COMPAT_DEVICEREGISTRY_APIS.resource_apis,
     )
-    # total_kinds = set(DEVICEREGISTRY_API_V1.kinds).union(DEVICEREGISTRY_API_V1B1.kinds)
-    # print(f"Total kinds: {total_kinds}")
-    # assert set(file_map.keys()).issubset(total_kinds)

@@ -28,7 +28,6 @@ def test_create_bundle_certmanager(cluster_connection, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
 
-    # TODO: may not be able to use EdgeApiManager due to the files being in different folders
     # cert-manager namespace
     certmanager_file_map = file_map[OpsServiceType.certmanager.value]
     check_custom_resource_files(
