@@ -803,6 +803,22 @@ def test_update_namespace_asset(
         "asset_name": generate_random_string(),
         "device_name": generate_random_string(),
         "device_endpoint_name": generate_random_string(),
+        "display_name": "Test Display Name",
+        "documentation_uri": "http://test-docs.com",
+        "external_asset_id": "external-id-123",
+        "hardware_revision": "HW-Rev-1",
+        "manufacturer": "Test Manufacturer",
+        "manufacturer_uri": "http://manufacturer.com",
+        "model": "TestModel",
+        "product_code": "PROD-123",
+        "serial_number": "SN12345",
+        "software_revision": "SW-Rev-1",
+        "disabled": True,
+    },
+    {
+        "disabled": False,
+        "instance_name": generate_random_string(),
+        "instance_resource_group": generate_random_string(),
     },
     {
         "custom_query": "| where resouceGroupName == 'test-rg' | project name, type",
@@ -810,6 +826,8 @@ def test_update_namespace_asset(
     {
         "asset_name": generate_random_string(),
         "custom_query": "| where resouceGroupName == 'test-rg' | project name, type",
+        "instance_name": generate_random_string(),
+        "instance_resource_group": generate_random_string(),
     }
 ])
 def test_query_namespace_assets(mocked_cmd, mocker, reqs):
@@ -832,8 +850,21 @@ def test_query_namespace_assets(mocked_cmd, mocker, reqs):
     # Check the query string that was passed to the query method
     query = mock_query.call_args[1]["query"]
 
+    asset_start = "Resources | where type =~ 'Microsoft.DeviceRegistry/namespaces/assets'"
     # Assert that the query starts with the expected base
-    assert query.startswith("Resources | where type =~ 'Microsoft.DeviceRegistry/namespaces/assets'")
+    if "instance_name" in reqs or "instance_resource_group" in reqs:
+        assert query.startswith("Resources | where type =~ 'microsoft.iotoperations/instances'")
+        if "instance_name" in reqs:
+            assert f"| where name =~ \"{reqs['instance_name']}\"" in query
+        if "instance_resource_group" in reqs:
+            assert f"| where resourceGroup =~ \"{reqs['instance_resource_group']}\"" in query
+        # asset start should be included still
+        assert asset_start in query
+        # project away only custom location 1
+        assert "| project-away customLocation1" in query
+        assert "| project-away customLocation1, customLocation" not in query
+    else:
+        assert query.startswith(asset_start)
 
     custom = "custom_query" in reqs
     # If a custom query was specified, verify it overrides other parameters
@@ -842,14 +873,26 @@ def test_query_namespace_assets(mocked_cmd, mocker, reqs):
 
     # Check that each specified parameter is included in the query if the query is not custom
     # otherwise, the specified parameter should not be there
-    if "asset_name" in reqs:
-        assert (f'| where name =~ "{reqs["asset_name"]}"' in query) is not custom
-    if "resource_group_name" in reqs:
-        assert (f'| where resourceGroup =~ "{reqs["resource_group_name"]}"' in query) is not custom
-    if "device_name" in reqs:
-        assert (f'| where properties.deviceRef.deviceName =~ "{reqs["device_name"]}"' in query) is not custom
-    if "device_endpoint_name" in reqs:
-        assert (f'| where properties.deviceRef.endpointName =~ "{reqs["device_endpoint_name"]}"' in query) is not custom
+    for param, prop in [
+        ("asset_name", "name"),
+        ("device_name", "properties.deviceRef.deviceName"),
+        ("device_endpoint_name", "properties.deviceRef.endpointName"),
+        ("display_name", "properties.displayName"),
+        ("documentation_uri", "properties.documentationUri"),
+        ("external_asset_id", "properties.externalAssetId"),
+        ("hardware_revision", "properties.hardwareRevision"),
+        ("manufacturer", "properties.manufacturer"),
+        ("manufacturer_uri", "properties.manufacturerUri"),
+        ("model", "properties.model"),
+        ("product_code", "properties.productCode"),
+        ("serial_number", "properties.serialNumber"),
+        ("software_revision", "properties.softwareRevision"),
+    ]:
+        if param in reqs:
+            assert (f'| where {prop} =~ "{reqs[param]}"' in query) is not custom
+
+    if "disabled" in reqs:
+        assert (f'| where properties.enabled == {not reqs["disabled"]}' in query) is not custom
 
     # Verify the standard projection part is included
     assert ("| project id, customLocation, location, name, resourceGroup, provisioningState" in query) is not custom
