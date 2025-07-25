@@ -134,7 +134,9 @@ def test_check_pre_post(cluster_connection, post, pre):
         node_allocatable = node["status"]["allocatable"]
         node_cpu = node_target["evaluations"][cpu_eval]["value"]["allocatable.cpu"]
         assert node_cpu == int(parse_quantity(node_allocatable["cpu"]))
-        assert node_target["evaluations"][cpu_eval]["status"] == get_expected_status(node_cpu >= int(parse_quantity(MIN_NODE_VCPU)))
+        assert node_target["evaluations"][cpu_eval]["status"] == get_expected_status(
+            node_cpu >= int(parse_quantity(MIN_NODE_VCPU))
+        )
 
         node_memory = node_target["evaluations"][memory_eval]["value"]["allocatable.memory"]
         assert node_memory == f"{int(parse_quantity(node_allocatable['memory']) / DISPLAY_BYTES_PER_GIGABYTE)}G"
