@@ -99,17 +99,25 @@ def create_namespace_device(
 def query_namespace_devices(
     cmd,
     device_name: Optional[str] = None,
+    instance_name: Optional[str] = None,
+    instance_resource_group: Optional[str] = None,
     custom_query: Optional[str] = None,
+    disabled: Optional[bool] = None,
     manufacturer: Optional[str] = None,
     model: Optional[str] = None,
     operating_system: Optional[str] = None,
+    operating_system_version: Optional[str] = None,
 ) -> dict:
     return NamespaceDevices(cmd).query_devices(
         device_name=device_name,
+        disabled=disabled,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         custom_query=custom_query,
         manufacturer=manufacturer,
         model=model,
-        operating_system=operating_system
+        operating_system=operating_system,
+        operating_system_version=operating_system_version,
     )
 
 
@@ -371,13 +379,15 @@ def list_inbound_device_endpoints(
     cmd,
     device_name: str,
     instance_name: str,
-    instance_resource_group: str
+    instance_resource_group: str,
+    inbound_endpoint_type: Optional[str] = None,
 ) -> dict:
     return NamespaceDevices(cmd).list_endpoints(
         device_name=device_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        inbound=True
+        inbound=True,
+        inbound_endpoint_type=inbound_endpoint_type
     )
 
 
@@ -1048,15 +1058,41 @@ def update_namespace_rest_asset(
 def query_namespace_assets(
     cmd,
     asset_name: Optional[str] = None,
+    instance_name: Optional[str] = None,
+    instance_resource_group: Optional[str] = None,
     custom_query: Optional[str] = None,
     device_name: Optional[str] = None,
     device_endpoint_name: Optional[str] = None,
+    disabled: Optional[bool] = None,
+    display_name: Optional[str] = None,
+    documentation_uri: Optional[str] = None,
+    external_asset_id: Optional[str] = None,
+    hardware_revision: Optional[str] = None,
+    manufacturer: Optional[str] = None,
+    manufacturer_uri: Optional[str] = None,
+    model: Optional[str] = None,
+    product_code: Optional[str] = None,
+    serial_number: Optional[str] = None,
+    software_revision: Optional[str] = None,
 ) -> dict:
     return NamespaceAssets(cmd).query_assets(
         asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
         custom_query=custom_query,
         device_name=device_name,
-        device_endpoint_name=device_endpoint_name
+        device_endpoint_name=device_endpoint_name,
+        disabled=disabled,
+        display_name=display_name,
+        documentation_uri=documentation_uri,
+        external_asset_id=external_asset_id,
+        hardware_revision=hardware_revision,
+        manufacturer=manufacturer,
+        manufacturer_uri=manufacturer_uri,
+        model=model,
+        product_code=product_code,
+        serial_number=serial_number,
+        software_revision=software_revision,
     )
 
 

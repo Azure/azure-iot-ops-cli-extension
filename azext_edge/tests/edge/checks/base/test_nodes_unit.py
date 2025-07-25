@@ -29,8 +29,13 @@ def mocked_node_client(mocked_client, mocker, request):
     nodes = []
     for node_params in params:
         arch = node_params.pop("architecture", generate_random_string(size=5))
+        operating_system = node_params.pop("operating_system", "")
         # Too annoying to make a valid one
-        node_info = mocker.Mock(architecture=arch, kernel_version=node_params.pop("kernel_version", "0.0.0"))
+        node_info = mocker.Mock(
+            architecture=arch,
+            kernel_version=node_params.pop("kernel_version", "0.0.0"),
+            operating_system=operating_system,
+        )
         control_plane = node_params.pop("control_plane", False)
         labels = {NODE_CONTROL_PLANE_LABEL: ""} if control_plane else None
         node = V1Node(
@@ -79,8 +84,62 @@ def mocked_node_client(mocked_client, mocker, request):
             {"control_plane": True, "architecture": "amd64", "cpu": 1, "memory": "2G", "ephemeral-storage": "5G"},
             {"architecture": "amd64", "cpu": 4, "memory": "16G", "ephemeral-storage": "30G"},
         ],
+        # Test cases for Linux node validation
+        [
+            {
+                "architecture": "amd64",
+                "cpu": 4,
+                "memory": "16G",
+                "ephemeral-storage": "30G",
+                "operating_system": "windows",
+            }
+        ],
+        [
+            {
+                "architecture": "amd64",
+                "cpu": 4,
+                "memory": "16G",
+                "ephemeral-storage": "30G",
+                "operating_system": "linux",
+            },
+            {
+                "architecture": "arm64",
+                "cpu": 4,
+                "memory": "16G",
+                "ephemeral-storage": "30G",
+                "operating_system": "windows",
+            },
+        ],
+        [
+            {
+                "architecture": "amd64",
+                "cpu": 4,
+                "memory": "16G",
+                "ephemeral-storage": "30G",
+                "operating_system": "linux",
+            },
+            {
+                "architecture": "arm64",
+                "cpu": 4,
+                "memory": "16G",
+                "ephemeral-storage": "30G",
+                "operating_system": "linux",
+            },
+        ],
     ],
-    ids=["none", "min reqs", "storage", "memory", "cpu", "architecture", "multi-node", "control-plane-multinode"],
+    ids=[
+        "none",
+        "min reqs",
+        "storage",
+        "memory",
+        "cpu",
+        "architecture",
+        "multi-node",
+        "control-plane-multinode",
+        "windows-only",
+        "mixed-linux-windows",
+        "all-linux-nodes",
+    ],
     indirect=True,
 )
 @pytest.mark.parametrize(
@@ -113,8 +172,24 @@ def test_check_nodes(mocked_node_client, kernel_version_check, storage_space_che
         assert result["status"] == "error"
         assert evaluation[0]["value"] == "No nodes detected."
         return
-    else:
-        assert result["targets"]["cluster/nodes"]["_all_"]["status"] == "success"
+
+    # Validate Linux node requirements
+    linux_nodes = [node for node in nodes if node.status.node_info.operating_system == "linux"]
+    has_linux_nodes = len(linux_nodes) > 0
+
+    # Check the Linux node evaluation in the result
+    linux_evaluation = None
+    for eval_item in evaluation:
+        if "any(cluster/nodes, operating_system='linux')" in str(eval_item.get("value", {})):
+            linux_evaluation = eval_item
+            break
+
+    assert linux_evaluation is not None, "Linux node evaluation should be present"
+    assert linux_evaluation["value"]["any(cluster/nodes, operating_system='linux')"] == has_linux_nodes
+
+    # Overall cluster target status should be success only if there are Linux nodes and regular node count is ok
+    expected_cluster_status = "success" if has_linux_nodes else "error"
+    assert result["targets"]["cluster/nodes"]["_all_"]["status"] == expected_cluster_status
 
     assert len(result["targets"]) == (len(nodes) + 1)
     table = result["targets"]["cluster/nodes"]["_all_"]["displays"][-1].renderable

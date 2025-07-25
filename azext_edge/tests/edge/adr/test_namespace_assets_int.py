@@ -61,13 +61,13 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     # Create Custom asset with maximum inputs
     asset_custom = run(
         f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_custom} "
-        f"--description \"Custom Device\" --display-name \"Multi-Sensor\" --model \"Custom-MS100\" "
-        f"--manufacturer \"CustomDevices\" --serial-number \"CUST123456\" "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_custom} "
+        "--description \"Custom Device\" --display-name \"Multi-Sensor\" --model \"Custom-MS100\" "
+        "--manufacturer \"CustomDevices\" --serial-number \"CUST123456\" "
         f"--dataset-config \"{{\\\"publishingInterval\\\": 1000}}\" "
         f"--event-config \"{{\\\"queueSize\\\": 5}}\" "
-        f"--dataset-dest topic=\"custom/data\" qos=Qos1 retain=Keep ttl=3600 "
-        f"--event-dest topic=\"custom/events\" qos=Qos0 retain=Never ttl=3600 "
+        "--dataset-dest topic=\"custom/data\" qos=Qos1 retain=Keep ttl=3600 "
+        "--event-dest topic=\"custom/events\" qos=Qos0 retain=Never ttl=3600 "
         f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
     )
     tracked_resources.append(asset_custom["id"])
@@ -112,6 +112,13 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     # Test query operation
     queried_assets = run(
         "az iot ops ns asset query"
+    )
+
+    asset_names = [asset["name"] for asset in queried_assets]
+    assert asset_name in asset_names
+
+    queried_assets = run(
+        f"az iot ops ns asset query -i {instance_name} -g {resource_group}"
     )
 
     asset_names = [asset["name"] for asset in queried_assets]
@@ -333,7 +340,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     # 1. Create ONVIF asset with maximum inputs
     asset_onvif = run(
         f"az iot ops ns asset onvif create --name {asset_name_onvif} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_onvif} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_onvif} "
         "--description \"ONVIF Camera\" --display-name \"Entrance Camera\" --model \"Camera-X1\" "
         "--manufacturer \"SecurityCo\" --serial-number \"CAM123456\" "
         "--documentation-uri \"https://example.com/docs/camera\" "
@@ -363,7 +370,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     # 2. Create OPCUA asset with maximum inputs
     asset_opcua = run(
         f"az iot ops ns asset opcua create --name {asset_name_opcua} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_opcua} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_opcua} "
         "--description \"OPC UA Sensor\" --display-name \"Temperature Sensor\" --model \"Sensor-T2000\" "
         "--manufacturer \"Contoso\" --serial-number \"OPCUA987654\" "
         "--dataset-publish-int 2000 --dataset-sampling-int 1000 --dataset-queue-size 5 "
@@ -392,7 +399,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     # 3. Create Media asset with maximum inputs
     asset_media = run(
         f"az iot ops ns asset media create --name {asset_name_media} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_media} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_media} "
         "--description \"Media Camera\" --display-name \"Monitoring Camera\" --model \"MediaCam-4K\" "
         "--manufacturer \"MediaCorp\" --serial-number \"MEDIA567890\" "
         "--task-type \"snapshot-to-mqtt\" --task-format \"jpeg\" --snapshots-per-sec 1 "
@@ -419,7 +426,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     # 4. Create Rest asset with maximum inputs
     asset_rest = run(
         f"az iot ops ns asset rest create --name {asset_name_rest} --instance {instance_name} "
-        f"-g {resource_group} --device {device_name} --endpoint-name {endpoint_name_rest} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_rest} "
         "--description \"Rest Camera\" --display-name \"Main Entrance Camera\" "
         "--model \"Camera-X1\" --manufacturer \"SecurityCo\" --serial-number \"CAM123456\" "
         "--documentation-uri \"https://example.com/docs/camera\" "
