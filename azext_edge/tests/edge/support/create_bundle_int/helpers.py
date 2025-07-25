@@ -84,6 +84,12 @@ def assert_file_names(files: List[str]):
             short_name += f".{name.pop(0)}"
         if "metric" in name and extension == "yaml":
             short_name += f".{name.pop(0)}"
+        
+        # Handle webhook configurations that include extra '.'-separated elements
+        if file_type in ["vwc", "mwc"] and extension == "yaml" and name:
+            # For webhook configurations, consume any remaining API group parts
+            while name:
+                name.pop(0)
 
         assert bool(name) == (extension != "yaml")
 
