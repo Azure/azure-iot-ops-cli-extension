@@ -69,6 +69,7 @@ from .resources import Instances
 from .resources.instances import (
     SERVICE_ACCOUNT_DATAFLOW,
     SERVICE_ACCOUNT_SECRETSYNC,
+    SERVICE_ACCOUNT_SCHEMA,
     get_fc_name,
 )
 
@@ -464,7 +465,11 @@ class InstanceRestore:
             # is in play we federate with best attempt.
             cred_map = {}
             cluster_svc_acct_map = {}
-            expected_creds = [(oidc_issuer, SERVICE_ACCOUNT_SECRETSYNC), (oidc_issuer, SERVICE_ACCOUNT_DATAFLOW)]
+            expected_creds = [
+                (oidc_issuer, SERVICE_ACCOUNT_SECRETSYNC),
+                (oidc_issuer, SERVICE_ACCOUNT_DATAFLOW),
+                (oidc_issuer, SERVICE_ACCOUNT_SCHEMA),
+            ]
             for cred in credentials:
                 svc_acct = cred["properties"]["subject"].split(":")[-1]
                 cred_map[(cred["properties"]["issuer"], svc_acct)] = 1
@@ -992,10 +997,15 @@ class CloneManager:
             adr_namespace_ref = instance_copy["properties"].get("adrNamespaceRef", {})
             if adr_namespace_ref:
                 adr_namespace_ref["resourceId"] = (
-                    f"[resourceId(parameters('{TemplateParams.ADR_NAMESPACE_ID.value}').subscription, "
-                    f"parameters('{TemplateParams.ADR_NAMESPACE_ID.value}').resourceGroup, "
-                    "'Microsoft.DeviceRegistry/namespaces', "
+                    "[resourceId('Microsoft.DeviceRegistry/namespaces', "
                     f"parameters('{TemplateParams.ADR_NAMESPACE_ID.value}').name)]"
+                )
+            spc_ref = instance_copy["properties"].get("defaultSecretProviderClassRef", {})
+            if spc_ref:
+                parsed_spc_rid = parse_resource_id(spc_ref["resourceId"])
+                spc_ref["resourceId"] = (
+                    "[resourceId('Microsoft.SecretSyncController/azureKeyVaultSecretProviderClasses', "
+                    f"'{parsed_spc_rid['name']}')]"
                 )
 
         self._add_resource(

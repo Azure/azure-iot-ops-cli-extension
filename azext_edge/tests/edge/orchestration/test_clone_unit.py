@@ -34,6 +34,7 @@ from azext_edge.edge.providers.orchestration.clone import (
     DEPLOYMENT_CHUNK_LEN,
     SERVICE_ACCOUNT_DATAFLOW,
     SERVICE_ACCOUNT_SECRETSYNC,
+    SERVICE_ACCOUNT_SCHEMA,
     TEMPLATE_PARAMS_SET,
     CloneManager,
     InstanceRestore,
@@ -203,6 +204,7 @@ class CloneScenario:
         self.cluster_name = cluster_name
         self.cl_name = generate_random_string()
         self.sr_name = generate_random_string()
+        self.default_spc_name = generate_random_string()
         self.adr_ns_name = generate_random_string()
         self.default_broker_name = DEFAULT_BROKER
         self.default_authn_name = DEFAULT_BROKER_AUTHN
@@ -252,7 +254,7 @@ class CloneScenario:
             cluster_name=generate_random_string(),
             just_id=True,
         )
-        if not cred_state:
+        if cred_state is None:
             cred_state = {"subjects": {SERVICE_ACCOUNT_DATAFLOW, SERVICE_ACCOUNT_SECRETSYNC}}
         cred_subjects = cred_state.get("subjects", {})
         cred_payload = {"value": []}
@@ -439,6 +441,7 @@ class CloneScenario:
             cl_name=self.cl_name,
             schema_registry_name=self.sr_name,
             adr_namespace_name=self.adr_ns_name,
+            default_spc_name=self.default_spc_name,
             version=version,
             features=features,
             **optional_kwargs,
@@ -670,10 +673,13 @@ class CloneScenario:
 
     def add_secretsync_spcs(self: C):
         spcs = []
+        use_default_spc_name = self.api_config.v2_enabled
         for _ in range(self.add_resources_map.get("spcs", 0)):
-            spc = get_mock_spc_record(
-                name=generate_random_string(), resource_group_name=self.resource_group_name, cl_name=self.cl_name
-            )
+            spc_name = generate_random_string()
+            if use_default_spc_name:
+                spc_name = self.default_spc_name
+                use_default_spc_name = False
+            spc = get_mock_spc_record(name=spc_name, resource_group_name=self.resource_group_name, cl_name=self.cl_name)
             self.spc_client_ids.append(spc["properties"]["clientId"])
             uami_map = get_uami_id_map(self.resource_group_name)
             uami_id = next(iter(uami_map))
@@ -927,6 +933,7 @@ def test_clone_manager(
 @pytest.mark.parametrize("add_dataflow_endpoints", [0, 2])
 @pytest.mark.parametrize("add_aeps", [0, 5])
 @pytest.mark.parametrize("add_assets", [0, 5])
+@pytest.mark.parametrize("add_spcs", [0, 2])
 @pytest.mark.parametrize("add_connector_templates", [0, 5])
 @pytest.mark.parametrize("add_ns_devices", [0, 5])
 @pytest.mark.parametrize("add_ns_assets", [0, 5])
@@ -937,6 +944,7 @@ def test_clone_manager_instance_v2(
     add_dataflows: int,
     add_aeps: int,
     add_assets: int,
+    add_spcs: int,
     add_connector_templates: int,
     add_ns_devices: int,
     add_ns_assets: int,
@@ -949,6 +957,7 @@ def test_clone_manager_instance_v2(
         "dataflows": add_dataflows,
         "aeps": add_aeps,
         "assets": add_assets,
+        "spcs": add_spcs,
         "connectorTemplates": add_connector_templates,
         "nsDevices": add_ns_devices,
         "nsAssets": add_ns_assets,
@@ -1160,7 +1169,8 @@ def test_clone_instance_feature_capture(
         {"subjects": {}},
         {"subjects": {SERVICE_ACCOUNT_SECRETSYNC}},
         {"subjects": {SERVICE_ACCOUNT_DATAFLOW}},
-        {"subjects": {SERVICE_ACCOUNT_DATAFLOW, SERVICE_ACCOUNT_SECRETSYNC}},
+        {"subjects": {SERVICE_ACCOUNT_SCHEMA}},
+        {"subjects": {SERVICE_ACCOUNT_DATAFLOW, SERVICE_ACCOUNT_SECRETSYNC, SERVICE_ACCOUNT_SCHEMA}},
     ],
 )
 @pytest.mark.parametrize("cluster_state", [{"connectivityStatus": "Connected"}, {"connectivityStatus": "Disconnected"}])
@@ -1555,10 +1565,17 @@ def _replace_instance(context: dict):
     )
     v2_enabled = context.get("v2_enabled", False)
     if v2_enabled:
-        properties["adrNamespaceRef"]["resourceId"] = (
-            "[resourceId(parameters('adrNamespaceId').subscription, parameters('adrNamespaceId').resourceGroup, "
-            "'Microsoft.DeviceRegistry/namespaces', parameters('adrNamespaceId').name)]"
-        )
+        namespace_resource_id = properties.get("adrNamespaceRef", {}).get("resourceId")
+        if namespace_resource_id:
+            properties["adrNamespaceRef"][
+                "resourceId"
+            ] = "[resourceId('Microsoft.DeviceRegistry/namespaces', parameters('adrNamespaceId').name)]"
+        spc_resource_id = properties.get("defaultSecretProviderClassRef", {}).get("resourceId")
+        if spc_resource_id:
+            properties["defaultSecretProviderClassRef"]["resourceId"] = (
+                "[resourceId('Microsoft.SecretSyncController/azureKeyVaultSecretProviderClasses', "
+                f"'{parse_resource_id(spc_resource_id)['name']}')]"
+            )
 
     payload = {
         "apiVersion": context["instance_api"],
