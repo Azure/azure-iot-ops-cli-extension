@@ -167,18 +167,24 @@ def get_registry_mgmt_client(
 
 
 class IoTOpsMgmtApiVersion(Enum):
-    V20250401 = "2025-04-01"
     V20250701_preview = "2025-07-01-preview"
+    V20250401 = "2025-04-01"
+    V20241101 = "2024-11-01"
 
 
 def get_iotops_mgmt_client(
-    subscription_id: str, api_version: IoTOpsMgmtApiVersion = IoTOpsMgmtApiVersion.V20250701_preview, **kwargs
+    subscription_id: str,
+    api_version: Union[IoTOpsMgmtApiVersion, str] = IoTOpsMgmtApiVersion.V20250701_preview,
+    **kwargs,
 ) -> "MicrosoftIoTOperationsManagementService":
     from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService
 
+    if isinstance(api_version, IoTOpsMgmtApiVersion):
+        api_version = api_version.value
+
     if "http_logging_policy" not in kwargs:
         kwargs["http_logging_policy"] = get_default_logging_policy()
-    kwargs["api_version"] = api_version.value
+    kwargs["api_version"] = api_version
 
     return MicrosoftIoTOperationsManagementService(
         credential=AZURE_CLI_CREDENTIAL,

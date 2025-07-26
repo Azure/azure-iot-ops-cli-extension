@@ -11,12 +11,12 @@ from ..conftest import get_base_endpoint, get_mock_resource
 
 
 def get_dataflow_endpoint_endpoint(
-    instance_name: str, resource_group_name: str, dataflow_endpoint_name: Optional[str] = None
+    instance_name: str, resource_group_name: str, dataflow_endpoint_name: Optional[str] = None, **kwargs: dict
 ) -> str:
     resource_path = f"/instances/{instance_name}/dataflowEndpoints"
     if dataflow_endpoint_name:
         resource_path += f"/{dataflow_endpoint_name}"
-    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
+    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path, **kwargs)
 
 
 def get_mock_dataflow_endpoint_record(

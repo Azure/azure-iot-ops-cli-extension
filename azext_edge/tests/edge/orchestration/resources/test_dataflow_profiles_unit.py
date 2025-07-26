@@ -24,12 +24,12 @@ from .test_instances_unit import get_instance_endpoint, get_mock_instance_record
 
 
 def get_dataflow_profile_endpoint(
-    instance_name: str, resource_group_name: str, profile_name: Optional[str] = None
+    instance_name: str, resource_group_name: str, profile_name: Optional[str] = None, **kwargs: dict
 ) -> str:
     resource_path = f"/instances/{instance_name}/dataflowProfiles"
     if profile_name:
         resource_path += f"/{profile_name}"
-    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
+    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path, **kwargs)
 
 
 def get_mock_dataflow_profile_record(profile_name: str, instance_name: str, resource_group_name: str) -> dict:

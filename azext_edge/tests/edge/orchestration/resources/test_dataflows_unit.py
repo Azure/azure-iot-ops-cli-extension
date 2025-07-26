@@ -36,12 +36,16 @@ from .conftest import get_base_endpoint, get_mock_resource
 
 
 def get_dataflow_endpoint(
-    profile_name: str, instance_name: str, resource_group_name: str, dataflow_name: Optional[str] = None
+    profile_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    dataflow_name: Optional[str] = None,
+    **kwargs: dict,
 ) -> str:
     resource_path = f"/instances/{instance_name}/dataflowProfiles/{profile_name}/dataflows"
     if dataflow_name:
         resource_path += f"/{dataflow_name}"
-    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
+    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path, **kwargs)
 
 
 def get_mock_dataflow_record(
@@ -60,18 +64,13 @@ def get_mock_dataflow_record(
                     "assetRef": "",
                     "serializationFormat": "Json",
                     "schemaRef": "",
-                    "dataSources": [
-                        "test"
-                    ]
-                }
+                    "dataSources": ["test"],
+                },
             },
             {
                 "operationType": "Destination",
-                "destinationSettings": {
-                    "endpointRef": "myendpoint2",
-                    "dataDestination": "test"
-                }
-            }
+                "destinationSettings": {"endpointRef": "myendpoint2", "dataDestination": "test"},
+            },
         ],
         "profileRef": "mydataflowprofile",
         "mode": "Enabled",
@@ -231,17 +230,9 @@ def test_dataflow_list(mocked_cmd, mocked_responses: responses, records: int):
                         "schemaRef": "",
                         "datasets": [],
                         "filter": [],
-                        "map": [
-                            {
-                                "type": "PassThrough",
-                                "inputs": [
-                                    "*"
-                                ],
-                                "output": "*"
-                            }
-                        ]
-                    }
-                }
+                        "map": [{"type": "PassThrough", "inputs": ["*"], "output": "*"}],
+                    },
+                },
             ),
             "dataflow_profile_name": generate_random_string(),
             "source_endpoint": get_mock_dataflow_endpoint_record(
@@ -507,11 +498,12 @@ def test_dataflow_apply_error(
     )
 
     source_endpoint_type = source_endpoint_payload["properties"]["endpointType"]
-    source_endpoint_group_id = source_endpoint_payload["properties"].get(
-        DATAFLOW_ENDPOINT_TYPE_SETTINGS[source_endpoint_type]).get("consumerGroupId")
-    if source_endpoint_type == "Mqtt" or (
-        source_endpoint_type == "Kafka" and source_endpoint_group_id
-    ):
+    source_endpoint_group_id = (
+        source_endpoint_payload["properties"]
+        .get(DATAFLOW_ENDPOINT_TYPE_SETTINGS[source_endpoint_type])
+        .get("consumerGroupId")
+    )
+    if source_endpoint_type == "Mqtt" or (source_endpoint_type == "Kafka" and source_endpoint_group_id):
         destination_operation_payload = scenario.get("destination_endpoint")
         mocked_responses.add(
             method=responses.GET,
@@ -566,7 +558,7 @@ def test_dataflow_apply_error(
             "Source dataflow endpoint 'myendpoint1' not found in instance 'myinstance'. "
             "Please provide a valid 'endpointRef' using --config-file.",
         ),
-    ]
+    ],
 )
 def test_dataflow_apply_resource_error(
     mocked_cmd,
@@ -634,7 +626,7 @@ def test_dataflow_delete(mocked_cmd, mocked_responses: responses):
             profile_name=profile_name,
             resource_group_name=resource_group_name,
             instance_name=instance_name,
-            dataflow_name=dataflow_name
+            dataflow_name=dataflow_name,
         ),
         status=204,
     )
