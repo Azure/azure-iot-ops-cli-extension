@@ -48,13 +48,13 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="f9eaf713ec57783d5776885096bf076b3b516f2b",
+    commit_id="44725e657ec5f4810f33fe8efad2420991264ddb",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.36.1.42791", "templateHash": "13806746648919550554"}
+            "_generator": {"name": "bicep", "version": "0.36.177.2456", "templateHash": "14056350168558676608"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -688,12 +688,14 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="c8a1c99f64fc3393bfdb8a8414539e6f36833257",
+    commit_id="44725e657ec5f4810f33fe8efad2420991264ddb",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.36.1.42791", "templateHash": "6060386194716746867"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.36.177.2456", "templateHash": "4962265220030072831"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -1307,7 +1309,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.2.34"},
+            "VERSIONS": {"iotOperations": "1.2.35"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
