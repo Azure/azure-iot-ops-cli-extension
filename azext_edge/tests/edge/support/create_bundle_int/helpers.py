@@ -379,30 +379,6 @@ def get_all_kinds_from_manager(
     return result - set(exclude_kinds)
 
 
-# TODO: better naming, refactor the method into current method
-def cleanup_walk_result(
-    walk_result: Dict[str, Dict[str, List[str]]],
-    exclude_namespaces: List[str],
-) -> Dict[str, Dict[str, List[str]]]:
-    """
-    Cleans up the walk result by removing paths that contains namespaces to be excluded.
-
-    Args:
-        walk_result (Dict[str, Dict[str, List[str]]]):
-        A dictionary representing the walk result, where keys are file paths and values are dictionaries
-        exclude_namespaces (List[str]): A list of namespaces to exclude from the walk result.
-    
-    Returns:
-        Dict[str, Dict[str, List[str]]]: A cleaned-up walk result dictionary with specified namespaces in the path removed.
-    """
-
-    for key in list(walk_result.keys()):
-        if key.startswith(BASE_ZIP_PATH) and key.split("\\")[1] not in exclude_namespaces.values():
-            walk_result.pop(key)
-
-    return walk_result
-
-
 def get_file_map(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
@@ -426,12 +402,6 @@ def get_file_map(
     c_namespace = namespaces.get("usage_system")
     certmanager_namespace = namespaces.get("certmanager")
     ops_path = None
-
-    # Skip checking the namespaces not in namespaces
-    walk_result = cleanup_walk_result(
-        walk_result,
-        exclude_namespaces=namespaces,
-    )
 
     if aio_namespace:
         walk_result.pop(path.join(BASE_ZIP_PATH, aio_namespace))

@@ -12,7 +12,6 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from .helpers import (
     assert_file_names,
-    cleanup_walk_result,
     process_top_levels,
     run_bundle_command,
     BASE_ZIP_PATH,
@@ -71,9 +70,6 @@ def test_create_bundle(cluster_connection, ops_service, bundle_dir, mq_traces, t
     ssc_namespace = namespaces.get("ssc")
     arc_namespace = namespaces.get("arc")
     certmanager_namespace = namespaces.get("certmanager")
-
-    # cleanup paths in walk_result that are not in namespaces (user customized namespaces)
-    walk_result = cleanup_walk_result(walk_result, namespaces)
 
     # Level 1
     if not aio_namespace:
