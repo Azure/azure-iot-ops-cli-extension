@@ -379,6 +379,7 @@ def get_all_kinds_from_manager(
     return result - set(exclude_kinds)
 
 
+# TODO: better naming, refactor the method into current method
 def cleanup_walk_result(
     walk_result: Dict[str, Dict[str, List[str]]],
     exclude_namespaces: List[str],
@@ -798,11 +799,20 @@ def _clean_up_folders(
         and path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace) in walk_result
     ):
         services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
+        level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace))
 
         if acstor_namespace:
-            walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace))
-        if acs_namespace:
-            walk_result.pop(path.join(BASE_ZIP_PATH, acs_namespace))
+            services.append("arccontainerstorage")
+        if (
+            containerstorage_service
+            and path.join(BASE_ZIP_PATH, acstor_namespace, containerstorage_service) in walk_result
+        ):
+            services.append(containerstorage_service)
+        assert set(level_1["folders"]) == set(services), (
+            f"Mismatch; folders: [{level_1['folders']}], "
+            f"services [{services}]"
+        )
+        assert not level_1["files"]
 
     # remove empty folders in level 2
     if clusterconfig_namespace:
