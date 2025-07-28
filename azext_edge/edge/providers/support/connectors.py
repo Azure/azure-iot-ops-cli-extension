@@ -21,28 +21,31 @@ from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
-
-# TODO: more connectors will be added
 SIMULATOR_PREFIX = "opcplc-"
 OPC_PREFIX = "aio-opc-"
 OPC_APP_LABEL = "app in (aio-opc-supervisor, aio-opc-admission-controller)"
 OPC_NAME_LABEL = NAME_LABEL_FORMAT.format(label="aio-opc-opcua-connector, opcplc")
 OPC_NAME_VAR_LABEL = "name in (aio-opc-asset-discovery)"
 CONNECTORS_DIRECTORY_PATH = "connectors"
+# The prefix for connectors, will use common labels once they are available
+AIO_ONVIF_PREFIX = "aio-onvif"
+AIO_MEDIA_PREFIX = "aio-media"
 
 # TODO: once this label is stabled, we can remove the other labels
 OPCUA_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-opcuabroker")
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
-    opcua_pods = []
-    pod_name_labels = [
+    connector_pods = []
+    opcua_pod_name_labels = [
         OPC_APP_LABEL,
         OPC_NAME_LABEL,
         OPC_NAME_VAR_LABEL,
     ]
-    for pod_name_label in pod_name_labels:
-        opcua_pods.extend(
+
+    # opcua connector pods
+    for pod_name_label in opcua_pod_name_labels:
+        connector_pods.extend(
             process_v1_pods(
                 directory_path=CONNECTORS_DIRECTORY_PATH,
                 label_selector=pod_name_label,
@@ -51,7 +54,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
             )
         )
 
-    opcua_pods.extend(
+    connector_pods.extend(
         process_v1_pods(
             directory_path=CONNECTORS_DIRECTORY_PATH,
             label_selector=OPCUA_NAME_LABEL,
@@ -59,7 +62,27 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
             include_metrics=True,
         )
     )
-    return opcua_pods
+
+    # onvif connector pods
+    connector_pods.extend(
+        process_v1_pods(
+            directory_path=CONNECTORS_DIRECTORY_PATH,
+            prefix_names=[AIO_ONVIF_PREFIX],
+            since_seconds=since_seconds,
+            include_metrics=True,
+        )
+    )
+
+    # media connector pods
+    connector_pods.extend(
+        process_v1_pods(
+            directory_path=CONNECTORS_DIRECTORY_PATH,
+            prefix_names=[AIO_MEDIA_PREFIX],
+            since_seconds=since_seconds,
+            include_metrics=True,
+        )
+    )
+    return connector_pods
 
 
 def fetch_deployments():
@@ -79,9 +102,26 @@ def fetch_replicasets():
 
 
 def fetch_services():
+    # opcua services
     processed = process_services(directory_path=CONNECTORS_DIRECTORY_PATH, label_selector=OPC_APP_LABEL)
     processed.extend(process_services(directory_path=CONNECTORS_DIRECTORY_PATH, prefix_names=[SIMULATOR_PREFIX]))
     processed.extend(process_services(directory_path=CONNECTORS_DIRECTORY_PATH, label_selector=OPCUA_NAME_LABEL))
+
+    # onvif services
+    processed.extend(
+        process_services(
+            directory_path=CONNECTORS_DIRECTORY_PATH,
+            prefix_names=[AIO_ONVIF_PREFIX],
+        )
+    )
+
+    # media services
+    processed.extend(
+        process_services(
+            directory_path=CONNECTORS_DIRECTORY_PATH,
+            prefix_names=[AIO_MEDIA_PREFIX],
+        )
+    )
     return processed
 
 
