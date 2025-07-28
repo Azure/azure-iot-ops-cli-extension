@@ -801,7 +801,7 @@ def _clean_up_folders(
         services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace))
 
-        if acstor_namespace:
+        if acs_namespace:
             services.append("arccontainerstorage")
         if (
             containerstorage_service
