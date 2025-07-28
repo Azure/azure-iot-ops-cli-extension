@@ -105,8 +105,6 @@ def test_create_bundle_connectors(
         mock_names=[
             "aio-onvif-0000000",
             "aio-media-0000000",
-            "onvif-0000000",
-            "media-0000000",
         ],
     )
     assert_list_daemon_sets(
@@ -149,8 +147,6 @@ def test_create_bundle_connectors(
             "opcplc-0000000",
             "aio-onvif-0000000",
             "aio-media-0000000",
-            "onvif-0000000",
-            "media-0000000",
         ],
     )
     assert_list_services(

@@ -29,9 +29,7 @@ OPC_NAME_VAR_LABEL = "name in (aio-opc-asset-discovery)"
 CONNECTORS_DIRECTORY_PATH = "connectors"
 # The prefix for connectors, will use common labels once they are available
 AIO_ONVIF_PREFIX = "aio-onvif"
-ONVIF_PREFIX = "onvif"
 AIO_MEDIA_PREFIX = "aio-media"
-MEDIA_PREFIX = "media"
 
 # TODO: once this label is stabled, we can remove the other labels
 OPCUA_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-opcuabroker")
@@ -69,10 +67,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     connector_pods.extend(
         process_v1_pods(
             directory_path=CONNECTORS_DIRECTORY_PATH,
-            prefix_names=[
-                AIO_ONVIF_PREFIX,
-                ONVIF_PREFIX,
-            ],
+            prefix_names=[AIO_ONVIF_PREFIX],
             since_seconds=since_seconds,
             include_metrics=True,
         )
@@ -82,10 +77,7 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     connector_pods.extend(
         process_v1_pods(
             directory_path=CONNECTORS_DIRECTORY_PATH,
-            prefix_names=[
-                AIO_MEDIA_PREFIX,
-                MEDIA_PREFIX,
-            ],
+            prefix_names=[AIO_MEDIA_PREFIX],
             since_seconds=since_seconds,
             include_metrics=True,
         )
@@ -119,7 +111,7 @@ def fetch_services():
     processed.extend(
         process_services(
             directory_path=CONNECTORS_DIRECTORY_PATH,
-            prefix_names=[AIO_ONVIF_PREFIX, ONVIF_PREFIX],
+            prefix_names=[AIO_ONVIF_PREFIX],
         )
     )
 
@@ -127,7 +119,7 @@ def fetch_services():
     processed.extend(
         process_services(
             directory_path=CONNECTORS_DIRECTORY_PATH,
-            prefix_names=[AIO_MEDIA_PREFIX, MEDIA_PREFIX],
+            prefix_names=[AIO_MEDIA_PREFIX],
         )
     )
     return processed
