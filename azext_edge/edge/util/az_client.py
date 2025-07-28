@@ -314,8 +314,6 @@ def parse_resource_id(resource_id: str) -> Optional[ResourceIdContainer]:
 
 
 def get_api_error_str(exception: "HttpResponseError") -> str:
-    if hasattr(exception, "error") and hasattr(exception.error, "message"):
-        return exception.error.message
     if hasattr(exception, "message"):
         return exception.message
     return str(exception)
