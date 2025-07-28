@@ -66,6 +66,12 @@ def get_namespace_asset_record(
             resource_group_name=resource_group_name
         ).split("?", maxsplit=1)[0][len(BASE_URL) :],
         "type": NAMESPACE_ASSET_RESOURCE_TYPE,
+        "location": "westus",
+        "resourceGroup": resource_group_name,
+        "extendedLocation": {
+            "name": generate_random_string(),
+            "type": "CustomLocation"
+        },
         "properties": {
             "deviceRef": {
                 "deviceName": f"test{generate_random_string()}",

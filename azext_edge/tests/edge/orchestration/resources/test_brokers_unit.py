@@ -24,11 +24,13 @@ from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
 
 
-def get_broker_endpoint(instance_name: str, resource_group_name: str, broker_name: Optional[str] = None) -> str:
+def get_broker_endpoint(
+    instance_name: str, resource_group_name: str, broker_name: Optional[str] = None, **kwargs: dict
+) -> str:
     resource_path = f"/instances/{instance_name}/brokers"
     if broker_name:
         resource_path += f"/{broker_name}"
-    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
+    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path, **kwargs)
 
 
 def get_mock_broker_record(
@@ -372,11 +374,17 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
         },
         {
             "input": {"user_property_key": "key"},
-            "error": (InvalidArgumentValueError, "Both --user-key and --user-value must be set or both must be unset."),
+            "error": (
+                InvalidArgumentValueError,
+                "Both --user-key and --user-value must be set or both must be unset.",
+            ),
         },
         {
             "input": {"user_property_value": "value"},
-            "error": (InvalidArgumentValueError, "Both --user-key and --user-value must be set or both must be unset."),
+            "error": (
+                InvalidArgumentValueError,
+                "Both --user-key and --user-value must be set or both must be unset.",
+            ),
         },
         {
             "input": {"persist_mode": ["retain=All"], "disable_dynamic": ["retain"]},

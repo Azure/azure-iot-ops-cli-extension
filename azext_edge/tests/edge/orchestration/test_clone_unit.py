@@ -41,15 +41,20 @@ from azext_edge.edge.providers.orchestration.clone import (
     VersionGuru,
     default_bundle_name,
     get_fc_name,
-    parse_version,
 )
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_ACS,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
+    SECRET_SYNC_API_VERSION,
+)
+from azext_edge.edge.util.az_client import (
+    DeviceRegistryMgmtApiVersion,
+    IoTOpsMgmtApiVersion,
 )
 from azext_edge.edge.util.id_tools import parse_resource_id
+from azext_edge.edge.util.machinery import scoped_semver_import
 
 from ...generators import (
     generate_random_string,
@@ -57,7 +62,17 @@ from ...generators import (
     generate_uuid,
     get_zeroed_subscription,
 )
+from ..adr.test_namespace_assets_unit import get_namespace_asset_record
+from ..adr.test_namespace_devices_unit import get_namespace_device_record
 from .resources.conftest import BASE_URL, get_request_kpis
+from .resources.connector.akri.test_connector_templates_unit import (
+    get_connector_template_endpoint,
+    get_mock_connector_template_record,
+)
+from .resources.dataflow_endpoint.conftest import (
+    get_dataflow_endpoint_endpoint,
+    get_mock_dataflow_endpoint_record,
+)
 from .resources.test_aeps_unit import get_mock_aep_record
 from .resources.test_assets_unit import get_mock_asset_record
 from .resources.test_broker_authns_unit import (
@@ -80,10 +95,6 @@ from .resources.test_clusters_unit import get_cluster_url, get_federated_creds_u
 from .resources.test_custom_locations_unit import (
     get_custom_location_endpoint,
     get_mock_custom_location_record,
-)
-from .resources.dataflow_endpoint.conftest import (
-    get_dataflow_endpoint_endpoint,
-    get_mock_dataflow_endpoint_record,
 )
 from .resources.test_dataflow_profiles_unit import (
     get_dataflow_profile_endpoint,
@@ -131,12 +142,22 @@ PLURALS = [
     "secretSyncs",
     "assetEndpointProfiles",
     "assets",
+    "connectorTemplates",
+    "namespaceDevices",
+    "namespaceAssets",
 ]
 SINGLETONS = ["customLocation", "instance", "roleAssignments_1", "broker"]
 
-MOCK_SR_RESOURCE_ID = (
-    f"/subscriptions/{ZEROED_SUBSCRIPTION}/resourceGroups/{generate_random_string()}"
-    f"/providers/Microsoft.DeviceRegistry/schemaRegistries/{generate_random_string()}"
+MOCK_SR_RESOURCE_ID = generate_resource_id(
+    resource_group_name=generate_random_string(),
+    resource_provider="Microsoft.DeviceRegistry",
+    resource_path=f"/schemaRegistries/{generate_random_string()}",
+)
+
+MOCK_NS_RESOURCE_ID = generate_resource_id(
+    resource_group_name=generate_random_string(),
+    resource_provider="Microsoft.DeviceRegistry",
+    resource_path=f"/namespaces/{generate_random_string()}",
 )
 
 
@@ -182,6 +203,7 @@ class CloneScenario:
         self.cluster_name = cluster_name
         self.cl_name = generate_random_string()
         self.sr_name = generate_random_string()
+        self.adr_ns_name = generate_random_string()
         self.default_broker_name = DEFAULT_BROKER
         self.default_authn_name = DEFAULT_BROKER_AUTHN
         self.default_listener_name = DEFAULT_BROKER_LISTENER
@@ -197,6 +219,10 @@ class CloneScenario:
     def _configure_instance(
         self: C, instance_version: Optional[str] = None, instance_features: Optional[dict] = None
     ) -> C:
+        if not instance_version:
+            instance_version = "1.1.0"
+        self.api_config = VersionGuru({"properties": {"version": instance_version}}).get_api_config()
+
         self.add_extensions()
         self.add_custom_location(namespace=generate_random_string())
         self.add_instance(version=instance_version, features=instance_features)
@@ -209,7 +235,9 @@ class CloneScenario:
         self.add_dataflows()
         self.add_secretsync_spcs()
         self.add_secretsyncs()
+        self.add_connector_templates()
         self.add_arg_handler()
+
         return self
 
     def wrap_cluster_deploy(
@@ -410,6 +438,7 @@ class CloneScenario:
             resource_group_name=self.resource_group_name,
             cl_name=self.cl_name,
             schema_registry_name=self.sr_name,
+            adr_namespace_name=self.adr_ns_name,
             version=version,
             features=features,
             **optional_kwargs,
@@ -417,13 +446,25 @@ class CloneScenario:
         self.resource_configs["schemaRegistryId"] = mock_instance_record["properties"]["schemaRegistryRef"][
             "resourceId"
         ]
-        self.responses.add(
-            method=responses.GET,
-            url=get_instance_endpoint(resource_group_name=self.resource_group_name, instance_name=self.instance_name),
-            json=mock_instance_record,
-            status=200,
-            content_type="application/json",
-        )
+        if self.api_config.v2_enabled:
+            self.resource_configs["adrNamespaceId"] = mock_instance_record["properties"]["adrNamespaceRef"][
+                "resourceId"
+            ]
+        instance_fetch_by_apis = [IoTOpsMgmtApiVersion.V20250701_preview.value]
+        if not self.api_config.v2_enabled:
+            instance_fetch_by_apis.append(self.api_config.iotops_mgmt_api)
+        for api_version in instance_fetch_by_apis:
+            self.responses.add(
+                method=responses.GET,
+                url=get_instance_endpoint(
+                    resource_group_name=self.resource_group_name,
+                    instance_name=self.instance_name,
+                    api_version=api_version,
+                ),
+                json=mock_instance_record,
+                status=200,
+                content_type="application/json",
+            )
         self.resource_configs["instance"] = mock_instance_record
 
     def add_broker(self: C):
@@ -434,7 +475,11 @@ class CloneScenario:
         )
         self.responses.add(
             method=responses.GET,
-            url=get_broker_endpoint(resource_group_name=self.resource_group_name, instance_name=self.instance_name),
+            url=get_broker_endpoint(
+                resource_group_name=self.resource_group_name,
+                instance_name=self.instance_name,
+                api_version=self.api_config.iotops_mgmt_api,
+            ),
             json={"value": [mock_broker_record]},
             status=200,
             content_type="application/json",
@@ -466,6 +511,7 @@ class CloneScenario:
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
                 broker_name=self.default_broker_name,
+                api_version=self.api_config.iotops_mgmt_api,
             ),
             json=payload,
             status=200,
@@ -498,6 +544,7 @@ class CloneScenario:
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
                 broker_name=self.default_broker_name,
+                api_version=self.api_config.iotops_mgmt_api,
             ),
             json=payload,
             status=200,
@@ -524,6 +571,7 @@ class CloneScenario:
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
                 broker_name=self.default_broker_name,
+                api_version=self.api_config.iotops_mgmt_api,
             ),
             json=payload,
             status=200,
@@ -553,6 +601,7 @@ class CloneScenario:
             url=get_dataflow_profile_endpoint(
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
+                api_version=self.api_config.iotops_mgmt_api,
             ),
             json=payload,
             status=200,
@@ -582,6 +631,7 @@ class CloneScenario:
             url=get_dataflow_endpoint_endpoint(
                 resource_group_name=self.resource_group_name,
                 instance_name=self.instance_name,
+                api_version=self.api_config.iotops_mgmt_api,
             ),
             json=payload,
             status=200,
@@ -609,6 +659,7 @@ class CloneScenario:
                     profile_name=profile["name"],
                     instance_name=self.instance_name,
                     resource_group_name=self.resource_group_name,
+                    api_version=self.api_config.iotops_mgmt_api,
                 ),
                 json=payload,
                 status=200,
@@ -664,6 +715,31 @@ class CloneScenario:
         )
         self.resource_configs["secretSyncs"] = secretsyncs
 
+    def add_connector_templates(self: C):
+        if not self.api_config.v2_enabled:
+            return
+        connector_templates = []
+        for _ in range(self.add_resources_map.get("connectorTemplates", 0)):
+            connector_templates.append(
+                get_mock_connector_template_record(
+                    name=generate_random_string(),
+                    instance_name=self.instance_name,
+                    resource_group_name=self.resource_group_name,
+                    cl_name=self.cl_name,
+                )
+            )
+        payload = {"value": connector_templates}
+        self.responses.add(
+            method=responses.GET,
+            url=get_connector_template_endpoint(
+                instance_name=self.instance_name, resource_group_name=self.resource_group_name
+            ),
+            json=payload,
+            status=200,
+            content_type="application/json",
+        )
+        self.resource_configs["connectorTemplates"] = connector_templates
+
     def add_arg_handler(self: C):
         def _handle_requests(request: requests.PreparedRequest) -> Optional[tuple]:
             request_kpis = get_request_kpis(request)
@@ -716,6 +792,39 @@ class CloneScenario:
                         )
                     self.resource_configs["assets"] = assets
                     return request_kpis.respond_with(200, response_body={"data": assets})
+
+                if "| where type =~ 'microsoft.deviceregistry/namespaces/devices'" in query:
+                    self.arg_queries["nsDevices"] = 1
+                    assert f"| where extendedLocation.name =~ '{expected_cl_id}'" in query
+
+                    ns_devices = []
+                    for _ in range(self.add_resources_map.get("nsDevices", 0)):
+                        ns_devices.append(
+                            get_namespace_device_record(
+                                device_name=generate_random_string(),
+                                namespace_name=self.adr_ns_name,
+                                resource_group_name=self.resource_group_name,
+                            )
+                        )
+                    self.resource_configs["namespaceDevices"] = ns_devices
+                    return request_kpis.respond_with(200, response_body={"data": ns_devices})
+
+                if "| where type =~ 'microsoft.deviceregistry/namespaces/assets'" in query:
+                    self.arg_queries["nsAssets"] = 1
+                    assert f"| where extendedLocation.name =~ '{expected_cl_id}'" in query
+
+                    ns_assets = []
+                    for _ in range(self.add_resources_map.get("nsAssets", 0)):
+                        ns_assets.append(
+                            get_namespace_asset_record(
+                                asset_name=generate_random_string(),
+                                namespace_name=self.adr_ns_name,
+                                resource_group_name=self.resource_group_name,
+                            )
+                        )
+                    self.resource_configs["namespaceAssets"] = ns_assets
+                    return request_kpis.respond_with(200, response_body={"data": ns_assets})
+
             raise RuntimeError("Unexpected query: " + query)
 
         self.responses.add_callback(
@@ -814,16 +923,70 @@ def test_clone_manager(
     mock_open_write().write.assert_called_once_with(json.dumps(content, indent=2))
 
 
+@pytest.mark.parametrize("add_dataflows", [0, 2])
+@pytest.mark.parametrize("add_dataflow_endpoints", [0, 2])
+@pytest.mark.parametrize("add_aeps", [0, 5])
+@pytest.mark.parametrize("add_assets", [0, 5])
+@pytest.mark.parametrize("add_connector_templates", [0, 5])
+@pytest.mark.parametrize("add_ns_devices", [0, 5])
+@pytest.mark.parametrize("add_ns_assets", [0, 5])
+def test_clone_manager_instance_v2(
+    mocked_cmd: Mock,
+    mocked_responses: responses,
+    add_dataflow_endpoints: int,
+    add_dataflows: int,
+    add_aeps: int,
+    add_assets: int,
+    add_connector_templates: int,
+    add_ns_devices: int,
+    add_ns_assets: int,
+):
+    model_cluster_name = generate_random_string()
+    model_instance_name = generate_random_string()
+    model_resource_group_name = generate_random_string()
+    add_resources_map = {
+        "dataflowEndpoints": add_dataflow_endpoints,
+        "dataflows": add_dataflows,
+        "aeps": add_aeps,
+        "assets": add_assets,
+        "connectorTemplates": add_connector_templates,
+        "nsDevices": add_ns_devices,
+        "nsAssets": add_ns_assets,
+    }
+
+    clone_scenario = CloneScenario()
+    clone_scenario.bootstrap(
+        mocked_responses,
+        resource_group_name=model_resource_group_name,
+        instance_name=model_instance_name,
+        cluster_name=model_cluster_name,
+        add_resources_map=add_resources_map,
+        instance_version="1.2.0",
+    )
+
+    clone_manager = CloneManager(
+        cmd=mocked_cmd,
+        resource_group_name=model_resource_group_name,
+        instance_name=model_instance_name,
+        no_progress=True,
+    )
+    clone_state = clone_manager.analyze_cluster()
+    template_content = clone_state.get_content()
+    content = template_content.content
+
+    CloneAssertor(clone_scenario).assert_content(content)
+
+
 @pytest.mark.parametrize(
     "instance_version_test",
     [
         {"version": "1.1.50"},
         {"version": "1.1.19"},
         {"version": "1.0.34"},
-        {"version": "1.2.0", "error": ValidationError},
+        {"version": "1.3.0", "error": ValidationError},
         {"version": "2.0.0", "error": ValidationError},
         {"version": "1.0.9", "error": ValidationError},
-        {"version": "1.2.0", "force": True},
+        {"version": "1.3.0", "force": True},
         {"version": "1.0.9", "force": True},
     ],
 )
@@ -920,6 +1083,8 @@ def test_clone_scale(
     total_pages = aep_pages + asset_pages + 1
 
     expected_params = deepcopy(TEMPLATE_PARAMS_SET)
+    if not clone_scenario.api_config.v2_enabled:
+        expected_params.discard("adrNamespaceId")
 
     assert len(split_content) == total_pages
     for i in range(aep_pages):
@@ -998,9 +1163,7 @@ def test_clone_instance_feature_capture(
         {"subjects": {SERVICE_ACCOUNT_DATAFLOW, SERVICE_ACCOUNT_SECRETSYNC}},
     ],
 )
-@pytest.mark.parametrize(
-    "cluster_state", [{"connectivityStatus": "Connected"}, {"connectivityStatus": "Disconnected"}]
-)
+@pytest.mark.parametrize("cluster_state", [{"connectivityStatus": "Connected"}, {"connectivityStatus": "Disconnected"}])
 def test_clone_deploy_subjects(
     mocked_cmd: Mock,
     mocked_responses: responses,
@@ -1068,6 +1231,7 @@ def test_clone_deploy_subjects(
                 f"customLocationName={generate_random_string()}",
                 f"opsExtensionName={generate_random_string()}",
                 f"schemaRegistryId={MOCK_SR_RESOURCE_ID}",
+                f"adrNamespaceId={MOCK_NS_RESOURCE_ID}",
                 f"resourceSlug={generate_random_string()}",
                 f"location={generate_random_string()}",
                 "applyRoleAssignments=true",
@@ -1081,6 +1245,7 @@ def test_clone_deploy_subjects(
             ]
         },
         {"input": ["schemaRegistryId=a"], "error": (ValidationError, "Invalid resource Id 'a'.")},
+        {"input": ["adrNamespaceId=b"], "error": (ValidationError, "Invalid resource Id 'b'.")},
         {
             "input": ["applyRoleAssignments=a"],
             "error": (ValidationError, "Invalid boolean string: a. Use 'true' or 'false'."),
@@ -1151,7 +1316,7 @@ def test_clone_deploy_params(
     }
     for param in params_input:
         key, value = param.split("=")
-        if key == "schemaRegistryId":
+        if key in ["schemaRegistryId", "adrNamespaceId"]:
             parsed_sr_id = parse_resource_id(value)
             value = {
                 "subscription": parsed_sr_id["subscription"],
@@ -1359,7 +1524,7 @@ def _replace_instance_resource(context: dict) -> dict:
 
     if type_segment in ["authentications", "authorizations", "listeners"]:
         config_name = f"/default/{config_name}"
-    if type_segment in ["dataflowprofiles", "dataflowendpoints"]:
+    if type_segment in ["dataflowprofiles", "dataflowendpoints", "akriconnectortemplates"]:
         config_name = f"/{config_name}"
     if type_segment in ["dataflows"]:
         profile_name = config["id"].split("/dataflowProfiles/")[-1].split("/dataflows/")[0]
@@ -1388,6 +1553,12 @@ def _replace_instance(context: dict):
         "[resourceId(parameters('schemaRegistryId').subscription, parameters('schemaRegistryId').resourceGroup, "
         "'Microsoft.DeviceRegistry/schemaRegistries', parameters('schemaRegistryId').name)]"
     )
+    v2_enabled = context.get("v2_enabled", False)
+    if v2_enabled:
+        properties["adrNamespaceRef"]["resourceId"] = (
+            "[resourceId(parameters('adrNamespaceId').subscription, parameters('adrNamespaceId').resourceGroup, "
+            "'Microsoft.DeviceRegistry/namespaces', parameters('adrNamespaceId').name)]"
+        )
 
     payload = {
         "apiVersion": context["instance_api"],
@@ -1417,19 +1588,39 @@ def _replace_instance_broker(context: dict):
     }
 
 
-def _replace_generic_resource(_: dict, api_version: str) -> dict:
-    return {
-        "apiVersion": api_version,
+def _replace_generic_resource(context: dict, **kwargs: dict) -> dict:
+    api_version = kwargs.get("api_version")
+    get_api_version_callback = kwargs.get("api_version_callback")
+    get_name_callback = kwargs.get("name_callback")
+
+    payload = {
+        "apiVersion": api_version or get_api_version_callback(**context),
         "location": "[parameters('location')]",
         "extendedLocation": {
             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",
             "type": "CustomLocation",
         },
     }
+    if get_name_callback:
+        payload["name"] = get_name_callback(**context)
+
+    return payload
 
 
-_replace_asset_resource = partial(_replace_generic_resource, api_version="2024-11-01")
-_replace_secretsync_resource = partial(_replace_generic_resource, api_version="2024-08-21-preview")
+def _get_asset_api_version(**kwargs: dict) -> str:
+    v2_enabled = kwargs.get("v2_enabled", False)
+    if v2_enabled:
+        return "2025-07-01-preview"
+    return "2024-11-01"
+
+
+def _get_ns_asset_name(**kwargs: dict) -> str:
+    return f"[concat(parameters('adrNamespaceId').name, '/{kwargs['config']['name']}')]"
+
+
+_replace_asset_resource = partial(_replace_generic_resource, api_version_callback=_get_asset_api_version)
+_replace_namespace_asset_resource = partial(_replace_asset_resource, name_callback=_get_ns_asset_name)
+_replace_secretsync_resource = partial(_replace_generic_resource, api_version=SECRET_SYNC_API_VERSION)
 
 
 EXPECTED_ORD_MIN_RESOURCE_MAP = {
@@ -1444,8 +1635,11 @@ EXPECTED_ORD_MIN_RESOURCE_MAP = {
     "dataflowProfiles": {"replacements": _replace_instance_resource},
     "dataflowEndpoints": {"replacements": _replace_instance_resource},
     "dataflows": {"replacements": _replace_instance_resource},
+    "connectorTemplates": {"replacements": _replace_instance_resource},
     "assetEndpointProfiles": {"replacements": _replace_asset_resource},
     "assets": {"replacements": _replace_asset_resource},
+    "namespaceDevices": {"replacements": _replace_namespace_asset_resource},
+    "namespaceAssets": {"replacements": _replace_namespace_asset_resource},
     "secretProviderClasss": {"replacements": _replace_secretsync_resource},
     "secretSyncs": {"replacements": _replace_secretsync_resource},
 }
@@ -1460,7 +1654,8 @@ class CloneAssertor:
         self.clone_scenario = clone_scenario
         self.resource_configs = clone_scenario.resource_configs
         self.extension_name_map = {}
-        self.instance_api = VersionGuru(self.resource_configs["instance"]).get_instance_api()
+        self.api_config = clone_scenario.api_config
+        self._assert_instance_apis()
 
     def assert_content(self, content: dict):
         assert isinstance(content, dict), "content should be a dictionary"
@@ -1480,7 +1675,10 @@ class CloneAssertor:
         ), "Cloned instance ID mismatch"
 
         assert isinstance(content["parameters"], dict), "Parameters key should be a dictionary"
-        assert set(content["parameters"].keys()) == EXPECTED_PARAMETER_KEYS, "Unexpected keys in parameters content"
+        expected_parameter_key_set = EXPECTED_PARAMETER_KEYS.copy()
+        if self.api_config.v2_enabled:
+            expected_parameter_key_set = expected_parameter_key_set.union({"adrNamespaceId"})
+        assert set(content["parameters"].keys()) == expected_parameter_key_set, "Unexpected keys in parameters content"
         assert content["parameters"]["clusterName"] == {"type": "string"}
         assert content["parameters"]["clusterNamespace"] == {
             "type": "string",
@@ -1525,12 +1723,25 @@ class CloneAssertor:
 
         self._assert_resources(content)
 
-    def _assert_instance_api(self):
-        parsed_version = parse_version(self.resource_configs["instance"]["properties"]["version"])
+    def _assert_instance_apis(self):
+        semver = scoped_semver_import()
+        parsed_version = semver.parse(self.resource_configs["instance"]["properties"]["version"])
 
-        if parsed_version < parse_version("1.1.0"):
-            assert self.instance_api == "2024-11-01"
-        assert self.instance_api == "2025-04-01"
+        target_iotops_api = None
+        target_adr_api = None
+
+        if parsed_version < semver.parse("1.1.0"):
+            target_iotops_api = IoTOpsMgmtApiVersion.V20241101
+            target_adr_api = DeviceRegistryMgmtApiVersion.V20241101
+        elif parsed_version < semver.parse("1.2.0"):
+            target_iotops_api = IoTOpsMgmtApiVersion.V20250401
+            target_adr_api = DeviceRegistryMgmtApiVersion.V20241101
+        elif parsed_version < semver.parse("1.3.0"):
+            target_iotops_api = IoTOpsMgmtApiVersion.V20250701_preview
+            target_adr_api = DeviceRegistryMgmtApiVersion.V20250701_preview
+
+        assert target_iotops_api.value == self.api_config.iotops_mgmt_api
+        assert target_adr_api.value == self.api_config.registry_mgmt_api
 
     def _assert_resources(self, content: dict):
         assert isinstance(content["resources"], dict), "Resources key should be a dictionary"
@@ -1580,7 +1791,8 @@ class CloneAssertor:
                 context = {
                     "config": component_config,
                     "resource_configs": self.resource_configs,
-                    "instance_api": self.instance_api,
+                    "instance_api": self.api_config.iotops_mgmt_api,
+                    "v2_enabled": self.api_config.v2_enabled,
                 }
                 component_replacements = component_replacements(context)
             component_config.update(component_replacements)
@@ -1646,12 +1858,13 @@ class CloneAssertor:
             )
             template = deployment["properties"]["template"]
             assert (
-                template["$schema"]
-                == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
+                template["$schema"] == "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#"
             )
             assert template["contentVersion"] == "1.0.0.0"
             expected_parameters = {"customLocationName": {"type": "string"}}
             if resource_config_key not in [
+                "namespaceDevices",
+                "namespaceAssets",
                 "assetEndpointProfiles",
                 "assets",
                 "secretProviderClasss",
@@ -1660,6 +1873,9 @@ class CloneAssertor:
                 expected_parameters["instanceName"] = {"type": "string"}
             else:
                 expected_parameters["location"] = {"type": "string"}
+                if resource_config_key in ["namespaceAssets", "namespaceDevices"]:
+                    expected_parameters["adrNamespaceId"] = {"type": "object"}
+
             assert template["parameters"] == expected_parameters
             assert isinstance(template["resources"], list), "Deployment resources key should be a list"
             deployment_resources = template["resources"]
@@ -1687,6 +1903,9 @@ class CloneAssertor:
             "assets": ["assetEndpointProfiles"],
             "assetEndpointProfiles": ["listeners", "instance"],
             "secretSyncs": ["secretProviderClasss"],
+            "connectorTemplates": ["instance"],
+            "namespaceAssets": ["namespaceDevices"],
+            "namespaceDevices": ["listeners", "instance"],
         }
         chunks_map = defaultdict(dict)
 
@@ -1725,6 +1944,10 @@ class CloneAssertor:
                 if not self.resource_configs.get("assetEndpointProfiles"):
                     continue
 
+            if plural in ["namespaceAssets"]:
+                if not self.resource_configs.get("namespaceDevices"):
+                    continue
+
             if plural in ["secretSyncs"]:
                 if not self.resource_configs.get("secretProviderClasss"):
                     continue
@@ -1741,6 +1964,8 @@ class CloneAssertor:
 
         for r in enumerate_through:
             if r == "assets" and not self.resource_configs.get("assetEndpointProfiles"):
+                continue
+            if r == "namespaceAssets" and not self.resource_configs.get("namespaceDevices"):
                 continue
             if r == "secretSyncs" and not self.resource_configs.get("secretProviderClasss"):
                 continue
@@ -1774,10 +1999,20 @@ class CloneAssertor:
             expected_params = {
                 "customLocationName": {"value": "[parameters('customLocationName')]"},
             }
-            if resource_key not in ["assetEndpointProfiles", "assets", "secretProviderClasss", "secretSyncs"]:
+            if resource_key not in [
+                "namespaceDevices",
+                "namespaceAssets",
+                "assetEndpointProfiles",
+                "assets",
+                "secretProviderClasss",
+                "secretSyncs",
+            ]:
                 expected_params["instanceName"] = {"value": "[parameters('instanceName')]"}
             else:
                 expected_params["location"] = {"value": "[parameters('location')]"}
+                if resource_key in ["namespaceDevices", "namespaceAssets"]:
+                    expected_params["adrNamespaceId"] = {"value": "[parameters('adrNamespaceId')]"}
+
             assert deployment["properties"]["parameters"] == expected_params
 
         if resource_group:

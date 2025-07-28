@@ -28,12 +28,12 @@ from azure.cli.core.azclierror import InvalidArgumentValueError
 
 
 def get_broker_authn_endpoint(
-    instance_name: str, broker_name: str, resource_group_name: str, authn_name: Optional[str] = None
+    instance_name: str, broker_name: str, resource_group_name: str, authn_name: Optional[str] = None, **kwargs: dict
 ) -> str:
     resource_path = f"/instances/{instance_name}/brokers/{broker_name}/authentications"
     if authn_name:
         resource_path += f"/{authn_name}"
-    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
+    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path, **kwargs)
 
 
 def get_mock_broker_authn_record(
