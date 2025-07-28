@@ -399,6 +399,9 @@ def test_get_instance_query(
         "asset_name": generate_random_string(),
         "operating_system": generate_random_string(),
         "disabled": True
+    },
+    {
+        "disabled": None
     }
 ])
 def test_get_query(param_mapping, params):
@@ -408,7 +411,7 @@ def test_get_query(param_mapping, params):
         params=params
     )
     split_query = [q.strip() for q in query.split("|")]
-    if "disabled" in params:
+    if "disabled" in params and params["disabled"] is not None:
         disabled = params.pop("disabled")
         assert f"where properties.enabled == {not disabled}" in split_query
 

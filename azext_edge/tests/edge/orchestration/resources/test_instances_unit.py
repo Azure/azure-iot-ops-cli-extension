@@ -130,6 +130,7 @@ def get_mock_instance_record(
     cl_name: Optional[str] = None,
     schema_registry_name: Optional[str] = None,
     adr_namespace_name: Optional[str] = None,
+    default_spc_name: Optional[str] = None,
     version: Optional[str] = None,
     identity_map: Optional[dict] = None,
     default_spc_resource_id: Optional[str] = None,
@@ -154,6 +155,14 @@ def get_mock_instance_record(
                 resource_path=f"/namespaces/{adr_namespace_name or 'myadrnamespace'}",
             )
         }
+        properties["defaultSecretProviderClassRef"] = {
+            "resourceId": generate_resource_id(
+                resource_group_name=resource_group_name,
+                resource_provider="Microsoft.SecretSyncController",
+                resource_path=f"/azureKeyVaultSecretProviderClasses/{default_spc_name or 'myspc'}",
+            )
+        }
+
     if description:
         properties["description"] = description
     if features:
