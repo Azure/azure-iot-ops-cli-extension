@@ -142,7 +142,7 @@ def get_query(param_mapping: Dict[str, str], params: Dict[str, Union[str, bool]]
     Disabled is treated as a boolean and should not be in the param mapping.
     """
     query = []
-    if "disabled" in params:
+    if "disabled" in params and params["disabled"] is not None:
         query.append(f"| where properties.enabled == {not params.pop('disabled')}")
     for param, value in params.items():
         # TODO: later, add in null support (ex: no os set)
