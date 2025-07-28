@@ -311,6 +311,112 @@ def test_get_namespace_for_instance_error(
     assert str(exc_info.value) == expected_error
 
 
+@pytest.mark.parametrize("input_query", [
+    # base
+    "Resources | where type =~ 'Microsoft.DeviceRegistry/namespaces/assets'",
+    # with some props
+    "Resources | where type =~ 'Microsoft.DeviceRegistry/namespaces/assets' | where properties.enabled == true",
+    # with custom location
+    "Resources | where type =~ 'Microsoft.DeviceRegistry/namespaces/assets' "
+    "| extend customLocation = tostring(extendedLocation.name)",
+])
+@pytest.mark.parametrize("instance_name", [None, generate_random_string()])
+@pytest.mark.parametrize("instance_resource_group", [None, generate_random_string()])
+@pytest.mark.parametrize("project_away_custom_location", [True, False])
+def test_get_instance_query(
+    input_query: str, instance_name: str, instance_resource_group: str, project_away_custom_location: bool
+):
+    from azext_edge.edge.providers.adr.helpers import get_instance_query
+    result = get_instance_query(
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        query=input_query,
+        project_away_custom_location=project_away_custom_location
+    )
+
+    # nothing changes
+    if not instance_name and not instance_resource_group:
+        assert result == input_query
+        return
+
+    # make sure the query starts with the expected base
+    assert result.startswith("Resources | where type =~ 'microsoft.iotoperations/instances'")
+
+    # ensure there is customLocation defined (needed for query to join correctly)
+    if "extend customLocation = tostring(extendedLocation.name)" not in input_query:
+        input_query += " | extend customLocation = tostring(extendedLocation.name)"
+    assert f"join kind=innerunique ({input_query}) on customLocation" in result
+
+    # split the query and check for instance name and resource group
+    split_query = [q.strip() for q in result.split("|")]
+    if instance_name:
+        assert f"where name =~ \"{instance_name}\"" in split_query
+    if instance_resource_group:
+        assert f"where resourceGroup =~ \"{instance_resource_group}\"" in split_query
+
+    # make sure we got only the correct project-away
+    assert ("project-away customLocation1, customLocation" in split_query) is project_away_custom_location
+    assert ("project-away customLocation1" in split_query) is not project_away_custom_location
+
+
+@pytest.mark.parametrize("param_mapping", [
+    {},
+    {  # lifted from assets
+        "asset_name": "name",
+        "device_name": "properties.deviceRef.deviceName",
+        "device_endpoint_name": "properties.deviceRef.endpointName",
+        "display_name": "properties.displayName",
+        "documentation_uri": "properties.documentationUri",
+        "external_asset_id": "properties.externalAssetId",
+        "hardware_revision": "properties.hardwareRevision",
+        "manufacturer": "properties.manufacturer",
+        "manufacturer_uri": "properties.manufacturerUri",
+        "model": "properties.model",
+        "product_code": "properties.productCode",
+        "serial_number": "properties.serialNumber",
+        "software_revision": "properties.softwareRevision",
+    }
+])
+@pytest.mark.parametrize("params", [
+    {},
+    {
+        "asset_name": generate_random_string(),
+        "device_name": generate_random_string(),
+        "device_endpoint_name": generate_random_string(),
+        "display_name": generate_random_string(),
+        "documentation_uri": generate_random_string(),
+        "external_asset_id": generate_random_string(),
+        "hardware_revision": generate_random_string(),
+        "manufacturer": generate_random_string(),
+        "manufacturer_uri": generate_random_string(),
+        "model": generate_random_string(),
+        "product_code": generate_random_string(),
+        "serial_number": generate_random_string(),
+        "software_revision": generate_random_string(),
+        "disabled": False
+    },
+    {  # mix ok and not ok params
+        "asset_name": generate_random_string(),
+        "operating_system": generate_random_string(),
+        "disabled": True
+    }
+])
+def test_get_query(param_mapping, params):
+    from azext_edge.edge.providers.adr.helpers import get_query
+    query = get_query(
+        param_mapping=param_mapping,
+        params=params
+    )
+    split_query = [q.strip() for q in query.split("|")]
+    if "disabled" in params:
+        disabled = params.pop("disabled")
+        assert f"where properties.enabled == {not disabled}" in split_query
+
+    for param, value in params.items():
+        if param in param_mapping:
+            assert f"where {param_mapping[param]} =~ \"{value}\"" in split_query
+
+
 @pytest.mark.parametrize("datasets", [
     [{"name": "", "dataPoints": generate_random_string()}],
     [{"name": "default", "dataPoints": generate_random_string()}],

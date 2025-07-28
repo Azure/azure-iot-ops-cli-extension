@@ -103,6 +103,55 @@ def get_namespace_for_instance(
     return parse_resource_id(rid=namespace)
 
 
+def get_instance_query(
+    query: str,
+    instance_name: Optional[str] = None,
+    instance_resource_group: Optional[str] = None,
+    project_away_custom_location: bool = True
+) -> str:
+    """
+    Appends and returns query with instance filtering.
+    """
+    if any([instance_name, instance_resource_group]):
+        instance_query = "Resources | where type =~ 'microsoft.iotoperations/instances' "
+        if instance_name:
+            instance_query += f"| where name =~ \"{instance_name}\" "
+        if instance_resource_group:
+            instance_query += f"| where resourceGroup =~ \"{instance_resource_group}\" "
+
+        # make sure the custom location is extended
+        if "| extend customLocation = tostring(extendedLocation.name)" not in query:
+            query += " | extend customLocation = tostring(extendedLocation.name)"
+
+        # fetch the custom location + join on innerunique. Then remove the extra customLocation1 generated
+        query = (
+            f"{instance_query}| extend customLocation = tostring(extendedLocation.name) "
+            "| project customLocation | join kind=innerunique "
+            f"({query}) on customLocation "
+            "| project-away customLocation1"
+        )
+        if project_away_custom_location:
+            query += ", customLocation"
+    return query
+
+
+def get_query(param_mapping: Dict[str, str], params: Dict[str, Union[str, bool]]) -> str:
+    """
+    Returns a query string based on the provided parameters and their mappings.
+
+    Disabled is treated as a boolean and should not be in the param mapping.
+    """
+    query = []
+    if "disabled" in params:
+        query.append(f"| where properties.enabled == {not params.pop('disabled')}")
+    for param, value in params.items():
+        # TODO: later, add in null support (ex: no os set)
+        if value is not None:
+            query.append(f"| where {param_mapping.get(param)} =~ \"{value}\"")
+
+    return " ".join(query)
+
+
 def get_default_dataset(asset: dict, dataset_name: str, create_if_none: bool = False):
     """
     Temporary helper function to get a dataset from an asset.

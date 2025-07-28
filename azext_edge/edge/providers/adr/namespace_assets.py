@@ -209,32 +209,55 @@ class NamespaceAssets(Queryable):
     def query_assets(
         self,
         asset_name: Optional[str] = None,
+        instance_name: Optional[str] = None,
+        instance_resource_group: Optional[str] = None,
         custom_query: Optional[str] = None,
         device_name: Optional[str] = None,
         device_endpoint_name: Optional[str] = None,
+        disabled: Optional[bool] = None,
+        display_name: Optional[str] = None,
+        documentation_uri: Optional[str] = None,
+        external_asset_id: Optional[str] = None,
+        hardware_revision: Optional[str] = None,
+        manufacturer: Optional[str] = None,
+        manufacturer_uri: Optional[str] = None,
+        model: Optional[str] = None,
+        product_code: Optional[str] = None,
+        serial_number: Optional[str] = None,
+        software_revision: Optional[str] = None,
     ) -> dict:
         """
         Queries the asset using Azure Resource Graph.
         """
+        from .helpers import get_instance_query, get_query
         query = "Resources | where type =~ '{}'".format(NAMESPACE_ASSET_RESOURCE_TYPE)
 
         # for now, keep it simple
-        # later on, add namespace (needs id parsing), location, device endpoint type (will need to add joins)
+        # ideas for later on, add namespace (needs id parsing), device endpoint type (will need to add joins)
         def _build_query_body(
-            asset_name: Optional[str] = None,
-            device_name: Optional[str] = None,
-            device_endpoint_name: Optional[str] = None
+            **params: dict
         ) -> str:
-            query_body = ""
-            # add in namespace name
-            if asset_name:
-                query_body += f' | where name =~ "{asset_name}"'
-            if device_name:
-                query_body += f' | where properties.deviceRef.deviceName =~ "{device_name}"'
-            if device_endpoint_name:
-                query_body += f' | where properties.deviceRef.endpointName =~ "{device_endpoint_name}"'
+            param_mapping = {
+                "asset_name": "name",
+                "device_name": "properties.deviceRef.deviceName",
+                "device_endpoint_name": "properties.deviceRef.endpointName",
+                "display_name": "properties.displayName",
+                "documentation_uri": "properties.documentationUri",
+                "external_asset_id": "properties.externalAssetId",
+                "hardware_revision": "properties.hardwareRevision",
+                "manufacturer": "properties.manufacturer",
+                "manufacturer_uri": "properties.manufacturerUri",
+                "model": "properties.model",
+                "product_code": "properties.productCode",
+                "serial_number": "properties.serialNumber",
+                "software_revision": "properties.softwareRevision",
+            }
+            query_body = get_query(
+                param_mapping=param_mapping,
+                params=params
+            )
             return (
-                f"{query_body} | extend customLocation = tostring(extendedLocation.name) "
+                query_body + " | extend customLocation = tostring(extendedLocation.name) "
                 "| extend provisioningState = properties.provisioningState "
                 "| project id, customLocation, location, name, resourceGroup, provisioningState, "
                 "tags, type, subscriptionId"
@@ -243,8 +266,27 @@ class NamespaceAssets(Queryable):
         query += custom_query or _build_query_body(
             asset_name=asset_name,
             device_name=device_name,
-            device_endpoint_name=device_endpoint_name
+            device_endpoint_name=device_endpoint_name,
+            disabled=disabled,
+            display_name=display_name,
+            documentation_uri=documentation_uri,
+            external_asset_id=external_asset_id,
+            hardware_revision=hardware_revision,
+            manufacturer=manufacturer,
+            manufacturer_uri=manufacturer_uri,
+            model=model,
+            product_code=product_code,
+            serial_number=serial_number,
+            software_revision=software_revision,
         )
+
+        query = get_instance_query(
+            query=query,
+            instance_name=instance_name,
+            instance_resource_group=instance_resource_group,
+            project_away_custom_location=False
+        )
+        logger.info(f"Querying assets with query: {query}")
 
         return self.query(query=query)
 

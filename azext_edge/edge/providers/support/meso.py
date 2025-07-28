@@ -13,6 +13,7 @@ from .base import (
     process_cluster_role_bindings,
     process_cluster_roles,
     process_config_maps,
+    process_daemonsets,
     process_deployments,
     process_mutating_webhook_configurations,
     process_replicasets,
@@ -146,9 +147,22 @@ def fetch_validating_webhooks():
     return results
 
 
+def fetch_daemonsets():
+    results = []
+    for label_selector in MESO_LABEL_SELECTORS:
+        results.extend(
+            process_daemonsets(
+                directory_path=MESO_DIRECTORY_PATH,
+                label_selector=label_selector,
+            )
+        )
+    return results
+
+
 support_runtime_elements = {
     "configmaps": fetch_config_maps,
     "deployments": fetch_deployments,
+    "daemonsets": fetch_daemonsets,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "clusterroles": fetch_cluster_roles,

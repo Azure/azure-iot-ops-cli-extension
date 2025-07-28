@@ -317,7 +317,7 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "Create Storage and Schema Registry for init tests"
+      - name: "Create Storage, Schema Registry, and Namespace for init tests"
         id: "init_reqs"
         run: |
           # Remove -'s and limit name length to 20 chars for storage accounts
@@ -448,6 +448,8 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_init_args: ${{ steps.init.outputs.INIT_ARG }}
           azext_edge_create_args: ${{ steps.init.outputs.CREATE_ARG }}
+          azext_edge_schema_registry_id: ${{ steps.init_reqs.outputs.SCHEMA_REGISTRY_ID }}
+          azext_edge_adr_namespace_id: ${{ steps.init_reqs.outputs.ADR_NAMESPACE_ID }}
         run: |
           tox r -e python-init-int --skip-pkg-install -- --durations=0
       - name: "Delete AIO resources"

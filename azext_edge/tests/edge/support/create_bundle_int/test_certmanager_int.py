@@ -12,7 +12,7 @@ from .helpers import check_custom_resource_files, check_workload_resource_files,
 
 logger = get_logger(__name__)
 CERTMGMT_PREFIXES = ["aio-cert-manager", "aio-trust-manager", "kube-root-ca"]
-CERTMGMT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "configmap"]
+CERTMGMT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "configmap", "vwc", "mwc"]
 
 USER_CERTMGMT_PREFIXES = ["cert-manager", "trust-manager"]
 
@@ -28,7 +28,6 @@ def test_create_bundle_certmanager(cluster_connection, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
 
-    # TODO: may not be able to use EdgeApiManager due to the files being in different folders
     # cert-manager namespace
     certmanager_file_map = file_map[OpsServiceType.certmanager.value]
     check_custom_resource_files(
@@ -41,7 +40,11 @@ def test_create_bundle_certmanager(cluster_connection, tracked_files):
         resource_apis=TRUSTMANAGER_API_V1,
         namespace=file_map["__namespaces__"]["certmanager"],
     )
-    expected_types = set(CERTMGMT_WORKLOAD_TYPES).union(CERTMANAGER_API_V1.kinds).union(TRUSTMANAGER_API_V1.kinds)
+    expected_types = (
+        set(CERTMGMT_WORKLOAD_TYPES)
+        .union(CERTMANAGER_API_V1.kinds)
+        .union(TRUSTMANAGER_API_V1.kinds)
+    )
     assert set(certmanager_file_map.keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=certmanager_file_map,

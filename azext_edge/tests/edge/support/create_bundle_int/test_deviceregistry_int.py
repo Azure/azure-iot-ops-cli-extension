@@ -10,6 +10,7 @@ from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support_bundle import COMPAT_DEVICEREGISTRY_APIS
 from .helpers import (
     check_custom_resource_files,
+    get_all_kinds_from_manager,
     BASE_ZIP_PATH,
     get_file_map,
     run_bundle_command
@@ -33,6 +34,5 @@ def test_create_bundle_deviceregistry(cluster_connection, tracked_files):
         file_objs=file_map,
         resource_apis=COMPAT_DEVICEREGISTRY_APIS.resource_apis,
     )
-    # total_kinds = set(DEVICEREGISTRY_API_V1.kinds).union(DEVICEREGISTRY_API_V1B1.kinds)
-    # print(f"Total kinds: {total_kinds}")
-    # assert set(file_map.keys()).issubset(total_kinds)
+
+    assert set(file_map.keys()).issubset(get_all_kinds_from_manager(COMPAT_DEVICEREGISTRY_APIS))

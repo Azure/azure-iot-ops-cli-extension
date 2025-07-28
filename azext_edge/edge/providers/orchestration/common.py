@@ -21,11 +21,11 @@ ARC_NAMESPACE = "azure-arc"
 AIO_MQTT_DEFAULT_CONFIG_MAP = "azure-iot-operations-aio-ca-trust-bundle"
 PROVISIONING_STATE_SUCCESS = "Succeeded"
 
-# Key Vault KPIs
+# Commonly used API versions
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
-
-# Custom Locations KPIs
 CUSTOM_LOCATIONS_API_VERSION = "2021-08-31-preview"
+SECRET_SYNC_API_VERSION = "2024-08-21-preview"
+ROLE_ASSIGNMENT_API_VERSION = "2022-04-01"
 
 AIO_INSECURE_LISTENER_NAME = "default-insecure"
 AIO_INSECURE_LISTENER_SERVICE_NAME = "aio-broker-insecure"
@@ -321,7 +321,7 @@ DATAFLOW_OPERATION_TYPE_SETTINGS = {
 X509_ISSUER_REF_KEYS = ["group", "kind", "name"]
 
 # Clone
-CLONE_INSTANCE_VERS_MAX = "1.2.0"
+CLONE_INSTANCE_VERS_MAX = "1.3.0"
 CLONE_INSTANCE_VERS_MIN = "1.0.34"
 
 
@@ -345,6 +345,7 @@ class CloneTemplateParams(Enum):
     RESOURCE_SLUG = "resourceSlug"
     LOCATION = "location"
     APPLY_ROLE_ASSIGNMENTS = "applyRoleAssignments"
+    ADR_NAMESPACE_ID = "adrNamespaceId"
 
 
 class X509FileExtension(Enum):

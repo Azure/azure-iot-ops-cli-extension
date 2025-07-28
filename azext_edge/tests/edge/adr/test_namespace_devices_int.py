@@ -280,6 +280,15 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     assert endpoint_name_opcua in result_1
     assert endpoint_name_custom in result_1
 
+    # List inbound endpoints with specific type
+    result = run(
+        f"az iot ops ns device endpoint inbound list --device {device_name_2} "
+        f"--instance {instance_name} -g {resource_group} --endpoint-type media"
+    )
+    assert len(result) == 1
+    assert endpoint_name_media in result
+    assert endpoint_name_custom not in result
+
     # Remove endpoints
     result = run(
         f"az iot ops ns device endpoint inbound remove --device {device_name_2} "
@@ -299,6 +308,14 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     )
     assert len(result) == 1
     assert result[0]["name"] == device_name_1
+
+    # Query for devices by instance
+    result = run(
+        f"az iot ops ns device query -i {instance_name} -g {resource_group}"
+    )
+    device_names = [d["name"] for d in result]
+    assert device_name_2 in device_names
+    assert device_name_1 in device_names
 
     # Query for devices by manufacturer
     result = run(

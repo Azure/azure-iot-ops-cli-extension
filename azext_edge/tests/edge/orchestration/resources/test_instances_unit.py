@@ -36,7 +36,7 @@ from azext_edge.edge.providers.orchestration.resources.instances import (
     get_spc_name,
     parse_feature_kvp_nargs,
 )
-
+from azext_edge.edge.util.machinery import scoped_semver_import
 from ....generators import (
     generate_random_string,
     generate_resource_id,
@@ -76,11 +76,13 @@ def mocked_get_tenant_id(mocker):
     )
 
 
-def get_instance_endpoint(resource_group_name: Optional[str] = None, instance_name: Optional[str] = None) -> str:
+def get_instance_endpoint(
+    resource_group_name: Optional[str] = None, instance_name: Optional[str] = None, **kwargs: dict
+) -> str:
     resource_path = "/instances"
     if instance_name:
         resource_path += f"/{instance_name}"
-    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path)
+    return get_base_endpoint(resource_group_name=resource_group_name, resource_path=resource_path, **kwargs)
 
 
 # TODO: Find out where this and related KV collateral belongs
@@ -127,21 +129,31 @@ def get_mock_instance_record(
     features: Optional[dict] = None,
     cl_name: Optional[str] = None,
     schema_registry_name: Optional[str] = None,
+    adr_namespace_name: Optional[str] = None,
     version: Optional[str] = None,
     identity_map: Optional[dict] = None,
     default_spc_resource_id: Optional[str] = None,
 ) -> dict:
+    semver = scoped_semver_import()
     properties = {
         "provisioningState": "Succeeded",
         "schemaRegistryRef": {
-            "resourceId": (
-                f"/subscriptions/{ZEROED_SUBSCRIPTION}"
-                f"/resourceGroups/{resource_group_name}/providers/Microsoft.DeviceRegistry"
-                f"/schemaRegistries/{schema_registry_name or 'myschemaregistry'}"
+            "resourceId": generate_resource_id(
+                resource_group_name=resource_group_name,
+                resource_provider="Microsoft.DeviceRegistry",
+                resource_path=f"/schemaRegistries/{schema_registry_name or 'myschemaregistry'}",
             )
         },
         "version": version or "1.1.15",
     }
+    if semver.parse(properties["version"]) >= semver.parse("1.2.0"):
+        properties["adrNamespaceRef"] = {
+            "resourceId": generate_resource_id(
+                resource_group_name=resource_group_name,
+                resource_provider="Microsoft.DeviceRegistry",
+                resource_path=f"/namespaces/{adr_namespace_name or 'myadrnamespace'}",
+            )
+        }
     if description:
         properties["description"] = description
     if features:

@@ -553,6 +553,10 @@ def load_iotops_adr_help():
           manufacturer, model, and more.
 
         examples:
+        - name: Query for devices in an IoT Operations instance
+          text: >
+            az iot ops ns device query --instance myInstance -g myInstanceResourceGroup
+
         - name: Query for a specific device by name
           text: >
             az iot ops ns device query --name mydevice
@@ -662,6 +666,12 @@ def load_iotops_adr_help():
         - name: List all inbound endpoints of a device
           text: >
             az iot ops ns device endpoint inbound list --device mydevice --instance myInstance -g myInstanceResourceGroup
+        - name: List all Media endpoints of a device using a keyword
+          text: >
+            az iot ops ns device endpoint inbound list --device mydevice --instance myInstance -g myInstanceResourceGroup --endpoint-type media
+        - name: List all Media endpoints of a device using the full endpoint type
+          text: >
+            az iot ops ns device endpoint inbound list --device mydevice --instance myInstance -g myInstanceResourceGroup --endpoint-type Microsoft.Media
     """
 
     helps[
@@ -832,13 +842,17 @@ def load_iotops_adr_help():
           device name, endpoint name and more.
 
         examples:
+        - name: Query for assets in an IoT Operations instance
+          text: >
+            az iot ops ns asset query --instance myInstance -g myInstanceResourceGroup
+
         - name: Query for a specific asset by name
           text: >
             az iot ops ns asset query --name myasset
 
         - name: Query for assets associated with a specific device and endpoint
           text: >
-            az iot ops ns asset query --device mydevice --endpoint-name myEndpoint
+            az iot ops ns asset query --device mydevice --endpoint myEndpoint
 
         - name: Use a custom query to search for assets
           text: >
@@ -874,24 +888,24 @@ def load_iotops_adr_help():
         - name: Create a basic custom asset
           text: >
             az iot ops ns asset custom create --name mycustomasset --instance myInstance -g myInstanceResourceGroup
-            --device mydevice --endpoint-name myEndpoint
+            --device mydevice --endpoint myEndpoint
 
         - name: Create a custom asset with additional metadata
           text: >
             az iot ops ns asset custom create --name mycustomasset --instance myInstance -g myInstanceResourceGroup
-            --device mydevice --endpoint-name myEndpoint --description "Factory sensor" --display-name "Temperature Sensor"
+            --device mydevice --endpoint myEndpoint --description "Factory sensor" --display-name "Temperature Sensor"
             --model "TempSensor-X1" --manufacturer "Contoso" --serial-number "SN12345"
 
         - name: Create a custom asset with dataset and events configuration using inline JSON
           text: >
             az iot ops ns asset custom create --name mycustomasset --instance myInstance -g myInstanceResourceGroup
-            --device mydevice --endpoint-name myEndpoint --dataset-config "{\\\"publishingInterval\\\": 1000}"
+            --device mydevice --endpoint myEndpoint --dataset-config "{\\\"publishingInterval\\\": 1000}"
             --event-config "{\\\"queueSize\\\": 5}"
 
         - name: Create a custom asset with datasets use a BrokerStateStore destination, events use a Mqtt destination, and streams use a Storage destination.
           text: >
             az iot ops ns asset custom create --name mycustomasset --instance myInstance -g myInstanceResourceGroupmyResourceGroup
-            --device mydevice --endpoint-name myEndpoint
+            --device mydevice --endpoint myEndpoint
             --dataset-dest key="myKey"
             --event-dest topic="factory/events/temperature/updated" qos=Qos0 retain=Never ttl=3600
             --stream-dest path="my/storage/path"
@@ -1512,31 +1526,31 @@ def load_iotops_adr_help():
         - name: Create a basic media asset
           text: >
             az iot ops ns asset media create --name mymediaasset --instance myInstance -g myInstanceResourceGroup
-            --device myCamera --endpoint-name myCameraEndpoint
+            --device myCamera --endpoint myCameraEndpoint
 
         - name: Create a media asset for MQTT snapshots with an MQTT destination
           text: >
             az iot ops ns asset media create --name mymediaasset --instance myInstance -g myInstanceResourceGroup
-            --device myCamera --endpoint-name myCameraEndpoint --task-type snapshot-to-mqtt
+            --device myCamera --endpoint myCameraEndpoint --task-type snapshot-to-mqtt
             --task-format jpeg --snapshots-per-sec 1
             --stream-dest topic="factory/cameras/snapshots" qos=Qos1 retain=Never ttl=60
 
         - name: Create a media asset for file system snapshots
           text: >
             az iot ops ns asset media create --name mymediaasset --instance myInstance -g myInstanceResourceGroup
-            --device myCamera --endpoint-name myCameraEndpoint --task-type snapshot-to-fs
+            --device myCamera --endpoint myCameraEndpoint --task-type snapshot-to-fs
             --task-format png --snapshots-per-sec 5 --path "/data/snapshots"
 
         - name: Create a media asset for file system clips
           text: >
             az iot ops ns asset media create --name mymediaasset --instance myInstance -g myInstanceResourceGroup
-            --device myCamera --endpoint-name myCameraEndpoint --task-type clip-to-fs
+            --device myCamera --endpoint myCameraEndpoint --task-type clip-to-fs
             --task-format mp4 --duration 300 --path "/data/clips"
 
         - name: Create a media asset for RTSP streaming
           text: >
             az iot ops ns asset media create --name mymediaasset --instance myInstance -g myInstanceResourceGroup
-            --device myCamera --endpoint-name myCameraEndpoint --task-type stream-to-rtsp
+            --device myCamera --endpoint myCameraEndpoint --task-type stream-to-rtsp
             --media-server-address "media-server.media-server.svc.cluster.local"
             --media-server-port 8554 --media-server-path "myCamera/stream"
     """
@@ -1731,19 +1745,19 @@ def load_iotops_adr_help():
         - name: Create a basic ONVIF asset
           text: >
             az iot ops ns asset onvif create --name myonvifasset --instance myInstance -g myInstanceResourceGroup
-            --device myCamera --endpoint-name myOnvifEndpoint
+            --device myCamera --endpoint myOnvifEndpoint
 
         - name: Create an ONVIF asset with additional metadata
           text: >
             az iot ops ns asset onvif create --name myonvifasset --instance myInstance -g myInstanceResourceGroup
-            --device myCamera --endpoint-name myOnvifEndpoint --description "Surveillance Camera"
+            --device myCamera --endpoint myOnvifEndpoint --description "Surveillance Camera"
             --display-name "Entry Camera" --model "SecureCam Pro" --manufacturer "SecurityCo"
             --serial-number "CAM-12345" --documentation-uri "https://example.com/docs/camera"
 
         - name: Create an ONVIF asset with custom attributes
           text: >
             az iot ops ns asset onvif create --name myonvifasset --instance myInstance -g myInstanceResourceGroup
-            --device myCamera --endpoint-name myOnvifEndpoint --attribute location=entrance
+            --device myCamera --endpoint myOnvifEndpoint --attribute location=entrance
             --attribute resolution=1080p --attribute ptz=true
     """
 
@@ -1975,24 +1989,24 @@ def load_iotops_adr_help():
         - name: Create a basic OPC UA asset
           text: >
             az iot ops ns asset opcua create --name myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint
+            --device myOpcuaDevice --endpoint myOpcuaEndpoint
 
         - name: Create an OPC UA asset with dataset configuration
           text: >
             az iot ops ns asset opcua create --name myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --dataset-publish-int 1000
+            --device myOpcuaDevice --endpoint myOpcuaEndpoint --dataset-publish-int 1000
             --dataset-sampling-int 500 --dataset-queue-size 5 --dataset-key-frame-count 1
 
         - name: Create an OPC UA asset with event configuration
           text: >
             az iot ops ns asset opcua create --name myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint --event-publish-int 2000
+            --device myOpcuaDevice --endpoint myOpcuaEndpoint --event-publish-int 2000
             --event-queue-size 10
 
         - name: Create an OPC UA asset with MQTT destinations for datasets and events
           text: >
             az iot ops ns asset opcua create --name myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --device myOpcuaDevice --endpoint-name myOpcuaEndpoint
+            --device myOpcuaDevice --endpoint myOpcuaEndpoint
             --dataset-dest topic="factory/opcua/data" retain=Keep qos=Qos1 ttl=3600
             --event-dest topic="factory/opcua/events" retain=Never qos=Qos1 ttl=3600
     """
@@ -2471,36 +2485,36 @@ def load_iotops_adr_help():
         - name: Create a basic REST asset
           text: >
             az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
-            --device myrestdevice --endpoint-name myRestEndpoint
+            --device myrestdevice --endpoint myRestEndpoint
 
         - name: Create a REST asset with dataset configuration
           text: >
             az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
-            --device myrestdevice --endpoint-name myRestEndpoint --sampling-int 5000
+            --device myrestdevice --endpoint myRestEndpoint --sampling-int 5000
 
         - name: Create a REST asset with dataset destination
           text: >
             az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
-            --device myrestdevice --endpoint-name myRestEndpoint
+            --device myrestdevice --endpoint myRestEndpoint
             --dataset-dest topic="factory/rest/data" retain=Never qos=Qos1 ttl=3600
 
         - name: Create a REST asset with custom configuration and BrokerStateStore destination
           text: >
             az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
-            --device myrestdevice --endpoint-name myRestEndpoint --sampling-int 2000
+            --device myrestdevice --endpoint myRestEndpoint --sampling-int 2000
             --dataset-dest key="rest-data-cache"
 
         - name: Create a REST asset with additional metadata
           text: >
             az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
-            --device myrestdevice --endpoint-name myRestEndpoint --description "Temperature sensor API"
+            --device myrestdevice --endpoint myRestEndpoint --description "Temperature sensor API"
             --display-name "Facility Temperature Monitor" --model "TempSensor-3000" --manufacturer "SensorCorp"
             --serial-number "TS-12345" --documentation-uri "https://example.com/docs/api"
 
         - name: Create a REST asset with custom attributes
           text: >
             az iot ops ns asset rest create --name myrestasset --instance myInstance -g myInstanceResourceGroup
-            --device myrestdevice --endpoint-name myRestEndpoint --attribute location=warehouse
+            --device myrestdevice --endpoint myRestEndpoint --attribute location=warehouse
             --attribute sensor-type=temperature --attribute units=celsius
     """
 
