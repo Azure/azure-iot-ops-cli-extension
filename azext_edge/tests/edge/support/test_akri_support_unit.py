@@ -10,6 +10,7 @@ from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.support.akri import (
     AKRI_DIRECTORY_PATH,
+    AKRI_MANAGED_BY_OPERATOR_LABEL,
     AKRI_NAME_LABEL_V2,
 )
 from azext_edge.tests.edge.support.test_support_unit import (
@@ -62,6 +63,14 @@ def test_create_bundle_akri(
         directory_path=AKRI_DIRECTORY_PATH,
         since_seconds=since_seconds,
     )
+    assert_list_pods(
+        mocked_client,
+        mocked_zipfile,
+        mocked_list_pods,
+        label_selector=AKRI_MANAGED_BY_OPERATOR_LABEL,
+        directory_path=AKRI_DIRECTORY_PATH,
+        since_seconds=since_seconds,
+    )
     assert_list_deployments(
         mocked_client,
         mocked_zipfile,
@@ -84,6 +93,13 @@ def test_create_bundle_akri(
         mocked_client,
         mocked_zipfile,
         label_selector=AKRI_NAME_LABEL_V2,
+        field_selector=None,
+        directory_path=AKRI_DIRECTORY_PATH,
+    )
+    assert_list_stateful_sets(
+        mocked_client,
+        mocked_zipfile,
+        label_selector=AKRI_MANAGED_BY_OPERATOR_LABEL,
         field_selector=None,
         directory_path=AKRI_DIRECTORY_PATH,
     )

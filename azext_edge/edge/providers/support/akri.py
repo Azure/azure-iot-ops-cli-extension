@@ -21,11 +21,12 @@ from .base import (
     process_v1_pods,
     process_validating_webhook_configurations,
 )
-from .common import NAME_LABEL_FORMAT
+from .common import NAME_LABEL_FORMAT, MANAGED_BY_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
 AKRI_NAME_LABEL_V2 = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations-akri")
+AKRI_MANAGED_BY_OPERATOR_LABEL = MANAGED_BY_LABEL_FORMAT.format(label="aio-akri-operator")
 AKRI_DIRECTORY_PATH = "akri"
 
 
@@ -37,11 +38,16 @@ def fetch_services():
 
 
 def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
-    return process_v1_pods(
-        directory_path=AKRI_DIRECTORY_PATH,
-        label_selector=AKRI_NAME_LABEL_V2,
-        since_seconds=since_seconds,
-    )
+    pods = []
+    for label in [AKRI_NAME_LABEL_V2, AKRI_MANAGED_BY_OPERATOR_LABEL]:
+        pods.extend(
+            process_v1_pods(
+                directory_path=AKRI_DIRECTORY_PATH,
+                label_selector=label,
+                since_seconds=since_seconds,
+            )
+        )
+    return pods
 
 
 def fetch_deployments():
@@ -52,10 +58,15 @@ def fetch_deployments():
 
 
 def fetch_statefulsets():
-    return process_statefulset(
-        directory_path=AKRI_DIRECTORY_PATH,
-        label_selector=AKRI_NAME_LABEL_V2,
-    )
+    pods = []
+    for label in [AKRI_NAME_LABEL_V2, AKRI_MANAGED_BY_OPERATOR_LABEL]:
+        pods.extend(
+            process_statefulset(
+                directory_path=AKRI_DIRECTORY_PATH,
+                label_selector=label,
+            )
+        )
+    return pods
 
 
 def fetch_replicasets():
