@@ -7,9 +7,10 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import DEVICEREGISTRY_API_V1
+from azext_edge.edge.providers.support_bundle import COMPAT_DEVICEREGISTRY_APIS
 from .helpers import (
     check_custom_resource_files,
+    get_all_kinds_from_manager,
     BASE_ZIP_PATH,
     get_file_map,
     run_bundle_command
@@ -17,8 +18,7 @@ from .helpers import (
 
 logger = get_logger(__name__)
 
-# TODO - c-ryan-k - Re-enable tests when assets are not being modified during checks or we have a better way to isolate
-# pytestmark = pytest.mark.e2e
+pytestmark = pytest.mark.e2e
 
 
 def test_create_bundle_deviceregistry(cluster_connection, tracked_files):
@@ -32,6 +32,7 @@ def test_create_bundle_deviceregistry(cluster_connection, tracked_files):
 
     check_custom_resource_files(
         file_objs=file_map,
-        resource_api=DEVICEREGISTRY_API_V1
+        resource_apis=COMPAT_DEVICEREGISTRY_APIS.resource_apis,
     )
-    assert set(file_map.keys()).issubset(DEVICEREGISTRY_API_V1.kinds)
+
+    assert set(file_map.keys()).issubset(get_all_kinds_from_manager(COMPAT_DEVICEREGISTRY_APIS))

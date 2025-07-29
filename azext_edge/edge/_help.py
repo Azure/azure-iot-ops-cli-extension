@@ -31,6 +31,10 @@ from .providers.support_bundle import (
 )
 
 
+# cause help barfs on anything not indented correctly
+DEVICEREGISTRY_API_STR_FOR_HELP = COMPAT_DEVICEREGISTRY_APIS.as_str().strip().replace('\n', '\n            - ')
+
+
 def load_iotops_help():
     helps[
         "iot ops"
@@ -62,7 +66,7 @@ def load_iotops_help():
         long-summary: |
             {{Supported service APIs}}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
-            - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
+            - {DEVICEREGISTRY_API_STR_FOR_HELP}
             - {CERTMANAGER_API_V1.as_str()}
             - {COMPAT_CLUSTER_CONFIG_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
@@ -125,7 +129,7 @@ def load_iotops_help():
             Note: Resource kind (--resources) and name (--resource-name) filtering can only be used with the '--svc' argument.
 
             {{Supported service APIs}}
-            - {COMPAT_DEVICEREGISTRY_APIS.as_str()}
+            - {DEVICEREGISTRY_API_STR_FOR_HELP}
             - {COMPAT_MQTT_BROKER_APIS.as_str()}
             - {COMPAT_DATAFLOW_APIS.as_str()}
 

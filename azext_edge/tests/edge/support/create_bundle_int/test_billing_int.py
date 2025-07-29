@@ -7,11 +7,12 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import CLUSTER_CONFIG_API_V1
+from azext_edge.edge.providers.support_bundle import COMPAT_CLUSTER_CONFIG_APIS
 from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
     check_workload_resource_files,
+    get_all_kinds_from_manager,
     get_file_map,
     run_bundle_command
 )
@@ -21,8 +22,8 @@ logger = get_logger(__name__)
 pytestmark = pytest.mark.e2e
 AIO_PREFIXES = ["aio-usage"]
 AIO_WORKLOAD_TYPES = ["cronjob", "job", "pod"]
-USAGE_PREFIXES = ["billing-operator"]
-USAGE_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service"]
+USAGE_PREFIXES = ["billing-operator", "billing-webhook"]
+USAGE_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "vwc", "mwc"]
 
 
 def test_create_bundle_billing(cluster_connection, tracked_files):
@@ -44,10 +45,11 @@ def test_create_bundle_billing(cluster_connection, tracked_files):
     # AIO
     check_custom_resource_files(
         file_objs=file_map["aio"],
-        resource_api=CLUSTER_CONFIG_API_V1,
+        resource_apis=COMPAT_CLUSTER_CONFIG_APIS.resource_apis,
         namespace=file_map["__namespaces__"]["aio"]
     )
-    expected_types = set(AIO_WORKLOAD_TYPES).union(CLUSTER_CONFIG_API_V1.kinds)
+    cluster_config_kinds = get_all_kinds_from_manager(COMPAT_CLUSTER_CONFIG_APIS)
+    expected_types = set(AIO_WORKLOAD_TYPES).union(cluster_config_kinds)
     assert set(file_map["aio"].keys()).issubset(set(expected_types))
     check_workload_resource_files(
         file_objs=file_map["aio"],
@@ -59,14 +61,18 @@ def test_create_bundle_billing(cluster_connection, tracked_files):
     # USAGE
     check_custom_resource_files(
         file_objs=file_map["usage"],
-        resource_api=CLUSTER_CONFIG_API_V1,
+        resource_apis=COMPAT_CLUSTER_CONFIG_APIS.resource_apis,
         namespace=file_map["__namespaces__"]["usage"]
     )
-    expected_types = set(USAGE_WORKLOAD_TYPES).union(CLUSTER_CONFIG_API_V1.kinds)
+    expected_types = (
+        set(USAGE_WORKLOAD_TYPES)
+        .union(cluster_config_kinds)
+        .union({"billingerror", "billingusage", "extensionconfig", "azureextensionidentity"})
+    )
     assert set(file_map["usage"].keys()).issubset(expected_types)
     check_workload_resource_files(
         file_objs=file_map["usage"],
         pre_bundle_items=usage_workload_items,
         prefixes=USAGE_PREFIXES,
-        bundle_path=bundle_path
+        bundle_path=bundle_path,
     )

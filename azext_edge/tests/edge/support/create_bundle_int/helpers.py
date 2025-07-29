@@ -5,13 +5,13 @@
 # ----------------------------------------------------------------------------------------------
 
 from knack.log import get_logger
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, TypedDict, Union
 from os import path
 from zipfile import ZipFile
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api.base import EdgeResourceApi
+from azext_edge.edge.providers.edge_api.base import EdgeApiManager, EdgeResourceApi
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
 from ....helpers import (
     PLURAL_KEY,
@@ -33,13 +33,46 @@ WORKLOAD_TYPES = [
     "daemonset",
     "deployment",
     "job",
+    "mwc",
     "pod",
     "podmetric",
     "pvc",
     "replicaset",
     "service",
     "statefulset",
+    "vwc",
 ]
+
+
+class Namespaces(TypedDict):
+    """Dictionary for namespaces determined from the support bundle."""
+    arc: Optional[str] = None
+    aio: Optional[str] = None
+    acs: Optional[str] = None
+    acstor: Optional[str] = None
+    ssc: Optional[str] = None
+    usage_system: Optional[str] = None
+    certmanager: Optional[str] = None
+
+
+class DeconstructedFileName(TypedDict):
+    """
+    Deconstructed file name object.
+
+    The name should reflect the same name as that when fetched from kubectl.
+    Other fields are used to help with the file name "conventions".
+    """
+    name: str
+    extension: str
+    full_name: str
+    # only for custom types
+    version: Optional[str]
+    # when there are extra parts in the name, like "msi-adapter", "init-runner"
+    # but these are not part of the name fetched from kubectl
+    descriptor: Optional[str]
+    # when there are even more parts, like "previous", "init"
+    # but these are not part of the name fetched from kubectl
+    sub_descriptor: Optional[str]
 
 
 def assert_file_names(files: List[str]):
@@ -72,6 +105,12 @@ def assert_file_names(files: List[str]):
         if "metric" in name and extension == "yaml":
             short_name += f".{name.pop(0)}"
 
+        # Handle webhook configurations that include extra '.'-separated elements
+        if file_type in ["vwc", "mwc"] and extension == "yaml" and name:
+            # For webhook configurations, consume any remaining API group parts
+            while name:
+                name.pop(0)
+
         assert bool(name) == (extension != "yaml")
 
 
@@ -83,11 +122,11 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
     """
     file_name_objs = {}
     for full_name in files:
-        name = split_name(full_name)
-        file_type = name.pop(0)
-        name_obj = {"extension": name.pop(-1), "full_name": full_name}
+        name_parts = split_name(full_name)
+        file_type = name_parts.pop(0)
+        name_obj = DeconstructedFileName({"extension": name_parts.pop(-1), "full_name": full_name})
 
-        if file_type == "pod" and name[-1] == "metric":
+        if file_type == "pod" and name_parts[-1] == "metric":
             # note: not a real type
             file_type = "podmetric"
 
@@ -98,8 +137,8 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
             # aio-broker-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.otlp.pb
             # aio-broker-dmqtt-frontend-1.Publish.b9c3173d9c2b97b75edfb6cf7cb482f2.tempo.json
             name_obj["name"] = file_type
-            name_obj["action"] = name.pop(0).lower()
-            name_obj["identifier"] = name.pop(0)
+            name_obj["action"] = name_parts.pop(0).lower()
+            name_obj["identifier"] = name_parts.pop(0)
             file_name_objs["trace"].append(name_obj)
             continue
 
@@ -114,22 +153,29 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
                 # check diagnositcs.txt later
                 file_name_objs[file_type].append(name_obj)
                 continue
-            name_obj["version"] = name.pop(0)
+            name_obj["version"] = name_parts.pop(0)
             assert name_obj["version"].startswith("v")
-        name_obj["name"] = name.pop(0)
+        name_obj["name"] = name_parts.pop(0)
 
         # custom re-adding
         if name_obj["name"] == "aio-opc-opc":
-            name_obj["name"] += f".{name.pop(0)}"
+            name_obj["name"] += f".{name_parts.pop(0)}"
         if name_obj["name"] == "kube-root-ca":
-            name_obj["name"] += f".{name.pop(0)}"
+            name_obj["name"] += f".{name_parts.pop(0)}"
+
+        # for webhooks, we want the "url"
+        # ex: aio-akri-admission-webhook.akri.com
+        if file_type in ["vwc", "mwc"]:
+            # Assume the rest of the name is supposed to be in the name
+            while name_parts:
+                name_obj["name"] += f".{name_parts.pop(0)}"
 
         # something like "msi-adapter", "init-runner"
-        if name:
-            name_obj["descriptor"] = name.pop(0)
+        if name_parts:
+            name_obj["descriptor"] = name_parts.pop(0)
         # something like "previous", "init"
-        if name:
-            name_obj["sub_descriptor"] = name.pop(0)
+        if name_parts:
+            name_obj["sub_descriptor"] = name_parts.pop(0)
 
         file_name_objs[file_type].append(name_obj)
 
@@ -138,29 +184,69 @@ def convert_file_names(files: List[str]) -> Dict[str, List[Dict[str, str]]]:
 
 def check_custom_resource_files(
     file_objs: Dict[str, List[Dict[str, str]]],
-    resource_api: EdgeResourceApi,
+    resource_apis: Union[EdgeResourceApi, Iterable[EdgeResourceApi]],
     namespace: Optional[str] = None,
     exclude_kinds: Optional[List[str]] = None,
 ):
-    # skip validation if resource is not deployed
-    if not resource_api.is_deployed():
-        return
+    """
+    Helper function to check custom resource files against cluster resources.
 
-    resource_map = get_kubectl_custom_items(resource_api=resource_api, namespace=namespace, include_plural=True)
-    resource_kinds = set(resource_api.kinds) - set(exclude_kinds or [])
-    for kind in resource_kinds:
-        cluster_resources = resource_map[kind]
-        # subresources like scale will not have a plural
-        if cluster_resources.get(PLURAL_KEY):
-            assert len(cluster_resources.keys()) - 1 == len(file_objs.get(kind, [])), (
-                f"Mismatch between file objs and cluster resources for kind {kind}:\n"
-                + f"{cluster_resources.keys()=}\n{file_objs.get(kind, [])=}"
-            )
-            for resource in file_objs.get(kind, []):
-                assert (
-                    resource["name"] in cluster_resources.keys()
-                ), f"Resource {resource['name']} of kind {kind} not found in resource map"
-                assert resource["version"] == resource_api.version
+    Will check by version, kind, and name and ensure the kinds match up.
+
+    Args:
+        file_obs (Dict[str, List[Dict[str, str]]]): Dictionary of file objects, where key is
+            the kind and value is a list of dicts with file info.
+        resource_apis (Union[EdgeResourceApi, Iterable[EdgeResourceApi]]): EdgeResourceApi or
+            iterable of EdgeResourceApi to check against cluster resources.
+        namespace (Optional[str]): Namespace to check resources in, if applicable.
+        exclude_kinds (Optional[List[str]]): List of kinds to exclude from the check.
+    """
+    # Note: we use the resoource api over EdgeApiManager due to some resources having multiple resource
+    # apis with respective files being in different folders, see how this function is called in certmanager
+    # and arccontainerstorage tests.
+
+    # make sure we are dealing with an iterable of EdgeResourceApi
+    if isinstance(resource_apis, EdgeResourceApi):
+        resource_apis = [resource_apis]
+
+    # first get all the cluster resources
+    # since there are mutliple apis now, key is (kind, version) and value is set of resource names
+    cluster_resource_names: Dict[Tuple[str, str], set] = {}
+    for api in resource_apis:
+        # skip validation if resource is not deployed
+        if not api.is_deployed():
+            continue
+
+        resource_map = get_kubectl_custom_items(resource_api=api, namespace=namespace, include_plural=True)
+        resource_kinds = set(api.kinds) - set(exclude_kinds or [])
+        for kind in resource_kinds:
+            cluster_resources = resource_map[kind]
+            resources = {r for r in cluster_resources if r != "_plural_"}
+            # only add if there is a plural key and resources found
+            # subresources like scale will not have a plural
+            if cluster_resources.get(PLURAL_KEY) and resources:
+                kind_version_key = (kind, api.version)
+                cluster_resource_names.setdefault(kind_version_key, set()).update(resources)
+
+    # second, build up the file resource names in the same manor
+    file_resource_names: Dict[Tuple[str, str], set] = {}
+    for kind, objs in file_objs.items():
+        for obj in objs:
+            kind_version_key = (kind, obj.get("version", "v1"))
+            file_resource_names.setdefault(kind_version_key, set()).add(obj["name"])
+
+    # this will only check the custom crds so if there are workload types, will need to have an extra check
+    # outside of this function
+    assert set(cluster_resource_names.keys()).issubset(set(file_resource_names.keys())), (
+        f"Expected cluster resources types not found in files:\n"
+        f"{file_resource_names.keys()=}\n{cluster_resource_names.keys()=}"
+    )
+    for key, resource_names in cluster_resource_names.items():
+        find_extra_or_missing_names(
+            result_names=file_resource_names[key],
+            pre_expected_names=resource_names,
+            post_expected_names=resource_names
+        )
 
 
 def check_workload_resource_files(
@@ -171,6 +257,12 @@ def check_workload_resource_files(
     expected_label: Optional[str] = None,
     pre_bundle_optional_items: Optional[Dict[str, List[str]]] = None,
 ):
+    """
+    Helper function to check workload resource files against cluster resources.
+
+    See WORKLOAD_TYPES for checked types here.
+    """
+    # TODO: improve docstring to describe how pods are handled, etc
     # pod
     file_pods = {}
     for file in file_objs.get("pod", []):
@@ -197,6 +289,9 @@ def check_workload_resource_files(
             # for some reason does not apply to xxx.init
             if file["descriptor"] not in converted_file:
                 converted_file[file["descriptor"]] = False
+            # TODO - verify, safety hatch for mtls failures?
+            if file["descriptor"] == "mtls" and file["sub_descriptor"] == "previous":
+                converted_file[file["descriptor"]] = True
 
     post_pods = get_kubectl_workload_items(prefixes, service_type="pod", label_match=expected_label)
     check_log_for_evicted_pods(bundle_path, file_objs.get("pod", []))
@@ -246,6 +341,7 @@ def check_workload_resource_files(
 
 
 def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]]):
+    # TODO: docstring
     # open the file using bundle_dir and check for evicted pods
     name_extension_pair = list(set([(file["name"], file["extension"]) for file in file_pods]))
     # TODO: upcoming fix will get file content earlier
@@ -262,13 +358,42 @@ def check_log_for_evicted_pods(bundle_dir: str, file_pods: List[Dict[str, str]])
                     assert "Evicted" not in log_content, f"Evicted pod {name} log found in bundle."
 
 
+def get_all_kinds_from_manager(
+    manager: EdgeApiManager,
+    exclude_kinds: Optional[List[str]] = None,
+) -> set:
+    """
+    Get all kinds from EdgeApiManager, excluding specified kinds.
+
+    Args:
+        manager (EdgeApiManager): EdgeApiManager instance to get kinds from.
+        exclude_kinds (Optional[List[str]]): List of kinds to exclude from the result.
+
+    Returns:
+        set: Set of kinds excluding the specified ones.
+    """
+    exclude_kinds = exclude_kinds or []
+    result = set()
+    for api in manager.resource_apis:
+        result.update(api.kinds)
+    return result - set(exclude_kinds)
+
+
 def get_file_map(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
     mq_traces: bool = False,
 ) -> Dict[str, Dict[str, List[Dict[str, str]]]]:
+    """
+    Converts the walk result into a file map for the support bundle.
+
+    The number of expected folders will be checked here
+    based on the ops_service and the namespaces found in the walk result.
+    """
     # Remove all files that will not be checked
     namespaces = process_top_levels(walk_result, ops_service)
+
+    # get the namespaces
     arc_namespace = namespaces.get("arc")
     aio_namespace = namespaces.get("aio")
     acs_namespace = namespaces.get("acs")
@@ -284,8 +409,15 @@ def get_file_map(
 
     # separate namespaces
     file_map = {"__namespaces__": {}}
-    # default walk result meta and arcagents
-    expected_default_walk_result = 1 + len(ARC_AGENTS)
+
+    # by default, there will be arc agents, meta and meso in every bundle
+    num_additional_services = len(ARC_AGENTS)
+    meta_path = path.join(BASE_ZIP_PATH, aio_namespace, "meta")
+    meso_path = path.join(BASE_ZIP_PATH, aio_namespace, "meso")
+    if meta_path in walk_result:
+        num_additional_services += 1
+    if meso_path in walk_result and ops_service != OpsServiceType.meso.value:
+        num_additional_services += 1
 
     if arc_namespace:
         file_map["arc"] = {}
@@ -294,63 +426,70 @@ def get_file_map(
             agent_path = path.join(BASE_ZIP_PATH, arc_namespace, "arcagents", agent)
             file_map["arc"][agent] = convert_file_names(walk_result[agent_path]["files"])
 
+    # TODO: explain the magic numbers (1, 2 better). Might need some refactoring too
     if mq_traces and path.join(ops_path, "traces") in walk_result:
         # still possible for no traces if cluster is too new
-        assert len(walk_result) == 2 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        # adding two folders - one for aio and one for traces
+        assert len(walk_result) == 2 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         assert walk_result[ops_path]["folders"]
         assert not walk_result[path.join(ops_path, "traces")]["folders"]
         file_map["traces"] = convert_file_names(walk_result[path.join(ops_path, "traces")]["files"])
+
     elif ops_service == "billing":
-        assert len(walk_result) == 2 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        assert len(walk_result) == 2 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         ops_path = path.join(BASE_ZIP_PATH, aio_namespace, ops_service)
         c_path = path.join(BASE_ZIP_PATH, c_namespace, "clusterconfig", ops_service)
         file_map["usage"] = convert_file_names(walk_result[c_path]["files"])
         file_map["__namespaces__"]["usage"] = c_namespace
+
     elif ops_service == "acs":
         if acstor_namespace:
             # resources in both acstor_namespace and acs_namespace
-            assert len(walk_result) == 2 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 2 + num_additional_services, f"walk result keys: {walk_result.keys()}"
             acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
             file_map["acstor"] = convert_file_names(walk_result[acstor_path]["files"])
             file_map["__namespaces__"]["acstor"] = acstor_namespace
         else:
             # resources only in acs_namespace
-            assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
         file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
         file_map["__namespaces__"]["acs"] = acs_namespace
 
         # no files for aio, skip the rest assertions
         return file_map
+
     elif ops_service == OpsServiceType.secretstore.value:
         ops_path = path.join(BASE_ZIP_PATH, aio_namespace, OpsServiceType.secretstore.value)
         ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, OpsServiceType.secretstore.value)
         if ops_path not in walk_result:
             # no CR created in aio namespace
             # since CR is the only resource type under aio, skip the rest assertions
-            assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
             pytest.skip(f"No bundles created for {ops_service}.")
         else:
-            assert len(walk_result) == 2 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 2 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         file_map[OpsServiceType.secretstore.value] = convert_file_names(walk_result[ssc_path]["files"])
         file_map["__namespaces__"][OpsServiceType.secretstore.value] = ssc_namespace
+
     elif ops_service == OpsServiceType.azuremonitor.value:
         monitor_path = path.join(BASE_ZIP_PATH, arc_namespace, OpsServiceType.azuremonitor.value)
-        assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         file_map[OpsServiceType.azuremonitor.value] = convert_file_names(walk_result[monitor_path]["files"])
         file_map["__namespaces__"][OpsServiceType.azuremonitor.value] = arc_namespace
 
         # no files for aio, skip the rest assertions
         return file_map
+
     elif ops_service == "certmanager":
         if acstor_namespace:
-            expected_default_walk_result += 1
+            num_additional_services += 1
             certmanager_acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "certmanager")
             file_map["certmanager_acstor"] = convert_file_names(walk_result[certmanager_acstor_path]["files"])
             file_map["__namespaces__"]["acstor"] = acstor_namespace
 
         if ssc_namespace:
-            expected_default_walk_result += 1
+            num_additional_services += 1
             certmanager_ssc_path = path.join(BASE_ZIP_PATH, ssc_namespace, "certmanager")
             file_map["certmanager_ssc"] = convert_file_names(walk_result[certmanager_ssc_path]["files"])
             file_map["__namespaces__"]["ssc"] = ssc_namespace
@@ -362,39 +501,40 @@ def get_file_map(
         certmanager_arc_path = path.join(BASE_ZIP_PATH, arc_namespace, "certmanager")
         file_map["certmanager_arc"] = convert_file_names(walk_result[certmanager_arc_path]["files"])
         file_map["__namespaces__"]["certmanager"] = certmanager_namespace
-        assert len(walk_result) == 3 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        assert len(walk_result) == 3 + num_additional_services, f"walk result keys: {walk_result.keys()}"
+
     elif ops_service == "deviceregistry":
         if ops_path not in walk_result:
-            assert len(walk_result) == expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == num_additional_services, f"walk result keys: {walk_result.keys()}"
             pytest.skip(f"No bundles created for {ops_service}.")
         else:
-            assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
+
     # remove ops_service that are not selectable by --svc
     elif ops_service not in ["otel", "meta"]:
-        assert len(walk_result) == 1 + expected_default_walk_result, f"walk result keys: {walk_result.keys()}"
+        assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
         assert not walk_result[ops_path]["folders"]
+
     file_map["aio"] = convert_file_names(walk_result[ops_path]["files"])
     file_map["__namespaces__"]["aio"] = aio_namespace
     return file_map
 
 
+# TODO: rename this to something more appropriate
 def process_top_levels(
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
 ) -> Dict[str, Union[str, None]]:
+    """
+    Mostly used to determine namespaces from the top level of the support bundle.
+    """
     level_0 = walk_result.pop(BASE_ZIP_PATH)
     for file in ["events.yaml", "nodes.yaml", "storage-classes.yaml", "azure-clusterconfig.yaml"]:
         assert file in level_0["files"]
     if not level_0["folders"]:
         pytest.skip(f"No bundles created for {ops_service}.")
-    namespaces = level_0["folders"]
-    namespace = None
-    clusterconfig_namespace = None
-    arc_namespace = None
-    acs_namespace = None
-    acstor_namespace = None
-    ssc_namespace = None
-    certmanager_namespace = None
+    namespace_folders = level_0["folders"]
+    namespaces = Namespaces()
 
     def _get_namespace_determinating_files(name: str, folder: str, file_prefix: str) -> List[str]:
         level1 = walk_result.get(path.join(BASE_ZIP_PATH, name, folder), {})
@@ -403,69 +543,73 @@ def process_top_levels(
     cert_resource_namespaces = []
     containerstorage_service = ""
 
-    for name in namespaces:
+    # TODO: most of the namespace determination logic can be removed to hardcoded namespace values
+    # AIO is the one that needs to be kept (will need to double check for other namespaces)
+    for name in namespace_folders:
         # determine which namespace belongs to aio vs billing
         if _get_namespace_determinating_files(
             name=name, folder=path.join("clusterconfig", "billing"), file_prefix="deployment"
         ):
             # if there is a deployment, should be azure-extensions-usage-system
-            clusterconfig_namespace = name
+            namespaces["usage_system"] = name
         elif _get_namespace_determinating_files(
             name=name, folder=path.join("arcagents", ARC_AGENTS[0][0]), file_prefix="pod"
         ):
-            arc_namespace = name
-        elif _get_namespace_determinating_files(name=name, folder=path.join("arccontainerstorage"), file_prefix="pvc"):
-            acs_namespace = name
+            namespaces["arc"] = name
         elif _get_namespace_determinating_files(
-            name=name, folder=path.join("containerstorage"), file_prefix="configmap"
+            name=name, folder="arccontainerstorage", file_prefix="edgestorageconfiguration"
+        ):
+            namespaces["acs"] = name
+        elif _get_namespace_determinating_files(
+            name=name, folder="containerstorage", file_prefix="configmap"
         ):
             containerstorage_service = "containerstorage"
-            acstor_namespace = name
+            namespaces["acstor"] = name
         elif _get_namespace_determinating_files(
             name=name, folder=OpsServiceType.secretstore.value, file_prefix="deployment"
         ):
-            ssc_namespace = name
-        elif _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="deployment"):
-            certmanager_namespace = name
+            namespaces["ssc"] = name
+        elif _get_namespace_determinating_files(name=name, folder="certmanager", file_prefix="deployment"):
+            namespaces["certmanager"] = name
         elif _get_namespace_determinating_files(name=name, folder="meta", file_prefix="instance"):
-            namespace = name
+            namespaces["aio"] = name
 
-        if _get_namespace_determinating_files(name=name, folder=path.join("certmanager"), file_prefix="configmap"):
+        if _get_namespace_determinating_files(name=name, folder="certmanager", file_prefix="configmap"):
             cert_resource_namespaces.append(name)
 
     # find the acstor namespace if fault tolerance is enabled,
     # but support bundle only getting certmanager resources
-    if not acstor_namespace:
+    if not namespaces.get("acstor"):
         # acstor_namespace should be the namespace besides certmanager, arc, and aio namespace
-        acstor_namespace = next(
+        namespaces["acstor"] = next(
             (
                 name
                 for name in cert_resource_namespaces
-                if name not in [certmanager_namespace, arc_namespace, namespace, ssc_namespace]
+                if name not in [
+                    namespaces.get("certmanager"),
+                    namespaces.get("arc"),
+                    namespaces.get("aio"),
+                    namespaces.get("ssc")
+                ]
             ),
             None,
         )
 
-    if not ssc_namespace:
+    if not namespaces.get("ssc"):
         # ssc_namespace should be the namespace besides certmanager, arc, and aio namespace
-        ssc_namespace = next(
+        namespaces["ssc"] = next(
             (
                 name
                 for name in cert_resource_namespaces
-                if name not in [certmanager_namespace, arc_namespace, namespace, acstor_namespace]
+                if name not in [
+                    namespaces.get("certmanager"),
+                    namespaces.get("arc"),
+                    namespaces.get("aio"),
+                    namespaces.get("acstor")
+                ]
             ),
             None,
         )
-
-    namespaces = {
-        "arc": arc_namespace,
-        "aio": namespace,
-        "acs": acs_namespace,
-        "acstor": acstor_namespace,
-        "ssc": ssc_namespace,
-        "usage_system": clusterconfig_namespace,
-        "certmanager": certmanager_namespace,
-    }
 
     _clean_up_folders(
         walk_result=walk_result,
@@ -474,13 +618,13 @@ def process_top_levels(
     )
 
     logger.debug("Determined the following namespaces:")
-    logger.debug(f"AIO namespace: {namespace}")
-    logger.debug(f"Usage system namespace: {clusterconfig_namespace}")
-    logger.debug(f"ARC namespace: {arc_namespace}")
-    logger.debug(f"ACS namespace: {acs_namespace}")
-    logger.debug(f"ACSTOR namespace: {acstor_namespace}")
-    logger.debug(f"SSC namespace: {ssc_namespace}")
-    logger.debug(f"Certmanager namespace: {certmanager_namespace}")
+    logger.debug(f"AIO namespace: {namespaces.get('aio')}")
+    logger.debug(f"Usage system namespace: {namespaces.get('usage_system')}")
+    logger.debug(f"ARC namespace: {namespaces.get('arc')}")
+    logger.debug(f"ACS namespace: {namespaces.get('acs')}")
+    logger.debug(f"ACSTOR namespace: {namespaces.get('acstor')}")
+    logger.debug(f"SSC namespace: {namespaces.get('ssc')}")
+    logger.debug(f"Certmanager namespace: {namespaces.get('certmanager')}")
 
     return namespaces
 
@@ -489,6 +633,18 @@ def run_bundle_command(
     command: str,
     tracked_files: List[str],
 ) -> Tuple[Dict[str, Dict[str, List[str]]], str]:
+    """
+    Runs the support bundle command and returns the walk result.
+
+    The walk result is a dictionary representing the structure of the support bundle,
+    in which every key is a path and the value is a dictionary with 'folders' and 'files'.
+
+    Args:
+        command (str): The command to run for creating the support bundle.
+        tracked_files (List[str]): List to track files created by the command.
+    Returns:
+        Tuple[Dict[str, Dict[str, List[str]]], str]: A tuple containing the walk result and the bundle path.
+    """
     # add in a name for more uniqueness
     command += f" --bundle-name test_bundle_{generate_random_string(size=8)}"
     result = run(command)
@@ -497,6 +653,7 @@ def run_bundle_command(
     assert result["bundlePath"]
     tracked_files.append(result["bundlePath"])
     # transform this into a walk result of an extracted zip file
+    # TODO: add in a class for this (maybe typed dict?)
     walk_result = {}
     with ZipFile(result["bundlePath"], "r") as zip:
         file_names = zip.namelist()
@@ -558,8 +715,9 @@ def _clean_up_folders(
 ):
     """
     Clean up folders from walk_result that are not needed for following
-    azure IoT operation namespace assertion.
+    IoT operation namespace assertion.
     """
+    # TODO: add in more information as to why certain folders are removed to the docstring.
     arc_namespace = namespaces.get("arc")
     acs_namespace = namespaces.get("acs")
     acstor_namespace = namespaces.get("acstor")
@@ -612,6 +770,7 @@ def _clean_up_folders(
     ):
         services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace))
+
         if acs_namespace:
             services.append("arccontainerstorage")
         if (
@@ -649,7 +808,7 @@ def _compare_support_bundle_names(
     For extra names, will split into two groups:
     1. "accepted" names - has the correct prefix so will just log. In this case, we assume that the resource
     just got created and deleted in the timespan of pre - support - post
-    2. "unaccpeted" names - does NOT have the correct prefix so will error. In this case, the prefix is not valid
+    2. "unaccepted" names - does NOT have the correct prefix so will error. In this case, the prefix is not valid
     so more investigation as to why this got captured will be needed.
 
     For missing names, try to get labels to help determine if labels are the reason.

@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 pytestmark = pytest.mark.e2e
 
 ACS_PREFIXES = [
+    "azure-arc-containerstorage",
     "acsa-otel",
     "csi-wyvern-controller",
     "csi-wyvern-node",
@@ -35,7 +36,7 @@ ACS_OPTIONAL_PREFIXES = [
     "adr-schema-registry-cache-claim-user-pvc",
     "adr-schema-registry-cache-claim-system-pvc",
 ]
-ACS_WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service"]
+ACS_WORKLOAD_TYPES = ["daemonset", "deployment", "pod", "pvc", "replicaset", "service", "vwc"]
 ACSTOR_PREFIXES = [
     "acstor",
     "capacity-provisioner",
@@ -94,7 +95,9 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
         prefixes=acs_workload_resource_prefixes,
         bundle_path=bundle_path,
     )
-    check_custom_resource_files(file_objs=acs_file_map, resource_api=ARCCONTAINERSTORAGE_API_V1)
+    check_custom_resource_files(
+        file_objs=acs_file_map, resource_apis=ARCCONTAINERSTORAGE_API_V1
+    )
 
     # ACSTOR validate azure-arc-acstor if exists
     if "acstor" not in file_map:
@@ -112,4 +115,6 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
         bundle_path=bundle_path,
     )
 
-    check_custom_resource_files(file_objs=acstor_file_map, resource_api=CONTAINERSTORAGE_API_V1)
+    check_custom_resource_files(
+        file_objs=acstor_file_map, resource_apis=CONTAINERSTORAGE_API_V1
+    )

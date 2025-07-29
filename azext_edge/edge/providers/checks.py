@@ -7,20 +7,20 @@
 from typing import Any, Dict, List, Optional
 
 from azure.cli.core.azclierror import ArgumentUsageError
-from azext_edge.edge.providers.edge_api.dataflow import DataflowResourceKinds
 from rich.console import Console
 
 from ..common import OPCUA_SERVICE, ListableEnum, OpsServiceType
+from .check.akri import check_akri_deployment
 from .check.base import check_pre_deployment, display_as_list
 from .check.common import COLOR_STR_FORMAT, ResourceOutputDetailLevel
+from .check.dataflow import check_dataflows_deployment
 from .check.deviceregistry import check_deviceregistry_deployment
 from .check.mq import check_mq_deployment
 from .check.opcua import check_opcua_deployment
+from .check.summary import check_summary
+from .edge_api.dataflow import DataflowResourceKinds
 from .edge_api.deviceregistry import DeviceRegistryResourceKinds
 from .edge_api.mq import MqResourceKinds
-from .check.akri import check_akri_deployment
-from .check.dataflow import check_dataflows_deployment
-from .check.summary import check_summary
 
 console = Console(width=100, highlight=False)
 
@@ -80,9 +80,6 @@ def run_checks(
 
 
 def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: List[str]) -> None:
-    if ops_service in [OpsServiceType.akri.value, OPCUA_SERVICE]:
-        raise ArgumentUsageError(f"--resources is not supported for service {ops_service}.")
-
     service_kinds_dict: Dict[str, ListableEnum] = {
         OpsServiceType.deviceregistry.value: DeviceRegistryResourceKinds,
         OpsServiceType.mq.value: MqResourceKinds,
@@ -90,6 +87,8 @@ def _validate_resource_kinds_under_service(ops_service: str, resource_kinds: Lis
     }
 
     valid_resource_kinds = service_kinds_dict[ops_service].list() if ops_service in service_kinds_dict else []
+    if not valid_resource_kinds:
+        raise ArgumentUsageError(f"Resource filtering is not supported for service {ops_service}.")
 
     for resource_kind in resource_kinds:
         if resource_kind not in valid_resource_kinds:

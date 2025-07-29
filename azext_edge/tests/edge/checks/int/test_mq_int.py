@@ -9,7 +9,7 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
 from azext_edge.edge.providers.edge_api import (
-    MqResourceKinds, MQTT_BROKER_API_V1
+    MqResourceKinds, MQ_ACTIVE_API
 )
 from .helpers import (
     assert_enumerate_resources,
@@ -31,7 +31,7 @@ def test_mq_check(cluster_connection, detail_level, resource_match, resource_kin
     post_deployment, broker_present = run_check_command(
         detail_level=detail_level,
         ops_service="broker",
-        resource_api=MQTT_BROKER_API_V1,
+        resource_api=MQ_ACTIVE_API,
         resource_kind=resource_kind,
         resource_match=resource_match,
     )
@@ -41,13 +41,13 @@ def test_mq_check(cluster_connection, detail_level, resource_match, resource_kin
         post_deployment=post_deployment,
         description_name="MQTT Broker",
         key_name="Broker",
-        resource_api=MQTT_BROKER_API_V1,
+        resource_api=MQ_ACTIVE_API,
         resource_kinds=MqResourceKinds.list(),
         present=broker_present,
     )
 
     custom_resources = get_kubectl_custom_items(
-        resource_api=MQTT_BROKER_API_V1,
+        resource_api=MQ_ACTIVE_API,
         resource_match=resource_match,
         include_plural=True
     )
@@ -73,7 +73,7 @@ def assert_eval_broker(
         post_deployment=post_deployment,
         items=broker,
         description_name="MQTT Broker",
-        resource_api=MQTT_BROKER_API_V1,
+        resource_api=MQ_ACTIVE_API,
         resource_kind_present=resource_kind_present
     )
     # TODO: add more as --as-object gets fixed, such as success conditions
@@ -90,7 +90,7 @@ def assert_eval_broker_listener(
         post_deployment=post_deployment,
         items=instances,
         description_name="MQTT Broker Listener",
-        resource_api=MQTT_BROKER_API_V1,
+        resource_api=MQ_ACTIVE_API,
         resource_kind_present=resource_kind_present,
     )
     # TODO: add more as --as-object gets fixed, such as success conditions

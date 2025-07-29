@@ -4,27 +4,17 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from rich.padding import Padding
 from typing import Any, Dict, List
 
-from azext_edge.edge.providers.check.base.pod import evaluate_pod_health
+from rich.padding import Padding
 
-from ..support.akri import AKRI_NAME_LABEL_V2
+from azext_edge.edge.providers.check.base.pod import evaluate_pod_health
+from azext_edge.edge.providers.edge_api import AKRI_ACTIVE_API
 
 from ..base import get_namespaced_pods_by_prefix
-from .base import (
-    CheckManager,
-    check_post_deployment,
-    filter_resources_by_name,
-    get_resources_grouped_by_namespace,
-)
-
-from .common import (
-    AKRI_PREFIX,
-    PADDING_SIZE,
-    CoreServiceResourceKinds,
-    ResourceOutputDetailLevel,
-)
+from ..support.akri import AKRI_NAME_LABEL_V2
+from .base import CheckManager, check_post_deployment, filter_resources_by_name, get_resources_grouped_by_namespace
+from .common import AKRI_PREFIX, PADDING_SIZE, CoreServiceResourceKinds, ResourceOutputDetailLevel
 
 
 def check_akri_deployment(
@@ -38,6 +28,9 @@ def check_akri_deployment(
     }
 
     return check_post_deployment(
+        api_info=AKRI_ACTIVE_API,
+        check_name="akri",
+        check_desc="Evaluate Akri API resources",
         evaluate_funcs=evaluate_funcs,
         as_list=as_list,
         detail_level=detail_level,

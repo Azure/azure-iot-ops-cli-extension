@@ -32,7 +32,7 @@ def test_check_opcua_by_resource_types(ops_service, mocker, mock_resource_types,
     try:
         assert_check_by_resource_types(ops_service, mocker, resource_kinds, eval_lookup)
     except ArgumentUsageError as e:
-        assert "--resources is not supported for service opcua." in str(e)
+        assert "Resource filtering is not supported for service opcua." in str(e)
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())

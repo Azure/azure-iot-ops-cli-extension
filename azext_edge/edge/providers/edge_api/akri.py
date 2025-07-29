@@ -4,20 +4,16 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from .base import EdgeResourceApi
 from ...common import ListableEnum
+from .base import EdgeResourceApi
 
 
-class MetaResourceKinds(ListableEnum):
-    Instance = "instance"
+class AkriResourceKinds(ListableEnum):
+    CONNECTORINSTANCE = "connectorinstance"
+    CONNECTORTEMPLATE = "connectortemplate"
+    DISCOVERYHANDLER = "discoveryhandler"
 
 
-META_API_V1 = EdgeResourceApi(
-    group="iotoperations.azure.com", version="v1", moniker="meta", label="microsoft-iotoperations"
-)
+AKRI_API_V1B1 = EdgeResourceApi(group="akri.microsoft.com", version="v1beta1", moniker="akri")
 
-META_API_V1B1 = EdgeResourceApi(
-    group="iotoperations.azure.com", version="v1beta1", moniker="meta", label="microsoft-iotoperations"
-)
-
-META_ACTIVE_API = META_API_V1B1
+AKRI_ACTIVE_API = AKRI_API_V1B1

@@ -15,7 +15,18 @@ logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
 MESO_PREFIXES = ["aio-observability"]
-MESO_WORKLOAD_TYPES = ["clusterrole", "configmap", "clusterrolebinding", "deployment", "pod", "replicaset", "service"]
+MESO_WORKLOAD_TYPES = [
+    "daemonset",
+    "clusterrole",
+    "configmap",
+    "clusterrolebinding",
+    "deployment",
+    "pod",
+    "replicaset",
+    "service",
+    "vwc",
+    "mwc"
+]
 
 
 def test_create_bundle_meso(cluster_connection, tracked_files):
@@ -33,7 +44,7 @@ def test_create_bundle_meso(cluster_connection, tracked_files):
 
     file_map = get_file_map(walk_result, ops_service)["aio"]
 
-    expected_types = set(MESO_WORKLOAD_TYPES).union({"crb"})
+    expected_types = set(MESO_WORKLOAD_TYPES).union({"crb", "observability"})
     assert set(file_map.keys()).issubset(set(expected_types))
     check_workload_resource_files(
         file_objs=file_map,

@@ -59,7 +59,12 @@ def test_create_bundle_connectors(
     assert a_bundle_dir in result["bundlePath"]
 
     # Assert runtime resources
-    for pod_name_label in [OPC_APP_LABEL, OPC_NAME_LABEL, OPC_NAME_VAR_LABEL, OPCUA_NAME_LABEL]:
+    for pod_name_label in [
+        OPC_APP_LABEL,
+        OPC_NAME_LABEL,
+        OPC_NAME_VAR_LABEL,
+        OPCUA_NAME_LABEL,
+    ]:
         assert_list_pods(
             mocked_client,
             mocked_zipfile,
@@ -89,6 +94,19 @@ def test_create_bundle_connectors(
     )
 
     # TODO: one-off field selector remove after label
+    assert_list_pods(
+        mocked_client,
+        mocked_zipfile,
+        mocked_list_pods,
+        label_selector=None,
+        directory_path=CONNECTORS_DIRECTORY_PATH,
+        since_seconds=since_seconds,
+        include_metrics=True,
+        mock_names=[
+            "aio-onvif-0000000",
+            "aio-media-0000000",
+        ],
+    )
     assert_list_daemon_sets(
         mocked_client,
         mocked_zipfile,
@@ -125,7 +143,11 @@ def test_create_bundle_connectors(
         mocked_zipfile,
         label_selector=None,
         directory_path=CONNECTORS_DIRECTORY_PATH,
-        mock_names=["opcplc-0000000"],
+        mock_names=[
+            "opcplc-0000000",
+            "aio-onvif-0000000",
+            "aio-media-0000000",
+        ],
     )
     assert_list_services(
         mocked_client, mocked_zipfile, label_selector=OPC_APP_LABEL, directory_path=CONNECTORS_DIRECTORY_PATH

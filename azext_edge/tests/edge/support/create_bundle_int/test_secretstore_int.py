@@ -7,7 +7,7 @@
 import pytest
 from knack.log import get_logger
 from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api import SECRETSTORE_API_V1, SECRETSYNC_API_V1
+from azext_edge.edge.providers.support_bundle import COMPAT_SECRETSTORE_APIS
 from ....helpers import get_multi_kubectl_workload_items
 from .helpers import (
     check_custom_resource_files,
@@ -36,16 +36,15 @@ def test_create_bundle_ssc(cluster_connection, tracked_files):
     file_map = get_file_map(walk_result, ops_service)
 
     # AIO
-    check_custom_resource_files(
-        file_objs=file_map["aio"], resource_api=SECRETSYNC_API_V1, namespace=file_map["__namespaces__"]["aio"]
-    )
+    # only has the custom resource types?
     check_custom_resource_files(
         file_objs=file_map["aio"],
-        resource_api=SECRETSTORE_API_V1,
-        namespace=file_map["__namespaces__"]["aio"],
+        resource_apis=COMPAT_SECRETSTORE_APIS.resource_apis,
+        namespace=file_map["__namespaces__"]["aio"]
     )
 
     # SECRETSTORE
+    # only has the workload types?
     expected_types = set(SSC_WORKLOAD_TYPES)
     assert set(file_map[OpsServiceType.secretstore.value].keys()).issubset(expected_types)
     check_workload_resource_files(

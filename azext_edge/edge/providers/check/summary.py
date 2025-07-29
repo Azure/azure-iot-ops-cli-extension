@@ -11,7 +11,7 @@ from rich.table import Table
 from rich.console import NewLine
 
 from ...common import OPCUA_SERVICE, CheckTaskStatus, OpsServiceType
-from ...providers.edge_api import DATAFLOW_API_V1, DEVICEREGISTRY_API_V1, MQ_ACTIVE_API
+from ...providers.edge_api import DATAFLOW_ACTIVE_API, DEVICEREGISTRY_API_V1, MQ_ACTIVE_API
 from .akri import check_akri_deployment
 from .base import CheckManager
 from .base.display import colorize_string
@@ -64,7 +64,7 @@ def check_summary(
         ServiceCheck(
             svc=OpsServiceType.dataflow.value,
             title="Dataflow",
-            target=DATAFLOW_API_V1.as_str(),
+            target=DATAFLOW_ACTIVE_API.as_str(),
             check_func=check_dataflows_deployment,
         ),
     ]

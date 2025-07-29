@@ -7,6 +7,7 @@
 from functools import partial
 from typing import Iterable, Optional
 
+from azext_edge.edge.providers.support.common import NAME_LABEL_FORMAT, RESOURCE_NAME_FIELD_FORMAT
 from knack.log import get_logger
 
 from ..edge_api import CERTMANAGER_API_V1, EdgeResourceApi
@@ -18,6 +19,8 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
+    process_validating_webhook_configurations,
+    process_mutating_webhook_configurations
 )
 
 logger = get_logger(__name__)
@@ -26,6 +29,9 @@ CERT_DIRECTORY_PATH = CERTMANAGER_API_V1.moniker
 # No common label for azuremonitor
 CERT_MANAGER_NAMESPACE = "cert-manager"
 TRUST_BUNDLE_LABEL = "trust.cert-manager.io/bundle"
+CERT_MANAGER_WEBHOOK_NAME = "aio-cert-manager-webhook"
+CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR = RESOURCE_NAME_FIELD_FORMAT.format(name=CERT_MANAGER_WEBHOOK_NAME)
+TRUST_MANAGER_WEBHOOK_LABEL = NAME_LABEL_FORMAT.format(label="aio-trust-manager")
 
 
 def fetch_deployments():
@@ -73,11 +79,35 @@ def fetch_configmaps():
     return processed
 
 
+def fetch_validating_webhooks():
+    results = []
+    results.extend(
+        process_validating_webhook_configurations(
+            directory_path=CERT_DIRECTORY_PATH,
+            label_selector=TRUST_MANAGER_WEBHOOK_LABEL,
+        )
+    )
+    results.extend(
+        process_validating_webhook_configurations(
+            directory_path=CERT_DIRECTORY_PATH,
+            field_selector=CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
+        )
+    )
+    results.extend(
+        process_mutating_webhook_configurations(
+            directory_path=CERT_DIRECTORY_PATH,
+            field_selector=CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
+        )
+    )
+    return results
+
+
 support_runtime_elements = {
     "configmaps": fetch_configmaps,
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
+    "validatingwebhooks": fetch_validating_webhooks,
 }
 
 

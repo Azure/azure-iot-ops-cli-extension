@@ -10,6 +10,7 @@ from typing import Iterable, Optional
 from knack.log import get_logger
 
 from ..edge_api import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1, EdgeResourceApi
+from .common import NAME_LABEL_FORMAT
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
@@ -20,6 +21,7 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
+    process_validating_webhook_configurations,
 )
 
 logger = get_logger(__name__)
@@ -29,6 +31,7 @@ ACSTOR_DIRECTORY_PATH = CONTAINERSTORAGE_API_V1.moniker
 # TODO: Use common label once it is ready
 STORAGE_NAMESPACE = "azure-arc-containerstorage"
 ACSTOR_NAMESPACE = "azure-arc-acstor"
+ARCCONTAINERSTORAGE_WEBHOOK_LABEL = NAME_LABEL_FORMAT.format(label=ARCCONTAINERSTORAGE_API_V1.moniker)
 
 
 def fetch_deployments():
@@ -127,6 +130,13 @@ def fetch_configmaps():
     )
 
 
+def fetch_validating_webhook_configurations():
+    return process_validating_webhook_configurations(
+        directory_path=STORAGE_DIRECTORY_PATH,
+        label_selector=ARCCONTAINERSTORAGE_WEBHOOK_LABEL,
+    )
+
+
 support_runtime_elements = {
     "configmaps": fetch_configmaps,
     "daemonsets": fetch_daemonsets,
@@ -134,6 +144,7 @@ support_runtime_elements = {
     "persistentvolumeclaims": fetch_peristent_volume_claims,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
+    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 

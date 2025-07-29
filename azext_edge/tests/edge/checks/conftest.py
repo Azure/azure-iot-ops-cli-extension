@@ -100,6 +100,7 @@ def mock_resource_types(mocker, ops_service):
             "Dataflow": [{}],
             "DataflowEndpoint": [{}],
             "DataflowProfile": [{}],
+            "RegistryEndpoint": [{}],
         },
     }
     # if ops_service is not provided, return all resources

@@ -4,37 +4,41 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from pathlib import PurePath
-from typing import List, Dict, Optional, Iterable, Tuple, TypeVar, Union
 from functools import partial
+from pathlib import PurePath
+from typing import Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
-from azext_edge.edge.common import BundleResourceKind, PodState
 from knack.log import get_logger
 from kubernetes.client.exceptions import ApiException
 from kubernetes.client.models import (
     V1Container,
-    V1ObjectMeta,
-    V1PodSpec,
-    V1PodList,
-    V1ServiceList,
-    V1DeploymentList,
-    V1StatefulSetList,
-    V1ReplicaSetList,
-    V1DaemonSetList,
-    V1PersistentVolumeClaimList,
-    V1JobList,
     V1CronJobList,
+    V1DaemonSetList,
+    V1DeploymentList,
+    V1JobList,
+    V1MutatingWebhookConfigurationList,
+    V1ObjectMeta,
+    V1PersistentVolumeClaimList,
+    V1PodList,
+    V1PodSpec,
+    V1ReplicaSetList,
+    V1ServiceList,
+    V1StatefulSetList,
+    V1ValidatingWebhookConfigurationList,
 )
 
-from ..edge_api import EdgeResourceApi
-from ..base import client, get_custom_objects
+from ...common import BundleResourceKind, PodState
+
 from ...util import get_timestamp_now_utc
+from ..base import DEFAULT_NAMESPACE, client, get_custom_objects
+from ..edge_api import EdgeResourceApi
 
 logger = get_logger(__name__)
 generic = client.ApiClient()
 
 DAY_IN_SECONDS: int = 60 * 60 * 24
 POD_STATUS_FAILED_EVICTED: str = "evicted"
+
 
 K8sRuntimeResources = TypeVar(
     "K8sRuntimeResources",
@@ -47,6 +51,8 @@ K8sRuntimeResources = TypeVar(
     V1PersistentVolumeClaimList,
     V1JobList,
     V1CronJobList,
+    V1MutatingWebhookConfigurationList,
+    V1ValidatingWebhookConfigurationList,
 )
 
 
@@ -58,6 +64,7 @@ def process_crd(
     directory_path: str,
     file_prefix: Optional[str] = None,
     fallback_namespace: Optional[str] = None,
+    kind_to_dir: Optional[Dict[str, str]] = None,
 ) -> List[dict]:
     result: dict = get_custom_objects(
         group=group,
@@ -67,6 +74,9 @@ def process_crd(
     )
     if not file_prefix:
         file_prefix = kind
+
+    if kind_to_dir and kind in kind_to_dir:
+        directory_path = kind_to_dir[kind]
 
     processed = []
     for r in result.get("items", []):
@@ -377,7 +387,8 @@ def process_cluster_roles(
         label_selector=label_selector, field_selector=field_selector
     )
     for role in cluster_roles.items:
-        namespace = getattr(role.metadata, "annotations", {}).get("meta.helm.sh/release-namespace")
+        annotations = getattr(role.metadata, "annotations", {}) or {}
+        namespace = annotations.get("meta.helm.sh/release-namespace")
         name = role.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.clusterrole.value)
 
@@ -406,7 +417,8 @@ def process_cluster_role_bindings(
         label_selector=label_selector, field_selector=field_selector
     )
     for binding in cluster_role_bindings.items:
-        namespace = getattr(binding.metadata, "annotations", {}).get("meta.helm.sh/release-namespace")
+        annotations = getattr(binding.metadata, "annotations", {}) or {}
+        namespace = annotations.get("meta.helm.sh/release-namespace")
         name = binding.metadata.name
         resource_type = _get_resource_type_prefix(BundleResourceKind.clusterrolebinding.value)
 
@@ -428,11 +440,11 @@ def process_nodes() -> Dict[str, Union[dict, str]]:
     }
 
 
-def get_mq_namespaces() -> List[str]:
+def get_mq_namespaces(use_cache: Optional[bool] = False) -> List[str]:
     from ..edge_api import MQ_ACTIVE_API, MqResourceKinds
 
     namespaces = []
-    cluster_brokers = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER)
+    cluster_brokers = MQ_ACTIVE_API.get_resources(MqResourceKinds.BROKER, use_cache=use_cache)
     if cluster_brokers and cluster_brokers["items"]:
         namespaces.extend([b["metadata"]["namespace"] for b in cluster_brokers["items"]])
 
@@ -533,11 +545,68 @@ def process_cron_jobs(
     )
 
 
+def process_mutating_webhook_configurations(
+    directory_path: str,
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+) -> List[dict]:
+    admission_api = client.AdmissionregistrationV1Api()
+    webhooks: V1MutatingWebhookConfigurationList = admission_api.list_mutating_webhook_configuration(
+        label_selector=label_selector, field_selector=field_selector
+    )
+    processed = []
+    for webhook in webhooks.items:
+        annotations = getattr(webhook.metadata, "annotations", {}) or {}
+        namespace = annotations.get("meta.helm.sh/release-namespace")
+        if not namespace:
+            broker_namespaces = get_mq_namespaces(use_cache=True)
+            namespace = broker_namespaces[0] if broker_namespaces else DEFAULT_NAMESPACE
+        name = webhook.metadata.name
+        resource_type = _get_resource_type_prefix(BundleResourceKind.mutatingwebhook.value)
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=webhook),
+                "zinfo": f"{namespace}/{directory_path}/{resource_type}.{name}.yaml",
+            }
+        )
+
+    return processed
+
+
+def process_validating_webhook_configurations(
+    directory_path: str,
+    field_selector: Optional[str] = None,
+    label_selector: Optional[str] = None,
+) -> List[dict]:
+    admission_api = client.AdmissionregistrationV1Api()
+    webhooks: V1ValidatingWebhookConfigurationList = admission_api.list_validating_webhook_configuration(
+        label_selector=label_selector, field_selector=field_selector
+    )
+    processed = []
+    for webhook in webhooks.items:
+        annotations = getattr(webhook.metadata, "annotations", {}) or {}
+        namespace = annotations.get("meta.helm.sh/release-namespace")
+        if not namespace:
+            broker_namespaces = get_mq_namespaces(use_cache=True)
+            namespace = broker_namespaces[0] if broker_namespaces else DEFAULT_NAMESPACE
+        name = webhook.metadata.name
+        resource_type = _get_resource_type_prefix(BundleResourceKind.validatingwebhook.value)
+
+        processed.append(
+            {
+                "data": generic.sanitize_for_serialization(obj=webhook),
+                "zinfo": f"{namespace}/{directory_path}/{resource_type}.{name}.yaml",
+            }
+        )
+    return processed
+
+
 def assemble_crd_work(
     apis: Iterable[EdgeResourceApi],
     file_prefix_map: Optional[Dict[str, str]] = None,
     directory_path: Optional[str] = None,
     fallback_namespace: Optional[str] = None,
+    kind_to_dir: Optional[Dict[str, str]] = None,
 ) -> dict:
     if not file_prefix_map:
         file_prefix_map = {}
@@ -556,6 +625,7 @@ def assemble_crd_work(
                 directory_path=path,
                 file_prefix=file_prefix,
                 fallback_namespace=fallback_namespace,
+                kind_to_dir=kind_to_dir,
             )
 
     return result

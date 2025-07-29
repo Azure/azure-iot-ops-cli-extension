@@ -9,7 +9,7 @@ import pytest
 from knack.log import get_logger
 from azext_edge.edge.providers.check.common import ResourceOutputDetailLevel
 from azext_edge.edge.providers.edge_api import (
-    DataflowResourceKinds, DATAFLOW_API_V1
+    DataflowResourceKinds, DATAFLOW_ACTIVE_API
 )
 from .helpers import (
     assert_enumerate_resources,
@@ -27,13 +27,22 @@ DATAFLOW_PREFIX = "aio-dataflow-operator-"
 
 
 @pytest.mark.parametrize("detail_level", ResourceOutputDetailLevel.list())
-@pytest.mark.parametrize("resource_kind", DataflowResourceKinds.list() + [None])
+@pytest.mark.parametrize(
+    "resource_kind",
+    [
+        None,
+        DataflowResourceKinds.DATAFLOW.value,
+        DataflowResourceKinds.DATAFLOWENDPOINT.value,
+        DataflowResourceKinds.DATAFLOWPROFILE.value,
+        DataflowResourceKinds.REGISTRYENDPOINT.value,
+    ],
+)
 def test_dataflow_check(cluster_connection, detail_level, resource_kind):
     pre_check_pods = get_pods(pod_prefix=DATAFLOW_PREFIX)
     post_deployment, dataflow_present = run_check_command(
         detail_level=detail_level,
         ops_service="dataflow",
-        resource_api=DATAFLOW_API_V1,
+        resource_api=DATAFLOW_ACTIVE_API,
         resource_kind=resource_kind
     )
 
@@ -42,7 +51,7 @@ def test_dataflow_check(cluster_connection, detail_level, resource_kind):
         post_deployment=post_deployment,
         description_name="Dataflow",
         key_name="Dataflow",
-        resource_api=DATAFLOW_API_V1,
+        resource_api=DATAFLOW_ACTIVE_API,
         resource_kinds=DataflowResourceKinds.list(),
         present=dataflow_present,
     )
@@ -58,7 +67,7 @@ def test_dataflow_check(cluster_connection, detail_level, resource_kind):
         assert "evalCoreServiceRuntime" not in post_deployment
 
     custom_resources = get_kubectl_custom_items(
-        resource_api=DATAFLOW_API_V1,
+        resource_api=DATAFLOW_ACTIVE_API,
         include_plural=True
     )
     assert_eval_dataflows(
@@ -89,7 +98,7 @@ def assert_eval_dataflows(
         post_deployment=post_deployment,
         items=dataflows,
         description_name="Dataflows",
-        resource_api=DATAFLOW_API_V1,
+        resource_api=DATAFLOW_ACTIVE_API,
         resource_kind_present=resource_kind_present
     )
     # TODO: add more as --as-object gets fixed, such as success conditions
@@ -106,7 +115,7 @@ def assert_eval_dataflow_endpoints(
         post_deployment=post_deployment,
         items=endpoints,
         description_name="Dataflow Endpoints",
-        resource_api=DATAFLOW_API_V1,
+        resource_api=DATAFLOW_ACTIVE_API,
         resource_kind_present=resource_kind_present,
     )
     # TODO: add more as --as-object gets fixed, such as success conditions
@@ -123,7 +132,7 @@ def assert_eval_dataflow_profiles(
         post_deployment=post_deployment,
         items=profiles,
         description_name="Dataflow Profiles",
-        resource_api=DATAFLOW_API_V1,
+        resource_api=DATAFLOW_ACTIVE_API,
         resource_kind_present=resource_kind_present,
     )
     # TODO: add more as --as-object gets fixed, such as success conditions

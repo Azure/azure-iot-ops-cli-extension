@@ -9,7 +9,7 @@ from typing import Iterable, Optional
 
 from knack.log import get_logger
 
-from ..edge_api import DATAFLOW_API_V1, EdgeResourceApi
+from ..edge_api import DATAFLOW_ACTIVE_API, EdgeResourceApi
 from .base import (
     DAY_IN_SECONDS,
     assemble_crd_work,
@@ -17,33 +17,24 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
+    process_validating_webhook_configurations,
 )
 from .common import NAME_LABEL_FORMAT
 
 logger = get_logger(__name__)
 
-DATAFLOW_NAME_LABEL = NAME_LABEL_FORMAT.format(label=DATAFLOW_API_V1.label)
-DATAFLOW_DIRECTORY_PATH = DATAFLOW_API_V1.moniker
+DATAFLOW_NAME_LABEL = NAME_LABEL_FORMAT.format(label=DATAFLOW_ACTIVE_API.label)
+DATAFLOW_DIRECTORY_PATH = DATAFLOW_ACTIVE_API.moniker
 DATAFLOW_OPERATOR_PREFIX = "aio-dataflow-operator"
 DATAFLOW_DEPLOYMENT_FIELD_SELECTOR = f"metadata.name={DATAFLOW_OPERATOR_PREFIX}"
 DATAFLOW_PROFILE_POD_PREFIX = "aio-dataflow-"
 
 
 def fetch_deployments():
-    processed = process_deployments(
+    return process_deployments(
         directory_path=DATAFLOW_DIRECTORY_PATH,
         label_selector=DATAFLOW_NAME_LABEL,
     )
-
-    # TODO: remove this once dataflow deployment label is fixed
-    processed.extend(
-        process_deployments(
-            directory_path=DATAFLOW_DIRECTORY_PATH,
-            label_selector=DATAFLOW_NAME_LABEL,
-        )
-    )
-
-    return processed
 
 
 def fetch_replicasets():
@@ -68,10 +59,18 @@ def fetch_pods(since_seconds: int = DAY_IN_SECONDS):
     )
 
 
+def fetch_validating_webhook_configurations():
+    return process_validating_webhook_configurations(
+        directory_path=DATAFLOW_DIRECTORY_PATH,
+        label_selector=DATAFLOW_NAME_LABEL,
+    )
+
+
 support_runtime_elements = {
     "deployments": fetch_deployments,
     "services": fetch_services,
     "replicasets": fetch_replicasets,
+    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 

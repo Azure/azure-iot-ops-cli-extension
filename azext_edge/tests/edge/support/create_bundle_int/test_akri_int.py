@@ -13,8 +13,19 @@ from .helpers import check_workload_resource_files, get_file_map, run_bundle_com
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
-AKRI_PREFIXES = ["aio-akri"]
-AKRI_WORKLOAD_TYPES = ["deployment", "pod", "replicaset"]
+AKRI_PREFIXES = ["aio-akri", "aiomedia", "aioonvif"]
+AKRI_WORKLOAD_TYPES = [
+    "deployment",
+    "pod",
+    "replicaset",
+    "statefulset",
+    "service",
+    "vwc",
+    "mwc",
+    "connectorinstance",
+    "connectortemplate",
+    "discoveryhandler",
+]
 
 
 def test_create_bundle_akri(cluster_connection, tracked_files):
@@ -29,8 +40,7 @@ def test_create_bundle_akri(cluster_connection, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)["aio"]
 
-    expected_types = set(AKRI_WORKLOAD_TYPES)
-    assert set(file_map.keys()).issubset(expected_types)
+    assert set(file_map.keys()).issubset(AKRI_WORKLOAD_TYPES)
 
     check_workload_resource_files(
         file_objs=file_map,

@@ -21,12 +21,14 @@ from .base import (
     process_replicasets,
     process_services,
     process_v1_pods,
+    process_validating_webhook_configurations,
 )
 
 logger = get_logger(__name__)
 
 AIO_BILLING_USAGE_NAME_LABEL = NAME_LABEL_FORMAT.format(label="microsoft-iotoperations")
 ARC_BILLING_EXTENSION_COMP_LABEL = COMPONENT_LABEL_FORMAT.format(label="billing-operator")
+BILLING_WEBHOOK_COMP_LABEL = COMPONENT_LABEL_FORMAT.format(label="billing-operator-webhook")
 BILLING_RESOURCE_KIND = "billing"
 AIO_USAGE_PREFIX = "aio-usage"
 ARC_BILLING_DIRECTORY_PATH = f"{CLUSTER_CONFIG_API_V1.moniker}/{BILLING_RESOURCE_KIND}"
@@ -97,12 +99,20 @@ def fetch_services():
     )
 
 
+def fetch_validating_webhook_configurations():
+    return process_validating_webhook_configurations(
+        directory_path=ARC_BILLING_DIRECTORY_PATH,
+        label_selector=BILLING_WEBHOOK_COMP_LABEL,
+    )
+
+
 support_runtime_elements = {
     "cronjobs": fetch_cron_jobs,
     "deployments": fetch_deployments,
     "replicasets": fetch_replicasets,
     "services": fetch_services,
     "jobs": fetch_jobs,
+    "validatingwebhooks": fetch_validating_webhook_configurations,
 }
 
 

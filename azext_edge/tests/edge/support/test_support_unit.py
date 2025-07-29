@@ -6,41 +6,64 @@
 
 import copy
 import random
+import yaml
 from os.path import abspath, expanduser, join
 from typing import List, Optional, Union
-from zipfile import ZipInfo
 from unittest.mock import Mock
+from zipfile import ZipInfo
 
 import pytest
 
 from azext_edge.edge.commands_edge import support_bundle
 from azext_edge.edge.common import OpsServiceType
 from azext_edge.edge.providers.edge_api import (
+    AKRI_ACTIVE_API,
     ARCCONTAINERSTORAGE_API_V1,
+    AZUREMONITOR_API_V1,
+    CERTMANAGER_API_V1,
     CLUSTER_CONFIG_API_V1,
+    DATAFLOW_ACTIVE_API,
+    DATAFLOW_API_V1,
+    DATAFLOW_API_V1B1,
     DEVICEREGISTRY_API_V1,
+    DEVICEREGISTRY_API_V1B1,
+    KEYVAULT_API_V1,
     MQ_ACTIVE_API,
     MQTT_BROKER_API_V1,
-    DATAFLOW_API_V1,
+    NAMESPACED_DEVICEREGISTRY_API_V1B1,
+    SECRETSTORE_API_V1,
+    SECRETSYNC_API_V1,
+    TRUSTMANAGER_API_V1,
     EdgeResourceApi,
 )
 from azext_edge.edge.providers.edge_api.meta import META_API_V1
+from azext_edge.edge.providers.support.akri import AKRI_NAME_LABEL_V2
 from azext_edge.edge.providers.support.arcagents import ARC_AGENTS, MONIKER
 from azext_edge.edge.providers.support.arccontainerstorage import STORAGE_NAMESPACE
-from azext_edge.edge.providers.support.base import get_bundle_path
+from azext_edge.edge.providers.support.base import (
+    get_bundle_path,
+    assemble_crd_work,
+    _get_resource_type_prefix,
+)
+from azext_edge.edge.common import BundleResourceKind
 from azext_edge.edge.providers.support.billing import (
     AIO_BILLING_USAGE_NAME_LABEL,
-    ARC_BILLING_EXTENSION_COMP_LABEL,
     ARC_BILLING_DIRECTORY_PATH,
+    ARC_BILLING_EXTENSION_COMP_LABEL,
     BILLING_RESOURCE_KIND,
+    BILLING_WEBHOOK_COMP_LABEL,
 )
-from azext_edge.edge.providers.support.meta import META_NAME_LABEL, META_PREFIX_NAMES
+from azext_edge.edge.providers.support.common import COMPONENT_LABEL_FORMAT
+from azext_edge.edge.providers.support.dataflow import DATAFLOW_NAME_LABEL
+from azext_edge.edge.providers.support.meta import META_DIRECTORY_PATH, META_NAME_LABEL, META_PREFIX_NAMES
 from azext_edge.edge.providers.support.mq import MQ_DIRECTORY_PATH, MQ_NAME_LABEL
-from azext_edge.edge.providers.support.common import (
-    COMPONENT_LABEL_FORMAT,
-)
 from azext_edge.edge.providers.support.schemaregistry import SCHEMAS_DIRECTORY_PATH, SCHEMAS_NAME_LABEL
-from azext_edge.edge.providers.support_bundle import COMPAT_MQTT_BROKER_APIS
+from azext_edge.edge.providers.support_bundle import (
+    COMPAT_META_APIS,
+    COMPAT_CLUSTER_CONFIG_APIS,
+    COMPAT_DATAFLOW_APIS,
+    COMPAT_MQTT_BROKER_APIS,
+)
 from azext_edge.tests.edge.support.conftest import add_pod_to_mocked_pods
 
 from ...generators import generate_random_string
@@ -54,9 +77,15 @@ a_bundle_dir = f"support_test_{generate_random_string()}"
     [
         [MQTT_BROKER_API_V1],
         [MQTT_BROKER_API_V1, MQ_ACTIVE_API],
+        [MQTT_BROKER_API_V1, AKRI_ACTIVE_API],
         [MQTT_BROKER_API_V1, DEVICEREGISTRY_API_V1],
-        [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1],
-        [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1],
+        [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1, DEVICEREGISTRY_API_V1B1],
+        [MQTT_BROKER_API_V1, CLUSTER_CONFIG_API_V1, ARCCONTAINERSTORAGE_API_V1, NAMESPACED_DEVICEREGISTRY_API_V1B1],
+        [MQTT_BROKER_API_V1, DATAFLOW_API_V1B1],
+        [MQ_ACTIVE_API, DATAFLOW_API_V1, DATAFLOW_ACTIVE_API],
+        [KEYVAULT_API_V1, SECRETSTORE_API_V1, SECRETSYNC_API_V1],
+        [AZUREMONITOR_API_V1, CERTMANAGER_API_V1, TRUSTMANAGER_API_V1],
+        [META_API_V1],
     ],
     indirect=True,
 )
@@ -80,6 +109,8 @@ def test_create_bundle(
     mocked_list_nodes,
     mocked_list_cluster_events,
     mocked_list_storage_classes,
+    mocked_list_mutating_webhooks,
+    mocked_list_validating_webhooks,
     mocked_root_logger,
     mocked_mq_active_api,
     mocked_namespaced_custom_objects,
@@ -102,7 +133,7 @@ def test_create_bundle(
     expected_resources: List[EdgeResourceApi] = mocked_cluster_resources["param"]
 
     for api in expected_resources:
-        sub_group = BILLING_RESOURCE_KIND if api in [CLUSTER_CONFIG_API_V1] else ""
+        sub_group = BILLING_RESOURCE_KIND if api in COMPAT_CLUSTER_CONFIG_APIS.resource_apis else ""
 
         for kind in api.kinds:
             target_file_prefix = None
@@ -116,7 +147,7 @@ def test_create_bundle(
                 sub_group=sub_group,
             )
 
-        if api in [CLUSTER_CONFIG_API_V1]:
+        if api in COMPAT_CLUSTER_CONFIG_APIS.resource_apis:
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
@@ -165,6 +196,12 @@ def test_create_bundle(
                 label_selector=ARC_BILLING_EXTENSION_COMP_LABEL,
                 directory_path=ARC_BILLING_DIRECTORY_PATH,
             )
+            assert_list_validating_webhooks(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=BILLING_WEBHOOK_COMP_LABEL,
+                directory_path=ARC_BILLING_DIRECTORY_PATH,
+            )
 
         if api in COMPAT_MQTT_BROKER_APIS.resource_apis:
             # Assert runtime resources
@@ -201,40 +238,45 @@ def test_create_bundle(
                 label_selector=MQ_NAME_LABEL,
                 directory_path=MQ_DIRECTORY_PATH,
             )
+            assert_list_validating_webhooks(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=MQ_NAME_LABEL,
+                directory_path=MQ_DIRECTORY_PATH,
+            )
 
-        if api in [DATAFLOW_API_V1]:
+        if api in COMPAT_DATAFLOW_APIS.resource_apis:
             assert_list_services(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_API_V1.label,
-                directory_path=DATAFLOW_API_V1.moniker,
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
             )
             assert_list_deployments(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_API_V1.label,
-                directory_path=DATAFLOW_API_V1.moniker,
-            )
-            assert_list_deployments(
-                mocked_client,
-                mocked_zipfile,
-                label_selector=DATAFLOW_API_V1.label,
-                directory_path=DATAFLOW_API_V1.moniker,
-                mock_names=["aio-dataflow-operator"],
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
             )
             assert_list_replica_sets(
                 mocked_client,
                 mocked_zipfile,
-                label_selector=DATAFLOW_API_V1.label,
-                directory_path=DATAFLOW_API_V1.moniker,
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
             )
             assert_list_pods(
                 mocked_client,
                 mocked_zipfile,
                 mocked_list_pods,
-                label_selector=DATAFLOW_API_V1.label,
-                directory_path=DATAFLOW_API_V1.moniker,
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
                 since_seconds=since_seconds,
+            )
+            assert_list_validating_webhooks(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=DATAFLOW_NAME_LABEL,
+                directory_path=api.moniker,
             )
 
         if api in [ARCCONTAINERSTORAGE_API_V1]:
@@ -282,6 +324,87 @@ def test_create_bundle(
                 directory_path=ARCCONTAINERSTORAGE_API_V1.moniker,
                 namespace=STORAGE_NAMESPACE,
             )
+
+        if api == AKRI_ACTIVE_API:
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_NAME_LABEL_V2,
+                directory_path=api.moniker,
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_NAME_LABEL_V2,
+                directory_path=api.moniker,
+            )
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=AKRI_NAME_LABEL_V2,
+                directory_path=api.moniker,
+                since_seconds=since_seconds,
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_NAME_LABEL_V2,
+                directory_path=api.moniker,
+            )
+            assert_list_stateful_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=AKRI_NAME_LABEL_V2,
+                directory_path=api.moniker,
+            )
+
+        if api in COMPAT_META_APIS.resource_apis:
+            assert_list_pods(
+                mocked_client,
+                mocked_zipfile,
+                mocked_list_pods,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+                since_seconds=since_seconds,
+            )
+            assert_list_deployments(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+            )
+            assert_list_replica_sets(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+            )
+            assert_list_services(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+                mock_names=[META_PREFIX_NAMES],
+            )
+            assert_list_jobs(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+            )
+            assert_list_mutating_webhooks(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+            )
+            assert_list_validating_webhooks(
+                mocked_client,
+                mocked_zipfile,
+                label_selector=META_NAME_LABEL,
+                directory_path=META_DIRECTORY_PATH,
+            )
     # assert shared KPIs regardless of service
     assert_shared_kpis(mocked_client, mocked_zipfile)
     # assert meta KPIs
@@ -323,7 +446,7 @@ def test_create_bundle_crd_work(
 
     if mocked_cluster_resources["param"] == []:
         mocked_root_logger.warning.assert_called_with(
-            "The following API(s) were not detected mqttbroker.iotoperations.azure.com/[v1]. "
+            "The following API(s) were not detected mqttbroker.iotoperations.azure.com/[v1,v1beta1]. "
             "CR capture for broker will be skipped. Still attempting capture of runtime resources..."
         )
         mocked_assemble_crd_work.assert_not_called()
@@ -718,6 +841,56 @@ def assert_list_cluster_role_bindings(
         )
 
 
+def assert_list_mutating_webhooks(
+    mocked_client,
+    mocked_zipfile,
+    directory_path: str,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+    mock_names: Optional[List[str]] = None,
+):
+    mocked_client.AdmissionregistrationV1Api().list_mutating_webhook_configuration.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    mock_names = mock_names or ["mock_mutating_webhook"]
+    for name in mock_names:
+        resource_type = _get_resource_type_prefix(BundleResourceKind.mutatingwebhook.value)
+        expected_data = {
+            "metadata": {"annotations": {"meta.helm.sh/release-namespace": "mock_namespace"}, "name": name}
+        }
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{directory_path}/{resource_type}.{name}.yaml",
+            data=yaml.safe_dump(expected_data, indent=2),
+        )
+
+
+def assert_list_validating_webhooks(
+    mocked_client,
+    mocked_zipfile,
+    directory_path: str,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+    mock_names: Optional[List[str]] = None,
+):
+    mocked_client.AdmissionregistrationV1Api().list_validating_webhook_configuration.assert_any_call(
+        label_selector=label_selector, field_selector=field_selector
+    )
+
+    mock_names = mock_names or ["mock_validating_webhook"]
+    for name in mock_names:
+        resource_type = _get_resource_type_prefix(BundleResourceKind.validatingwebhook.value)
+        expected_data = {
+            "metadata": {"annotations": {"meta.helm.sh/release-namespace": "mock_namespace"}, "name": name}
+        }
+        assert_zipfile_write(
+            mocked_zipfile,
+            zinfo=f"mock_namespace/{directory_path}/{resource_type}.{name}.yaml",
+            data=yaml.safe_dump(expected_data, indent=2),
+        )
+
+
 def assert_meta_kpis(mocked_client, mocked_zipfile, mocked_list_pods):
     for assert_func in [assert_list_pods, assert_list_deployments, assert_list_services, assert_list_jobs]:
         kwargs = {
@@ -966,3 +1139,37 @@ def test_create_bundle_schemas(
         directory_path=SCHEMAS_DIRECTORY_PATH,
         label_selector=SCHEMAS_NAME_LABEL,
     )
+
+
+def test_kind_to_dir_override_functionality():
+    from unittest.mock import Mock, patch
+
+    # Mock CRD data
+    mock_crd_data = {
+        "items": [{"metadata": {"name": "test-resource", "namespace": "test-ns"}, "spec": {"test": "data"}}]
+    }
+
+    # Mock API with two different resource kinds
+    mock_api = Mock()
+    mock_api.group = "test.group"
+    mock_api.version = "v1"
+    mock_api.moniker = "testapi"
+    mock_api.kinds = ["OverrideKind", "RegularKind"]
+    mock_api._kinds = {"OverrideKind": "OverrideKinds", "RegularKind": "RegularKinds"}
+
+    # Define mapping: only OverrideKind gets special path, RegularKind uses default
+    kind_to_dir_map = {"OverrideKind": "override"}
+
+    with patch("azext_edge.edge.providers.support.base.get_custom_objects") as mock_get_custom_objects:
+        mock_get_custom_objects.return_value = mock_crd_data
+
+        work_items = assemble_crd_work(apis=[mock_api], directory_path="default/path", kind_to_dir=kind_to_dir_map)
+
+        override_result = work_items["testapi v1 OverrideKind"]()
+        regular_result = work_items["testapi v1 RegularKind"]()
+
+        # OverrideKind should use the overridden path from kind_to_dir
+        assert override_result[0]["zinfo"] == "test-ns/override/OverrideKind.v1.test-resource.yaml"
+
+        # RegularKind should use the default path (not in kind_to_dir mapping)
+        assert regular_result[0]["zinfo"] == "test-ns/default/path/RegularKind.v1.test-resource.yaml"
