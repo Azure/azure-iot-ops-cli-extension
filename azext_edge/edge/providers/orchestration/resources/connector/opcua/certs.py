@@ -769,8 +769,8 @@ class OpcUACerts(Queryable):
             spc["properties"]["objects"] = spc_object
 
         import pdb; pdb.set_trace()
-        del spc["apiVersion"]  # remove apiVersion to avoid conflict with the client
-        del spc["resourceGroup"]  # remove resourceGroup to avoid conflict with the client
+        # del spc["apiVersion"]  # remove apiVersion to avoid conflict with the client
+        # del spc["resourceGroup"]  # remove resourceGroup to avoid conflict with the client
         with console.status(f"Adding secret reference in Secret Provider Class resource {spc['name']}..."):
             poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_create_or_update(
                 resource_group_name=resource_group,
@@ -782,13 +782,12 @@ class OpcUACerts(Queryable):
     def _add_secrets_to_secret_sync(
         self,
         secrets: List[Tuple[str, str]],
-        secret_sync: List[dict],
+        secret_sync: dict,
         resource_group: str,
         spc_name: str,
         secret_sync_name: str,
         should_replace: Optional[bool] = False,
     ) -> dict:
-        secret_sync = secret_sync[0] if secret_sync else {}
         # check if there is a secret sync called secret_sync_name, if not create one
         secret_mapping = [] if should_replace else secret_sync.get("properties", {}).get("objectSecretMapping", [])
         source_paths = [mapping["sourcePath"] for mapping in secret_mapping]
