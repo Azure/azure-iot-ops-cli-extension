@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import os
 import re
 from cryptography import x509
+import pathlib
 from typing import List, Optional, Tuple, Union, cast
 
 from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
@@ -84,7 +85,8 @@ class OpcUACerts(Queryable):
 
         # get file extension
         # TODO: replace this usage of os.path with pathlib
-        file_name = os.path.basename(file)
+        file_name = pathlib.Path(file).name
+        # file_name = os.path.basename(file)
         cert_extension, _ = self._process_cert_content(
             file_path=file,
             file_name=file_name,
@@ -185,7 +187,8 @@ class OpcUACerts(Queryable):
         # secretsync_spc = self._find_existing_spc(instance_name=instance_name, cl_resources=cl_resources)
 
         # get file extension
-        file_name = os.path.basename(file)
+        file_name = pathlib.Path(file).name
+        # file_name = os.path.basename(file)
 
         cert_extension, cert = self._process_cert_content(
             file_path=file,
@@ -214,7 +217,8 @@ class OpcUACerts(Queryable):
         spc_client_id = spc_properties.get("clientId", "")
 
         # get cert name by removing extension
-        cert_name = os.path.splitext(file_name)[0]
+        # cert_name = os.path.splitext(file_name)[0]
+        cert_name = pathlib.Path(file_name).stem
 
         # opcua_secret_sync = self.instances.find_existing_resources(
         #     cl_resources=cl_resources,
@@ -355,8 +359,12 @@ class OpcUACerts(Queryable):
         secrets_to_add = []
         secret_names = self._get_secret_names(spc_keyvault_name)
         for file in [public_key_file, private_key_file]:
-            file_name = os.path.basename(file)
-            file_name_info = os.path.splitext(file_name)
+            # file_name = os.path.basename(file)
+            # file_name = pathlib.Path(file).name
+            # file_name_info = os.path.splitext(file_name)
+            p = pathlib.Path(file)
+            file_name = p.name
+            file_name_info = (p.stem, p.suffix)
             cert_extension = file_name_info[1].replace(".", "")
             secret_name = f"{file_name_info[0]}-{cert_extension}"
 
@@ -559,9 +567,14 @@ class OpcUACerts(Queryable):
 
     def _validate_key_files(self, public_key_file: str, private_key_file: str):
         # validate public key file end with .der
+        # _, cert = self._process_cert_content(
+        #     file_path=public_key_file,
+        #     file_name=os.path.basename(public_key_file),
+        #     expected_exts={X509FileExtension.DER.value},
+        # )
         _, cert = self._process_cert_content(
             file_path=public_key_file,
-            file_name=os.path.basename(public_key_file),
+            file_name=pathlib.Path(public_key_file).name,
             expected_exts={X509FileExtension.DER.value},
         )
 
@@ -576,10 +589,12 @@ class OpcUACerts(Queryable):
         validate_file_extension(private_key_file, {X509FileExtension.PEM.value})
 
         # validate public key and private key has matching file name without extension
-        public_key_name = os.path.basename(public_key_file)
-        public_key_name = os.path.splitext(public_key_name)[0]
-        private_key_name = os.path.basename(private_key_file)
-        private_key_name = os.path.splitext(private_key_name)[0]
+        # public_key_name = os.path.basename(public_key_file)
+        # public_key_name = os.path.splitext(public_key_name)[0]
+        # private_key_name = os.path.basename(private_key_file)
+        # private_key_name = os.path.splitext(private_key_name)[0]
+        public_key_name = pathlib.Path(public_key_file).stem
+        private_key_name = pathlib.Path(private_key_file).stem
 
         if public_key_name != private_key_name:
             raise InvalidArgumentValueError(
@@ -968,7 +983,8 @@ class OpcUACerts(Queryable):
         from cryptography.x509.oid import NameOID, ExtensionOID
 
         der_data = read_file_content(file_path=public_key_file, read_as_binary=True)
-        file_extension = os.path.splitext(public_key_file)[1].lower()
+        # file_extension = os.path.splitext(public_key_file)[1].lower()
+        file_extension = pathlib.Path(public_key_file).suffix.lower()
         certificate = decode_x509_files(der_data, X509FileExtension.DER.name, file_extension).pop()
 
         if not certificate:
