@@ -768,9 +768,6 @@ class OpcUACerts(Queryable):
         else:
             spc["properties"]["objects"] = spc_object
 
-        import pdb; pdb.set_trace()
-        # del spc["apiVersion"]  # remove apiVersion to avoid conflict with the client
-        # del spc["resourceGroup"]  # remove resourceGroup to avoid conflict with the client
         with console.status(f"Adding secret reference in Secret Provider Class resource {spc['name']}..."):
             poller = self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_create_or_update(
                 resource_group_name=resource_group,
@@ -1140,4 +1137,12 @@ class OpcUACerts(Queryable):
         if not cl_resources:
             return None
 
-        return next((resource for resource in cl_resources if resource["name"] == resource_name), {})
+        resource = next((resource for resource in cl_resources if resource["name"] == resource_name), {})
+
+        # remove properties that are not accepted by ssc_mgmt_client
+        if resource.get("apiVersion"):
+            del resource["apiVersion"]
+        if resource.get("resourceGroup"):
+            del resource["resourceGroup"]
+
+        return resource
