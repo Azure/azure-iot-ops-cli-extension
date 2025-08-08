@@ -44,7 +44,6 @@ from azext_edge.tests.generators import generate_random_string
             {
                 "resources": [
                     get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
-                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
                     ),
@@ -75,7 +74,6 @@ from azext_edge.tests.generators import generate_random_string
         (
             {
                 "resources": [
-                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
                     get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
@@ -113,7 +111,6 @@ from azext_edge.tests.generators import generate_random_string
         (
             {
                 "resources": [
-                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
                     get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
@@ -294,7 +291,6 @@ def test_client_add(
         (
             {
                 "resources": [
-                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
                     get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name="mock-rg"
