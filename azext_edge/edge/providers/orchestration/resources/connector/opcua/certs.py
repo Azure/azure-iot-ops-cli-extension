@@ -47,7 +47,12 @@ SECRET_DELETE_RETRY_INTERVAL = 2
 
 class OpcUACerts(Queryable):
 
-    def __init__(self, cmd):
+    def __init__(
+        self,
+        cmd,
+        resource_group_name: str,
+        instance_name: str,
+    ):
         super().__init__(cmd=cmd)
         self.instances = Instances(self.cmd)
         self.ssc_mgmt_client = get_ssc_mgmt_client(
@@ -56,6 +61,13 @@ class OpcUACerts(Queryable):
         self.keyvault_client = get_keyvault_client(
             subscription_id=self.default_subscription_id,
         )
+        self.instance_name = instance_name
+        self.resource_group_name = resource_group_name
+        # This instance fetch is using the latest instance API.
+        self.instance = self.instances.show(
+            name=self.instance_name, resource_group_name=self.resource_group_name
+        )
+        self.resource_map = self.instances.get_resource_map(self.instance)
 
     def _get_spc_name(self, instance_name: str, resource_group: str) -> str:
         """Get the SPC name from the default SPC or fall back to OPCUA_SPC_NAME"""
@@ -131,11 +143,9 @@ class OpcUACerts(Queryable):
         #     resource_type=SPC_RESOURCE_TYPE,
         #     resource_name=spc_name,
         # )
-        self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
-        self.resource_map = self.instances.get_resource_map(self.instance)
+        # self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
+        # self.resource_map = self.instances.get_resource_map(self.instance)
         opcua_spc = self._get_resource_by_name(
-            instance_name=instance_name,
-            resource_group=resource_group,
             resource_type=SPC_RESOURCE_TYPE,
             resource_name=spc_name,
         )
@@ -157,8 +167,6 @@ class OpcUACerts(Queryable):
         # )
 
         opcua_secret_sync = self._get_resource_by_name(
-            instance_name=instance_name,
-            resource_group=resource_group,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
             resource_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
         )
@@ -225,9 +233,9 @@ class OpcUACerts(Queryable):
         #     resource_type=SECRET_SYNC_RESOURCE_TYPE,
         #     resource_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         # )
+        # self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
+        # self.resource_map = self.instances.get_resource_map(self.instance)
         opcua_secret_sync = self._get_resource_by_name(
-            instance_name=instance_name,
-            resource_group=resource_group,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
             resource_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         )
@@ -235,7 +243,7 @@ class OpcUACerts(Queryable):
         if cert_extension == X509FileExtension.CRL.value:
             matched_names = []
             if opcua_secret_sync:
-                secret_mapping = opcua_secret_sync[0].get("properties", {}).get("objectSecretMapping", [])
+                secret_mapping = opcua_secret_sync.get("properties", {}).get("objectSecretMapping", [])
                 possible_file_names = [
                     f"{cert_name}{X509FileExtension.CRT.value}",
                     f"{cert_name}{X509FileExtension.DER.value}",
@@ -275,8 +283,6 @@ class OpcUACerts(Queryable):
         #     resource_name=spc_name,
         # )
         opcua_spc = self._get_resource_by_name(
-            instance_name=instance_name,
-            resource_group=resource_group,
             resource_type=SPC_RESOURCE_TYPE,
             resource_name=spc_name,
         )
@@ -336,9 +342,9 @@ class OpcUACerts(Queryable):
         #     resource_type=SPC_RESOURCE_TYPE,
         #     resource_name=spc_name,
         # )
+        # self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
+        # self.resource_map = self.instances.get_resource_map(self.instance)
         opcua_spc = self._get_resource_by_name(
-            instance_name=instance_name,
-            resource_group=resource_group,
             resource_type=SPC_RESOURCE_TYPE,
             resource_name=spc_name,
         )
@@ -350,8 +356,6 @@ class OpcUACerts(Queryable):
         #     resource_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
         # )
         opcua_secret_sync = self._get_resource_by_name(
-            instance_name=instance_name,
-            resource_group=resource_group,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
             resource_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
         )
@@ -402,7 +406,7 @@ class OpcUACerts(Queryable):
         # use secret sync to find certificate pair secret names to be replaces
         secrets_to_replace = []
         if opcua_secret_sync:
-            secret_mapping = opcua_secret_sync[0].get("properties", {}).get("objectSecretMapping", [])
+            secret_mapping = opcua_secret_sync.get("properties", {}).get("objectSecretMapping", [])
             secrets_to_replace = [mapping["sourcePath"] for mapping in secret_mapping]
 
         self._add_secrets_to_spc(
@@ -460,9 +464,9 @@ class OpcUACerts(Queryable):
         #     resource_type=SECRET_SYNC_RESOURCE_TYPE,
         #     resource_name=secretsync_name,
         # )
+        # self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
+        # self.resource_map = self.instances.get_resource_map(self.instance)
         target_secretsync = self._get_resource_by_name(
-            instance_name=instance_name,
-            resource_group=resource_group,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
             resource_name=secretsync_name,
         )
@@ -474,7 +478,6 @@ class OpcUACerts(Queryable):
             )
 
         # find if input certificate names are valid
-        target_secretsync = target_secretsync[0]
         secret_mapping = target_secretsync.get("properties", {}).get("objectSecretMapping", [])
         secret_to_remove = []
         for name in certificate_names:
@@ -502,8 +505,6 @@ class OpcUACerts(Queryable):
         #     resource_name=spc_name,
         # )
         target_spc = self._get_resource_by_name(
-            instance_name=instance_name,
-            resource_group=resource_group,
             resource_type=SPC_RESOURCE_TYPE,
             resource_name=spc_name,
         )
@@ -512,7 +513,6 @@ class OpcUACerts(Queryable):
             raise ResourceNotFoundError(f"Secret Provider Class resource {spc_name} not found.")
 
         # get properties from default spc
-        target_spc = target_spc[0]
         spc_properties = target_spc.get("properties", {})
         spc_keyvault_name = spc_properties.get("keyvaultName", "")
 
@@ -553,9 +553,9 @@ class OpcUACerts(Queryable):
         #     resource_type=SECRET_SYNC_RESOURCE_TYPE,
         #     resource_name=secretsync_name,
         # )
+        # self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
+        # self.resource_map = self.instances.get_resource_map(self.instance)
         target_secretsync = self._get_resource_by_name(
-            instance_name=instance_name,
-            resource_group=resource_group,
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
             resource_name=secretsync_name,
         )
@@ -563,7 +563,7 @@ class OpcUACerts(Queryable):
         if not target_secretsync:
             raise ResourceNotFoundError(f"Secretsync resource {secretsync_name} not found.")
 
-        return target_secretsync[0]
+        return target_secretsync
 
     def _validate_key_files(self, public_key_file: str, private_key_file: str):
         # validate public key file end with .der
@@ -637,8 +637,8 @@ class OpcUACerts(Queryable):
 
     # TODO: revisit self.get_cl_resources and self.instances.find_existing_resources
     def _get_cl_resources(self, instance_name: str, resource_group: str) -> List[dict]:
-        self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
-        self.resource_map = self.instances.get_resource_map(self.instance)
+        # self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
+        # self.resource_map = self.instances.get_resource_map(self.instance)
         custom_location = self.resource_client.resources.get_by_id(
             resource_id=self.instance["extendedLocation"]["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
         )
@@ -1118,16 +1118,12 @@ class OpcUACerts(Queryable):
     
     def _get_resource_by_name(
         self,
-        instance_name: str,
-        resource_group: str,
         resource_type: str,
         resource_name: str,
     ) -> Optional[dict]:
         """
         Get a specific resource by its name and type.
         """
-        self.instance = self.instances.show(name=instance_name, resource_group_name=resource_group)
-        self.resource_map = self.instances.get_resource_map(self.instance)
         cl_resources = self.resource_map.connected_cluster.get_cl_resources_by_type(
             custom_location_id=self.instance["extendedLocation"]["name"],
             resource_types={resource_type},
@@ -1137,7 +1133,7 @@ class OpcUACerts(Queryable):
         if not cl_resources:
             return None
 
-        resource = next((resource for resource in cl_resources if resource["name"] == resource_name), {})
+        resource = next((resource for resource in cl_resources if resource.get("name") == resource_name), {})
 
         # remove properties that are not accepted by ssc_mgmt_client
         if resource.get("apiVersion"):

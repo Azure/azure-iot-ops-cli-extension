@@ -7,12 +7,13 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from unittest.mock import Mock
+from azext_edge.edge.providers.orchestration.resources.instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE
 import pytest
 
 import responses
 from cryptography import x509
 from cryptography.x509.oid import NameOID
-from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OPCUA_SPC_NAME
+from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OPCUA_SPC_NAME, OPCUA_TRUST_LIST_SECRET_SYNC_NAME
 from azext_edge.tests.edge.orchestration.resources.conftest import get_base_endpoint, get_mock_resource
 from azext_edge.tests.generators import generate_random_string
 
@@ -239,14 +240,14 @@ def setup_mock_common_responses(
             content_type="application/json",
         )
 
-        # get opcua spc
-        mocked_responses.add(
-            method=responses.GET,
-            url=get_spc_endpoint(spc_name=spc_name, resource_group_name=rg_name),  # Use parameter
-            json=spc,
-            status=200,
-            content_type="application/json",
-        )
+        # # get opcua spc
+        # mocked_responses.add(
+        #     method=responses.GET,
+        #     url=get_spc_endpoint(spc_name=spc_name, resource_group_name=rg_name),  # Use parameter
+        #     json=spc,
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
         # set opcua spc
         mocked_responses.add(
@@ -257,23 +258,35 @@ def setup_mock_common_responses(
             content_type="application/json",
         )
 
-        # get opcua secretsync
-        mocked_responses.add(
-            method=responses.GET,
-            url=get_secretsync_endpoint(secretsync_name=opcua_secretsync_name, resource_group_name=rg_name),
-            json=secretsync,
-            status=200,
-            content_type="application/json",
-        )
+        # # get opcua secretsync
+        # mocked_responses.add(
+        #     method=responses.GET,
+        #     url=get_secretsync_endpoint(secretsync_name=opcua_secretsync_name, resource_group_name=rg_name),
+        #     json=secretsync,
+        #     status=200,
+        #     content_type="application/json",
+        # )
 
 
 def assemble_resource_map_mock(
     resource_map_mock: Mock,
     extension: Optional[dict],
     resources: Optional[List[dict]],
+    ssc: Optional[dict] = None,
 ):
     resource_map_mock().connected_cluster.get_extensions_by_type.return_value = extension
     resource_map_mock().connected_cluster.get_aio_resources.return_value = resources
+    resource_map_mock().connected_cluster.get_cl_resources_by_type.return_value = {
+        SPC_RESOURCE_TYPE: [
+            get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
+        ],
+        SECRET_SYNC_RESOURCE_TYPE: [
+            ssc or get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg"
+            ),
+        ],
+    }
 
 
 def generate_ssc_object_string(names: List[str]):
