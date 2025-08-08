@@ -290,23 +290,6 @@ def test_client_add(
     "public_file_name, private_file_name, subject_name, uri,"
     "mocked_public_cert, mocked_private_cert, expected_error_type, expected_error_text",
     [
-        # # no default spc
-        # (
-        #     {
-        #         "resources": None,
-        #         "extension": None,
-        #     },
-        #     {},
-        #     {},
-        #     "/fake/path/certificate.der",
-        #     "/fake/path/certificate.pem",
-        #     "subjectname",
-        #     "uri",
-        #     [build_mock_cert()],
-        #     [build_mock_cert()],
-        #     ResourceNotFoundError,
-        #     "Please enable secret sync before adding certificate.",
-        # ),
         # no aio extension
         (
             {
@@ -889,15 +872,6 @@ def test_client_show(
         ssc=expected_secretsync,
     )
     mocked_cl_resources.return_value = expected_resources_map["resources"]
-
-    # # get opcua secretsync
-    # mocked_responses.add(
-    #     method=responses.GET,
-    #     url=get_secretsync_endpoint(secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME, resource_group_name=rg_name),
-    #     json=expected_secretsync,
-    #     status=200,
-    #     content_type="application/json",
-    # )
 
     result = show_connector_opcua_client(
         cmd=mocked_cmd,

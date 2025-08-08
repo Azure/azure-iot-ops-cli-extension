@@ -20,7 +20,6 @@ from azext_edge.edge.commands_connector import (
 )
 from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import (
     OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
-    OPCUA_SPC_NAME,
 )
 from azext_edge.tests.edge.orchestration.resources.connector.opcua.conftest import (
     assemble_resource_map_mock,
@@ -131,25 +130,7 @@ def test_issuer_add(
 
     if expected_resources_map["resources"]:
         # get default spc
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-        #     json=expected_resources_map["resources"][0],
-        #     status=200,
-        #     content_type="application/json",
-        # )
         mocked_instance.get_default_spc.return_value = expected_resources_map["resources"][0]
-
-        # get opcua secretsync
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_secretsync_endpoint(
-        #         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
-        #     ),
-        #     json=issuer_list_secretsync,
-        #     status=200,
-        #     content_type="application/json",
-        # )
 
         matched_names = []
         if file_name.endswith("crl") and issuer_list_secretsync:
@@ -185,15 +166,6 @@ def test_issuer_add(
                 status=200,
                 content_type="application/json",
             )
-
-            # # get opcua spc
-            # mocked_responses.add(
-            #     method=responses.GET,
-            #     url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-            #     json=issuer_list_spc,
-            #     status=200,
-            #     content_type="application/json",
-            # )
 
             if issuer_list_spc:
                 # set opcua spc
@@ -392,13 +364,6 @@ def test_issuer_add_errors(
 
     if expected_resources_map["resources"]:
         # get default spc
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-        #     json=expected_resources_map["resources"][0],
-        #     status=200,
-        #     content_type="application/json",
-        # )
         mocked_instance.get_default_spc.return_value = expected_resources_map["resources"][0]
 
         if (
@@ -406,17 +371,6 @@ def test_issuer_add_errors(
             and "PEM" not in expected_error_text
             and "CA" not in expected_error_text
         ):
-            # get opcua secretsync
-            # mocked_responses.add(
-            #     method=responses.GET,
-            #     url=get_secretsync_endpoint(
-            #         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME, resource_group_name=rg_name
-            #     ),
-            #     json=issuer_list_secretsync,
-            #     status=200,
-            #     content_type="application/json",
-            # )
-
             if not file_name.endswith("crl"):
                 # get secrets
                 mocked_responses.add(
@@ -552,13 +506,6 @@ def test_issuer_add_format_error(
 
     if expected_resources_map["resources"]:
         # get default spc
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-        #     json=expected_resources_map["resources"][0],
-        #     status=200,
-        #     content_type="application/json",
-        # )
         mocked_instance.get_default_spc.return_value = expected_resources_map["resources"][0]
 
     with pytest.raises(expected_error_type) as e:
@@ -744,26 +691,7 @@ def test_issuer_remove(
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_cl_resources.return_value = expected_resources_map["resources"]
 
-    # # get opcua secretsync
-    # mocked_responses.add(
-    #     method=responses.GET,
-    #     url=get_secretsync_endpoint(
-    #         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
-    #         resource_group_name=rg_name
-    #     ),
-    #     json=issuer_list_secretsync,
-    #     status=200,
-    #     content_type="application/json",
-    # )
-
-    # get opcua spc
-    # mocked_responses.add(
-    #     method=responses.GET,
-    #     url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-    #     json=issuer_list_spc,
-    #     status=200,
-    #     content_type="application/json",
-    # )
+    # get opcua secretsync
     mocked_instance.get_default_spc.return_value = expected_resources_map["resources"][0]
 
     mapping = issuer_list_secretsync.get("properties", {}).get("objectSecretMapping", [])
@@ -933,28 +861,8 @@ def test_issuer_remove_error(
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_cl_resources.return_value = expected_resources_map["resources"]
 
-    # if issuer_list_secretsync:
-    #     # get opcua secretsync
-    #     mocked_responses.add(
-    #         method=responses.GET,
-    #         url=get_secretsync_endpoint(
-    #             secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
-    #             resource_group_name=rg_name
-    #         ),
-    #         json=issuer_list_secretsync,
-    #         status=200,
-    #         content_type="application/json",
-    #     )
-
     if issuer_list_spc:
         # get opcua spc
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-        #     json=issuer_list_spc,
-        #     status=200,
-        #     content_type="application/json",
-        # )
         mocked_instance.get_default_spc.return_value = expected_resources_map["resources"][0]
 
     with pytest.raises(expected_error_type) as e:
@@ -1027,18 +935,6 @@ def test_issuer_show(
     )
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_cl_resources.return_value = expected_resources_map["resources"]
-
-    # # get opcua secretsync
-    # mocked_responses.add(
-    #     method=responses.GET,
-    #     url=get_secretsync_endpoint(
-    #         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
-    #         resource_group_name=rg_name
-    #     ),
-    #     json=expected_secretsync,
-    #     status=200,
-    #     content_type="application/json",
-    # )
 
     result = show_connector_opcua_issuer(
         cmd=mocked_cmd,

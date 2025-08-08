@@ -13,7 +13,10 @@ import pytest
 import responses
 from cryptography import x509
 from cryptography.x509.oid import NameOID
-from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OPCUA_SPC_NAME, OPCUA_TRUST_LIST_SECRET_SYNC_NAME
+from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import (
+    OPCUA_SPC_NAME,
+    OPCUA_TRUST_LIST_SECRET_SYNC_NAME
+)
 from azext_edge.tests.edge.orchestration.resources.conftest import get_base_endpoint, get_mock_resource
 from azext_edge.tests.generators import generate_random_string
 
@@ -240,15 +243,6 @@ def setup_mock_common_responses(
             content_type="application/json",
         )
 
-        # # get opcua spc
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name=spc_name, resource_group_name=rg_name),  # Use parameter
-        #     json=spc,
-        #     status=200,
-        #     content_type="application/json",
-        # )
-
         # set opcua spc
         mocked_responses.add(
             method=responses.PUT,
@@ -257,15 +251,6 @@ def setup_mock_common_responses(
             status=200,
             content_type="application/json",
         )
-
-        # # get opcua secretsync
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_secretsync_endpoint(secretsync_name=opcua_secretsync_name, resource_group_name=rg_name),
-        #     json=secretsync,
-        #     status=200,
-        #     content_type="application/json",
-        # )
 
 
 def assemble_resource_map_mock(

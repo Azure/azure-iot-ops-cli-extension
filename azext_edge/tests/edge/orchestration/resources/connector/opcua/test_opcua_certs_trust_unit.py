@@ -10,7 +10,6 @@ from azext_edge.edge.providers.orchestration.resources.instances import SECRET_S
 import pytest
 
 import responses
-from azure.core.exceptions import ResourceNotFoundError
 from azure.cli.core.azclierror import InvalidArgumentValueError
 from azext_edge.edge.commands_connector import (
     add_connector_opcua_trust,
@@ -34,7 +33,6 @@ from azext_edge.tests.edge.orchestration.resources.connector.opcua.conftest impo
     setup_mock_common_responses,
 )
 from azext_edge.tests.generators import generate_random_string
-from azext_edge.tests.helpers import generate_ops_resource
 
 
 @pytest.mark.parametrize(
@@ -44,7 +42,7 @@ from azext_edge.tests.helpers import generate_ops_resource
             {
                 "resources": [
                     get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
-                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
                     get_mock_secretsync_record(
                         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME, resource_group_name="mock-rg"
                     ),
@@ -97,14 +95,6 @@ def test_trust_add(
 
     if expected_resources_map["resources"]:
         mocked_instance.get_default_spc.return_value = expected_resources_map["resources"][0]
-        # get default spc
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-        #     json=expected_resources_map["resources"][0],
-        #     status=200,
-        #     content_type="application/json",
-        # )
 
     if trust_list_spc:
         setup_mock_common_responses(
@@ -176,7 +166,7 @@ def test_trust_add(
                 ],
                 "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
             },
-            get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+            get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
             get_mock_secretsync_record(
                 secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
                 resource_group_name="mock-rg",
@@ -271,13 +261,6 @@ def test_trust_add_content_error(
 
     if expected_resources_map["resources"]:
         # get default spc
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-        #     json=expected_resources_map["resources"][0],
-        #     status=200,
-        #     content_type="application/json",
-        # )
         mocked_instance.get_default_spc.return_value = expected_resources_map["resources"][0]
 
     if trust_list_spc and not ("expired" in expected_error_text) and not (
@@ -372,13 +355,6 @@ def test_trust_add_format_error(
 
     if expected_resources_map["resources"]:
         # get default spc
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name="default-spc", resource_group_name=rg_name),
-        #     json=expected_resources_map["resources"][0],
-        #     status=200,
-        #     content_type="application/json",
-        # )
         mocked_instance.get_default_spc.return_value = expected_resources_map["resources"][0]
 
     with pytest.raises(expected_error_type) as e:
@@ -393,9 +369,9 @@ def test_trust_add_format_error(
     assert expected_error_text in e.value.args[0]
 
 
-@pytest.mark.parametrize("include_secrets", [False, True])
 @pytest.mark.parametrize(
-    "expected_resources_map, trust_list_spc, trust_list_secretsync, certificate_names, expected_secret_sync",
+    "expected_resources_map, trust_list_spc, trust_list_secretsync,"
+    "certificate_names, expected_secret_sync, include_secrets",
     [
         (
             {
@@ -435,103 +411,106 @@ def test_trust_add_format_error(
             ),
             ["cert.der"],
             None,
+            False,
         ),
-        # (
-        #     {
-        #         "resources": [
-        #             get_mock_spc_record(
-        #                 spc_name=OPCUA_SPC_NAME,
-        #                 resource_group_name="mock-rg",
-        #                 objects=generate_ssc_object_string(["cert-der", "cert2-der"]),
-        #             ),
-        #             get_mock_secretsync_record(
-        #                 secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
-        #                 resource_group_name="mock-rg",
-        #                 objects=[
-        #                     {
-        #                         "sourcePath": "cert-der",
-        #                         "targetKey": "cert.der"
-        #                     },
-        #                     {
-        #                         "sourcePath": "cert2-der",
-        #                         "targetKey": "cert2.der"
-        #                     },
-        #                 ],
-        #             ),
-        #         ],
-        #         "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
-        #     },
-        #     get_mock_spc_record(
-        #         spc_name="default-spc",
-        #         resource_group_name="mock-rg",
-        #         objects=generate_ssc_object_string(["cert-der", "cert2-der"]),
-        #     ),
-        #     get_mock_secretsync_record(
-        #         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
-        #         resource_group_name="mock-rg",
-        #         objects=[
-        #             {
-        #                 "sourcePath": "cert-der",
-        #                 "targetKey": "cert.der"
-        #             },
-        #             {
-        #                 "sourcePath": "cert2-der",
-        #                 "targetKey": "cert2.der"
-        #             },
-        #         ],
-        #     ),
-        #     ["cert.der"],
-        #     get_mock_secretsync_record(
-        #         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
-        #         resource_group_name="mock-rg",
-        #         objects=[
-        #             {
-        #                 "sourcePath": "cert2-der",
-        #                 "targetKey": "cert2.der"
-        #             },
-        #         ],
-        #     ),
-        # ),
-        # # warning no keyvault secret found
-        # (
-        #     {
-        #         "resources": [
-        #             get_mock_spc_record(
-        #                 spc_name=OPCUA_SPC_NAME,
-        #                 resource_group_name="mock-rg",
-        #                 objects=generate_ssc_object_string(["cert3-der"]),
-        #             ),
-        #             get_mock_secretsync_record(
-        #                 secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
-        #                 resource_group_name="mock-rg",
-        #                 objects=[
-        #                     {
-        #                         "sourcePath": "cert3-der",
-        #                         "targetKey": "cert3.der"
-        #                     },
-        #                 ],
-        #             ),
-        #         ],
-        #         "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
-        #     },
-        #     get_mock_spc_record(
-        #         spc_name="default-spc",
-        #         resource_group_name="mock-rg",
-        #         objects=generate_ssc_object_string(["cert3-der"]),
-        #     ),
-        #     get_mock_secretsync_record(
-        #         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
-        #         resource_group_name="mock-rg",
-        #         objects=[
-        #             {
-        #                 "sourcePath": "cert3-der",
-        #                 "targetKey": "cert3.der"
-        #             },
-        #         ],
-        #     ),
-        #     ["cert3.der"],
-        #     None,
-        # ),
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(
+                        spc_name="default-spc",
+                        resource_group_name="mock-rg",
+                        objects=generate_ssc_object_string(["cert-der", "cert2-der"]),
+                    ),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                        resource_group_name="mock-rg",
+                        objects=[
+                            {
+                                "sourcePath": "cert-der",
+                                "targetKey": "cert.der"
+                            },
+                            {
+                                "sourcePath": "cert2-der",
+                                "targetKey": "cert2.der"
+                            },
+                        ],
+                    ),
+                ],
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+            },
+            get_mock_spc_record(
+                spc_name="default-spc",
+                resource_group_name="mock-rg",
+                objects=generate_ssc_object_string(["cert-der", "cert2-der"]),
+            ),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "cert-der",
+                        "targetKey": "cert.der"
+                    },
+                    {
+                        "sourcePath": "cert2-der",
+                        "targetKey": "cert2.der"
+                    },
+                ],
+            ),
+            ["cert.der"],
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "cert2-der",
+                        "targetKey": "cert2.der"
+                    },
+                ],
+            ),
+            True,
+        ),
+        # warning no keyvault secret found
+        (
+            {
+                "resources": [
+                    get_mock_spc_record(
+                        spc_name="default-spc",
+                        resource_group_name="mock-rg",
+                        objects=generate_ssc_object_string(["cert3-der"]),
+                    ),
+                    get_mock_secretsync_record(
+                        secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                        resource_group_name="mock-rg",
+                        objects=[
+                            {
+                                "sourcePath": "cert3-der",
+                                "targetKey": "cert3.der"
+                            },
+                        ],
+                    ),
+                ],
+                "extension": {EXTENSION_TYPE_OPS: {"id": "aio-ext-id", "name": "aio-ext-name", "properties": {}}},
+            },
+            get_mock_spc_record(
+                spc_name="default-spc",
+                resource_group_name="mock-rg",
+                objects=generate_ssc_object_string(["cert3-der"]),
+            ),
+            get_mock_secretsync_record(
+                secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+                resource_group_name="mock-rg",
+                objects=[
+                    {
+                        "sourcePath": "cert3-der",
+                        "targetKey": "cert3.der"
+                    },
+                ],
+            ),
+            ["cert3.der"],
+            None,
+            False,
+        ),
     ],
 )
 def test_trust_remove(
@@ -561,26 +540,6 @@ def test_trust_remove(
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_cl_resources.return_value = expected_resources_map["resources"]
 
-    # get opcua secretsync
-    # mocked_responses.add(
-    #     method=responses.GET,
-    #     url=get_secretsync_endpoint(
-    #         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
-    #         resource_group_name=rg_name
-    #     ),
-    #     json=trust_list_secretsync,
-    #     status=200,
-    #     content_type="application/json",
-    # )
-
-    # get opcua spc
-    # mocked_responses.add(
-    #     method=responses.GET,
-    #     url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-    #     json=trust_list_spc,
-    #     status=200,
-    #     content_type="application/json",
-    # )
     mocked_instance.get_default_spc.return_value = expected_resources_map["resources"][0]
 
     mapping = trust_list_secretsync.get("properties", {}).get("objectSecretMapping", [])
@@ -736,29 +695,9 @@ def test_trust_remove_error(
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_cl_resources.return_value = expected_resources_map["resources"]
 
-    # if trust_list_secretsync:
-    #     # get opcua secretsync
-    #     mocked_responses.add(
-    #         method=responses.GET,
-    #         url=get_secretsync_endpoint(
-    #             secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
-    #             resource_group_name=rg_name
-    #         ),
-    #         json=trust_list_secretsync,
-    #         status=200,
-    #         content_type="application/json",
-    #     )
-
     if trust_list_spc:
         # get opcua spc
         mocked_instance.get_default_spc.return_value = expected_resources_map["resources"][0]
-        # mocked_responses.add(
-        #     method=responses.GET,
-        #     url=get_spc_endpoint(spc_name=OPCUA_SPC_NAME, resource_group_name=rg_name),
-        #     json=trust_list_spc,
-        #     status=200,
-        #     content_type="application/json",
-        # )
 
     with pytest.raises(expected_error_type) as e:
         remove_connector_opcua_trust(
@@ -780,7 +719,7 @@ def test_trust_remove_error(
             {
                 "resources": [
                     get_mock_spc_record(
-                        spc_name=OPCUA_SPC_NAME,
+                        spc_name="default-spc",
                         resource_group_name="mock-rg",
                         objects=generate_ssc_object_string(["cert-der"]),
                     ),
@@ -831,18 +770,6 @@ def test_trust_show(
     mocked_instance.find_existing_resources.return_value = expected_resources_map["resources"]
     mocked_cl_resources.return_value = expected_resources_map["resources"]
 
-    # # get opcua secretsync
-    # mocked_responses.add(
-    #     method=responses.GET,
-    #     url=get_secretsync_endpoint(
-    #         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
-    #         resource_group_name=rg_name
-    #     ),
-    #     json=expected_secretsync,
-    #     status=200,
-    #     content_type="application/json",
-    # )
-
     result = show_connector_opcua_trust(
         cmd=mocked_cmd,
         instance_name=instance_name,
@@ -858,7 +785,7 @@ def test_trust_show(
         (
             {
                 "resources": [
-                    get_mock_spc_record(spc_name=OPCUA_SPC_NAME, resource_group_name="mock-rg"),
+                    get_mock_spc_record(spc_name="default-spc", resource_group_name="mock-rg"),
                 ],
             },
             "Secretsync resource aio-opc-ua-broker-trust-list not found.",
