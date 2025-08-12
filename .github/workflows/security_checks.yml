@@ -6,6 +6,7 @@ on:
     branches:
       - dev
       - feature/*
+      - release/*
   workflow_call:
     inputs:
       continue-on-error:
