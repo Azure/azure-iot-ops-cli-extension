@@ -2377,8 +2377,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -2414,7 +2414,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -2539,8 +2539,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -2576,7 +2576,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -2704,8 +2704,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -2741,7 +2741,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -2938,8 +2938,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -2975,7 +2975,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -3018,8 +3018,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -3055,7 +3055,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -3129,8 +3129,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -3166,7 +3166,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -3236,8 +3236,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -3273,7 +3273,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -3316,8 +3316,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -3353,7 +3353,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -3532,8 +3532,8 @@ class AssetEndpointProfilesOperations:
                 properties = {
                     "properties": {
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Optional. Defines the method to
                               authenticate the user of the client at the server. Known values are:
@@ -3581,8 +3581,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -3618,7 +3618,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -3692,8 +3692,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -3729,7 +3729,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -3785,8 +3785,8 @@ class AssetEndpointProfilesOperations:
                 properties = {
                     "properties": {
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Optional. Defines the method to
                               authenticate the user of the client at the server. Known values are:
@@ -3834,8 +3834,8 @@ class AssetEndpointProfilesOperations:
                           URI specifies the type of the device. The additionalConfiguration field holds
                           further connector type specific configuration. Required.
                         "additionalConfiguration": "str",  # Optional. Stringified JSON that
-                          contains connectivity type specific further configuration (e.g., OPC UA,
-                          ONVIF).
+                          contains connectivity type specific further configuration (e.g. OPC UA,
+                          Modbus, ONVIF).
                         "authentication": {
                             "method": "str",  # Defines the method to authenticate the
                               user of the client at the server. Required. Known values are:
@@ -3871,7 +3871,7 @@ class AssetEndpointProfilesOperations:
                             ]
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -4109,10 +4109,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -4163,9 +4163,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -4381,10 +4381,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -4435,9 +4435,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -4613,7 +4613,7 @@ class AssetsOperations:
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
         :type resource_group_name: str
-        :param asset_name: The name of the asset. Required.
+        :param asset_name: Asset name parameter. Required.
         :type asset_name: str
         :return: JSON object
         :rtype: JSON
@@ -4656,10 +4656,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -4710,9 +4710,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -4948,7 +4948,7 @@ class AssetsOperations:
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
         :type resource_group_name: str
-        :param asset_name: The name of the asset. Required.
+        :param asset_name: Asset name parameter. Required.
         :type asset_name: str
         :param resource: Resource create parameters. Required.
         :type resource: JSON
@@ -4996,10 +4996,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -5050,9 +5050,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -5186,10 +5186,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -5240,9 +5240,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -5359,7 +5359,7 @@ class AssetsOperations:
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
         :type resource_group_name: str
-        :param asset_name: The name of the asset. Required.
+        :param asset_name: Asset name parameter. Required.
         :type asset_name: str
         :param resource: Resource create parameters. Required.
         :type resource: IO[bytes]
@@ -5407,10 +5407,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -5461,9 +5461,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -5574,7 +5574,7 @@ class AssetsOperations:
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
         :type resource_group_name: str
-        :param asset_name: The name of the asset. Required.
+        :param asset_name: Asset name parameter. Required.
         :type asset_name: str
         :param resource: Resource create parameters. Is either a JSON type or a IO[bytes] type.
          Required.
@@ -5620,10 +5620,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -5674,9 +5674,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -5810,10 +5810,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -5864,9 +5864,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -6098,7 +6098,7 @@ class AssetsOperations:
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
         :type resource_group_name: str
-        :param asset_name: The name of the asset. Required.
+        :param asset_name: Asset name parameter. Required.
         :type asset_name: str
         :param properties: The resource properties to be updated. Required.
         :type properties: JSON
@@ -6134,10 +6134,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -6183,9 +6183,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -6244,10 +6244,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -6298,9 +6298,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -6417,7 +6417,7 @@ class AssetsOperations:
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
         :type resource_group_name: str
-        :param asset_name: The name of the asset. Required.
+        :param asset_name: Asset name parameter. Required.
         :type asset_name: str
         :param properties: The resource properties to be updated. Required.
         :type properties: IO[bytes]
@@ -6465,10 +6465,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -6519,9 +6519,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -6632,7 +6632,7 @@ class AssetsOperations:
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
         :type resource_group_name: str
-        :param asset_name: The name of the asset. Required.
+        :param asset_name: Asset name parameter. Required.
         :type asset_name: str
         :param properties: The resource properties to be updated. Is either a JSON type or a IO[bytes]
          type. Required.
@@ -6666,10 +6666,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -6715,9 +6715,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -6776,10 +6776,10 @@ class AssetsOperations:
                                           configuration for the data point. For OPC UA, this could
                                           include configuration like, publishingInterval,
                                           samplingInterval, and queueSize.
-                                        "observabilityMode": "str"  #
-                                          Optional. An indication of how the data point should be
-                                          mapped to OpenTelemetry. Known values are: "None", "Counter",
-                                          "Gauge", "Histogram", and "Log".
+                                        "observabilityMode": "None"  #
+                                          Optional. Default value is "None". An indication of how the
+                                          data point should be mapped to OpenTelemetry. Known values
+                                          are: "None", "Counter", "Gauge", "Histogram", and "Log".
                                     }
                                 ],
                                 "datasetConfiguration": "str",  # Optional.
@@ -6830,9 +6830,9 @@ class AssetsOperations:
                                   JSON that contains connector-specific configuration for the event.
                                   For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "observabilityMode": "str",  # Optional. An
-                                  indication of how the event should be mapped to OpenTelemetry. Known
-                                  values are: "None" and "Log".
+                                "observabilityMode": "None",  # Optional. Default
+                                  value is "None". An indication of how the event should be mapped to
+                                  OpenTelemetry. Known values are: "None" and "Log".
                                 "topic": {
                                     "path": "str",  # The topic path for messages
                                       published to an MQTT broker. Required.
@@ -7034,7 +7034,7 @@ class AssetsOperations:
         :param resource_group_name: The name of the resource group. The name is case insensitive.
          Required.
         :type resource_group_name: str
-        :param asset_name: The name of the asset. Required.
+        :param asset_name: Asset name parameter. Required.
         :type asset_name: str
         :return: An instance of LROPoller that returns None
         :rtype: ~azure.core.polling.LROPoller[None]
@@ -8413,13 +8413,15 @@ class NamespacesOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "identity": {
-                        "type": "str"  # Optional. The type of managed identity assigned to
-                          this resource. Known values are: "None" and "SystemAssigned".
+                        "type": "str",  # Type of managed service identity (either system
+                          assigned, or none). Required. Known values are: "None" and "SystemAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str"  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
                     },
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "messaging": {
                             "endpoints": {
@@ -8432,34 +8434,11 @@ class NamespacesOperations:
                                       messaging endpoint Azure resource Id.
                                 }
                             }
-                        },
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
+                        }
                     },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -8632,13 +8611,15 @@ class NamespacesOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "identity": {
-                        "type": "str"  # Optional. The type of managed identity assigned to
-                          this resource. Known values are: "None" and "SystemAssigned".
+                        "type": "str",  # Type of managed service identity (either system
+                          assigned, or none). Required. Known values are: "None" and "SystemAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str"  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
                     },
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "messaging": {
                             "endpoints": {
@@ -8651,34 +8632,11 @@ class NamespacesOperations:
                                       messaging endpoint Azure resource Id.
                                 }
                             }
-                        },
-                        "provisioningState": "str",  # Optional. Provisioning state of the
-                          resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
-                          and "Deleting".
-                        "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
-                    },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
+                        }
                     },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -9268,7 +9226,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -9402,7 +9360,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -9539,7 +9497,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -9741,7 +9699,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -9793,7 +9751,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -9876,7 +9834,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -9951,7 +9909,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -10003,7 +9961,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -10176,39 +10134,23 @@ class SchemaRegistriesOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "identity": {
-                        "type": "str"  # Optional. The type of managed identity assigned to
-                          this resource. Known values are: "None" and "SystemAssigned".
+                        "type": "str",  # Type of managed service identity (either system
+                          assigned, or none). Required. Known values are: "None" and "SystemAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str"  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
                     },
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "description": "str",  # Optional. Human-readable description of the
                           schema registry.
                         "displayName": "str"  # Optional. Human-readable display name.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -10238,7 +10180,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -10321,7 +10263,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -10371,39 +10313,23 @@ class SchemaRegistriesOperations:
 
                 # JSON input template you can fill out and use as your body input.
                 properties = {
-                    "id": "str",  # Optional. Fully qualified resource ID for the resource. E.g.
-                      "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "identity": {
-                        "type": "str"  # Optional. The type of managed identity assigned to
-                          this resource. Known values are: "None" and "SystemAssigned".
+                        "type": "str",  # Type of managed service identity (either system
+                          assigned, or none). Required. Known values are: "None" and "SystemAssigned".
+                        "principalId": "str",  # Optional. The service principal ID of the
+                          system assigned identity. This property will only be provided for a system
+                          assigned identity.
+                        "tenantId": "str"  # Optional. The tenant ID of the system assigned
+                          identity. This property will only be provided for a system assigned identity.
                     },
-                    "name": "str",  # Optional. The name of the resource.
                     "properties": {
                         "description": "str",  # Optional. Human-readable description of the
                           schema registry.
                         "displayName": "str"  # Optional. Human-readable display name.
                     },
-                    "systemData": {
-                        "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
-                          resource creation (UTC).
-                        "createdBy": "str",  # Optional. The identity that created the
-                          resource.
-                        "createdByType": "str",  # Optional. The type of identity that
-                          created the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                        "lastModifiedAt": "2020-02-20 00:00:00",  # Optional. The timestamp
-                          of resource last modification (UTC).
-                        "lastModifiedBy": "str",  # Optional. The identity that last modified
-                          the resource.
-                        "lastModifiedByType": "str"  # Optional. The type of identity that
-                          last modified the resource. Known values are: "User", "Application",
-                          "ManagedIdentity", and "Key".
-                    },
                     "tags": {
                         "str": "str"  # Optional. Resource tags.
-                    },
-                    "type": "str"  # Optional. The type of the resource. E.g.
-                      "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts".
+                    }
                 }
 
                 # response body for status code(s): 200
@@ -10433,7 +10359,7 @@ class SchemaRegistriesOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -10781,9 +10707,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -11314,9 +11240,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -11919,9 +11845,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -12364,9 +12290,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -12843,9 +12769,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -13318,9 +13244,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -13763,9 +13689,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -14341,9 +14267,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -14534,9 +14460,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -15013,9 +14939,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -15465,9 +15391,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -15658,9 +15584,9 @@ class NamespaceAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "timeoutInSeconds": 0,  # Optional.
                                           Response timeout for the action.
                                         "topic": "str",  # Optional. The MQTT
@@ -16239,7 +16165,7 @@ class NamespaceDevicesOperations:
                           (in UTC) that is updated each time the resource is modified.
                         "manufacturer": "str",  # Optional. Device manufacturer.
                         "model": "str",  # Optional. Device model.
-                        "operatingSystem": "str",  # Optional. Device operating system name.
+                        "operatingSystem": "str",  # Optional. Device operating system.
                         "operatingSystemVersion": "str",  # Optional. Device operating system
                           version.
                         "provisioningState": "str",  # Optional. Provisioning state of the
@@ -16523,7 +16449,7 @@ class NamespaceDevicesOperations:
                           (in UTC) that is updated each time the resource is modified.
                         "manufacturer": "str",  # Optional. Device manufacturer.
                         "model": "str",  # Optional. Device model.
-                        "operatingSystem": "str",  # Optional. Device operating system name.
+                        "operatingSystem": "str",  # Optional. Device operating system.
                         "operatingSystemVersion": "str",  # Optional. Device operating system
                           version.
                         "provisioningState": "str",  # Optional. Provisioning state of the
@@ -16879,7 +16805,7 @@ class NamespaceDevicesOperations:
                           (in UTC) that is updated each time the resource is modified.
                         "manufacturer": "str",  # Optional. Device manufacturer.
                         "model": "str",  # Optional. Device model.
-                        "operatingSystem": "str",  # Optional. Device operating system name.
+                        "operatingSystem": "str",  # Optional. Device operating system.
                         "operatingSystemVersion": "str",  # Optional. Device operating system
                           version.
                         "provisioningState": "str",  # Optional. Provisioning state of the
@@ -17075,7 +17001,7 @@ class NamespaceDevicesOperations:
                           (in UTC) that is updated each time the resource is modified.
                         "manufacturer": "str",  # Optional. Device manufacturer.
                         "model": "str",  # Optional. Device model.
-                        "operatingSystem": "str",  # Optional. Device operating system name.
+                        "operatingSystem": "str",  # Optional. Device operating system.
                         "operatingSystemVersion": "str",  # Optional. Device operating system
                           version.
                         "provisioningState": "str",  # Optional. Provisioning state of the
@@ -17305,7 +17231,7 @@ class NamespaceDevicesOperations:
                           (in UTC) that is updated each time the resource is modified.
                         "manufacturer": "str",  # Optional. Device manufacturer.
                         "model": "str",  # Optional. Device model.
-                        "operatingSystem": "str",  # Optional. Device operating system name.
+                        "operatingSystem": "str",  # Optional. Device operating system.
                         "operatingSystemVersion": "str",  # Optional. Device operating system
                           version.
                         "provisioningState": "str",  # Optional. Provisioning state of the
@@ -17531,7 +17457,7 @@ class NamespaceDevicesOperations:
                           (in UTC) that is updated each time the resource is modified.
                         "manufacturer": "str",  # Optional. Device manufacturer.
                         "model": "str",  # Optional. Device model.
-                        "operatingSystem": "str",  # Optional. Device operating system name.
+                        "operatingSystem": "str",  # Optional. Device operating system.
                         "operatingSystemVersion": "str",  # Optional. Device operating system
                           version.
                         "provisioningState": "str",  # Optional. Provisioning state of the
@@ -17727,7 +17653,7 @@ class NamespaceDevicesOperations:
                           (in UTC) that is updated each time the resource is modified.
                         "manufacturer": "str",  # Optional. Device manufacturer.
                         "model": "str",  # Optional. Device model.
-                        "operatingSystem": "str",  # Optional. Device operating system name.
+                        "operatingSystem": "str",  # Optional. Device operating system.
                         "operatingSystemVersion": "str",  # Optional. Device operating system
                           version.
                         "provisioningState": "str",  # Optional. Provisioning state of the
@@ -18158,7 +18084,7 @@ class NamespaceDevicesOperations:
                           (in UTC) that is updated each time the resource is modified.
                         "manufacturer": "str",  # Optional. Device manufacturer.
                         "model": "str",  # Optional. Device model.
-                        "operatingSystem": "str",  # Optional. Device operating system name.
+                        "operatingSystem": "str",  # Optional. Device operating system.
                         "operatingSystemVersion": "str",  # Optional. Device operating system
                           version.
                         "provisioningState": "str",  # Optional. Provisioning state of the
@@ -18388,7 +18314,7 @@ class NamespaceDevicesOperations:
                           (in UTC) that is updated each time the resource is modified.
                         "manufacturer": "str",  # Optional. Device manufacturer.
                         "model": "str",  # Optional. Device model.
-                        "operatingSystem": "str",  # Optional. Device operating system name.
+                        "operatingSystem": "str",  # Optional. Device operating system.
                         "operatingSystemVersion": "str",  # Optional. Device operating system
                           version.
                         "provisioningState": "str",  # Optional. Provisioning state of the
@@ -18693,7 +18619,7 @@ class NamespaceDevicesOperations:
                           (in UTC) that is updated each time the resource is modified.
                         "manufacturer": "str",  # Optional. Device manufacturer.
                         "model": "str",  # Optional. Device model.
-                        "operatingSystem": "str",  # Optional. Device operating system name.
+                        "operatingSystem": "str",  # Optional. Device operating system.
                         "operatingSystemVersion": "str",  # Optional. Device operating system
                           version.
                         "provisioningState": "str",  # Optional. Provisioning state of the
@@ -19132,9 +19058,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -19443,9 +19369,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -19826,9 +19752,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -20049,9 +19975,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -20306,9 +20232,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -20559,9 +20485,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -20782,9 +20708,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -21151,9 +21077,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -21355,9 +21281,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -21612,9 +21538,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -21855,9 +21781,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -22059,9 +21985,9 @@ class NamespaceDiscoveredAssetsOperations:
                                         "actionConfiguration": "str",  #
                                           Optional. Stringified JSON that contains connector-specific
                                           configuration for the action.
-                                        "actionType": "str",  # Optional. The
-                                          type of the action. Known values are: "Call", "Read", and
-                                          "Write".
+                                        "actionType": "Call",  # Optional.
+                                          Default value is "Call". The type of the action. Known values
+                                          are: "Call", "Read", and "Write".
                                         "lastUpdatedOn": "2020-02-20
                                           00:00:00",  # Optional. Timestamp (in UTC) indicating when
                                           the management action was added or modified.
@@ -24099,7 +24025,7 @@ class SchemasOperations:
                             "str": "str"  # Optional. Schema tags.
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -24228,7 +24154,7 @@ class SchemasOperations:
                             "str": "str"  # Optional. Schema tags.
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -24349,7 +24275,7 @@ class SchemasOperations:
                             "str": "str"  # Optional. Schema tags.
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -24390,7 +24316,7 @@ class SchemasOperations:
                             "str": "str"  # Optional. Schema tags.
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -24465,7 +24391,7 @@ class SchemasOperations:
                             "str": "str"  # Optional. Schema tags.
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -24536,7 +24462,7 @@ class SchemasOperations:
                             "str": "str"  # Optional. Schema tags.
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -24577,7 +24503,7 @@ class SchemasOperations:
                             "str": "str"  # Optional. Schema tags.
                         },
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -24775,7 +24701,7 @@ class SchemaVersionsOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -24909,7 +24835,7 @@ class SchemaVersionsOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -25029,7 +24955,7 @@ class SchemaVersionsOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -25065,7 +24991,7 @@ class SchemaVersionsOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -25138,7 +25064,7 @@ class SchemaVersionsOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -25207,7 +25133,7 @@ class SchemaVersionsOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -25243,7 +25169,7 @@ class SchemaVersionsOperations:
                           resource. Known values are: "Succeeded", "Failed", "Canceled", "Accepted",
                           and "Deleting".
                         "uuid": "str"  # Optional. Globally unique, immutable, non-reusable
-                          ID.
+                          id.
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
