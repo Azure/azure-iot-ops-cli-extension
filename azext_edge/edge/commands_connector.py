@@ -26,8 +26,6 @@ def add_connector_opcua_trust(
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).trust_add(
-        instance_name=instance_name,
-        resource_group=resource_group,
         file=file,
         secret_name=secret_name,
         overwrite_secret=overwrite_secret,
@@ -47,8 +45,6 @@ def add_connector_opcua_issuer(
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).issuer_add(
-        instance_name=instance_name,
-        resource_group=resource_group,
         file=file,
         secret_name=secret_name,
         overwrite_secret=overwrite_secret,
@@ -72,8 +68,6 @@ def add_connector_opcua_client(
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).client_add(
-        instance_name=instance_name,
-        resource_group=resource_group,
         public_key_file=public_key_file,
         private_key_file=private_key_file,
         subject_name=subject_name,
@@ -98,8 +92,6 @@ def remove_connector_opcua_trust(
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).remove(
-        instance_name=instance_name,
-        resource_group=resource_group,
         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
         confirm_yes=confirm_yes,
@@ -122,8 +114,6 @@ def remove_connector_opcua_issuer(
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).remove(
-        instance_name=instance_name,
-        resource_group=resource_group,
         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
         confirm_yes=confirm_yes,
@@ -146,8 +136,6 @@ def remove_connector_opcua_client(
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).remove(
-        instance_name=instance_name,
-        resource_group=resource_group,
         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
         confirm_yes=confirm_yes,
@@ -166,8 +154,6 @@ def show_connector_opcua_trust(
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).show(
-        instance_name=instance_name,
-        resource_group=resource_group,
         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
     )
 
@@ -182,8 +168,6 @@ def show_connector_opcua_issuer(
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).show(
-        instance_name=instance_name,
-        resource_group=resource_group,
         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
     )
 
@@ -198,7 +182,5 @@ def show_connector_opcua_client(
         resource_group_name=resource_group,
         instance_name=instance_name,
     ).show(
-        instance_name=instance_name,
-        resource_group=resource_group,
         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
     )

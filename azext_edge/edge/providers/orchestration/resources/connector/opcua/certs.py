@@ -7,7 +7,7 @@
 from datetime import datetime, timezone
 import re
 from cryptography import x509
-import pathlib
+from pathlib import Path
 from typing import List, Optional, Tuple, Union, cast
 
 from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
@@ -62,7 +62,6 @@ class OpcUACerts(Queryable):
         )
         self.instance_name = instance_name
         self.resource_group_name = resource_group_name
-        # This instance fetch is using the latest instance API.
         self.instance = self.instances.show(
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
@@ -80,20 +79,18 @@ class OpcUACerts(Queryable):
 
     def trust_add(
         self,
-        instance_name: str,
-        resource_group: str,
         file: str,
         overwrite_secret: bool = False,
         secret_name: Optional[str] = None,
     ) -> dict:
         default_spc = self.instances.get_default_spc(
-            instance_name=instance_name,
-            resource_group_name=resource_group,
+            instance_name=self.instance_name,
+            resource_group_name=self.resource_group_name,
         )
-        spc_name = default_spc["name"] or OPCUA_SPC_NAME
+        spc_name = default_spc["name"]
 
         # get file extension
-        file_name = pathlib.Path(file).name
+        file_name = Path(file).name
         cert_extension, _ = self._process_cert_content(
             file_path=file,
             file_name=file_name,
@@ -122,15 +119,10 @@ class OpcUACerts(Queryable):
             keyvault_name=spc_keyvault_name, secret_name=secret_name, file_path=file, cert_extension=cert_extension
         )
 
-        opcua_spc = self._get_resource_by_name(
-            resource_type=SPC_RESOURCE_TYPE,
-            resource_name=spc_name,
-        )
-
         self._add_secrets_to_spc(
             secrets=[secret_name],
-            spc=opcua_spc,
-            resource_group=resource_group,
+            spc=default_spc,
+            resource_group=self.resource_group_name,
         )
 
         opcua_secret_sync = self._get_resource_by_name(
@@ -141,25 +133,23 @@ class OpcUACerts(Queryable):
         return self._add_secrets_to_secret_sync(
             secrets=[(secret_name, file_name)],
             secret_sync=opcua_secret_sync,
-            resource_group=resource_group,
+            resource_group=self.resource_group_name,
             spc_name=spc_name,
             secret_sync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
         )
 
     def issuer_add(
         self,
-        instance_name: str,
-        resource_group: str,
         file: str,
         overwrite_secret: bool = False,
         secret_name: Optional[str] = None,
     ) -> dict:
         # get default SPC
-        default_spc = self.instances.get_default_spc(instance_name, resource_group)
-        spc_name = default_spc["name"] or OPCUA_SPC_NAME
+        default_spc = self.instances.get_default_spc(self.instance_name, self.resource_group_name)
+        spc_name = default_spc["name"]
 
         # get file extension
-        file_name = pathlib.Path(file).name
+        file_name = Path(file).name
 
         cert_extension, cert = self._process_cert_content(
             file_path=file,
@@ -186,7 +176,7 @@ class OpcUACerts(Queryable):
         spc_keyvault_name = spc_properties.get("keyvaultName", "")
 
         # get cert name by removing extension
-        cert_name = pathlib.Path(file_name).stem
+        cert_name = Path(file_name).stem
 
         opcua_secret_sync = self._get_resource_by_name(
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
@@ -229,29 +219,22 @@ class OpcUACerts(Queryable):
             keyvault_name=spc_keyvault_name, secret_name=secret_name, file_path=file, cert_extension=cert_extension
         )
 
-        opcua_spc = self._get_resource_by_name(
-            resource_type=SPC_RESOURCE_TYPE,
-            resource_name=spc_name,
-        )
-
         self._add_secrets_to_spc(
             secrets=[secret_name],
-            spc=opcua_spc,
-            resource_group=resource_group,
+            spc=default_spc,
+            resource_group=self.resource_group_name,
         )
 
         return self._add_secrets_to_secret_sync(
             secrets=[(secret_name, file_name)],
             secret_sync=opcua_secret_sync,
-            resource_group=resource_group,
+            resource_group=self.resource_group_name,
             spc_name=spc_name,
             secret_sync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         )
 
     def client_add(
         self,
-        instance_name: str,
-        resource_group: str,
         public_key_file: str,
         private_key_file: str,
         overwrite_secret: bool = False,
@@ -261,8 +244,8 @@ class OpcUACerts(Queryable):
         private_key_secret_name: Optional[str] = None,
     ) -> dict:
         default_spc = self.instances.get_default_spc(
-            instance_name=instance_name,
-            resource_group_name=resource_group,
+            instance_name=self.instance_name,
+            resource_group_name=self.resource_group_name,
         )
 
         # process all the file validations before secret creations
@@ -277,11 +260,7 @@ class OpcUACerts(Queryable):
         spc_properties = default_spc.get("properties", {})
         spc_keyvault_name = spc_properties.get("keyvaultName", "")
 
-        spc_name = default_spc["name"] or OPCUA_SPC_NAME
-        opcua_spc = self._get_resource_by_name(
-            resource_type=SPC_RESOURCE_TYPE,
-            resource_name=spc_name,
-        )
+        spc_name = default_spc["name"]
 
         # check if there is a secret sync called "aio-opc-ua-broker-client-certificate", if not create one
         opcua_secret_sync = self._get_resource_by_name(
@@ -292,7 +271,7 @@ class OpcUACerts(Queryable):
         secrets_to_add = []
         secret_names = self._get_secret_names(spc_keyvault_name)
         for file in [public_key_file, private_key_file]:
-            p = pathlib.Path(file)
+            p = Path(file)
             file_name = p.name
             file_name_info = (p.stem, p.suffix)
             cert_extension = file_name_info[1].replace(".", "")
@@ -337,15 +316,15 @@ class OpcUACerts(Queryable):
 
         self._add_secrets_to_spc(
             secrets=[secret[0] for secret in secrets_to_add],
-            spc=opcua_spc,
-            resource_group=resource_group,
+            spc=default_spc,
+            resource_group=self.resource_group_name,
             secrets_to_replace=secrets_to_replace,
         )
 
         self._add_secrets_to_secret_sync(
             secrets=secrets_to_add,
             secret_sync=opcua_secret_sync,
-            resource_group=resource_group,
+            resource_group=self.resource_group_name,
             spc_name=spc_name,
             secret_sync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
             should_replace=True,
@@ -360,8 +339,6 @@ class OpcUACerts(Queryable):
 
     def remove(
         self,
-        instance_name: str,
-        resource_group: str,
         secretsync_name: str,
         certificate_names: List[str],
         confirm_yes: Optional[bool] = False,
@@ -410,17 +387,10 @@ class OpcUACerts(Queryable):
             raise InvalidArgumentValueError("Please provide valid certificate name(s) to remove.")
 
         # check if spc exists
-        spc_name = self.instances.get_default_spc(
-            instance_name=instance_name,
-            resource_group_name=resource_group,
-        )["name"] or OPCUA_SPC_NAME
-        target_spc = self._get_resource_by_name(
-            resource_type=SPC_RESOURCE_TYPE,
-            resource_name=spc_name,
+        target_spc = self.instances.get_default_spc(
+            instance_name=self.instance_name,
+            resource_group_name=self.resource_group_name,
         )
-
-        if not target_spc:
-            raise ResourceNotFoundError(f"Secret Provider Class resource {spc_name} not found.")
 
         # get properties from default spc
         spc_properties = target_spc.get("properties", {})
@@ -431,10 +401,10 @@ class OpcUACerts(Queryable):
             name=secretsync_name,
             secrets=secret_to_remove,
             secret_sync=target_secretsync,
-            resource_group=resource_group,
+            resource_group=self.resource_group_name,
         )
 
-        self._remove_secrets_from_spc(secrets=secret_to_remove, spc=target_spc, resource_group=resource_group)
+        self._remove_secrets_from_spc(secrets=secret_to_remove, spc=target_spc, resource_group=self.resource_group_name)
 
         if include_secrets:
             # verify the behaviour of non existed secret
@@ -455,7 +425,7 @@ class OpcUACerts(Queryable):
 
         return modified_secret_sync
 
-    def show(self, instance_name: str, resource_group: str, secretsync_name: str) -> dict:
+    def show(self, secretsync_name: str) -> dict:
         # check if secret sync exists
         target_secretsync = self._get_resource_by_name(
             resource_type=SECRET_SYNC_RESOURCE_TYPE,
@@ -471,7 +441,7 @@ class OpcUACerts(Queryable):
         # validate public key file end with .der
         _, cert = self._process_cert_content(
             file_path=public_key_file,
-            file_name=pathlib.Path(public_key_file).name,
+            file_name=Path(public_key_file).name,
             expected_exts={X509FileExtension.DER.value},
         )
 
@@ -486,8 +456,8 @@ class OpcUACerts(Queryable):
         validate_file_extension(private_key_file, {X509FileExtension.PEM.value})
 
         # validate public key and private key has matching file name without extension
-        public_key_name = pathlib.Path(public_key_file).stem
-        private_key_name = pathlib.Path(private_key_file).stem
+        public_key_name = Path(public_key_file).stem
+        private_key_name = Path(private_key_file).stem
 
         if public_key_name != private_key_name:
             raise InvalidArgumentValueError(
@@ -528,7 +498,7 @@ class OpcUACerts(Queryable):
         # TODO: formatting will be removed once fortos service fixes the formatting issue
         return object_text.replace("\n- |", "\n    - |")
 
-    def _get_cl_resources(self, instance_name: str, resource_group: str) -> List[dict]:
+    def _get_cl_resources(self) -> List[dict]:
         custom_location = self.resource_client.resources.get_by_id(
             resource_id=self.instance["extendedLocation"]["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
         )
@@ -637,6 +607,7 @@ class OpcUACerts(Queryable):
         should_replace: Optional[bool] = False,
     ) -> dict:
         # check if there is a secret sync called secret_sync_name, if not create one
+        secret_sync = secret_sync or {}
         secret_mapping = [] if should_replace else secret_sync.get("properties", {}).get("objectSecretMapping", [])
         source_paths = [mapping["sourcePath"] for mapping in secret_mapping]
         # add new secret to the list
@@ -830,7 +801,7 @@ class OpcUACerts(Queryable):
         from cryptography.x509.oid import NameOID, ExtensionOID
 
         der_data = read_file_content(file_path=public_key_file, read_as_binary=True)
-        file_extension = pathlib.Path(public_key_file).suffix.lower()
+        file_extension = Path(public_key_file).suffix.lower()
         certificate = decode_x509_files(der_data, X509FileExtension.DER.name, file_extension).pop()
 
         if not certificate:
