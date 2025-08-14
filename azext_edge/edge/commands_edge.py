@@ -487,3 +487,27 @@ def get_versions():
             f"Failed to open browser. Please visit {GET_VERSIONS_URL} to "
             "view the Azure IoT Operations version reference."
         )
+
+
+def migrate_assets(
+    cmd,
+    instance_name: str,
+    resource_group_name: str,
+    include_assets: Optional[list[str]] = None,
+    confirm_yes: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    from .providers.orchestration.migration import AssetMigrationManager
+    return AssetMigrationManager(cmd).migrate_to_namespace(
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        include_assets=include_assets,
+        confirm_yes=confirm_yes,
+        **kwargs
+    )
+
+# az iot ops migrate asset
+# az iot ops asset migrate
+# az iot ops ns migrate
+# az iot ops migrate-assets
+# az iot ops ns asset migrate
