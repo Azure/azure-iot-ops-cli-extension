@@ -62,10 +62,11 @@ class OpcUACerts(Queryable):
         )
         self.instance_name = instance_name
         self.resource_group_name = resource_group_name
-        self.instance = self.instances.show(
-            name=self.instance_name, resource_group_name=self.resource_group_name
-        )
-        self.resource_map = self.instances.get_resource_map(self.instance)
+
+        instance = self.instances.show(name=self.instance_name, resource_group_name=self.resource_group_name)
+        self.resource_map = self.instances.get_resource_map(instance)
+        self.extended_location = instance["extendedLocation"]
+        self.location = instance["location"]
 
     def _get_spc_name(self, instance_name: str, resource_group: str) -> str:
         """Get the SPC name from the default SPC or fall back to OPCUA_SPC_NAME"""
@@ -500,7 +501,7 @@ class OpcUACerts(Queryable):
 
     def _get_cl_resources(self) -> List[dict]:
         custom_location = self.resource_client.resources.get_by_id(
-            resource_id=self.instance["extendedLocation"]["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
+            resource_id=self.extended_location["name"], api_version=CUSTOM_LOCATIONS_API_VERSION
         )
         cl_resources = self.resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
         return cl_resources
@@ -629,8 +630,8 @@ class OpcUACerts(Queryable):
         if not secret_sync:
             logger.warning(f"Secretsync resource {secret_sync_name} not found, creating new one...")
             secret_sync = {
-                "location": self.instance["location"],
-                "extendedLocation": self.instance["extendedLocation"],
+                "location": self.location,
+                "extendedLocation": self.extended_location,
                 "properties": {
                     "kubernetesSecretType": "Opaque",
                     "secretProviderClassName": spc_name,
@@ -946,7 +947,7 @@ class OpcUACerts(Queryable):
         Get a specific resource by its name and type.
         """
         cl_resources = self.resource_map.connected_cluster.get_cl_resources_by_type(
-            custom_location_id=self.instance["extendedLocation"]["name"],
+            custom_location_id=self.extended_location["name"],
             resource_types={resource_type},
             show_properties=True,
         ).get(resource_type)
