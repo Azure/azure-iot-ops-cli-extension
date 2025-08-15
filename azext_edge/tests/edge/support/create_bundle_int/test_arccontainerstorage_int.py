@@ -28,6 +28,7 @@ ACS_PREFIXES = [
     "config-operator",
     "edgevolume-mounthelper",
     "wyvern-operator",
+    "azure-arc-containerstorage"
 ]
 ACS_OPTIONAL_PREFIXES = [
     "w-adr-schema-registry",
