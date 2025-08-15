@@ -18,7 +18,7 @@ from rich.console import Console
 import yaml
 
 from ....common import CUSTOM_LOCATIONS_API_VERSION, EXTENSION_TYPE_OPS, X509FileExtension
-from ...instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
+from ...instances import SECRET_SYNC_RESOURCE_TYPE, Instances
 from .....orchestration.upgrade2 import calculate_config_delta
 from ......util.file_operations import read_file_content, validate_file_extension
 from ......util.queryable import Queryable
