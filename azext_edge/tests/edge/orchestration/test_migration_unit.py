@@ -251,7 +251,6 @@ def mock_console(mocker) -> Mock:
 def test_migrate_assets_filtering(
     mocked_cmd,
     mocked_responses: responses,
-    mock_prompt: Mock,
     name_patterns: Optional[List[str]],
     asset_names: List[str],
     expected_count: int,
@@ -300,7 +299,6 @@ def test_migrate_assets_filtering(
 def test_migrate_assets_scale(
     mocked_cmd,
     mocked_responses: responses,
-    mock_prompt: Mock,
     asset_count: int,
 ):
     """Test migration with different numbers of assets."""
@@ -479,7 +477,6 @@ def test_no_assets_match_filter(
 def test_validation_errors(
     mocked_cmd,
     mocked_responses: responses,
-    mock_prompt: Mock,
     error_scenario: dict,
 ):
     """Test validation error scenarios for asset migration."""
@@ -516,7 +513,6 @@ def test_validation_errors(
 def test_resource_not_found(
     mocked_cmd,
     mocked_responses: responses,
-    mock_prompt: Mock,
     mock_instance: bool,
     mock_custom_location: bool,
 ):
