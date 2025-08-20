@@ -86,16 +86,16 @@ class AssetMigrationManager(Queryable):
                 # No filter, include all
                 resource_ids = [asset["id"] for asset in instance_root_assets]
 
+        if not resource_ids:
+            logger.warning("No root assets to migrate found.")
+            return
+
         if not confirm_yes:
             console.print(f"The following {len(resource_ids)} asset resource Id(s) will be migrated:")
             console.print_json(data=resource_ids)
             console.print("Post migration - unreferenced endpoint profiles can be deleted.")
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Migration")
         if should_bail:
-            return
-
-        if not resource_ids:
-            logger.warning("No migration work to do.")
             return
 
         payload = {"resourceIds": resource_ids, "scope": "Resources"}

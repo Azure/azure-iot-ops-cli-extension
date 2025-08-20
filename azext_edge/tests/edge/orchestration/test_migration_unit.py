@@ -458,7 +458,7 @@ def test_no_assets_match_filter(
     )
 
     assert result is None
-    mock_logger.warning.assert_called_with("No migration work to do.")
+    mock_logger.warning.assert_called_with("No root assets to migrate found.")
 
 
 @pytest.mark.parametrize(
