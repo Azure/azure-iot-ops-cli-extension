@@ -1901,3 +1901,13 @@ def load_iotops_arguments(self, _):
             help="Provide an explicit K8 Bridge service principal OID for the custom location role assignment. "
             "This is useful if the logged-in principal does not have permission to query apps from MS Graph.",
         )
+
+    with self.argument_context("iot ops migrate-assets") as context:
+        context.argument(
+            "name_patterns",
+            options_list=["--name-pattern", "-p"],
+            nargs="+",
+            action="extend",
+            help="Space-separated glob-style patterns to match asset names. "
+            "'*' or '?' or '[...]' can be used.",
+        )

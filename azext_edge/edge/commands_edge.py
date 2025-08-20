@@ -493,21 +493,16 @@ def migrate_assets(
     cmd,
     instance_name: str,
     resource_group_name: str,
-    include_assets: Optional[list[str]] = None,
-    confirm_yes: Optional[bool] = False,
-    **kwargs
+    name_patterns: Optional[list[str]] = None,
+    confirm_yes: Optional[bool] = None,
+    **kwargs,
 ) -> dict:
     from .providers.orchestration.migration import AssetMigrationManager
+
     return AssetMigrationManager(cmd).migrate_to_namespace(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
-        include_assets=include_assets,
+        name_patterns=name_patterns,
         confirm_yes=confirm_yes,
-        **kwargs
+        **kwargs,
     )
-
-# az iot ops migrate asset
-# az iot ops asset migrate
-# az iot ops ns migrate
-# az iot ops migrate-assets
-# az iot ops ns asset migrate
