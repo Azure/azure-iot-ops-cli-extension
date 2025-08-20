@@ -2670,3 +2670,38 @@ def load_iotops_help():
           text: >
             az iot ops get-versions
     """
+
+    helps[
+        "iot ops migrate-assets"
+    ] = """
+        type: command
+        short-summary: Migrate root assets to a namespace.
+        long-summary: |
+          The target set of root assets will be converted to an equivalent namespace representation
+          replacing the original root assets.
+
+          During the migration, namespace devices will be created in-place of the endpoint profiles
+          referenced by the assets. If multiple assets reference the same endpoint profile, a
+          single namespace device will be referenced by the migrated assets.
+
+          Post migration use the `az iot ops ns asset` and `az iot ops ns device` command groups to
+          manage namespace assets and devices.
+
+          It is highly recommended to take a snapshot of the target instance via `az iot ops clone`
+          before migration is executed. You can use the clone to restore the instance if needed.
+
+          For glob-style pattern matching via --name-pattern, '*' or '?' or '[...]' can be used.
+
+        examples:
+        - name: Migrate all root assets associated with the instance.
+          text: >
+            az iot ops migrate-assets -n myinstance --resource-group myresourcegroup
+        - name: Migrate specific assets associated with the instance.
+          text: >
+            az iot ops migrate-assets -n myinstance --resource-group myresourcegroup
+            --name-pattern asset1 asset2 asset3
+        - name: Migrate assets associated with the instance that match glob-style patterns.
+          text: >
+            az iot ops migrate-assets -n myinstance --resource-group myresourcegroup
+            --name-pattern asset-p1-* asset-eng?-01
+    """

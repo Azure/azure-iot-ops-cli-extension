@@ -1,11 +1,13 @@
 name: "[auto] Security Scan"
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 6 * * *'
   push:
     branches:
       - dev
       - feature/*
+      - release/*
   workflow_call:
     inputs:
       continue-on-error:
