@@ -147,7 +147,7 @@ class ConnectedCluster:
         where_clauses = ""
         projections = ""
         if resource_types:
-            where_clauses = "| where type in ({})".format(", ".join(f"'{rt}'" for rt in resource_types))
+            where_clauses = "| where type in~ ({})".format(", ".join(f"'{rt}'" for rt in resource_types))
         if show_properties:
             projections = ", properties, systemData, tags"
         query = QUERIES["get_cl_resources_by_type"].format(
