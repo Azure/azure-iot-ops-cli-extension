@@ -157,7 +157,6 @@ def test_client_add(
     mocked_logger: Mock,
     mocked_public_cert: dict,
     mocked_private_cert: dict,
-    mocked_get_spc_name: Mock,
     expected_resources_map: dict,
     client_app_spc: dict,
     client_app_secretsync: dict,
@@ -409,7 +408,6 @@ def test_client_add_errors(
     mocked_read_file_content: Mock,
     mocked_decode_certificate: Mock,
     mocked_sleep: Mock,
-    mocked_get_spc_name: Mock,
     expected_resources_map: dict,
     client_app_spc: dict,
     client_app_secretsync: dict,
@@ -429,7 +427,6 @@ def test_client_add_errors(
     instance_name = "mock-instance"
     rg_name = "mock-rg"
 
-    mocked_get_spc_name.return_value = "default-spc"
     assemble_resource_map_mock(
         resource_map_mock=mocked_instance.get_resource_map,
         extension=expected_resources_map["extension"],
@@ -589,7 +586,6 @@ def test_client_remove(
     mocker,
     mocked_cmd,
     mocked_sleep: Mock,
-    mocked_get_spc_name: Mock,
     expected_resources_map: dict,
     client_list_spc: dict,
     client_list_secretsync: dict,
@@ -777,7 +773,6 @@ def test_client_remove_error(
     mocker,
     mocked_cmd,
     mocked_sleep: Mock,
-    mocked_get_spc_name: Mock,
     expected_resources_map: dict,
     client_list_spc: dict,
     client_list_secretsync: dict,
@@ -853,7 +848,6 @@ def test_client_show(
     mocked_cmd,
     mocked_cl_resources: Mock,
     mocked_sleep: Mock,
-    mocked_get_spc_name: Mock,
     mocked_instance: Mock,
     expected_resources_map: dict,
     expected_secretsync: dict,
@@ -896,7 +890,6 @@ def test_client_show_error(
     mocked_cmd,
     mocked_cl_resources: Mock,
     mocked_sleep: Mock,
-    mocked_get_spc_name: Mock,
     mocked_instance: Mock,
     expected_resources_map: dict,
     expected_error: str,

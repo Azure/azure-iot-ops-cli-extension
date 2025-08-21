@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple, Union, cast
 
 from azure.core.exceptions import ResourceNotFoundError, HttpResponseError
 from azure.core.pipeline.transport import HttpTransport
-from azure.cli.core.azclierror import InvalidArgumentValueError, ValidationError
+from azure.cli.core.azclierror import InvalidArgumentValueError
 from knack.log import get_logger
 from rich.console import Console
 import yaml
@@ -67,16 +67,6 @@ class OpcUACerts(Queryable):
         self.resource_map = self.instances.get_resource_map(instance)
         self.extended_location = instance["extendedLocation"]
         self.location = instance["location"]
-
-    def _get_spc_name(self, instance_name: str, resource_group: str) -> str:
-        """Get the SPC name from the default SPC or fall back to OPCUA_SPC_NAME"""
-        try:
-            default_spc = self.instances.get_default_spc(instance_name, resource_group)
-            # Extract the name from the resource ID
-            return default_spc["name"]
-        except ValidationError:
-            # Fall back to the static name if default SPC is not available
-            return OPCUA_SPC_NAME
 
     def trust_add(
         self,

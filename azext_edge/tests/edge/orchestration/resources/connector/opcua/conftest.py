@@ -59,16 +59,6 @@ def mocked_read_file_content(mocker):
     yield patched
 
 
-@pytest.fixture
-def mocked_get_spc_name(mocker):
-    """Mock _get_spc_name to return default spc by default"""
-    patched = mocker.patch(
-        "azext_edge.edge.providers.orchestration.resources.connector.opcua.certs.OpcUACerts._get_spc_name",
-        return_value=OPCUA_SPC_NAME,
-    )
-    yield patched
-
-
 def build_mock_cert(
     subject_name: str = "subjectname",
     uri: str = "uri",
