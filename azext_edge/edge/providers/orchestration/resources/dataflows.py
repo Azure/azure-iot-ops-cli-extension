@@ -588,6 +588,7 @@ class DataFlowEndpoints(Queryable):
             DataflowEndpointType.AIOLOCALMQTT.value,
             DataflowEndpointType.EVENTGRID.value,
             DataflowEndpointType.CUSTOMMQTT.value,
+            DataflowEndpointType.OPENTELEMETRY.value,
         ]:
             processed_host = f"{hostname}:{port}"
 
