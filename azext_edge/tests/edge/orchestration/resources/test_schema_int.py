@@ -29,6 +29,14 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
     )
     tracked_resources.append(storage_account['id'])
 
+    # double check that the storage account has public network access enabled
+    storage_account_network = storage_account["publicNetworkAccess"]
+    while not storage_account_network and storage_account_network.lower() != "enabled":
+        storage_account_network = run(
+            f"az storage account update -n {storage_account_name} -g {registry_rg} "
+            "--public-network-access Enabled --query 'publicNetworkAccess'"
+        )
+
     # create the registry
     registry = run(
         f"az iot ops schema registry create -n {registry_name} -g {registry_rg} "
