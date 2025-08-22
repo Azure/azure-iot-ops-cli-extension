@@ -948,9 +948,9 @@ class OpcUACerts(Queryable):
         resource = next((resource for resource in cl_resources if resource.get("name") == resource_name), {})
 
         # remove properties that are not accepted by ssc_mgmt_client
-        if resource.get("apiVersion"):
+        if "apiVersion" in resource:
             del resource["apiVersion"]
-        if resource.get("resourceGroup"):
+        if "resourceGroup" in resource:
             del resource["resourceGroup"]
 
         return resource
