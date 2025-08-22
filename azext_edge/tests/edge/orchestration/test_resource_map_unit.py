@@ -201,4 +201,6 @@ def _assert_tree(
                 resource_index = 0 if not expected_resource_sync_rules else 1
                 assert tree.children[1].children[i].children[resource_index].label == f"[{category_color}]resources"
                 for j in range(len(expected_aio_resources)):
-                    tree.children[1].children[i].children[resource_index].children[j].label == expected_aio_resources[i]["name"]
+                    tree.children[1].children[i].children[resource_index].children[j].label == expected_aio_resources[
+                        i
+                    ]["name"]
