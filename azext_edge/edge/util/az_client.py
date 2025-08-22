@@ -4,7 +4,8 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from collections.abc import MutableMapping
+# this is a false positive in pylint 3.0.3 for python 3.13
+from collections.abc import MutableMapping  # pylint: disable=import-error
 from enum import Enum
 from time import sleep
 from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple, Union
