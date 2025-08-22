@@ -124,10 +124,11 @@ C = TypeVar("C", bound="CloneScenario")
 EXT_NAME_PLAT = "azure-iot-operations-platform"
 EXT_NAME_SSC = "azure-secrets-store"
 EXT_NAME_OPS = "azure-iot-operations"
+EXT_NAME_ACS = "azure-arc-containerstorage"
 
 EXTENSIONS_TYPE_TO_NAME = [
     (EXTENSION_TYPE_PLATFORM, EXT_NAME_PLAT),
-    (EXTENSION_TYPE_ACS, "azure-arc-containerstorage"),
+    (EXTENSION_TYPE_ACS, EXT_NAME_ACS),
     (EXTENSION_TYPE_SSC, EXT_NAME_SSC),
     (EXTENSION_TYPE_OPS, EXT_NAME_OPS),
 ]

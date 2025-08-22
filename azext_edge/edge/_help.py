@@ -1730,15 +1730,6 @@ def load_iotops_help():
 
                       Note: --*-config options allow override of default config settings.
 
-                      The default config settings for container storage are:
-                        edgeStorageConfiguration.create=true
-                        feature.diskStorageClass=default,local-path
-
-                      If --enable-fault-tolerance is used the following config delta applies to container storage:
-                        feature.diskStorageClass=acstor-arccontainerstorage-storage-pool
-                        acstorConfiguration.create=true
-                        acstorConfiguration.properties.diskMountPoint=/mnt
-
                       The default config settings for secret store are:
                         rotationPollIntervalInSeconds=120
                         validatingAdmissionPolicies.applyPolicies=false
@@ -1747,16 +1738,10 @@ def load_iotops_help():
         - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup
-        - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
-          text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --enable-fault-tolerance
-        - name: This example highlights enabling user trust settings for a custom cert-manager config.
+        - name: The following example highlights enabling user trust settings for a custom cert-manager config.
             This will skip deployment of the system cert-manager and trust-manager.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --user-trust
-        - name: Provide custom deploy-time configs for Arc Container Storage.
-          text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --enable-fault-tolerance --acs-config acstorConfiguration.properties.diskMountPoint=/mnt
         - name: Provide custom deploy-time configs for Arc Secret Store.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --ssc-config rotationPollIntervalInSeconds=60

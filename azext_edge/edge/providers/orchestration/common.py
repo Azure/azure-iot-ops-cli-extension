@@ -44,7 +44,7 @@ EXTENSION_TYPE_ACS = "microsoft.arc.containerstorage"
 EXTENSION_TYPE_SSC = "microsoft.azure.secretstore"
 EXTENSION_TYPE_OPS = "microsoft.iotoperations"
 
-OPS_EXTENSION_DEPS = frozenset([EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC, EXTENSION_TYPE_ACS])
+OPS_EXTENSION_DEPS = frozenset([EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC])
 
 EXTENSION_TYPE_TO_MONIKER_MAP = {
     EXTENSION_TYPE_PLATFORM: "platform",
@@ -88,12 +88,6 @@ class MqServiceType(Enum):
     CLUSTERIP = "ClusterIp"
     LOADBALANCER = "LoadBalancer"
     NODEPORT = "NodePort"
-
-
-class KubernetesDistroType(Enum):
-    k3s = "K3s"
-    k8s = "K8s"
-    microk8s = "MicroK8s"
 
 
 class IdentityUsageType(Enum):

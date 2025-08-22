@@ -17,7 +17,6 @@ from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import META_API_V1
 from .providers.orchestration.common import (
     IdentityUsageType,
-    KubernetesDistroType,
     MqMemoryProfile,
 )
 from .providers.orchestration.resources import Instances
@@ -101,14 +100,10 @@ def init(
     cluster_name: str,
     resource_group_name: str,
     context_name: Optional[str] = None,
-    enable_fault_tolerance: Optional[bool] = None,
     check_cluster: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     ensure_latest: Optional[bool] = None,
     user_trust: Optional[bool] = None,
-    acs_config: Optional[List[str]] = None,
-    acs_version: Optional[str] = None,
-    acs_train: Optional[str] = None,
     ssc_config: Optional[List[str]] = None,
     ssc_version: Optional[str] = None,
     ssc_train: Optional[str] = None,
@@ -123,12 +118,8 @@ def init(
         cluster_name=cluster_name,
         context_name=context_name,
         resource_group_name=resource_group_name,
-        enable_fault_tolerance=enable_fault_tolerance,
         check_cluster=check_cluster,
         user_trust=user_trust,
-        acs_config=acs_config,
-        acs_version=acs_version,
-        acs_train=acs_train,
         ssc_config=ssc_config,
         ssc_version=ssc_version,
         ssc_train=ssc_train,
@@ -149,14 +140,10 @@ def create_instance(
     cluster_namespace: str = DEFAULT_NAMESPACE,
     location: Optional[str] = None,
     custom_location_name: Optional[str] = None,
-    enable_rsync_rules: Optional[bool] = None,
     instance_description: Optional[str] = None,
     instance_features: Optional[List[str]] = None,
     dataflow_profile_instances: int = 1,
     trust_settings: Optional[List[str]] = None,
-    # Akri [Deprecated]
-    container_runtime_socket: Optional[str] = None,
-    kubernetes_distro: str = KubernetesDistroType.k8s.value,
     # Ops Extension
     ops_config: Optional[List[str]] = None,
     ops_version: Optional[str] = None,
@@ -182,9 +169,6 @@ def create_instance(
     from .providers.orchestration.work import WorkManager
     from .util import read_file_content
 
-    _ = container_runtime_socket
-    _ = kubernetes_distro
-
     # TODO - @digimaun
     custom_broker_config = None
     if custom_broker_config_file:
@@ -202,7 +186,6 @@ def create_instance(
         adr_namespace_resource_id=adr_namespace_resource_id,
         location=location,
         custom_location_name=custom_location_name,
-        enable_rsync_rules=enable_rsync_rules,
         instance_name=instance_name,
         instance_description=instance_description,
         instance_features=instance_features,
@@ -245,10 +228,6 @@ def upgrade_instance(
     ops_config_sync_mode: Optional[str] = None,
     ops_version: Optional[str] = None,
     ops_train: Optional[str] = None,
-    acs_config: Optional[List[str]] = None,
-    acs_config_sync_mode: Optional[str] = None,
-    acs_version: Optional[str] = None,
-    acs_train: Optional[str] = None,
     ssc_config: Optional[List[str]] = None,
     ssc_version: Optional[str] = None,
     ssc_train: Optional[str] = None,
@@ -272,10 +251,6 @@ def upgrade_instance(
         ops_version=ops_version,
         ops_train=ops_train,
         ops_config_sync_mode=ops_config_sync_mode,
-        acs_config=acs_config,
-        acs_version=acs_version,
-        acs_train=acs_train,
-        acs_config_sync_mode=acs_config_sync_mode,
         ssc_config=ssc_config,
         ssc_version=ssc_version,
         ssc_train=ssc_train,

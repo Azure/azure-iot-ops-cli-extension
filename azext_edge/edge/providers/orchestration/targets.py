@@ -40,7 +40,7 @@ class InstancePhase(IntEnum):
 
 PHASE_KEY_MAP: Dict[str, Set[str]] = {
     InstancePhase.EXT: {"cluster", "aio_extension"},
-    InstancePhase.INSTANCE: {"aioInstance", "aio_syncRule", "deviceRegistry_syncRule"},
+    InstancePhase.INSTANCE: {"aioInstance"},
 }
 
 
@@ -60,19 +60,14 @@ class InitTargets:
         cluster_namespace: str = "azure-iot-operations",
         location: Optional[str] = None,
         custom_location_name: Optional[str] = None,
-        enable_rsync_rules: Optional[bool] = None,
         instance_name: Optional[str] = None,
         instance_description: Optional[str] = None,
         instance_features: Optional[List[str]] = None,
         tags: Optional[dict] = None,
-        enable_fault_tolerance: Optional[bool] = None,
         # Extension config
         ops_config: Optional[List[str]] = None,
         ops_version: Optional[str] = None,
         ops_train: Optional[str] = None,
-        acs_config: Optional[List[str]] = None,
-        acs_version: Optional[str] = None,
-        acs_train: Optional[str] = None,
         ssc_config: Optional[List[str]] = None,
         ssc_version: Optional[str] = None,
         ssc_train: Optional[str] = None,
@@ -123,21 +118,15 @@ class InitTargets:
             )
 
         self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
-        self.deploy_resource_sync_rules = bool(enable_rsync_rules)
         self.instance_name = self._sanitize_k8s_name(instance_name)
         self.instance_description = instance_description
         self.instance_features = parse_feature_kvp_nargs(instance_features, strict=True)
         self.tags = tags
-        self.enable_fault_tolerance = enable_fault_tolerance
 
         # Extensions
         self.ops_config = parse_kvp_nargs(ops_config)
         self.ops_version = ops_version
         self.ops_train = ops_train
-
-        self.acs_config = parse_kvp_nargs(acs_config)
-        self.acs_version = acs_version
-        self.acs_train = acs_train
 
         self.ssc_config = parse_kvp_nargs(ssc_config)
         self.ssc_version = ssc_version
@@ -146,7 +135,6 @@ class InitTargets:
         self.user_trust = user_trust
         self.trust_settings = parse_kvp_nargs(trust_settings)
         self.trust_config = self.get_trust_settings_target_map()
-        self.advanced_config = self.get_advanced_config_target_map()
 
         # Dataflow
         self.dataflow_profile_instances = self._sanitize_int(dataflow_profile_instances)
@@ -213,16 +201,9 @@ class InitTargets:
             param_to_target={
                 "clusterName": self.cluster_name,
                 "trustConfig": self.trust_config,
-                "advancedConfig": self.advanced_config,
             },
             template_blueprint=TEMPLATE_BLUEPRINT_ENABLEMENT,
         )
-
-        acs_config = get_merged_acs_config(
-            enable_fault_tolerance=self.enable_fault_tolerance,
-            acs_config=self.acs_config,
-        )
-        template.content["resources"]["container_storage_extension"]["properties"]["configurationSettings"] = acs_config
 
         base_ssc_config = get_default_ssc_config()
         if self.ssc_config:
@@ -230,8 +211,6 @@ class InitTargets:
         template.content["resources"]["secret_store_extension"]["properties"]["configurationSettings"] = base_ssc_config
 
         for var_attr in [
-            VarAttr(value=self.acs_version, template_key="VERSIONS", moniker="containerStorage"),
-            VarAttr(value=self.acs_train, template_key="TRAINS", moniker="containerStorage"),
             VarAttr(value=self.ssc_version, template_key="VERSIONS", moniker="secretStore"),
             VarAttr(value=self.ssc_train, template_key="TRAINS", moniker="secretStore"),
         ]:
@@ -257,7 +236,6 @@ class InitTargets:
                 "clusterLocation": self.location,
                 "customLocationName": self.custom_location_name,
                 "clExtentionIds": cl_extension_ids,
-                "deployResourceSyncRules": self.deploy_resource_sync_rules,
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "adrNamespaceId": self.adr_namespace_resource_id,
                 "defaultDataflowinstanceCount": self.dataflow_profile_instances,
@@ -387,13 +365,6 @@ class InitTargets:
 
         return processed_config_map
 
-    def get_advanced_config_target_map(self) -> dict:
-        processed_config_map = {}
-        if self.enable_fault_tolerance:
-            processed_config_map["edgeStorageAccelerator"] = {"faultToleranceEnabled": True}
-
-        return processed_config_map
-
     def get_trust_settings_target_map(self) -> dict:
         source = "SelfSigned"
         if self.trust_settings or self.user_trust:
@@ -434,31 +405,6 @@ def del_if_not_in(resources: Dict[str, Dict[str, dict]], include_keys: Set[str])
     for k in list(resources.keys()):
         if k not in include_keys:
             del resources[k]
-
-
-def get_default_acs_config(enable_fault_tolerance: bool = False) -> Dict[str, str]:
-    config = {"edgeStorageConfiguration.create": "true", "feature.diskStorageClass": "default,local-path"}
-    if enable_fault_tolerance:
-        config["feature.diskStorageClass"] = "acstor-arccontainerstorage-storage-pool"
-        config["acstorConfiguration.create"] = "true"
-        config["acstorConfiguration.properties.diskMountPoint"] = "/mnt"
-
-    return config
-
-
-def get_merged_acs_config(
-    enable_fault_tolerance: bool = False, acs_config: Optional[Dict[str, str]] = None
-) -> Dict[str, str]:
-    merged_acs_config = get_default_acs_config(enable_fault_tolerance=enable_fault_tolerance)
-    if acs_config:
-        merged_acs_config.update(acs_config)
-
-    storage_classes = merged_acs_config.get("feature.diskStorageClass")
-    if not storage_classes:
-        raise InvalidArgumentValueError(
-            f"Provided ACS config does not contain a 'feature.diskStorageClass' value:\n\t{merged_acs_config}"
-        )
-    return merged_acs_config
 
 
 def get_default_ssc_config() -> Dict[str, str]:

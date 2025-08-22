@@ -23,7 +23,6 @@ EXPECTED_EXTENSION_RESOURCE_KEYS = frozenset(
         "cluster",
         "aio_platform_extension",
         "secret_store_extension",
-        "container_storage_extension",
     ]
 )
 
@@ -33,8 +32,6 @@ EXPECTED_INSTANCE_RESOURCE_KEYS = frozenset(
         "cluster",
         "aio_extension",
         "customLocation",
-        "aio_syncRule",
-        "deviceRegistry_syncRule",
         "aioInstance",
         "broker",
         "broker_authn",

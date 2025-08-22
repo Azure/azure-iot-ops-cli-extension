@@ -5,13 +5,12 @@
 # ----------------------------------------------------------------------------------------------
 from random import randint
 from typing import Dict, List, Optional
+from unittest.mock import Mock
 
 import pytest
 from azure.cli.core.azclierror import InvalidArgumentValueError
-from unittest.mock import Mock
 
 from azext_edge.edge.providers.orchestration.common import (
-    EXTENSION_TYPE_ACS,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
@@ -21,15 +20,30 @@ from azext_edge.edge.providers.orchestration.targets import (
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
     InitTargets,
-    get_default_acs_config,
     get_insecure_listener,
-    get_merged_acs_config,
     parse_feature_kvp_nargs,
     parse_kvp_nargs,
 )
 
 from ...generators import generate_random_string
-from .resources.conftest import get_resource_id
+from .resources.conftest import ADR_RP, STORAGE_RP, get_resource_id
+
+# Test constants
+DEFAULT_RESOURCE_GROUP = "myresourcegroup"
+DEFAULT_NAMESPACE_PATH = "/namespaces/mynamespace"
+DEFAULT_SCHEMA_REGISTRY_PATH = "/schemaRegistries/myregistry"
+
+# Persistence mode constants
+PERSIST_MODE_ALL = "All"
+PERSIST_MODE_CUSTOM = "Custom"
+PERSIST_MODE_NONE = "None"
+PERSIST_MODE_KEYS = ["stateStore", "retain", "subscriberQueue"]
+
+# Broker config limits
+BROKER_BACKEND_REDUNDANCY_MIN = 2
+BROKER_BACKEND_REDUNDANCY_MAX = 5
+BROKER_WORKERS_MAX = 16
+BROKER_REPLICAS_MAX = 16
 
 
 def build_target_scenario(cluster_name: str, resource_group_name: str, **kwargs):
@@ -49,23 +63,23 @@ def get_trust_settings():
 
 def get_schema_registry_id():
     return get_resource_id(
-        resource_path="/schemaRegistries/myregistry",
+        resource_path=DEFAULT_SCHEMA_REGISTRY_PATH,
         resource_group_name=generate_random_string(),
-        resource_provider="Microsoft.DeviceRegistry",
+        resource_provider=ADR_RP,
     )
 
 
 def get_ns_resource_id(resource_group_name: Optional[str] = None):
     return get_resource_id(
-        resource_path="/namespaces/mynamespace",
+        resource_path=DEFAULT_NAMESPACE_PATH,
         resource_group_name=resource_group_name or generate_random_string(),
-        resource_provider="Microsoft.DeviceRegistry",
+        resource_provider=ADR_RP,
     )
 
 
 K8S_NAME_KEYS = frozenset(["cluster_namespace", "custom_location_name", "instance_name"])
-KEY_CONVERSION_MAP = {"enable_rsync_rules": "deploy_resource_sync_rules"}
-KVP_KEYS = frozenset(["ops_config", "ssc_config", "acs_config", "trust_settings", "persist_mode"])
+KEY_CONVERSION_MAP = {}
+KVP_KEYS = frozenset(["ops_config", "ssc_config", "trust_settings", "persist_mode"])
 ENABLEMENT_PARAM_CONVERSION_MAP = {
     "clusterName": "cluster_name",
     "trustConfig": "trust_config",
@@ -77,7 +91,6 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "clusterNamespace": "cluster_namespace",
     "clusterLocation": "location",
     "customLocationName": "custom_location_name",
-    "deployResourceSyncRules": "deploy_resource_sync_rules",
     "schemaRegistryId": "schema_registry_resource_id",
     "adrNamespaceId": "adr_namespace_resource_id",
     "defaultDataflowinstanceCount": "dataflow_profile_instances",
@@ -88,10 +101,52 @@ INSTANCE_FEATURE_MAP = {"connectors.settings.preview=Enabled": {"connectors": {"
 INSTANCE_FEATURE_ATTR = "instance_features"
 
 
+def assert_parameter_matches_targets(parameters: dict, targets: InitTargets, conversion_map: dict):
+    """Helper to assert that parameters match targets attributes using a conversion map."""
+    for parameter, parameter_value in parameters.items():
+        if parameter == "clExtentionIds":  # Special case
+            continue
+
+        targets_key = conversion_map.get(parameter, parameter)
+        expected_value = getattr(targets, targets_key)
+
+        if "value" in parameter_value:
+            actual_value = parameter_value["value"]
+        else:
+            actual_value = parameter_value
+
+        assert actual_value == expected_value, (
+            f"{parameter} value mismatch with targets {targets_key} value. "
+            f"Expected: {expected_value}, Got: {actual_value}"
+        )
+
+
+def assert_instance_names(template: dict, instance_name: str):
+    """Helper to assert all instance-related names in the template."""
+    expected_names = {
+        "aioInstance": instance_name,
+        "broker": f"{instance_name}/default",
+        "broker_authn": f"{instance_name}/default/default",
+        "broker_listener": f"{instance_name}/default/default",
+        "dataflow_profile": f"{instance_name}/default",
+        "dataflow_endpoint": f"{instance_name}/default",
+    }
+
+    for resource_key, expected_name in expected_names.items():
+        assert template["resources"][resource_key]["name"] == expected_name
+
+    assert template["outputs"]["aio"]["value"]["name"] == instance_name
+
+
 @pytest.mark.parametrize(
     "target_scenario",
     [
-        build_target_scenario(cluster_name=generate_random_string(), resource_group_name=generate_random_string()),
+        # Basic scenario
+        build_target_scenario(
+            cluster_name=generate_random_string(),
+            resource_group_name=generate_random_string(),
+        ),
+        # Scenario with schema registry and custom broker config
         build_target_scenario(
             cluster_name=generate_random_string(),
             resource_group_name=generate_random_string(),
@@ -100,31 +155,39 @@ INSTANCE_FEATURE_ATTR = "instance_features"
             instance_name=generate_random_string(),
             custom_broker_config={generate_random_string(): generate_random_string()},
         ),
+        # Scenario with user trust
         build_target_scenario(
             cluster_name=generate_random_string(),
-            resource_group_name="myresourcegroup",
+            resource_group_name=DEFAULT_RESOURCE_GROUP,
             schema_registry_resource_id=get_schema_registry_id(),
-            adr_namespace_resource_id=get_ns_resource_id("myresourcegroup"),
+            adr_namespace_resource_id=get_ns_resource_id(DEFAULT_RESOURCE_GROUP),
             user_trust=True,
         ),
+        # Scenario with persistence configuration
         build_target_scenario(
             instance_name=generate_random_string(),
             cluster_name=generate_random_string(),
-            resource_group_name="myresourcegroup",
+            resource_group_name=DEFAULT_RESOURCE_GROUP,
             schema_registry_resource_id=get_schema_registry_id(),
-            adr_namespace_resource_id=get_ns_resource_id("myresourcegroup"),
+            adr_namespace_resource_id=get_ns_resource_id(DEFAULT_RESOURCE_GROUP),
             persist_max_size="10Gi",
             persist_pvc_sc=generate_random_string(),
         ),
+        # Scenario with persistence modes
         build_target_scenario(
             instance_name=generate_random_string(),
             cluster_name=generate_random_string(),
-            resource_group_name="myresourcegroup",
+            resource_group_name=DEFAULT_RESOURCE_GROUP,
             schema_registry_resource_id=get_schema_registry_id(),
-            adr_namespace_resource_id=get_ns_resource_id("myresourcegroup"),
+            adr_namespace_resource_id=get_ns_resource_id(DEFAULT_RESOURCE_GROUP),
             persist_max_size="10Gi",
-            persist_mode=["stateStore=All", "retain=Custom", "subscriberQueue=None"],
+            persist_mode=[
+                f"stateStore={PERSIST_MODE_ALL}",
+                f"retain={PERSIST_MODE_CUSTOM}",
+                f"subscriberQueue={PERSIST_MODE_NONE}",
+            ],
         ),
+        # Full configuration scenario
         build_target_scenario(
             cluster_name=generate_random_string(),
             resource_group_name=generate_random_string(),
@@ -132,40 +195,38 @@ INSTANCE_FEATURE_ATTR = "instance_features"
             cluster_namespace=generate_random_string(),
             location=generate_random_string(),
             custom_location_name=generate_random_string(),
-            enable_rsync_rules=True,
             instance_name=generate_random_string(),
             instance_description=generate_random_string(),
             tags={generate_random_string(): generate_random_string()},
-            enable_fault_tolerance=True,
             ops_config=[f"{generate_random_string()}={generate_random_string()}"],
             ops_version=generate_random_string(),
             ops_train=generate_random_string(),
             dataflow_profile_instances=randint(1, 10),
             broker_memory_profile=generate_random_string(),
             broker_backend_partitions=randint(1, 10),
-            broker_backend_workers=randint(1, 10),
-            broker_backend_redundancy_factor=randint(2, 5),
-            broker_frontend_workers=randint(1, 10),
-            broker_frontend_replicas=randint(1, 10),
+            broker_backend_workers=randint(1, BROKER_WORKERS_MAX),
+            broker_backend_redundancy_factor=randint(BROKER_BACKEND_REDUNDANCY_MIN, BROKER_BACKEND_REDUNDANCY_MAX),
+            broker_frontend_workers=randint(1, BROKER_WORKERS_MAX),
+            broker_frontend_replicas=randint(1, BROKER_REPLICAS_MAX),
             add_insecure_listener=True,
             trust_settings=get_trust_settings(),
             instance_features=["connectors.settings.preview=Enabled"],
         ),
+        # SSC configuration scenario
         build_target_scenario(
             cluster_name=generate_random_string(),
             resource_group_name=generate_random_string(),
             ssc_config=[f"{generate_random_string()}={generate_random_string()}"],
             ssc_version=generate_random_string(),
             ssc_train=generate_random_string(),
-            acs_config=[f"{generate_random_string()}={generate_random_string()}"],
-            acs_version=generate_random_string(),
-            acs_train=generate_random_string(),
         ),
     ],
 )
 def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
+    """Test InitTargets initialization and template generation with various scenarios."""
     targets = InitTargets(**target_scenario)
 
+    # Verify target initialization
     for scenario_key in target_scenario:
         targets_key = scenario_key
         if scenario_key in K8S_NAME_KEYS:
@@ -183,13 +244,7 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
             target_scenario[scenario_key] == targets_value
         ), f"{scenario_key} input mismatch with equivalent targets {targets_key} value."
 
-    expected_acs_config = {"edgeStorageConfiguration.create": "true", "feature.diskStorageClass": "default,local-path"}
-    if target_scenario.get("enable_fault_tolerance"):
-        assert targets.advanced_config == {"edgeStorageAccelerator": {"faultToleranceEnabled": True}}
-        expected_acs_config["feature.diskStorageClass"] = "acstor-arccontainerstorage-storage-pool"
-        expected_acs_config["acstorConfiguration.create"] = "true"
-        expected_acs_config["acstorConfiguration.properties.diskMountPoint"] = "/mnt"
-
+    # Test enablement template
     enablement_template, enablement_parameters = targets.get_ops_enablement_template()
     verify_trust_config(
         target_scenario=target_scenario,
@@ -197,13 +252,7 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
         template=enablement_template,
     )
 
-    for parameter in enablement_parameters:
-        targets_key = parameter
-        if parameter in ENABLEMENT_PARAM_CONVERSION_MAP:
-            targets_key = ENABLEMENT_PARAM_CONVERSION_MAP[parameter]
-        assert enablement_parameters[parameter]["value"] == getattr(
-            targets, targets_key
-        ), f"{parameter} value mismatch with targets {targets_key} value."
+    assert_parameter_matches_targets(enablement_parameters, targets, ENABLEMENT_PARAM_CONVERSION_MAP)
 
     assert_version_attr(
         variables=enablement_template["variables"],
@@ -223,23 +272,10 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
         settings=ssc_config_settings, expected_base_config=expected_ssc_config, custom_config=targets.ssc_config
     )
 
-    assert_version_attr(
-        variables=enablement_template["variables"],
-        key="containerStorage",
-        train=targets.acs_train,
-        version=targets.acs_version,
-    )
-
-    acs_config_settings = enablement_template["resources"]["container_storage_extension"]["properties"][
-        "configurationSettings"
-    ]
-    assert_extension_config(
-        settings=acs_config_settings, expected_base_config=expected_acs_config, custom_config=targets.acs_config
-    )
-
+    # Test instance template
     extension_ids = [generate_random_string(), generate_random_string()]
-
     instance_template, instance_parameters = targets.get_ops_instance_template(extension_ids)
+
     verify_trust_config(
         target_scenario=target_scenario,
         parameters=instance_parameters,
@@ -261,36 +297,29 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
         for c in targets.ops_config:
             assert aio_config_settings[c] == targets.ops_config[c]
 
+    # Verify extension IDs parameter
+    assert instance_parameters["clExtentionIds"]["value"] == extension_ids
+
+    # Verify other parameters
     for parameter in instance_parameters:
         if parameter == "clExtentionIds":
-            assert instance_parameters[parameter]["value"] == extension_ids
             continue
-        targets_key = parameter
-        if parameter in INSTANCE_PARAM_CONVERSION_MAP:
-            targets_key = INSTANCE_PARAM_CONVERSION_MAP[parameter]
+        targets_key = INSTANCE_PARAM_CONVERSION_MAP.get(parameter, parameter)
         assert instance_parameters[parameter]["value"] == getattr(
             targets, targets_key
         ), f"{parameter} value mismatch with targets {targets_key} value."
 
-    assert instance_template["resources"]["aioInstance"]["properties"]["description"] == targets.instance_description
-
-    assert instance_template["resources"]["aioInstance"]["properties"]["schemaRegistryRef"] == {
-        "resourceId": "[parameters('schemaRegistryId')]"
-    }
-
-    assert instance_template["resources"]["aioInstance"]["properties"]["features"] == targets.instance_features
+    # Verify instance properties
+    aio_instance = instance_template["resources"]["aioInstance"]
+    assert aio_instance["properties"]["description"] == targets.instance_description
+    assert aio_instance["properties"]["schemaRegistryRef"] == {"resourceId": "[parameters('schemaRegistryId')]"}
+    assert aio_instance["properties"]["features"] == targets.instance_features
 
     if targets.tags:
-        assert instance_template["resources"]["aioInstance"]["tags"] == targets.tags
+        assert aio_instance["tags"] == targets.tags
 
     if targets.instance_name:
-        assert instance_template["resources"]["aioInstance"]["name"] == targets.instance_name
-        assert instance_template["resources"]["broker"]["name"] == f"{targets.instance_name}/default"
-        assert instance_template["resources"]["broker_authn"]["name"] == f"{targets.instance_name}/default/default"
-        assert instance_template["resources"]["broker_listener"]["name"] == f"{targets.instance_name}/default/default"
-        assert instance_template["resources"]["dataflow_profile"]["name"] == f"{targets.instance_name}/default"
-        assert instance_template["resources"]["dataflow_endpoint"]["name"] == f"{targets.instance_name}/default"
-        assert instance_template["outputs"]["aio"]["value"]["name"] == targets.instance_name
+        assert_instance_names(instance_template, targets.instance_name)
 
     if targets.custom_broker_config:
         assert instance_template["resources"]["broker"]["properties"] == targets.custom_broker_config
@@ -302,44 +331,55 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
 
 
 def verify_broker_config(target_scenario: dict, parameters: dict):
-    assert "serviceType" not in parameters["brokerConfig"]["value"]
-    for target_pair in [
+    """Verify broker configuration parameters match the target scenario."""
+    broker_config = parameters["brokerConfig"]["value"]
+    assert "serviceType" not in broker_config
+
+    # Map of target scenario keys to broker config keys
+    broker_config_mapping = [
         ("broker_frontend_replicas", "frontendReplicas"),
         ("broker_frontend_workers", "frontendWorkers"),
         ("broker_backend_redundancy_factor", "backendRedundancyFactor"),
         ("broker_backend_workers", "backendWorkers"),
         ("broker_backend_partitions", "backendPartitions"),
         ("broker_memory_profile", "memoryProfile"),
-    ]:
-        if target_pair[0] in target_scenario:
-            assert parameters["brokerConfig"]["value"][target_pair[1]] == target_scenario[target_pair[0]]
+    ]
 
+    for target_key, broker_key in broker_config_mapping:
+        if target_key in target_scenario:
+            assert broker_config[broker_key] == target_scenario[target_key]
+
+    # Check persistence configuration
     if "persist_max_size" not in target_scenario:
-        assert "persistence" not in parameters["brokerConfig"]["value"]
+        assert "persistence" not in broker_config
         return
 
-    explicit_mode_keys = {"stateStore": False, "retain": False, "subscriberQueue": False}
-    assert parameters["brokerConfig"]["value"]["persistence"]["maxSize"] == target_scenario["persist_max_size"]
+    persistence = broker_config["persistence"]
+    assert persistence["maxSize"] == target_scenario["persist_max_size"]
 
     if "persist_pvc_sc" in target_scenario:
-        assert parameters["brokerConfig"]["value"]["persistence"]["persistentVolumeClaimSpec"] == {
+        assert persistence["persistentVolumeClaimSpec"] == {
             "storageClassName": target_scenario["persist_pvc_sc"],
             "accessModes": ["ReadWriteOncePod"],
         }
 
+    # Check persistence modes
+    explicit_mode_keys = {key: False for key in PERSIST_MODE_KEYS}
+
     if "persist_mode" in target_scenario:
         for k, v in target_scenario["persist_mode"].items():
             expected_payload = {"mode": v}
-            if v == "Custom":
+            if v == PERSIST_MODE_CUSTOM:
                 expected_payload[k + "Settings"] = {"dynamic": {"mode": "Enabled"}}
 
-            assert parameters["brokerConfig"]["value"]["persistence"][k] == expected_payload
+            assert persistence[k] == expected_payload
             explicit_mode_keys[k] = True
 
-    for k in explicit_mode_keys:
-        if not explicit_mode_keys[k]:
-            assert parameters["brokerConfig"]["value"]["persistence"][k] == {
-                "mode": "Custom",
+    # Set default for unspecified modes
+    for k, was_set in explicit_mode_keys.items():
+        if not was_set:
+            assert persistence[k] == {
+                "mode": PERSIST_MODE_CUSTOM,
                 k + "Settings": {"dynamic": {"mode": "Enabled"}},
             }
 
@@ -369,16 +409,19 @@ def verify_trust_config(target_scenario: dict, parameters: dict, template: Optio
 
 
 def test_get_extension_versions():
+
     def _assert_version_map(extension_types: List[str], version_map: dict):
         for ext_type in extension_types:
             moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
-            assert version_map[moniker]["version"]
-            assert version_map[moniker]["train"]
+            if moniker == "containerStorage":
+                continue
+            assert version_map[moniker]["version"], f"Missing version for {moniker}"
+            assert version_map[moniker]["train"], f"Missing train for {moniker}"
         assert len(extension_types) == len(version_map)
 
     targets = InitTargets(generate_random_string(), generate_random_string())
     enablement_version_map = targets.get_extension_versions()
-    enablement_types = [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_ACS, EXTENSION_TYPE_SSC]
+    enablement_types = [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
     _assert_version_map(enablement_types, enablement_version_map)
 
     create_version_map = targets.get_extension_versions(False)
@@ -418,63 +461,19 @@ def assert_version_attr(
 
 
 @pytest.mark.parametrize(
-    "enable_fault_tolerance",
-    [True, False],
-)
-@pytest.mark.parametrize(
-    "acs_config",
-    [
-        None,
-        {"test": generate_random_string()},
-        {"feature.diskStorageClass": "default,local-path"},
-        {"feature.diskStorageClass": ""},
-    ],
-)
-def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optional[List[str]]):
-    targets = InitTargets(generate_random_string(), generate_random_string())
-    targets.enable_fault_tolerance = enable_fault_tolerance
-    targets.acs_config = acs_config
-
-    if (
-        acs_config
-        and acs_config.get("feature.diskStorageClass") is not None
-        and not acs_config.get("feature.diskStorageClass")
-    ):
-        with pytest.raises(
-            InvalidArgumentValueError,
-            match=r"^Provided ACS config does not contain a 'feature.diskStorageClass' value:",
-        ):
-            get_merged_acs_config(acs_config=acs_config, enable_fault_tolerance=enable_fault_tolerance)
-    else:
-        result = get_merged_acs_config(
-            acs_config=acs_config,
-            enable_fault_tolerance=enable_fault_tolerance,
-        )
-
-        default_config = get_default_acs_config(enable_fault_tolerance=enable_fault_tolerance)
-        for key in [
-            "edgeStorageConfiguration.create",
-            "feature.diskStorageClass",
-            "acstorConfiguration.create",
-            "acstorConfiguration.properties.diskMountPoint",
-            "test",
-        ]:
-            assert result.get(key) == (
-                acs_config.get(key, default_config.get(key)) if acs_config else default_config.get(key)
-            )
-
-
-@pytest.mark.parametrize(
     "target_scenario, expected_error",
     [
+        # Broker redundancy factor below minimum
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
                 resource_group_name=generate_random_string(),
                 broker_backend_redundancy_factor=1,
             ),
-            "backendRedundancyFactor value range min:2 max:5",
+            f"backendRedundancyFactor value range min:{BROKER_BACKEND_REDUNDANCY_MIN} "
+            f"max:{BROKER_BACKEND_REDUNDANCY_MAX}",
         ),
+        # Multiple broker config values out of range
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
@@ -483,10 +482,12 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
                 broker_frontend_replicas=20,
                 broker_backend_workers=20,
             ),
-            "frontendReplicas value range min:1 max:16\n"
-            "backendRedundancyFactor value range min:2 max:5\n"
-            "backendWorkers value range min:1 max:16",
+            f"frontendReplicas value range min:1 max:{BROKER_REPLICAS_MAX}\n"
+            f"backendRedundancyFactor value range min:{BROKER_BACKEND_REDUNDANCY_MIN} "
+            f"max:{BROKER_BACKEND_REDUNDANCY_MAX}\n"
+            f"backendWorkers value range min:1 max:{BROKER_WORKERS_MAX}",
         ),
+        # Persistence mode without max size
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
@@ -495,6 +496,7 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
             ),
             "Provide a persist max size value to enable and customize broker disk persistence.",
         ),
+        # Invalid persistence mode key
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
@@ -502,8 +504,9 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
                 persist_max_size="10Gi",
                 persist_mode=["a=b", "c=d"],
             ),
-            "Invalid persistence mode key: a. Valid keys are ['stateStore', 'retain', 'subscriberQueue'].",
+            f"Invalid persistence mode key: a. Valid keys are {PERSIST_MODE_KEYS}.",
         ),
+        # Invalid persistence mode value
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
@@ -511,8 +514,10 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
                 persist_max_size="10Gi",
                 persist_mode=["stateStore=All", "retain=d"],
             ),
-            "Invalid persistence mode value: d. Valid values are ['None', 'All', 'Custom'].",
+            "Invalid persistence mode value: d. "
+            f"Valid values are ['{PERSIST_MODE_NONE}', '{PERSIST_MODE_ALL}', '{PERSIST_MODE_CUSTOM}'].",
         ),
+        # Malformed schema registry resource ID
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
@@ -523,6 +528,7 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
             "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers"
             "/Microsoft.Provider/{resourceType}/{resourceName}",
         ),
+        # Malformed namespace resource ID
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
@@ -534,21 +540,23 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
             "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers"
             "/Microsoft.Provider/{resourceType}/{resourceName}",
         ),
+        # Wrong resource type for schema registry
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
                 resource_group_name=generate_random_string(),
                 schema_registry_resource_id=get_resource_id(
-                    resource_provider="Microsoft.Storage",
+                    resource_provider=STORAGE_RP,
                     resource_group_name=generate_random_string(),
                     resource_path="/storageAccounts/mystorageaccount",
                 ),
                 adr_namespace_resource_id=get_ns_resource_id(
-                    resource_group_name="myresourcegroup",
+                    resource_group_name=DEFAULT_RESOURCE_GROUP,
                 ),
             ),
-            "--sr-resource-id value must be of type Microsoft.DeviceRegistry/schemaRegistries.",
+            f"--sr-resource-id value must be of type {ADR_RP}/schemaRegistries.",
         ),
+        # Namespace resource group mismatch
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
@@ -558,24 +566,24 @@ def test_get_merged_acs_config(enable_fault_tolerance: bool, acs_config: Optiona
             ),
             "--ns-resource-id value must match the resource group 'instancegroup'.",
         ),
+        # Wrong resource type for namespace
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
-                resource_group_name="myresourcegroup",
+                resource_group_name=DEFAULT_RESOURCE_GROUP,
                 schema_registry_resource_id=get_schema_registry_id(),
                 adr_namespace_resource_id=get_resource_id(
-                    resource_provider="Microsoft.Storage",
-                    resource_group_name="myresourcegroup",
+                    resource_provider=STORAGE_RP,
+                    resource_group_name=DEFAULT_RESOURCE_GROUP,
                     resource_path="/storageAccounts/mystorageaccount",
                 ),
             ),
-            "--ns-resource-id value must be of type Microsoft.DeviceRegistry/namespaces.",
+            f"--ns-resource-id value must be of type {ADR_RP}/namespaces.",
         ),
     ],
 )
 def test_broker_config_limits(target_scenario: dict, expected_error: str):
-    with pytest.raises(
-        InvalidArgumentValueError,
-    ) as e:
+    """Test validation of broker configuration limits and resource ID formats."""
+    with pytest.raises(InvalidArgumentValueError) as e:
         InitTargets(**target_scenario)
     assert str(e.value) == expected_error

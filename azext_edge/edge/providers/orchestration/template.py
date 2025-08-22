@@ -48,19 +48,25 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="44725e657ec5f4810f33fe8efad2420991264ddb",
+    commit_id="56a4778575c48cf904033f2c51658f94d7f80e85",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.36.177.2456", "templateHash": "14056350168558676608"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "4019226582561119826"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
                 "properties": {
                     "platform": {
+                        "type": "object",
+                        "properties": {
+                            "version": {"type": "string", "nullable": True},
+                            "train": {"type": "string", "nullable": True},
+                        },
+                        "nullable": True,
+                    },
+                    "certManager": {
                         "type": "object",
                         "properties": {
                             "version": {"type": "string", "nullable": True},
@@ -171,6 +177,11 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "$ref": "#/definitions/_1.BrokerPersistence",
                         "nullable": True,
                         "metadata": {"description": "The persistence settings of the Broker."},
+                    },
+                    "logsLevel": {
+                        "type": "string",
+                        "nullable": True,
+                        "metadata": {"description": 'The AIO Broker logging level. The default is "info".'},
                     },
                 },
                 "metadata": {"__bicep_imported_from!": {"sourceTemplate": "types.bicep"}},
@@ -587,12 +598,8 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"platform": "0.7.25", "secretStore": "0.10.0", "containerStorage": "2.6.0"},
-            "TRAINS": {"platform": "preview", "secretStore": "preview", "containerStorage": "stable"},
-            "faultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'acstor-arccontainerstorage-storage-pool')]",
-            "nonFaultTolerantStorageClass": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskStorageClass'), 'default,local-path')]",
-            "diskStorageClass": "[if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), variables('faultTolerantStorageClass'), variables('nonFaultTolerantStorageClass'))]",
-            "diskMountPoint": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'diskMountPoint'), '/mnt')]",
+            "VERSIONS": {"platform": "0.7.25", "secretStore": "0.10.0"},
+            "TRAINS": {"platform": "preview", "secretStore": "preview"},
         },
         "resources": {
             "cluster": {
@@ -602,20 +609,19 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                 "name": "[parameters('clusterName')]",
             },
             "aio_platform_extension": {
+                "condition": "[equals(parameters('trustConfig').source, 'SelfSigned')]",
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
                 "name": "azure-iot-operations-platform",
+                "identity": {"type": "SystemAssigned"},
                 "properties": {
                     "extensionType": "microsoft.iotoperations.platform",
-                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'platform'), 'version'), variables('VERSIONS').platform)]",
-                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'platform'), 'train'), variables('TRAINS').platform)]",
+                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'certManager'), 'train'), variables('TRAINS').platform)]",
+                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'certManager'), 'version'), variables('VERSIONS').platform)]",
                     "autoUpgradeMinorVersion": False,
                     "scope": {"cluster": {"releaseNamespace": "cert-manager"}},
-                    "configurationSettings": {
-                        "installCertManager": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), 'true', 'false')]",
-                        "installTrustManager": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), 'true', 'false')]",
-                    },
+                    "configurationSettings": {"AgentOperationTimeoutInMinutes": "20"},
                 },
             },
             "secret_store_extension": {
@@ -636,21 +642,6 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                 },
                 "dependsOn": ["aio_platform_extension"],
             },
-            "container_storage_extension": {
-                "type": "Microsoft.KubernetesConfiguration/extensions",
-                "apiVersion": "2023-05-01",
-                "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "azure-arc-containerstorage",
-                "identity": {"type": "SystemAssigned"},
-                "properties": {
-                    "extensionType": "microsoft.arc.containerstorage",
-                    "autoUpgradeMinorVersion": False,
-                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'version'), variables('VERSIONS').containerStorage)]",
-                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'train'), variables('TRAINS').containerStorage)]",
-                    "configurationSettings": "[union(createObject('edgeStorageConfiguration.create', 'true', 'feature.diskStorageClass', variables('diskStorageClass')), if(equals(tryGet(tryGet(parameters('advancedConfig'), 'edgeStorageAccelerator'), 'faultToleranceEnabled'), true()), createObject('acstorConfiguration.create', 'true', 'acstorConfiguration.properties.diskMountPoint', variables('diskMountPoint')), createObject()))]",
-                },
-                "dependsOn": ["aio_platform_extension"],
-            },
         },
         "outputs": {
             "clExtensionIds": {
@@ -663,23 +654,17 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "extensions": {
                 "type": "object",
                 "value": {
-                    "platform": {
-                        "name": "azure-iot-operations-platform",
-                        "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations-platform')]",
-                        "version": "[reference('aio_platform_extension').version]",
-                        "releaseTrain": "[reference('aio_platform_extension').releaseTrain]",
+                    "certManager": {
+                        "name": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), 'azure-iot-operations-platform', null())]",
+                        "id": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations-platform'), null())]",
+                        "version": "[tryGet(if(equals(parameters('trustConfig').source, 'SelfSigned'), reference('aio_platform_extension', '2023-05-01', 'full'), null()), 'properties', 'version')]",
+                        "releaseTrain": "[tryGet(if(equals(parameters('trustConfig').source, 'SelfSigned'), reference('aio_platform_extension', '2023-05-01', 'full'), null()), 'properties', 'releaseTrain')]",
                     },
                     "secretStore": {
                         "name": "azure-secret-store",
                         "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-secret-store')]",
                         "version": "[reference('secret_store_extension').version]",
                         "releaseTrain": "[reference('secret_store_extension').releaseTrain]",
-                    },
-                    "containerStorage": {
-                        "name": "azure-arc-containerstorage",
-                        "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-arc-containerstorage')]",
-                        "version": "[reference('container_storage_extension').version]",
-                        "releaseTrain": "[reference('container_storage_extension').releaseTrain]",
                     },
                 },
             },
@@ -688,19 +673,27 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="44725e657ec5f4810f33fe8efad2420991264ddb",
+    commit_id="56a4778575c48cf904033f2c51658f94d7f80e85",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.36.177.2456", "templateHash": "4962265220030072831"}
+            "_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "10430822169445088933"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
                 "properties": {
                     "platform": {
+                        "type": "object",
+                        "properties": {
+                            "version": {"type": "string", "nullable": True},
+                            "train": {"type": "string", "nullable": True},
+                        },
+                        "nullable": True,
+                    },
+                    "certManager": {
                         "type": "object",
                         "properties": {
                             "version": {"type": "string", "nullable": True},
@@ -811,6 +804,11 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                         "$ref": "#/definitions/_1.BrokerPersistence",
                         "nullable": True,
                         "metadata": {"description": "The persistence settings of the Broker."},
+                    },
+                    "logsLevel": {
+                        "type": "string",
+                        "nullable": True,
+                        "metadata": {"description": 'The AIO Broker logging level. The default is "info".'},
                     },
                 },
                 "metadata": {"__bicep_imported_from!": {"sourceTemplate": "types.bicep"}},
@@ -1278,26 +1276,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "clusterName": {"type": "string"},
             "clusterNamespace": {"type": "string", "defaultValue": "azure-iot-operations"},
             "clusterLocation": {"type": "string", "defaultValue": "[resourceGroup().location]"},
-            "kubernetesDistro": {
-                "type": "string",
-                "defaultValue": "K8s",
-                "allowedValues": ["K3s", "K8s", "MicroK8s"],
-                "metadata": {
-                    "deprecated": "This parameter is not used anymore.",
-                    "description": "The Kubernetes distro to run AIO on. The default is k8s.",
-                },
-            },
-            "containerRuntimeSocket": {
-                "type": "string",
-                "defaultValue": "",
-                "metadata": {
-                    "deprecated": "This parameter is not used anymore.",
-                    "description": "The default node path of the container runtime socket. The default is empty.\nIf it's empty, socket path is determined by param kubernetesDistro.\n",
-                },
-            },
             "customLocationName": {"type": "string", "nullable": True},
             "clExtentionIds": {"type": "array", "items": {"type": "string"}},
-            "deployResourceSyncRules": {"type": "bool", "defaultValue": False},
             "aioInstanceName": {"type": "string", "nullable": True},
             "userAssignedIdentity": {"type": "string", "nullable": True},
             "schemaRegistryId": {"type": "string"},
@@ -1309,8 +1289,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.2.36"},
-            "TRAINS": {"iotOperations": "preview"},
+            "VERSIONS": {"iotOperations": "1.2.64"},
+            "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
@@ -1333,6 +1313,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "memoryProfile": "[coalesce(tryGet(parameters('brokerConfig'), 'memoryProfile'), 'Medium')]",
                 "serviceType": "[coalesce(tryGet(parameters('brokerConfig'), 'serviceType'), 'ClusterIp')]",
                 "persistence": "[tryGet(parameters('brokerConfig'), 'persistence')]",
+                "logsLevel": "[coalesce(tryGet(parameters('brokerConfig'), 'logsLevel'), 'info')]",
             },
             "defaultAioConfigurationSettings": {
                 "AgentOperationTimeoutInMinutes": "120",
@@ -1388,48 +1369,6 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 },
                 "dependsOn": ["aio_extension"],
             },
-            "aio_syncRule": {
-                "condition": "[parameters('deployResourceSyncRules')]",
-                "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
-                "apiVersion": "2021-08-31-preview",
-                "name": "[format('{0}/{1}', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))), format('{0}-aio-sync', parameters('customLocationName')))]",
-                "location": "[parameters('clusterLocation')]",
-                "properties": {
-                    "priority": 400,
-                    "selector": {
-                        "matchExpressions": [
-                            {
-                                "key": "management.azure.com/provider-name",
-                                "operator": "In",
-                                "values": ["Microsoft.IoTOperations", "microsoft.iotoperations"],
-                            }
-                        ]
-                    },
-                    "targetResourceGroup": "[resourceGroup().id]",
-                },
-                "dependsOn": ["customLocation"],
-            },
-            "deviceRegistry_syncRule": {
-                "condition": "[parameters('deployResourceSyncRules')]",
-                "type": "Microsoft.ExtendedLocation/customLocations/resourceSyncRules",
-                "apiVersion": "2021-08-31-preview",
-                "name": "[format('{0}/{1}', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))), format('{0}-adr-sync', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH')))))]",
-                "location": "[parameters('clusterLocation')]",
-                "properties": {
-                    "priority": 200,
-                    "selector": {
-                        "matchExpressions": [
-                            {
-                                "key": "management.azure.com/provider-name",
-                                "operator": "In",
-                                "values": ["Microsoft.DeviceRegistry", "microsoft.deviceregistry"],
-                            }
-                        ]
-                    },
-                    "targetResourceGroup": "[resourceGroup().id]",
-                },
-                "dependsOn": ["aio_syncRule", "customLocation"],
-            },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
                 "apiVersion": "2025-07-01-preview",
@@ -1465,6 +1404,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                         },
                     },
                     "persistence": "[tryGet(variables('BROKER_CONFIG'), 'persistence')]",
+                    "diagnostics": {"logs": {"level": "[variables('BROKER_CONFIG').logsLevel]"}},
                 },
                 "dependsOn": ["aioInstance", "customLocation"],
             },
@@ -1573,11 +1513,6 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "value": {
                     "id": "[resourceId('Microsoft.ExtendedLocation/customLocations', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))))]",
                     "name": "[coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH')))]",
-                    "resourceSyncRulesEnabled": "[parameters('deployResourceSyncRules')]",
-                    "resourceSyncRules": [
-                        "[format('{0}-adr-sync', coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH'))))]",
-                        "[format('{0}-aio-sync', parameters('customLocationName'))]",
-                    ],
                 },
             },
         },

@@ -494,32 +494,13 @@ def assert_exception(expected_exc_meta: ExceptionMeta, call_func: Callable, call
     [
         build_target_scenario(),
         build_target_scenario(
-            cluster_properties={"totalNodeCount": 3},
-            enableFaultTolerance=True,
-        ),
-        build_target_scenario(
             trust={"userTrust": True},
-        ),
-        build_target_scenario(
-            cluster_properties={"totalNodeCount": 3},
-            enableFaultTolerance=True,
-            trust={"userTrust": True},
-            check_cluster=True,
         ),
         build_target_scenario(
             cluster_properties={"connectivityStatus": "Disconnected"},
             raises=ExceptionMeta(
                 exc_type=ValidationError,
                 exc_msg="connectivityStatus is not Connected.",
-            ),
-            omit_http_methods=frozenset([responses.PUT, responses.POST]),
-        ),
-        build_target_scenario(
-            cluster_properties={"totalNodeCount": 1},
-            enableFaultTolerance=True,
-            raises=ExceptionMeta(
-                exc_type=ValidationError,
-                exc_msg="Arc Container Storage fault tolerance enablement requires at least 3 nodes.",
             ),
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
@@ -554,8 +535,6 @@ def test_iot_ops_init(
         "cluster_name": target_scenario["cluster"]["name"],
         "resource_group_name": target_scenario["resourceGroup"],
     }
-    if target_scenario["enableFaultTolerance"]:
-        init_call_kwargs["enable_fault_tolerance"] = target_scenario["enableFaultTolerance"]
     if target_scenario["trust"]["userTrust"]:
         init_call_kwargs["user_trust"] = target_scenario["trust"]["userTrust"]
 
@@ -615,15 +594,9 @@ def assert_init_deployment_body(body_str: str, target_scenario: dict):
         expected_trust_config = {"source": "CustomerManaged"}
     assert parameters["trustConfig"]["value"] == expected_trust_config
 
-    expected_advanced_config = {}
-    if target_scenario["enableFaultTolerance"]:
-        expected_advanced_config["edgeStorageAccelerator"] = {"faultToleranceEnabled": True}
-    assert parameters["advancedConfig"]["value"] == expected_advanced_config
-
 
 def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: dict):
     check_cluster = target_scenario.get("check_cluster")
-    enable_fault_tolerance = target_scenario.get("enableFaultTolerance")
 
     mock_validate_prechecks = mock_prechecks["validate_cluster_prechecks"]
     mock_check_k8s_version = mock_prechecks["check_k8s_version"]
@@ -633,7 +606,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
     assert mock_validate_prechecks.call_count == (1 if check_cluster else 0)
     assert mock_check_k8s_version.call_count == (1 if check_cluster else 0)
     assert mock_check_nodes.call_count == (1 if check_cluster else 0)
-    assert mock_check_storage_classes.call_count == (1 if check_cluster and not enable_fault_tolerance else 0)
+    assert mock_check_storage_classes.call_count == 0
 
 
 @pytest.mark.parametrize(
@@ -700,27 +673,19 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
         build_target_scenario(
-            omit_extension_types=frozenset([EXTENSION_TYPE_PLATFORM]),
+            omit_extension_types=frozenset([EXTENSION_TYPE_SSC]),
             raises=ExceptionMeta(
                 exc_type=ValidationError,
                 exc_msg=(
                     "Foundational service(s) not detected on the cluster:\n\n"
-                    f"{EXTENSION_TYPE_PLATFORM}"
+                    f"{EXTENSION_TYPE_SSC}"
                     "\n\nInstance deployment will not continue. Please run 'az iot ops init'."
                 ),
             ),
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
         build_target_scenario(
-            extension_config_settings={
-                EXTENSION_TYPE_PLATFORM: {
-                    "properties": {
-                        "extensionType": EXTENSION_TYPE_PLATFORM,
-                        "provisioningState": PROVISIONING_STATE_SUCCESS,
-                        "configurationSettings": {"installCertManager": "false"},
-                    }
-                },
-            },
+            omit_extension_types=frozenset([EXTENSION_TYPE_PLATFORM]),
             raises=ExceptionMeta(
                 exc_type=ValidationError,
                 exc_msg=(
@@ -731,16 +696,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
         build_target_scenario(
-            extension_config_settings={
-                EXTENSION_TYPE_PLATFORM: {
-                    "id": generate_random_string(),
-                    "properties": {
-                        "extensionType": EXTENSION_TYPE_PLATFORM,
-                        "provisioningState": PROVISIONING_STATE_SUCCESS,
-                        "configurationSettings": {"installCertManager": "false"},
-                    },
-                },
-            },
+            omit_extension_types=frozenset([EXTENSION_TYPE_PLATFORM]),
             trust={
                 "settings": [
                     "configMapName=example-bundle",
@@ -751,16 +707,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             },
         ),
         build_target_scenario(
-            extension_config_settings={
-                EXTENSION_TYPE_PLATFORM: {
-                    "id": generate_random_string(),
-                    "properties": {
-                        "extensionType": EXTENSION_TYPE_PLATFORM,
-                        "provisioningState": PROVISIONING_STATE_SUCCESS,
-                        "configurationSettings": {"installCertManager": "false"},
-                    },
-                },
-            },
+            omit_extension_types=frozenset([EXTENSION_TYPE_PLATFORM]),
             trust={
                 "settings": [
                     "configMapName=example-bundle",
@@ -871,18 +818,12 @@ def test_iot_ops_create(
         create_call_kwargs["location"] = target_scenario["cluster"]["location"]
     if target_scenario["customLocation"]["name"]:
         create_call_kwargs["custom_location_name"] = target_scenario["customLocation"]["name"]
-    if target_scenario["enableRsyncRules"] is not None:
-        create_call_kwargs["enable_rsync_rules"] = bool(target_scenario["enableRsyncRules"])
     if target_scenario["instance"]["description"]:
         create_call_kwargs["instance_description"] = target_scenario["instance"]["description"]
     if target_scenario["dataflow"]["profileInstances"]:
         create_call_kwargs["dataflow_profile_instances"] = target_scenario["dataflow"]["profileInstances"]
     if target_scenario["trust"]["settings"]:
         create_call_kwargs["trust_settings"] = target_scenario["trust"]["settings"]
-    if target_scenario["akri"]["containerRuntimeSocket"]:
-        create_call_kwargs["container_runtime_socket"] = target_scenario["akri"]["containerRuntimeSocket"]
-    if target_scenario["akri"]["kubernetesDistro"]:
-        create_call_kwargs["kubernetes_distro"] = target_scenario["akri"]["kubernetesDistro"]
 
     instance_features = target_scenario.get("instance_features")
     if instance_features:
@@ -975,7 +916,7 @@ def assert_create_displays(spy_work_displays: Dict[str, Mock], target_scenario: 
 
 def get_expected_keys_for(phase: InstancePhase) -> Tuple[Set[str], Set[str]]:
     ext_keys = {"cluster", "aio_extension"}
-    instance_keys = ext_keys.union({"customLocation", "aio_syncRule", "deviceRegistry_syncRule", "aioInstance"})
+    instance_keys = ext_keys.union({"customLocation", "aioInstance"})
     resource_keys = instance_keys.union(
         {"broker", "broker_authn", "broker_listener", "dataflow_profile", "dataflow_endpoint"}
     )
@@ -1024,8 +965,9 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
     assert set(parameters["clExtentionIds"]["value"]) == cl_extension_ids
     assert parameters["schemaRegistryId"]["value"] == target_scenario["schemaRegistry"]["id"]
     assert parameters["adrNamespaceId"]["value"] == target_scenario["adrNamespace"]["id"]
-    assert parameters["deployResourceSyncRules"]["value"] == bool(target_scenario["enableRsyncRules"])
 
+    # TODO - eventually delete.
+    assert "deployResourceSyncRules" not in parameters
     assert "kubernetesDistro" not in parameters
     assert "containerRuntimeSocket" not in parameters
 

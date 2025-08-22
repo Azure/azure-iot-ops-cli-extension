@@ -22,10 +22,12 @@ from azext_edge.edge.providers.orchestration.resources.schema_registries import 
     STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID,
 )
 from azext_edge.edge.providers.orchestration.rp_namespace import ADR_PROVIDER
-from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion
 
 from ....generators import generate_random_string
 from .conftest import (
+    ADR_API_VERSION,
+    ADR_RP,
+    STORAGE_RP,
     ZEROED_SUBSCRIPTION,
     get_authz_endpoint_pattern,
     get_base_endpoint,
@@ -33,24 +35,19 @@ from .conftest import (
     get_resource_id,
 )
 
-SCHEMA_REGISTRY_RP = "Microsoft.DeviceRegistry"
-SCHEMA_REGISTRY_RP_API_VERSION = DeviceRegistryMgmtApiVersion.V20250701_preview.value
-STORAGE_RP = "Microsoft.Storage"
 STORAGE_API_VERSION = "2023-05-01"
 RESOURCES_API_VERSION = "2024-03-01"
 
 
-def get_schema_registry_endpoint(
-    resource_group_name: Optional[str] = None, registry_name: Optional[str] = None
-) -> str:
+def get_schema_registry_endpoint(resource_group_name: Optional[str] = None, registry_name: Optional[str] = None) -> str:
     resource_path = "/schemaRegistries"
     if registry_name:
         resource_path += f"/{registry_name}"
     return get_base_endpoint(
         resource_group_name=resource_group_name,
         resource_path=resource_path,
-        resource_provider=SCHEMA_REGISTRY_RP,
-        api_version=SCHEMA_REGISTRY_RP_API_VERSION,
+        resource_provider=ADR_RP,
+        api_version=ADR_API_VERSION,
     )
 
 
@@ -77,7 +74,7 @@ def get_storage_endpoint(resource_group_name: str, account_name: str) -> str:
 def get_mock_schema_registery_record(name: str, resource_group_name: str, location: Optional[str] = None) -> dict:
     record = get_mock_resource(
         name=name,
-        resource_provider=SCHEMA_REGISTRY_RP,
+        resource_provider=ADR_RP,
         resource_path=f"/schemaRegistries/{name}",
         location=location,
         identity={
@@ -143,9 +140,7 @@ def test_schema_registry_show(mocked_cmd, mocked_responses: responses):
         status=200,
         content_type="application/json",
     )
-    result = show_registry(
-        cmd=mocked_cmd, schema_registry_name=registery_name, resource_group_name=resource_group_name
-    )
+    result = show_registry(cmd=mocked_cmd, schema_registry_name=registery_name, resource_group_name=resource_group_name)
 
     assert result == mock_schema_registry_record
     assert len(mocked_responses.calls) == 1

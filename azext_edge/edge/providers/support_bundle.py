@@ -155,6 +155,7 @@ def build_bundle(
             OpsServiceType.schemaregistry.value,
             OpsServiceType.connectors.value,
             OpsServiceType.meso.value,
+            OpsServiceType.arccontainerstorage.value,  # No longer required.
         ]:
             expected_api_version = api_info["apis"].as_str()
             logger.warning(

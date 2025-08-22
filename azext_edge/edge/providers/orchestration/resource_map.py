@@ -159,8 +159,8 @@ class IoTOperationsResourceMap:
             for cl in custom_locations:
                 cl_node = root_cl_node.add(cl.display_name)
                 resource_sync_rules = self.get_resource_sync_rules(cl.resource_id)
-                rsr_node = cl_node.add(f"[{category_color}]resourceSyncRules")
                 if resource_sync_rules:
+                    rsr_node = cl_node.add(f"[{category_color}]resourceSyncRules")
                     [rsr_node.add(rsr.display_name) for rsr in resource_sync_rules]
 
                 resource_node = cl_node.add(f"[{category_color}]resources")

@@ -27,10 +27,10 @@ from azext_edge.edge.providers.orchestration.base import verify_arc_cluster_conf
 
 from ...util.az_client import (
     DeviceRegistryMgmtApiVersion,
+    get_api_error_str,
     get_resource_client,
     parse_resource_id,
     wait_for_terminal_state,
-    get_api_error_str,
 )
 from ...util.common import insert_newlines
 from .common import (
@@ -45,7 +45,7 @@ from .common import (
 from .permissions import ROLE_DEF_FORMAT_STR, PermissionManager, PrincipalType
 from .resource_map import IoTOperationsResourceMap
 from .resources.custom_locations import CustomLocations
-from .targets import InitTargets, InstancePhase, get_merged_acs_config
+from .targets import InitTargets, InstancePhase
 
 logger = get_logger(__name__)
 
@@ -209,22 +209,20 @@ class WorkManager:
         if not self._targets.location:
             self._targets.location = cluster["location"]
 
-        if self._targets.enable_fault_tolerance and cluster_properties["totalNodeCount"] < 3:
-            raise ValidationError("Arc Container Storage fault tolerance enablement requires at least 3 nodes.")
-
     def _process_extension_dependencies(self):
         missing_exts = []
         bad_provisioning_state = []
         dependencies = self.ops_extension_dependencies
-        for ext in dependencies:
-            ext_attr = dependencies.get(ext)
+        for ext_type in dependencies:
+            ext_attr = dependencies.get(ext_type, {})
             if not ext_attr:
-                missing_exts.append(ext)
+                if ext_type != EXTENSION_TYPE_PLATFORM:  # Missing platform is not a failure.
+                    missing_exts.append(ext_type)
                 continue
 
-            ext_provisioning_state: str = ext_attr.get("properties", {}).get("provisioningState")
+            ext_provisioning_state: str = ext_attr.get("properties", {}).get("provisioningState", "")
             if ext_provisioning_state.lower() != PROVISIONING_STATE_SUCCESS.lower():
-                bad_provisioning_state.append(ext)
+                bad_provisioning_state.append(ext_type)
 
         if missing_exts:
             raise ValidationError(
@@ -241,8 +239,8 @@ class WorkManager:
             )
 
         # validate trust config in platform extension matches trust settings in create
-        platform_extension_config = dependencies[EXTENSION_TYPE_PLATFORM]["properties"]["configurationSettings"]
-        is_user_trust = platform_extension_config.get("installCertManager", "").lower() != "true"
+        platform_extension_config = dependencies.get(EXTENSION_TYPE_PLATFORM, {})
+        is_user_trust = not platform_extension_config
         if is_user_trust and not self._targets.trust_settings:
             raise ValidationError(
                 "Cluster was enabled with user-managed trust configuration, "
@@ -355,7 +353,6 @@ class WorkManager:
 
     def _do_work(self):
         from .host import verify_cli_client_connections
-        from .permissions import verify_write_permission_against_rg
         from .rp_namespace import register_providers
 
         try:
@@ -376,11 +373,6 @@ class WorkManager:
                 )
 
                 # WorkStepKey.ENUMERATE_PRE_FLIGHT
-                if self._targets.deploy_resource_sync_rules and self._targets.instance_name:
-                    # TODO - @digimaun use permission manager after fixing check access issue
-                    verify_write_permission_against_rg(
-                        subscription_id=self.subscription_id, resource_group_name=self._targets.resource_group_name
-                    )
                 if self._check_cluster:
                     cluster_check_kwargs = self._build_cluster_check_kwargs()
                     # TODO - load_config_context should be moved down to functions that directly call it
@@ -681,15 +673,6 @@ class WorkManager:
         # Storage space check is currently not run on init
         cluster_check_kwargs["storage_space_check"] = False
 
-        # Check ACS config unless fault tolerance is enabled
-        cluster_check_kwargs["acs_config"] = (
-            get_merged_acs_config(
-                enable_fault_tolerance=self._targets.enable_fault_tolerance,
-                acs_config=self._targets.acs_config,
-            )
-            if not self._targets.enable_fault_tolerance
-            else None
-        )
         return cluster_check_kwargs
 
     def _raise_if_ops_deployed(self):
