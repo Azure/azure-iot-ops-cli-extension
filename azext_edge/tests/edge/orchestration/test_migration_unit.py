@@ -223,6 +223,17 @@ def mock_console(mocker) -> Mock:
     return mocker.patch("azext_edge.edge.providers.orchestration.migration.console")
 
 
+def verify_correlation_id(
+    migration_request,
+    mock_logger: Mock,
+    expected_correlation_id: str,
+) -> None:
+    """Verify correlation ID is properly set in headers and logged."""
+    assert migration_request.headers["x-ms-correlation-request-id"] == expected_correlation_id
+    assert migration_request.headers["CommandName"] == "iot ops migrate-assets"
+    mock_logger.debug.assert_called_with(f"Migration correlation Id: {expected_correlation_id}")
+
+
 @pytest.mark.parametrize(
     "name_patterns, asset_names, expected_count",
     [
@@ -251,11 +262,17 @@ def mock_console(mocker) -> Mock:
 def test_migrate_assets_filtering(
     mocked_cmd,
     mocked_responses: responses,
+    mocker,
     name_patterns: Optional[List[str]],
     asset_names: List[str],
     expected_count: int,
 ):
     """Test asset migration with various filtering scenarios."""
+    mock_logger = mocker.patch("azext_edge.edge.providers.orchestration.migration.logger")
+    mock_uuid = mocker.patch("azext_edge.edge.providers.orchestration.migration.uuid4")
+    mock_correlation_id = "test-correlation-id-5678"
+    mock_uuid.return_value = mock_correlation_id
+
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
     namespace_name = generate_random_string()
@@ -291,6 +308,8 @@ def test_migrate_assets_filtering(
         request_body = json.loads(migration_request.body)
         assert set(request_body["resourceIds"]) == set(expected_ids)
         assert request_body["scope"] == "Resources"
+
+        verify_correlation_id(migration_request, mock_logger, mock_correlation_id)
     else:
         assert result is None
 
@@ -299,9 +318,15 @@ def test_migrate_assets_filtering(
 def test_migrate_assets_scale(
     mocked_cmd,
     mocked_responses: responses,
+    mocker,
     asset_count: int,
 ):
     """Test migration with different numbers of assets."""
+    mock_logger = mocker.patch("azext_edge.edge.providers.orchestration.migration.logger")
+    mock_uuid = mocker.patch("azext_edge.edge.providers.orchestration.migration.uuid4")
+    mock_correlation_id = "test-correlation-id-scale"
+    mock_uuid.return_value = mock_correlation_id
+
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
     namespace_name = generate_random_string()
@@ -333,6 +358,8 @@ def test_migrate_assets_scale(
     request_body = json.loads(migration_request.body)
     assert len(request_body["resourceIds"]) == asset_count
 
+    verify_correlation_id(migration_request, mock_logger, mock_correlation_id)
+
 
 @pytest.mark.parametrize(
     "confirm_yes, user_continues, should_migrate",
@@ -357,6 +384,10 @@ def test_user_confirmation(
         "azext_edge.edge.providers.orchestration.migration.should_continue_prompt",
         return_value=prompt_return,
     )
+    mock_logger = mocker.patch("azext_edge.edge.providers.orchestration.migration.logger")
+    mock_uuid = mocker.patch("azext_edge.edge.providers.orchestration.migration.uuid4")
+    mock_correlation_id = "test-correlation-id-1234"
+    mock_uuid.return_value = mock_correlation_id
 
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
@@ -386,8 +417,11 @@ def test_user_confirmation(
 
     # Verify console output only when prompting
     if not confirm_yes:
-        assert mock_console.print.call_count == 2
+        assert mock_console.print.call_count == 3
         mock_console.print_json.assert_called_once_with(data=[a["id"] for a in assets])
+
+        correlation_id_text = f"Migration correlation Id: {mock_correlation_id}"
+        mock_console.print.assert_any_call(correlation_id_text)
     else:
         mock_console.print.assert_not_called()
         mock_console.print_json.assert_not_called()
@@ -396,6 +430,9 @@ def test_user_confirmation(
     assert (result is not None) == should_migrate
     if should_migrate:
         assert result["status"] == "Succeeded"
+
+        migration_request = mocked_responses.calls[-1].request
+        verify_correlation_id(migration_request, mock_logger, mock_correlation_id)
 
 
 def test_no_assets_in_instance(

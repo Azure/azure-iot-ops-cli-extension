@@ -6,6 +6,7 @@
 
 from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Optional
+from uuid import uuid4
 
 from azure.cli.core.azclierror import (
     ValidationError,
@@ -90,17 +91,25 @@ class AssetMigrationManager(Queryable):
             logger.warning("No root assets to migrate found.")
             return
 
+        correlation_id = str(uuid4())
+        correlation_id_text = f"Migration correlation Id: {correlation_id}"
         if not confirm_yes:
             console.print(f"The following {len(resource_ids)} asset resource Id(s) will be migrated:")
             console.print_json(data=resource_ids)
             console.print("Post migration - unreferenced endpoint profiles can be deleted.")
+            console.print(correlation_id_text)
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes, context="Migration")
         if should_bail:
             return
 
+        headers = {"x-ms-correlation-request-id": correlation_id, "CommandName": "iot ops migrate-assets"}
         payload = {"resourceIds": resource_ids, "scope": "Resources"}
         with console.status("Working..."):
+            logger.debug(correlation_id_text)
             poller = self.ops.begin_migrate(
-                resource_group_name=parsed_ns_id["resource_group"], namespace_name=parsed_ns_id["name"], body=payload
+                resource_group_name=parsed_ns_id["resource_group"],
+                namespace_name=parsed_ns_id["name"],
+                body=payload,
+                headers=headers,
             )
             return wait_for_terminal_state(poller, **kwargs)
