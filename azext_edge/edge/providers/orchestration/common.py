@@ -72,11 +72,6 @@ class ClusterConnectStatus(Enum):
     CONNECTED = "Connected"
 
 
-class MqMode(Enum):
-    auto = "auto"
-    distributed = "distributed"
-
-
 class MqMemoryProfile(Enum):
     tiny = "Tiny"
     low = "Low"

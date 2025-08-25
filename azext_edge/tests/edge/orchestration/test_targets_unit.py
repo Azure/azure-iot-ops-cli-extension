@@ -93,7 +93,7 @@ INSTANCE_PARAM_CONVERSION_MAP = {
     "customLocationName": "custom_location_name",
     "schemaRegistryId": "schema_registry_resource_id",
     "adrNamespaceId": "adr_namespace_resource_id",
-    "defaultDataflowinstanceCount": "dataflow_profile_instances",
+    "defaultDataflowInstanceCount": "dataflow_profile_instances",
     "brokerConfig": "broker_config",
     "trustConfig": "trust_config",
 }
@@ -126,10 +126,10 @@ def assert_instance_names(template: dict, instance_name: str):
     expected_names = {
         "aioInstance": instance_name,
         "broker": f"{instance_name}/default",
-        "broker_authn": f"{instance_name}/default/default",
-        "broker_listener": f"{instance_name}/default/default",
-        "dataflow_profile": f"{instance_name}/default",
-        "dataflow_endpoint": f"{instance_name}/default",
+        "brokerAuthn": f"{instance_name}/default/default",
+        "brokerListener": f"{instance_name}/default/default",
+        "dataflowProfile": f"{instance_name}/default",
+        "dataflowEndpoint": f"{instance_name}/default",
     }
 
     for resource_key, expected_name in expected_names.items():
@@ -265,7 +265,7 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
         "rotationPollIntervalInSeconds": "120",
         "validatingAdmissionPolicies.applyPolicies": "false",
     }
-    ssc_config_settings = enablement_template["resources"]["secret_store_extension"]["properties"][
+    ssc_config_settings = enablement_template["resources"]["secretStoreExtension"]["properties"][
         "configurationSettings"
     ]
     assert_extension_config(
@@ -298,11 +298,11 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
             assert aio_config_settings[c] == targets.ops_config[c]
 
     # Verify extension IDs parameter
-    assert instance_parameters["clExtentionIds"]["value"] == extension_ids
+    assert instance_parameters["clExtensionIds"]["value"] == extension_ids
 
     # Verify other parameters
     for parameter in instance_parameters:
-        if parameter == "clExtentionIds":
+        if parameter == "clExtensionIds":
             continue
         targets_key = INSTANCE_PARAM_CONVERSION_MAP.get(parameter, parameter)
         assert instance_parameters[parameter]["value"] == getattr(
@@ -325,7 +325,7 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
         assert instance_template["resources"]["broker"]["properties"] == targets.custom_broker_config
 
     if targets.add_insecure_listener:
-        assert instance_template["resources"]["broker_listener_insecure"] == get_insecure_listener(
+        assert instance_template["resources"]["brokerListenerInsecure"] == get_insecure_listener(
             targets.instance_name, "default"
         )
 

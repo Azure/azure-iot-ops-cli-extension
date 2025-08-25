@@ -48,12 +48,12 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="56a4778575c48cf904033f2c51658f94d7f80e85",
+    commit_id="94459eeabc0401d2b1056576abc1bde3b0c3c563",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "4019226582561119826"}},
+        "metadata": {"_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "2096840755032832432"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -608,7 +608,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                 "apiVersion": "2021-03-01",
                 "name": "[parameters('clusterName')]",
             },
-            "aio_platform_extension": {
+            "aioPlatformExtension": {
                 "condition": "[equals(parameters('trustConfig').source, 'SelfSigned')]",
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
@@ -624,7 +624,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "configurationSettings": {"AgentOperationTimeoutInMinutes": "20"},
                 },
             },
-            "secret_store_extension": {
+            "secretStoreExtension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
@@ -640,7 +640,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "validatingAdmissionPolicies.applyPolicies": "false",
                     },
                 },
-                "dependsOn": ["aio_platform_extension"],
+                "dependsOn": ["aioPlatformExtension"],
             },
         },
         "outputs": {
@@ -657,14 +657,14 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "certManager": {
                         "name": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), 'azure-iot-operations-platform', null())]",
                         "id": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations-platform'), null())]",
-                        "version": "[tryGet(if(equals(parameters('trustConfig').source, 'SelfSigned'), reference('aio_platform_extension', '2023-05-01', 'full'), null()), 'properties', 'version')]",
-                        "releaseTrain": "[tryGet(if(equals(parameters('trustConfig').source, 'SelfSigned'), reference('aio_platform_extension', '2023-05-01', 'full'), null()), 'properties', 'releaseTrain')]",
+                        "version": "[tryGet(if(equals(parameters('trustConfig').source, 'SelfSigned'), reference('aioPlatformExtension', '2023-05-01', 'full'), null()), 'properties', 'version')]",
+                        "releaseTrain": "[tryGet(if(equals(parameters('trustConfig').source, 'SelfSigned'), reference('aioPlatformExtension', '2023-05-01', 'full'), null()), 'properties', 'releaseTrain')]",
                     },
                     "secretStore": {
                         "name": "azure-secret-store",
                         "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-secret-store')]",
-                        "version": "[reference('secret_store_extension').version]",
-                        "releaseTrain": "[reference('secret_store_extension').releaseTrain]",
+                        "version": "[reference('secretStoreExtension').version]",
+                        "releaseTrain": "[reference('secretStoreExtension').releaseTrain]",
                     },
                 },
             },
@@ -673,13 +673,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="56a4778575c48cf904033f2c51658f94d7f80e85",
+    commit_id="94459eeabc0401d2b1056576abc1bde3b0c3c563",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "10430822169445088933"}
+            "_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "10088347106316803436"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -1277,7 +1277,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "clusterNamespace": {"type": "string", "defaultValue": "azure-iot-operations"},
             "clusterLocation": {"type": "string", "defaultValue": "[resourceGroup().location]"},
             "customLocationName": {"type": "string", "nullable": True},
-            "clExtentionIds": {"type": "array", "items": {"type": "string"}},
+            "clExtensionIds": {"type": "array", "items": {"type": "string"}},
             "aioInstanceName": {"type": "string", "nullable": True},
             "userAssignedIdentity": {"type": "string", "nullable": True},
             "schemaRegistryId": {"type": "string"},
@@ -1285,11 +1285,11 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "features": {"$ref": "#/definitions/_1.Features", "nullable": True},
             "brokerConfig": {"$ref": "#/definitions/_1.BrokerConfig", "nullable": True},
             "trustConfig": {"$ref": "#/definitions/_1.TrustConfig", "defaultValue": {"source": "SelfSigned"}},
-            "defaultDataflowinstanceCount": {"type": "int", "defaultValue": 1},
+            "defaultDataflowInstanceCount": {"type": "int", "defaultValue": 1},
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.2.64"},
+            "VERSIONS": {"iotOperations": "1.2.67"},
             "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
@@ -1341,7 +1341,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "apiVersion": "2021-03-01",
                 "name": "[parameters('clusterName')]",
             },
-            "aio_extension": {
+            "aioExtension": {
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
@@ -1365,9 +1365,9 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "hostResourceId": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
                     "namespace": "[parameters('clusterNamespace')]",
                     "displayName": "[coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH')))]",
-                    "clusterExtensionIds": "[flatten(createArray(parameters('clExtentionIds'), createArray(extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))))))]",
+                    "clusterExtensionIds": "[flatten(createArray(parameters('clExtensionIds'), createArray(extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))))))]",
                 },
-                "dependsOn": ["aio_extension"],
+                "dependsOn": ["aioExtension"],
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
@@ -1408,7 +1408,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 },
                 "dependsOn": ["aioInstance", "customLocation"],
             },
-            "broker_authn": {
+            "brokerAuthn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
                 "apiVersion": "2025-07-01-preview",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
@@ -1425,7 +1425,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 },
                 "dependsOn": ["broker", "customLocation"],
             },
-            "broker_listener": {
+            "brokerListener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
                 "apiVersion": "2025-07-01-preview",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
@@ -1450,17 +1450,17 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                         }
                     ],
                 },
-                "dependsOn": ["broker", "broker_authn", "customLocation"],
+                "dependsOn": ["broker", "brokerAuthn", "customLocation"],
             },
-            "dataflow_profile": {
+            "dataflowProfile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
                 "apiVersion": "2025-07-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
-                "properties": {"instanceCount": "[parameters('defaultDataflowinstanceCount')]"},
+                "properties": {"instanceCount": "[parameters('defaultDataflowInstanceCount')]"},
                 "dependsOn": ["aioInstance", "customLocation"],
             },
-            "dataflow_endpoint": {
+            "dataflowEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
                 "apiVersion": "2025-07-01-preview",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
@@ -1490,10 +1490,10 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "value": {
                     "name": "[format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX'))]",
                     "id": "[extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', format('azure-iot-operations-{0}', variables('AIO_EXTENSION_SUFFIX')))]",
-                    "version": "[reference('aio_extension').version]",
-                    "releaseTrain": "[reference('aio_extension').releaseTrain]",
+                    "version": "[reference('aioExtension').version]",
+                    "releaseTrain": "[reference('aioExtension').releaseTrain]",
                     "config": {"trustConfig": "[parameters('trustConfig')]"},
-                    "identityPrincipalId": "[reference('aio_extension', '2023-05-01', 'full').identity.principalId]",
+                    "identityPrincipalId": "[reference('aioExtension', '2023-05-01', 'full').identity.principalId]",
                 },
             },
             "aio": {

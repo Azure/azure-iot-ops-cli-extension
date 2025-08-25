@@ -39,7 +39,7 @@ class InstancePhase(IntEnum):
 
 
 PHASE_KEY_MAP: Dict[str, Set[str]] = {
-    InstancePhase.EXT: {"cluster", "aio_extension"},
+    InstancePhase.EXT: {"cluster", "aioExtension"},
     InstancePhase.INSTANCE: {"aioInstance"},
 }
 
@@ -208,7 +208,7 @@ class InitTargets:
         base_ssc_config = get_default_ssc_config()
         if self.ssc_config:
             base_ssc_config.update(self.ssc_config)
-        template.content["resources"]["secret_store_extension"]["properties"]["configurationSettings"] = base_ssc_config
+        template.content["resources"]["secretStoreExtension"]["properties"]["configurationSettings"] = base_ssc_config
 
         for var_attr in [
             VarAttr(value=self.ssc_version, template_key="VERSIONS", moniker="secretStore"),
@@ -235,10 +235,10 @@ class InitTargets:
                 "clusterNamespace": self.cluster_namespace,
                 "clusterLocation": self.location,
                 "customLocationName": self.custom_location_name,
-                "clExtentionIds": cl_extension_ids,
+                "clExtensionIds": cl_extension_ids,
                 "schemaRegistryId": self.schema_registry_resource_id,
                 "adrNamespaceId": self.adr_namespace_resource_id,
-                "defaultDataflowinstanceCount": self.dataflow_profile_instances,
+                "defaultDataflowInstanceCount": self.dataflow_profile_instances,
                 "brokerConfig": self.broker_config,
                 "trustConfig": self.trust_config,
             },
@@ -257,10 +257,10 @@ class InitTargets:
 
         instance = template.get_resource_by_key("aioInstance")
         broker = template.get_resource_by_key("broker")
-        broker_authn = template.get_resource_by_key("broker_authn")
-        broker_listener = template.get_resource_by_key("broker_listener")
-        dataflow_profile = template.get_resource_by_key("dataflow_profile")
-        dataflow_endpoint = template.get_resource_by_key("dataflow_endpoint")
+        broker_authn = template.get_resource_by_key("brokerAuthn")
+        broker_listener = template.get_resource_by_key("brokerListener")
+        dataflow_profile = template.get_resource_by_key("dataflowProfile")
+        dataflow_endpoint = template.get_resource_by_key("dataflowEndpoint")
 
         instance["properties"] = get_default_instance_config(
             description=self.instance_description,
@@ -287,7 +287,7 @@ class InitTargets:
 
         if self.add_insecure_listener:
             template.add_resource(
-                resource_key="broker_listener_insecure",
+                resource_key="brokerListenerInsecure",
                 resource_def=get_insecure_listener(instance_name=self.instance_name, broker_name=DEFAULT_BROKER),
             )
 

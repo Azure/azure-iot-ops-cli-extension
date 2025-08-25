@@ -21,8 +21,8 @@ from ...generators import generate_random_string
 EXPECTED_EXTENSION_RESOURCE_KEYS = frozenset(
     [
         "cluster",
-        "aio_platform_extension",
-        "secret_store_extension",
+        "aioPlatformExtension",
+        "secretStoreExtension",
     ]
 )
 
@@ -30,14 +30,14 @@ EXPECTED_EXTENSION_RESOURCE_KEYS = frozenset(
 EXPECTED_INSTANCE_RESOURCE_KEYS = frozenset(
     [
         "cluster",
-        "aio_extension",
+        "aioExtension",
         "customLocation",
         "aioInstance",
         "broker",
-        "broker_authn",
-        "broker_listener",
-        "dataflow_profile",
-        "dataflow_endpoint",
+        "brokerAuthn",
+        "brokerListener",
+        "dataflowProfile",
+        "dataflowEndpoint",
     ]
 )
 
@@ -58,6 +58,7 @@ def test_enablement_template():
 
     for key in EXPECTED_EXTENSION_RESOURCE_KEYS:
         assert key in TEMPLATE_BLUEPRINT_ENABLEMENT.content["resources"]
+    assert len(EXPECTED_EXTENSION_RESOURCE_KEYS) == len(TEMPLATE_BLUEPRINT_ENABLEMENT.content["resources"])
 
     for definition in EXPECTED_SHARED_DEFINITION_KEYS:
         assert TEMPLATE_BLUEPRINT_ENABLEMENT.get_type_definition(definition)["properties"]
@@ -69,6 +70,7 @@ def test_instance_template():
 
     for key in EXPECTED_INSTANCE_RESOURCE_KEYS:
         assert key in TEMPLATE_BLUEPRINT_INSTANCE.content["resources"]
+    assert len(EXPECTED_INSTANCE_RESOURCE_KEYS) == len(TEMPLATE_BLUEPRINT_INSTANCE.content["resources"])
 
     assert not TEMPLATE_BLUEPRINT_INSTANCE.get_resource_by_key("doesnotexist")["properties"]
     for definition in EXPECTED_SHARED_DEFINITION_KEYS:

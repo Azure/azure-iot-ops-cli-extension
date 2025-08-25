@@ -915,10 +915,10 @@ def assert_create_displays(spy_work_displays: Dict[str, Mock], target_scenario: 
 
 
 def get_expected_keys_for(phase: InstancePhase) -> Tuple[Set[str], Set[str]]:
-    ext_keys = {"cluster", "aio_extension"}
+    ext_keys = {"cluster", "aioExtension"}
     instance_keys = ext_keys.union({"customLocation", "aioInstance"})
     resource_keys = instance_keys.union(
-        {"broker", "broker_authn", "broker_listener", "dataflow_profile", "dataflow_endpoint"}
+        {"broker", "brokerAuthn", "brokerListener", "dataflowProfile", "dataflowEndpoint"}
     )
     if phase == InstancePhase.EXT:
         return ext_keys, {}
@@ -962,7 +962,7 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
             if ext["properties"]["extensionType"] in [EXTENSION_TYPE_SSC]
         ]
     )
-    assert set(parameters["clExtentionIds"]["value"]) == cl_extension_ids
+    assert set(parameters["clExtensionIds"]["value"]) == cl_extension_ids
     assert parameters["schemaRegistryId"]["value"] == target_scenario["schemaRegistry"]["id"]
     assert parameters["adrNamespaceId"]["value"] == target_scenario["adrNamespace"]["id"]
 
@@ -972,7 +972,7 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
     assert "containerRuntimeSocket" not in parameters
 
     expected_profile_instances = target_scenario.get("dataflow", {}).get("profileInstances") or 1
-    assert parameters["defaultDataflowinstanceCount"]["value"] == expected_profile_instances
+    assert parameters["defaultDataflowInstanceCount"]["value"] == expected_profile_instances
 
     broker_config = {
         "frontendReplicas": 2,
@@ -1035,10 +1035,10 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
 
     if phase in [InstancePhase.RESOURCES]:
         assert resources["broker"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}"
-        assert resources["broker_authn"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_AUTHN}"
+        assert resources["brokerAuthn"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_AUTHN}"
         assert (
-            resources["broker_listener"]["name"]
+            resources["brokerListener"]["name"]
             == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
         )
-        assert resources["dataflow_profile"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_PROFILE}"
-        assert resources["dataflow_endpoint"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_ENDPOINT}"
+        assert resources["dataflowProfile"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_PROFILE}"
+        assert resources["dataflowEndpoint"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_ENDPOINT}"

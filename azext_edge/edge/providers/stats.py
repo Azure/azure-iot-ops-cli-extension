@@ -6,7 +6,7 @@
 
 import binascii
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 from azure.cli.core.azclierror import ResourceNotFoundError
@@ -225,7 +225,7 @@ def _determine_root_span(message_dict: dict) -> Tuple[str, str, Union[datetime, 
 
                     if "startTimeUnixNano" in root_span:
                         timestamp_unix_nano = root_span["startTimeUnixNano"]
-                        timestamp = datetime.utcfromtimestamp(float(timestamp_unix_nano) / 1e9)
+                        timestamp = datetime.fromtimestamp(float(timestamp_unix_nano) / 1e9, tz=timezone.utc)
 
                     # determine resource name
                     resource = resource_span.get("resource", {})
