@@ -470,14 +470,20 @@ def migrate_assets(
     resource_group_name: str,
     name_patterns: Optional[list[str]] = None,
     confirm_yes: Optional[bool] = None,
+    adr_sp_oid: Optional[str] = None,
+    skip_role_assignments: Optional[bool] = None,
     **kwargs,
 ) -> dict:
     from .providers.orchestration.migration import AssetMigrationManager
 
-    return AssetMigrationManager(cmd).migrate_to_namespace(
+    return AssetMigrationManager(
+        cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
+    ).migrate_to_namespace(
         name_patterns=name_patterns,
         confirm_yes=confirm_yes,
+        adr_sp_oid=adr_sp_oid,
+        skip_adr_ra=skip_role_assignments,
         **kwargs,
     )

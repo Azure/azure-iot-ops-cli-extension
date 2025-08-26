@@ -1877,3 +1877,10 @@ def load_iotops_arguments(self, _):
             help="Space-separated glob-style patterns to match asset names. "
             "'*' or '?' or '[...]' can be used.",
         )
+        context.argument(
+            "adr_sp_oid",
+            options_list=["--adr-sp-oid"],
+            help="Provide an explicit Device Registry service principal OID for the custom location role assignment. "
+            "This is useful if the logged-in principal does not have permission to query apps from MS Graph.",
+            arg_group="Role Assignment",
+        )

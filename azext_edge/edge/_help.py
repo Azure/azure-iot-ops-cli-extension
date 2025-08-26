@@ -2677,6 +2677,11 @@ def load_iotops_help():
 
           For glob-style pattern matching via --name-pattern, '*' or '?' or '[...]' can be used.
 
+          By default the command will check if the Device Registry service principal has the
+          `Azure Kubernetes Service Arc Contributor` built-in role against the custom location
+          associated with the instance, applying the role if needed. This can be skipped with
+          the `--skip-ra` flag.
+
         examples:
         - name: Migrate all root assets associated with the instance.
           text: >
