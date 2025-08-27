@@ -2689,9 +2689,9 @@ def load_iotops_help():
         - name: Migrate specific assets associated with the instance.
           text: >
             az iot ops migrate-assets -n myinstance --resource-group myresourcegroup
-            --name-pattern asset1 asset2 asset3
+            --pattern asset1 asset2 asset3
         - name: Migrate assets associated with the instance that match glob-style patterns.
           text: >
             az iot ops migrate-assets -n myinstance --resource-group myresourcegroup
-            --name-pattern asset-p1-* asset-eng?-01
+            --pattern asset-p1-* asset-eng?-01
     """

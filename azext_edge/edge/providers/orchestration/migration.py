@@ -42,7 +42,7 @@ logger = get_logger(__name__)
 
 
 class AssetMigrationManager(Queryable):
-    def __init__(self, cmd, resource_group_name: str, instance_name: str):
+    def __init__(self, cmd, instance_name: str, resource_group_name: str):
         super().__init__(cmd=cmd)
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(subscription_id=self.default_subscription_id)
         self.ops: "NamespacesOperations" = self.deviceregistry_mgmt_client.namespaces
