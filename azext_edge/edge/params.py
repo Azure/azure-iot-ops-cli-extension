@@ -143,12 +143,14 @@ def load_iotops_arguments(self, _):
             options_list=["--custom-role-id"],
             help="Fully qualified role definition Id in the following format: "
             "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}.",
+            arg_group="Role Assignment",
         )
         context.argument(
             "skip_role_assignments",
             options_list=["--skip-ra"],
             arg_type=get_three_state_flag(),
             help="When used the role assignment step of the operation will be skipped.",
+            arg_group="Role Assignment",
         )
 
     with self.argument_context("iot ops identity") as context:
@@ -1871,9 +1873,15 @@ def load_iotops_arguments(self, _):
     with self.argument_context("iot ops migrate-assets") as context:
         context.argument(
             "name_patterns",
-            options_list=["--name-pattern", "-p"],
+            options_list=["--pattern", "-p"],
             nargs="+",
             action="extend",
-            help="Space-separated glob-style patterns to match asset names. "
-            "'*' or '?' or '[...]' can be used.",
+            help="Space-separated glob-style patterns to match asset names. '*' or '?' or '[...]' can be used.",
+        )
+        context.argument(
+            "adr_sp_oid",
+            options_list=["--adr-sp-oid"],
+            help="Provide an explicit Device Registry service principal OID for the custom location role assignment. "
+            "This is useful if the logged-in principal does not have permission to query apps from MS Graph.",
+            arg_group="Role Assignment",
         )

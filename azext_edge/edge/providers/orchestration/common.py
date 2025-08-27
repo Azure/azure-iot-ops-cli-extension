@@ -10,9 +10,13 @@ from enum import Enum
 ARM_ENDPOINT = "https://management.azure.com/"
 MCR_ENDPOINT = "https://mcr.microsoft.com/"
 
+# App IDs
 CUSTOM_LOCATIONS_RP_APP_ID = "bc313c14-388c-4e7d-a58e-70017303ee3b"
+ADR_RP_APP_ID = "6ce3f5ab-5f16-4633-a660-21ceb8d74c01"
 
+# Role IDs
 CONTRIBUTOR_ROLE_ID = "b24988ac-6180-42a0-ab88-20f7382dd24c"
+KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID = "5d3f1697-4507-4d08-bb4a-477695db5f82"
 
 EXTENDED_LOCATION_ROLE_BINDING = "AzureArc-Microsoft.ExtendedLocation-RP-RoleBinding"
 ARC_CONFIG_MAP = "azure-clusterconfig"
