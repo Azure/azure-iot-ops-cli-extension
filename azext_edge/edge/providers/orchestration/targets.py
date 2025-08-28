@@ -116,6 +116,10 @@ class InitTargets:
             custom_location_name = get_default_cl_name(
                 resource_group_name=resource_group_name, cluster_name=cluster_name, namespace=cluster_namespace
             )
+        else:
+            # We need to do this because the RP doesnt :)
+            if len(custom_location_name) > 63:
+                raise InvalidArgumentValueError("Custom location name must be 63 characters or less.")
 
         self.custom_location_name = self._sanitize_k8s_name(custom_location_name)
         self.instance_name = self._sanitize_k8s_name(instance_name)

@@ -4,11 +4,12 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 from random import randint
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from unittest.mock import Mock
 
 import pytest
 from azure.cli.core.azclierror import InvalidArgumentValueError
+from contextlib import nullcontext
 
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_OPS,
@@ -27,6 +28,9 @@ from azext_edge.edge.providers.orchestration.targets import (
 
 from ...generators import generate_random_string
 from .resources.conftest import ADR_RP, STORAGE_RP, get_resource_id
+
+ExpectedExc = Optional[Union[type[Exception], tuple[type[Exception], ...]]]
+
 
 # Test constants
 DEFAULT_RESOURCE_GROUP = "myresourcegroup"
@@ -587,3 +591,42 @@ def test_broker_config_limits(target_scenario: dict, expected_error: str):
     with pytest.raises(InvalidArgumentValueError) as e:
         InitTargets(**target_scenario)
     assert str(e.value) == expected_error
+
+
+@pytest.mark.parametrize(
+    "target_scenario, expected_error",
+    [
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                custom_location_name=generate_random_string(size=1),
+            ),
+            None,
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                custom_location_name=generate_random_string(size=63),
+            ),
+            None,
+        ),
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                custom_location_name=generate_random_string(size=64),
+            ),
+            InvalidArgumentValueError,
+        ),
+    ],
+)
+def test_custom_location_name_limits(target_scenario: dict, expected_error: ExpectedExc):
+    ctx = (
+        pytest.raises(expected_error, match="Custom location name must be 63 characters or less.")
+        if expected_error
+        else nullcontext()
+    )
+    with ctx:
+        InitTargets(**target_scenario)

@@ -63,9 +63,7 @@ def init_test_setup(settings, tracked_resources):
     adr_ns_id = settings.env.azext_edge_adr_namespace_id
     if not adr_ns_id:
         ns_name = f"init-adr-ns-test{generate_random_string(force_lower=True, size=4)}"
-        adr_ns_id = run(
-            f"az iot ops ns create -n {ns_name} -g {settings.env.azext_edge_rg}"
-        )["id"]
+        adr_ns_id = run(f"az iot ops ns create -n {ns_name} -g {settings.env.azext_edge_rg}")["id"]
         if cleanup:
             tracked_resources.append(adr_ns_id)
 
@@ -93,7 +91,7 @@ def init_test_setup(settings, tracked_resources):
 
 
 @pytest.mark.init_scenario_test
-def test_init_scenario(init_test_setup, tracked_files):
+def test_init_scenario(init_test_setup: dict, tracked_files: list):
     additional_init_args = init_test_setup["additionalInitArgs"] or ""
     init_arg_dict = process_additional_args(additional_init_args)
     additional_create_args = init_test_setup["additionalCreateArgs"] or ""
@@ -127,7 +125,6 @@ def test_init_scenario(init_test_setup, tracked_files):
 
     # Missing:
     # init
-    # --enable-fault-tolerance
     # --trust-source (one param)
     # create
     # --cluster-namespace
@@ -162,6 +159,7 @@ def test_init_scenario(init_test_setup, tracked_files):
 def assert_aio_init(
     cluster_name: str,
     resource_group: str,
+    user_trust: Optional[bool] = None,
     **_,
 ):
     # check extensions installed
@@ -177,15 +175,20 @@ def assert_aio_init(
     while extension_result.get("nextLink"):
         extension_result = run(f"az rest --method GET --url {extension_result['nextLink']}")
         extensions.extend(extension_result["value"])
-    iot_ops_platform_ext = None
-    for ext in extensions:
-        if ext["properties"]["extensionType"] == "microsoft.iotoperations.platform":
-            iot_ops_platform_ext = ext
 
-    if not all([iot_ops_platform_ext]):
+    current_extensions = {ext["properties"]["extensionType"] for ext in extensions}
+
+    expected_ext_types = ["microsoft.azure.secretstore"]
+    if not user_trust:
+        expected_ext_types.append("microsoft.iotoperations.platform")
+
+    missing_extensions = []
+    for ext in expected_ext_types:
+        if ext not in current_extensions:
+            missing_extensions.append(ext)
+    if missing_extensions:
         raise AssertionError(
-            "Extensions for AIO are missing. These are the extensions "
-            f"on the cluster: {[ext['name'] for ext in extensions]}."
+            f"Missing expected extensions:\n{missing_extensions}.\n\nCurrent extensions are:\n{current_extensions}"
         )
 
 
