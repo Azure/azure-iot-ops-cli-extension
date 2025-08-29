@@ -202,8 +202,8 @@ def assert_aio_instance(
     custom_location: Optional[str] = None,
     description: Optional[str] = None,
     location: Optional[str] = None,
-    enable_rsync: bool = False,
     tags: Optional[str] = None,
+    trust_settings: Optional[dict] = None,
     **_,
 ):
     # check extensions installed
@@ -251,10 +251,9 @@ def assert_aio_instance(
     assert instance_props["adrNamespaceRef"] == {"resourceId": adr_namespace_id}
 
     tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
-    # no resource sync rules if disable rsync rules
-    assert ("adr-sync" in tree) is enable_rsync
     assert expected_custom_location in tree
-    assert "azure-iot-operations-platform" in tree
+    if not trust_settings:
+        assert "azure-iot-operations-platform" in tree
 
 
 def assert_broker_args(
