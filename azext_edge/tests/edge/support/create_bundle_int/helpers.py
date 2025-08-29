@@ -449,9 +449,13 @@ def get_file_map(
             acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
             file_map["acstor"] = convert_file_names(walk_result[acstor_path]["files"])
             file_map["__namespaces__"]["acstor"] = acstor_namespace
-        else:
+        elif acs_namespace:
             # resources only in acs_namespace
             assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
+        else:
+            # TODO: should probably have a better way of determining something is not there (as in rely on something
+            # beyond folder structure)
+            pytest.skip(f"No bundles created for {ops_service}.")
         acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
         file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
         file_map["__namespaces__"]["acs"] = acs_namespace
