@@ -1730,15 +1730,6 @@ def load_iotops_help():
 
                       Note: --*-config options allow override of default config settings.
 
-                      The default config settings for container storage are:
-                        edgeStorageConfiguration.create=true
-                        feature.diskStorageClass=default,local-path
-
-                      If --enable-fault-tolerance is used the following config delta applies to container storage:
-                        feature.diskStorageClass=acstor-arccontainerstorage-storage-pool
-                        acstorConfiguration.create=true
-                        acstorConfiguration.properties.diskMountPoint=/mnt
-
                       The default config settings for secret store are:
                         rotationPollIntervalInSeconds=120
                         validatingAdmissionPolicies.applyPolicies=false
@@ -1747,16 +1738,10 @@ def load_iotops_help():
         - name: Usage with minimum input. This form will deploy the IoT Operations foundation layer.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup
-        - name: Similar to the prior example but with Arc Container Storage fault-tolerance enabled (requires at least 3 nodes).
-          text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --enable-fault-tolerance
-        - name: This example highlights enabling user trust settings for a custom cert-manager config.
+        - name: The following example highlights enabling user trust settings for a custom cert-manager config.
             This will skip deployment of the system cert-manager and trust-manager.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --user-trust
-        - name: Provide custom deploy-time configs for Arc Container Storage.
-          text: >
-             az iot ops init --cluster mycluster -g myresourcegroup --enable-fault-tolerance --acs-config acstorConfiguration.properties.diskMountPoint=/mnt
         - name: Provide custom deploy-time configs for Arc Secret Store.
           text: >
              az iot ops init --cluster mycluster -g myresourcegroup --ssc-config rotationPollIntervalInSeconds=60
@@ -2669,4 +2654,44 @@ def load_iotops_help():
         - name: Route to the version guide in a new browser window.
           text: >
             az iot ops get-versions
+    """
+
+    helps[
+        "iot ops migrate-assets"
+    ] = """
+        type: command
+        short-summary: Migrate root assets to a namespace.
+        long-summary: |
+          The target set of root assets will be converted to an equivalent namespace representation
+          replacing the original root assets.
+
+          During the migration, namespace devices will be created in-place of the endpoint profiles
+          referenced by the assets. If multiple assets reference the same endpoint profile, a
+          single namespace device will be referenced by the migrated assets.
+
+          Post migration use the `az iot ops ns asset` and `az iot ops ns device` command groups to
+          manage namespace assets and devices.
+
+          It is highly recommended to take a snapshot of the target instance via `az iot ops clone`
+          before migration is executed. You can use the clone to restore the instance if needed.
+
+          For glob-style pattern matching via --name-pattern, '*' or '?' or '[...]' can be used.
+
+          By default the command will check if the Device Registry service principal has the
+          `Azure Kubernetes Service Arc Contributor` built-in role against the custom location
+          associated with the instance, applying the role if needed. This can be skipped with
+          the `--skip-ra` flag.
+
+        examples:
+        - name: Migrate all root assets associated with the instance.
+          text: >
+            az iot ops migrate-assets -n myinstance --resource-group myresourcegroup
+        - name: Migrate specific assets associated with the instance.
+          text: >
+            az iot ops migrate-assets -n myinstance --resource-group myresourcegroup
+            --pattern asset1 asset2 asset3
+        - name: Migrate assets associated with the instance that match glob-style patterns.
+          text: >
+            az iot ops migrate-assets -n myinstance --resource-group myresourcegroup
+            --pattern asset-p1-* asset-eng?-01
     """

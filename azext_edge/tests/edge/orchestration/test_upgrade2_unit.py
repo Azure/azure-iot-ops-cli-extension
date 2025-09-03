@@ -18,9 +18,9 @@ from azure.core.exceptions import HttpResponseError
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_ALIAS_TO_TYPE_MAP,
     EXTENSION_MONIKER_TO_ALIAS_MAP,
-    EXTENSION_TYPE_ACS,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
+    EXTENSION_TYPE_ACS,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
     ClusterConnectStatus,
@@ -123,6 +123,8 @@ class UpgradeScenario:
 
     def _build_defaults(self):
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
+            if ext_type == EXTENSION_TYPE_ACS:
+                continue
             vers = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"]
             train = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["train"]
 
@@ -374,20 +376,18 @@ class UpgradeScenario:
             {EXTENSION_TYPE_OPS: {"properties": {"extensionType": EXTENSION_TYPE_OPS, "releaseTrain": "stablez"}}},
         ),
         (
-            UpgradeScenario("Patch ops, ssc and acs extensions. Acs is patched due to overrides.")
-            .set_extension(ext_type=EXTENSION_TYPE_SSC, ext_vers="0.1.0")
+            UpgradeScenario("Patch ops and ssc extensions. ssc is patched due to overrides.")
+            .set_extension(ext_type=EXTENSION_TYPE_SSC, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="0.1.0")
-            .set_extension(ext_type=EXTENSION_TYPE_ACS, ext_vers="1.0.0")
             .set_user_kwargs(
-                acs_config=["c=d", "e=f"],
-                acs_version="1.1.1",
-                acs_train="stablezz",
+                ssc_config=["c=d", "e=f"],
+                ssc_version="1.1.1",
+                ssc_train="stablezz",
             ),
             {
-                EXTENSION_TYPE_SSC: {"properties": {"extensionType": EXTENSION_TYPE_SSC, "version": BUILT_IN_VALUE}},
-                EXTENSION_TYPE_ACS: {
+                EXTENSION_TYPE_SSC: {
                     "properties": {
-                        "extensionType": EXTENSION_TYPE_ACS,
+                        "extensionType": EXTENSION_TYPE_SSC,
                         "releaseTrain": "stablezz",
                         "version": "1.1.1",
                         "configurationSettings": {"c": "d", "e": "f"},

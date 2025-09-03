@@ -22,14 +22,18 @@ VALID_PERM_FORMS = frozenset(
 ROLE_DEF_FORMAT_STR = "/subscriptions/{subscription_id}/providers/Microsoft.Authorization/roleDefinitions/{role_id}"
 
 
-def get_ra_user_error_msg(error_str: str, sp_name: str, sp_id: str, expected_role: str, scope: str):
+def get_ra_user_error_msg(
+    error_str: str, sp_name: str, sp_id: str, expected_role: str, scope: str, supplemental_info: Optional[str] = None
+):
+    if not supplemental_info:
+        supplemental_info = "Please handle this step before continuing."
     return (
         "Role assignment failed with:"
         f"\n\n{error_str}\n\n"
         f"The '{sp_name}' service principal '{sp_id}' needs\n"
         f"'{expected_role}' or equivalent role against scope:\n"
         f"'{scope}'\n\n"
-        "Please handle this step before continuing."
+        f"{supplemental_info}"
     )
 
 

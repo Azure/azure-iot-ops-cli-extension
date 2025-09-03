@@ -26,7 +26,7 @@ jobs:
   - checkout: self
   - task: UsePythonVersion@0
     inputs:
-      versionSpec: '3.12'
+      versionSpec: '3.13'
   - task: PipAuthenticate@1
     inputs:
       artifactFeeds: '$(ARTIFACT_FEED)'
@@ -36,7 +36,7 @@ jobs:
   - script: |
       python -m build
     displayName: 'Build package'
-  
+
 
 - job: CredScan
   displayName: 'Credential Scan'

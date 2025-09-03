@@ -6,7 +6,7 @@
 # flake8: noqa
 
 from typing import NamedTuple
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class TestTraceData(NamedTuple):
@@ -908,5 +908,5 @@ TEST_TRACE = TestTraceData(
         "status": {},
     },
     resource_name="aio-broker-diagnostics-probe-0",
-    timestamp=datetime(2023, 11, 30, 21, 47, 20, 937646),
+    timestamp=datetime(2023, 11, 30, 21, 47, 20, 937646, tzinfo=timezone.utc),
 )

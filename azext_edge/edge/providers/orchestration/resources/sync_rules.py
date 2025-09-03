@@ -23,13 +23,13 @@ from ..permissions import (
     get_ra_user_error_msg,
 )
 from . import Instances
+from ..common import KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID
 
 if TYPE_CHECKING:
     from ....vendor.clients.extendedlocmgmt.operations import (
         ResourceSyncRulesOperations,
     )
 
-KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID = "5d3f1697-4507-4d08-bb4a-477695db5f82"
 K8_BRIDGE_APP_ID = "319f651f-7ddb-4fc6-9857-7aef9250bd05"
 ADR_PROVIDER = "Microsoft.DeviceRegistry"
 OPS_PROVIDER = "Microsoft.IoTOperations"

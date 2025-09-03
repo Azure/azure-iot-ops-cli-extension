@@ -21,9 +21,11 @@ def add_connector_opcua_trust(
     overwrite_secret: bool = False,
     secret_name: Optional[str] = None,
 ) -> dict:
-    return OpcUACerts(cmd).trust_add(
+    return OpcUACerts(
+        cmd,
+        resource_group_name=resource_group,
         instance_name=instance_name,
-        resource_group=resource_group,
+    ).trust_add(
         file=file,
         secret_name=secret_name,
         overwrite_secret=overwrite_secret,
@@ -38,9 +40,11 @@ def add_connector_opcua_issuer(
     overwrite_secret: bool = False,
     secret_name: Optional[str] = None,
 ) -> dict:
-    return OpcUACerts(cmd).issuer_add(
+    return OpcUACerts(
+        cmd,
+        resource_group_name=resource_group,
         instance_name=instance_name,
-        resource_group=resource_group,
+    ).issuer_add(
         file=file,
         secret_name=secret_name,
         overwrite_secret=overwrite_secret,
@@ -59,9 +63,11 @@ def add_connector_opcua_client(
     public_key_secret_name: Optional[str] = None,
     private_key_secret_name: Optional[str] = None,
 ) -> dict:
-    return OpcUACerts(cmd).client_add(
+    return OpcUACerts(
+        cmd,
+        resource_group_name=resource_group,
         instance_name=instance_name,
-        resource_group=resource_group,
+    ).client_add(
         public_key_file=public_key_file,
         private_key_file=private_key_file,
         subject_name=subject_name,
@@ -81,9 +87,11 @@ def remove_connector_opcua_trust(
     force: Optional[bool] = False,
     include_secrets: Optional[bool] = False,
 ) -> dict:
-    return OpcUACerts(cmd).remove(
+    return OpcUACerts(
+        cmd,
+        resource_group_name=resource_group,
         instance_name=instance_name,
-        resource_group=resource_group,
+    ).remove(
         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
         confirm_yes=confirm_yes,
@@ -101,9 +109,11 @@ def remove_connector_opcua_issuer(
     force: Optional[bool] = False,
     include_secrets: Optional[bool] = False,
 ) -> dict:
-    return OpcUACerts(cmd).remove(
+    return OpcUACerts(
+        cmd,
+        resource_group_name=resource_group,
         instance_name=instance_name,
-        resource_group=resource_group,
+    ).remove(
         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
         confirm_yes=confirm_yes,
@@ -121,9 +131,11 @@ def remove_connector_opcua_client(
     force: Optional[bool] = False,
     include_secrets: Optional[bool] = False,
 ) -> dict:
-    return OpcUACerts(cmd).remove(
+    return OpcUACerts(
+        cmd,
+        resource_group_name=resource_group,
         instance_name=instance_name,
-        resource_group=resource_group,
+    ).remove(
         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
         certificate_names=certificate_names,
         confirm_yes=confirm_yes,
@@ -137,9 +149,11 @@ def show_connector_opcua_trust(
     instance_name: str,
     resource_group: str,
 ) -> dict:
-    return OpcUACerts(cmd).show(
+    return OpcUACerts(
+        cmd,
+        resource_group_name=resource_group,
         instance_name=instance_name,
-        resource_group=resource_group,
+    ).show(
         secretsync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
     )
 
@@ -149,9 +163,11 @@ def show_connector_opcua_issuer(
     instance_name: str,
     resource_group: str,
 ) -> dict:
-    return OpcUACerts(cmd).show(
+    return OpcUACerts(
+        cmd,
+        resource_group_name=resource_group,
         instance_name=instance_name,
-        resource_group=resource_group,
+    ).show(
         secretsync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
     )
 
@@ -161,8 +177,10 @@ def show_connector_opcua_client(
     instance_name: str,
     resource_group: str,
 ) -> dict:
-    return OpcUACerts(cmd).show(
+    return OpcUACerts(
+        cmd,
+        resource_group_name=resource_group,
         instance_name=instance_name,
-        resource_group=resource_group,
+    ).show(
         secretsync_name=OPCUA_CLIENT_CERT_SECRET_SYNC_NAME,
     )
