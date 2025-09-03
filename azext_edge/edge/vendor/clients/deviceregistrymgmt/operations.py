@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from .v20250701_preview.operations import (
+from .v20251001.operations import (
     AssetEndpointProfilesOperations,
     AssetsOperations,
     BillingContainersOperations,
