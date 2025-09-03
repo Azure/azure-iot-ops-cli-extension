@@ -7,9 +7,12 @@
 from random import randint
 import json
 import pytest
+from knack.log import get_logger
 from ....generators import generate_random_string
 from ....helpers import create_file, run
 
+logger = get_logger(__name__)
+MAX_TRIES = 3
 VERSION_STRINGIFY_FORMAT = "aio-sr://{schema_name}:{version}"
 # pytest mark for rpsaas (cloud-side) tests
 pytestmark = pytest.mark.rpsaas
@@ -31,11 +34,19 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
 
     # double check that the storage account has public network access enabled
     storage_account_network = storage_account["publicNetworkAccess"]
-    while not storage_account_network and storage_account_network.lower() != "enabled":
+    tries = 0
+    while (
+        not storage_account_network
+        and storage_account_network.lower() != "enabled"
+        and tries < MAX_TRIES
+    ):
         storage_account_network = run(
             f"az storage account update -n {storage_account_name} -g {registry_rg} "
             "--public-network-access Enabled --query 'publicNetworkAccess'"
         )
+        tries += 1
+    if storage_account_network.lower() != "enabled":
+        logger.warning(f"Storage account {storage_account_name} does not have public network access enabled.")
 
     # create the registry
     registry = run(

@@ -298,8 +298,7 @@ class Schemas(Queryable):
         except HttpResponseError as e:
             if e.status_code == 412:
                 raise ForbiddenError(
-                    "Schema versions require public network access to be enabled in the associated storage account.\n"
-                    f"Service error: {e}"
+                    "Schema versions require public network access to be enabled in the associated storage account."
                 )
             raise e
 
