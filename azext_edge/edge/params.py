@@ -868,6 +868,42 @@ def load_iotops_arguments(self, _):
                     ]
                 ),
             )
+    
+    for cmd_space in [
+        "iot ops dataflow endpoint create otel",
+        "iot ops dataflow endpoint update otel",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "hostname",
+                options_list=["--hostname"],
+                help="The hostname of the open telemetry setting.",
+            )
+            context.argument(
+                "port",
+                options_list=["--port"],
+                help="The port number of the open telemetry setting.",
+                type=int,
+            )
+            context.argument(
+                "secret_name",
+                options_list=["--secret-name", "-s"],
+                help="The name for the kubernetes secret that contains the X509 client certificate, private key "
+                "corresponding to the client certificate, and intermediate certificates for the client certificate "
+                "chain. "
+                "Note: The certificate and private key must be in PEM format and not password protected.",
+                arg_group="X509 Authentication",
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
+                        DataflowEndpointAuthenticationType.X509.value,
+                    ]
+                ),
+            )
 
     with self.argument_context("iot ops registry") as context:
         context.argument(

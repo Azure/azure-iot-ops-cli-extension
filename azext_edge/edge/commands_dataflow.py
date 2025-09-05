@@ -1134,6 +1134,41 @@ def update_dataflow_endpoint_custom_mqtt(
     )
 
 
+def update_dataflow_endpoint_otel(
+    cmd,
+    endpoint_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    hostname: Optional[str] = None,
+    port: Optional[int] = None,
+    latency: Optional[int] = None,
+    message_count: Optional[int] = None,
+    tls_disabled: Optional[bool] = None,
+    no_auth: Optional[bool] = None,
+    audience: Optional[str] = None,
+    secret_name: Optional[str] = None,
+    config_map_reference: Optional[str] = None,
+    show_config: Optional[str] = None,
+) -> dict:
+
+    return DataFlowEndpoints(cmd).create(
+        name=endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        endpoint_type=DataflowEndpointType.OPENTELEMETRY.value,
+        latency=latency,
+        message_count=message_count,
+        tls_disabled=tls_disabled,
+        no_auth=no_auth,
+        port=port,
+        hostname=hostname,
+        sat_audience=audience,
+        x509_secret_name=secret_name,
+        config_map_reference=config_map_reference,
+        show_config=show_config,
+    )
+
+
 def show_dataflow_endpoint(cmd, endpoint_name: str, instance_name: str, resource_group_name: str) -> dict:
     return DataFlowEndpoints(cmd).show(
         name=endpoint_name,
