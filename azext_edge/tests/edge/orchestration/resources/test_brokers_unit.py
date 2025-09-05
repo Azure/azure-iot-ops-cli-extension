@@ -209,6 +209,15 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
                 "subscriberQueue": {"mode": "Custom", "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}}},
             },
         },
+        # Test mode transitions - Custom to All, All to None, None to Custom
+        {
+            "input": {"persist_mode": ["retain=All", "stateStore=None", "subscriberQueue=Custom"]},
+            "expected_updates": {
+                "retain": {"mode": "All"},
+                "stateStore": {"mode": "None"},
+                "subscriberQueue": {"mode": "Custom", "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}}},
+            },
+        },
         # Test retain topics configuration
         {
             "input": {"persist_mode": ["retain=Custom"], "retain_topics": ["topic1", "topic2", "topic3"]},
@@ -305,16 +314,6 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
                 },
             },
         },
-        # Test user property configuration
-        {
-            "input": {"user_property_key": "myKey", "user_property_value": "myValue"},
-            "expected_updates": {
-                "dynamicSettings": {
-                    "userPropertyKey": "myKey",
-                    "userPropertyValue": "myValue",
-                },
-            },
-        },
         # Test disable dynamic configuration
         {
             "input": {
@@ -331,16 +330,21 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
             "input": {
                 "persist_mode": ["retain=Custom", "subscriberQueue=All"],
                 "retain_topics": ["sensor/*", "telemetry/+"],
-                "user_property_key": "persistence",
-                "user_property_value": "enabled",
             },
             "expected_updates": {
                 "retain": {"mode": "Custom", "retainSettings": {"topics": ["sensor/*", "telemetry/+"]}},
                 "subscriberQueue": {"mode": "All"},
-                "dynamicSettings": {
-                    "userPropertyKey": "persistence",
-                    "userPropertyValue": "enabled",
-                },
+            },
+        },
+        # Test maintaining Custom mode while updating settings
+        {
+            "input": {
+                "persist_mode": ["retain=Custom"],
+                "retain_topics": ["test/*"],
+                "disable_dynamic": ["retain"],
+            },
+            "expected_updates": {
+                "retain": {"mode": "Custom", "retainSettings": {"topics": ["test/*"], "dynamic": {"mode": "Disabled"}}},
             },
         },
         # Test custom broker name
@@ -370,20 +374,6 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
             "error": (
                 InvalidArgumentValueError,
                 "To set state store keys for persistence, stateStore mode must be set to 'Custom'.",
-            ),
-        },
-        {
-            "input": {"user_property_key": "key"},
-            "error": (
-                InvalidArgumentValueError,
-                "Both --user-key and --user-value must be set or both must be unset.",
-            ),
-        },
-        {
-            "input": {"user_property_value": "value"},
-            "error": (
-                InvalidArgumentValueError,
-                "Both --user-key and --user-value must be set or both must be unset.",
             ),
         },
         {

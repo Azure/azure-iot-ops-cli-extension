@@ -957,20 +957,6 @@ def load_iotops_arguments(self, _):
 
     with self.argument_context("iot ops broker persist") as context:
         context.argument(
-            "user_property_key",
-            options_list=["--user-key"],
-            help="The user property key to enable persistence dynamically. In addition to 'aio-persistence'. "
-            "Assign empty string to remove.",
-            arg_group="Dynamic Persistence",
-        )
-        context.argument(
-            "user_property_value",
-            options_list=["--user-value"],
-            help="The user property value to enable persistence dynamically. In addition to 'true'. "
-            "Assign empty string to remove.",
-            arg_group="Dynamic Persistence",
-        )
-        context.argument(
             "disable_dynamic",
             nargs="+",
             options_list=["--disable-dynamic"],
