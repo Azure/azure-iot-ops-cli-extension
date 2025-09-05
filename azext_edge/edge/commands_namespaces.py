@@ -1106,6 +1106,7 @@ def add_namespace_custom_asset_dataset(
     dataset_data_source: str,
     dataset_custom_configuration: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -1118,6 +1119,7 @@ def add_namespace_custom_asset_dataset(
         dataset_data_source=dataset_data_source,
         dataset_custom_configuration=dataset_custom_configuration,
         dataset_destinations=dataset_destinations,
+        type_ref=type_ref,
         replace=replace,
         **kwargs
     )
@@ -1135,6 +1137,7 @@ def add_namespace_opcua_asset_dataset(
     opcua_dataset_sampling_interval: Optional[int] = None,
     opcua_dataset_queue_size: Optional[int] = None,
     opcua_dataset_key_frame_count: Optional[int] = None,
+    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -1164,6 +1167,7 @@ def add_namespace_rest_asset_dataset(
     dataset_data_source: str,
     rest_dataset_sampling_interval: Optional[int] = None,
     dataset_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -1218,6 +1222,7 @@ def update_namespace_custom_asset_dataset(
     dataset_data_source: Optional[str] = None,
     dataset_custom_configuration: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_dataset(
@@ -1245,6 +1250,7 @@ def update_namespace_opcua_asset_dataset(
     opcua_dataset_sampling_interval: Optional[int] = None,
     opcua_dataset_queue_size: Optional[int] = None,
     opcua_dataset_key_frame_count: Optional[int] = None,
+    type_ref: Optional[str] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_dataset(
@@ -1271,6 +1277,7 @@ def update_namespace_rest_asset_dataset(
     dataset_name: str,
     rest_dataset_sampling_interval: Optional[int] = None,
     dataset_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_dataset(
@@ -1312,6 +1319,7 @@ def add_namespace_custom_asset_dataset_point(
     datapoint_name: str,
     data_source: str,
     custom_configuration: Optional[str] = None,
+    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -1339,6 +1347,7 @@ def add_namespace_opcua_asset_dataset_point(
     data_source: str,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
+    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -1391,39 +1400,41 @@ def remove_namespace_asset_dataset_point(
     )
 
 
-# ASSET EVENT COMMANDS
-def add_namespace_custom_asset_event(
+# ASSET EVENT GROUP COMMANDS
+def add_namespace_custom_asset_eg(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    event_name: str,
+    group_name: str,
     event_notifier: str,
     event_custom_configuration: Optional[str] = None,
     event_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
-    return NamespaceAssets(cmd).add_event(
+    return NamespaceAssets(cmd).add_event_group(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        event_name=event_name,
+        group_name=group_name,
         asset_type="custom",
         event_notifier=event_notifier,
         event_custom_configuration=event_custom_configuration,
         event_destinations=event_destinations,
+        type_ref=type_ref,
         replace=replace,
         **kwargs
     )
 
 
-def add_namespace_opcua_asset_event(
+def add_namespace_opcua_asset_eg(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    event_name: str,
+    group_name: str,
     event_notifier: str,
     event_destinations: Optional[str] = None,
     opcua_event_publishing_interval: Optional[int] = None,
@@ -1431,11 +1442,11 @@ def add_namespace_opcua_asset_event(
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
-    return NamespaceAssets(cmd).add_event(
+    return NamespaceAssets(cmd).add_event_group(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        event_name=event_name,
+        group_name=group_name,
         asset_type=DeviceEndpointType.OPCUA.value,
         event_notifier=event_notifier,
         event_destinations=event_destinations,
@@ -1446,22 +1457,22 @@ def add_namespace_opcua_asset_event(
     )
 
 
-def add_namespace_onvif_asset_event(
+def add_namespace_onvif_asset_eg(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    event_name: str,
+    group_name: str,
     event_notifier: str,
     event_destinations: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
-    return NamespaceAssets(cmd).add_event(
+    return NamespaceAssets(cmd).add_event_group(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        event_name=event_name,
+        group_name=group_name,
         asset_type=DeviceEndpointType.ONVIF.value,
         event_notifier=event_notifier,
         event_destinations=event_destinations,
@@ -1470,75 +1481,77 @@ def add_namespace_onvif_asset_event(
     )
 
 
-def list_namespace_asset_events(
+def list_namespace_asset_egs(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
 ) -> List[dict]:
-    return NamespaceAssets(cmd).list_events(
+    return NamespaceAssets(cmd).list_event_groups(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
     )
 
 
-def show_namespace_asset_event(
+def show_namespace_asset_eg(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    event_name: str
+    group_name: str
 ) -> dict:
-    return NamespaceAssets(cmd).show_event(
+    return NamespaceAssets(cmd).show_event_group(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        event_name=event_name
+        group_name=group_name
     )
 
 
-def update_namespace_custom_asset_event(
+def update_namespace_custom_asset_eg(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    event_name: str,
+    group_name: str,
     event_notifier: Optional[str] = None,
     event_custom_configuration: Optional[str] = None,
     event_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
     **kwargs
 ) -> dict:
-    return NamespaceAssets(cmd).update_event(
+    return NamespaceAssets(cmd).update_event_group(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        event_name=event_name,
+        group_name=group_name,
         asset_type="custom",
         event_notifier=event_notifier,
         event_custom_configuration=event_custom_configuration,
         event_destinations=event_destinations,
+        type_ref=type_ref,
         **kwargs
     )
 
 
-def update_namespace_opcua_asset_event(
+def update_namespace_opcua_asset_eg(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    event_name: str,
+    group_name: str,
     event_notifier: Optional[str] = None,
     event_destinations: Optional[str] = None,
     opcua_event_publishing_interval: Optional[int] = None,
     opcua_event_queue_size: Optional[int] = None,
     **kwargs
 ) -> dict:
-    return NamespaceAssets(cmd).update_event(
+    return NamespaceAssets(cmd).update_event_group(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        event_name=event_name,
+        group_name=group_name,
         asset_type=DeviceEndpointType.OPCUA.value,
         event_notifier=event_notifier,
         event_destinations=event_destinations,
@@ -1548,21 +1561,21 @@ def update_namespace_opcua_asset_event(
     )
 
 
-def update_namespace_onvif_asset_event(
+def update_namespace_onvif_asset_eg(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    event_name: str,
+    group_name: str,
     event_notifier: Optional[str] = None,
     event_destinations: Optional[str] = None,
     **kwargs
 ) -> dict:
-    return NamespaceAssets(cmd).update_event(
+    return NamespaceAssets(cmd).update_event_group(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        event_name=event_name,
+        group_name=group_name,
         asset_type=DeviceEndpointType.ONVIF.value,
         event_notifier=event_notifier,
         event_destinations=event_destinations,
@@ -1570,71 +1583,75 @@ def update_namespace_onvif_asset_event(
     )
 
 
-def remove_namespace_asset_event(
+def remove_namespace_asset_eg(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    event_name: str,
+    group_name: str,
     **kwargs
 ) -> dict:
-    return NamespaceAssets(cmd).remove_event(
+    return NamespaceAssets(cmd).remove_event_group(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        event_name=event_name,
+        group_name=group_name,
         **kwargs
     )
 
 
-# ASSET EVENT DATAPOINT COMMANDS
-def add_namespace_custom_asset_event_point(
+# ASSET EVENT GROUP EVENT COMMANDS
+def add_namespace_custom_asset_eg_event(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
+    group_name: str,
     event_name: str,
-    datapoint_name: str,
     data_source: str,
     custom_configuration: Optional[str] = None,
+    event_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
-    return NamespaceAssets(cmd).add_event_datapoint(
+    return NamespaceAssets(cmd).add_event_group_event(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
+        group_name=group_name,
         event_name=event_name,
         asset_type="custom",
-        datapoint_name=datapoint_name,
         data_source=data_source,
         custom_configuration=custom_configuration,
+        event_destinations=event_destinations,
+        type_ref=type_ref,
         replace=replace,
         **kwargs
     )
 
 
 # TODO: not exposed for now but this will be supported in the near future
-def add_namespace_opcua_asset_event_point(
+def add_namespace_opcua_asset_eg_event(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
+    group_name: str,
     event_name: str,
-    datapoint_name: str,
     data_source: str,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
-    return NamespaceAssets(cmd).add_event_datapoint(
+    return NamespaceAssets(cmd).add_event_group_event(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
+        group_name=group_name,
         event_name=event_name,
         asset_type=DeviceEndpointType.OPCUA.value,
-        datapoint_name=datapoint_name,
         data_source=data_source,
         queue_size=queue_size,
         sampling_interval=sampling_interval,
@@ -1643,36 +1660,36 @@ def add_namespace_opcua_asset_event_point(
     )
 
 
-def list_namespace_asset_event_points(
+def list_namespace_asset_eg_events(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
-    event_name: str
+    group_name: str
 ) -> List[dict]:
-    return NamespaceAssets(cmd).list_event_datapoints(
+    return NamespaceAssets(cmd).list_event_group_events(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
-        event_name=event_name
+        group_name=group_name
     )
 
 
-def remove_namespace_asset_event_point(
+def remove_namespace_asset_eg_event(
     cmd,
     asset_name: str,
     instance_name: str,
     instance_resource_group: str,
+    group_name: str,
     event_name: str,
-    datapoint_name: str,
     **kwargs
 ) -> dict:
-    return NamespaceAssets(cmd).remove_event_datapoint(
+    return NamespaceAssets(cmd).remove_event_group_event(
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
+        group_name=group_name,
         event_name=event_name,
-        datapoint_name=datapoint_name,
         **kwargs
     )
 
@@ -1686,6 +1703,7 @@ def add_namespace_custom_asset_stream(
     stream_name: str,
     stream_custom_configuration: Optional[str] = None,
     stream_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -1697,6 +1715,7 @@ def add_namespace_custom_asset_stream(
         asset_type="custom",
         stream_custom_configuration=stream_custom_configuration,
         stream_destinations=stream_destinations,
+        type_ref=type_ref,
         replace=replace,
         **kwargs
     )
@@ -1784,6 +1803,7 @@ def update_namespace_custom_asset_stream(
     stream_name: str,
     stream_custom_configuration: Optional[str] = None,
     stream_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_stream(
@@ -1794,6 +1814,7 @@ def update_namespace_custom_asset_stream(
         asset_type="custom",
         stream_custom_configuration=stream_custom_configuration,
         stream_destinations=stream_destinations,
+        type_ref=type_ref,
         **kwargs
     )
 
@@ -1866,9 +1887,11 @@ def add_namespace_custom_asset_management_group(
     instance_name: str,
     instance_resource_group: str,
     group_name: str,
+    data_source: str,
     default_topic: Optional[str] = None,
     default_timeout: Optional[int] = None,
     mgmt_custom_configuration: Optional[str] = None,
+    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -1878,9 +1901,11 @@ def add_namespace_custom_asset_management_group(
         instance_resource_group=instance_resource_group,
         group_name=group_name,
         asset_type="custom",
+        data_source=data_source,
         default_timeout=default_timeout,
         default_topic=default_topic,
         mgmt_custom_configuration=mgmt_custom_configuration,
+        type_ref=type_ref,
         replace=replace,
         **kwargs
     )
@@ -1892,6 +1917,7 @@ def add_namespace_opcua_asset_management_group(
     instance_name: str,
     instance_resource_group: str,
     group_name: str,
+    data_source: str,
     default_topic: Optional[str] = None,
     default_timeout: Optional[int] = None,
     # mgmt_custom_configuration: Optional[str] = None,
@@ -1904,6 +1930,7 @@ def add_namespace_opcua_asset_management_group(
         instance_resource_group=instance_resource_group,
         group_name=group_name,
         asset_type=DeviceEndpointType.OPCUA.value,
+        data_source=data_source,
         default_timeout=default_timeout,
         default_topic=default_topic,
         # mgmt_custom_configuration=mgmt_custom_configuration,
@@ -1918,6 +1945,7 @@ def add_namespace_onvif_asset_management_group(
     instance_name: str,
     instance_resource_group: str,
     group_name: str,
+    data_source: str,
     default_topic: Optional[str] = None,
     default_timeout: Optional[int] = None,
     # mgmt_custom_configuration: Optional[str] = None,
@@ -1930,6 +1958,7 @@ def add_namespace_onvif_asset_management_group(
         instance_resource_group=instance_resource_group,
         group_name=group_name,
         asset_type=DeviceEndpointType.ONVIF.value,
+        data_source=data_source,
         default_timeout=default_timeout,
         default_topic=default_topic,
         # mgmt_custom_configuration=mgmt_custom_configuration,
@@ -1972,9 +2001,11 @@ def update_namespace_custom_asset_management_group(
     instance_name: str,
     instance_resource_group: str,
     group_name: str,
+    data_source: str,
     default_topic: Optional[str] = None,
     default_timeout: Optional[int] = None,
     mgmt_custom_configuration: Optional[str] = None,
+    type_ref: Optional[str] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_management_group(
@@ -1983,9 +2014,11 @@ def update_namespace_custom_asset_management_group(
         instance_resource_group=instance_resource_group,
         group_name=group_name,
         asset_type="custom",
+        data_source=data_source,
         default_timeout=default_timeout,
         default_topic=default_topic,
         mgmt_custom_configuration=mgmt_custom_configuration,
+        type_ref=type_ref,
         **kwargs
     )
 
@@ -1996,6 +2029,7 @@ def update_namespace_opcua_asset_management_group(
     instance_name: str,
     instance_resource_group: str,
     group_name: str,
+    data_source: str,
     default_topic: Optional[str] = None,
     default_timeout: Optional[int] = None,
     # mgmt_custom_configuration: Optional[str] = None,
@@ -2007,6 +2041,7 @@ def update_namespace_opcua_asset_management_group(
         instance_resource_group=instance_resource_group,
         group_name=group_name,
         asset_type=DeviceEndpointType.OPCUA.value,
+        data_source=data_source,
         default_timeout=default_timeout,
         default_topic=default_topic,
         # mgmt_custom_configuration=mgmt_custom_configuration,
@@ -2020,6 +2055,7 @@ def update_namespace_onvif_asset_management_group(
     instance_name: str,
     instance_resource_group: str,
     group_name: str,
+    data_source: str,
     default_topic: Optional[str] = None,
     default_timeout: Optional[int] = None,
     # mgmt_custom_configuration: Optional[str] = None,
@@ -2031,6 +2067,7 @@ def update_namespace_onvif_asset_management_group(
         instance_resource_group=instance_resource_group,
         group_name=group_name,
         asset_type=DeviceEndpointType.ONVIF.value,
+        data_source=data_source,
         default_timeout=default_timeout,
         default_topic=default_topic,
         # mgmt_custom_configuration=mgmt_custom_configuration,
@@ -2068,6 +2105,7 @@ def add_namespace_custom_asset_management_group_action(
     custom_configuration: Optional[str] = None,
     timeout: Optional[int] = None,
     topic: Optional[str] = None,
+    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
@@ -2083,6 +2121,7 @@ def add_namespace_custom_asset_management_group_action(
         custom_configuration=custom_configuration,
         timeout=timeout,
         topic=topic,
+        type_ref=type_ref,
         replace=replace,
         **kwargs
     )
