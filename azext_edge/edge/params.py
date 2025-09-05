@@ -37,7 +37,6 @@ from .providers.orchestration.common import (
     KafkaCloudEventAttributeType,
     KafkaCompressionType,
     KafkaPartitionStrategyType,
-    KubernetesDistroType,
     ListenerProtocol,
     MqMemoryProfile,
     MqServiceType,
@@ -144,12 +143,14 @@ def load_iotops_arguments(self, _):
             options_list=["--custom-role-id"],
             help="Fully qualified role definition Id in the following format: "
             "/subscriptions/{subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/{roleId}.",
+            arg_group="Role Assignment",
         )
         context.argument(
             "skip_role_assignments",
             options_list=["--skip-ra"],
             arg_type=get_three_state_flag(),
             help="When used the role assignment step of the operation will be skipped.",
+            arg_group="Role Assignment",
         )
 
     with self.argument_context("iot ops identity") as context:
@@ -1261,15 +1262,6 @@ def load_iotops_arguments(self, _):
                 "If not provided the connected cluster location will be used.",
             )
             context.argument(
-                "enable_rsync_rules",
-                options_list=["--enable-rsync"],
-                arg_type=get_three_state_flag(),
-                deprecate_info=context.deprecate(
-                    target="--enable-rsync", redirect="az iot ops rsync enable", hide=True
-                ),
-                help="Resource sync rules will be included in the IoT Operations deployment.",
-            )
-            context.argument(
                 "ensure_latest",
                 options_list=["--ensure-latest"],
                 arg_type=get_three_state_flag(),
@@ -1283,7 +1275,6 @@ def load_iotops_arguments(self, _):
                 help="Enforce a check for minimum cluster requirements before bootstrapping.",
                 is_preview=True,
             )
-
             # Schema Registry
             context.argument(
                 "schema_registry_resource_id",
@@ -1295,24 +1286,6 @@ def load_iotops_arguments(self, _):
                 "adr_namespace_resource_id",
                 options_list=["--ns-resource-id"],
                 help="The device registry namespace resource Id to use with IoT Operations.",
-            )
-            # Akri
-            context.argument(
-                "container_runtime_socket",
-                options_list=["--runtime-socket"],
-                help="The default node path of the container runtime socket. If not provided (default), the "
-                "socket path is determined by --kubernetes-distro.",
-                arg_group="Akri",
-                deprecate_info=context.deprecate(hide=True),
-            )
-            context.argument(
-                "kubernetes_distro",
-                arg_type=get_enum_type(KubernetesDistroType),
-                options_list=["--kubernetes-distro"],
-                help="The Kubernetes distro to use for Akri configuration. The selected distro implies the "
-                "default container runtime socket path when no --runtime-socket value is provided.",
-                arg_group="Akri",
-                deprecate_info=context.deprecate(hide=True),
             )
             # Broker
             context.argument(
@@ -1411,13 +1384,6 @@ def load_iotops_arguments(self, _):
                 arg_group="Disk Persistence",
             )
             context.argument(
-                "enable_fault_tolerance",
-                arg_type=get_three_state_flag(),
-                options_list=["--enable-fault-tolerance"],
-                help="Enable fault tolerance for Azure Arc Container Storage. At least 3 cluster nodes are required.",
-                arg_group="Container Storage",
-            )
-            context.argument(
                 "dataflow_profile_instances",
                 type=int,
                 options_list=["--df-profile-instances"],
@@ -1444,6 +1410,8 @@ def load_iotops_arguments(self, _):
             )
 
             for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
+                if moniker == "containerStorage":
+                    continue
                 alias = EXTENSION_MONIKER_TO_ALIAS_MAP[moniker]
                 context.argument(
                     f"{alias}_config",
@@ -1900,4 +1868,20 @@ def load_iotops_arguments(self, _):
             options_list=["--k8-bridge-sp-oid"],
             help="Provide an explicit K8 Bridge service principal OID for the custom location role assignment. "
             "This is useful if the logged-in principal does not have permission to query apps from MS Graph.",
+        )
+
+    with self.argument_context("iot ops migrate-assets") as context:
+        context.argument(
+            "name_patterns",
+            options_list=["--pattern", "-p"],
+            nargs="+",
+            action="extend",
+            help="Space-separated glob-style patterns to match asset names. '*' or '?' or '[...]' can be used.",
+        )
+        context.argument(
+            "adr_sp_oid",
+            options_list=["--adr-sp-oid"],
+            help="Provide an explicit Device Registry service principal OID for the custom location role assignment. "
+            "This is useful if the logged-in principal does not have permission to query apps from MS Graph.",
+            arg_group="Role Assignment",
         )

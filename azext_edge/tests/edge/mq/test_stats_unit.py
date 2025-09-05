@@ -248,7 +248,7 @@ def test__fetch_bytes(mocker, total_bytes: int, fetch_bytes: int):
     assert len(result) == total_bytes
 
 
-def test___determine_root_span():
+def test__determine_root_span():
     from azext_edge.edge.providers.stats import _determine_root_span
 
     root_span, resource_name, timestamp = _determine_root_span(message_dict=deepcopy(TEST_TRACE.data))

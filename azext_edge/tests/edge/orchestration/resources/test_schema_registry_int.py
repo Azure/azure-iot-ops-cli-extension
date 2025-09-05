@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from time import sleep
 import pytest
 # TODO: temporary while delete is borked
 from azure.cli.core.azclierror import CLIInternalError
@@ -13,6 +14,9 @@ from ....helpers import run
 
 # pytest mark for rpsaas (cloud-side) tests
 pytestmark = pytest.mark.rpsaas
+# role assignments may take a while
+MAX_TRIES = 3
+SLEEP_INTERVAL = 30
 
 
 def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
@@ -47,7 +51,7 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
         sa_blob_uri=storage_account["primaryEndpoints"]["blob"]
     )
     # check the roles
-    roles = run(
+    roles = run_with_retry(
         f"az role assignment list --assignee {registry['identity']['principalId']} "
         f"--scope {container_resource_id}"
     )
@@ -99,7 +103,7 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
         tags=tags
     )
     # check the roles
-    roles = run(
+    roles = run_with_retry(
         f"az role assignment list --assignee {alt_registry['identity']['principalId']} "
         f"--scope {alt_container_resource_id}"
     )
@@ -113,12 +117,7 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
     assert alt_registry_name in list_registry_names
 
     # DELETE
-    try:
-        run(f"az iot ops schema registry delete -n {registry_name} -g {registry_rg} -y")
-    except CLIInternalError as e:
-        # delete does not return correct status code - remove once fixed
-        if "ERROR: Operation returned an invalid status 'OK'" not in e.error_msg:
-            raise e
+    run(f"az iot ops schema registry delete -n {registry_name} -g {registry_rg} -y")
     tracked_resources.remove(registry["id"])
 
     list_registry_rg = run(f"az iot ops schema registry list -g {registry_rg}")
@@ -127,13 +126,20 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
     assert alt_registry_name in list_registry_names
 
     # DELETE 2
-    try:
-        run(f"az iot ops schema registry delete -n {alt_registry_name} -g {registry_rg} -y")
-    except CLIInternalError as e:
-        # delete does not return correct status code - remove once fixed
-        if "ERROR: Operation returned an invalid status 'OK'" not in e.error_msg:
-            raise e
+    run(f"az iot ops schema registry delete -n {alt_registry_name} -g {registry_rg} -y")
     tracked_resources.remove(alt_registry["id"])
+
+
+def run_with_retry(command: str, max_tries: int = MAX_TRIES, sleep_interval: int = SLEEP_INTERVAL):
+    tries = 0
+    while tries < MAX_TRIES:
+        try:
+            return run(command)
+        except CLIInternalError as e:
+            tries += 1
+            if tries == MAX_TRIES:
+                raise e
+            sleep(SLEEP_INTERVAL)
 
 
 def assert_schema_registry(registry: dict, **expected):
