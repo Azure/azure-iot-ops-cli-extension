@@ -75,8 +75,6 @@ class Brokers(Queryable):
         state_store_str_keys: Optional[List[List[str]]] = None,
         state_store_glob_keys: Optional[List[List[str]]] = None,
         state_store_bin_keys: Optional[List[List[str]]] = None,
-        user_property_key: Optional[str] = None,
-        user_property_value: Optional[str] = None,
         disable_dynamic: Optional[List[str]] = None,
         **kwargs,
     ) -> dict:
@@ -94,8 +92,6 @@ class Brokers(Queryable):
             state_store_str_keys=state_store_str_keys,
             state_store_glob_keys=state_store_glob_keys,
             state_store_bin_keys=state_store_bin_keys,
-            user_property_key=user_property_key,
-            user_property_value=user_property_value,
             disable_dynamic=disable_dynamic,
             existing_persist_config=existing_persist_config,
         )
@@ -123,8 +119,6 @@ class Brokers(Queryable):
         state_store_str_keys: Optional[List[List[str]]] = None,
         state_store_glob_keys: Optional[List[List[str]]] = None,
         state_store_bin_keys: Optional[List[List[str]]] = None,
-        user_property_key: Optional[str] = None,
-        user_property_value: Optional[str] = None,
         disable_dynamic: Optional[List[str]] = None,
         existing_persist_config: Optional[dict] = None,
     ) -> dict:
@@ -142,8 +136,6 @@ class Brokers(Queryable):
             state_store_str_keys (list[list[str]], optional): List of string keys for the state store.
             state_store_glob_keys (list[list[str]], optional): List of glob keys for the state store.
             state_store_bin_keys (list[list[str]], optional): List of binary keys for the state store.
-            user_property_key (str, optional): User property key for dynamic persistence.
-            user_property_value (str, optional): User property value for dynamic persistence.
             disable_dynamic (list[str], optional): List of key types to disable dynamic persistence for.
             existing_persist_config (dict, optional): Existing persistence configuration to update.
 
@@ -238,15 +230,6 @@ class Brokers(Queryable):
                 if collection:
                     state_store_resources.extend([{"keys": items, "keyType": key_type} for items in collection])
             persistence["stateStore"]["stateStoreSettings"] = {"stateStoreResources": state_store_resources}
-
-        # Handle user properties (both must be provided or both must be None)
-        if user_property_key is not None or user_property_value is not None:
-            if user_property_key is None or user_property_value is None:
-                raise InvalidArgumentValueError("Both --user-key and --user-value must be set or both must be unset.")
-            persistence["dynamicSettings"] = {
-                "userPropertyKey": user_property_key,
-                "userPropertyValue": user_property_value,
-            }
 
         # Handle dynamic disabling
         if disable_dynamic:
