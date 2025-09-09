@@ -51,8 +51,6 @@ def update_broker_persist(
     state_store_str_keys: Optional[List[List[str]]] = None,
     state_store_glob_keys: Optional[List[List[str]]] = None,
     state_store_bin_keys: Optional[List[List[str]]] = None,
-    user_property_key: Optional[str] = None,
-    user_property_value: Optional[str] = None,
     disable_dynamic: Optional[List[str]] = None,
     **kwargs,
 ) -> dict:
@@ -66,8 +64,6 @@ def update_broker_persist(
         state_store_str_keys=state_store_str_keys,
         state_store_glob_keys=state_store_glob_keys,
         state_store_bin_keys=state_store_bin_keys,
-        user_property_key=user_property_key,
-        user_property_value=user_property_value,
         disable_dynamic=disable_dynamic,
         **kwargs,
     )

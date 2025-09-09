@@ -154,49 +154,132 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
     assert len(mocked_responses.calls) == 1
 
 
+def create_persistence_config(
+    retain_mode: str = "Custom",
+    state_store_mode: str = "Custom",
+    subscriber_queue_mode: str = "Custom",
+    max_size: str = "10Gi",
+) -> dict:
+    """Create a persistence configuration with specified modes."""
+    config = {"maxSize": max_size}
+
+    # Add retain configuration
+    config["retain"] = {"mode": retain_mode}
+    if retain_mode == "Custom":
+        config["retain"]["retainSettings"] = {"dynamic": {"mode": "Enabled"}}
+
+    # Add stateStore configuration
+    config["stateStore"] = {"mode": state_store_mode}
+    if state_store_mode == "Custom":
+        config["stateStore"]["stateStoreSettings"] = {"dynamic": {"mode": "Enabled"}}
+
+    # Add subscriberQueue configuration
+    config["subscriberQueue"] = {"mode": subscriber_queue_mode}
+    if subscriber_queue_mode == "Custom":
+        config["subscriberQueue"]["subscriberQueueSettings"] = {"dynamic": {"mode": "Enabled"}}
+
+    return config
+
+
 @pytest.mark.parametrize(
     "existing_persistence_config",
     [
-        # No persistence configuration - should raise ValidationError
-        None,
-        # Basic persistence configuration with maxSize
-        {
-            "maxSize": "10Gi",
-            "retain": {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}},
-            "stateStore": {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}},
-            "subscriberQueue": {"mode": "Custom", "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}}},
-        },
-        # Persistence with All modes
-        {
-            "maxSize": "5Gi",
-            "retain": {"mode": "All"},
-            "stateStore": {"mode": "All"},
-            "subscriberQueue": {"mode": "All"},
-        },
-        # Persistence with None modes
-        {
-            "maxSize": "20Gi",
-            "retain": {"mode": "None"},
-            "stateStore": {"mode": "None"},
-            "subscriberQueue": {"mode": "None"},
-        },
+        None,  # No persistence configuration
+        create_persistence_config(),  # All Custom modes
+        create_persistence_config("All", "All", "All"),  # All modes set to "All"
+        create_persistence_config("None", "None", "None"),  # All modes set to "None"
+        create_persistence_config("Custom", "All", "None"),  # Mixed modes
     ],
 )
 @pytest.mark.parametrize(
     "scenario",
     [
-        # Test error case - no persistence enabled
+        # === ERROR CASE: No persistence enabled ===
         {
+            "description": "Error when no persistence is configured",
             "input": {"persist_mode": ["retain=Custom"]},
-            "persistence_required": True,
             "error": (
                 ValidationError,
                 "The broker is not enabled for disk persistence which must be configured at create time.\n"
                 "Use 'az iot ops create' with '--persist-max-size' to enable.",
             ),
         },
-        # Test basic mode updates
+        # === ERROR CASES: Invalid mode configurations ===
         {
+            "description": "Invalid persistence mode key",
+            "input": {"persist_mode": ["invalid=Custom"]},
+            "error": (
+                InvalidArgumentValueError,
+                "Invalid persistence mode key: invalid. Valid keys are ['stateStore', 'retain', 'subscriberQueue'].",
+            ),
+        },
+        {
+            "description": "Invalid persistence mode value",
+            "input": {"persist_mode": ["retain=Invalid"]},
+            "error": (
+                InvalidArgumentValueError,
+                "Invalid persistence mode value: Invalid. Valid values are ['None', 'All', 'Custom'].",
+            ),
+        },
+        # === ERROR CASES: Invalid disable_dynamic key ===
+        {
+            "description": "Invalid disable_dynamic key",
+            "input": {"persist_mode": ["retain=Custom"], "disable_dynamic": ["invalidKey"]},
+            "error": (
+                InvalidArgumentValueError,
+                "Invalid disable dynamic key: invalidKey. Valid keys are ['stateStore', 'retain', 'subscriberQueue'].",
+            ),
+        },
+        {
+            "description": "Mixed valid and invalid disable_dynamic keys",
+            "input": {
+                "persist_mode": ["retain=Custom", "stateStore=Custom"],
+                "disable_dynamic": ["retain", "wrongKey"],
+            },
+            "error": (
+                InvalidArgumentValueError,
+                "Invalid disable dynamic key: wrongKey. Valid keys are ['stateStore', 'retain', 'subscriberQueue'].",
+            ),
+        },
+        # === ERROR CASES: Configuration without proper mode ===
+        {
+            "description": "Retain topics requires Custom mode",
+            "input": {"retain_topics": ["topic1"]},
+            "check_mode": {"retain": "Custom"},
+            "error": (
+                InvalidArgumentValueError,
+                "To set retain topics for persistence, retain mode must be set to 'Custom'.",
+            ),
+        },
+        {
+            "description": "Subscriber queue client IDs requires Custom mode",
+            "input": {"subscriber_queue_client_ids": ["client1"]},
+            "check_mode": {"subscriberQueue": "Custom"},
+            "error": (
+                InvalidArgumentValueError,
+                "To set subscriber queue client Ids for persistence, subscriberQueue mode must be set to 'Custom'.",
+            ),
+        },
+        {
+            "description": "State store keys requires Custom mode",
+            "input": {"state_store_str_keys": [["key1"]]},
+            "check_mode": {"stateStore": "Custom"},
+            "error": (
+                InvalidArgumentValueError,
+                "To set state store keys for persistence, stateStore mode must be set to 'Custom'.",
+            ),
+        },
+        {
+            "description": "Disable dynamic requires Custom mode",
+            "input": {"persist_mode": ["retain=All"], "disable_dynamic": ["retain"]},
+            "error": (
+                InvalidArgumentValueError,
+                "To disable dynamic persistence for retain, retain mode must be set to 'Custom'.",
+            ),
+        },
+        # === SUCCESS CASES: Basic mode updates ===
+        {
+            "description": "Update multiple modes",
             "input": {"persist_mode": ["retain=All", "stateStore=None"]},
             "expected_updates": {
                 "retain": {"mode": "All"},
@@ -204,20 +287,43 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
             },
         },
         {
+            "description": "Set subscriberQueue to Custom",
             "input": {"persist_mode": ["subscriberQueue=Custom"]},
             "expected_updates": {
                 "subscriberQueue": {"mode": "Custom", "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}}},
             },
         },
-        # Test retain topics configuration
         {
+            "description": "Mode transitions - mix of All, None, Custom",
+            "input": {"persist_mode": ["retain=All", "stateStore=None", "subscriberQueue=Custom"]},
+            "expected_updates": {
+                "retain": {"mode": "All"},
+                "stateStore": {"mode": "None"},
+                "subscriberQueue": {"mode": "Custom", "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}}},
+            },
+        },
+        # === SUCCESS CASES: Retain configurations ===
+        {
+            "description": "Set retain topics",
             "input": {"persist_mode": ["retain=Custom"], "retain_topics": ["topic1", "topic2", "topic3"]},
             "expected_updates": {
                 "retain": {"mode": "Custom", "retainSettings": {"topics": ["topic1", "topic2", "topic3"]}},
             },
         },
-        # Test subscriber queue client IDs
         {
+            "description": "Retain topics when retain is already Custom",
+            "input": {"retain_topics": ["topic1", "topic2"]},
+            "check_mode": {"retain": "Custom"},  # Only succeeds if retain is Custom
+            "expected_updates": {
+                "retain": {
+                    "mode": "Custom",
+                    "retainSettings": {"topics": ["topic1", "topic2"]},
+                },
+            },
+        },
+        # === SUCCESS CASES: Subscriber queue configurations ===
+        {
+            "description": "Set subscriber queue client IDs",
             "input": {
                 "persist_mode": ["subscriberQueue=Custom"],
                 "subscriber_queue_client_ids": ["client1", "client2"],
@@ -229,12 +335,24 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
                 },
             },
         },
-        # Test state store keys - simple case
         {
+            "description": "Subscriber client IDs when subscriberQueue is already Custom",
+            "input": {"subscriber_queue_client_ids": ["client1", "client2", "client3"]},
+            "check_mode": {"subscriberQueue": "Custom"},  # Only succeeds if subscriberQueue is Custom
+            "expected_updates": {
+                "subscriberQueue": {
+                    "mode": "Custom",
+                    "subscriberQueueSettings": {"subscriberClientIds": ["client1", "client2", "client3"]},
+                },
+            },
+        },
+        # === SUCCESS CASES: State store configurations ===
+        {
+            "description": "State store with simple keys",
             "input": {
                 "persist_mode": ["stateStore=Custom"],
                 "state_store_str_keys": [["key1"], ["key2"]],
-                "state_store_glob_keys": [["pattern*"], ["*.json"]],
+                "state_store_glob_keys": [["pattern*"]],
                 "state_store_bin_keys": [["binkey1"]],
             },
             "expected_updates": {
@@ -245,78 +363,34 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
                             {"keys": ["key1"], "keyType": "String"},
                             {"keys": ["key2"], "keyType": "String"},
                             {"keys": ["pattern*"], "keyType": "Pattern"},
-                            {"keys": ["*.json"], "keyType": "Pattern"},
                             {"keys": ["binkey1"], "keyType": "Binary"},
                         ]
                     },
                 },
             },
         },
-        # Test state store keys - complex multiple keys per group
         {
+            "description": "State store keys when stateStore is already Custom",
             "input": {
-                "persist_mode": ["stateStore=Custom"],
-                "state_store_str_keys": [["key1", "key2", "key3"], ["key4"], ["key5", "key6"]],
-                "state_store_glob_keys": [["sensor/*", "device/*"], ["*.json", "*.xml", "*.csv"]],
-                "state_store_bin_keys": [["binkey1", "binkey2"], ["binkey3"]],
+                "state_store_str_keys": [["cache:key1", "cache:key2"]],
+                "state_store_glob_keys": [["logs/*"]],
             },
+            "check_mode": {"stateStore": "Custom"},  # Only succeeds if stateStore is Custom
             "expected_updates": {
                 "stateStore": {
                     "mode": "Custom",
                     "stateStoreSettings": {
                         "stateStoreResources": [
-                            {"keys": ["key1", "key2", "key3"], "keyType": "String"},
-                            {"keys": ["key4"], "keyType": "String"},
-                            {"keys": ["key5", "key6"], "keyType": "String"},
-                            {"keys": ["sensor/*", "device/*"], "keyType": "Pattern"},
-                            {"keys": ["*.json", "*.xml", "*.csv"], "keyType": "Pattern"},
-                            {"keys": ["binkey1", "binkey2"], "keyType": "Binary"},
-                            {"keys": ["binkey3"], "keyType": "Binary"},
+                            {"keys": ["cache:key1", "cache:key2"], "keyType": "String"},
+                            {"keys": ["logs/*"], "keyType": "Pattern"},
                         ]
                     },
                 },
             },
         },
-        # Test state store keys - only string keys with multiple groups
+        # === SUCCESS CASES: Disable dynamic ===
         {
-            "input": {
-                "persist_mode": ["stateStore=Custom"],
-                "state_store_str_keys": [
-                    ["user:1001", "user:1002", "user:1003"],
-                    ["session:active"],
-                    ["config:database", "config:cache", "config:logging", "config:security"],
-                    ["temp:cleanup"],
-                ],
-            },
-            "expected_updates": {
-                "stateStore": {
-                    "mode": "Custom",
-                    "stateStoreSettings": {
-                        "stateStoreResources": [
-                            {"keys": ["user:1001", "user:1002", "user:1003"], "keyType": "String"},
-                            {"keys": ["session:active"], "keyType": "String"},
-                            {
-                                "keys": ["config:database", "config:cache", "config:logging", "config:security"],
-                                "keyType": "String",
-                            },
-                            {"keys": ["temp:cleanup"], "keyType": "String"},
-                        ]
-                    },
-                },
-            },
-        },
-        # Test user property configuration
-        {
-            "input": {"user_property_key": "myKey", "user_property_value": "myValue"},
-            "expected_updates": {
-                "dynamicSettings": {
-                    "userPropertyKey": "myKey",
-                    "userPropertyValue": "myValue",
-                },
-            },
-        },
-        # Test disable dynamic configuration
-        {
+            "description": "Disable dynamic for multiple modes",
             "input": {
                 "persist_mode": ["retain=Custom", "stateStore=Custom"],
                 "disable_dynamic": ["retain", "stateStore"],
@@ -326,86 +400,27 @@ def test_broker_delete(mocked_cmd, mocked_responses: responses):
                 "stateStore": {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Disabled"}}},
             },
         },
-        # Test complex scenario with multiple configurations
+        # === SUCCESS CASES: Complex scenarios ===
         {
+            "description": "Complex - retain topics with dynamic disabled",
             "input": {
-                "persist_mode": ["retain=Custom", "subscriberQueue=All"],
-                "retain_topics": ["sensor/*", "telemetry/+"],
-                "user_property_key": "persistence",
-                "user_property_value": "enabled",
+                "persist_mode": ["retain=Custom"],
+                "retain_topics": ["test/*"],
+                "disable_dynamic": ["retain"],
             },
             "expected_updates": {
-                "retain": {"mode": "Custom", "retainSettings": {"topics": ["sensor/*", "telemetry/+"]}},
-                "subscriberQueue": {"mode": "All"},
-                "dynamicSettings": {
-                    "userPropertyKey": "persistence",
-                    "userPropertyValue": "enabled",
+                "retain": {
+                    "mode": "Custom",
+                    "retainSettings": {"topics": ["test/*"], "dynamic": {"mode": "Disabled"}},
                 },
             },
         },
-        # Test custom broker name
         {
+            "description": "Update with custom broker name",
             "input": {"persist_mode": ["retain=None"], "broker_name": "custom-broker"},
             "expected_updates": {
                 "retain": {"mode": "None"},
             },
-        },
-        # Test error cases for invalid configurations
-        {
-            "input": {"retain_topics": ["topic1"]},
-            "error": (
-                InvalidArgumentValueError,
-                "To set retain topics for persistence, retain mode must be set to 'Custom'.",
-            ),
-        },
-        {
-            "input": {"subscriber_queue_client_ids": ["client1"]},
-            "error": (
-                InvalidArgumentValueError,
-                "To set subscriber queue client Ids for persistence, subscriberQueue mode must be set to 'Custom'.",
-            ),
-        },
-        {
-            "input": {"state_store_str_keys": [["key1"]]},
-            "error": (
-                InvalidArgumentValueError,
-                "To set state store keys for persistence, stateStore mode must be set to 'Custom'.",
-            ),
-        },
-        {
-            "input": {"user_property_key": "key"},
-            "error": (
-                InvalidArgumentValueError,
-                "Both --user-key and --user-value must be set or both must be unset.",
-            ),
-        },
-        {
-            "input": {"user_property_value": "value"},
-            "error": (
-                InvalidArgumentValueError,
-                "Both --user-key and --user-value must be set or both must be unset.",
-            ),
-        },
-        {
-            "input": {"persist_mode": ["retain=All"], "disable_dynamic": ["retain"]},
-            "error": (
-                InvalidArgumentValueError,
-                "To disable dynamic persistence for retain, retain mode must be set to 'Custom'.",
-            ),
-        },
-        {
-            "input": {"persist_mode": ["invalid=Custom"]},
-            "error": (
-                InvalidArgumentValueError,
-                "Invalid persistence mode key: invalid. Valid keys are ['stateStore', 'retain', 'subscriberQueue'].",
-            ),
-        },
-        {
-            "input": {"persist_mode": ["retain=Invalid"]},
-            "error": (
-                InvalidArgumentValueError,
-                "Invalid persistence mode value: Invalid. Valid values are ['None', 'All', 'Custom'].",
-            ),
         },
     ],
 )
@@ -415,19 +430,44 @@ def test_update_broker_persist(
     scenario: dict,
     existing_persistence_config: Optional[dict],
 ):
-    # Skip incompatible test combinations
-    persistence_required = scenario.get("persistence_required", False)
-    if (existing_persistence_config is None and not persistence_required) or (
-        persistence_required and existing_persistence_config is not None
-    ):
-        return
+    """Test update_broker_persist with various persistence configurations and scenarios."""
+    error_info = scenario.get("error")
+
+    # Check if this is the "no persistence" error - it should only run when config is None
+    is_no_persistence_error = (
+        error_info and error_info[0] == ValidationError and "not enabled for disk persistence" in str(error_info[1])
+    )
+
+    # Skip incompatible combinations
+    if existing_persistence_config is None:
+        if not is_no_persistence_error:
+            return  # No config: only run "no persistence" error test
+    elif is_no_persistence_error:
+        return  # Has config: skip "no persistence" error test
 
     # Setup test data
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
-    scenario_inputs: dict = scenario.get("input", {})
-    broker_name = scenario_inputs.get("broker_name", DEFAULT_BROKER)
-    test_inputs = {k: v for k, v in scenario_inputs.items() if k != "broker_name"}
+    scenario_inputs = scenario.get("input", {}).copy()
+    broker_name = scenario_inputs.pop("broker_name", DEFAULT_BROKER)
+
+    # Adjust expectations based on check_mode
+    check_mode = scenario.get("check_mode")
+    expected_updates = scenario.get("expected_updates")
+
+    if check_mode and existing_persistence_config:
+        mode_matches = all(
+            existing_persistence_config.get(key, {}).get("mode") == required_mode
+            for key, required_mode in check_mode.items()
+        )
+        if mode_matches:
+            error_info = None  # Should succeed
+        else:
+            expected_updates = None  # Should fail
+
+    # Skip if no clear expectation
+    if not error_info and not expected_updates:
+        return
 
     # Create mock broker
     broker_properties = {"persistence": deepcopy(existing_persistence_config)} if existing_persistence_config else {}
@@ -441,60 +481,9 @@ def test_update_broker_persist(
     endpoint = get_broker_endpoint(
         resource_group_name=resource_group_name, instance_name=instance_name, broker_name=broker_name
     )
-
-    # Add GET mock
     mocked_responses.add(method=responses.GET, url=endpoint, json=mock_broker_record, status=200)
 
-    # Determine expected outcome
-    error_info = scenario.get("error")
-    expected_updates = scenario.get("expected_updates", {})
-
-    # Handle dynamic error-to-success conversion for configuration-dependent scenarios
-    if error_info and existing_persistence_config:
-        # Check if error scenario should actually succeed based on existing persistence modes
-        should_succeed = False
-
-        if "retain_topics" in scenario_inputs:
-            should_succeed = existing_persistence_config.get("retain", {}).get("mode") == "Custom"
-            if should_succeed:
-                expected_updates = {
-                    "retain": {"mode": "Custom", "retainSettings": {"topics": scenario_inputs["retain_topics"]}}
-                }
-        elif "subscriber_queue_client_ids" in scenario_inputs:
-            should_succeed = existing_persistence_config.get("subscriberQueue", {}).get("mode") == "Custom"
-            if should_succeed:
-                expected_updates = {
-                    "subscriberQueue": {
-                        "mode": "Custom",
-                        "subscriberQueueSettings": {
-                            "subscriberClientIds": scenario_inputs["subscriber_queue_client_ids"]
-                        },
-                    }
-                }
-        elif any(
-            k in scenario_inputs for k in ["state_store_str_keys", "state_store_glob_keys", "state_store_bin_keys"]
-        ):
-            should_succeed = existing_persistence_config.get("stateStore", {}).get("mode") == "Custom"
-            if should_succeed:
-                resources = []
-                for collection, key_type in zip(
-                    [
-                        scenario_inputs.get("state_store_str_keys", []),
-                        scenario_inputs.get("state_store_glob_keys", []),
-                        scenario_inputs.get("state_store_bin_keys", []),
-                    ],
-                    ["String", "Pattern", "Binary"],
-                ):
-                    for item in collection:
-                        resources.append({"keys": item, "keyType": key_type})
-                expected_updates = {
-                    "stateStore": {"mode": "Custom", "stateStoreSettings": {"stateStoreResources": resources}}
-                }
-
-        if should_succeed:
-            error_info = None
-
-    # Execute test
+    # Execute and verify
     if error_info:
         # Test error case
         error_type, error_msg = error_info
@@ -504,14 +493,14 @@ def test_update_broker_persist(
                 instance_name=instance_name,
                 resource_group_name=resource_group_name,
                 broker_name=broker_name,
-                **test_inputs,
+                **scenario_inputs,
             )
         assert str(exc.value) == error_msg
+        assert len(mocked_responses.calls) == 1  # Only GET was called
     else:
         # Test success case
         expected_broker_record = deepcopy(mock_broker_record)
-        if expected_updates:
-            expected_broker_record["properties"]["persistence"].update(expected_updates)
+        expected_broker_record["properties"]["persistence"].update(expected_updates)
 
         mocked_responses.add(method=responses.PUT, url=endpoint, json=expected_broker_record, status=200)
 
@@ -521,13 +510,12 @@ def test_update_broker_persist(
             resource_group_name=resource_group_name,
             broker_name=broker_name,
             wait_sec=0.1,
-            **test_inputs,
+            **scenario_inputs,
         )
 
         assert result == expected_broker_record
         assert len(mocked_responses.calls) == 2
 
         # Verify PUT request payload
-        request_payload = mocked_responses.calls[1].request.body
-        request_payload = json.loads(request_payload)
+        request_payload = json.loads(mocked_responses.calls[1].request.body)
         assert request_payload == expected_broker_record
