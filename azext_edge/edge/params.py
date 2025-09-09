@@ -868,7 +868,7 @@ def load_iotops_arguments(self, _):
                     ]
                 ),
             )
-    
+
     for cmd_space in [
         "iot ops dataflow endpoint create otel",
         "iot ops dataflow endpoint update otel",

@@ -1385,6 +1385,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Create or replace an OpenTelemetry dataflow endpoint.
+        long-summary: For more information on OpenTelemetry dataflow endpoint, see https://aka.ms/opentelemetry-endpoint.
 
         examples:
         - name: Create or replace a dataflow endpoint resource with minimum input.
@@ -1671,7 +1672,7 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update the properties of an existing OpenTelemetry dataflow endpoint.
-        long-summary: For more information on OpenTelemetry dataflow endpoint, see https://aka.ms/otel-endpoint.
+        long-summary: For more information on OpenTelemetry dataflow endpoint, see https://aka.ms/opentelemetry-endpoint.
 
         examples:
         - name: Update the config map reference for trusted CA certificate of the dataflow endpoint resource called 'myendpoint'.
