@@ -175,14 +175,14 @@ jobs:
         run: |
           echo "NO_PREFLIGHT=false" >> $GITHUB_OUTPUT
           if [[ ${{ matrix.feature }} == "insecure-listener" ]]; then
-            echo "CREATE_ARG=--add-insecure-listener" >> $GITHUB_OUTPUT
+            echo "CREATE_ARG=--add-insecure-listener --persist-max-size 10Gi" >> $GITHUB_OUTPUT
             echo "NO_PREFLIGHT=true" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "custom-input" ]]; then
             echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
             echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
           elif [[ ${{ matrix.feature }} == "trustbundle" ]]; then
-            echo "CREATE_ARG=--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer " >> $GITHUB_OUTPUT
-            echo "INIT_ARG=--user-trust true" >> $GITHUB_OUTPUT
+            echo "CREATE_ARG=--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer" >> $GITHUB_OUTPUT
+            echo "INIT_ARG=--user-trust" >> $GITHUB_OUTPUT
           fi
       - name: "Output variables for future steps"
         id: "env_out"

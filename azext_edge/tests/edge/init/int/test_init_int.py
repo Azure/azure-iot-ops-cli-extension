@@ -260,6 +260,7 @@ def assert_broker_args(
     instance_name: str,
     resource_group: str,
     add_insecure_listener: Optional[bool] = None,
+    persist_max_size: Optional[str] = None,
     broker_backend_part: Optional[str] = None,
     broker_backend_rf: Optional[str] = None,
     broker_backend_workers: Optional[str] = None,
@@ -322,6 +323,14 @@ def assert_broker_args(
     assert cardinality["frontend"]["replicas"] == (broker_frontend_replicas or 2)
     assert cardinality["frontend"]["workers"] == (broker_frontend_workers or 2)
     # there is diagnostics + generateResourceLimits but nothing from init yet
+
+    if persist_max_size:
+        # @digimaun
+        print("...")
+        print(broker)
+        print("...")
+        persistence = broker_props["persistence"]
+        assert persistence["maxSize"] == persist_max_size
 
     # nothing interesting in the authn
     authns = run(f"az iot ops broker authn list -g {resource_group} -i {instance_name} -b {broker_name}")
