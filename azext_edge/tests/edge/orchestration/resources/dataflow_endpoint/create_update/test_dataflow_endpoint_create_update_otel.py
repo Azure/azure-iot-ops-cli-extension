@@ -30,180 +30,137 @@ from ..helpers import assert_dataflow_endpoint_create_update, assert_dataflow_en
                 "secret_name": "secret_name"
             },
             {
+                "endpointType": "OpenTelemetry",
                 "openTelemetrySettings": {
+                    "authentication": {
+                        "method": "X509Certificate",
+                        "x509CertificateSettings": {
+                            "secretRef": "secret_name"
+                        }
+                    },
                     "host": "https://otel-collector.monitoring.svc.cluster.local:4317",
                     "batching": {
                         "latencySeconds": 1,
                         "maxMessages": 1,
                     },
-                    "secretName": "secret_name"
+                    'tls': {'mode': 'Enabled'}
                 },
+            },
+        ),
+        # x509 with authentication type
+        (
+            {
+                "hostname": "https://otel-collector.monitoring.svc.cluster.local",
+                "port": 4317,
+                "latency": 1,
+                "message_count": 1,
+                "secret_name": "secret_name",
+                "authentication_type": "X509Certificate"
+            },
+            {
                 "endpointType": "OpenTelemetry",
-            },
-        ),
-        # uami without authentication type and scope
-        (
-            {
-                "storage_account_name": "mystorageaccount",
-                "client_id": "client_id",
-                "tenant_id": "tenant_id",
-                "latency": 1,
-                "message_count": 1,
-            },
-            {
-                "dataLakeStorageSettings": {
+                "openTelemetrySettings": {
                     "authentication": {
-                        "method": "UserAssignedManagedIdentity",
-                        "userAssignedManagedIdentitySettings" : {
-                            "clientId": "client_id",
-                            "tenantId": "tenant_id",
-                            "scope": "https://storage.azure.com/.default",
-                        },
+                        "method": "X509Certificate",
+                        "x509CertificateSettings": {
+                            "secretRef": "secret_name"
+                        }
                     },
+                    "host": "https://otel-collector.monitoring.svc.cluster.local:4317",
                     "batching": {
                         "latencySeconds": 1,
                         "maxMessages": 1,
                     },
-                    "host": "https://mystorageaccount.blob.core.windows.net",
+                    'tls': {'mode': 'Enabled'}
                 },
-                "endpointType": "DataLakeStorage",
             },
         ),
-        # uami with authentication type
+        # service account token without authentication type
         (
             {
-                "storage_account_name": "mystorageaccount",
-                "client_id": "client_id",
-                "scope": "scope",
-                "tenant_id": "tenant_id",
+                "hostname": "https://otel-collector.monitoring.svc.cluster.local",
+                "port": 4317,
                 "latency": 1,
                 "message_count": 1,
-                "authentication_type": "UserAssignedManagedIdentity",
-            },
-            {
-                "dataLakeStorageSettings": {
-                    "authentication": {
-                        "method": "UserAssignedManagedIdentity",
-                        "userAssignedManagedIdentitySettings" : {
-                            "clientId": "client_id",
-                            "scope": "scope",
-                            "tenantId": "tenant_id",
-                        },
-                    },
-                    "batching": {
-                        "latencySeconds": 1,
-                        "maxMessages": 1,
-                    },
-                    "host": "https://mystorageaccount.blob.core.windows.net",
-                },
-                "endpointType": "DataLakeStorage",
-            },
-        ),
-        # sami without authentication type
-        (
-            {
-                "storage_account_name": "mystorageaccount",
                 "audience": "audience",
-                "latency": 1,
-                "message_count": 1,
+                "tls_disabled": True
             },
             {
-                "dataLakeStorageSettings": {
+                "endpointType": "OpenTelemetry",
+                "openTelemetrySettings": {
                     "authentication": {
-                        "method": "SystemAssignedManagedIdentity",
-                        "systemAssignedManagedIdentitySettings": {
-                            "audience": "audience",
-                        },
+                        "method": "ServiceAccountToken",
+                        "serviceAccountTokenSettings": {
+                            "audience": "audience"
+                        }
                     },
+                    "host": "https://otel-collector.monitoring.svc.cluster.local:4317",
                     "batching": {
                         "latencySeconds": 1,
                         "maxMessages": 1,
                     },
-                    "host": "https://mystorageaccount.blob.core.windows.net",
+                    'tls': {'mode': 'Disabled'}
                 },
-                "endpointType": "DataLakeStorage",
             },
         ),
-        # sami with authentication type
+        # service account token with authentication type
         (
             {
-                "storage_account_name": "mystorageaccount",
+                "hostname": "https://otel-collector.monitoring.svc.cluster.local",
+                "port": 4317,
+                "latency": 1,
+                "message_count": 1,
                 "audience": "audience",
-                "latency": 1,
-                "message_count": 1,
-                "authentication_type": "SystemAssignedManagedIdentity",
+                "tls_disabled": True,
+                "authentication_type": "ServiceAccountToken",
             },
             {
-                "dataLakeStorageSettings": {
+                "endpointType": "OpenTelemetry",
+                "openTelemetrySettings": {
                     "authentication": {
-                        "method": "SystemAssignedManagedIdentity",
-                        "systemAssignedManagedIdentitySettings": {
-                            "audience": "audience",
-                        },
+                        "method": "ServiceAccountToken",
+                        "serviceAccountTokenSettings": {
+                            "audience": "audience"
+                        }
                     },
+                    "host": "https://otel-collector.monitoring.svc.cluster.local:4317",
                     "batching": {
                         "latencySeconds": 1,
                         "maxMessages": 1,
                     },
-                    "host": "https://mystorageaccount.blob.core.windows.net",
+                    'tls': {'mode': 'Disabled'}
                 },
-                "endpointType": "DataLakeStorage",
             },
         ),
-        # access token without authentication type
+        # no auth
         (
             {
-                "storage_account_name": "mystorageaccount",
+                "hostname": "https://otel-collector.monitoring.svc.cluster.local",
+                "port": 4317,
                 "latency": 1,
                 "message_count": 1,
-                "secret_name": "mysecret",
+                "tls_disabled": True,
+                "no_auth": True,
             },
             {
-                "dataLakeStorageSettings": {
+                "endpointType": "OpenTelemetry",
+                "openTelemetrySettings": {
                     "authentication": {
-                        "method": "AccessToken",
-                        "accessTokenSettings": {
-                            "secretRef": "mysecret"
-                        },
+                        "method": "Anonymous",
+                        "anonymousSettings": {},
                     },
+                    "host": "https://otel-collector.monitoring.svc.cluster.local:4317",
                     "batching": {
                         "latencySeconds": 1,
                         "maxMessages": 1,
                     },
-                    "host": "https://mystorageaccount.blob.core.windows.net",
+                    'tls': {'mode': 'Disabled'}
                 },
-                "endpointType": "DataLakeStorage",
-            },
-        ),
-        # access token with authentication type
-        (
-            {
-                "storage_account_name": "mystorageaccount",
-                "latency": 1,
-                "message_count": 1,
-                "secret_name": "mysecret",
-                "authentication_type": "AccessToken",
-            },
-            {
-                "dataLakeStorageSettings": {
-                    "authentication": {
-                        "method": "AccessToken",
-                        "accessTokenSettings": {
-                            "secretRef": "mysecret"
-                        },
-                    },
-                    "batching": {
-                        "latencySeconds": 1,
-                        "maxMessages": 1,
-                    },
-                    "host": "https://mystorageaccount.blob.core.windows.net",
-                },
-                "endpointType": "DataLakeStorage",
             },
         ),
     ]
 )
-def test_dataflow_endpoint_create_adls(
+def test_dataflow_endpoint_create_otel(
     mocked_cmd,
     params: dict,
     expected_payload: dict,
@@ -214,7 +171,7 @@ def test_dataflow_endpoint_create_adls(
         expected_payload=expected_payload,
         mocked_cmd=mocked_cmd,
         params=params,
-        dataflow_endpoint_func=create_dataflow_endpoint_adls,
+        dataflow_endpoint_func=create_dataflow_endpoint_otel,
     )
 
 
@@ -224,45 +181,49 @@ def test_dataflow_endpoint_create_adls(
         # unsupported authentication type
         (
             {
-                "storage_account_name": "mystorageaccount",
-                "client_id": "client_id",
-                "scope": "scope",
-                "tenant_id": "tenant_id",
+                "hostname": "https://otel-collector.monitoring.svc.cluster.local",
+                "port": 4317,
                 "latency": 1,
                 "message_count": 1,
+                "audience": "audience",
+                "tls_disabled": True,
                 "authentication_type": "UnsupportedType",
             },
             InvalidArgumentValueError,
             "Authentication method 'UnsupportedType' is "
-            "not allowed for endpoint type 'DataLakeStorage'. "
-            "Allowed methods are: ['AccessToken', "
-            "'SystemAssignedManagedIdentity', 'UserAssignedManagedIdentity'].",
+            "not allowed for endpoint type 'OpenTelemetry'. "
+            "Allowed methods are: ['ServiceAccountToken', "
+            "'X509Certificate'].",
         ),
-        # missing required parameters for uami
+        # missing required parameters for service account token
         (
             {
-                "storage_account_name": "mystorageaccount",
+                "hostname": "https://otel-collector.monitoring.svc.cluster.local",
+                "port": 4317,
                 "latency": 1,
                 "message_count": 1,
-                "client_id": "client_id",
+                "tls_disabled": True,
+                "authentication_type": "ServiceAccountToken",
             },
             InvalidArgumentValueError,
-            "Missing required parameters for authentication method 'UserAssignedManagedIdentity': --tenant-id.",
+            "Missing required parameters for authentication method 'ServiceAccountToken': --audience.",
         ),
-        # missing required parameters for access token
+        # missing required parameters for x509 certificate
         (
             {
-                "storage_account_name": "mystorageaccount",
+                "hostname": "https://otel-collector.monitoring.svc.cluster.local",
+                "port": 4317,
                 "latency": 1,
                 "message_count": 1,
-                "authentication_type": "AccessToken",
+                "tls_disabled": True,
+                "authentication_type": "X509Certificate",
             },
             InvalidArgumentValueError,
-            "Missing required parameters for authentication method 'AccessToken': --secret-name.",
+            "Missing required parameters for authentication method 'X509Certificate': --secret-name.",
         ),
     ]
 )
-def test_dataflow_endpoint_create_adls_with_error(
+def test_dataflow_endpoint_create_otel_with_error(
     mocked_cmd,
     params: dict,
     expected_error_type: type,
@@ -275,7 +236,7 @@ def test_dataflow_endpoint_create_adls_with_error(
         expected_error_text=expected_error_text,
         mocked_cmd=mocked_cmd,
         params=params,
-        dataflow_endpoint_func=create_dataflow_endpoint_adls,
+        dataflow_endpoint_func=create_dataflow_endpoint_otel,
     )
 
 
@@ -289,10 +250,11 @@ def test_dataflow_endpoint_create_adls_with_error(
             },
             {
                 "properties": {
-                    "dataLakeStorageSettings": {
+                    "endpointType": "OpenTelemetry",
+                    "openTelemetrySettings": {
                         "authentication": {
-                            "method": "AccessToken",
-                            "accessTokenSettings": {
+                            "method": "ServiceAccountToken",
+                            "serviceAccountTokenSettings": {
                                 "secretRef": "mysecret"
                             },
                         },
@@ -302,14 +264,14 @@ def test_dataflow_endpoint_create_adls_with_error(
                         },
                         "host": "https://mystorageaccount.blob.core.windows.net",
                     },
-                    "endpointType": "DataLakeStorage",
                 },
             },
             {
-                "dataLakeStorageSettings": {
+                "endpointType": "OpenTelemetry",
+                "openTelemetrySettings": {
                     "authentication": {
-                        "method": "AccessToken",
-                        "accessTokenSettings": {
+                        "method": "ServiceAccountToken",
+                        "serviceAccountTokenSettings": {
                             "secretRef": "mysecret"
                         },
                     },
@@ -319,12 +281,52 @@ def test_dataflow_endpoint_create_adls_with_error(
                     },
                     "host": "https://mystorageaccount.blob.core.windows.net",
                 },
-                "endpointType": "DataLakeStorage",
+            },
+        ),
+        # update authentication settings
+        (
+            {
+                "authentication_type": "X509Certificate",
+                "secret_name": "mysecret"
+            },
+            {
+                "properties": {
+                    "endpointType": "OpenTelemetry",
+                    "openTelemetrySettings": {
+                        "authentication": {
+                            "method": "ServiceAccountToken",
+                            "serviceAccountTokenSettings": {
+                                "secretRef": "mysecret"
+                            },
+                        },
+                        "batching": {
+                            "latencySeconds": 2,
+                            "maxMessages": 1,
+                        },
+                        "host": "https://mystorageaccount.blob.core.windows.net",
+                    },
+                },
+            },
+            {
+                "endpointType": "OpenTelemetry",
+                "openTelemetrySettings": {
+                    "authentication": {
+                        "method": "X509Certificate",
+                        "x509CertificateSettings": {
+                            "secretRef": "mysecret"
+                        },
+                    },
+                    "batching": {
+                        "latencySeconds": 2,
+                        "maxMessages": 1,
+                    },
+                    "host": "https://mystorageaccount.blob.core.windows.net",
+                },
             },
         ),
     ]
 )
-def test_dataflow_endpoint_update_adls(
+def test_dataflow_endpoint_update_otel(
     mocked_cmd,
     params: dict,
     updating_payload: dict,
@@ -336,7 +338,7 @@ def test_dataflow_endpoint_update_adls(
         expected_payload=expected_payload,
         mocked_cmd=mocked_cmd,
         params=params,
-        dataflow_endpoint_func=update_dataflow_endpoint_adls,
+        dataflow_endpoint_func=update_dataflow_endpoint_otel,
         updating_payload=updating_payload,
         is_update=True,
     )

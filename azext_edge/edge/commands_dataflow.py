@@ -657,6 +657,7 @@ def create_dataflow_endpoint_otel(
     audience: Optional[str] = None,
     secret_name: Optional[str] = None,
     config_map_reference: Optional[str] = None,
+    authentication_type: Optional[str] = None,
     show_config: Optional[str] = None,
 ) -> dict:
 
@@ -674,6 +675,7 @@ def create_dataflow_endpoint_otel(
         sat_audience=audience,
         x509_secret_name=secret_name,
         config_map_reference=config_map_reference,
+        authentication_type=authentication_type,
         show_config=show_config,
     )
 
@@ -1148,10 +1150,11 @@ def update_dataflow_endpoint_otel(
     audience: Optional[str] = None,
     secret_name: Optional[str] = None,
     config_map_reference: Optional[str] = None,
+    authentication_type: Optional[str] = None,
     show_config: Optional[str] = None,
 ) -> dict:
 
-    return DataFlowEndpoints(cmd).create(
+    return DataFlowEndpoints(cmd).update(
         name=endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
@@ -1165,6 +1168,7 @@ def update_dataflow_endpoint_otel(
         sat_audience=audience,
         x509_secret_name=secret_name,
         config_map_reference=config_map_reference,
+        authentication_type=authentication_type,
         show_config=show_config,
     )
 
