@@ -127,7 +127,7 @@ def load_iotops_adr_help():
     ] = """
         type: group
         short-summary: Manage datasets in an asset.
-        long-summary: A dataset will be created once a point is created. See `az iot ops asset datapoint add` for more details.
+        long-summary: A dataset will be created once a point is created. See `az iot ops asset dataset point add` for more details.
     """
 
     helps[
@@ -155,14 +155,14 @@ def load_iotops_adr_help():
     """
 
     helps[
-        "iot ops asset datapoint"
+        "iot ops asset dataset point"
     ] = """
         type: group
         short-summary: Manage data-points in an asset dataset.
     """
 
     helps[
-        "iot ops asset datapoint add"
+        "iot ops asset dataset point add"
     ] = """
         type: command
         short-summary: Add a data point to an asset dataset.
@@ -171,17 +171,17 @@ def load_iotops_adr_help():
         examples:
         - name: Add a data point to an asset.
           text: >
-            az iot ops asset datapoint add --asset myasset -g myresourcegroup --dataset default --data-source mydatasource --name data1
+            az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset default --data-source mydatasource --name data1
 
         - name: Add a data point to an asset with data point name, observability mode, custom queue size,
                 and custom sampling interval.
           text: >
-            az iot ops asset datapoint add --asset myasset -g myresourcegroup --dataset default --data-source mydatasource --name data1
+            az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset default --data-source mydatasource --name data1
             --observability-mode log --queue-size 5 --sampling-interval 200
     """
 
     helps[
-        "iot ops asset datapoint export"
+        "iot ops asset dataset point export"
     ] = """
         type: command
         short-summary: Export data-points in an asset dataset.
@@ -189,17 +189,17 @@ def load_iotops_adr_help():
         examples:
         - name: Export all data-points in an asset in JSON format.
           text: >
-            az iot ops asset datapoint export --asset myasset -g myresourcegroup --dataset default
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset default
         - name: Export all data-points in an asset in CSV format in a specific output directory that can be uploaded via the Digital Operations Experience.
           text: >
-            az iot ops asset datapoint export --asset myasset -g myresourcegroup --dataset default --format csv --output-dir myAssetsFiles
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset default --format csv --output-dir myAssetsFiles
         - name: Export all data-points in an asset in YAML format. Replace the file if one is present already.
           text: >
-            az iot ops asset datapoint export --asset myasset -g myresourcegroup --dataset default --format yaml --replace
+            az iot ops asset dataset point export --asset myasset -g myresourcegroup --dataset default --format yaml --replace
     """
 
     helps[
-        "iot ops asset datapoint import"
+        "iot ops asset dataset point import"
     ] = """
         type: command
         short-summary: Import data-points in an asset dataset.
@@ -207,25 +207,25 @@ def load_iotops_adr_help():
         examples:
         - name: Import all data-points from a file. These data-points will be appended to the asset dataset's current data-points. Data-points with duplicate names will be ignored.
           text: >
-            az iot ops asset datapoint import --asset myasset -g myresourcegroup --dataset default --input-file myasset_default_dataPoints.csv
+            az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset default --input-file myasset_default_dataPoints.csv
         - name: Import all data-points from a file. These data-points will be appended to the asset dataset's current data-points. Data-points with duplicate names will replace the current asset data-points.
           text: >
-            az iot ops asset datapoint import --asset myasset -g myresourcegroup --dataset default --input-file myasset_default_dataPoints.json --replace
+            az iot ops asset dataset point import --asset myasset -g myresourcegroup --dataset default --input-file myasset_default_dataPoints.json --replace
     """
 
     helps[
-        "iot ops asset datapoint list"
+        "iot ops asset dataset point list"
     ] = """
         type: command
         short-summary: List data-points in an asset dataset.
         examples:
         - name: List all points in an asset dataset.
           text: >
-            az iot ops asset datapoint list --asset myasset -g myresourcegroup --dataset default
+            az iot ops asset dataset point list --asset myasset -g myresourcegroup --dataset default
     """
 
     helps[
-        "iot ops asset datapoint remove"
+        "iot ops asset dataset point remove"
     ] = """
         type: command
         short-summary: Remove a data point in an asset dataset.
@@ -233,7 +233,7 @@ def load_iotops_adr_help():
         examples:
         - name: Remove a data point from an asset via the data point name.
           text: >
-            az iot ops asset datapoint remove --asset myasset -g myresourcegroup --dataset default --name data1
+            az iot ops asset dataset point remove --asset myasset -g myresourcegroup --dataset default --name data1
     """
 
     helps[
