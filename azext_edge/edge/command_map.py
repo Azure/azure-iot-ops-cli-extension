@@ -325,7 +325,7 @@ def load_iotops_commands(self, _):
     # dataset point
     for asset_type in ["custom", "opcua"]:
         with self.command_group(
-            f"iot ops ns asset {asset_type} dataset point",
+            f"iot ops ns asset {asset_type} datapoint",
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_dataset_point")
@@ -335,7 +335,7 @@ def load_iotops_commands(self, _):
     # event group
     for asset_type in ["custom", "opcua", "onvif"]:
         with self.command_group(
-            f"iot ops ns asset {asset_type} eg",
+            f"iot ops ns asset {asset_type} event-group",
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_eg")
@@ -368,7 +368,7 @@ def load_iotops_commands(self, _):
     # management group
     for asset_type in ["custom", "opcua", "onvif"]:
         with self.command_group(
-            f"iot ops ns asset {asset_type} mgmt",
+            f"iot ops ns asset {asset_type} mgmt-group",
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_management_group")
@@ -380,7 +380,7 @@ def load_iotops_commands(self, _):
     # management group actions
     for asset_type in ["custom", "opcua"]:
         with self.command_group(
-            f"iot ops ns asset {asset_type} mgmt action",
+            f"iot ops ns asset {asset_type} mgmt-action",
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_management_group_action")
