@@ -18,7 +18,9 @@ from azext_edge.edge.providers.adr.namespace_devices import DeviceEndpointType
 from azext_edge.edge.providers.adr.namespace_assets import (
     _build_destination,
     _create_datapoint,
-    _get_event,
+    _create_event,  # TODO
+    _get_event_group,
+    _get_mgmt_group,  # TODO
     _process_configs,
     _process_opcua_dataset_configurations_v1,
     _process_opcua_event_configurations_v1,
@@ -136,7 +138,7 @@ def test_build_destination_error(test_case: dict):
 
 
 @pytest.mark.parametrize("num_events", [1, 5, 10])
-def test_get_event(num_events: int):
+def test_get_event_group(num_events: int):
     from .test_namespace_asset_events_unit import generate_event
     test_event = generate_random_string()
     asset = {
@@ -153,7 +155,7 @@ def test_get_event(num_events: int):
     asset["properties"]["events"].append(generate_event(test_event))
 
     # Test success case
-    result = _get_event(asset, test_event)
+    result = _get_event_group(asset, test_event)
     assert result["name"] == test_event
     # lazy way cause the event is last
     assert result == asset["properties"]["events"][-1]
@@ -178,7 +180,7 @@ def test_get_event(num_events: int):
         "events": None,
     }
 ])
-def test_get_event_error(test_case):
+def test_get_event_group_error(test_case):
     """Test error handling when an event is not found in an asset."""
     asset = {
         "name": "testAsset",
@@ -191,7 +193,7 @@ def test_get_event_error(test_case):
 
     # Test error cases
     with pytest.raises(InvalidArgumentValueError) as ex:
-        _get_event(asset, test_case["event_name"])
+        _get_event_group(asset, test_case["event_name"])
     error_msg = f"Event '{test_case['event_name']}' not found in asset '{asset['name']}'."
     assert error_msg in str(ex.value)
 

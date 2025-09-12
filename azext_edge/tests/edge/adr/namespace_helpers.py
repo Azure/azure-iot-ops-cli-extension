@@ -104,15 +104,16 @@ check_event_configuration: Callable = partial(check_configuration, "eventConfigu
 check_stream_configuration: Callable = partial(check_configuration, "streamConfiguration")
 
 
-def check_destinations(added: dict, expected: Optional[dict] = None):
+def check_destinations(added: dict, expected: Optional[dict] = None, default: bool = False):
     """Helper function to check destinations."""
-    if not expected or "destinations" not in expected:
+    key = "defaultDestinations" if default else "destinations"
+    if not expected or not expected.get(key):
         return
 
-    added_destinations = added.get("destinations", [])
-    assert len(added_destinations) == len(expected["destinations"])
+    added_destinations = added.get(key, [])
+    assert len(added_destinations) == len(expected[key])
     destination = added_destinations[0]
-    expected_destination = expected["destinations"][0]
+    expected_destination = expected[key][0]
     assert destination.get("target") == expected_destination.get("target")
 
     if destination.get("target") == "Mqtt":

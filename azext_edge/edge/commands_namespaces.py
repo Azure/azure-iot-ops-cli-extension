@@ -1103,7 +1103,7 @@ def add_namespace_custom_asset_dataset(
     instance_name: str,
     instance_resource_group: str,
     dataset_name: str,
-    dataset_data_source: str,
+    data_source: str,
     dataset_custom_configuration: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
     type_ref: Optional[str] = None,
@@ -1116,7 +1116,7 @@ def add_namespace_custom_asset_dataset(
         instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type="custom",
-        dataset_data_source=dataset_data_source,
+        data_source=data_source,
         dataset_custom_configuration=dataset_custom_configuration,
         dataset_destinations=dataset_destinations,
         type_ref=type_ref,
@@ -1131,7 +1131,7 @@ def add_namespace_opcua_asset_dataset(
     instance_name: str,
     instance_resource_group: str,
     dataset_name: str,
-    dataset_data_source: str,
+    data_source: str,
     dataset_destinations: Optional[str] = None,
     opcua_dataset_publishing_interval: Optional[int] = None,
     opcua_dataset_sampling_interval: Optional[int] = None,
@@ -1147,7 +1147,7 @@ def add_namespace_opcua_asset_dataset(
         instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type=DeviceEndpointType.OPCUA.value,
-        dataset_data_source=dataset_data_source,
+        data_source=data_source,
         dataset_destinations=dataset_destinations,
         opcua_dataset_publishing_interval=opcua_dataset_publishing_interval,
         opcua_dataset_sampling_interval=opcua_dataset_sampling_interval,
@@ -1164,7 +1164,7 @@ def add_namespace_rest_asset_dataset(
     instance_name: str,
     instance_resource_group: str,
     dataset_name: str,
-    dataset_data_source: str,
+    data_source: str,
     rest_dataset_sampling_interval: Optional[int] = None,
     dataset_destinations: Optional[str] = None,
     type_ref: Optional[str] = None,
@@ -1177,7 +1177,7 @@ def add_namespace_rest_asset_dataset(
         instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type=DeviceEndpointType.REST.value,
-        dataset_data_source=dataset_data_source,
+        data_source=data_source,
         rest_dataset_sampling_interval=rest_dataset_sampling_interval,
         dataset_destinations=dataset_destinations,
         replace=replace,
@@ -1219,7 +1219,7 @@ def update_namespace_custom_asset_dataset(
     instance_name: str,
     instance_resource_group: str,
     dataset_name: str,
-    dataset_data_source: Optional[str] = None,
+    data_source: Optional[str] = None,
     dataset_custom_configuration: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
     type_ref: Optional[str] = None,
@@ -1231,7 +1231,7 @@ def update_namespace_custom_asset_dataset(
         instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type="custom",
-        dataset_data_source=dataset_data_source,
+        data_source=data_source,
         dataset_custom_configuration=dataset_custom_configuration,
         dataset_destinations=dataset_destinations,
         **kwargs
@@ -1244,7 +1244,7 @@ def update_namespace_opcua_asset_dataset(
     instance_name: str,
     instance_resource_group: str,
     dataset_name: str,
-    dataset_data_source: Optional[str] = None,
+    data_source: Optional[str] = None,
     dataset_destinations: Optional[str] = None,
     opcua_dataset_publishing_interval: Optional[int] = None,
     opcua_dataset_sampling_interval: Optional[int] = None,
@@ -1259,7 +1259,7 @@ def update_namespace_opcua_asset_dataset(
         instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
         asset_type=DeviceEndpointType.OPCUA.value,
-        dataset_data_source=dataset_data_source,
+        data_source=data_source,
         dataset_destinations=dataset_destinations,
         opcua_dataset_publishing_interval=opcua_dataset_publishing_interval,
         opcua_dataset_sampling_interval=opcua_dataset_sampling_interval,
@@ -1401,7 +1401,7 @@ def remove_namespace_asset_dataset_point(
 
 
 # ASSET EVENT GROUP COMMANDS
-def add_namespace_custom_asset_eg(
+def add_namespace_custom_asset_event_group(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1429,7 +1429,7 @@ def add_namespace_custom_asset_eg(
     )
 
 
-def add_namespace_opcua_asset_eg(
+def add_namespace_opcua_asset_event_group(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1457,7 +1457,7 @@ def add_namespace_opcua_asset_eg(
     )
 
 
-def add_namespace_onvif_asset_eg(
+def add_namespace_onvif_asset_event_group(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1481,7 +1481,7 @@ def add_namespace_onvif_asset_eg(
     )
 
 
-def list_namespace_asset_egs(
+def list_namespace_asset_event_groups(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1494,7 +1494,7 @@ def list_namespace_asset_egs(
     )
 
 
-def show_namespace_asset_eg(
+def show_namespace_asset_event_group(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1509,7 +1509,7 @@ def show_namespace_asset_eg(
     )
 
 
-def update_namespace_custom_asset_eg(
+def update_namespace_custom_asset_event_group(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1535,7 +1535,7 @@ def update_namespace_custom_asset_eg(
     )
 
 
-def update_namespace_opcua_asset_eg(
+def update_namespace_opcua_asset_event_group(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1561,7 +1561,7 @@ def update_namespace_opcua_asset_eg(
     )
 
 
-def update_namespace_onvif_asset_eg(
+def update_namespace_onvif_asset_event_group(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1583,7 +1583,7 @@ def update_namespace_onvif_asset_eg(
     )
 
 
-def remove_namespace_asset_eg(
+def remove_namespace_asset_event_group(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1601,7 +1601,7 @@ def remove_namespace_asset_eg(
 
 
 # ASSET EVENT GROUP EVENT COMMANDS
-def add_namespace_custom_asset_eg_event(
+def add_namespace_custom_asset_event_group_event(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1632,7 +1632,7 @@ def add_namespace_custom_asset_eg_event(
 
 
 # TODO: not exposed for now but this will be supported in the near future
-def add_namespace_opcua_asset_eg_event(
+def add_namespace_opcua_asset_event_group_event(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1660,7 +1660,7 @@ def add_namespace_opcua_asset_eg_event(
     )
 
 
-def list_namespace_asset_eg_events(
+def list_namespace_asset_event_group_events(
     cmd,
     asset_name: str,
     instance_name: str,
@@ -1675,7 +1675,7 @@ def list_namespace_asset_eg_events(
     )
 
 
-def remove_namespace_asset_eg_event(
+def remove_namespace_asset_event_group_event(
     cmd,
     asset_name: str,
     instance_name: str,

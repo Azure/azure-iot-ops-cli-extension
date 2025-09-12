@@ -45,7 +45,7 @@ def get_namespace_device_mgmt_uri(namespace_name: str, resource_group_name: str,
     )
     if device_name:
         base_uri += f"/{device_name}"
-    return f"{base_uri}?api-version={DeviceRegistryMgmtApiVersion.V20250701_preview.value}"
+    return f"{base_uri}?api-version={DeviceRegistryMgmtApiVersion.V20251001.value}"
 
 
 def get_namespace_device_record(device_name: str, namespace_name: str, resource_group_name: str) -> Dict:

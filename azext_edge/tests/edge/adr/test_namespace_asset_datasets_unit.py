@@ -243,7 +243,7 @@ def test_add_namespace_asset_dataset(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
-        dataset_data_source=data_source,
+        data_source=data_source,
         replace=replace,
         wait_sec=0,
         **config_params
@@ -330,7 +330,7 @@ def test_add_namespace_asset_dataset_error(
         "instance_resource_group": instance_resource_group,
         "asset_name": asset_name,
         "dataset_name": dataset_name,
-        "dataset_data_source": data_source,
+        "data_source": data_source,
         "wait_sec": 0
     }
 
@@ -708,11 +708,11 @@ def test_show_namespace_asset_dataset(
     # No specific common requirements
     {},
     # With dataset data source
-    {"dataset_data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Sensor;i=2000"},
+    {"data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Sensor;i=2000"},
     # Both data source and destinations
     {
         "dataset_destinations": "",  # TODO- change. currently will be set in the test
-        "dataset_data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Device;i=3000",
+        "data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Device;i=3000",
     }
 ])
 @pytest.mark.parametrize("asset_type, command_func, unique_reqs", [
@@ -801,8 +801,8 @@ def test_update_namespace_asset_dataset(
     expected_dataset = deepcopy(initial_dataset)
 
     # Update data source if specified
-    if "dataset_data_source" in common_reqs:
-        expected_dataset["dataSource"] = common_reqs["dataset_data_source"]
+    if "data_source" in common_reqs:
+        expected_dataset["dataSource"] = common_reqs["data_source"]
 
     # Update configuration if specified
     if unique_reqs:
@@ -907,8 +907,8 @@ def test_update_namespace_asset_dataset(
     assert patch_dataset["name"] == dataset_name
 
     # Check data source update if applicable
-    if "dataset_data_source" in common_reqs:
-        assert patch_dataset["dataSource"] == common_reqs["dataset_data_source"]
+    if "data_source" in common_reqs:
+        assert patch_dataset["dataSource"] == common_reqs["data_source"]
     else:
         assert patch_dataset["dataSource"] == initial_dataset["dataSource"]
 
