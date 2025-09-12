@@ -137,47 +137,46 @@ def test_build_destination_error(test_case: dict):
         assert msg in str(excinfo.value)
 
 
-@pytest.mark.parametrize("num_events", [1, 5, 10])
-def test_get_event_group(num_events: int):
-    from .test_namespace_asset_events_unit import generate_event
+@pytest.mark.parametrize("num_groups", [1, 5, 10])
+def test_get_event_group(num_groups: int):
     test_event = generate_random_string()
     asset = {
         "name": "testAsset",
         "properties": {
-            "events": []
+            "eventGroups": []
         }
     }
 
-    for i in range(num_events):
-        asset["properties"]["events"].append(generate_event(f"testEvent{i}"))
+    for i in range(num_groups):
+        asset["properties"]["eventGroups"].append(_get_event_group(asset, f"testEvent{i}"))
 
-    # Set up events in asset properties
-    asset["properties"]["events"].append(generate_event(test_event))
+    # Set up eventGroups in asset properties
+    asset["properties"]["eventGroups"].append(_get_event_group(asset, test_event))
 
     # Test success case
     result = _get_event_group(asset, test_event)
     assert result["name"] == test_event
     # lazy way cause the event is last
-    assert result == asset["properties"]["events"][-1]
+    assert result == asset["properties"]["eventGroups"][-1]
 
 
 @pytest.mark.parametrize("test_case", [
     {
         "event_name": generate_random_string(),
-        "events": [
+        "event_groups": [
             {
                 "name": f"another{generate_random_string()}",
-                "eventNotifier": "nsu=test;s=FastUInt456",
+                "dataSource": "nsu=test;s=FastUInt456",
             }
         ],
     },
     {
         "event_name": generate_random_string(),
-        "events": [],
+        "event_groups": [],
     },
     {
         "event_name": generate_random_string(),
-        "events": None,
+        "event_groups": None,
     }
 ])
 def test_get_event_group_error(test_case):
@@ -188,8 +187,8 @@ def test_get_event_group_error(test_case):
     }
 
     # Set up events in asset properties if provided
-    if test_case["events"] is not None:
-        asset["properties"]["events"] = test_case["events"]
+    if test_case["event_groups"] is not None:
+        asset["properties"]["eventGroups"] = test_case["event_groups"]
 
     # Test error cases
     with pytest.raises(InvalidArgumentValueError) as ex:

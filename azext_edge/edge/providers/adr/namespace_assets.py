@@ -850,31 +850,31 @@ class NamespaceAssets(Queryable):
             asset_name=asset_name
         )
         # check if event group exists
-        event = _get_event_group(asset, group_name)
+        group = _get_event_group(asset, group_name)
 
         # process the configs + destinations
         processed_configs = _process_configs(
             asset_type=asset_type,
             default=False,
-            original_event_configuration=event.get("eventConfiguration"),
+            original_event_configuration=group.get("eventConfiguration"),
             **kwargs
         )
 
         # update the event properties
         if "eventsConfiguration" in processed_configs:
-            event["eventGroupConfiguration"] = processed_configs["eventsConfiguration"]
+            group["eventGroupConfiguration"] = processed_configs["eventsConfiguration"]
         if "eventsDestinations" in processed_configs:
-            event["defaultDestinations"] = processed_configs["eventsDestinations"]
+            group["defaultDestinations"] = processed_configs["eventsDestinations"]
         if data_source:
-            event["dataSource"] = data_source
+            group["dataSource"] = data_source
         if type_ref:
-            event["typeRef"] = type_ref
+            group["typeRef"] = type_ref
 
         # get the events from the asset (note the event should be updated here already)
-        events = asset["properties"].get("eventGroups", [])
+        groups = asset["properties"].get("eventGroups", [])
         update_payload = {
             "properties": {
-                "eventGroups": events
+                "eventGroups": groups
             }
         }
         with console.status(f"Updating event {group_name} in asset {asset_name}..."):
@@ -905,8 +905,8 @@ class NamespaceAssets(Queryable):
         # Custom
         custom_configuration: Optional[str] = None,
         # OPCUA specific
-        # queue_size: Optional[int] = None,
-        # sampling_interval: Optional[int] = None,
+        queue_size: Optional[int] = None,
+        sampling_interval: Optional[int] = None,
         event_destinations: Optional[List[dict]] = None,
         type_ref: Optional[str] = None,
         replace: bool = False,
@@ -937,7 +937,9 @@ class NamespaceAssets(Queryable):
             data_source=data_source,
             type_ref=type_ref,
             custom_configuration=custom_configuration,
-            event_destinations=event_destinations
+            event_destinations=event_destinations,
+            queue_size=queue_size,
+            sampling_interval=sampling_interval
         )
         remaining_events.append(event)
         event_group["events"] = remaining_events
@@ -1008,7 +1010,7 @@ class NamespaceAssets(Queryable):
         event_groups = asset["properties"].get("eventGroups", [])
         update_payload = {
             "properties": {
-                "events": event_groups
+                "eventGroups": event_groups
             }
         }
         with console.status(
@@ -1779,6 +1781,8 @@ def _create_event(
     event_name: str,
     data_source: str,
     type_ref: Optional[str] = None,
+    queue_size: Optional[int] = None,
+    sampling_interval: Optional[int] = None,
     custom_configuration: Optional[str] = None,
     event_destinations: Optional[List[List[str]]] = None
 ) -> dict:
@@ -1799,7 +1803,18 @@ def _create_event(
             config_type="event"
         )
         return event
+    additional_configuration = {}
+    if queue_size is not None:
+        additional_configuration["queueSize"] = queue_size
+    if sampling_interval is not None:
+        additional_configuration["samplingInterval"] = sampling_interval
+    if additional_configuration:
+        from .specs import NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA
+        ensure_schema_structure(
+            NAMESPACE_ASSET_OPCUA_DATAPOINT_CONFIGURATION_SCHEMA, input_data=additional_configuration
+        )
 
+    event["eventConfiguration"] = json.dumps(additional_configuration)
     # TODO: other event specific configurations can be added here
     return event
 

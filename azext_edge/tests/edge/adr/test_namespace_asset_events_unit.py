@@ -629,15 +629,15 @@ def test_remove_namespace_asset_event_group(
         assert mocked_responses.calls[2].request.method == "GET"
 
         call_body = json.loads(mocked_responses.calls[1].request.body)
-        call_events = call_body["properties"].get("events", [])
+        call_groups = call_body["properties"].get("eventGroups", [])
         expected_group_map = {event["name"]: event for event in expected_groups}
-        assert len(expected_groups) == len(call_events)
-        for event in call_events:
-            assert event["name"] in expected_group_map
-            expected_group = expected_group_map[event["name"]]
-            assert event["dataSource"] == expected_group["dataSource"]
-            assert event["eventGroupConfiguration"] == expected_group["eventGroupConfiguration"]
-            assert event["defaultDestinations"] == expected_group["defaultDestinations"]
+        assert len(expected_groups) == len(call_groups)
+        for group in call_groups:
+            assert group["name"] in expected_group_map
+            expected_group = expected_group_map[group["name"]]
+            assert group["dataSource"] == expected_group["dataSource"]
+            assert group["eventGroupConfiguration"] == expected_group["eventGroupConfiguration"]
+            assert group["defaultDestinations"] == expected_group["defaultDestinations"]
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
@@ -651,11 +651,11 @@ def test_remove_namespace_asset_event_group(
     # No specific common requirements
     {},
     # With event notifier
-    {"data_source": "nsu=test5;s=FastUInt999"},
+    {"data_source": "nsu=other5;s=Int1000"},
     # both notifier and event configuration
     {
         "event_destinations": "",  # will be set in the test
-        "data_source": "nsu=test3;s=FastUInt999",
+        "data_source": "nsu=other3;s=Int1000",
     }
 ])
 @pytest.mark.parametrize("asset_type, command_func, unique_reqs", [
@@ -714,15 +714,9 @@ def test_update_namespace_asset_event_group(
         endpoint_type=asset_type
     )
 
-    # add some random events
-    mocked_asset["properties"]["events"] = [
-        {
-            "name": f"tev{generate_random_string(12)}",
-            "eventNotifier": f"nsu=test;s=FastUInt{randint(1, 1000)}",
-            "destinations": [],
-            "eventConfiguration": "{}",
-            "dataPoints": []
-        } for _ in range(randint(0, 3))
+    # add some random groups
+    mocked_asset["properties"]["eventGroups"] = [
+        generate_event_group() for _ in range(randint(0, 3))
     ]
 
     # Create the initial event
@@ -731,7 +725,7 @@ def test_update_namespace_asset_event_group(
     )
 
     # add in initial event to the end for ease
-    mocked_asset["properties"]["events"].append(initial_event)
+    mocked_asset["properties"]["eventGroups"].append(initial_event)
 
     # Mock GET request to get the asset
     mocked_responses.add(
@@ -750,14 +744,14 @@ def test_update_namespace_asset_event_group(
 
     # Update notifier if specified
     if "data_source" in common_reqs:
-        expected_group["eventNotifier"] = common_reqs["data_source"]
+        expected_group["dataSource"] = common_reqs["data_source"]
 
     # Update configuration if specified
     if unique_reqs:
         if asset_type == "custom":
-            expected_group["eventConfiguration"] = unique_reqs["event_custom_configuration"]
+            expected_group["eventGroupConfiguration"] = unique_reqs["event_custom_configuration"]
         elif asset_type == "opcua":
-            expected_group["eventConfiguration"] = json.dumps({
+            expected_group["eventGroupConfiguration"] = json.dumps({
                 "publishingInterval": unique_reqs.get("opcua_event_publishing_interval"),
                 "queueSize": unique_reqs.get("opcua_event_queue_size")
             })
@@ -773,14 +767,14 @@ def test_update_namespace_asset_event_group(
                 "ttl": randint(1, 60)  # Random TTL for testing
             }
         }
-        expected_group["destinations"] = [destination]
+        expected_group["defaultDestinations"] = [destination]
         common_reqs["event_destinations"] = [
             f"{key}={value}" for key, value in destination["configuration"].items()
         ]
 
     # Create updated asset for mock response
     updated_asset = deepcopy(mocked_asset)
-    updated_asset["properties"]["events"] = [expected_group]
+    updated_asset["properties"]["eventGroups"] = [expected_group]
 
     # Mock PATCH request
     mocked_responses.add(
@@ -829,27 +823,27 @@ def test_update_namespace_asset_event_group(
     # Verify the PATCH request body contains the expected updated event
     patch_body = json.loads(mocked_responses.calls[2].request.body)
 
-    events = patch_body["properties"]["events"]
-    assert len(events) == len(mocked_asset["properties"]["events"])
+    groups = patch_body["properties"]["eventGroups"]
+    assert len(groups) == len(mocked_asset["properties"]["eventGroups"])
 
     # Get the updated event
-    patch_event = events[-1]
+    patch_group = groups[-1]
 
     # Check basic event properties
-    assert patch_event["name"] == group_name
+    assert patch_group["name"] == group_name
 
     # Check notifier update if applicable
-    assert patch_event["eventNotifier"] == expected_group["eventNotifier"]
+    assert patch_group["dataSource"] == expected_group["dataSource"]
 
     # Check configuration and destinations using helper functions
-    check_event_configuration(patch_event, expected_group)
-    check_destinations(patch_event, expected_group)
+    check_event_configuration(patch_group, expected_group)
+    check_destinations(patch_group, expected_group)
 
-    # Check data points preservation
-    assert len(patch_event["dataPoints"]) == len(initial_event["dataPoints"])
-    for i, dp in enumerate(patch_event["dataPoints"]):
-        assert dp["name"] == initial_event["dataPoints"][i]["name"]
-        assert dp["dataSource"] == initial_event["dataPoints"][i]["dataSource"]
+    # Check event preservation
+    assert len(patch_group["events"]) == len(initial_event["events"])
+    for i, ev in enumerate(patch_group["events"]):
+        assert ev["name"] == initial_event["events"][i]["name"]
+        assert ev["dataSource"] == initial_event["events"][i]["dataSource"]
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
@@ -906,7 +900,7 @@ def test_add_namespace_asset_event_group_event(
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
     group_name = f"testEvent{generate_random_string(5)}"
-    datapoint_name = f"testPoint{generate_random_string(5)}"
+    event_name = f"testPoint{generate_random_string(5)}"
     data_source = f"nsu=test;s=Point{randint(1, 1000)}"
 
     # Get the namespace from the mocked function
@@ -922,16 +916,16 @@ def test_add_namespace_asset_event_group_event(
     )
 
     # Create the event within the asset
-    event = generate_event(
+    group = generate_event_group(
         group_name=group_name, num_data_points=randint(1, 3) if has_points else 0
     )
 
     # add in point to replace
     if replace:
-        event["dataPoints"].append({
-            "name": datapoint_name,
+        group["events"].append({
+            "name": event_name,
             "dataSource": f"nsu=test;s=SameName{randint(1, 1000)}",
-            "dataPointConfiguration": json.dumps({  # since replace should remove old point, we can have any config
+            "eventConfiguration": json.dumps({  # since replace should remove old point, we can have any config
                 "publishingInterval": 2000,
                 "samplingInterval": 1000,
                 "queueSize": 5
@@ -939,7 +933,7 @@ def test_add_namespace_asset_event_group_event(
         })
 
     # Add the event to the asset properties
-    mocked_asset["properties"]["events"] = [event]
+    mocked_asset["properties"]["eventGroups"] = [group]
 
     # Mock the device endpoint check
     add_device_get_call(
@@ -964,14 +958,14 @@ def test_add_namespace_asset_event_group_event(
     )
 
     # Create the expected data point
-    expected_datapoint = {
-        "name": datapoint_name,
+    expected_event = {
+        "name": event_name,
         "dataSource": data_source
     }
 
     # Add configuration based on asset type
     if asset_type == "custom" and "custom_configuration" in config_params:
-        expected_datapoint["dataPointConfiguration"] = config_params["custom_configuration"]
+        expected_event["eventConfiguration"] = config_params["custom_configuration"]
     elif asset_type == "opcua":
         config = {}
         if "queue_size" in config_params:
@@ -979,19 +973,19 @@ def test_add_namespace_asset_event_group_event(
         if "sampling_interval" in config_params:
             config["samplingInterval"] = config_params["sampling_interval"]
         if config:
-            expected_datapoint["dataPointConfiguration"] = json.dumps(config)
+            expected_event["eventConfiguration"] = json.dumps(config)
 
     # Create the updated asset for the mock response
     updated_asset = deepcopy(mocked_asset)
-    updated_event = updated_asset["properties"]["events"][0]
-    updated_event["dataPoints"] = updated_event.get("dataPoints", [])
+    updated_group = updated_asset["properties"]["eventGroups"][0]
+    updated_group["events"] = updated_group.get("events", [])
     if replace:
         # If replacing, remove the existing point with the same name
-        updated_event["dataPoints"] = [
-            dp for dp in updated_event["dataPoints"] if dp["name"] != datapoint_name
+        updated_group["events"] = [
+            dp for dp in updated_group["events"] if dp["name"] != event_name
         ]
 
-    updated_event["dataPoints"].append(expected_datapoint)
+    updated_group["events"].append(expected_event)
 
     # Mock PATCH request
     mocked_responses.add(
@@ -1022,16 +1016,16 @@ def test_add_namespace_asset_event_group_event(
         instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         group_name=group_name,
-        datapoint_name=datapoint_name,
+        event_name=event_name,
         data_source=data_source,
         replace=replace,
         wait_sec=0,
         **config_params
     )
 
-    # result should be a list of datapoints from the patch response
+    # result should be a list of events from the patch response
     assert isinstance(result, list)
-    assert result == updated_asset["properties"]["events"][0]["dataPoints"]
+    assert result == updated_asset["properties"]["eventGroups"][0]["events"]
 
     # Verify API calls were made correctly
     assert len(mocked_responses.calls) == 4  # GET device + GET asset + PATCH asset + GET asset
@@ -1042,14 +1036,14 @@ def test_add_namespace_asset_event_group_event(
 
     # Verify the PATCH request payload contains the expected data point
     patch_body = json.loads(mocked_responses.calls[2].request.body)
-    patch_event = patch_body["properties"]["events"][0]
-    assert len(patch_event["dataPoints"]) == len(updated_event["dataPoints"])
+    patch_group = patch_body["properties"]["eventGroups"][0]
+    assert len(patch_group["events"]) == len(updated_group["events"])
 
     # check the added datapoint
-    patched_point = next((p for p in patch_event["dataPoints"] if p["name"] == datapoint_name), None)
-    assert patched_point is not None, f"Data point '{datapoint_name}' not found in PATCH request"
-    assert patched_point["dataSource"] == data_source
-    assert patched_point["dataPointConfiguration"] == expected_datapoint.get("dataPointConfiguration", "{}")
+    patched_event = next((p for p in patch_group["events"] if p["name"] == event_name), None)
+    assert patched_event is not None, f"Data point '{event_name}' not found in PATCH request"
+    assert patched_event["dataSource"] == data_source
+    assert patched_event["eventConfiguration"] == expected_event.get("eventConfiguration", "{}")
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
@@ -1059,9 +1053,9 @@ def test_add_namespace_asset_event_group_event(
     )
 
 
-@pytest.mark.parametrize("num_points", [0, 1, 3])
+@pytest.mark.parametrize("num_events", [0, 1, 3])
 def test_list_namespace_asset_event_group_events(
-    mocked_cmd, mocked_responses: responses, num_points: int, mocked_get_namespace_for_instance
+    mocked_cmd, mocked_responses: responses, num_events: int, mocked_get_namespace_for_instance
 ):
     asset_name = "testAsset"
     instance_name = "testInstance"
@@ -1078,8 +1072,10 @@ def test_list_namespace_asset_event_group_events(
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
-    mocked_asset["properties"]["events"] = [generate_event(group_name=group_name, num_data_points=num_points)]
-    expected_points = mocked_asset["properties"]["events"][0].get("dataPoints", [])
+    mocked_asset["properties"]["eventGroups"] = [
+        generate_event_group(group_name=group_name, num_data_points=num_events)
+    ]
+    expected_events = mocked_asset["properties"]["eventGroups"][0].get("events", [])
 
     mocked_responses.add(
         responses.GET,
@@ -1092,20 +1088,20 @@ def test_list_namespace_asset_event_group_events(
         status=200
     )
 
-    points = list_namespace_asset_event_group_events(
+    events = list_namespace_asset_event_group_events(
         cmd=mocked_cmd,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         group_name=group_name
     )
-    assert len(points) == num_points
-    expected_point_map = {point["name"]: point for point in expected_points}
-    for point in points:
-        assert point["name"] in expected_point_map
-        expected_point = expected_point_map[point["name"]]
-        assert point["dataSource"] == expected_point["dataSource"]
-        assert point["dataPointConfiguration"] == expected_point["dataPointConfiguration"]
+    assert len(events) == num_events
+    expected_event_map = {event["name"]: event for event in expected_events}
+    for ev in events:
+        assert ev["name"] in expected_event_map
+        expected_event = expected_event_map[ev["name"]]
+        assert ev["dataSource"] == expected_event["dataSource"]
+        assert ev["eventConfiguration"] == expected_event["eventConfiguration"]
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
@@ -1115,13 +1111,13 @@ def test_list_namespace_asset_event_group_events(
     )
 
 
-@pytest.mark.parametrize("points_present", [True, False])
-@pytest.mark.parametrize("point_deleted", [True, False])
+@pytest.mark.parametrize("events_present", [True, False])
+@pytest.mark.parametrize("event_deleted", [True, False])
 def test_remove_namespace_asset_event_group_event(
     mocked_cmd,
     mocked_responses: responses,
-    points_present: bool,
-    point_deleted: bool,
+    events_present: bool,
+    event_deleted: bool,
     mocked_check_cluster_connectivity,
     mocked_get_namespace_for_instance
 ):
@@ -1129,29 +1125,29 @@ def test_remove_namespace_asset_event_group_event(
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
     group_name = generate_random_string()
-    datapoint_name = generate_random_string()
+    event_name = generate_random_string()
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     resource_group_name = namespace_resource["resource_group"]
 
-    # Create mock asset with an event
+    # Create mock asset with an group
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=resource_group_name,
     )
 
-    # Create the event with or without datapoints
-    event = generate_event(group_name=group_name)
-    if points_present:
-        # Add some other datapoints that should remain after deletion
-        event["dataPoints"] = [
+    # Create the group with or without events
+    group = generate_event_group(group_name=group_name)
+    if events_present:
+        # Add some other events that should remain after deletion
+        group["events"] = [
             {
                 "name": f"otherDataPoint{i}",
                 "dataSource": f"nsu=subtest;s=FastUInt{i}",
-                "dataPointConfiguration": json.dumps(
+                "eventConfiguration": json.dumps(
                     {
                         "publishingInterval": randint(1, 10),
                         "samplingInterval": randint(1, 10),
@@ -1161,15 +1157,15 @@ def test_remove_namespace_asset_event_group_event(
             } for i in range(2)
         ]
 
-    # Save the expected datapoints (the ones that should remain after deletion)
-    expected_datapoints = deepcopy(event.get("dataPoints", []))
+    # Save the expected events (the ones that should remain after deletion)
+    expected_events = deepcopy(group.get("events", []))
 
     # Add the datapoint to be deleted if needed for testing
-    if point_deleted:
-        event["dataPoints"].append({
-            "name": datapoint_name,
+    if event_deleted:
+        group["events"].append({
+            "name": event_name,
             "dataSource": "nsu=subtest;s=ToBeDeleted",
-            "dataPointConfiguration": json.dumps(
+            "eventConfiguration": json.dumps(
                 {
                     "publishingInterval": randint(1, 10),
                     "samplingInterval": randint(1, 10),
@@ -1178,8 +1174,8 @@ def test_remove_namespace_asset_event_group_event(
             )
         })
 
-    # Add the event to the asset
-    mocked_asset["properties"]["events"] = [event]
+    # Add the group to the asset
+    mocked_asset["properties"]["eventGroups"] = [group]
 
     # Mock the GET request to get the asset
     mocked_responses.add(
@@ -1193,11 +1189,11 @@ def test_remove_namespace_asset_event_group_event(
         status=200
     )
 
-    if point_deleted:
+    if event_deleted:
         # Mock the PATCH request to update the asset
         updated_asset = deepcopy(mocked_asset)
-        updated_event = updated_asset["properties"]["events"][0]
-        updated_event["dataPoints"] = expected_datapoints
+        updated_event = updated_asset["properties"]["eventGroups"][0]
+        updated_event["events"] = expected_events
 
         mocked_responses.add(
             responses.PATCH,
@@ -1228,38 +1224,38 @@ def test_remove_namespace_asset_event_group_event(
         instance_resource_group=instance_resource_group,
         asset_name=asset_name,
         group_name=group_name,
-        datapoint_name=datapoint_name,
+        event_name=event_name,
         wait_sec=0
     )
 
     # Verify the result is the updated datapoints list
-    assert result == expected_datapoints
+    assert result == expected_events
 
     # Verify API calls were made correctly
-    assert len(mocked_responses.calls) == (3 if point_deleted else 1)
+    assert len(mocked_responses.calls) == (3 if event_deleted else 1)
     assert mocked_responses.calls[0].request.method == "GET"
 
     # If the point was deleted, there should be a PATCH request
-    if point_deleted:
+    if event_deleted:
         assert mocked_responses.calls[1].request.method == "PATCH"
         assert mocked_responses.calls[2].request.method == "GET"
 
         # Verify the PATCH request body contains the expected datapoints
         patch_body = json.loads(mocked_responses.calls[1].request.body)
-        patch_events = patch_body["properties"]["events"]
+        patch_events = patch_body["properties"]["eventGroups"]
         assert len(patch_events) == 1
 
         # Check that the datapoints in the patch request match the expected datapoints
-        patched_datapoints = patch_events[0].get("dataPoints", [])
+        patched_events = patch_events[0].get("events", [])
 
         # The datapoint that was supposed to be deleted should not be in the request
-        for dp in patched_datapoints:
-            assert dp["name"] != datapoint_name
+        for dp in patched_events:
+            assert dp["name"] != event_name
 
         # All expected datapoints should be present
-        assert len(patched_datapoints) == len(expected_datapoints)
-        for dp in expected_datapoints:
-            assert dp in patched_datapoints
+        assert len(patched_events) == len(expected_events)
+        for dp in expected_events:
+            assert dp in patched_events
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_once_with(
