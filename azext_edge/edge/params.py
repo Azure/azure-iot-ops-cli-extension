@@ -836,6 +836,33 @@ def load_iotops_arguments(self, _):
                     ]
                 ),
             )
+    
+    for cmd_space in [
+        "iot ops dataflow endpoint create otel",
+        "iot ops dataflow endpoint update otel",
+    ]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "hostname",
+                options_list=["--hostname"],
+                help="The hostname of the open telemetry setting.",
+            )
+            context.argument(
+                "port",
+                options_list=["--port"],
+                help="The port number of the open telemetry setting.",
+                type=int,
+            )
+            context.argument(
+                "authentication_type",
+                options_list=["--auth-type"],
+                choices=CaseInsensitiveList(
+                    [
+                        DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
+                        DataflowEndpointAuthenticationType.X509.value,
+                    ]
+                ),
+            )
 
     with self.argument_context("iot ops registry") as context:
         context.argument(
