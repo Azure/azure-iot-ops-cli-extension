@@ -1126,18 +1126,18 @@ def load_iotops_adr_help():
         - name: Add a basic custom event group
           text: >
             az iot ops ns asset custom event-group add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name alarmEvent --event-notifier "alarm.critical"
+            -g myInstanceResourceGroup --name alarmEvent --data-source "alarm.critical"
 
         - name: Add a custom event group with MQTT destination
           text: >
             az iot ops ns asset custom event-group add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name statusEvent --event-notifier "status.change"
+            -g myInstanceResourceGroup --name statusEvent --data-source "status.change"
             --destination topic="factory/custom/events" retain=Never qos=Qos1 ttl=1800
 
         - name: Replace a custom event group with same name
           text: >
             az iot ops ns asset custom event-group add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name alarmEvent --event-notifier "alarm.updated"
+            -g myInstanceResourceGroup --name alarmEvent --data-source "alarm.updated"
             --replace
     """
 
@@ -1187,12 +1187,12 @@ def load_iotops_adr_help():
         short-summary: Update an event group for a custom namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Update event notifier
+        - name: Update the data source for an event group
           text: >
             az iot ops ns asset custom event-group update --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name alarmEvent --event-notifier "alarm.updated"
+            -g myInstanceResourceGroup --name alarmEvent --data-source "alarm.updated"
 
-        - name: Update event destination
+        - name: Update event group destination
           text: >
             az iot ops ns asset custom event-group update --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --name temperatureAlert
@@ -1216,12 +1216,12 @@ def load_iotops_adr_help():
         - name: Add a basic custom event
           text: >
             az iot ops ns asset custom event add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --event alarmEvent --name severity --data-source "alarm.severity"
+            -g myInstanceResourceGroup --event-group alarmGroup --name severity --data-source "alarm.severity"
 
         - name: Replace a custom event with same name
           text: >
             az iot ops ns asset custom event add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --event alarmEvent --name severity --data-source "alarm.severity.updated"
+            -g myInstanceResourceGroup --event-group alarmGroup --name severity --data-source "alarm.severity.updated"
             --replace
     """
 
@@ -1232,10 +1232,10 @@ def load_iotops_adr_help():
         short-summary: List events for a custom asset event group in a Device Registry namespace.
 
         examples:
-        - name: List all events for an event
+        - name: List all events for an event group
           text: >
             az iot ops ns asset custom event list --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --event alarmEvent
+            -g myInstanceResourceGroup --event-group alarmGroup
     """
 
     helps[
@@ -1245,10 +1245,10 @@ def load_iotops_adr_help():
         short-summary: Remove an events from a custom asset event group in a Device Registry namespace.
 
         examples:
-        - name: Remove an event from an event
+        - name: Remove an event from an event group
           text: >
             az iot ops ns asset custom event remove --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --event alarmEvent --name severity
+            -g myInstanceResourceGroup --event-group alarmGroup --name severity
     """
 
     helps[
@@ -1359,23 +1359,25 @@ def load_iotops_adr_help():
         - name: Add a basic management group to a custom asset.
           text: >
             az iot ops ns asset custom mgmt-group add --asset myasset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup
+            --name myManagementGroup --data-source mydatasource
 
         - name: Add a management group with default topic and timeout.
           text: >
             az iot ops ns asset custom mgmt-group add --asset myasset --instance myInstance -g myInstanceResourceGroup
             --name myManagementGroup --default-topic factory/management/responses --default-timeout 30
+            --data-source mydatasource
 
         - name: Add a management group with custom configuration.
           text: >
             az iot ops ns asset custom mgmt-group add --asset myasset --instance myInstance -g myInstanceResourceGroup
             --name myManagementGroup --config '{"groupType": "sensor-control", "priority": "high"}'
-            --default-topic factory/control/commands --default-timeout 60
+            --default-topic factory/control/commands --default-timeout 60 --data-source mydatasource
 
         - name: Replace an existing management group with the same name.
           text: >
             az iot ops ns asset custom mgmt-group add --asset myasset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup --config '{"groupType": "updated-control", "version": "2.0"}' --replace
+            --name myManagementGroup --config '{"groupType": "updated-control", "version": "2.0"}'
+            --data-source mydatasource --replace
     """
 
     helps[
@@ -1415,10 +1417,11 @@ def load_iotops_adr_help():
             az iot ops ns asset custom mgmt-group update --asset myasset --instance myInstance -g myInstanceResourceGroup
             --name myManagementGroup --default-topic factory/updated/responses --default-timeout 45
 
-        - name: Update the custom configuration for a management group.
+        - name: Update the custom configuration and data source for a management group.
           text: >
             az iot ops ns asset custom mgmt-group update --asset myasset --instance myInstance -g myInstanceResourceGroup
             --name myManagementGroup --config '{"groupType": "advanced-control", "features": ["logging", "retry"]}'
+            --data-source mydatasource
 
         - name: Clear the custom configuration for a management group.
           text: >
@@ -1808,18 +1811,18 @@ def load_iotops_adr_help():
         - name: Add a basic ONVIF event group
           text: >
             az iot ops ns asset onvif event-group add --asset myonvifasset --instance myInstance
-            -g myInstanceResourceGroup --name motionEvent --event-notifier "motion.detection"
+            -g myInstanceResourceGroup --name motionEvent --data-source "motion.detection"
 
         - name: Add an ONVIF event group with MQTT destination
           text: >
             az iot ops ns asset onvif event-group add --asset myonvifasset --instance myInstance
-            -g myInstanceResourceGroup --name lineDetection --event-notifier "line.crossing"
+            -g myInstanceResourceGroup --name lineDetection --data-source "line.crossing"
             --destination topic="factory/onvif/events" retain=Never qos=Qos1 ttl=1800
 
         - name: Repalce an ONVIF event group with same name
           text: >
             az iot ops ns asset onvif event-group add --asset myonvifasset --instance myInstance
-            -g myInstanceResourceGroup --name motionEvent --event-notifier "motion.detection.updated"
+            -g myInstanceResourceGroup --name motionEvent --data-source "motion.detection.updated"
             --replace
     """
 
@@ -1872,7 +1875,7 @@ def load_iotops_adr_help():
         - name: Update event notifier
           text: >
             az iot ops ns asset onvif event-group update --asset myonvifasset --instance myInstance
-            -g myInstanceResourceGroup --name motionEvent --event-notifier "motion.detection.enhanced"
+            -g myInstanceResourceGroup --name motionEvent --data-source "motion.detection.enhanced"
 
         - name: Update event group destination
           text: >
@@ -1901,17 +1904,19 @@ def load_iotops_adr_help():
         - name: Add a basic management group to an ONVIF asset.
           text: >
             az iot ops ns asset onvif mgmt-group add --asset myonvifasset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup
+            --name myManagementGroup --data-source mydatasource
 
         - name: Add a management group with default topic and timeout.
           text: >
             az iot ops ns asset onvif mgmt-group add --asset myonvifasset --instance myInstance -g myInstanceResourceGroup
             --name myManagementGroup --default-topic factory/onvif/management/responses --default-timeout 30
+            --data-source mydatasource
 
         - name: Replace an existing management group with the same name.
           text: >
             az iot ops ns asset onvif mgmt-group add --asset myonvifasset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup --default-topic factory/onvif/control/commands --default-timeout 60 --replace
+            --name myManagementGroup --default-topic factory/onvif/control/commands --default-timeout 60
+            --data-source mydatasource --replace
     """
 
     helps[
@@ -1951,10 +1956,10 @@ def load_iotops_adr_help():
             az iot ops ns asset onvif mgmt-group update --asset myonvifasset --instance myInstance -g myInstanceResourceGroup
             --name myManagementGroup --default-topic factory/onvif/updated/responses --default-timeout 45
 
-        - name: Update only the default timeout for a management group.
+        - name: Update the default timeout and data source for a management group.
           text: >
             az iot ops ns asset onvif mgmt-group update --asset myonvifasset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup --default-timeout 90
+            --name myManagementGroup --default-timeout 90 --data-source mydatasource
     """
 
     helps[
@@ -2233,24 +2238,24 @@ def load_iotops_adr_help():
         - name: Add a basic OPC UA event group
           text: >
             az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
-            -g myInstanceResourceGroup --name alarmEvent --event-notifier "ns=2;i=1000"
+            -g myInstanceResourceGroup --name alarmEvent --data-source "ns=2;i=1000"
 
         - name: Add an OPC UA event group with publishing interval and queue size
           text: >
             az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
-            -g myInstanceResourceGroup --name systemEvent --event-notifier "ns=2;i=200"
+            -g myInstanceResourceGroup --name systemEvent --data-source "ns=2;i=200"
             --publish-int 1500 --queue-size 8
 
         - name: Add an OPC UA event group with MQTT destination
           text: >
             az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
-            -g myInstanceResourceGroup --name criticalAlarm --event-notifier "ns=2;i=4000"
+            -g myInstanceResourceGroup --name criticalAlarm --data-source "ns=2;i=4000"
             --dest topic="factory/opcua/alarms" retain=Keep qos=Qos0 ttl=7200
 
         - name: Replace an OPC UA event group with same name
           text: >
             az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
-            -g myInstanceResourceGroup --name alarmEvent --event-notifier "ns=3;i=1000"
+            -g myInstanceResourceGroup --name alarmEvent --data-source "ns=3;i=1000"
             --replace
     """
 
@@ -2332,17 +2337,19 @@ def load_iotops_adr_help():
         - name: Add a basic management group to an OPC UA asset.
           text: >
             az iot ops ns asset opcua mgmt-group add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup
+            --name myManagementGroup --data-source mydatasource
 
         - name: Add a management group with default topic and timeout.
           text: >
             az iot ops ns asset opcua mgmt-group add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
             --name myManagementGroup --default-topic factory/opcua/management/responses --default-timeout 30
+            --data-source mydatasource
 
         - name: Replace an existing management group with the same name.
           text: >
             az iot ops ns asset opcua mgmt-group add --asset myopcuaasset --instance myInstance -g myInstanceResourceGroup
-            --name myManagementGroup --default-topic factory/opcua/control/commands --default-timeout 60 --replace
+            --name myManagementGroup --default-topic factory/opcua/control/commands --default-timeout 60
+            --data-source mydatasource --replace
     """
 
     helps[
