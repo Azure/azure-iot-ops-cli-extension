@@ -346,7 +346,7 @@ def load_iotops_commands(self, _):
 
     # event group event
     with self.command_group(
-        "iot ops ns asset custom eg event",
+        "iot ops ns asset custom event",
         command_type=namespace_resource_ops,
     ) as cmd_group:
         cmd_group.command("add", "add_namespace_custom_asset_event_group_event")

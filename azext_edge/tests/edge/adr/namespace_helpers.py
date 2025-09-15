@@ -45,6 +45,8 @@ def assert_management_group_properties(result, **expected):
         assert result["defaultTopic"] == expected["default_topic"]
     if "default_timeout" in expected:
         assert result["defaultTimeoutInSeconds"] == expected["default_timeout"]
+    if "data_source" in expected:
+        assert result["dataSource"] == expected["data_source"]
     if "custom_configuration" in expected:
         assert result["managementGroupConfiguration"] == expected["custom_configuration"]
 

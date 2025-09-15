@@ -165,15 +165,15 @@ def load_iotops_adr_help():
         "iot ops asset dataset point add"
     ] = """
         type: command
-        short-summary: Add a data point to an asset dataset.
+        short-summary: Add a datapoint to an asset dataset.
         long-summary: If no datasets exist yet, this will create a new dataset. Currently, only one dataset is supported with the name "default".
 
         examples:
-        - name: Add a data point to an asset.
+        - name: Add a datapoint to an asset.
           text: >
             az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset default --data-source mydatasource --name data1
 
-        - name: Add a data point to an asset with data point name, observability mode, custom queue size,
+        - name: Add a datapoint to an asset with datapoint name, observability mode, custom queue size,
                 and custom sampling interval.
           text: >
             az iot ops asset dataset point add --asset myasset -g myresourcegroup --dataset default --data-source mydatasource --name data1
@@ -228,10 +228,10 @@ def load_iotops_adr_help():
         "iot ops asset dataset point remove"
     ] = """
         type: command
-        short-summary: Remove a data point in an asset dataset.
+        short-summary: Remove a datapoint in an asset dataset.
 
         examples:
-        - name: Remove a data point from an asset via the data point name.
+        - name: Remove a datapoint from an asset via the datapoint name.
           text: >
             az iot ops asset dataset point remove --asset myasset -g myresourcegroup --dataset default --name data1
     """
@@ -1055,28 +1055,28 @@ def load_iotops_adr_help():
         "iot ops ns asset custom datapoint"
     ] = """
         type: group
-        short-summary: Manage data points for custom asset datasets in Device Registry namespaces.
+        short-summary: Manage datapoints for custom asset datasets in Device Registry namespaces.
     """
 
     helps[
         "iot ops ns asset custom datapoint add"
     ] = """
         type: command
-        short-summary: Add a data point to a custom asset dataset in a Device Registry namespace.
+        short-summary: Add a datapoint to a custom asset dataset in a Device Registry namespace.
 
         examples:
-        - name: Add a basic data point
+        - name: Add a basic datapoint
           text: >
             az iot ops ns asset custom datapoint add --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --dataset default --name temp1 --data-source "sensor.temp1"
 
-        - name: Add a data point with custom configuration
+        - name: Add a datapoint with custom configuration
           text: >
             az iot ops ns asset custom datapoint add --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --dataset default --name pressure1 --data-source "sensor.pressure1"
             --config "{\\\"samplingInterval\\\": 500, \\\"priority\\\": \\\"high\\\"}"
 
-        - name: Add a data point and replace existing one with same name
+        - name: Add a datapoint and replace existing one with same name
           text: >
             az iot ops ns asset custom datapoint add --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --dataset default --name temp1 --data-source "sensor.temp1.v2"
@@ -1100,10 +1100,10 @@ def load_iotops_adr_help():
         "iot ops ns asset custom datapoint remove"
     ] = """
         type: command
-        short-summary: Remove a data point from a custom asset dataset in a Device Registry namespace.
+        short-summary: Remove a datapoint from a custom asset dataset in a Device Registry namespace.
 
         examples:
-        - name: Remove a data point from a dataset
+        - name: Remove a datapoint from a dataset
           text: >
             az iot ops ns asset custom datapoint remove --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --dataset default --name temp1
@@ -1113,28 +1113,28 @@ def load_iotops_adr_help():
         "iot ops ns asset custom event-group"
     ] = """
         type: group
-        short-summary: Manage events for custom namespaced assets in an IoT Operations instance.
+        short-summary: Manage event groups for custom namespaced assets in an IoT Operations instance.
     """
 
     helps[
         "iot ops ns asset custom event-group add"
     ] = """
         type: command
-        short-summary: Add an event to a custom namespaced asset in an IoT Operations instance.
+        short-summary: Add an event group to a custom namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Add a basic custom event-group
+        - name: Add a basic custom event group
           text: >
             az iot ops ns asset custom event-group add --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent --event-notifier "alarm.critical"
 
-        - name: Add a custom event-group with MQTT destination
+        - name: Add a custom event group with MQTT destination
           text: >
             az iot ops ns asset custom event-group add --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --name statusEvent --event-notifier "status.change"
             --destination topic="factory/custom/events" retain=Never qos=Qos1 ttl=1800
 
-        - name: Replace a custom event-group with same name
+        - name: Replace a custom event group with same name
           text: >
             az iot ops ns asset custom event-group add --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent --event-notifier "alarm.updated"
@@ -1145,10 +1145,10 @@ def load_iotops_adr_help():
         "iot ops ns asset custom event-group list"
     ] = """
         type: command
-        short-summary: List events for a custom namespaced asset in an IoT Operations instance.
+        short-summary: List event groups for a custom namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: List all events for a custom asset
+        - name: List all event groups for a custom asset
           text: >
             az iot ops ns asset custom event-group list --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup
@@ -1158,10 +1158,10 @@ def load_iotops_adr_help():
         "iot ops ns asset custom event-group remove"
     ] = """
         type: command
-        short-summary: Remove an event from a custom namespaced asset in an IoT Operations instance.
+        short-summary: Remove an event group from a custom namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Remove an event from a custom asset
+        - name: Remove an event group from a custom asset
           text: >
             az iot ops ns asset custom event-group remove --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent
@@ -1171,10 +1171,10 @@ def load_iotops_adr_help():
         "iot ops ns asset custom event-group show"
     ] = """
         type: command
-        short-summary: Show details of an event for a custom namespaced asset in an IoT Operations instance.
+        short-summary: Show details of an event group for a custom namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Show event details
+        - name: Show event group details
           text: >
             az iot ops ns asset custom event-group show --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent
@@ -1184,7 +1184,7 @@ def load_iotops_adr_help():
         "iot ops ns asset custom event-group update"
     ] = """
         type: command
-        short-summary: Update an event for a custom namespaced asset in an IoT Operations instance.
+        short-summary: Update an event group for a custom namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Update event notifier
@@ -1203,14 +1203,14 @@ def load_iotops_adr_help():
         "iot ops ns asset custom event"
     ] = """
         type: group
-        short-summary: Manage event points for custom asset events in Device Registry namespaces.
+        short-summary: Manage events for custom asset event groups in Device Registry namespaces.
     """
 
     helps[
         "iot ops ns asset custom event add"
     ] = """
         type: command
-        short-summary: Add an event data point to a custom asset event in a Device Registry namespace.
+        short-summary: Add an event to a custom asset event group in a Device Registry namespace.
 
         examples:
         - name: Add a basic custom event
@@ -1229,10 +1229,10 @@ def load_iotops_adr_help():
         "iot ops ns asset custom event list"
     ] = """
         type: command
-        short-summary: List event points for a custom asset event in a Device Registry namespace.
+        short-summary: List events for a custom asset event group in a Device Registry namespace.
 
         examples:
-        - name: List all event points for an event
+        - name: List all events for an event
           text: >
             az iot ops ns asset custom event list --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --event alarmEvent
@@ -1242,10 +1242,10 @@ def load_iotops_adr_help():
         "iot ops ns asset custom event remove"
     ] = """
         type: command
-        short-summary: Remove an event point from a custom asset event in a Device Registry namespace.
+        short-summary: Remove an events from a custom asset event group in a Device Registry namespace.
 
         examples:
-        - name: Remove an event point from an event
+        - name: Remove an event from an event
           text: >
             az iot ops ns asset custom event remove --asset mycustomasset --instance myInstance
             -g myInstanceResourceGroup --event alarmEvent --name severity
@@ -1795,28 +1795,28 @@ def load_iotops_adr_help():
         "iot ops ns asset onvif event-group"
     ] = """
         type: group
-        short-summary: Manage events for ONVIF namespaced assets in an IoT Operations instance.
+        short-summary: Manage event groups for ONVIF namespaced assets in an IoT Operations instance.
     """
 
     helps[
         "iot ops ns asset onvif event-group add"
     ] = """
         type: command
-        short-summary: Add an event to an ONVIF namespaced asset in an IoT Operations instance.
+        short-summary: Add an event group to an ONVIF namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Add a basic ONVIF event
+        - name: Add a basic ONVIF event group
           text: >
             az iot ops ns asset onvif event-group add --asset myonvifasset --instance myInstance
             -g myInstanceResourceGroup --name motionEvent --event-notifier "motion.detection"
 
-        - name: Add an ONVIF event with MQTT destination
+        - name: Add an ONVIF event group with MQTT destination
           text: >
             az iot ops ns asset onvif event-group add --asset myonvifasset --instance myInstance
             -g myInstanceResourceGroup --name lineDetection --event-notifier "line.crossing"
             --destination topic="factory/onvif/events" retain=Never qos=Qos1 ttl=1800
 
-        - name: Repalce an ONVIF event with same name
+        - name: Repalce an ONVIF event group with same name
           text: >
             az iot ops ns asset onvif event-group add --asset myonvifasset --instance myInstance
             -g myInstanceResourceGroup --name motionEvent --event-notifier "motion.detection.updated"
@@ -1827,10 +1827,10 @@ def load_iotops_adr_help():
         "iot ops ns asset onvif event-group list"
     ] = """
         type: command
-        short-summary: List events for an ONVIF namespaced asset in an IoT Operations instance.
+        short-summary: List event groups for an ONVIF namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: List all events for an ONVIF asset
+        - name: List all event groups for an ONVIF asset
           text: >
             az iot ops ns asset onvif event-group list --asset myonvifasset --instance myInstance
             -g myInstanceResourceGroup
@@ -1840,10 +1840,10 @@ def load_iotops_adr_help():
         "iot ops ns asset onvif event-group remove"
     ] = """
         type: command
-        short-summary: Remove an event from an ONVIF namespaced asset in an IoT Operations instance.
+        short-summary: Remove an event group from an ONVIF namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Remove an event from an ONVIF asset
+        - name: Remove an event group from an ONVIF asset
           text: >
             az iot ops ns asset onvif event-group remove --asset myonvifasset --instance myInstance
             -g myInstanceResourceGroup --name motionEvent
@@ -1853,10 +1853,10 @@ def load_iotops_adr_help():
         "iot ops ns asset onvif event-group show"
     ] = """
         type: command
-        short-summary: Show details of an event for an ONVIF namespaced asset in an IoT Operations instance.
+        short-summary: Show details of an event group for an ONVIF namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Show event details
+        - name: Show event group details
           text: >
             az iot ops ns asset onvif event-group show --asset myonvifasset --instance myInstance
             -g myInstanceResourceGroup --name motionEvent
@@ -1866,7 +1866,7 @@ def load_iotops_adr_help():
         "iot ops ns asset onvif event-group update"
     ] = """
         type: command
-        short-summary: Update an event for an ONVIF namespaced asset in an IoT Operations instance.
+        short-summary: Update an event group for an ONVIF namespaced asset in an IoT Operations instance.
 
         examples:
         - name: Update event notifier
@@ -1874,7 +1874,7 @@ def load_iotops_adr_help():
             az iot ops ns asset onvif event-group update --asset myonvifasset --instance myInstance
             -g myInstanceResourceGroup --name motionEvent --event-notifier "motion.detection.enhanced"
 
-        - name: Update event destination
+        - name: Update event group destination
           text: >
             az iot ops ns asset onvif event-group update --asset myonvifasset --instance myInstance
             -g myInstanceResourceGroup --name lineDetection
@@ -2169,21 +2169,21 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua datapoint add"
     ] = """
         type: command
-        short-summary: Add a data point to an OPC UA asset dataset in a Device Registry namespace.
+        short-summary: Add a datapoint to an OPC UA asset dataset in a Device Registry namespace.
 
         examples:
-        - name: Add a basic OPC UA data point
+        - name: Add a basic OPC UA datapoint
           text: >
             az iot ops ns asset opcua datapoint add --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --dataset temperatureData --name temp1 --data-source "ns=2;s=Temp1"
 
-        - name: Add an OPC UA data point with queue size and sampling interval
+        - name: Add an OPC UA datapoint with queue size and sampling interval
           text: >
             az iot ops ns asset opcua datapoint add --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --dataset pressureData --name pressure1 --data-source "ns=2;s=Pressure1"
             --queue-size 5 --sampling-int 1000
 
-        - name: Add an OPC UA data point and replace existing one with same name
+        - name: Add an OPC UA datapoint and replace existing one with same name
           text: >
             az iot ops ns asset opcua datapoint add --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --dataset temperatureData --name temp1 --data-source "ns=3;s=NewTemp1"
@@ -2207,10 +2207,10 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua datapoint remove"
     ] = """
         type: command
-        short-summary: Remove a data point from an OPC UA asset dataset in a Device Registry namespace.
+        short-summary: Remove a datapoint from an OPC UA asset dataset in a Device Registry namespace.
 
         examples:
-        - name: Remove a data point from a dataset
+        - name: Remove a datapoint from a dataset
           text: >
             az iot ops ns asset opcua datapoint remove --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --dataset temperatureData --name temp1
@@ -2220,34 +2220,34 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua event-group"
     ] = """
         type: group
-        short-summary: Manage events for OPC UA namespaced assets in an IoT Operations instance.
+        short-summary: Manage event groups for OPC UA namespaced assets in an IoT Operations instance.
     """
 
     helps[
         "iot ops ns asset opcua event-group add"
     ] = """
         type: command
-        short-summary: Add an event to an OPC UA namespaced asset in an IoT Operations instance.
+        short-summary: Add an event group to an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Add a basic OPC UA event
+        - name: Add a basic OPC UA event group
           text: >
             az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent --event-notifier "ns=2;i=1000"
 
-        - name: Add an OPC UA event with publishing interval and queue size
+        - name: Add an OPC UA event group with publishing interval and queue size
           text: >
             az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name systemEvent --event-notifier "ns=2;i=200"
             --publish-int 1500 --queue-size 8
 
-        - name: Add an OPC UA event with MQTT destination
+        - name: Add an OPC UA event group with MQTT destination
           text: >
             az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name criticalAlarm --event-notifier "ns=2;i=4000"
             --dest topic="factory/opcua/alarms" retain=Keep qos=Qos0 ttl=7200
 
-        - name: Replace an OPC UA event with same name
+        - name: Replace an OPC UA event group with same name
           text: >
             az iot ops ns asset opcua event-group add --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent --event-notifier "ns=3;i=1000"
@@ -2258,10 +2258,10 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua event-group list"
     ] = """
         type: command
-        short-summary: List events for an OPC UA namespaced asset in an IoT Operations instance.
+        short-summary: List event groups for an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: List all events for an OPC UA asset
+        - name: List all event groups for an OPC UA asset
           text: >
             az iot ops ns asset opcua event-group list --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup
@@ -2271,10 +2271,10 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua event-group remove"
     ] = """
         type: command
-        short-summary: Remove an event from an OPC UA namespaced asset in an IoT Operations instance.
+        short-summary: Remove an event group from an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Remove an event from an OPC UA asset
+        - name: Remove an event group from an OPC UA asset
           text: >
             az iot ops ns asset opcua event-group remove --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent
@@ -2284,10 +2284,10 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua event-group show"
     ] = """
         type: command
-        short-summary: Show details of an event for an OPC UA namespaced asset in an IoT Operations instance.
+        short-summary: Show details of an event group for an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Show event details
+        - name: Show event group details
           text: >
             az iot ops ns asset opcua event-group show --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent
@@ -2297,15 +2297,15 @@ def load_iotops_adr_help():
         "iot ops ns asset opcua event-group update"
     ] = """
         type: command
-        short-summary: Update an event for an OPC UA namespaced asset in an IoT Operations instance.
+        short-summary: Update an event group for an OPC UA namespaced asset in an IoT Operations instance.
 
         examples:
-        - name: Update event publishing interval and queue size
+        - name: Update event group publishing interval and queue size
           text: >
             az iot ops ns asset opcua event-group update --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name alarmEvent --publish-int 2000 --queue-size 10
 
-        - name: Update event destination
+        - name: Update event group destination
           text: >
             az iot ops ns asset opcua event-group update --asset myopcuaasset --instance myInstance
             -g myInstanceResourceGroup --name systemEvent
