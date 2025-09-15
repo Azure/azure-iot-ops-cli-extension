@@ -433,10 +433,6 @@ def build_target_scenario(
             "name": adr_namespace_name,
         },
         "dataflow": {"profileInstances": None},
-        "akri": {
-            "containerRuntimeSocket": None,
-            "kubernetesDistro": None,
-        },
         "broker": {},
         "noProgress": True,
         "raises": raises,
@@ -629,7 +625,6 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         ),
         build_target_scenario(instance_features=["connectors.settings.preview=Enabled"]),
         build_target_scenario(
-            akri={"containerRuntimeSocket": "/var/containerd/socket", "kubernetesDistro": "K3s"},
             instance={
                 "name": generate_random_string(),
                 "description": generate_random_string(),
