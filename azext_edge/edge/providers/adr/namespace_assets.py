@@ -1360,6 +1360,7 @@ class NamespaceAssets(Queryable):
         instance_resource_group: str,
         asset_type: str,
         group_name: str,
+        data_source: Optional[str] = None,
         default_topic: Optional[str] = None,
         default_timeout: Optional[int] = None,
         type_ref: Optional[str] = None,
@@ -1392,6 +1393,8 @@ class NamespaceAssets(Queryable):
             mgmt_group["defaultTopic"] = default_topic
         if default_timeout is not None:
             mgmt_group["defaultTimeoutInSeconds"] = default_timeout
+        if data_source:
+            mgmt_group["dataSource"] = data_source
         if type_ref:
             mgmt_group["typeRef"] = type_ref
 

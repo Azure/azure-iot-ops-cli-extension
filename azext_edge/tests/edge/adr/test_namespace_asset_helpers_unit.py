@@ -139,6 +139,7 @@ def test_build_destination_error(test_case: dict):
 
 @pytest.mark.parametrize("num_groups", [1, 5, 10])
 def test_get_event_group(num_groups: int):
+    from .test_namespace_asset_events_unit import generate_event_group
     test_event = generate_random_string()
     asset = {
         "name": "testAsset",
@@ -148,10 +149,10 @@ def test_get_event_group(num_groups: int):
     }
 
     for i in range(num_groups):
-        asset["properties"]["eventGroups"].append(_get_event_group(asset, f"testEvent{i}"))
+        asset["properties"]["eventGroups"].append(generate_event_group(f"testEvent{i}"))
 
-    # Set up eventGroups in asset properties
-    asset["properties"]["eventGroups"].append(_get_event_group(asset, test_event))
+    # Set up eventGroups in roperties
+    asset["properties"]["eventGroups"].append(generate_event_group(test_event))
 
     # Test success case
     result = _get_event_group(asset, test_event)
@@ -193,7 +194,7 @@ def test_get_event_group_error(test_case):
     # Test error cases
     with pytest.raises(InvalidArgumentValueError) as ex:
         _get_event_group(asset, test_case["event_name"])
-    error_msg = f"Event '{test_case['event_name']}' not found in asset '{asset['name']}'."
+    error_msg = f"Event group '{test_case['event_name']}' not found in asset '{asset['name']}'."
     assert error_msg in str(ex.value)
 
 

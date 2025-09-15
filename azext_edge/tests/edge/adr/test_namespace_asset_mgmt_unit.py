@@ -43,12 +43,14 @@ def generate_management_group(
     group_name = group_name or f"group{generate_random_string(12)}"
     management_group = {
         "name": group_name,
+        "dataSource": f"nsu=original;i={randint(1, 1000)}",
         "defaultTopic": f"/contoso/mgmt/{group_name}",
         "defaultTimeoutInSeconds": randint(1000, 10000),
         "actions": [
             generate_management_group_action(asset_type=asset_type)
             for _ in range(num_actions)
-        ]
+        ],
+        "typeRef": None
     }
 
     if asset_type == "custom":
@@ -133,6 +135,7 @@ def test_add_namespace_asset_management_group(
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
     group_name = f"test{asset_type.title()}Group{generate_random_string(5)}"
+    data_source = f"nsu=test;i={randint(1, 1000)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
@@ -236,6 +239,7 @@ def test_add_namespace_asset_management_group(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         group_name=group_name,
+        data_source=data_source,
         replace=replace_group,
         wait_sec=0,
         default_topic=default_topic,
@@ -300,6 +304,7 @@ def test_add_namespace_asset_management_group_error(
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
     group_name = f"test{generate_random_string(5)}"
+    data_source = f"nsu=test;i={randint(1, 1000)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
@@ -313,6 +318,7 @@ def test_add_namespace_asset_management_group_error(
         "instance_resource_group": instance_resource_group,
         "asset_name": asset_name,
         "group_name": group_name,
+        "data_source": data_source,
         "wait_sec": 0
     }
 
@@ -664,6 +670,7 @@ def test_remove_namespace_asset_management_group(
         },
     ),
 ])
+@pytest.mark.parametrize("data_source", [None, f"nsu=test;i={randint(1, 999)}"])
 @pytest.mark.parametrize("default_topic", [None, "/factory/mgmt/operations", ""])
 @pytest.mark.parametrize("default_timeout", [None, 5000, 0])
 def test_update_namespace_asset_management_group(
@@ -672,6 +679,7 @@ def test_update_namespace_asset_management_group(
     asset_type: str,
     command_func,
     mgmt_params: dict,
+    data_source: Optional[str],
     default_topic: Optional[str],
     default_timeout: Optional[int],
     mocked_check_cluster_connectivity,
@@ -728,6 +736,10 @@ def test_update_namespace_asset_management_group(
     # Build expected updated management group
     expected_group = deepcopy(initial_management_group)
 
+    # Update data source if provided
+    if data_source:
+        expected_group["dataSource"] = data_source
+
     # Update default topic if provided
     if default_topic == "":
         # Remove the property if empty string
@@ -782,6 +794,7 @@ def test_update_namespace_asset_management_group(
         instance_resource_group=instance_resource_group,
         group_name=group_name,
         wait_sec=0,
+        data_source=data_source,
         default_topic=default_topic,
         default_timeout=default_timeout,
         **mgmt_params
