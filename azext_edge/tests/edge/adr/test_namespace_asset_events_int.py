@@ -18,7 +18,7 @@ pytestmark = pytest.mark.long_running
 def test_namespace_custom_asset_event_lifecycle_operations(
     require_init, tracked_resources: List[str], tracked_files: List[str]
 ):
-    """Test complete lifecycle of custom asset event and datapoint operations."""
+    """Test complete lifecycle of custom asset event-group and datapoint operations."""
     # Setup test variables
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
@@ -59,7 +59,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(
     event_destinations = "topic=factory/custom/events qos=Qos1 retain=Never ttl=3600"
 
     event_result = run(
-        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
         f"--config {custom_config_path} --destination {event_destinations}"
     )
@@ -73,7 +73,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(
 
     # 2. LIST EVENTS
     events_list = run(
-        f"az iot ops ns asset custom event list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
@@ -83,7 +83,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(
 
     # 3. SHOW EVENT
     event_show = run(
-        f"az iot ops ns asset custom event show --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event-group show --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name}"
     )
 
@@ -98,7 +98,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     updated_event = run(
-        f"az iot ops ns asset custom event update --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event-group update --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {updated_event_notifier} "
         f"--config {custom_config_path}"
     )
@@ -113,7 +113,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(
     # 5. CREATE EVENT WITH REPLACE
     replaced_event_notifier = "temperature.alarm.replaced"
     replaced_event = run(
-        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {replaced_event_notifier} "
         f"--replace"
     )
@@ -146,7 +146,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     datapoint_result_2 = run(
-        f"az iot ops ns asset custom event point add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --event {event_name} --name {datapoint_name_2} "
         f"--data-source {datapoint_data_source_2} --config {custom_config_path}"
     )
@@ -160,7 +160,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(
 
     # 8. LIST EVENT DATAPOINTS
     datapoints_list = run(
-        f"az iot ops ns asset custom event point list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --event {event_name}"
     )
 
@@ -172,7 +172,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(
     # 9. REPLACE EVENT DATAPOINT
     replaced_datapoint_source = "temperature.severity.replaced"
     replaced_datapoint = run(
-        f"az iot ops ns asset custom event point add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --event {event_name} --name {datapoint_name_1} "
         f"--data-source {replaced_datapoint_source} --replace"
     )
@@ -185,13 +185,13 @@ def test_namespace_custom_asset_event_lifecycle_operations(
 
     # 10. REMOVE EVENT DATAPOINT
     run(
-        f"az iot ops ns asset custom event point remove --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event remove --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --event {event_name} --name {datapoint_name_1}"
     )
 
     # Verify removal by listing
     remaining_datapoints = run(
-        f"az iot ops ns asset custom event point list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --event {event_name}"
     )
 
@@ -201,13 +201,13 @@ def test_namespace_custom_asset_event_lifecycle_operations(
 
     # 11. REMOVE EVENT
     run(
-        f"az iot ops ns asset custom event remove --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event-group remove --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name}"
     )
 
     # Verify removal by listing
     remaining_events = run(
-        f"az iot ops ns asset custom event list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom event-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
@@ -216,7 +216,7 @@ def test_namespace_custom_asset_event_lifecycle_operations(
 
 
 def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_resources: List[str]):
-    """Test complete lifecycle of OPC UA asset event operations (events only)."""
+    """Test complete lifecycle of OPC UA asset event-group operations (events only)."""
     # Setup test variables
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
@@ -255,7 +255,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     queue_size = 10
 
     event_result = run(
-        f"az iot ops ns asset opcua event add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua event-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier \"{event_notifier}\" "
         f"--destination {event_destinations} --publish-int {publishing_interval} "
         f"--queue-size {queue_size}"
@@ -269,7 +269,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
 
     # 2. LIST EVENTS
     events_list = run(
-        f"az iot ops ns asset opcua event list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua event-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
@@ -279,7 +279,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
 
     # 3. SHOW EVENT
     event_show = run(
-        f"az iot ops ns asset opcua event show --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua event-group show --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name}"
     )
 
@@ -295,7 +295,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     updated_queue_size = 15
 
     updated_event = run(
-        f"az iot ops ns asset opcua event update --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua event-group update --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier \"{updated_event_notifier}\" "
         f"--publish-int {updated_publishing_interval} --queue-size {updated_queue_size} "
     )
@@ -309,7 +309,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
     # 5. CREATE EVENT WITH REPLACE
     replaced_event_notifier = "ns=4;i=1000"
     replaced_event = run(
-        f"az iot ops ns asset opcua event add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua event-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier \"{replaced_event_notifier}\" "
         f"--replace"
     )
@@ -322,13 +322,13 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
 
     # 6. REMOVE EVENT
     run(
-        f"az iot ops ns asset opcua event remove --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua event-group remove --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name}"
     )
 
     # Verify removal by listing
     remaining_events = run(
-        f"az iot ops ns asset opcua event list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua event-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
@@ -337,7 +337,7 @@ def test_namespace_opcua_asset_event_lifecycle_operations(require_init, tracked_
 
 
 def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_resources: List[str]):
-    """Test complete lifecycle of ONVIF asset event operations (events only)."""
+    """Test complete lifecycle of ONVIF asset event-group operations (events only)."""
     # Setup test variables
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
@@ -374,7 +374,7 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
     event_destinations = "topic=factory/onvif/events qos=Qos1 retain=Never ttl=1800"
 
     event_result = run(
-        f"az iot ops ns asset onvif event add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif event-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
         f"--destination {event_destinations}"
     )
@@ -387,7 +387,7 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
 
     # 2. LIST EVENTS
     events_list = run(
-        f"az iot ops ns asset onvif event list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif event-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
@@ -397,7 +397,7 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
 
     # 3. SHOW EVENT
     event_show = run(
-        f"az iot ops ns asset onvif event show --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif event-group show --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name}"
     )
 
@@ -412,7 +412,7 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
     updated_event_destinations = "topic=factory/onvif/events/enhanced qos=Qos0 retain=Keep ttl=3600"
 
     updated_event = run(
-        f"az iot ops ns asset onvif event update --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif event-group update --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {updated_event_notifier} "
         f"--destination {updated_event_destinations}"
     )
@@ -426,7 +426,7 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
     # 5. CREATE EVENT WITH REPLACE
     replaced_event_notifier = "motion.detection.replaced"
     replaced_event = run(
-        f"az iot ops ns asset onvif event add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif event-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name} --event-notifier {replaced_event_notifier} "
         f"--replace"
     )
@@ -439,13 +439,13 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
 
     # 6. REMOVE EVENT
     run(
-        f"az iot ops ns asset onvif event remove --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif event-group remove --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {event_name}"
     )
 
     # Verify removal by listing
     remaining_events = run(
-        f"az iot ops ns asset onvif event list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif event-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 

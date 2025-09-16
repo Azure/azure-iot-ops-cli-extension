@@ -325,33 +325,33 @@ def load_iotops_commands(self, _):
     # dataset point
     for asset_type in ["custom", "opcua"]:
         with self.command_group(
-            f"iot ops ns asset {asset_type} dataset point",
+            f"iot ops ns asset {asset_type} datapoint",
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_dataset_point")
             cmd_group.command("list", "list_namespace_asset_dataset_points")
             cmd_group.command("remove", "remove_namespace_asset_dataset_point")
 
-    # event
+    # event group
     for asset_type in ["custom", "opcua", "onvif"]:
         with self.command_group(
-            f"iot ops ns asset {asset_type} event",
+            f"iot ops ns asset {asset_type} event-group",
             command_type=namespace_resource_ops,
         ) as cmd_group:
-            cmd_group.command("add", f"add_namespace_{asset_type}_asset_event")
-            cmd_group.command("list", "list_namespace_asset_events")
-            cmd_group.command("remove", "remove_namespace_asset_event")
-            cmd_group.show_command("show", "show_namespace_asset_event")
-            cmd_group.command("update", f"update_namespace_{asset_type}_asset_event")
+            cmd_group.command("add", f"add_namespace_{asset_type}_asset_event_group")
+            cmd_group.command("list", "list_namespace_asset_event_groups")
+            cmd_group.command("remove", "remove_namespace_asset_event_group")
+            cmd_group.show_command("show", "show_namespace_asset_event_group")
+            cmd_group.command("update", f"update_namespace_{asset_type}_asset_event_group")
 
-    # event point
+    # event group event
     with self.command_group(
-        "iot ops ns asset custom event point",
+        "iot ops ns asset custom event",
         command_type=namespace_resource_ops,
     ) as cmd_group:
-        cmd_group.command("add", "add_namespace_custom_asset_event_point")
-        cmd_group.command("list", "list_namespace_asset_event_points")
-        cmd_group.command("remove", "remove_namespace_asset_event_point")
+        cmd_group.command("add", "add_namespace_custom_asset_event_group_event")
+        cmd_group.command("list", "list_namespace_asset_event_group_events")
+        cmd_group.command("remove", "remove_namespace_asset_event_group_event")
 
     # stream
     for asset_type in ["custom", "media"]:
@@ -368,7 +368,7 @@ def load_iotops_commands(self, _):
     # management group
     for asset_type in ["custom", "opcua", "onvif"]:
         with self.command_group(
-            f"iot ops ns asset {asset_type} mgmt",
+            f"iot ops ns asset {asset_type} mgmt-group",
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_management_group")
@@ -380,7 +380,7 @@ def load_iotops_commands(self, _):
     # management group actions
     for asset_type in ["custom", "opcua"]:
         with self.command_group(
-            f"iot ops ns asset {asset_type} mgmt action",
+            f"iot ops ns asset {asset_type} mgmt-action",
             command_type=namespace_resource_ops,
         ) as cmd_group:
             cmd_group.command("add", f"add_namespace_{asset_type}_asset_management_group_action")

@@ -1014,6 +1014,11 @@ def load_adr_arguments(self, _):
             help="Custom query to use. All other query arguments, aside from instance name and "
             "resource group, will be ignored.",
         )
+        context.argument(
+            "type_ref",
+            options_list=["--type-ref", "--tr"],
+            help="Type Definition ID or URI.",
+        )
 
     with self.argument_context("iot ops ns asset query") as context:
         context.argument(
@@ -1323,12 +1328,17 @@ def load_adr_arguments(self, _):
                 arg_type=get_three_state_flag(),
             )
             context.argument(
-                "dataset_data_source",
+                "data_source",
                 options_list=["--data-source", "--ds"],
                 help="Data source for the dataset.",
             )
 
-        with self.argument_context(f"iot ops ns asset {asset_type} dataset point") as context:
+        with self.argument_context(f"iot ops ns asset {asset_type} datapoint") as context:
+            context.argument(
+                "asset_name",
+                options_list=["--asset", "-a"],
+                help="Asset name.",
+            )
             context.argument(
                 "dataset_name",
                 options_list=["--dataset", "-d"],
@@ -1351,6 +1361,29 @@ def load_adr_arguments(self, _):
                 arg_type=get_three_state_flag(),
             )
 
+        with self.argument_context(f"iot ops ns asset {asset_type} event-group") as context:
+            context.argument(
+                "asset_name",
+                options_list=["--asset", "-a"],
+                help="Asset name.",
+            )
+            context.argument(
+                "group_name",
+                options_list=["--name"],
+                help="Event group name.",
+            )
+            context.argument(
+                "data_source",
+                options_list=["--data-source", "--ds"],
+                help="Data source for the event group.",
+            )
+            context.argument(
+                "replace",
+                options_list=["--replace"],
+                help="Replace the event group if another event group with the same name is already present.",
+                arg_type=get_three_state_flag(),
+            )
+
         with self.argument_context(f"iot ops ns asset {asset_type} event") as context:
             context.argument(
                 "asset_name",
@@ -1358,42 +1391,24 @@ def load_adr_arguments(self, _):
                 help="Asset name.",
             )
             context.argument(
+                "group_name",
+                options_list=["--event-group", "--eg"],
+                help="Event name.",
+            )
+            context.argument(
                 "event_name",
                 options_list=["--name"],
                 help="Event name.",
             )
             context.argument(
-                "event_notifier",
-                options_list=["--event-notifier", "--en"],
-                help="Event notifier.",
+                "data_source",
+                options_list=["--data-source", "--ds"],
+                help="Data source for the event.",
             )
             context.argument(
                 "replace",
                 options_list=["--replace"],
                 help="Replace the event if another event with the same name is already present.",
-                arg_type=get_three_state_flag(),
-            )
-
-        with self.argument_context(f"iot ops ns asset {asset_type} event point") as context:
-            context.argument(
-                "event_name",
-                options_list=["--event", "-e"],
-                help="Event name.",
-            )
-            context.argument(
-                "datapoint_name",
-                options_list=["--name"],
-                help="Data point name.",
-            )
-            context.argument(
-                "data_source",
-                options_list=["--data-source", "--ds"],
-                help="Data source for the event data point.",
-            )
-            context.argument(
-                "replace",
-                options_list=["--replace"],
-                help="Replace the data point if another point with the same name is already present.",
                 arg_type=get_three_state_flag(),
             )
 
@@ -1415,7 +1430,7 @@ def load_adr_arguments(self, _):
                 arg_type=get_three_state_flag(),
             )
 
-        with self.argument_context(f"iot ops ns asset {asset_type} mgmt") as context:
+        with self.argument_context(f"iot ops ns asset {asset_type} mgmt-group") as context:
             context.argument(
                 "asset_name",
                 options_list=["--asset", "-a"],
@@ -1433,6 +1448,11 @@ def load_adr_arguments(self, _):
                 arg_type=get_three_state_flag(),
             )
             context.argument(
+                "data_source",
+                options_list=["--data-source", "--ds"],
+                help="Data source for the management group.",
+            )
+            context.argument(
                 "default_topic",
                 options_list=["--default-topic", "--dt"],
                 help="Default topic for management group actions. "
@@ -1445,7 +1465,7 @@ def load_adr_arguments(self, _):
                 type=int,
             )
 
-        with self.argument_context(f"iot ops ns asset {asset_type} mgmt action") as context:
+        with self.argument_context(f"iot ops ns asset {asset_type} mgmt-action") as context:
             context.argument(
                 "asset_name",
                 options_list=["--asset", "-a"],
@@ -1507,7 +1527,7 @@ def load_adr_arguments(self, _):
             nargs="+",
         )
 
-    with self.argument_context("iot ops ns asset custom dataset point") as context:
+    with self.argument_context("iot ops ns asset custom datapoint") as context:
         context.argument(
             "custom_configuration",
             options_list=["--config"],
@@ -1555,7 +1575,7 @@ def load_adr_arguments(self, _):
             nargs="+",
         )
 
-    with self.argument_context("iot ops ns asset opcua dataset point") as context:
+    with self.argument_context("iot ops ns asset opcua datapoint") as context:
         context.argument(
             "sampling_interval",
             options_list=["--sampling-int", "--si"],
@@ -1588,41 +1608,50 @@ def load_adr_arguments(self, _):
             nargs="+",
         )
 
-    with self.argument_context("iot ops ns asset custom event") as context:
+    with self.argument_context("iot ops ns asset custom event-group") as context:
         context.argument(
             "event_custom_configuration",
             options_list=["--config"],
-            help="Custom event configuration as a JSON string or file path.",
+            help="Custom event group configuration as a JSON string or file path.",
         )
         context.argument(
             "event_destinations",
             options_list=["--destination", "--dest"],
-            help="Key=value pairs representing the destination for events. "
+            help="Key=value pairs representing the destination for event groups. "
             "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
             "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are "
             "`Never` and `Keep` and allowed values for `qos` are `Qos0` and `Qos1`.",
             nargs="+",
         )
 
-    with self.argument_context("iot ops ns asset custom event point") as context:
+    with self.argument_context("iot ops ns asset custom event") as context:
         context.argument(
             "custom_configuration",
             options_list=["--config"],
-            help="Custom event data point configuration as a JSON string or file path.",
+            help="Custom event configuration as a JSON string or file path.",
         )
-
-    with self.argument_context("iot ops ns asset onvif event") as context:
         context.argument(
             "event_destinations",
             options_list=["--destination", "--dest"],
-            help="Key=value pairs representing the destination for events. "
+            help="Key=value pairs representing the destination for event groups. "
+            "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+            "`topic`, `retain`, `qos`, and `ttl` for MQTT. Allowed values for `retain` are "
+            "`Never` and `Keep` and allowed values for `qos` are `Qos0` and `Qos1`.",
+            nargs="+",
+        )
+
+    with self.argument_context("iot ops ns asset onvif event-group") as context:
+        context.argument(
+            "event_destinations",
+            options_list=["--destination", "--dest"],
+            help="Key=value pairs representing the destination for event groups. "
             "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. "
             "Allowed values for `retain` are `Never` and `Keep` and allowed values for `qos` are "
             "`Qos0` and `Qos1`.",
             nargs="+",
         )
 
-    with self.argument_context("iot ops ns asset opcua event") as context:
+    with self.argument_context("iot ops ns asset opcua event-group") as context:
         context.argument(
             "opcua_event_publishing_interval",
             options_list=["--publish-int", "--pi"],
@@ -1652,7 +1681,7 @@ def load_adr_arguments(self, _):
         context.argument(
             "event_destinations",
             options_list=["--destination", "--dest"],
-            help="Key=value pairs representing the destination for events. "
+            help="Key=value pairs representing the destination for event groups. "
             "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations. "
             "Allowed values for `retain` are `Never` and `Keep` and allowed values for `qos` are "
             "`Qos0` and `Qos1`.",
@@ -1799,14 +1828,14 @@ def load_adr_arguments(self, _):
             nargs="+",
         )
 
-    with self.argument_context("iot ops ns asset custom mgmt") as context:
+    with self.argument_context("iot ops ns asset custom mgmt-group") as context:
         context.argument(
             "mgmt_custom_configuration",
             options_list=["--config"],
             help="Custom management group configuration as a JSON string or file path. ",
         )
 
-    with self.argument_context("iot ops ns asset custom mgmt action") as context:
+    with self.argument_context("iot ops ns asset custom mgmt-action") as context:
         context.argument(
             "custom_configuration",
             options_list=["--config"],

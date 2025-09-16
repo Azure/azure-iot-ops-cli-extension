@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from random import randint
 from typing import List
 import pytest
 
@@ -58,17 +59,19 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     # 1. CREATE MANAGEMENT GROUP
     default_topic = "factory/custom/management/responses"
     default_timeout = 30
+    data_source = f"nsu=customNamespace;i={randint(1, 999)}"
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     mgmt_group_result = run(
-        f"az iot ops ns asset custom mgmt add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {mgmt_group_name} --default-topic {default_topic} "
-        f"--default-timeout {default_timeout} --config {custom_config_path}"
+        f"az iot ops ns asset custom mgmt-group add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {mgmt_group_name} --data-source {data_source} "
+        f"--default-topic {default_topic} --default-timeout {default_timeout} --config {custom_config_path}"
     )
 
     assert_management_group_properties(
         mgmt_group_result,
         name=mgmt_group_name,
+        data_source=data_source,
         default_topic=default_topic,
         default_timeout=default_timeout,
         custom_configuration=custom_config,
@@ -76,7 +79,7 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
 
     # 2. LIST MANAGEMENT GROUPS
     mgmt_groups_list = run(
-        f"az iot ops ns asset custom mgmt list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
@@ -86,7 +89,7 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
 
     # 3. SHOW MANAGEMENT GROUP
     mgmt_group_show = run(
-        f"az iot ops ns asset custom mgmt show --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-group show --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name}"
     )
 
@@ -100,17 +103,20 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     # 4. UPDATE MANAGEMENT GROUP
     updated_default_topic = "factory/custom/management/updated_responses"
     updated_default_timeout = 45
+    updated_data_source = f"nsu=updatedNamespace;i={randint(1, 999)}"
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     updated_mgmt_group = run(
-        f"az iot ops ns asset custom mgmt update --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-group update --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name} --default-topic {updated_default_topic} "
-        f"--default-timeout {updated_default_timeout} --config {custom_config_path}"
+        f"--default-timeout {updated_default_timeout} --config {custom_config_path} "
+        f"--data-source {updated_data_source}"
     )
 
     assert_management_group_properties(
         updated_mgmt_group,
         name=mgmt_group_name,
+        data_source=updated_data_source,
         default_topic=updated_default_topic,
         default_timeout=updated_default_timeout,
         custom_configuration=custom_config,
@@ -118,15 +124,17 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
 
     # 5. CREATE MANAGEMENT GROUP WITH REPLACE
     replaced_default_topic = "factory/custom/management/replaced_responses"
+    replaced_data_source = f"nsu=replacedNamespace;i={randint(1, 999)}"
     replaced_mgmt_group = run(
-        f"az iot ops ns asset custom mgmt add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name} --default-topic {replaced_default_topic} "
-        f"--replace"
+        f"--data-source {replaced_data_source} --replace"
     )
 
     assert_management_group_properties(
         replaced_mgmt_group,
         name=mgmt_group_name,
+        data_source=replaced_data_source,
         default_topic=replaced_default_topic,
     )
 
@@ -138,7 +146,7 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     action_result = run(
-        f"az iot ops ns asset custom mgmt action add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-action add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name_1} "
         f"--target-uri {action_target_uri} --action-type {action_type} --timeout {action_timeout} "
         f"--topic {action_topic} --config {custom_config_path}"
@@ -161,7 +169,7 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     action_result_2 = run(
-        f"az iot ops ns asset custom mgmt action add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-action add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name_2} "
         f"--target-uri {action_target_uri_2} --action-type {action_type_2} --timeout {action_timeout_2} "
         f"--config {custom_config_path}"
@@ -178,7 +186,7 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
 
     # 8. LIST MANAGEMENT GROUP ACTIONS
     actions_list = run(
-        f"az iot ops ns asset custom mgmt action list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-action list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name}"
     )
 
@@ -190,7 +198,7 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
     # 9. REPLACE MANAGEMENT GROUP ACTION
     replaced_action_target_uri = "/mgmt/device_service?profile=Profile1"
     replaced_action = run(
-        f"az iot ops ns asset custom mgmt action add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-action add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name_1} "
         f"--target-uri {replaced_action_target_uri} --action-type {action_type} --replace"
     )
@@ -204,13 +212,13 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
 
     # 10. REMOVE MANAGEMENT GROUP ACTION
     run(
-        f"az iot ops ns asset custom mgmt action remove --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-action remove --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name_1}"
     )
 
     # Verify removal by listing
     remaining_actions = run(
-        f"az iot ops ns asset custom mgmt action list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-action list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name}"
     )
 
@@ -220,13 +228,13 @@ def test_namespace_custom_asset_management_group_lifecycle_operations(
 
     # 11. REMOVE MANAGEMENT GROUP
     run(
-        f"az iot ops ns asset custom mgmt remove --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-group remove --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name}"
     )
 
     # Verify removal by listing
     remaining_mgmt_groups = run(
-        f"az iot ops ns asset custom mgmt list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset custom mgmt-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
@@ -271,23 +279,25 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     # 1. CREATE MANAGEMENT GROUP WITH FULL OPCUA CONFIGURATION
     default_topic = "factory/opcua/management/responses"
     default_timeout = 45
+    data_source = f"nsu=opcuaNamespace;i={randint(1, 999)}"
 
     mgmt_group_result = run(
-        f"az iot ops ns asset opcua mgmt add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name} --default-topic {default_topic} "
-        f"--default-timeout {default_timeout}"
+        f"--default-timeout {default_timeout} --data-source {data_source}"
     )
 
     assert_management_group_properties(
         mgmt_group_result,
         name=mgmt_group_name,
+        data_source=data_source,
         default_topic=default_topic,
         default_timeout=default_timeout,
     )
 
     # 2. LIST MANAGEMENT GROUPS
     mgmt_groups_list = run(
-        f"az iot ops ns asset opcua mgmt list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
@@ -297,7 +307,7 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
 
     # 3. SHOW MANAGEMENT GROUP
     mgmt_group_show = run(
-        f"az iot ops ns asset opcua mgmt show --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-group show --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name}"
     )
 
@@ -313,7 +323,7 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     updated_default_timeout = 60
 
     updated_mgmt_group = run(
-        f"az iot ops ns asset opcua mgmt update --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-group update --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name} --default-topic {updated_default_topic} "
         f"--default-timeout {updated_default_timeout}"
     )
@@ -321,21 +331,24 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     assert_management_group_properties(
         updated_mgmt_group,
         name=mgmt_group_name,
+        data_source=data_source,
         default_topic=updated_default_topic,
         default_timeout=updated_default_timeout,
     )
 
     # 5. CREATE MANAGEMENT GROUP WITH REPLACE
     replaced_default_topic = "factory/opcua/management/replaced_responses"
+    replaced_data_source = f"nsu=replacedNamespace;i={randint(1, 999)}"
     replaced_mgmt_group = run(
-        f"az iot ops ns asset opcua mgmt add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name} --default-topic {replaced_default_topic} "
-        f"--replace"
+        f"--data-source {replaced_data_source} --replace"
     )
 
     assert_management_group_properties(
         replaced_mgmt_group,
         name=mgmt_group_name,
+        data_source=replaced_data_source,
         default_topic=replaced_default_topic
     )
 
@@ -346,7 +359,7 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     action_topic = "factory/opcua/actions/production"
 
     action_result = run(
-        f"az iot ops ns asset opcua mgmt action add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-action add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name} "
         f"--target-uri {action_target_uri} --action-type {action_type} --timeout {action_timeout} "
         f"--topic {action_topic}"
@@ -363,7 +376,7 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
 
     # 7. LIST MANAGEMENT GROUP ACTIONS
     actions_list = run(
-        f"az iot ops ns asset opcua mgmt action list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-action list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name}"
     )
 
@@ -374,7 +387,7 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
     # 8. REPLACE MANAGEMENT GROUP ACTION
     replaced_action_target_uri = "/mgmt/device_service?profile=stopProduction"
     replaced_action = run(
-        f"az iot ops ns asset opcua mgmt action add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-action add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name} "
         f"--target-uri {replaced_action_target_uri} --action-type {action_type} --replace"
     )
@@ -388,13 +401,13 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
 
     # 9. REMOVE MANAGEMENT GROUP ACTION
     run(
-        f"az iot ops ns asset opcua mgmt action remove --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-action remove --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name}"
     )
 
     # Verify removal by listing
     remaining_actions = run(
-        f"az iot ops ns asset opcua mgmt action list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-action list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name}"
     )
 
@@ -403,13 +416,13 @@ def test_namespace_opcua_asset_management_group_lifecycle_operations(require_ini
 
     # 10. REMOVE MANAGEMENT GROUP
     run(
-        f"az iot ops ns asset opcua mgmt remove --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-group remove --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name}"
     )
 
     # Verify removal by listing
     remaining_mgmt_groups = run(
-        f"az iot ops ns asset opcua mgmt list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
@@ -453,23 +466,25 @@ def test_namespace_onvif_asset_management_group_lifecycle_operations(require_ini
     # 1. CREATE MANAGEMENT GROUP
     default_topic = "factory/onvif/management/responses"
     default_timeout = 25
+    data_source = f"nsu=onvifNamespace;i={randint(1, 999)}"
 
     mgmt_group_result = run(
-        f"az iot ops ns asset onvif mgmt add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif mgmt-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name} --default-topic {default_topic} "
-        f"--default-timeout {default_timeout}"
+        f"--default-timeout {default_timeout} --data-source {data_source}"
     )
 
     assert_management_group_properties(
         mgmt_group_result,
         name=mgmt_group_name,
+        data_source=data_source,
         default_topic=default_topic,
         default_timeout=default_timeout,
     )
 
     # 2. LIST MANAGEMENT GROUPS
     mgmt_groups_list = run(
-        f"az iot ops ns asset onvif mgmt list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif mgmt-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 
@@ -479,7 +494,7 @@ def test_namespace_onvif_asset_management_group_lifecycle_operations(require_ini
 
     # 3. SHOW MANAGEMENT GROUP
     mgmt_group_show = run(
-        f"az iot ops ns asset onvif mgmt show --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif mgmt-group show --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name}"
     )
 
@@ -493,43 +508,47 @@ def test_namespace_onvif_asset_management_group_lifecycle_operations(require_ini
     # 4. UPDATE MANAGEMENT GROUP
     updated_default_topic = "factory/onvif/management/updated_responses"
     updated_default_timeout = 40
+    updated_data_source = f"nsu=updatedNamespace;i={randint(1, 999)}"
 
     updated_mgmt_group = run(
-        f"az iot ops ns asset onvif mgmt update --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif mgmt-group update --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name} --default-topic {updated_default_topic} "
-        f"--default-timeout {updated_default_timeout}"
+        f"--default-timeout {updated_default_timeout} --data-source {updated_data_source}"
     )
 
     assert_management_group_properties(
         updated_mgmt_group,
         name=mgmt_group_name,
+        data_source=updated_data_source,
         default_topic=updated_default_topic,
         default_timeout=updated_default_timeout,
     )
 
     # 5. CREATE MANAGEMENT GROUP WITH REPLACE
     replaced_default_topic = "factory/onvif/management/replaced_responses"
+    replaced_data_source = f"nsu=replacedNamespace;i={randint(1, 999)}"
     replaced_mgmt_group = run(
-        f"az iot ops ns asset onvif mgmt add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif mgmt-group add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name} --default-topic {replaced_default_topic} "
-        f"--replace"
+        f"--data-source {replaced_data_source} --replace"
     )
 
     assert_management_group_properties(
         replaced_mgmt_group,
         name=mgmt_group_name,
+        data_source=replaced_data_source,
         default_topic=replaced_default_topic
     )
 
     # 6. REMOVE MANAGEMENT GROUP
     run(
-        f"az iot ops ns asset onvif mgmt remove --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif mgmt-group remove --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --name {mgmt_group_name}"
     )
 
     # Verify removal by listing
     remaining_mgmt_groups = run(
-        f"az iot ops ns asset onvif mgmt list --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset onvif mgmt-group list --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
 

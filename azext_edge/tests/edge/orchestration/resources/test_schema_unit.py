@@ -190,7 +190,7 @@ def test_schema_delete(mocked_cmd, mocked_responses: responses):
             registry_name=registry_name,
             schema_name=schema_name
         ),
-        status=200,
+        status=202,
         content_type="application/json",
     )
     delete_schema(
@@ -396,7 +396,7 @@ def test_version_remove(mocked_cmd, mocked_responses: responses):
             schema_name=schema_name,
             schema_version=version_num
         ),
-        status=200,
+        status=202,
         content_type="application/json",
     )
     remove_version(

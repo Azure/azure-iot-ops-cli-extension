@@ -47,7 +47,7 @@ def get_namespace_mgmt_uri(
         f"Microsoft.DeviceRegistry/namespaces{namespace_name}"
     )
     if include_api:
-        namespace_id += f"?api-version={DeviceRegistryMgmtApiVersion.V20250701_preview.value}"
+        namespace_id += f"?api-version={DeviceRegistryMgmtApiVersion.V20251001.value}"
     return f"{BASE_URL}{namespace_id}"
 
 

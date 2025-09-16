@@ -79,7 +79,8 @@ def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 
         "dataset_custom_configuration": json.dumps({
             "customSetting": "test",
             "priority": "high"
-        })
+        }),
+        "type_ref": f"mydataset{randint(0, 100)}"
     }),
     # Custom asset dataset with minimal config
     ("custom", add_namespace_custom_asset_dataset, {}),
@@ -147,6 +148,7 @@ def test_add_namespace_asset_dataset(
     if config_params:
         if asset_type == "custom":
             expected_dataset["datasetConfiguration"] = config_params.get("dataset_custom_configuration")
+            expected_dataset["typeRef"] = config_params.get("type_ref")
         elif asset_type == "opcua":
             config = {}
             if "opcua_dataset_publishing_interval" in config_params:
@@ -243,7 +245,7 @@ def test_add_namespace_asset_dataset(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         dataset_name=dataset_name,
-        dataset_data_source=data_source,
+        data_source=data_source,
         replace=replace,
         wait_sec=0,
         **config_params
@@ -273,6 +275,7 @@ def test_add_namespace_asset_dataset(
     added_dataset = next((d for d in datasets if d["name"] == dataset_name), None)
     assert added_dataset is not None, "Added dataset not found in the list of datasets"
     assert added_dataset["dataSource"] == data_source
+    assert added_dataset["typeRef"] == config_params.get("type_ref")
 
     # Check configuration and destinations using helper functions
     check_dataset_configuration(added_dataset, expected_dataset)
@@ -330,7 +333,7 @@ def test_add_namespace_asset_dataset_error(
         "instance_resource_group": instance_resource_group,
         "asset_name": asset_name,
         "dataset_name": dataset_name,
-        "dataset_data_source": data_source,
+        "data_source": data_source,
         "wait_sec": 0
     }
 
@@ -708,11 +711,11 @@ def test_show_namespace_asset_dataset(
     # No specific common requirements
     {},
     # With dataset data source
-    {"dataset_data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Sensor;i=2000"},
+    {"data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Sensor;i=2000"},
     # Both data source and destinations
     {
         "dataset_destinations": "",  # TODO- change. currently will be set in the test
-        "dataset_data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Device;i=3000",
+        "data_source": "nsu=http://microsoft.com/Opc/OpcPlc/Device;i=3000",
     }
 ])
 @pytest.mark.parametrize("asset_type, command_func, unique_reqs", [
@@ -723,7 +726,8 @@ def test_show_namespace_asset_dataset(
         "dataset_custom_configuration": json.dumps({
             "customSetting": "updated",
             "priority": "critical"
-        })
+        }),
+        "type_ref": f"mydataset{randint(0, 100)}"
     }),
     # OPCUA asset dataset with basic parameters
     ("opcua", update_namespace_opcua_asset_dataset, {
@@ -801,13 +805,14 @@ def test_update_namespace_asset_dataset(
     expected_dataset = deepcopy(initial_dataset)
 
     # Update data source if specified
-    if "dataset_data_source" in common_reqs:
-        expected_dataset["dataSource"] = common_reqs["dataset_data_source"]
+    if "data_source" in common_reqs:
+        expected_dataset["dataSource"] = common_reqs["data_source"]
 
     # Update configuration if specified
     if unique_reqs:
         if asset_type == "custom" and "dataset_custom_configuration" in unique_reqs:
             expected_dataset["datasetConfiguration"] = unique_reqs["dataset_custom_configuration"]
+            expected_dataset["typeRef"] = unique_reqs.get("type_ref")
         elif asset_type == "opcua":
             config = json.loads(expected_dataset.get("datasetConfiguration", "{}"))
 
@@ -907,10 +912,15 @@ def test_update_namespace_asset_dataset(
     assert patch_dataset["name"] == dataset_name
 
     # Check data source update if applicable
-    if "dataset_data_source" in common_reqs:
-        assert patch_dataset["dataSource"] == common_reqs["dataset_data_source"]
+    if "data_source" in common_reqs:
+        assert patch_dataset["dataSource"] == common_reqs["data_source"]
     else:
         assert patch_dataset["dataSource"] == initial_dataset["dataSource"]
+
+    if "type_ref" in unique_reqs:
+        assert patch_dataset["typeRef"] == unique_reqs["type_ref"]
+    else:
+        assert patch_dataset["typeRef"] == initial_dataset.get("typeRef")
 
     # Check configuration and destinations using helper functions
     check_dataset_configuration(patch_dataset, expected_dataset)
@@ -933,7 +943,14 @@ def test_update_namespace_asset_dataset(
 
 
 @pytest.mark.parametrize("asset_type, command_func, config_params", [
-    ("custom", add_namespace_custom_asset_dataset_point, {"custom_configuration": json.dumps({"test": "value"})}),
+    (
+        "custom",
+        add_namespace_custom_asset_dataset_point,
+        {
+            "custom_configuration": json.dumps({"test": "value"}),
+            "type_ref": f"mydataset{randint(0, 100)}"
+        }
+    ),
     ("opcua", add_namespace_opcua_asset_dataset_point, {"queue_size": 5, "sampling_interval": 100}),
     ("custom", add_namespace_custom_asset_dataset_point, {}),
     ("opcua", add_namespace_opcua_asset_dataset_point, {})
@@ -1024,6 +1041,7 @@ def test_add_namespace_asset_dataset_point(
     # Add configuration based on asset type
     if asset_type == "custom" and "custom_configuration" in config_params:
         expected_datapoint["dataPointConfiguration"] = config_params["custom_configuration"]
+        expected_datapoint["typeRef"] = config_params.get("type_ref")
     elif asset_type == "opcua":
         config = {}
         if "queue_size" in config_params:
@@ -1102,6 +1120,7 @@ def test_add_namespace_asset_dataset_point(
     patched_point = next((p for p in patch_dataset["dataPoints"] if p["name"] == datapoint_name), None)
     assert patched_point is not None, f"Data point '{datapoint_name}' not found in PATCH request"
     assert patched_point["dataSource"] == data_source
+    assert patched_point.get("typeRef") == config_params.get("type_ref")
     assert patched_point["dataPointConfiguration"] == expected_datapoint.get("dataPointConfiguration", "{}")
 
     # Verify the fixture was called with the correct parameters

@@ -49,7 +49,7 @@ def get_namespace_asset_mgmt_uri(
         namespace_name=namespace_name, resource_group_name=resource_group_name, include_api=False
     )
     base_uri += "/assets" + (f"/{asset_name}" if asset_name else "")
-    return f"{base_uri}?api-version={DeviceRegistryMgmtApiVersion.V20250701_preview.value}"
+    return f"{base_uri}?api-version={DeviceRegistryMgmtApiVersion.V20251001.value}"
 
 
 def get_namespace_asset_record(

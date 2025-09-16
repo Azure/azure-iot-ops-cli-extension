@@ -8,6 +8,12 @@ from unittest import TestCase
 
 import pytest
 
+from azext_edge.edge.providers.orchestration.common import (
+    EXTENSION_TYPE_OPS,
+    EXTENSION_TYPE_PLATFORM,
+    EXTENSION_TYPE_SSC,
+    EXTENSION_TYPE_TO_MONIKER_MAP,
+)
 from azext_edge.edge.providers.orchestration.template import (
     TEMPLATE_BLUEPRINT_ENABLEMENT,
     TEMPLATE_BLUEPRINT_INSTANCE,
@@ -16,7 +22,6 @@ from azext_edge.edge.providers.orchestration.template import (
 )
 
 from ...generators import generate_random_string
-
 
 EXPECTED_EXTENSION_RESOURCE_KEYS = frozenset(
     [
@@ -140,3 +145,30 @@ def test_template_blueprint(content: dict):
     blueprint_copy = blueprint.copy()
     TestCase().assertDictEqual(blueprint.content, blueprint_copy.content, "Blueprint copy does not match blueprint.")
     assert blueprint.commit_id == blueprint_copy.commit_id
+
+
+EXTENSION_CONFIGS = {
+    "enablement": [
+        (EXTENSION_TYPE_PLATFORM, "0.7.29", "preview"),
+        (EXTENSION_TYPE_SSC, "0.10.0", "preview"),
+    ],
+    "instance": [
+        (EXTENSION_TYPE_OPS, "1.2.71", "integration"),
+    ],
+}
+
+
+@pytest.mark.parametrize("extension_type,version,train", EXTENSION_CONFIGS["enablement"])
+def test_enablement_extension_versions(extension_type, version, train):
+    """Test enablement extension versions and trains."""
+    moniker = EXTENSION_TYPE_TO_MONIKER_MAP[extension_type]
+    assert TEMPLATE_BLUEPRINT_ENABLEMENT.content["variables"]["VERSIONS"][moniker] == version
+    assert TEMPLATE_BLUEPRINT_ENABLEMENT.content["variables"]["TRAINS"][moniker] == train
+
+
+@pytest.mark.parametrize("extension_type,version,train", EXTENSION_CONFIGS["instance"])
+def test_instance_extension_versions(extension_type, version, train):
+    """Test instance extension versions and trains."""
+    moniker = EXTENSION_TYPE_TO_MONIKER_MAP[extension_type]
+    assert TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["VERSIONS"][moniker] == version
+    assert TEMPLATE_BLUEPRINT_INSTANCE.content["variables"]["TRAINS"][moniker] == train
