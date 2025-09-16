@@ -88,7 +88,8 @@ def generate_event_group(
         "event_custom_configuration": json.dumps({
             "customSetting": "test",
             "priority": "high"
-        })
+        }),
+        "type_ref": f"myevent{randint(0, 100)}"
     }),
     # Custom asset dataset with minimal config
     ("custom", add_namespace_custom_asset_event_group, {}),
@@ -144,6 +145,7 @@ def test_add_namespace_asset_event_group(
     expected_group = generate_event_group(group_name=group_name, data_source=data_source)
     expected_group["defaultDestinations"] = []  # start with no destinations
     expected_group["eventGroupConfiguration"] = "{}"  # start with no config
+    expected_group["typeRef"] = config_params.get("type_ref")
 
     config_params = deepcopy(config_params)
     # Add optional configuration parameters based on test case
@@ -274,6 +276,7 @@ def test_add_namespace_asset_event_group(
     added_group = next((e for e in groups if e["name"] == group_name), None)
     assert added_group is not None, "Added event group not found in the list of event groups"
     assert added_group["dataSource"] == data_source
+    assert added_group["typeRef"] == expected_group["typeRef"]
 
     # Check configuration and destinations using helper functions
     check_event_configuration(added_group, expected_group)
@@ -666,7 +669,8 @@ def test_remove_namespace_asset_event_group(
         "event_custom_configuration": json.dumps({
             "customSetting": "updated",
             "priority": "critical"
-        })
+        }),
+        "type_ref": f"myevent{randint(0, 100)}"
     }),
     # OPCUA asset event - note that there are more unit tests for ensuring opcua event schemas
     # get updated correctly. This is just a simple test to ensure the command works
@@ -750,6 +754,7 @@ def test_update_namespace_asset_event_group(
     if unique_reqs:
         if asset_type == "custom":
             expected_group["eventGroupConfiguration"] = unique_reqs["event_custom_configuration"]
+            expected_group["typeRef"] = unique_reqs.get("type_ref")
         elif asset_type == "opcua":
             expected_group["eventGroupConfiguration"] = json.dumps({
                 "publishingInterval": unique_reqs.get("opcua_event_publishing_interval"),
@@ -834,6 +839,7 @@ def test_update_namespace_asset_event_group(
 
     # Check notifier update if applicable
     assert patch_group["dataSource"] == expected_group["dataSource"]
+    assert patch_group.get("typeRef") == expected_group.get("typeRef")
 
     # Check configuration and destinations using helper functions
     check_event_configuration(patch_group, expected_group)
@@ -858,7 +864,10 @@ def test_update_namespace_asset_event_group(
     (
         "custom",
         add_namespace_custom_asset_event_group_event,
-        {"custom_configuration": json.dumps({"customSetting": "value", "priority": "high"})}
+        {
+            "custom_configuration": json.dumps({"customSetting": "value", "priority": "high"}),
+            "type_ref": f"myevent{randint(0, 100)}"
+        }
     ),
     # Custom asset event point without custom configuration
     (
@@ -966,6 +975,7 @@ def test_add_namespace_asset_event_group_event(
     # Add configuration based on asset type
     if asset_type == "custom" and "custom_configuration" in config_params:
         expected_event["eventConfiguration"] = config_params["custom_configuration"]
+        expected_event["typeRef"] = config_params.get("type_ref")
     elif asset_type == "opcua":
         config = {}
         if "queue_size" in config_params:
@@ -1043,6 +1053,7 @@ def test_add_namespace_asset_event_group_event(
     patched_event = next((p for p in patch_group["events"] if p["name"] == event_name), None)
     assert patched_event is not None, f"Data point '{event_name}' not found in PATCH request"
     assert patched_event["dataSource"] == data_source
+    assert patched_event.get("typeRef") == expected_event.get("typeRef")
     assert patched_event["eventConfiguration"] == expected_event.get("eventConfiguration", "{}")
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters

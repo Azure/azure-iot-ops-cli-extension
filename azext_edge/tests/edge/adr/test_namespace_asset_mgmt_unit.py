@@ -95,7 +95,8 @@ def generate_management_group_action(
                 "customProperty": "testValue",
                 "groupType": "management-ops",
                 "operationMode": "async"
-            })
+            }),
+            "type_ref": f"custom.management{randint(0, 1000)}"
         },
     ),
     # OPC UA asset management group tests
@@ -155,8 +156,9 @@ def test_add_namespace_asset_management_group(
         expected_group["defaultTimeoutInSeconds"] = default_timeout
 
     # Add custom configuration for custom assets
-    if asset_type == "custom" and "mgmt_custom_configuration" in mgmt_params:
-        expected_group["managementGroupConfiguration"] = mgmt_params["mgmt_custom_configuration"]
+    if asset_type == "custom":
+        expected_group["managementGroupConfiguration"] = mgmt_params.get("mgmt_custom_configuration")
+        expected_group["typeRef"] = mgmt_params.get("type_ref")
 
     # Generate mock asset
     mocked_asset = get_namespace_asset_record(
@@ -269,6 +271,8 @@ def test_add_namespace_asset_management_group(
 
     # Verify management group properties
     assert added_group["name"] == group_name
+    assert added_group["dataSource"] == data_source
+    assert added_group["typeRef"] == mgmt_params.get("type_ref")
     assert added_group["defaultTopic"] == default_topic
     assert added_group["defaultTimeoutInSeconds"] == default_timeout
     assert added_group["managementGroupConfiguration"] == mgmt_params.get("mgmt_custom_configuration")
@@ -638,7 +642,8 @@ def test_remove_namespace_asset_management_group(
                 "customProperty": "updatedValue",
                 "groupType": "updated-management-ops",
                 "operationMode": "sync"
-            })
+            }),
+            "type_ref": f"custom.management{randint(0, 1000)}"
         },
     ),
     (
@@ -754,6 +759,8 @@ def test_update_namespace_asset_management_group(
     # Update custom configuration for custom assets
     if "mgmt_custom_configuration" in mgmt_params:
         expected_group["managementGroupConfiguration"] = mgmt_params["mgmt_custom_configuration"]
+    if "type_ref" in mgmt_params:
+        expected_group["typeRef"] = mgmt_params["type_ref"]
 
     # Create expected asset after update
     expected_asset_payload = deepcopy(mocked_asset)
@@ -824,6 +831,8 @@ def test_update_namespace_asset_management_group(
     assert updated_group["name"] == group_name
     assert updated_group["actions"] == initial_management_group["actions"]  # Actions should remain unchanged
 
+    assert updated_group.get("typeRef") == expected_group.get("typeRef")
+    assert updated_group.get("dataSource") == expected_group.get("dataSource")
     assert updated_group.get("defaultTopic") == expected_group.get("defaultTopic")
     assert updated_group.get("defaultTimeoutInSeconds") == expected_group.get("defaultTimeoutInSeconds")
     assert updated_group.get("managementGroupConfiguration") == expected_group.get("managementGroupConfiguration")
@@ -854,7 +863,10 @@ def test_update_namespace_asset_management_group(
     (
         "custom",
         add_namespace_custom_asset_management_group_action,
-        {"custom_configuration": json.dumps({"method": "execute", "parameters": {"param1": "value1"}})}
+        {
+            "custom_configuration": json.dumps({"method": "execute", "parameters": {"param1": "value1"}}),
+            "type_ref": f"custom.management{randint(0, 1000)}"
+        }
     ),
     # Custom asset management group action without custom configuration
     (
@@ -962,7 +974,8 @@ def test_add_namespace_asset_management_group_action(
         "targetUri": target_uri,
         "topic": topic,
         "actionType": action_type,
-        "timeoutInSeconds": timeout
+        "timeoutInSeconds": timeout,
+        "typeRef": config_params.get("type_ref")
     }
 
     # Add configuration based on asset type
@@ -1049,6 +1062,7 @@ def test_add_namespace_asset_management_group_action(
     assert patched_action["topic"] == topic
     assert patched_action["actionType"] == action_type
     assert patched_action["timeoutInSeconds"] == timeout
+    assert patched_action.get("typeRef") == expected_action.get("typeRef")
 
     if "actionConfiguration" in expected_action:
         assert patched_action["actionConfiguration"] == expected_action["actionConfiguration"]

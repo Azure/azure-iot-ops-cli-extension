@@ -1234,6 +1234,7 @@ def update_namespace_custom_asset_dataset(
         data_source=data_source,
         dataset_custom_configuration=dataset_custom_configuration,
         dataset_destinations=dataset_destinations,
+        type_ref=type_ref,
         **kwargs
     )
 
@@ -1250,7 +1251,6 @@ def update_namespace_opcua_asset_dataset(
     opcua_dataset_sampling_interval: Optional[int] = None,
     opcua_dataset_queue_size: Optional[int] = None,
     opcua_dataset_key_frame_count: Optional[int] = None,
-    type_ref: Optional[str] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_dataset(
@@ -1277,7 +1277,6 @@ def update_namespace_rest_asset_dataset(
     dataset_name: str,
     rest_dataset_sampling_interval: Optional[int] = None,
     dataset_destinations: Optional[str] = None,
-    type_ref: Optional[str] = None,
     **kwargs
 ) -> dict:
     return NamespaceAssets(cmd).update_dataset(
@@ -1333,6 +1332,7 @@ def add_namespace_custom_asset_dataset_point(
         data_source=data_source,
         custom_configuration=custom_configuration,
         replace=replace,
+        type_ref=type_ref,
         **kwargs
     )
 
@@ -1347,7 +1347,6 @@ def add_namespace_opcua_asset_dataset_point(
     data_source: str,
     queue_size: Optional[int] = None,
     sampling_interval: Optional[int] = None,
-    type_ref: Optional[str] = None,
     replace: Optional[bool] = False,
     **kwargs
 ) -> dict:
