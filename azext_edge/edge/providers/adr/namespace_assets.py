@@ -419,7 +419,7 @@ class NamespaceAssets(Queryable):
             default=False,
             **kwargs
         )
-        unmatched_datasets.append([
+        unmatched_datasets.append(
             {
                 "name": dataset_name,
                 "dataSource": data_source,
@@ -428,7 +428,7 @@ class NamespaceAssets(Queryable):
                 "dataPoints": [],  # TODO: future pr, add datapoints
                 "typeRef": type_ref
             }
-        ])
+        )
 
         update_payload = {
             "properties": {
@@ -912,7 +912,7 @@ class NamespaceAssets(Queryable):
         )
 
         # check if event exists
-        event_group = _get_sub_property(asset, event_name, property_key="eventGroups")
+        event_group = _get_sub_property(asset, group_name, property_key="eventGroups")
 
         # get the events
         og_events = event_group.get("events", [])
@@ -1819,6 +1819,7 @@ def _get_sub_property(asset: dict, name: str, property_key: str) -> dict:
 
     Raises InvalidArgumentValueError if the subproperty is not found.
     """
+    # TODO: could have partial functions (_get_event_group) for ease
     props = asset["properties"].get(property_key, [])
     matched_props = [event for event in props if event["name"] == name]
     # TODO: would we want to prompt user to create if not found?

@@ -128,7 +128,7 @@ def test_add_namespace_asset_dataset(
     asset_name = "testAsset"
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
-    dataset_name = "default"  # Currently only one dataset with name "default" is supported
+    dataset_name = f"dataset{randint(0, 100)}"
     data_source = f"nsu=http://microsoft.com/Opc/OpcPlc/Oven;i={randint(1, 1000)}"
 
     # Get the namespace from the mocked function
@@ -185,7 +185,12 @@ def test_add_namespace_asset_dataset(
 
     # Add previous datasets if needed for the test case
     if previous_datasets:
-        mocked_asset["properties"]["datasets"] = [generate_dataset(num_data_points=randint(0, 2))]
+        mocked_asset["properties"]["datasets"] = [
+            generate_dataset(num_data_points=randint(0, 2)) for _ in range(2)
+        ]
+
+        if replace:
+            mocked_asset["properties"]["datasets"].append(generate_dataset(dataset_name=dataset_name))
 
     # Mock the device endpoint check
     add_device_get_call(
@@ -212,8 +217,14 @@ def test_add_namespace_asset_dataset(
     # Create updated asset for mock response
     updated_asset = deepcopy(mocked_asset)
 
-    # Since we have singular support for now
-    updated_asset["properties"]["datasets"] = [expected_dataset]
+    updated_asset["properties"]["datasets"] = updated_asset["properties"].get("datasets", [])
+
+    if replace:
+        updated_asset["properties"]["datasets"] = [
+            d for d in updated_asset["properties"]["datasets"] if d["name"] != dataset_name
+        ]
+
+    updated_asset["properties"]["datasets"].append(expected_dataset)
 
     # Mock PATCH request
     mocked_responses.add(
@@ -310,15 +321,14 @@ def test_add_namespace_asset_dataset_error(
     """Test error cases for adding asset datasets with different asset types.
 
     Tests the following scenarios:
-    - Adding dataset not named "default"
     - Mismatch between asset type and device endpoint type
-    - Adding dataset to an asset where there is already an existing dataset (more than one dataset)
+    - Adding dataset with the same name with no replace
     """
 
     asset_name = "testAsset"
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
-    dataset_name = "default"
+    dataset_name = f"dataset{randint(0, 100)}"
     data_source = f"nsu=http://microsoft.com/Opc/OpcPlc/Oven;i={randint(1, 1000)}"
 
     # Get the namespace from the mocked function
@@ -337,19 +347,7 @@ def test_add_namespace_asset_dataset_error(
         "wait_sec": 0
     }
 
-    # 1st non default dataset name
-    with pytest.raises(InvalidArgumentValueError) as exc_info:
-        command_func(
-            # awkward dict update
-            **{**base_params, "dataset_name": generate_random_string()}
-        )
-    error_msg = (
-        "Currently only one dataset with the name 'default' is supported. "
-        "Please use 'default' as the dataset name."
-    )
-    assert error_msg in str(exc_info.value)
-
-    # 2nd mismatch between asset type and device endpoint type
+    # 1st mismatch between asset type and device endpoint type
     # Generate mock asset
     mocked_asset = get_namespace_asset_record(
         asset_name=asset_name,
@@ -415,8 +413,7 @@ def test_add_namespace_asset_dataset_error(
     with pytest.raises(InvalidArgumentValueError) as excinfo:
         command_func(**base_params)
 
-    error_msg += " If you want to update the dataset properties, please use the update command."
-    assert error_msg in str(excinfo.value)
+    assert f"Dataset '{dataset_name}' already exists in asset '{asset_name}'. " in str(excinfo.value)
 
     # Verify that mocked_get_namespace_for_instance was called with correct parameters
     mocked_get_namespace_for_instance.assert_called_with(
