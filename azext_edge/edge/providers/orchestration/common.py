@@ -160,6 +160,7 @@ class DataflowEndpointType(Enum):
     EVENTHUB = "EventHub"
     FABRICREALTIME = "FabricRealTime"
     CUSTOMKAFKA = "CustomKafka"
+    OPENTELEMETRY = "OpenTelemetry"
 
 
 class DataflowEndpointAuthenticationType(Enum):
@@ -265,6 +266,11 @@ DATAFLOW_ENDPOINT_AUTHENTICATION_TYPE_MAP = {
         DataflowEndpointAuthenticationType.SASL.value,
         DataflowEndpointAuthenticationType.ANONYMOUS.value,
     },
+    DataflowEndpointType.OPENTELEMETRY.value: {
+        DataflowEndpointAuthenticationType.SERVICEACCESSTOKEN.value,
+        DataflowEndpointAuthenticationType.X509.value,
+        DataflowEndpointAuthenticationType.ANONYMOUS.value,
+    },
 }
 
 DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
@@ -278,6 +284,7 @@ DATAFLOW_ENDPOINT_TYPE_SETTINGS = {
     DataflowEndpointType.AIOLOCALMQTT.value: "mqttSettings",
     DataflowEndpointType.EVENTGRID.value: "mqttSettings",
     DataflowEndpointType.CUSTOMMQTT.value: "mqttSettings",
+    DataflowEndpointType.OPENTELEMETRY.value: "openTelemetrySettings",
     KAFKA_ENDPOINT_TYPE: "kafkaSettings",
     MQTT_ENDPOINT_TYPE: "mqttSettings",
 }

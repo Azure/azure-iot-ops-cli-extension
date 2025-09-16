@@ -588,6 +588,7 @@ class DataFlowEndpoints(Queryable):
             DataflowEndpointType.AIOLOCALMQTT.value,
             DataflowEndpointType.EVENTGRID.value,
             DataflowEndpointType.CUSTOMMQTT.value,
+            DataflowEndpointType.OPENTELEMETRY.value,
         ]:
             processed_host = f"{hostname}:{port}"
 
@@ -654,7 +655,11 @@ class DataFlowEndpoints(Queryable):
         })
 
         if authentication_method == DataflowEndpointAuthenticationType.ANONYMOUS.value:
-            return
+            if endpoint_type == DataflowEndpointType.OPENTELEMETRY.value:
+                # Only otel enpoint has anonymous settings property
+                settings["authentication"][authentication_method.lower() + "Settings"] = {}
+            else:
+                return
 
         auth_settings = {}
         for param_name, property_name in [
