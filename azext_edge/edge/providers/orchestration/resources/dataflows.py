@@ -656,7 +656,7 @@ class DataFlowEndpoints(Queryable):
 
         if authentication_method == DataflowEndpointAuthenticationType.ANONYMOUS.value:
             if endpoint_type == DataflowEndpointType.OPENTELEMETRY.value:
-                # Only otel enpoint has anymous settings property
+                # Only otel enpoint has anonymous settings property
                 settings["authentication"][authentication_method.lower() + "Settings"] = {}
             else:
                 return
