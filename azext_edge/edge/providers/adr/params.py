@@ -1017,7 +1017,7 @@ def load_adr_arguments(self, _):
         context.argument(
             "type_ref",
             options_list=["--type-ref", "--tr"],
-            help="Type Definition ID or URI.",
+            help="Type definition ID or URI.",
         )
 
     with self.argument_context("iot ops ns asset query") as context:

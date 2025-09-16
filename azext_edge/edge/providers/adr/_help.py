@@ -959,36 +959,35 @@ def load_iotops_adr_help():
     ] = """
         type: command
         short-summary: Add a dataset to a custom namespaced asset in an IoT Operations instance.
-        long-summary: Currently, only one dataset with the name "default" is supported for assets.
 
         examples:
         - name: Add a basic custom dataset
           text: >
             az iot ops ns asset custom dataset add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name default --data-source "customDataSource"
+            -g myInstanceResourceGroup --name myDataset --data-source "customDataSource"
 
         - name: Add a custom dataset with configuration
           text: >
             az iot ops ns asset custom dataset add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name default --data-source "sensor/pressure"
+            -g myInstanceResourceGroup --name myDataset --data-source "sensor/pressure"
             --config "{\\\"publishingInterval\\\": 1000, \\\"queueSize\\\": 5}"
 
         - name: Add a custom dataset with MQTT destination
           text: >
             az iot ops ns asset custom dataset add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name default --data-source "sensor/temp"
+            -g myInstanceResourceGroup --name myDataset --data-source "sensor/temp"
             --destination topic="factory/temperature" retain=Keep qos=Qos1 ttl=3600
 
         - name: Add a custom dataset with BrokerStateStore destination
           text: >
             az iot ops ns asset custom dataset add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name default --data-source "device/state"
+            -g myInstanceResourceGroup --name myDataset --data-source "device/state"
             --destination key="deviceState"
 
         - name: Add a custom dataset with Storage destination
           text: >
             az iot ops ns asset custom dataset add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name default --data-source "device/logs"
+            -g myInstanceResourceGroup --name myDataset --data-source "device/logs"
             --destination path="data/logs/device001"
     """
 
@@ -1015,7 +1014,7 @@ def load_iotops_adr_help():
         - name: Remove a dataset from a custom asset
           text: >
             az iot ops ns asset custom dataset remove --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name default
+            -g myInstanceResourceGroup --name myDataset
     """
 
     helps[
@@ -1028,7 +1027,7 @@ def load_iotops_adr_help():
         - name: Show dataset details
           text: >
             az iot ops ns asset custom dataset show --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name default
+            -g myInstanceResourceGroup --name myDataset
     """
 
     helps[
@@ -1041,13 +1040,13 @@ def load_iotops_adr_help():
         - name: Update dataset configuration
           text: >
             az iot ops ns asset custom dataset update --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name default --data-source "updated/source"
+            -g myInstanceResourceGroup --name myDataset --data-source "updated/source"
             --config "{\\\"publishingInterval\\\": 2000}"
 
         - name: Update dataset destination to MQTT
           text: >
             az iot ops ns asset custom dataset update --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --name default
+            -g myInstanceResourceGroup --name myDataset
             --destination topic="factory/updated/temperature" retain=Never qos=Qos0 ttl=7200
     """
 
@@ -1068,18 +1067,18 @@ def load_iotops_adr_help():
         - name: Add a basic datapoint
           text: >
             az iot ops ns asset custom datapoint add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --dataset default --name temp1 --data-source "sensor.temp1"
+            -g myInstanceResourceGroup --dataset myDataset --name temp1 --data-source "sensor.temp1"
 
         - name: Add a datapoint with custom configuration
           text: >
             az iot ops ns asset custom datapoint add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --dataset default --name pressure1 --data-source "sensor.pressure1"
+            -g myInstanceResourceGroup --dataset myDataset --name pressure1 --data-source "sensor.pressure1"
             --config "{\\\"samplingInterval\\\": 500, \\\"priority\\\": \\\"high\\\"}"
 
         - name: Add a datapoint and replace existing one with same name
           text: >
             az iot ops ns asset custom datapoint add --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --dataset default --name temp1 --data-source "sensor.temp1.v2"
+            -g myInstanceResourceGroup --dataset myDataset --name temp1 --data-source "sensor.temp1.v2"
             --replace
     """
 
@@ -1093,7 +1092,7 @@ def load_iotops_adr_help():
         - name: List all data points for a dataset
           text: >
             az iot ops ns asset custom datapoint list --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --dataset default
+            -g myInstanceResourceGroup --dataset myDataset
     """
 
     helps[
@@ -1106,7 +1105,7 @@ def load_iotops_adr_help():
         - name: Remove a datapoint from a dataset
           text: >
             az iot ops ns asset custom datapoint remove --asset mycustomasset --instance myInstance
-            -g myInstanceResourceGroup --dataset default --name temp1
+            -g myInstanceResourceGroup --dataset myDataset --name temp1
     """
 
     helps[
@@ -2066,7 +2065,6 @@ def load_iotops_adr_help():
     ] = """
         type: command
         short-summary: Add a dataset to an OPC UA namespaced asset in an IoT Operations instance.
-        long-summary: Currently, only one dataset with the name "default" is supported for assets.
 
         examples:
         - name: Add a basic OPC UA dataset
@@ -2578,7 +2576,6 @@ def load_iotops_adr_help():
     ] = """
         type: command
         short-summary: Add a dataset to a REST namespaced asset in an IoT Operations instance.
-        long-summary: Currently, only one dataset with the name "default" is supported for assets.
 
         examples:
         - name: Add a basic REST dataset
