@@ -18,7 +18,7 @@ from azext_edge.edge.providers.adr.namespace_devices import DeviceEndpointType
 from azext_edge.edge.providers.adr.namespace_assets import (
     _build_destination,
     _create_datapoint,
-    _get_event,
+    _get_sub_property,
     _process_configs,
     _process_opcua_dataset_configurations_v1,
     _process_opcua_event_configurations_v1,
@@ -135,65 +135,40 @@ def test_build_destination_error(test_case: dict):
         assert msg in str(excinfo.value)
 
 
-@pytest.mark.parametrize("num_events", [1, 5, 10])
-def test_get_event(num_events: int):
-    from .test_namespace_asset_events_unit import generate_event
-    test_event = generate_random_string()
-    asset = {
-        "name": "testAsset",
-        "properties": {
-            "events": []
-        }
-    }
+@pytest.mark.parametrize("property_key", ["datasets", "eventGroups", "managementGroups"])
+def test_get_sub_property_success(property_key: str):
+    test_name = generate_random_string()
+    asset = {"name": "testAsset", "properties": {property_key: []}}
 
-    for i in range(num_events):
-        asset["properties"]["events"].append(generate_event(f"testEvent{i}"))
+    # add some non-matching entries
+    for i in range(3):
+        asset["properties"][property_key].append({"name": f"other{i}", "dataSource": f"src{i}"})
 
-    # Set up events in asset properties
-    asset["properties"]["events"].append(generate_event(test_event))
+    # append the target entry
+    expected = {"name": test_name, "dataSource": "nsu=test;s=SourceX"}
+    asset["properties"][property_key].append(expected)
 
-    # Test success case
-    result = _get_event(asset, test_event)
-    assert result["name"] == test_event
-    # lazy way cause the event is last
-    assert result == asset["properties"]["events"][-1]
+    result = _get_sub_property(asset, test_name, property_key=property_key)
+    assert result == expected
 
 
-@pytest.mark.parametrize("test_case", [
-    {
-        "event_name": generate_random_string(),
-        "events": [
-            {
-                "name": f"another{generate_random_string()}",
-                "eventNotifier": "nsu=test;s=FastUInt456",
-            }
-        ],
-    },
-    {
-        "event_name": generate_random_string(),
-        "events": [],
-    },
-    {
-        "event_name": generate_random_string(),
-        "events": None,
-    }
-])
-def test_get_event_error(test_case):
-    """Test error handling when an event is not found in an asset."""
-    asset = {
-        "name": "testAsset",
-        "properties": {}
-    }
+@pytest.mark.parametrize("property_key", ["datasets", "eventGroups", "managementGroups"])
+def test_get_sub_property_error(property_key):
+    name = generate_random_string()
+    asset = {"name": "testAsset", "properties": {}}
 
-    # Set up events in asset properties if provided
-    if test_case["events"] is not None:
-        asset["properties"]["events"] = test_case["events"]
-
-    # Test error cases
+    # when property list missing
     with pytest.raises(InvalidArgumentValueError) as ex:
-        _get_event(asset, test_case["event_name"])
-    error_msg = f"Event '{test_case['event_name']}' not found in asset '{asset['name']}'."
-    assert error_msg in str(ex.value)
+        _get_sub_property(asset, name, property_key=property_key)
+
+    name_map = {
+        "datasets": "Dataset",
+        "eventGroups": "Event group",
+        "managementGroups": "Management group"
+    }
+    property_name = name_map[property_key]
+    expected_msg = f"{property_name} '{name}' not found in asset '{asset['name']}'."
+    assert expected_msg in str(ex.value)
 
 
 @pytest.mark.parametrize("test_case", [

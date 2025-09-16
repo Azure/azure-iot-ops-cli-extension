@@ -26,7 +26,6 @@ from ...util.id_tools import parse_resource_id
 from ...util.queryable import Queryable
 from .helpers import (
     ensure_schema_structure,
-    get_default_dataset,
     process_additional_configuration,
 )
 from .namespace_devices import DeviceEndpointType
@@ -397,12 +396,6 @@ class NamespaceAssets(Queryable):
         # TODO: future pr, import datapoints from file
         **kwargs
     ):
-        # TODO: future, multi data support
-        if dataset_name != "default":
-            raise InvalidArgumentValueError(
-                "Currently only one dataset with the name 'default' is supported. "
-                "Please use 'default' as the dataset name."
-            )
         asset, namespace = self._check_device_props(
             instance_resource_group=instance_resource_group,
             instance_name=instance_name,
@@ -411,13 +404,12 @@ class NamespaceAssets(Queryable):
         )
         # get the datasets from the asset
         datasets = asset["properties"].get("datasets", [])
-
-        # current restriction to one dataset
-        if datasets and not replace:
+        # remove dataset if it exists
+        unmatched_datasets = [ds for ds in datasets if ds["name"] != dataset_name]
+        if len(unmatched_datasets) < len(datasets) and not replace:
             raise InvalidArgumentValueError(
-                "Currently only one dataset with the name 'default' is supported. "
-                "Please use 'default' as the dataset name. If you want to update the dataset properties, "
-                "please use the update command."
+                f"Dataset '{dataset_name}' already exists in asset '{asset_name}'. "
+                "Use --replace to overwrite the existing dataset."
             )
 
         # create the dataset
@@ -426,7 +418,7 @@ class NamespaceAssets(Queryable):
             default=False,
             **kwargs
         )
-        datasets = [
+        unmatched_datasets.append([
             {
                 "name": dataset_name,
                 "dataSource": dataset_data_source,
@@ -434,11 +426,11 @@ class NamespaceAssets(Queryable):
                 "destinations": processed_configs.get("datasetsDestinations", []),
                 "dataPoints": [],  # TODO: future pr, add datapoints
             }
-        ]
+        ])
 
         update_payload = {
             "properties": {
-                "datasets": datasets
+                "datasets": unmatched_datasets
             }
         }
         with console.status(f"Adding dataset {dataset_name} to asset {asset_name}..."):
@@ -472,7 +464,7 @@ class NamespaceAssets(Queryable):
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        return get_default_dataset(asset, dataset_name)
+        return _get_sub_property(asset, dataset_name, property_key="datasets")
 
     def update_dataset(
         self,
@@ -601,7 +593,7 @@ class NamespaceAssets(Queryable):
             asset_type=asset_type,
             asset_name=asset_name
         )
-        dataset = get_default_dataset(asset, dataset_name, create_if_none=True)
+        dataset = _get_sub_property(asset, dataset_name, property_key="datasets")
 
         # get the datapoints
         datapoints = dataset["dataPoints"]
@@ -642,7 +634,7 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace["name"],
                 resource_group=namespace["resource_group"],
             )
-            return get_default_dataset(asset, dataset_name)["dataPoints"]
+            return _get_sub_property(asset, dataset_name, property_key="datasets")["dataPoints"]
 
     def list_dataset_datapoints(
         self, asset_name: str, instance_name: str, instance_resource_group: str, dataset_name: str
@@ -652,7 +644,7 @@ class NamespaceAssets(Queryable):
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        return get_default_dataset(asset, dataset_name)["dataPoints"]
+        return _get_sub_property(asset, dataset_name, property_key="datasets")["dataPoints"]
 
     def remove_dataset_datapoint(
         self,
@@ -671,7 +663,7 @@ class NamespaceAssets(Queryable):
         )
         namespace = parse_resource_id(asset["id"])
 
-        dataset = get_default_dataset(asset, dataset_name)
+        dataset = _get_sub_property(asset, dataset_name, property_key="datasets")
         datapoints = dataset.get("dataPoints", [])
         # note that delete should be ok with datapoint not there
         dataset["dataPoints"] = [dp for dp in datapoints if dp["name"] != datapoint_name]
@@ -702,7 +694,7 @@ class NamespaceAssets(Queryable):
                 namespace_name=namespace["name"],
                 resource_group=namespace["resource_group"],
             )
-            return get_default_dataset(asset, dataset_name)["dataPoints"]
+            return _get_sub_property(asset, dataset_name, property_key="datasets")["dataPoints"]
 
     # EVENTS - allowed for opcua, and custom assets
     def add_event(
@@ -784,7 +776,7 @@ class NamespaceAssets(Queryable):
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        return _get_event(asset, event_name)
+        return _get_sub_property(asset, event_name, property_key="eventGroups")
 
     def remove_event(
         self, asset_name: str, instance_name: str, instance_resource_group: str, event_name: str, **kwargs
@@ -844,7 +836,7 @@ class NamespaceAssets(Queryable):
             asset_name=asset_name
         )
         # check if event exists
-        event = _get_event(asset, event_name)
+        event = _get_sub_property(asset, event_name, property_key="eventGroups")
 
         # process the configs + destinations
         processed_configs = _process_configs(
@@ -912,7 +904,7 @@ class NamespaceAssets(Queryable):
         )
 
         # check if event exists
-        event = _get_event(asset, event_name)
+        event = _get_sub_property(asset, event_name, property_key="eventGroups")
 
         # get the datapoints
         datapoints = event.get("dataPoints", [])
@@ -984,7 +976,7 @@ class NamespaceAssets(Queryable):
             check_cluster=True
         )
         namespace = parse_resource_id(asset["id"])
-        event = _get_event(asset, event_name)
+        event = _get_sub_property(asset, event_name, property_key="eventGroups")
         datapoints = event.get("dataPoints", [])
         # note that delete should be ok with datapoint not there
         event["dataPoints"] = [dp for dp in datapoints if dp["name"] != datapoint_name]
@@ -1287,7 +1279,7 @@ class NamespaceAssets(Queryable):
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        return _get_mgmt_group(asset, group_name)
+        return _get_sub_property(asset, group_name, property_key="managementGroups")
 
     def remove_management_group(
         self,
@@ -1351,7 +1343,7 @@ class NamespaceAssets(Queryable):
         )
         # check if management group exists
         mgmt_groups = asset["properties"].get("managementGroups", [])
-        mgmt_group = _get_mgmt_group(asset, group_name)
+        mgmt_group = _get_sub_property(asset, group_name, property_key="managementGroups")
 
         # process the configs + destinations
         processed_configs = _process_configs(
@@ -1415,7 +1407,7 @@ class NamespaceAssets(Queryable):
             asset_type=asset_type,
             asset_name=asset_name
         )
-        mgmt_group = _get_mgmt_group(asset, group_name)
+        mgmt_group = _get_sub_property(asset, group_name, property_key="managementGroups")
 
         actions = mgmt_group.get("actions", [])
         unmatched_actions = [action for action in actions if action["name"] != action_name]
@@ -1469,7 +1461,7 @@ class NamespaceAssets(Queryable):
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
-        mgmt_group = _get_mgmt_group(asset, group_name)
+        mgmt_group = _get_sub_property(asset, group_name, property_key="managementGroups")
         return mgmt_group.get("actions", [])
 
     def remove_management_group_action(
@@ -1488,7 +1480,7 @@ class NamespaceAssets(Queryable):
             check_cluster=True
         )
         namespace = parse_resource_id(asset["id"])
-        mgmt_group = _get_mgmt_group(asset, group_name)
+        mgmt_group = _get_sub_property(asset, group_name, property_key="managementGroups")
 
         actions = mgmt_group.get("actions", [])
         # note that delete should be ok with action not there
@@ -1751,30 +1743,21 @@ def _create_datapoint(
     return datapoint
 
 
-def _get_event(asset: dict, event_name: str) -> dict:
-    """Helper function to get an event from an asset.
+def _get_sub_property(asset: dict, name: str, property_key: str) -> dict:
+    """Helper function to get a dataset, event groups, or management groups from an asset.
 
-    Raises InvalidArgumentValueError if the event is not found.
+    Raises InvalidArgumentValueError if the subproperty is not found.
     """
-    events = asset["properties"].get("events", [])
-    matched_events = [event for event in events if event["name"] == event_name]
-    if not matched_events:
-        raise InvalidArgumentValueError(f"Event '{event_name}' not found in asset '{asset['name']}'.")
-    return matched_events[0]
-
-
-def _get_mgmt_group(asset: dict, management_group_name: str) -> dict:
-    """Helper function to get a management group from an asset.
-
-    Raises InvalidArgumentValueError if the management group is not found.
-    """
-    mgmt_groups = asset["properties"].get("managementGroups", [])
-    matched_mgmt_groups = [mgmt for mgmt in mgmt_groups if mgmt["name"] == management_group_name]
-    if not matched_mgmt_groups:
-        raise InvalidArgumentValueError(
-            f"Management group '{management_group_name}' not found in asset '{asset['name']}'."
-        )
-    return matched_mgmt_groups[0]
+    props = asset["properties"].get(property_key, [])
+    matched_props = [event for event in props if event["name"] == name]
+    # TODO: would we want to prompt user to create if not found?
+    if not matched_props:
+        property_name = property_key.capitalize()[:-1]
+        # deal with managment groups + event groups
+        if property_name.endswith("group"):
+            property_name = property_name[:-5] + " group"
+        raise InvalidArgumentValueError(f"{property_name} '{name}' not found in asset '{asset['name']}'.")
+    return matched_props[0]
 
 
 def _process_configs(
