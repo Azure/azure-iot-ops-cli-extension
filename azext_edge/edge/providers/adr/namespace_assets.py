@@ -19,7 +19,7 @@ from rich.console import Console
 from ...util.az_client import (
     get_registry_mgmt_client,
     get_resource_client,
-    wait_for_terminal_state,
+    wait_for_terminal_state
 )
 from ...util.common import parse_kvp_nargs, should_continue_prompt
 from ...util.id_tools import parse_resource_id

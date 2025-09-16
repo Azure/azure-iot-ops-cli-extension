@@ -22,6 +22,7 @@ from ....util.az_client import (
     get_storage_mgmt_client,
     parse_resource_id,
     wait_for_terminal_state,
+    DeviceRegistryMgmtApiVersion
 )
 from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
@@ -55,7 +56,8 @@ class SchemaRegistries(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id
+            subscription_id=self.default_subscription_id,
+            api_version=DeviceRegistryMgmtApiVersion.V20250701_preview.value
         )
         self.ops: "SchemaRegistriesOperations" = self.registry_mgmt_client.schema_registries
 
@@ -184,7 +186,8 @@ class Schemas(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id
+            subscription_id=self.default_subscription_id,
+            api_version=DeviceRegistryMgmtApiVersion.V20250701_preview.value
         )
         self.ops: "SchemasOperations" = self.registry_mgmt_client.schemas
         self.version_ops: "SchemaVersionsOperations" = self.registry_mgmt_client.schema_versions
@@ -254,7 +257,7 @@ class Schemas(Queryable):
             return
 
         with console.status("Working..."):
-            return self.ops.delete(
+            return self.ops.begin_delete(
                 resource_group_name=resource_group_name, schema_registry_name=schema_registry_name, schema_name=name
             )
 
@@ -330,7 +333,7 @@ class Schemas(Queryable):
         resource_group_name: str,
     ):
         with console.status("Working..."):
-            return self.version_ops.delete(
+            return self.version_ops.begin_delete(
                 resource_group_name=resource_group_name,
                 schema_registry_name=schema_registry_name,
                 schema_name=schema_name,
