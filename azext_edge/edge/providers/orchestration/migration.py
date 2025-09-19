@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 console = Console()
 logger = get_logger(__name__)
 
-MIN_INSTANCE_VERSION_FOR_MIGRATE = "1.2.72"
+MIN_INSTANCE_VERSION_FOR_MIGRATE = "1.2.36"
 
 
 class AssetMigrationManager(Queryable):

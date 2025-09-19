@@ -21,6 +21,9 @@ from azext_edge.edge.providers.orchestration.common import (
     ADR_RP_APP_ID,
     KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID,
 )
+from azext_edge.edge.providers.orchestration.migration import (
+    MIN_INSTANCE_VERSION_FOR_MIGRATE,
+)
 
 from ...generators import (
     generate_random_string,
@@ -100,7 +103,7 @@ def setup_base_resources(
     cluster_connected: bool = True,
     mock_instance: bool = True,
     mock_custom_location: bool = True,
-    instance_version: str = "1.2.72",
+    instance_version: str = MIN_INSTANCE_VERSION_FOR_MIGRATE,
 ) -> Tuple[dict, str]:
     """Setup base resources: instance, custom location, and cluster."""
     custom_location_id = generate_resource_id(
@@ -130,10 +133,15 @@ def setup_base_resources(
     )
 
     from azext_edge.edge.util.machinery import scoped_semver_import
+
     semver = scoped_semver_import()
 
     # Early return if instance not mocked, no namespace, or version is too low
-    if not mock_instance or not has_namespace or semver.parse(instance_version) < semver.parse("1.2.72"):
+    if (
+        not mock_instance
+        or not has_namespace
+        or semver.parse(instance_version) < semver.parse(MIN_INSTANCE_VERSION_FOR_MIGRATE)
+    ):
         return instance_record, custom_location_id
 
     # Mock custom location
@@ -694,9 +702,18 @@ def test_user_confirmation(
     [
         {"has_namespace": False, "error_match": "does not have an associated ADR namespace"},
         {"cluster_connected": False, "error_match": "is not connected"},
-        {"instance_version": "1.2.71", "error_match": "must be at least version 1.2.72 to migrate assets"},
-        {"instance_version": "1.0.0", "error_match": "must be at least version 1.2.72 to migrate assets"},
-        {"instance_version": "0.0.0", "error_match": "must be at least version 1.2.72 to migrate assets"},
+        {
+            "instance_version": "1.2.35",
+            "error_match": f"must be at least version {MIN_INSTANCE_VERSION_FOR_MIGRATE} to migrate assets",
+        },
+        {
+            "instance_version": "1.0.0",
+            "error_match": f"must be at least version {MIN_INSTANCE_VERSION_FOR_MIGRATE} to migrate assets",
+        },
+        {
+            "instance_version": "0.0.0",
+            "error_match": f"must be at least version {MIN_INSTANCE_VERSION_FOR_MIGRATE} to migrate assets",
+        },
     ],
 )
 def test_validation_errors(
@@ -717,7 +734,7 @@ def test_validation_errors(
         generate_random_string(),
         has_namespace=error_scenario.get("has_namespace", True),
         cluster_connected=error_scenario.get("cluster_connected", True),
-        instance_version=error_scenario.get("instance_version", "1.2.72"),
+        instance_version=error_scenario.get("instance_version", MIN_INSTANCE_VERSION_FOR_MIGRATE),
     )
 
     with pytest.raises(ValidationError, match=error_scenario["error_match"]):
