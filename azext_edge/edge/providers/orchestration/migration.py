@@ -24,7 +24,11 @@ from ...util.common import should_continue_prompt
 from ...util.id_tools import parse_resource_id
 from ...util.queryable import Queryable
 from ..adr.assets import ASSET_RESOURCE_TYPE
-from .common import ADR_RP_APP_ID, KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID
+from .common import (
+    ADR_RP_APP_ID,
+    KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID,
+    MIN_INSTANCE_VERSION_FOR_MIGRATE,
+)
 from .permissions import (
     ROLE_DEF_FORMAT_STR,
     PermissionManager,
@@ -39,8 +43,6 @@ if TYPE_CHECKING:
 
 console = Console()
 logger = get_logger(__name__)
-
-MIN_INSTANCE_VERSION_FOR_MIGRATE = "1.2.36"
 
 
 class AssetMigrationManager(Queryable):

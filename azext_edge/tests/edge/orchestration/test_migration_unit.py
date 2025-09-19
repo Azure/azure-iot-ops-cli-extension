@@ -20,8 +20,6 @@ from azext_edge.edge.providers.adr.assets import ASSET_RESOURCE_TYPE
 from azext_edge.edge.providers.orchestration.common import (
     ADR_RP_APP_ID,
     KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID,
-)
-from azext_edge.edge.providers.orchestration.migration import (
     MIN_INSTANCE_VERSION_FOR_MIGRATE,
 )
 

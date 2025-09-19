@@ -393,3 +393,6 @@ REGISTRY_ENDPOINT_AUTHENTICATION_PARAM_TEXT_MAP = {
 DATAFLOW_GRAPH_MEDIA_TYPE = "application/vnd.microsoft.dataflow.graph.v1+json"
 DATAFLOW_GRAPH_ANNOTATION_DISPLAY_NAME = "org.opencontainers.artifact.displayName"
 DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION = "org.opencontainers.artifact.description"
+
+# Instance asset migration
+MIN_INSTANCE_VERSION_FOR_MIGRATE = "1.2.36"

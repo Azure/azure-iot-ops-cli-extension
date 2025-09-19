@@ -22,6 +22,7 @@ from .common import GET_VERSIONS_URL
 from .providers.orchestration.common import (
     CLONE_INSTANCE_VERS_MAX,
     CLONE_INSTANCE_VERS_MIN,
+    MIN_INSTANCE_VERSION_FOR_MIGRATE,
 )
 from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
@@ -29,7 +30,6 @@ from .providers.support_bundle import (
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
 )
-
 
 # cause help barfs on anything not indented correctly
 DEVICEREGISTRY_API_STR_FOR_HELP = COMPAT_DEVICEREGISTRY_APIS.as_str().strip().replace('\n', '\n            - ')
@@ -2654,10 +2654,12 @@ def load_iotops_help():
 
     helps[
         "iot ops migrate-assets"
-    ] = """
+    ] = f"""
         type: command
         short-summary: Migrate root assets to a namespace.
         long-summary: |
+          Requires an instance version >= {MIN_INSTANCE_VERSION_FOR_MIGRATE}.
+
           The target set of root assets will be converted to an equivalent namespace representation
           replacing the original root assets.
 
