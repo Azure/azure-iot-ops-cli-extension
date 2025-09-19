@@ -1494,7 +1494,8 @@ def load_adr_arguments(self, _):
             context.argument(
                 "action_type",
                 options_list=["--action-type", "--at"],
-                help="Type of management action. ",
+                help="Type of management action.",
+                default=ActionType.call.value,
                 arg_type=get_enum_type(ActionType),
             )
             context.argument(
