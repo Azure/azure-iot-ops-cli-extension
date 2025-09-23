@@ -179,7 +179,9 @@ def assert_aio_init(
     current_extensions = {ext["properties"]["extensionType"] for ext in extensions}
 
     expected_ext_types = ["microsoft.azure.secretstore"]
-    if not user_trust:
+    if user_trust:
+        assert "microsoft.iotoperations.platform" not in current_extensions
+    else:
         expected_ext_types.append("microsoft.iotoperations.platform")
 
     missing_extensions = []
