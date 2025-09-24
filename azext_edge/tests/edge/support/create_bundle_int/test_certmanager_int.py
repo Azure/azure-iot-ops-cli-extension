@@ -11,7 +11,16 @@ from ....helpers import get_multi_kubectl_workload_items
 from .helpers import check_custom_resource_files, check_workload_resource_files, get_file_map, run_bundle_command
 
 logger = get_logger(__name__)
-CERTMGMT_PREFIXES = ["aio-cert-manager", "aio-trust-manager", "kube-root-ca"]
+CERTMGMT_PREFIXES = [
+    "aio-cert-manager",
+    "aio-trust-manager",
+    "arc-diagnostics-extension",
+    "arc-proxy-cert",
+    "arc-proxy-config",
+    "kube-root-ca",
+    "otel-configmap-cert-manager",
+    "otel-configmap-trust-manager"
+]
 CERTMGMT_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "configmap", "vwc", "mwc"]
 
 USER_CERTMGMT_PREFIXES = ["cert-manager", "trust-manager"]

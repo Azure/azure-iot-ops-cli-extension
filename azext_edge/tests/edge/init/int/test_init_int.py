@@ -179,7 +179,9 @@ def assert_aio_init(
     current_extensions = {ext["properties"]["extensionType"] for ext in extensions}
 
     expected_ext_types = ["microsoft.azure.secretstore"]
-    if not user_trust:
+    if user_trust:
+        assert "microsoft.iotoperations.platform" not in current_extensions
+    else:
         expected_ext_types.append("microsoft.iotoperations.platform")
 
     missing_extensions = []
@@ -260,6 +262,7 @@ def assert_broker_args(
     instance_name: str,
     resource_group: str,
     add_insecure_listener: Optional[bool] = None,
+    persist_max_size: Optional[str] = None,
     broker_backend_part: Optional[str] = None,
     broker_backend_rf: Optional[str] = None,
     broker_backend_workers: Optional[str] = None,
@@ -322,6 +325,20 @@ def assert_broker_args(
     assert cardinality["frontend"]["replicas"] == (broker_frontend_replicas or 2)
     assert cardinality["frontend"]["workers"] == (broker_frontend_workers or 2)
     # there is diagnostics + generateResourceLimits but nothing from init yet
+
+    if persist_max_size:
+        persistence = broker_props["persistence"]
+        assert persistence["maxSize"] == persist_max_size
+        assert persistence["encryption"]["mode"] == "Enabled"
+        assert persistence["persistentVolumeClaimSpec"]["accessModes"] == ["ReadWriteOncePod"]
+        assert persistence["retain"] == {"mode": "Custom", "retainSettings": {"dynamic": {"mode": "Enabled"}}}
+        assert persistence["stateStore"] == {"mode": "Custom", "stateStoreSettings": {"dynamic": {"mode": "Enabled"}}}
+        assert persistence["subscriberQueue"] == {
+            "mode": "Custom",
+            "subscriberQueueSettings": {"dynamic": {"mode": "Enabled"}},
+        }
+    else:
+        assert "persistence" not in broker_props
 
     # nothing interesting in the authn
     authns = run(f"az iot ops broker authn list -g {resource_group} -i {instance_name} -b {broker_name}")
