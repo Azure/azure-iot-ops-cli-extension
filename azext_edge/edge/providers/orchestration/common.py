@@ -24,6 +24,7 @@ ARC_NAMESPACE = "azure-arc"
 
 AIO_MQTT_DEFAULT_CONFIG_MAP = "azure-iot-operations-aio-ca-trust-bundle"
 PROVISIONING_STATE_SUCCESS = "Succeeded"
+PROVISIONING_STATE_FAILED = "Failed"
 
 # Commonly used API versions
 KEYVAULT_CLOUD_API_VERSION = "2022-07-01"
@@ -47,24 +48,33 @@ EXTENSION_TYPE_PLATFORM = "microsoft.iotoperations.platform"
 EXTENSION_TYPE_ACS = "microsoft.arc.containerstorage"
 EXTENSION_TYPE_SSC = "microsoft.azure.secretstore"
 EXTENSION_TYPE_OPS = "microsoft.iotoperations"
+EXTENSION_TYPE_CM = "microsoft.certmanagement"
 
-OPS_EXTENSION_DEPS = frozenset([EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC])
+EXTENSION_MONIKER_CM = "certManager"
+EXTENSION_MONIKER_OPS = "iotOperations"
+EXTENSION_MONIKER_ACS = "containerStorage"
+EXTENSION_MONIKER_PLATFORM = "platform"
+
+OPS_EXTENSION_DEPS = frozenset([EXTENSION_TYPE_CM, EXTENSION_TYPE_SSC])
 
 EXTENSION_TYPE_TO_MONIKER_MAP = {
-    EXTENSION_TYPE_PLATFORM: "platform",
+    EXTENSION_TYPE_CM: EXTENSION_MONIKER_CM,
+    EXTENSION_TYPE_PLATFORM: EXTENSION_MONIKER_PLATFORM,
     EXTENSION_TYPE_SSC: "secretStore",
-    EXTENSION_TYPE_ACS: "containerStorage",
-    EXTENSION_TYPE_OPS: "iotOperations",
+    EXTENSION_TYPE_ACS: EXTENSION_MONIKER_ACS,
+    EXTENSION_TYPE_OPS: EXTENSION_MONIKER_OPS,
 }
 
 EXTENSION_MONIKER_TO_ALIAS_MAP = {
-    "platform": "plat",
+    EXTENSION_MONIKER_CM: "cm",
+    EXTENSION_MONIKER_PLATFORM: "plat",
     "secretStore": "ssc",
-    "containerStorage": "acs",
-    "iotOperations": "ops",
+    EXTENSION_MONIKER_ACS: "acs",
+    EXTENSION_MONIKER_OPS: "ops",
 }
 
 EXTENSION_ALIAS_TO_TYPE_MAP = {
+    "cm": EXTENSION_TYPE_CM,
     "plat": EXTENSION_TYPE_PLATFORM,
     "ssc": EXTENSION_TYPE_SSC,
     "acs": EXTENSION_TYPE_ACS,

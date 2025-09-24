@@ -25,6 +25,7 @@ from rich.table import Table, box
 from ...util import parse_kvp_nargs, should_continue_prompt
 from ...util.machinery import scoped_semver_import
 from .common import (
+    EXTENSION_MONIKER_OPS,
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_TO_MONIKER_MAP,
@@ -320,7 +321,7 @@ class ExtensionUpgradeState:
         }
 
         if self._has_delta_in_version() or self._has_non_success_state():
-            self._throw_on_downgrade()
+            self._validate_version_upgrade()
             payload["properties"]["version"] = self.desired_version[0]
         if self._has_delta_in_train():
             payload["properties"]["releaseTrain"] = self.desired_version[1]
@@ -361,21 +362,35 @@ class ExtensionUpgradeState:
         """
         return self.provisioning_state.lower() not in {"succeeded"}
 
-    def _throw_on_downgrade(self):
+    def _validate_version_upgrade(self):
         if self.force:
             return
 
-        # TODO - temporary.
-        if self._has_delta_in_version():
-            raise ValidationError(
-                "Version upgrades are not allowed in this Azure IoT Operations CLI version.\n"
-                "A new instance must be deployed."
-            )
+        parsed_current = self.semver.parse(self.current_version[0])
+        parsed_desired = self.semver.parse(self.desired_version[0])
 
-        if self.semver.parse(self.desired_version[0]) < self.semver.parse(self.current_version[0]):
+        # Check for downgrade
+        if parsed_desired < parsed_current:
             raise ValidationError(
                 f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
                 f"The desired {self.desired_version[0]} version is a downgrade which is not supported."
+            )
+
+        if self.moniker != EXTENSION_MONIKER_OPS:
+            return
+
+        # Check version compatibility (within 2 minor versions)
+        if parsed_desired.major != parsed_current.major:
+            raise ValidationError(
+                f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
+                f"The desired {self.desired_version[0]} version is incompatible (different major version)."
+            )
+
+        minor_diff = parsed_desired.minor - parsed_current.minor
+        if minor_diff > 2:
+            raise ValidationError(
+                f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
+                f"The desired {self.desired_version[0]} version is incompatible (more than 2 minor versions ahead)."
             )
 
 

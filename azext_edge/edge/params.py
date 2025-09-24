@@ -22,6 +22,8 @@ from .common import OpsServiceType
 from .providers.check.common import ResourceOutputDetailLevel
 from .providers.edge_api import DeviceRegistryResourceKinds, MqResourceKinds
 from .providers.orchestration.common import (
+    EXTENSION_MONIKER_ACS,
+    EXTENSION_MONIKER_PLATFORM,
     EXTENSION_MONIKER_TO_ALIAS_MAP,
     TRUST_SETTING_KEYS,
     X509_ISSUER_REF_KEYS,
@@ -1390,8 +1392,24 @@ def load_iotops_arguments(self, _):
                 arg_group="Trust",
             )
 
+    for cmd_space in ["iot ops create", "iot ops update"]:
+        with self.argument_context(cmd_space) as context:
+            context.argument(
+                "instance_features",
+                options_list=["--feature"],
+                nargs="+",
+                action="extend",
+                help="Instance feature config. The settings of a component and/or it's mode can be configured. "
+                "Component mode syntax is `{component}.mode={mode}` where known mode values are: "
+                "`Stable`, `Preview` and `Disabled`. Component setting syntax is "
+                "`{component}.settings.{setting}={value}` where known setting values are `Enabled` or `Disabled`. "
+                "This option can be used one or more times.",
+            )
+
+    for cmd_space in ["iot ops init", "iot ops create", "iot ops upgrade"]:
+        with self.argument_context(cmd_space) as context:
             for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
-                if moniker == "containerStorage":
+                if moniker in [EXTENSION_MONIKER_PLATFORM, EXTENSION_MONIKER_PLATFORM, EXTENSION_MONIKER_ACS]:
                     continue
                 alias = EXTENSION_MONIKER_TO_ALIAS_MAP[moniker]
                 context.argument(
@@ -1402,6 +1420,16 @@ def load_iotops_arguments(self, _):
                     help=f"{moniker} arc extension custom config. Format is space-separated key=value pairs "
                     f"or just the key. This option can be used one or more times.",
                     arg_group="Extension Config",
+                )
+                context.argument(
+                    f"{alias}_config_sync_mode",
+                    options_list=[f"--{alias}-config-sync"],
+                    help=f"{moniker} arc extension config sync mode. This option is applicable if an upgrade is "
+                    "requested to a known version. Mode 'full' will alter current config to the target, "
+                    "'add' will apply additive changes only, 'none' is a no-op.",
+                    arg_type=get_enum_type(ConfigSyncModeType, default=ConfigSyncModeType.FULL.value),
+                    arg_group="Extension Config",
+                    deprecate_info=context.deprecate(hide=True),
                 )
                 context.argument(
                     f"{alias}_version",
@@ -1418,56 +1446,7 @@ def load_iotops_arguments(self, _):
                     deprecate_info=context.deprecate(hide=True),
                 )
 
-    for cmd_space in ["iot ops create", "iot ops update"]:
-        with self.argument_context(cmd_space) as context:
-            context.argument(
-                "instance_features",
-                options_list=["--feature"],
-                nargs="+",
-                action="extend",
-                help="Instance feature config. The settings of a component and/or it's mode can be configured. "
-                "Component mode syntax is `{component}.mode={mode}` where known mode values are: "
-                "`Stable`, `Preview` and `Disabled`. Component setting syntax is "
-                "`{component}.settings.{setting}={value}` where known setting values are `Enabled` or `Disabled`. "
-                "This option can be used one or more times.",
-            )
-
     with self.argument_context("iot ops upgrade") as context:
-        for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
-            alias = EXTENSION_MONIKER_TO_ALIAS_MAP[moniker]
-            context.argument(
-                f"{alias}_config",
-                options_list=[f"--{alias}-config"],
-                nargs="+",
-                action="extend",
-                help=f"{moniker} arc extension custom config. Format is space-separated key=value pairs "
-                f"or just the key. This option can be used one or more times.",
-                arg_group="Extension Config",
-            )
-            context.argument(
-                f"{alias}_config_sync_mode",
-                options_list=[f"--{alias}-config-sync"],
-                help=f"{moniker} arc extension config sync mode. This option is applicable if an upgrade is "
-                "requested to a known version. Mode 'full' will alter current config to the target, "
-                "'add' will apply additive changes only, 'none' is a no-op.",
-                arg_type=get_enum_type(ConfigSyncModeType, default=ConfigSyncModeType.FULL.value),
-                arg_group="Extension Config",
-                deprecate_info=context.deprecate(hide=True),
-            )
-            context.argument(
-                f"{alias}_version",
-                options_list=[f"--{alias}-version"],
-                help=f"Use to override the built-in {moniker} arc extension version.",
-                arg_group="Extension Config",
-                deprecate_info=context.deprecate(hide=True),
-            )
-            context.argument(
-                f"{alias}_train",
-                options_list=[f"--{alias}-train"],
-                help=f"Use to override the built-in {moniker} arc extension release train.",
-                arg_group="Extension Config",
-                deprecate_info=context.deprecate(hide=True),
-            )
         context.argument(
             "force",
             options_list=["--force"],
