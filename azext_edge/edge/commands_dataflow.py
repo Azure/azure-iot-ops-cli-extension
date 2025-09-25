@@ -658,7 +658,7 @@ def create_dataflow_endpoint_otel(
     secret_name: Optional[str] = None,
     config_map_reference: Optional[str] = None,
     authentication_type: Optional[str] = None,
-    show_config: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
 
     return DataFlowEndpoints(cmd).create(
@@ -1151,7 +1151,7 @@ def update_dataflow_endpoint_otel(
     secret_name: Optional[str] = None,
     config_map_reference: Optional[str] = None,
     authentication_type: Optional[str] = None,
-    show_config: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
 
     return DataFlowEndpoints(cmd).update(
