@@ -5,8 +5,8 @@
 # ----------------------------------------------------------------------------------------------
 
 from base64 import b64decode
-from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OPCUA_TRUST_LIST_SECRET_SYNC_NAME
-from .helpers import assert_cluster_side_secret_exists, assert_cluster_side_secret_not_exists, assert_kv_secret_exists, assert_kv_secret_not_exists, assert_spc_secret_exists, assert_spc_secret_not_exists, assert_ssc_secret_exists, assert_ssc_secret_not_exists, ensure_env_vars, ensure_key_vault, ensure_managed_identity, generate_self_signed_der_cert, restore_tracked_resources
+from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OPCUA_ISSUER_LIST_SECRET_SYNC_NAME
+from .helpers import assert_cluster_side_secret_exists, assert_cluster_side_secret_not_exists, assert_kv_secret_exists, assert_kv_secret_not_exists, assert_spc_secret_exists, assert_spc_secret_not_exists, assert_ssc_secret_exists, assert_ssc_secret_not_exists, ensure_env_vars, ensure_key_vault, ensure_managed_identity, generate_ca_cert, restore_tracked_resources
 import pytest
 from pathlib import Path
 from knack.log import get_logger
@@ -31,8 +31,8 @@ ROLE_RETRY_INTERVAL = 15
 
 
 @pytest.fixture(scope="function")
-def opcua_certs_trust_test_setup(settings, tracked_resources: List[str]):
-    """Setup fixture for opcua certs trust tests."""
+def opcua_certs_issuer_test_setup(settings, tracked_resources: List[str]):
+    """Setup fixture for opcua certs issuer tests."""
 
     ensure_env_vars(settings)
     kv_id, kv_name = ensure_key_vault(settings)
@@ -40,17 +40,13 @@ def opcua_certs_trust_test_setup(settings, tracked_resources: List[str]):
     instance_name = settings.env.azext_edge_instance
     resource_group = settings.env.azext_edge_rg
 
+    # see if secretsync is already enabled, if so, skip enabling
     initial_list_result = run(f"az iot ops secretsync list -n {instance_name} -g {resource_group}")
     if not initial_list_result:
-        spc_name = run(
-            f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
-            f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id}"
-        )["name"]
+        spc_name = run(f"az iot ops secretsync enable -n {instance_name} -g {resource_group} --mi-user-assigned {mi_id} --kv-resource-id {kv_id}")["name"]
     else:
-        spc_results = [
-            rec for rec in initial_list_result
-            if rec["type"].lower() == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses"
-        ]
+        # spc_results should be with "type": "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses"
+        spc_results = [rec for rec in initial_list_result if rec["type"].lower() == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses"]
         spc_name = spc_results[0]["name"]
 
     yield {
@@ -66,10 +62,10 @@ def opcua_certs_trust_test_setup(settings, tracked_resources: List[str]):
 
 @pytest.mark.rpsaas
 @pytest.mark.require_wlif_setup
-def test_opcua_cert_trust(cluster_connection, opcua_certs_trust_test_setup, tracked_files: List[str]):
-    resource_group = opcua_certs_trust_test_setup["resourceGroup"]
-    instance_name = opcua_certs_trust_test_setup["instanceName"]
-    kv_id = opcua_certs_trust_test_setup["keyvaultId"]
+def test_opcua_cert_issuer(cluster_connection, opcua_certs_issuer_test_setup, tracked_files: List[str]):
+    resource_group = opcua_certs_issuer_test_setup["resourceGroup"]
+    instance_name = opcua_certs_issuer_test_setup["instanceName"]
+    kv_id = opcua_certs_issuer_test_setup["keyvaultId"]
 
     extended_loc = run(f"az iot ops show -g {resource_group} -n {instance_name}")["extendedLocation"]["name"]
     spc_name = run(f"az iot ops show -n {instance_name} -g {resource_group}")["properties"].get("defaultSecretProviderClassRef", {}).get("resourceId", "")
@@ -77,10 +73,10 @@ def test_opcua_cert_trust(cluster_connection, opcua_certs_trust_test_setup, trac
     if spc_name:
         spc_name = spc_name.rsplit("/", maxsplit=1)[-1]
     
-    # add cert to trust list
+    # add cert to issuer list
     # cert_file = Path(__file__).parent.joinpath("certificate.der")
-    cert_file = generate_self_signed_der_cert()
-    run(f"az iot ops connector opcua trust add --instance {instance_name} -g {resource_group} --certificate-file {cert_file} --overwrite-secret")
+    cert_file = generate_ca_cert()
+    result = run(f"az iot ops connector opcua issuer add --instance {instance_name} -g {resource_group} --certificate-file {cert_file} --overwrite-secret")
     secretsync_records = run(f"az iot ops secretsync list -i {instance_name} -g {resource_group}")
 
     # check kv secret has been created
@@ -93,22 +89,22 @@ def test_opcua_cert_trust(cluster_connection, opcua_certs_trust_test_setup, trac
         extended_location=extended_loc,
         resource_group=resource_group,
         cert_file=cert_file,
-        ssc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+        ssc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
     )
     # check cluster side secret is being synced
     assert_cluster_side_secret_exists(
         spc_name=spc_name,
-        secret_sync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+        secret_sync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
         cert_file=cert_file,
     )
 
     # show secret sync
-    show_result = run(f"az iot ops connector opcua trust show --instance {instance_name} -g {resource_group}")
-    assert show_result["name"] == OPCUA_TRUST_LIST_SECRET_SYNC_NAME
+    show_result = run(f"az iot ops connector opcua issuer show --instance {instance_name} -g {resource_group}")
+    assert show_result["name"] == OPCUA_ISSUER_LIST_SECRET_SYNC_NAME
 
-    # remove cert from trust list
+    # remove cert from issuer list
     certificate_name = cert_file.name
-    run(f"az iot ops connector opcua trust remove --instance {instance_name} -g {resource_group} --certificate-names {certificate_name} -y --include-secrets")
+    run(f"az iot ops connector opcua issuer remove --instance {instance_name} -g {resource_group} --certificate-names {certificate_name} -y --include-secrets")
     # get refreshed secretsync records after removal
     secretsync_records = run(f"az iot ops secretsync list -i {instance_name} -g {resource_group}")
     # check kv secret has been removed
@@ -128,10 +124,10 @@ def test_opcua_cert_trust(cluster_connection, opcua_certs_trust_test_setup, trac
         extended_location=extended_loc,
         resource_group=resource_group,
         cert_file=certificate_name,
-        ssc_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+        ssc_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
     )
     # # check cluster side secret is removed
     assert_cluster_side_secret_not_exists(
         spc_name=spc_name,
-        secret_sync_name=OPCUA_TRUST_LIST_SECRET_SYNC_NAME,
+        secret_sync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
     )
