@@ -4,26 +4,27 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from base64 import b64decode
 from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OPCUA_ISSUER_LIST_SECRET_SYNC_NAME
-from .helpers import assert_cluster_side_secret_exists, assert_cluster_side_secret_not_exists, assert_kv_secret_exists, assert_kv_secret_not_exists, assert_spc_secret_exists, assert_spc_secret_not_exists, assert_ssc_secret_exists, assert_ssc_secret_not_exists, ensure_env_vars, ensure_key_vault, ensure_managed_identity, generate_ca_cert, restore_tracked_resources
+from .helpers import (
+    assert_cluster_side_secret_exists,
+    assert_cluster_side_secret_not_exists,
+    assert_kv_secret_exists,
+    assert_kv_secret_not_exists,
+    assert_spc_secret_exists,
+    assert_spc_secret_not_exists,
+    assert_ssc_secret_exists,
+    assert_ssc_secret_not_exists,
+    ensure_env_vars,
+    ensure_key_vault,
+    ensure_managed_identity,
+    generate_ca_cert,
+    restore_tracked_resources
+)
 import pytest
-from pathlib import Path
 from knack.log import get_logger
-from time import sleep
-from typing import List, Optional
-from pathlib import Path
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-import datetime
+from typing import List
 
-from azure.cli.core.azclierror import CLIInternalError
-
-from .......generators import generate_random_string
 from .......helpers import run
-from .......settings import EnvironmentVariables
 
 logger = get_logger(__name__)
 ROLE_MAX_RETRIES = 5
@@ -113,14 +114,11 @@ def test_opcua_cert_issuer(cluster_connection, opcua_certs_issuer_test_setup, tr
     assert_spc_secret_not_exists(
         secretsync_records=secretsync_records,
         spc_name=spc_name,
-        instance_name=instance_name,
-        resource_group=resource_group,
         cert_file=certificate_name
     )
     # check secret entry removed from secretsync
     assert_ssc_secret_not_exists(
         secretsync_records=secretsync_records,
-        instance_name=instance_name,
         extended_location=extended_loc,
         resource_group=resource_group,
         cert_file=certificate_name,
@@ -131,3 +129,5 @@ def test_opcua_cert_issuer(cluster_connection, opcua_certs_issuer_test_setup, tr
         spc_name=spc_name,
         secret_sync_name=OPCUA_ISSUER_LIST_SECRET_SYNC_NAME,
     )
+    # clean up the cert file created
+    cert_file.unlink(missing_ok=True)

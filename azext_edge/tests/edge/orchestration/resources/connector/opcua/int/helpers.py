@@ -8,26 +8,11 @@ from base64 import b64decode
 from pathlib import Path
 from time import sleep
 from azext_edge.tests.settings import EnvironmentVariables
-from knack.log import get_logger
-from typing import Dict, Iterable, List, Optional, Tuple, TypedDict, Union
-from os import path
-from zipfile import ZipFile
+from typing import Optional
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
-from azext_edge.edge.common import OpsServiceType
-from azext_edge.edge.providers.edge_api.base import EdgeApiManager, EdgeResourceApi
-from azext_edge.edge.providers.support.arcagents import ARC_AGENTS
-from .......helpers import (
-    PLURAL_KEY,
-    find_extra_or_missing_names,
-    get_kubectl_custom_items,
-    get_kubectl_workload_items,
-    run,
-)
 from .......generators import generate_random_string
 from knack.log import get_logger
-from time import sleep
-from typing import List, Optional
 from .......helpers import run
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -35,11 +20,10 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 import datetime
 
-from azure.cli.core.azclierror import CLIInternalError
-
 logger = get_logger(__name__)
 ROLE_MAX_RETRIES = 5
 ROLE_RETRY_INTERVAL = 15
+
 
 def ensure_env_vars(settings):
     """
@@ -62,6 +46,7 @@ def ensure_env_vars(settings):
             "Object Id is needed to add 'Key Vault Secrets Officer' to a newly created key vault."
         )
 
+
 def ensure_key_vault(settings):
     """
     Ensure a Key Vault exists and the role is assigned. Returns (kv_id, kv_name_if_created_else_None).
@@ -77,6 +62,7 @@ def ensure_key_vault(settings):
         )
     return kv_id, kv_name
 
+
 def ensure_managed_identity(settings, tracked_resources):
     """
     Ensure a user assigned managed identity exists, creating it if not. Returns mi_id.
@@ -88,6 +74,7 @@ def ensure_managed_identity(settings, tracked_resources):
         )["id"]
         tracked_resources.append(mi_id)
     return mi_id
+
 
 def restore_tracked_resources(settings, initial_list_result, instance_name, resource_group, kv_name):
     """
@@ -121,6 +108,7 @@ def restore_tracked_resources(settings, initial_list_result, instance_name, reso
         except (CLIInternalError, IndexError):
             logger.error("Could not reenable secretsync correctly.")
 
+
 def assert_kv_secret_exists(kv_id: str, cert_file: str):
     kv_name = kv_id.rsplit("/", maxsplit=1)[-1]
     p = Path(cert_file)
@@ -139,6 +127,7 @@ def assert_kv_secret_exists(kv_id: str, cert_file: str):
             sleep(5)
     raise AssertionError(f"Secret {secret_name} not found in keyvault {kv_name} or invalid value.")
 
+
 def assert_spc_secret_exists(spc_records: list, spc_name: str, instance_name: str, resource_group: str, cert_file: str):
     p = Path(cert_file)
     file_name_info = (p.stem, p.suffix)
@@ -149,6 +138,7 @@ def assert_spc_secret_exists(spc_records: list, spc_name: str, instance_name: st
     objects = spc_record["properties"].get("objects", "")
     assert secret_name in objects
     return
+
 
 def assert_ssc_secret_exists(
     secretsync_records: list,
@@ -167,6 +157,7 @@ def assert_ssc_secret_exists(
     assert result["name"] == ssc_name
     secret_mappings = result["properties"].get("objectSecretMapping", [])
     assert any([mapping.get("sourcePath", "") == secret_name for mapping in secret_mappings])
+
 
 def assert_cluster_side_secret_exists(
     spc_name: str,
@@ -187,6 +178,7 @@ def assert_cluster_side_secret_exists(
     decoded = b64decode(secret_data["data"][secret_name])
     assert decoded == secret_value
 
+
 def assert_kv_secret_not_exists(kv_id: str, cert_file: str):
     kv_name = kv_id.rsplit("/", maxsplit=1)[-1]
     p = Path(cert_file)
@@ -201,7 +193,12 @@ def assert_kv_secret_not_exists(kv_id: str, cert_file: str):
         raise e
     raise AssertionError(f"Secret {secret_name} still found in keyvault {kv_name}.")
 
-def assert_spc_secret_not_exists(secretsync_records: list, spc_name: str, instance_name: str, resource_group: str, cert_file: str):
+
+def assert_spc_secret_not_exists(
+    secretsync_records: list,
+    spc_name: str,
+    cert_file: str
+):
     p = Path(cert_file)
     file_name_info = (p.stem, p.suffix)
     cert_extension = file_name_info[1].replace(".", "")
@@ -209,12 +206,12 @@ def assert_spc_secret_not_exists(secretsync_records: list, spc_name: str, instan
     secretsync_record = next((rec for rec in secretsync_records if rec["name"] == spc_name), None)
     assert secretsync_record
     objects = secretsync_record["properties"].get("objects", "")
-    assert not secret_name in objects
+    assert secret_name not in objects
     return
+
 
 def assert_ssc_secret_not_exists(
     secretsync_records: list,
-    instance_name: str,
     extended_location: str,
     resource_group: str,
     cert_file: str,
@@ -238,7 +235,14 @@ def assert_ssc_secret_not_exists(
         assert show_result["name"] == ssc_name
         assert show_result["extendedLocation"]["name"] == extended_location
         assert show_result["resourceGroup"] == resource_group
-        assert not any([mapping.get("sourcePath", "") == secret_name for mapping in show_result["properties"].get("objectSecretMapping", [])])
+        assert not any(
+            [
+                mapping.get("sourcePath", "") == secret_name for mapping in show_result["properties"].get(
+                    "objectSecretMapping", []
+                )
+            ]
+        )
+
 
 def assert_cluster_side_secret_not_exists(
     spc_name: str,
@@ -257,136 +261,218 @@ def assert_cluster_side_secret_not_exists(
         raise e
     raise AssertionError(f"Secret {secret_sync_name} still found in namespace {aio_namespace}.")
 
-def generate_self_signed_der_cert() -> Path:
+# def generate_self_signed_der_cert() -> Path:
+#     """
+#     Generate a self-signed X.509 certificate and save as DER in current directory.
+#     Returns the path of the generated file.
+#     """
+#     filename = "trusttest.der"
+#     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+#     subject = issuer = x509.Name([
+#         x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
+#         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
+#         x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
+#         x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Example Org"),
+#         x509.NameAttribute(NameOID.COMMON_NAME, u"example.org"),
+#     ])
+
+#     cert = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(
+#         key.public_key()
+#     ).serial_number(
+#         x509.random_serial_number()
+#     ).not_valid_before(
+#         datetime.datetime.now(datetime.timezone.utc)
+#     ).not_valid_after(
+#         datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+#     ).sign(key, hashes.SHA256())
+
+#     out_path = Path.cwd() / filename
+#     out_path.write_bytes(cert.public_bytes(serialization.Encoding.DER))
+#     return out_path
+
+# def generate_ca_cert():
+#     """
+#     Generate a self-signed X.509 certificate and save as CRT in current directory.
+#     Returns the path of the generated file.
+#     """
+#     filename = "issuertest.crt"
+#     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+#     subject = issuer = x509.Name([
+#         x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
+#         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
+#         x509.NameAttribute(NameOID.LOCALITY_NAME, u"Redmond"),
+#         x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Contoso"),
+#         x509.NameAttribute(NameOID.COMMON_NAME, u"contoso.com"),
+#     ])
+#     cert = x509.CertificateBuilder().subject_name(
+#         subject
+#     ).issuer_name(
+#         issuer
+#     ).public_key(
+#         key.public_key()
+#     ).serial_number(
+#         x509.random_serial_number()
+#     ).not_valid_before(
+#         datetime.datetime.now(datetime.timezone.utc)
+#     ).not_valid_after(
+#         datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+#     )
+
+#     # Add basicConstraints (must have for CA/leaf detection!)
+#     cert = cert.add_extension(
+#         x509.BasicConstraints(ca=True, path_length=None),  # set ca=True for a CA certificate
+#         critical=True
+#     )
+
+#     cert = cert.sign(key, hashes.SHA256())
+#     out_path = Path.cwd() / filename
+#     with open(out_path, "wb") as f:
+#         f.write(cert.public_bytes(serialization.Encoding.PEM))
+#     return out_path
+
+# def generate_self_signed_der_cert_with_uri() -> Path:
+#     """
+#     Generate a self-signed X.509 certificate and save as DER in current directory.
+#     Returns the path of the generated file.
+#     """
+#     filename = "clienttest.der"
+#     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+#     subject = issuer = x509.Name([
+#         x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
+#         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
+#         x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
+#         x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Example Org"),
+#         x509.NameAttribute(NameOID.COMMON_NAME, u"example.org"),
+#     ])
+
+#     cert = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(
+#         key.public_key()
+#     ).serial_number(
+#         x509.random_serial_number()
+#     ).not_valid_before(
+#         datetime.datetime.now(datetime.timezone.utc)
+#     ).not_valid_after(
+#         datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+#     )
+
+#     uris = ["urn:example:client"]
+#     cert = cert.add_extension(
+#         x509.SubjectAlternativeName([x509.UniformResourceIdentifier(uri) for uri in uris]),
+#         critical=False
+#     )
+#     cert = cert.sign(key, hashes.SHA256())
+
+#     out_path = Path.cwd() / filename
+#     out_path.write_bytes(cert.public_bytes(serialization.Encoding.DER))
+#     return out_path
+
+# def generate_self_signed_pem_cert() -> Path:
+#     """
+#     Generate a self-signed X.509 certificate and save as PEM in current directory.
+#     Returns the path of the generated file.
+#     """
+#     filename = "clienttest.pem"
+#     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+#     subject = issuer = x509.Name([
+#         x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
+#         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
+#         x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
+#         x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Example Org"),
+#         x509.NameAttribute(NameOID.COMMON_NAME, u"example.org"),
+#     ])
+
+#     cert = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(
+#         key.public_key()
+#     ).serial_number(
+#         x509.random_serial_number()
+#     ).not_valid_before(
+#         datetime.datetime.now(datetime.timezone.utc)
+#     ).not_valid_after(
+#         datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+#     ).sign(key, hashes.SHA256())
+
+#     out_path = Path.cwd() / filename
+#     out_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+#     return out_path
+
+
+def generate_self_signed_cert(
+    filename: str,
+    issuer_attrs=None,
+    validity_days: int = 1,
+    basic_constraints: x509.BasicConstraints = None,
+    san_uris=None,
+    encoding: serialization.Encoding = serialization.Encoding.DER,
+    is_ca: bool = False
+) -> Path:
     """
-    Generate a self-signed X.509 certificate and save as DER in current directory.
-    Returns the path of the generated file.
+    Generic helper: Generate a self-signed X.509 certificate and save as DER/PEM in current directory.
+    Allows custom subject, issuer, basicConstraints, SAN URIs, and encoding.
+    Returns the Path of the generated file.
     """
-    filename = "trusttest.der"
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = issuer = x509.Name([
+
+    # Use same for subject and issuer if issuer_attrs is not specified
+    subject = x509.Name([
         x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
         x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
         x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
         x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Example Org"),
         x509.NameAttribute(NameOID.COMMON_NAME, u"example.org"),
     ])
+    issuer = x509.Name(issuer_attrs) if issuer_attrs else subject
 
-    cert = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(
+    builder = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(
         key.public_key()
     ).serial_number(
         x509.random_serial_number()
     ).not_valid_before(
         datetime.datetime.now(datetime.timezone.utc)
     ).not_valid_after(
-        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
-    ).sign(key, hashes.SHA256())
-
-    out_path = Path.cwd() / filename
-    out_path.write_bytes(cert.public_bytes(serialization.Encoding.DER))
-    return out_path
-
-def generate_ca_cert():
-    """
-    Generate a self-signed X.509 certificate and save as CRT in current directory.
-    Returns the path of the generated file.
-    """
-    filename = "issuertest.crt"
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, u"Redmond"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Contoso"),
-        x509.NameAttribute(NameOID.COMMON_NAME, u"contoso.com"),
-    ])
-    cert = x509.CertificateBuilder().subject_name(
-        subject
-    ).issuer_name(
-        issuer
-    ).public_key(
-        key.public_key()
-    ).serial_number(
-        x509.random_serial_number()
-    ).not_valid_before(
-        datetime.datetime.now(datetime.timezone.utc)
-    ).not_valid_after(
-        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=validity_days)
     )
 
-    # Add basicConstraints (must have for CA/leaf detection!)
-    cert = cert.add_extension(
-        x509.BasicConstraints(ca=True, path_length=None),  # set ca=True for a CA certificate
-        critical=True
+    # Optionally add basicConstraints extension
+    if basic_constraints:
+        builder = builder.add_extension(basic_constraints, critical=True)
+    elif is_ca:
+        builder = builder.add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+
+    # Optionally add SAN URIs extension
+    if san_uris:
+        builder = builder.add_extension(
+            x509.SubjectAlternativeName([x509.UniformResourceIdentifier(uri) for uri in san_uris]),
+            critical=False
+        )
+
+    cert = builder.sign(key, hashes.SHA256())
+
+    out_path = Path.cwd() / filename
+    out_path.write_bytes(cert.public_bytes(encoding))
+    return out_path
+
+
+def generate_self_signed_der_cert() -> Path:
+    return generate_self_signed_cert("trusttest.der")
+
+
+def generate_ca_cert() -> Path:
+    return generate_self_signed_cert(
+        "issuertest.crt",
+        basic_constraints=x509.BasicConstraints(ca=True, path_length=None),
+        encoding=serialization.Encoding.PEM
     )
 
-    cert = cert.sign(key, hashes.SHA256())
-    out_path = Path.cwd() / filename
-    with open(out_path, "wb") as f:
-        f.write(cert.public_bytes(serialization.Encoding.PEM))
-    return out_path
 
 def generate_self_signed_der_cert_with_uri() -> Path:
-    """
-    Generate a self-signed X.509 certificate and save as DER in current directory.
-    Returns the path of the generated file.
-    """
-    filename = "clienttest.der"
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Example Org"),
-        x509.NameAttribute(NameOID.COMMON_NAME, u"example.org"),
-    ])
-
-    cert = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(
-        key.public_key()
-    ).serial_number(
-        x509.random_serial_number()
-    ).not_valid_before(
-        datetime.datetime.now(datetime.timezone.utc)
-    ).not_valid_after(
-        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+    return generate_self_signed_cert(
+        "clienttest.der",
+        san_uris=["urn:example:client"],
     )
 
-    uris = ["urn:example:client"]
-    cert = cert.add_extension(
-        x509.SubjectAlternativeName([x509.UniformResourceIdentifier(uri) for uri in uris]),
-        critical=False
-    )
-    cert = cert.sign(key, hashes.SHA256())
-
-    out_path = Path.cwd() / filename
-    out_path.write_bytes(cert.public_bytes(serialization.Encoding.DER))
-    return out_path
 
 def generate_self_signed_pem_cert() -> Path:
-    """
-    Generate a self-signed X.509 certificate and save as PEM in current directory.
-    Returns the path of the generated file.
-    """
-    filename = "clienttest.pem"
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    subject = issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, u"US"),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"California"),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, u"San Francisco"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"Example Org"),
-        x509.NameAttribute(NameOID.COMMON_NAME, u"example.org"),
-    ])
-
-    cert = x509.CertificateBuilder().subject_name(subject).issuer_name(issuer).public_key(
-        key.public_key()
-    ).serial_number(
-        x509.random_serial_number()
-    ).not_valid_before(
-        datetime.datetime.now(datetime.timezone.utc)
-    ).not_valid_after(
-        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
-    ).sign(key, hashes.SHA256())
-
-    out_path = Path.cwd() / filename
-    out_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
-    return out_path
+    return generate_self_signed_cert(
+        "clienttest.pem",
+        encoding=serialization.Encoding.PEM
+    )
