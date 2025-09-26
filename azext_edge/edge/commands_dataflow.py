@@ -611,7 +611,7 @@ def create_dataflow_endpoint_custom_mqtt(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: str = KafkaCloudEventAttributeType.PROPAGATE.value,
     authentication_type: Optional[str] = None,
-    show_config: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
 
     return DataFlowEndpoints(cmd).create(
