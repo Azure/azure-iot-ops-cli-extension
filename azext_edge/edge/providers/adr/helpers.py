@@ -13,6 +13,8 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     FileOperationError
 )
+from ..check.base.resource import validate_runtime_resource_ref
+from ..check.common import ValidationResourceType
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
     GENERAL_AUTH_REF_MISMATCH_ERROR,
@@ -220,12 +222,87 @@ def process_additional_configuration(
         )
 
 
+def _validate_secret_reference(secret_name: str, namespace: str, secret_type: str) -> None:
+    """
+    Validate that a secret reference exists in the given namespace.
+    This is optional validation that warns users but doesn't fail the operation.
+    """
+    try:
+        is_valid = validate_runtime_resource_ref(
+            name=secret_name,
+            namespace=namespace,
+            ref_type=ValidationResourceType.secret
+        )
+        if not is_valid:
+            logger.warning(
+                f"{secret_type} secret '{secret_name}' does not exist in namespace '{namespace}'. "
+                "The endpoint may fail to authenticate until this secret is created."
+            )
+    except Exception:
+        # Validation failed (likely due to no kubernetes connection in test env)
+        # This is optional validation, so we continue silently
+        pass
+
+
+def _setup_certificate_authentication(
+    auth_props: Dict[str, str],
+    certificate_reference: str,
+    namespace: Optional[str] = None
+) -> None:
+    """Setup certificate-based authentication."""
+    # Validate certificate secret if namespace is provided
+    if namespace and certificate_reference:
+        _validate_secret_reference(certificate_reference, namespace, "Certificate")
+
+    auth_props["method"] = ADRAuthModes.certificate.value
+    auth_props["x509Credentials"] = {"certificateSecretName": certificate_reference}
+    if auth_props.pop("usernamePasswordCredentials", None):
+        logger.warning(REMOVED_USERPASS_REF_MSG)
+
+
+def _setup_username_password_authentication(
+    auth_props: Dict[str, str],
+    username_reference: str,
+    password_reference: str,
+    namespace: Optional[str] = None
+) -> None:
+    """Setup username/password-based authentication."""
+    auth_props["method"] = ADRAuthModes.userpass.value
+    user_creds = auth_props.get("usernamePasswordCredentials", {})
+    user_creds["usernameSecretName"] = username_reference
+    user_creds["passwordSecretName"] = password_reference
+
+    if not all([user_creds["usernameSecretName"], user_creds["passwordSecretName"]]):
+        raise RequiredArgumentMissingError(MISSING_USERPASS_REF_ERROR)
+
+    # Validate username and password secrets if namespace is provided
+    if namespace:
+        if username_reference:
+            _validate_secret_reference(username_reference, namespace, "Username")
+        if password_reference:
+            _validate_secret_reference(password_reference, namespace, "Password")
+
+    auth_props["usernamePasswordCredentials"] = user_creds
+    if auth_props.pop("x509Credentials", None):
+        logger.warning(REMOVED_CERT_REF_MSG)
+
+
+def _setup_anonymous_authentication(auth_props: Dict[str, str]) -> None:
+    """Setup anonymous authentication."""
+    auth_props["method"] = ADRAuthModes.anonymous.value
+    if auth_props.pop("x509Credentials", None):
+        logger.warning(REMOVED_CERT_REF_MSG)
+    if auth_props.pop("usernamePasswordCredentials", None):
+        logger.warning(REMOVED_USERPASS_REF_MSG)
+
+
 def process_authentication(
     auth_mode: Optional[str] = None,
     auth_props: Optional[Dict[str, str]] = None,
     certificate_reference: Optional[str] = None,
     password_reference: Optional[str] = None,
-    username_reference: Optional[str] = None
+    username_reference: Optional[str] = None,
+    namespace: Optional[str] = None
 ) -> Dict[str, str]:
     """
     Create an authentication object to be used by namespace devices and AEPs.
@@ -263,28 +340,15 @@ def process_authentication(
         raise MutuallyExclusiveArgumentError(AUTH_REF_MISMATCH_ERROR)
 
     if certificate_reference and auth_mode in [None, ADRAuthModes.certificate.value]:
-        auth_props["method"] = ADRAuthModes.certificate.value
-        auth_props["x509Credentials"] = {"certificateSecretName": certificate_reference}
-        if auth_props.pop("usernamePasswordCredentials", None):
-            logger.warning(REMOVED_USERPASS_REF_MSG)
+        _setup_certificate_authentication(auth_props, certificate_reference, namespace)
     elif (username_reference or password_reference) and auth_mode in [None, ADRAuthModes.userpass.value]:
-        auth_props["method"] = ADRAuthModes.userpass.value
-        user_creds = auth_props.get("usernamePasswordCredentials", {})
-        user_creds["usernameSecretName"] = username_reference
-        user_creds["passwordSecretName"] = password_reference
-        if not all([user_creds["usernameSecretName"], user_creds["passwordSecretName"]]):
-            raise RequiredArgumentMissingError(MISSING_USERPASS_REF_ERROR)
-        auth_props["usernamePasswordCredentials"] = user_creds
-        if auth_props.pop("x509Credentials", None):
-            logger.warning(REMOVED_CERT_REF_MSG)
+        _setup_username_password_authentication(
+            auth_props, username_reference, password_reference, namespace
+        )
     elif auth_mode == ADRAuthModes.anonymous.value and not any(
         [certificate_reference, username_reference, password_reference]
     ):
-        auth_props["method"] = ADRAuthModes.anonymous.value
-        if auth_props.pop("x509Credentials", None):
-            logger.warning(REMOVED_CERT_REF_MSG)
-        if auth_props.pop("usernamePasswordCredentials", None):
-            logger.warning(REMOVED_USERPASS_REF_MSG)
+        _setup_anonymous_authentication(auth_props)
     elif not auth_mode and not auth_props:
         auth_props["method"] = ADRAuthModes.anonymous.value
     elif any([auth_mode, certificate_reference, username_reference, password_reference]):

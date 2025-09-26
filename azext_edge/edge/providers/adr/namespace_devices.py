@@ -335,7 +335,8 @@ class NamespaceDevices(Queryable):
             "authentication": process_authentication(
                 certificate_reference=certificate_reference,
                 password_reference=password_reference,
-                username_reference=username_reference
+                username_reference=username_reference,
+                namespace=namespace["name"]
             )
         }
 
