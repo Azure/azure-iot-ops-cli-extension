@@ -19,11 +19,14 @@ from ...common import (
 from ...util import parse_kvp_nargs, url_safe_hash_phrase
 from ...util.id_tools import is_valid_resource_id, parse_resource_id
 from ..orchestration.common import (
+    EXTENSION_MONIKER_CM,
+    EXTENSION_MONIKER_OPS,
+    EXTENSION_MONIKER_SSC,
     TRUST_ISSUER_KIND_KEY,
     TRUST_SETTING_KEYS,
 )
-from ..orchestration.resources.instances import parse_feature_kvp_nargs
 from ..orchestration.resources.brokers import Brokers
+from ..orchestration.resources.instances import parse_feature_kvp_nargs
 from .template import (
     TEMPLATE_BLUEPRINT_ENABLEMENT,
     TEMPLATE_BLUEPRINT_INSTANCE,
@@ -71,6 +74,9 @@ class InitTargets:
         ssc_config: Optional[List[str]] = None,
         ssc_version: Optional[str] = None,
         ssc_train: Optional[str] = None,
+        cm_config: Optional[List[str]] = None,
+        cm_version: Optional[str] = None,
+        cm_train: Optional[str] = None,
         # Dataflow
         dataflow_profile_instances: int = 1,
         # Broker
@@ -128,13 +134,27 @@ class InitTargets:
         self.tags = tags
 
         # Extensions
-        self.ops_config = parse_kvp_nargs(ops_config)
-        self.ops_version = ops_version
-        self.ops_train = ops_train
-
-        self.ssc_config = parse_kvp_nargs(ssc_config)
-        self.ssc_version = ssc_version
-        self.ssc_train = ssc_train
+        self.extension_manager = ExtensionConfigManager()
+        self.extension_manager.register_extension(
+            moniker=EXTENSION_MONIKER_CM,
+            version=cm_version,
+            train=cm_train,
+            user_config=parse_kvp_nargs(cm_config),
+            default_config_getter=get_default_cm_config,
+        )
+        self.extension_manager.register_extension(
+            moniker=EXTENSION_MONIKER_SSC,
+            version=ssc_version,
+            train=ssc_train,
+            user_config=parse_kvp_nargs(ssc_config),
+            default_config_getter=get_default_ssc_config,
+        )
+        self.extension_manager.register_extension(
+            moniker=EXTENSION_MONIKER_OPS,
+            version=ops_version,
+            train=ops_train,
+            user_config=parse_kvp_nargs(ops_config),
+        )
 
         self.user_trust = user_trust
         self.trust_settings = parse_kvp_nargs(trust_settings)
@@ -209,17 +229,7 @@ class InitTargets:
             template_blueprint=TEMPLATE_BLUEPRINT_ENABLEMENT,
         )
 
-        base_ssc_config = get_default_ssc_config()
-        if self.ssc_config:
-            base_ssc_config.update(self.ssc_config)
-        template.content["resources"]["secretStoreExtension"]["properties"]["configurationSettings"] = base_ssc_config
-
-        for var_attr in [
-            VarAttr(value=self.ssc_version, template_key="VERSIONS", moniker="secretStore"),
-            VarAttr(value=self.ssc_train, template_key="TRAINS", moniker="secretStore"),
-        ]:
-            if var_attr.value:
-                template.content["variables"][var_attr.template_key][var_attr.moniker] = var_attr.value
+        self.extension_manager.apply_to_template(template.content)
 
         if self.user_trust:
             # patch enablement template expecting full trust settings for source: CustomerManaged
@@ -249,15 +259,7 @@ class InitTargets:
             template_blueprint=TEMPLATE_BLUEPRINT_INSTANCE,
         )
 
-        if self.ops_config:
-            aio_default_config: Dict[str, str] = template.content["variables"]["defaultAioConfigurationSettings"]
-            aio_default_config.update(self.ops_config)
-
-        if self.ops_version:
-            template.content["variables"]["VERSIONS"]["iotOperations"] = self.ops_version
-
-        if self.ops_train:
-            template.content["variables"]["TRAINS"]["iotOperations"] = self.ops_train
+        self.extension_manager.apply_to_template(template.content, template_type="instance")
 
         instance = template.get_resource_by_key("aioInstance")
         broker = template.get_resource_by_key("broker")
@@ -411,13 +413,6 @@ def del_if_not_in(resources: Dict[str, Dict[str, dict]], include_keys: Set[str])
             del resources[k]
 
 
-def get_default_ssc_config() -> Dict[str, str]:
-    return {
-        "rotationPollIntervalInSeconds": "120",
-        "validatingAdmissionPolicies.applyPolicies": "false",
-    }
-
-
 def get_default_instance_config(
     description: Optional[str] = None,
     features: Optional[dict] = None,
@@ -464,3 +459,102 @@ def ensure_resource_id(
         "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}"
         "/providers/Microsoft.Provider/{resourceType}/{resourceName}"
     )
+
+
+class ExtensionConfig(NamedTuple):
+    moniker: str
+    version: Optional[str] = None
+    train: Optional[str] = None
+    config: Optional[Dict[str, str]] = None
+    default_config_getter: Optional[callable] = None
+
+
+class ExtensionConfigManager:
+    def __init__(self):
+        self.extensions: Dict[str, ExtensionConfig] = {}
+        # Map monikers to their resource keys in templates
+        self.resource_key_map = {
+            EXTENSION_MONIKER_CM: "certManagerExtension",
+            EXTENSION_MONIKER_SSC: "secretStoreExtension",
+            EXTENSION_MONIKER_OPS: "aioExtension",
+        }
+
+    def register_extension(
+        self,
+        moniker: str,
+        version: Optional[str] = None,
+        train: Optional[str] = None,
+        user_config: Optional[Dict[str, str]] = None,
+        default_config_getter: Optional[callable] = None,
+    ) -> None:
+        self.extensions[moniker] = ExtensionConfig(
+            moniker=moniker,
+            version=version,
+            train=train,
+            config=user_config,
+            default_config_getter=default_config_getter,
+        )
+
+    def get_merged_config(self, moniker: str, template_defaults: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+        if moniker not in self.extensions:
+            return {}
+
+        ext = self.extensions[moniker]
+        config = {}
+
+        # Use template defaults if provided (for iotOperations)
+        if template_defaults:
+            config = template_defaults.copy()
+        elif ext.default_config_getter:
+            config = ext.default_config_getter()
+
+        if ext.config:
+            config.update(ext.config)
+
+        return config
+
+    def apply_to_template(self, template: dict, template_type: str = "enablement") -> None:
+        """Apply all extension configurations to a template.
+
+        Args:
+            template: The template dictionary to modify
+            template_type: Either "enablement" or "instance" to handle different templates
+        """
+        for ext in self.extensions.values():
+            resource_key = self.resource_key_map.get(ext.moniker)
+            if not resource_key:
+                continue
+
+            # Apply config settings
+            if resource_key in template.get("resources", {}):
+                if ext.moniker == EXTENSION_MONIKER_OPS and template_type == "instance":
+                    # For IoT Operations, merge with existing defaultAioConfigurationSettings
+                    default_config = template.get("variables", {}).get("defaultAioConfigurationSettings", {})
+                    merged_config = self.get_merged_config(ext.moniker, default_config)
+                    if merged_config:
+                        template["variables"]["defaultAioConfigurationSettings"] = merged_config
+                else:
+                    # Standard extension configuration
+                    config = self.get_merged_config(ext.moniker)
+                    if config:
+                        template["resources"][resource_key]["properties"]["configurationSettings"] = config
+
+            if ext.version:
+                template.setdefault("variables", {}).setdefault("VERSIONS", {})[ext.moniker] = ext.version
+
+            if ext.train:
+                template.setdefault("variables", {}).setdefault("TRAINS", {})[ext.moniker] = ext.train
+
+
+def get_default_ssc_config() -> Dict[str, str]:
+    return {
+        "rotationPollIntervalInSeconds": "120",
+        "validatingAdmissionPolicies.applyPolicies": "false",
+    }
+
+
+def get_default_cm_config() -> Dict[str, str]:
+    return {
+        "AgentOperationTimeoutInMinutes": "20",
+        "global.telemetry.enabled": "true",
+    }

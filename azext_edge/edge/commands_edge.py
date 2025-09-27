@@ -107,6 +107,9 @@ def init(
     ssc_config: Optional[List[str]] = None,
     ssc_version: Optional[str] = None,
     ssc_train: Optional[str] = None,
+    cm_config: Optional[List[str]] = None,
+    cm_version: Optional[str] = None,
+    cm_train: Optional[str] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration.work import WorkManager
@@ -123,6 +126,9 @@ def init(
         ssc_config=ssc_config,
         ssc_version=ssc_version,
         ssc_train=ssc_train,
+        cm_config=cm_config,
+        cm_version=cm_version,
+        cm_train=cm_train,
         **kwargs,
     )
     if no_progress and result_payload:
