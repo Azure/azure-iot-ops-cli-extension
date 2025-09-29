@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from .v20250701_preview import MicrosoftDeviceRegistryManagementService
+from .v20251001 import MicrosoftDeviceRegistryManagementService
 
 __all__ = [
     "MicrosoftDeviceRegistryManagementService",

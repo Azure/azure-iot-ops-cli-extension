@@ -43,8 +43,8 @@ from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
 from azext_edge.edge.providers.orchestration.common import (
     ARM_ENDPOINT,
     CONTRIBUTOR_ROLE_ID,
+    EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
-    EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
 )
@@ -380,10 +380,6 @@ def build_target_scenario(
         }
         for ext_type in expected_extension_types
     }
-    if EXTENSION_TYPE_PLATFORM in default_extensions_config:
-        default_extensions_config[EXTENSION_TYPE_PLATFORM]["properties"]["configurationSettings"][
-            "installCertManager"
-        ] = "true"
     if EXTENSION_TYPE_OPS in default_extensions_config:
         default_extensions_config[EXTENSION_TYPE_OPS]["identity"] = {"principalId": generate_random_string()}
 
@@ -643,9 +639,9 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
         ),
         build_target_scenario(
             extension_config_settings={
-                EXTENSION_TYPE_PLATFORM: {
+                EXTENSION_TYPE_CM: {
                     "properties": {
-                        "extensionType": EXTENSION_TYPE_PLATFORM,
+                        "extensionType": EXTENSION_TYPE_CM,
                         "provisioningState": "Failed",
                     }
                 },
@@ -661,7 +657,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
                 exc_msg=[
                     "Foundational service(s) with non-successful provisioning state detected on the cluster:\n\n",
                     EXTENSION_TYPE_SSC,
-                    EXTENSION_TYPE_PLATFORM,
+                    EXTENSION_TYPE_CM,
                     "\n\nInstance deployment will not continue. Please run 'az iot ops init'.",
                 ],
             ),
@@ -680,7 +676,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
         build_target_scenario(
-            omit_extension_types=frozenset([EXTENSION_TYPE_PLATFORM]),
+            omit_extension_types=frozenset([EXTENSION_TYPE_CM]),
             raises=ExceptionMeta(
                 exc_type=ValidationError,
                 exc_msg=(
@@ -691,7 +687,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
         build_target_scenario(
-            omit_extension_types=frozenset([EXTENSION_TYPE_PLATFORM]),
+            omit_extension_types=frozenset([EXTENSION_TYPE_CM]),
             trust={
                 "settings": [
                     "configMapName=example-bundle",
@@ -702,7 +698,7 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             },
         ),
         build_target_scenario(
-            omit_extension_types=frozenset([EXTENSION_TYPE_PLATFORM]),
+            omit_extension_types=frozenset([EXTENSION_TYPE_CM]),
             trust={
                 "settings": [
                     "configMapName=example-bundle",

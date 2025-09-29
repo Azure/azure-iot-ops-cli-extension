@@ -20,10 +20,10 @@ QUERIES = {
         kubernetesconfigurationresources
         | where type =~ 'microsoft.kubernetesconfiguration/extensions'
         | where id startswith '{resource_id}'
-        | where properties.ExtensionType startswith 'microsoft.iotoperations'
-            or properties.ExtensionType =~ 'microsoft.deviceregistry.assets'
+        | where properties.ExtensionType =~ 'microsoft.iotoperations'
             or properties.ExtensionType =~ 'microsoft.azure.secretstore'
             or properties.ExtensionType =~ 'microsoft.arc.containerstorage'
+            or properties.ExtensionType =~ 'microsoft.certmanagement'
         | project id, name, apiVersion
         """,
     "get_aio_custom_locations": """
@@ -38,8 +38,7 @@ QUERIES = {
             | where type =~ 'microsoft.extendedlocation/customLocations/enabledResourcetypes'
             | project clusterExtensionId = tolower(properties.clusterExtensionId),
                 extensionType = tolower(properties.extensionType)
-            | where extensionType startswith 'microsoft.iotoperations'
-                or extensionType startswith 'microsoft.deviceregistry'
+            | where extensionType =~ 'microsoft.iotoperations'
         ) on clusterExtensionId
         | distinct id, name, apiVersion
         """,

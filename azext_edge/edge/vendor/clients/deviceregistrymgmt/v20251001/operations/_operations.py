@@ -46,7 +46,7 @@ def build_operations_list_request(**kwargs: Any) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -67,7 +67,7 @@ def build_asset_endpoint_profiles_list_by_subscription_request(  # pylint: disab
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -93,7 +93,7 @@ def build_asset_endpoint_profiles_list_by_resource_group_request(  # pylint: dis
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -122,7 +122,7 @@ def build_asset_endpoint_profiles_get_request(  # pylint: disable=name-too-long
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -160,7 +160,7 @@ def build_asset_endpoint_profiles_create_or_replace_request(  # pylint: disable=
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -200,7 +200,7 @@ def build_asset_endpoint_profiles_update_request(  # pylint: disable=name-too-lo
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -239,7 +239,7 @@ def build_asset_endpoint_profiles_delete_request(  # pylint: disable=name-too-lo
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -276,7 +276,7 @@ def build_assets_list_by_subscription_request(  # pylint: disable=name-too-long
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -302,7 +302,7 @@ def build_assets_list_by_resource_group_request(  # pylint: disable=name-too-lon
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -333,7 +333,7 @@ def build_assets_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -366,7 +366,7 @@ def build_assets_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -401,7 +401,7 @@ def build_assets_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -435,7 +435,7 @@ def build_assets_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -467,7 +467,7 @@ def build_billing_containers_list_by_subscription_request(  # pylint: disable=na
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -493,7 +493,7 @@ def build_billing_containers_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -527,7 +527,7 @@ def build_operation_status_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -555,7 +555,7 @@ def build_namespaces_list_by_subscription_request(  # pylint: disable=name-too-l
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -581,7 +581,7 @@ def build_namespaces_list_by_resource_group_request(  # pylint: disable=name-too
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -610,7 +610,7 @@ def build_namespaces_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -648,7 +648,7 @@ def build_namespaces_create_or_replace_request(  # pylint: disable=name-too-long
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -688,7 +688,7 @@ def build_namespaces_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -727,7 +727,7 @@ def build_namespaces_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -765,7 +765,7 @@ def build_namespaces_migrate_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -804,7 +804,7 @@ def build_schema_registries_list_by_subscription_request(  # pylint: disable=nam
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -830,7 +830,7 @@ def build_schema_registries_list_by_resource_group_request(  # pylint: disable=n
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -859,7 +859,7 @@ def build_schema_registries_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -897,7 +897,7 @@ def build_schema_registries_create_or_replace_request(  # pylint: disable=name-t
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -937,7 +937,7 @@ def build_schema_registries_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -976,7 +976,7 @@ def build_schema_registries_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1013,7 +1013,7 @@ def build_namespace_assets_list_by_resource_group_request(  # pylint: disable=na
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1050,7 +1050,7 @@ def build_namespace_assets_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1091,7 +1091,7 @@ def build_namespace_assets_create_or_replace_request(  # pylint: disable=name-to
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1134,7 +1134,7 @@ def build_namespace_assets_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1176,7 +1176,7 @@ def build_namespace_assets_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1216,7 +1216,7 @@ def build_namespace_devices_list_by_resource_group_request(  # pylint: disable=n
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1253,7 +1253,7 @@ def build_namespace_devices_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1294,7 +1294,7 @@ def build_namespace_devices_create_or_replace_request(  # pylint: disable=name-t
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1337,7 +1337,7 @@ def build_namespace_devices_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1379,7 +1379,7 @@ def build_namespace_devices_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1419,7 +1419,7 @@ def build_namespace_discovered_assets_list_by_resource_group_request(  # pylint:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1456,7 +1456,7 @@ def build_namespace_discovered_assets_get_request(  # pylint: disable=name-too-l
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1502,7 +1502,7 @@ def build_namespace_discovered_assets_create_or_replace_request(  # pylint: disa
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1550,7 +1550,7 @@ def build_namespace_discovered_assets_update_request(  # pylint: disable=name-to
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1597,7 +1597,7 @@ def build_namespace_discovered_assets_delete_request(  # pylint: disable=name-to
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1642,7 +1642,7 @@ def build_namespace_discovered_devices_list_by_resource_group_request(  # pylint
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1679,7 +1679,7 @@ def build_namespace_discovered_devices_get_request(  # pylint: disable=name-too-
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1725,7 +1725,7 @@ def build_namespace_discovered_devices_create_or_replace_request(  # pylint: dis
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1773,7 +1773,7 @@ def build_namespace_discovered_devices_update_request(  # pylint: disable=name-t
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1820,7 +1820,7 @@ def build_namespace_discovered_devices_delete_request(  # pylint: disable=name-t
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1865,7 +1865,7 @@ def build_schemas_list_by_schema_registry_request(  # pylint: disable=name-too-l
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1902,7 +1902,7 @@ def build_schemas_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1943,7 +1943,7 @@ def build_schemas_create_or_replace_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1985,7 +1985,7 @@ def build_schemas_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2025,7 +2025,7 @@ def build_schema_versions_list_by_schema_request(  # pylint: disable=name-too-lo
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2070,7 +2070,7 @@ def build_schema_versions_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2119,7 +2119,7 @@ def build_schema_versions_create_or_replace_request(  # pylint: disable=name-too
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2169,7 +2169,7 @@ def build_schema_versions_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -10657,33 +10657,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -10719,6 +10724,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -11190,33 +11197,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -11252,6 +11264,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -11795,33 +11809,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -11857,6 +11876,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -12240,33 +12261,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -12302,6 +12328,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -12719,33 +12747,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -12781,6 +12814,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -13194,33 +13229,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -13256,6 +13296,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -13639,33 +13681,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -13701,6 +13748,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -14221,33 +14270,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -14279,6 +14333,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -14410,33 +14466,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -14472,6 +14533,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -14889,33 +14952,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -14951,6 +15019,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -15345,33 +15415,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -15403,6 +15478,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -15534,33 +15611,38 @@ class NamespaceAssetsOperations:
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
                         "enabled": bool,  # Optional. Enabled/disabled status of the asset.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str"  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -15596,6 +15678,8 @@ class NamespaceAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -19005,44 +19089,52 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
                         ],
+                        "externalAssetId": "str",  # Optional. Asset ID provided by the
+                          customer.
                         "hardwareRevision": "str",  # Optional. Asset hardware revision
                           number.
                         "managementGroups": [
@@ -19073,6 +19165,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -19316,44 +19410,52 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
                         ],
+                        "externalAssetId": "str",  # Optional. Asset ID provided by the
+                          customer.
                         "hardwareRevision": "str",  # Optional. Asset hardware revision
                           number.
                         "managementGroups": [
@@ -19384,6 +19486,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -19699,44 +19803,52 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
                         ],
+                        "externalAssetId": "str",  # Optional. Asset ID provided by the
+                          customer.
                         "hardwareRevision": "str",  # Optional. Asset hardware revision
                           number.
                         "managementGroups": [
@@ -19767,6 +19879,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -19922,44 +20036,52 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
                         ],
+                        "externalAssetId": "str",  # Optional. Asset ID provided by the
+                          customer.
                         "hardwareRevision": "str",  # Optional. Asset hardware revision
                           number.
                         "managementGroups": [
@@ -19990,6 +20112,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -20179,44 +20303,52 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
                         ],
+                        "externalAssetId": "str",  # Optional. Asset ID provided by the
+                          customer.
                         "hardwareRevision": "str",  # Optional. Asset hardware revision
                           number.
                         "managementGroups": [
@@ -20247,6 +20379,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -20432,44 +20566,52 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
                         ],
+                        "externalAssetId": "str",  # Optional. Asset ID provided by the
+                          customer.
                         "hardwareRevision": "str",  # Optional. Asset hardware revision
                           number.
                         "managementGroups": [
@@ -20500,6 +20642,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -20655,44 +20799,52 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
                         ],
+                        "externalAssetId": "str",  # Optional. Asset ID provided by the
+                          customer.
                         "hardwareRevision": "str",  # Optional. Asset hardware revision
                           number.
                         "managementGroups": [
@@ -20723,6 +20875,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -21016,6 +21170,8 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
                         "deviceRef": {
                             "deviceName": "str",  # Optional. Name of the device
                               resource.
@@ -21024,40 +21180,44 @@ class NamespaceDiscoveredAssetsOperations:
                         },
                         "discoveryId": "str",  # Optional. Identifier used to detect changes
                           in the asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -21092,6 +21252,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -21228,44 +21390,52 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
                         ],
+                        "externalAssetId": "str",  # Optional. Asset ID provided by the
+                          customer.
                         "hardwareRevision": "str",  # Optional. Asset hardware revision
                           number.
                         "managementGroups": [
@@ -21296,6 +21466,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -21485,44 +21657,52 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
                         ],
+                        "externalAssetId": "str",  # Optional. Asset ID provided by the
+                          customer.
                         "hardwareRevision": "str",  # Optional. Asset hardware revision
                           number.
                         "managementGroups": [
@@ -21553,6 +21733,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -21720,6 +21902,8 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
                         "deviceRef": {
                             "deviceName": "str",  # Optional. Name of the device
                               resource.
@@ -21728,40 +21912,44 @@ class NamespaceDiscoveredAssetsOperations:
                         },
                         "discoveryId": "str",  # Optional. Identifier used to detect changes
                           in the asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
@@ -21796,6 +21984,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -21932,44 +22122,52 @@ class NamespaceDiscoveredAssetsOperations:
                         "defaultStreamsDestinations": [
                             stream_destination
                         ],
+                        "description": "str",  # Optional. Human-readable description of the
+                          asset.
+                        "displayName": "str",  # Optional. Human-readable display name.
                         "documentationUri": "str",  # Optional. Asset documentation
                           reference.
-                        "events": [
+                        "eventGroups": [
                             {
-                                "eventNotifier": "str",  # The address of the
-                                  notifier of the event in the asset (e.g. URL) so that a client can
-                                  access the event on the asset. Required.
-                                "name": "str",  # The name of the event. Required.
-                                "dataPoints": [
-                                    {
-                                        "dataSource": "str",  # The address
-                                          of the source of the data in the asset (e.g. URL) so that a
-                                          client can access the data source on the asset. Required.
-                                        "name": "str",  # The name of the
-                                          data point. Required.
-                                        "dataPointConfiguration": "str",  #
-                                          Optional. Stringified JSON that contains connector-specific
-                                          configuration for the data point. For OPC UA, this could
-                                          include configuration like, publishingInterval,
-                                          samplingInterval, and queueSize.
-                                        "lastUpdatedOn": "2020-02-20
-                                          00:00:00"  # Optional. UTC timestamp indicating when the data
-                                          point was added or modified.
-                                    }
-                                ],
-                                "destinations": [
+                                "name": "str",  # The name of the event group.
+                                  Required.
+                                "dataSource": "str",  # Optional. The address of the
+                                  notifier of the event group in the asset (e.g. URL) so that a client
+                                  can access the event group on the asset.
+                                "defaultDestinations": [
                                     event_destination
                                 ],
-                                "eventConfiguration": "str",  # Optional. Stringified
-                                  JSON that contains connector-specific configuration for the event.
-                                  For OPC UA, this could include configuration like,
+                                "eventGroupConfiguration": "str",  # Optional.
+                                  Stringified JSON that contains connector-specific configuration for
+                                  the event group. For OPC UA, this could include configuration like,
                                   publishingInterval, samplingInterval, and queueSize.
-                                "lastUpdatedOn": "2020-02-20 00:00:00",  # Optional.
-                                  UTC timestamp indicating when the event was added or modified.
+                                "events": [
+                                    {
+                                        "name": "str",  # The name of the
+                                          event. Required.
+                                        "dataSource": "str",  # Optional.
+                                          Reference to a data source for a given event.
+                                        "destinations": [
+                                            event_destination
+                                        ],
+                                        "eventConfiguration": "str",  #
+                                          Optional. Stringified JSON that contains connector-specific
+                                          configuration for the event. For OPC UA, this could include
+                                          configuration like, publishingInterval, samplingInterval, and
+                                          queueSize.
+                                        "lastUpdatedOn": "2020-02-20
+                                          00:00:00",  # Optional. UTC timestamp indicating when the
+                                          event was added or modified.
+                                        "typeRef": "str"  # Optional. URI or
+                                          type definition ID.
+                                    }
+                                ],
                                 "typeRef": "str"  # Optional. URI or type definition
                                   ID.
                             }
                         ],
+                        "externalAssetId": "str",  # Optional. Asset ID provided by the
+                          customer.
                         "hardwareRevision": "str",  # Optional. Asset hardware revision
                           number.
                         "managementGroups": [
@@ -22000,6 +22198,8 @@ class NamespaceDiscoveredAssetsOperations:
                                           type definition ID.
                                     }
                                 ],
+                                "dataSource": "str",  # Optional. Reference to a data
+                                  source for a given management group.
                                 "defaultTimeoutInSeconds": 100,  # Optional. Default
                                   value is 100. Default response timeout for all actions that are part
                                   of the management group.
@@ -24591,23 +24791,9 @@ class SchemasOperations:
 
         return cast(JSON, deserialized)  # type: ignore
 
-    @distributed_trace
-    def delete(  # pylint: disable=inconsistent-return-statements
+    def _delete_initial(  # pylint: disable=inconsistent-return-statements
         self, resource_group_name: str, schema_registry_name: str, schema_name: str, **kwargs: Any
     ) -> None:
-        """Delete a Schema.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param schema_registry_name: Schema registry name parameter. Required.
-        :type schema_registry_name: str
-        :param schema_name: Schema name parameter. Required.
-        :type schema_name: str
-        :return: None
-        :rtype: None
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
         error_map: MutableMapping[int, Type[HttpResponseError]] = {
             401: ClientAuthenticationError,
             404: ResourceNotFoundError,
@@ -24639,14 +24825,76 @@ class SchemasOperations:
 
         response = pipeline_response.http_response
 
-        if response.status_code not in [200, 204]:
+        if response.status_code not in [202, 204]:
             if _stream:
                 response.read()  # Load the body in memory and close the socket
             map_error(status_code=response.status_code, response=response, error_map=error_map)
             raise HttpResponseError(response=response, error_format=ARMErrorFormat)
 
+        response_headers = {}
+        if response.status_code == 202:
+            response_headers["Location"] = self._deserialize("str", response.headers.get("Location"))
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
         if cls:
-            return cls(pipeline_response, None, {})  # type: ignore
+            return cls(pipeline_response, None, response_headers)  # type: ignore
+
+    @distributed_trace
+    def begin_delete(
+        self, resource_group_name: str, schema_registry_name: str, schema_name: str, **kwargs: Any
+    ) -> LROPoller[None]:
+        """Delete a Schema.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param schema_registry_name: Schema registry name parameter. Required.
+        :type schema_registry_name: str
+        :param schema_name: Schema name parameter. Required.
+        :type schema_name: str
+        :return: An instance of LROPoller that returns None
+        :rtype: ~azure.core.polling.LROPoller[None]
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[None] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._delete_initial(  # type: ignore
+                resource_group_name=resource_group_name,
+                schema_registry_name=schema_registry_name,
+                schema_name=schema_name,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):  # pylint: disable=inconsistent-return-statements
+            if cls:
+                return cls(pipeline_response, None, {})  # type: ignore
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "location"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller[None].from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller[None](self._client, raw_result, get_long_running_output, polling_method)  # type: ignore
 
 
 class SchemaVersionsOperations:
@@ -25258,8 +25506,7 @@ class SchemaVersionsOperations:
 
         return cast(JSON, deserialized)  # type: ignore
 
-    @distributed_trace
-    def delete(  # pylint: disable=inconsistent-return-statements
+    def _delete_initial(  # pylint: disable=inconsistent-return-statements
         self,
         resource_group_name: str,
         schema_registry_name: str,
@@ -25267,21 +25514,6 @@ class SchemaVersionsOperations:
         schema_version_name: str,
         **kwargs: Any
     ) -> None:
-        """Delete a SchemaVersion.
-
-        :param resource_group_name: The name of the resource group. The name is case insensitive.
-         Required.
-        :type resource_group_name: str
-        :param schema_registry_name: Schema registry name parameter. Required.
-        :type schema_registry_name: str
-        :param schema_name: Schema name parameter. Required.
-        :type schema_name: str
-        :param schema_version_name: Schema version name parameter. Required.
-        :type schema_version_name: str
-        :return: None
-        :rtype: None
-        :raises ~azure.core.exceptions.HttpResponseError:
-        """
         error_map: MutableMapping[int, Type[HttpResponseError]] = {
             401: ClientAuthenticationError,
             404: ResourceNotFoundError,
@@ -25314,11 +25546,81 @@ class SchemaVersionsOperations:
 
         response = pipeline_response.http_response
 
-        if response.status_code not in [200, 204]:
+        if response.status_code not in [202, 204]:
             if _stream:
                 response.read()  # Load the body in memory and close the socket
             map_error(status_code=response.status_code, response=response, error_map=error_map)
             raise HttpResponseError(response=response, error_format=ARMErrorFormat)
 
+        response_headers = {}
+        if response.status_code == 202:
+            response_headers["Location"] = self._deserialize("str", response.headers.get("Location"))
+            response_headers["Retry-After"] = self._deserialize("int", response.headers.get("Retry-After"))
+
         if cls:
-            return cls(pipeline_response, None, {})  # type: ignore
+            return cls(pipeline_response, None, response_headers)  # type: ignore
+
+    @distributed_trace
+    def begin_delete(
+        self,
+        resource_group_name: str,
+        schema_registry_name: str,
+        schema_name: str,
+        schema_version_name: str,
+        **kwargs: Any
+    ) -> LROPoller[None]:
+        """Delete a SchemaVersion.
+
+        :param resource_group_name: The name of the resource group. The name is case insensitive.
+         Required.
+        :type resource_group_name: str
+        :param schema_registry_name: Schema registry name parameter. Required.
+        :type schema_registry_name: str
+        :param schema_name: Schema name parameter. Required.
+        :type schema_name: str
+        :param schema_version_name: Schema version name parameter. Required.
+        :type schema_version_name: str
+        :return: An instance of LROPoller that returns None
+        :rtype: ~azure.core.polling.LROPoller[None]
+        :raises ~azure.core.exceptions.HttpResponseError:
+        """
+        _headers = kwargs.pop("headers", {}) or {}
+        _params = kwargs.pop("params", {}) or {}
+
+        cls: ClsType[None] = kwargs.pop("cls", None)
+        polling: Union[bool, PollingMethod] = kwargs.pop("polling", True)
+        lro_delay = kwargs.pop("polling_interval", self._config.polling_interval)
+        cont_token: Optional[str] = kwargs.pop("continuation_token", None)
+        if cont_token is None:
+            raw_result = self._delete_initial(  # type: ignore
+                resource_group_name=resource_group_name,
+                schema_registry_name=schema_registry_name,
+                schema_name=schema_name,
+                schema_version_name=schema_version_name,
+                cls=lambda x, y, z: x,
+                headers=_headers,
+                params=_params,
+                **kwargs
+            )
+        kwargs.pop("error_map", None)
+
+        def get_long_running_output(pipeline_response):  # pylint: disable=inconsistent-return-statements
+            if cls:
+                return cls(pipeline_response, None, {})  # type: ignore
+
+        if polling is True:
+            polling_method: PollingMethod = cast(
+                PollingMethod, ARMPolling(lro_delay, lro_options={"final-state-via": "location"}, **kwargs)
+            )
+        elif polling is False:
+            polling_method = cast(PollingMethod, NoPolling())
+        else:
+            polling_method = polling
+        if cont_token:
+            return LROPoller[None].from_continuation_token(
+                polling_method=polling_method,
+                continuation_token=cont_token,
+                client=self._client,
+                deserialization_callback=get_long_running_output,
+            )
+        return LROPoller[None](self._client, raw_result, get_long_running_output, polling_method)  # type: ignore

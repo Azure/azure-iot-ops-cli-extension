@@ -19,6 +19,7 @@ from rich.status import Status
 from ...util.az_client import (
     get_registry_mgmt_client,
     wait_for_terminal_state,
+    DeviceRegistryMgmtApiVersion
 )
 from ...util.common import should_continue_prompt
 from ...util.id_tools import parse_resource_id
@@ -50,7 +51,10 @@ class AssetMigrationManager(Queryable):
         super().__init__(cmd=cmd)
         from ...util.machinery import scoped_semver_import
 
-        self.deviceregistry_mgmt_client = get_registry_mgmt_client(subscription_id=self.default_subscription_id)
+        self.deviceregistry_mgmt_client = get_registry_mgmt_client(
+            subscription_id=self.default_subscription_id,
+            api_version=DeviceRegistryMgmtApiVersion.V20250701_preview.value
+        )
         self.ops: "NamespacesOperations" = self.deviceregistry_mgmt_client.namespaces
         self.instances = Instances(self.cmd)
         self.permission_manager = PermissionManager(self.default_subscription_id)

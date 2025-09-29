@@ -1,0 +1,256 @@
+{
+    "extendedLocation": {
+        "name": "str",
+        "type": "str"
+    },
+    "location": "str",
+    "id": "str",
+    "name": "str",
+    "properties": {
+        "deviceRef": {
+            "deviceName": "str",
+            "endpointName": "str"
+        },
+        "assetTypeRefs": [
+            "str"
+        ],
+        "attributes": {
+            "str": {}
+        },
+        "datasets": [
+            {
+                "name": "str",
+                "dataPoints": [
+                    {
+                        "dataSource": "str",
+                        "name": "str",
+                        "dataPointConfiguration": "str",
+                        "typeRef": "str"
+                    }
+                ],
+                "dataSource": "str",
+                "datasetConfiguration": "str",
+                "destinations": [
+                    "dataset_destination"
+                ],
+                "typeRef": "str"
+            }
+        ],
+        "defaultDatasetsConfiguration": "str",
+        "defaultDatasetsDestinations": [
+            "dataset_destination"
+        ],
+        "defaultEventsConfiguration": "str",
+        "defaultEventsDestinations": [
+            "event_destination"
+        ],
+        "defaultManagementGroupsConfiguration": "str",
+        "defaultStreamsConfiguration": "str",
+        "defaultStreamsDestinations": [
+            "stream_destination"
+        ],
+        "description": "str",
+        "discoveredAssetRefs": [
+            "str"
+        ],
+        "displayName": "str",
+        "documentationUri": "str",
+        "enabled": "bool",
+        "eventGroups": [
+            {
+                "name": "str",
+                "dataSource": "str",
+                "defaultDestinations": [
+                    "event_destination"
+                ],
+                "eventGroupConfiguration": "str",
+                "events": [
+                    {
+                        "name": "str",
+                        "dataSource": "str",
+                        "destinations": [
+                            "event_destination"
+                        ],
+                        "eventConfiguration": "str",
+                        "typeRef": "str"
+                    }
+                ],
+                "typeRef": "str"
+            }
+        ],
+        "externalAssetId": "str",
+        "hardwareRevision": "str",
+        "lastTransitionTime": "2020-02-20 00:00:00",
+        "managementGroups": [
+            {
+                "name": "str",
+                "actions": [
+                    {
+                        "name": "str",
+                        "targetUri": "str",
+                        "actionConfiguration": "str",
+                        "actionType": "Call",
+                        "timeoutInSeconds": 0,
+                        "topic": "str",
+                        "typeRef": "str"
+                    }
+                ],
+                "dataSource": "str",
+                "defaultTimeoutInSeconds": 100,
+                "defaultTopic": "str",
+                "managementGroupConfiguration": "str",
+                "typeRef": "str"
+            }
+        ],
+        "manufacturer": "str",
+        "manufacturerUri": "str",
+        "model": "str",
+        "productCode": "str",
+        "provisioningState": "str",
+        "serialNumber": "str",
+        "softwareRevision": "str",
+        "status": {
+            "config": {
+                "error": {
+                    "code": "str",
+                    "details": [
+                        {
+                            "code": "str",
+                            "correlationId": "str",
+                            "info": "str",
+                            "message": "str"
+                        }
+                    ],
+                    "message": "str"
+                },
+                "lastTransitionTime": "2020-02-20 00:00:00",
+                "version": 0
+            },
+            "datasets": [
+                {
+                    "name": "str",
+                    "error": {
+                        "code": "str",
+                        "details": [
+                            {
+                                "code": "str",
+                                "correlationId":
+                                    "str",
+                                "info": "str",
+                                "message": "str"
+                            }
+                        ],
+                        "message": "str"
+                    },
+                    "messageSchemaReference": {
+                        "schemaName": "str",
+                        "schemaRegistryNamespace": "str",
+                        "schemaVersion": "str"
+                    }
+                }
+            ],
+            "events": [
+                {
+                    "name": "str",
+                    "error": {
+                        "code": "str",
+                        "details": [
+                            {
+                                "code": "str",
+                                "correlationId":
+                                    "str",
+                                "info": "str",
+                                "message": "str"
+                            }
+                        ],
+                        "message": "str"
+                    },
+                    "messageSchemaReference": {
+                        "schemaName": "str",
+                        "schemaRegistryNamespace": "str",
+                        "schemaVersion": "str"
+                    }
+                }
+            ],
+            "managementGroups": [
+                {
+                    "name": "str",
+                    "actions": [
+                        {
+                            "name": "str",
+                            "error": {
+                                "code": "str",
+                                "details": [
+                                    {
+                                        "code": "str",
+                                        "correlationId": "str",
+                                        "info": "str",
+                                        "message": "str"
+                                    }
+                                ],
+                                "message": "str"
+                            },
+                                "requestMessageSchemaReference": {
+                                    "schemaName": "str",
+                                    "schemaRegistryNamespace": "str",
+                                    "schemaVersion": "str"
+                            },
+                                "responseMessageSchemaReference": {
+                                    "schemaName": "str",
+                                    "schemaRegistryNamespace": "str",
+                                    "schemaVersion": "str"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "streams": [
+                {
+                    "name": "str",
+                    "error": {
+                        "code": "str",
+                        "details": [
+                            {
+                                "code": "str",
+                                "correlationId":
+                                    "str",
+                                "info": "str",
+                                "message": "str"
+                            }
+                        ],
+                        "message": "str"
+                    },
+                    "messageSchemaReference": {
+                        "schemaName": "str",
+                        "schemaRegistryNamespace": "str",
+                        "schemaVersion": "str"
+                    }
+                }
+            ]
+        },
+        "streams": [
+            {
+                "name": "str",
+                "destinations": [
+                    "stream_destination"
+                ],
+                "streamConfiguration": "str",
+                "typeRef": "str"
+            }
+        ],
+        "uuid": "str",
+        "version": 0
+    },
+    "systemData": {
+        "createdAt": "2020-02-20 00:00:00",
+        "createdBy": "str",
+        "createdByType": "str",
+        "lastModifiedAt": "2020-02-20 00:00:00",
+        "lastModifiedBy": "str",
+        "lastModifiedByType": "str"
+    },
+    "tags": {
+        "str": "str"
+    },
+    "type": "str"
+}

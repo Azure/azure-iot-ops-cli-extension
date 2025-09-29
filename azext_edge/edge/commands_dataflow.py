@@ -611,7 +611,7 @@ def create_dataflow_endpoint_custom_mqtt(
     config_map_reference: Optional[str] = None,
     cloud_event_attribute: str = KafkaCloudEventAttributeType.PROPAGATE.value,
     authentication_type: Optional[str] = None,
-    show_config: Optional[str] = None,
+    show_config: Optional[bool] = None,
 ) -> dict:
 
     return DataFlowEndpoints(cmd).create(
@@ -638,6 +638,43 @@ def create_dataflow_endpoint_custom_mqtt(
         config_map_reference=config_map_reference,
         cloud_event_attribute=cloud_event_attribute,
         no_auth=no_auth,
+        authentication_type=authentication_type,
+        show_config=show_config,
+    )
+
+
+def create_dataflow_endpoint_otel(
+    cmd,
+    endpoint_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    hostname: str,
+    port: int,
+    latency: int = 60,
+    message_count: int = 100000,
+    tls_disabled: bool = False,
+    no_auth: bool = False,
+    audience: Optional[str] = None,
+    secret_name: Optional[str] = None,
+    config_map_reference: Optional[str] = None,
+    authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
+) -> dict:
+
+    return DataFlowEndpoints(cmd).create(
+        name=endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        endpoint_type=DataflowEndpointType.OPENTELEMETRY.value,
+        latency=latency,
+        message_count=message_count,
+        tls_disabled=tls_disabled,
+        no_auth=no_auth,
+        port=port,
+        hostname=hostname,
+        sat_audience=audience,
+        x509_secret_name=secret_name,
+        config_map_reference=config_map_reference,
         authentication_type=authentication_type,
         show_config=show_config,
     )
@@ -1094,6 +1131,43 @@ def update_dataflow_endpoint_custom_mqtt(
         config_map_reference=config_map_reference,
         cloud_event_attribute=cloud_event_attribute,
         no_auth=no_auth,
+        authentication_type=authentication_type,
+        show_config=show_config,
+    )
+
+
+def update_dataflow_endpoint_otel(
+    cmd,
+    endpoint_name: str,
+    instance_name: str,
+    resource_group_name: str,
+    hostname: Optional[str] = None,
+    port: Optional[int] = None,
+    latency: Optional[int] = None,
+    message_count: Optional[int] = None,
+    tls_disabled: Optional[bool] = None,
+    no_auth: Optional[bool] = None,
+    audience: Optional[str] = None,
+    secret_name: Optional[str] = None,
+    config_map_reference: Optional[str] = None,
+    authentication_type: Optional[str] = None,
+    show_config: Optional[bool] = None,
+) -> dict:
+
+    return DataFlowEndpoints(cmd).update(
+        name=endpoint_name,
+        instance_name=instance_name,
+        resource_group_name=resource_group_name,
+        endpoint_type=DataflowEndpointType.OPENTELEMETRY.value,
+        latency=latency,
+        message_count=message_count,
+        tls_disabled=tls_disabled,
+        no_auth=no_auth,
+        port=port,
+        hostname=hostname,
+        sat_audience=audience,
+        x509_secret_name=secret_name,
+        config_map_reference=config_map_reference,
         authentication_type=authentication_type,
         show_config=show_config,
     )

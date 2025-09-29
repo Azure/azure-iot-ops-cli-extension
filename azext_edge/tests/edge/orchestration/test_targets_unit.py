@@ -3,17 +3,17 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
+from contextlib import nullcontext
 from random import randint
 from typing import Dict, List, Optional, Union
 from unittest.mock import Mock
 
 import pytest
 from azure.cli.core.azclierror import InvalidArgumentValueError
-from contextlib import nullcontext
 
 from azext_edge.edge.providers.orchestration.common import (
+    EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
-    EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
 )
@@ -417,15 +417,13 @@ def test_get_extension_versions():
     def _assert_version_map(extension_types: List[str], version_map: dict):
         for ext_type in extension_types:
             moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
-            if moniker == "containerStorage":
-                continue
             assert version_map[moniker]["version"], f"Missing version for {moniker}"
             assert version_map[moniker]["train"], f"Missing train for {moniker}"
         assert len(extension_types) == len(version_map)
 
     targets = InitTargets(generate_random_string(), generate_random_string())
     enablement_version_map = targets.get_extension_versions()
-    enablement_types = [EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_SSC]
+    enablement_types = [EXTENSION_TYPE_CM, EXTENSION_TYPE_SSC]
     _assert_version_map(enablement_types, enablement_version_map)
 
     create_version_map = targets.get_extension_versions(False)
