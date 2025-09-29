@@ -238,8 +238,8 @@ def _validate_secret_reference(secret_name: str, secret_type: str) -> None:
         )
         if not is_valid:
             logger.warning(
-                f"{secret_type} secret '{secret_name}' does not exist in IoT Operations namespace '{iot_ops_namespace}'. "
-                "The endpoint may fail to authenticate until this secret is created."
+                f"{secret_type} secret '{secret_name}' does not exist in IoT Operations namespace "
+                f"'{iot_ops_namespace}'. The endpoint may fail to authenticate until this secret is created."
             )
     except (ImportError, AttributeError) as e:
         # Kubernetes client not available or misconfigured (likely in test environment)
