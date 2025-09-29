@@ -13,6 +13,8 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     FileOperationError
 )
+from urllib3.exceptions import MaxRetryError
+from ..base import DEFAULT_NAMESPACE
 from ..check.base.resource import validate_runtime_resource_ref
 from ..check.common import ValidationResourceType
 from .user_strings import (
@@ -222,37 +224,45 @@ def process_additional_configuration(
         )
 
 
-def _validate_secret_reference(secret_name: str, namespace: str, secret_type: str) -> None:
+def _validate_secret_reference(secret_name: str, secret_type: str) -> None:
     """
-    Validate that a secret reference exists in the given namespace.
+    Validate that a secret reference exists in the IoT Operations namespace.
     This is optional validation that warns users but doesn't fail the operation.
     """
+    iot_ops_namespace = DEFAULT_NAMESPACE
     try:
         is_valid = validate_runtime_resource_ref(
             name=secret_name,
-            namespace=namespace,
+            namespace=iot_ops_namespace,
             ref_type=ValidationResourceType.secret
         )
         if not is_valid:
             logger.warning(
-                f"{secret_type} secret '{secret_name}' does not exist in namespace '{namespace}'. "
+                f"{secret_type} secret '{secret_name}' does not exist in IoT Operations namespace '{iot_ops_namespace}'. "
                 "The endpoint may fail to authenticate until this secret is created."
             )
-    except Exception:
-        # Validation failed (likely due to no kubernetes connection in test env)
-        # This is optional validation, so we continue silently
-        pass
+    except (ImportError, AttributeError) as e:
+        # Kubernetes client not available or misconfigured (likely in test environment)
+        logger.debug(f"Secret validation skipped due to missing Kubernetes client: {e}")
+    except ValueError as e:
+        # Invalid ref_type or validation parameter error
+        logger.debug(f"Secret validation parameter error for '{secret_name}': {e}")
+    except (OSError, ConnectionError, MaxRetryError) as e:
+        # Network connectivity, Kubernetes cluster connection issues, or HTTP retry errors
+        logger.debug(f"Secret validation failed due to connection error for '{secret_name}': {e}")
+    except PermissionError as e:
+        # Kubernetes RBAC permission denied
+        logger.debug(f"Secret validation failed due to permission error for '{secret_name}': {e}")
 
 
 def _setup_certificate_authentication(
     auth_props: Dict[str, str],
     certificate_reference: str,
-    namespace: Optional[str] = None
 ) -> None:
     """Setup certificate-based authentication."""
-    # Validate certificate secret if namespace is provided
-    if namespace and certificate_reference:
-        _validate_secret_reference(certificate_reference, namespace, "Certificate")
+    # Validate certificate secret in IoT Operations namespace
+    if certificate_reference:
+        _validate_secret_reference(certificate_reference, "Certificate")
 
     auth_props["method"] = ADRAuthModes.certificate.value
     auth_props["x509Credentials"] = {"certificateSecretName": certificate_reference}
@@ -264,7 +274,6 @@ def _setup_username_password_authentication(
     auth_props: Dict[str, str],
     username_reference: str,
     password_reference: str,
-    namespace: Optional[str] = None
 ) -> None:
     """Setup username/password-based authentication."""
     auth_props["method"] = ADRAuthModes.userpass.value
@@ -275,12 +284,11 @@ def _setup_username_password_authentication(
     if not all([user_creds["usernameSecretName"], user_creds["passwordSecretName"]]):
         raise RequiredArgumentMissingError(MISSING_USERPASS_REF_ERROR)
 
-    # Validate username and password secrets if namespace is provided
-    if namespace:
-        if username_reference:
-            _validate_secret_reference(username_reference, namespace, "Username")
-        if password_reference:
-            _validate_secret_reference(password_reference, namespace, "Password")
+    # Validate username and password secrets in IoT Operations namespace
+    if username_reference:
+        _validate_secret_reference(username_reference, "Username")
+    if password_reference:
+        _validate_secret_reference(password_reference, "Password")
 
     auth_props["usernamePasswordCredentials"] = user_creds
     if auth_props.pop("x509Credentials", None):
@@ -340,10 +348,10 @@ def process_authentication(
         raise MutuallyExclusiveArgumentError(AUTH_REF_MISMATCH_ERROR)
 
     if certificate_reference and auth_mode in [None, ADRAuthModes.certificate.value]:
-        _setup_certificate_authentication(auth_props, certificate_reference, namespace)
+        _setup_certificate_authentication(auth_props, certificate_reference)
     elif (username_reference or password_reference) and auth_mode in [None, ADRAuthModes.userpass.value]:
         _setup_username_password_authentication(
-            auth_props, username_reference, password_reference, namespace
+            auth_props, username_reference, password_reference
         )
     elif auth_mode == ADRAuthModes.anonymous.value and not any(
         [certificate_reference, username_reference, password_reference]
