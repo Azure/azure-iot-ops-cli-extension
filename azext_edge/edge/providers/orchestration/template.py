@@ -1293,7 +1293,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         },
         "variables": {
             "VERSIONS": {"iotOperations": "1.2.82"},
-            "TRAINS": {"iotOperations": "dev"},
+            "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",

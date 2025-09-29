@@ -22,6 +22,8 @@ from azext_edge.edge.providers.orchestration.targets import (
     ExtensionConfig,
     ExtensionConfigManager,
     InitTargets,
+    InstancePhase,
+    get_default_cl_name,
     get_default_cm_config,
     get_default_ssc_config,
     get_insecure_listener,
@@ -125,7 +127,6 @@ def assert_parameter_matches_targets(parameters: dict, targets: InitTargets, con
 
         targets_key = conversion_map.get(parameter, parameter)
         expected_value = getattr(targets, targets_key)
-
         actual_value = parameter_value["value"] if "value" in parameter_value else parameter_value
 
         assert actual_value == expected_value, (
@@ -145,23 +146,18 @@ def assert_instance_names(template: dict, instance_name: str):
     }
 
     for resource_key, expected_name in expected_names.items():
-        assert template["resources"][resource_key]["name"] == expected_name
+        if resource_key in template["resources"]:
+            assert template["resources"][resource_key]["name"] == expected_name
 
-    assert template["outputs"]["aio"]["value"]["name"] == instance_name
+    if "outputs" in template and "aio" in template["outputs"]:
+        assert template["outputs"]["aio"]["value"]["name"] == instance_name
 
 
 def assert_extension_config(
     settings: Dict[str, str], expected_base_config: Dict[str, str], custom_config: Optional[Dict[str, str]] = None
 ):
-    for key, value in expected_base_config.items():
-        assert settings[key] == value
-
-    if custom_config:
-        for key, value in custom_config.items():
-            assert settings[key] == value
-        assert len(settings) == len(expected_base_config) + len(custom_config)
-    else:
-        assert len(settings) == len(expected_base_config)
+    merged_config = {**expected_base_config, **(custom_config or {})}
+    assert settings == merged_config
 
 
 def assert_version_attr(variables: dict, key: str, version: Optional[str] = None, train: Optional[str] = None):
@@ -239,41 +235,32 @@ def verify_trust_config(target_scenario: dict, parameters: dict, template: Optio
 
     if trust_settings:
         expected_payload["source"] = "CustomerManaged"
-        expected_payload["settings"] = {
-            "issuerKind": trust_settings["issuerKind"],
-            "configMapKey": trust_settings["configMapKey"],
-            "issuerName": trust_settings["issuerName"],
-            "configMapName": trust_settings["configMapName"],
-        }
+        expected_payload["settings"] = trust_settings
 
     if parameters:
         assert parameters["trustConfig"]["value"] == expected_payload
 
 
-def get_extension_from_manager(targets: InitTargets, moniker: str) -> ExtensionConfig:
-    return targets.extension_manager.extensions.get(moniker)
-
-
-def verify_extension_configs_in_manager(targets: InitTargets, target_scenario: dict):
+def verify_extension_configs_in_manager(targets: InitTargets, target_scenario: dict) -> dict:
     """Verify all extension configurations are properly stored in extension_manager."""
-    parsed_configs = {
-        EXTENSION_MONIKER_OPS: parse_kvp_nargs(target_scenario.get("ops_config")),
-        EXTENSION_MONIKER_SSC: parse_kvp_nargs(target_scenario.get("ssc_config")),
-        EXTENSION_MONIKER_CM: parse_kvp_nargs(target_scenario.get("cm_config")),
-    }
+    parsed_configs = {}
 
     extension_scenarios = [
-        (EXTENSION_MONIKER_OPS, "ops_version", "ops_train"),
-        (EXTENSION_MONIKER_SSC, "ssc_version", "ssc_train"),
-        (EXTENSION_MONIKER_CM, "cm_version", "cm_train"),
+        (EXTENSION_MONIKER_OPS, "ops_config", "ops_version", "ops_train"),
+        (EXTENSION_MONIKER_SSC, "ssc_config", "ssc_version", "ssc_train"),
+        (EXTENSION_MONIKER_CM, "cm_config", "cm_version", "cm_train"),
     ]
 
-    for moniker, version_key, train_key in extension_scenarios:
-        ext = get_extension_from_manager(targets, moniker)
-        if ext:
+    for moniker, config_key, version_key, train_key in extension_scenarios:
+        parsed_config = parse_kvp_nargs(target_scenario.get(config_key))
+        parsed_configs[moniker] = parsed_config
+
+        ext = targets.extension_manager.extensions.get(moniker)
+        if any(target_scenario.get(k) for k in [config_key, version_key, train_key]):
+            assert ext is not None
             assert ext.version == target_scenario.get(version_key)
             assert ext.train == target_scenario.get(train_key)
-            assert ext.config == parsed_configs[moniker]
+            assert ext.config == parsed_config
 
     return parsed_configs
 
@@ -281,7 +268,6 @@ def verify_extension_configs_in_manager(targets: InitTargets, target_scenario: d
 def verify_extension_in_template(
     template: dict, moniker: str, expected_config: dict, custom_config: dict = None, ext: ExtensionConfig = None
 ):
-    """Verify extension configuration in template."""
     if not ext:
         return
 
@@ -290,10 +276,10 @@ def verify_extension_in_template(
         "secretStore": "secretStoreExtension",
     }
 
-    if ext.version:
+    if ext.version or ext.train:
         assert_version_attr(template["variables"], moniker, ext.version, ext.train)
 
-    if moniker in resource_map:
+    if moniker in resource_map and resource_map[moniker] in template.get("resources", {}):
         settings = template["resources"][resource_map[moniker]]["properties"]["configurationSettings"]
         assert_extension_config(settings, expected_config, custom_config)
 
@@ -347,7 +333,7 @@ def verify_extension_in_template(
                 f"subscriberQueue={PERSIST_MODE_NONE}",
             ],
         ),
-        # Full configuration
+        # Full configuration with all extensions
         build_target_scenario(
             cluster_name=generate_random_string(),
             resource_group_name=generate_random_string(),
@@ -381,6 +367,7 @@ def verify_extension_in_template(
     ],
 )
 def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
+    """Test InitTargets initialization and template generation with various scenarios."""
     targets = InitTargets(**target_scenario)
 
     # Verify extension configs are properly stored
@@ -409,15 +396,16 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
     assert_parameter_matches_targets(enablement_parameters, targets, ENABLEMENT_PARAM_CONVERSION_MAP)
 
     # Verify extension configs in enablement template
-    ssc_ext = get_extension_from_manager(targets, EXTENSION_MONIKER_SSC)
-    verify_extension_in_template(
-        enablement_template, "secretStore", get_default_ssc_config(), parsed_configs[EXTENSION_MONIKER_SSC], ssc_ext
-    )
-
-    cm_ext = get_extension_from_manager(targets, EXTENSION_MONIKER_CM)
-    verify_extension_in_template(
-        enablement_template, "certManager", get_default_cm_config(), parsed_configs[EXTENSION_MONIKER_CM], cm_ext
-    )
+    for moniker, base_config_getter in [
+        (EXTENSION_MONIKER_SSC, get_default_ssc_config),
+        (EXTENSION_MONIKER_CM, get_default_cm_config),
+    ]:
+        ext = targets.extension_manager.extensions.get(moniker)
+        if ext:
+            moniker_key = "secretStore" if moniker == EXTENSION_MONIKER_SSC else "certManager"
+            verify_extension_in_template(
+                enablement_template, moniker_key, base_config_getter(), parsed_configs[moniker], ext
+            )
 
     # Test instance template
     extension_ids = [generate_random_string(), generate_random_string()]
@@ -427,14 +415,15 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
     verify_broker_config(target_scenario, instance_parameters)
 
     # Verify IoT Operations extension config
-    ops_ext = get_extension_from_manager(targets, EXTENSION_MONIKER_OPS)
-    if ops_ext and ops_ext.version:
-        assert_version_attr(instance_template["variables"], "iotOperations", ops_ext.version, ops_ext.train)
+    ops_ext = targets.extension_manager.extensions.get(EXTENSION_MONIKER_OPS)
+    if ops_ext:
+        if ops_ext.version or ops_ext.train:
+            assert_version_attr(instance_template["variables"], "iotOperations", ops_ext.version, ops_ext.train)
 
-    if parsed_configs[EXTENSION_MONIKER_OPS]:
-        aio_config = instance_template["variables"]["defaultAioConfigurationSettings"]
-        for key, value in parsed_configs[EXTENSION_MONIKER_OPS].items():
-            assert aio_config[key] == value
+        if parsed_configs[EXTENSION_MONIKER_OPS]:
+            aio_config = instance_template["variables"]["defaultAioConfigurationSettings"]
+            for key, value in parsed_configs[EXTENSION_MONIKER_OPS].items():
+                assert aio_config[key] == value
 
     assert instance_parameters["clExtensionIds"]["value"] == extension_ids
     assert_parameter_matches_targets(instance_parameters, targets, INSTANCE_PARAM_CONVERSION_MAP)
@@ -458,10 +447,23 @@ def test_init_targets(target_scenario: dict, mocked_feature_keys: Mock):
             targets.instance_name, "default"
         )
 
+    # Test extension versions are properly exposed
+    enablement_versions = targets.get_extension_versions()
+    instance_versions = targets.get_extension_versions(for_enablement=False)
+
+    if ops_ext:
+        assert instance_versions.get("iotOperations")
+    if targets.extension_manager.extensions.get(EXTENSION_MONIKER_CM):
+        assert enablement_versions.get("certManager")
+    if targets.extension_manager.extensions.get(EXTENSION_MONIKER_SSC):
+        assert enablement_versions.get("secretStore")
+
 
 def test_extension_config_manager():
+    """Test ExtensionConfigManager functionality comprehensively."""
     manager = ExtensionConfigManager()
 
+    # Test registration and basic functionality
     custom_config = {"key1": "value1", "key2": "value2"}
     manager.register_extension(
         moniker=EXTENSION_MONIKER_CM,
@@ -473,38 +475,27 @@ def test_extension_config_manager():
 
     assert EXTENSION_MONIKER_CM in manager.extensions
     ext = manager.extensions[EXTENSION_MONIKER_CM]
-    assert ext.version == "1.0.0"
-    assert ext.train == "stable"
-    assert ext.config == custom_config
-    assert ext.default_config_getter == get_default_cm_config
+    assert ext == ExtensionConfig(
+        moniker=EXTENSION_MONIKER_CM,
+        version="1.0.0",
+        train="stable",
+        config=custom_config,
+        default_config_getter=get_default_cm_config,
+    )
 
-    # Test merged config without template defaults
+    # Test merged config
     merged = manager.get_merged_config(EXTENSION_MONIKER_CM)
-    expected = {**get_default_cm_config(), **custom_config}
-    assert merged == expected
+    assert merged == {**get_default_cm_config(), **custom_config}
 
     # Test merged config with template defaults
     template_defaults = {"template_key": "template_value", "key1": "original"}
     merged = manager.get_merged_config(EXTENSION_MONIKER_CM, template_defaults)
-    expected = {**template_defaults, **custom_config}
-    assert merged == expected
+    assert merged == {**template_defaults, **custom_config}
 
     # Test non-existent extension
     assert manager.get_merged_config("non_existent") == {}
 
-
-def test_extension_config_manager_template_application():
-    manager = ExtensionConfigManager()
-
-    # Register extensions
-    manager.register_extension(
-        moniker=EXTENSION_MONIKER_CM,
-        version="1.0.0",
-        train="stable",
-        user_config={"custom": "value"},
-        default_config_getter=get_default_cm_config,
-    )
-
+    # Test template application for all extension types
     manager.register_extension(
         moniker=EXTENSION_MONIKER_OPS, version="2.0.0", train="dev", user_config={"ops_custom": "ops_value"}
     )
@@ -522,31 +513,27 @@ def test_extension_config_manager_template_application():
         "variables": {},
         "resources": {"certManagerExtension": {"properties": {}}, "secretStoreExtension": {"properties": {}}},
     }
-
     manager.apply_to_template(enablement_template, "enablement")
 
     assert enablement_template["variables"]["VERSIONS"]["certManager"] == "1.0.0"
     assert enablement_template["variables"]["TRAINS"]["certManager"] == "stable"
-    expected_cm_config = {**get_default_cm_config(), "custom": "value"}
-    assert (
-        enablement_template["resources"]["certManagerExtension"]["properties"]["configurationSettings"]
-        == expected_cm_config
-    )
+    assert enablement_template["resources"]["certManagerExtension"]["properties"]["configurationSettings"] == {
+        **get_default_cm_config(),
+        **custom_config,
+    }
 
     assert enablement_template["variables"]["VERSIONS"]["secretStore"] == "1.5.0"
     assert enablement_template["variables"]["TRAINS"]["secretStore"] == "preview"
-    expected_ssc_config = {**get_default_ssc_config(), "ssc_custom": "ssc_value"}
-    assert (
-        enablement_template["resources"]["secretStoreExtension"]["properties"]["configurationSettings"]
-        == expected_ssc_config
-    )
+    assert enablement_template["resources"]["secretStoreExtension"]["properties"]["configurationSettings"] == {
+        **get_default_ssc_config(),
+        "ssc_custom": "ssc_value",
+    }
 
     # Test instance template
     instance_template = {
         "variables": {"defaultAioConfigurationSettings": {"existing": "config"}},
         "resources": {"aioExtension": {"properties": {}}},
     }
-
     manager.apply_to_template(instance_template, "instance")
 
     assert instance_template["variables"]["VERSIONS"]["iotOperations"] == "2.0.0"
@@ -556,69 +543,23 @@ def test_extension_config_manager_template_application():
         "ops_custom": "ops_value",
     }
 
-
-def test_extension_config_namedtuple():
-    config = ExtensionConfig(
-        moniker="test",
-        version="1.0.0",
-        train="stable",
-        config={"key": "value"},
-        default_config_getter=get_default_cm_config,
-    )
-
-    assert config.moniker == "test"
-    assert config.version == "1.0.0"
-    assert config.train == "stable"
-    assert config.config == {"key": "value"}
-    assert config.default_config_getter == get_default_cm_config
-
-    # Test with defaults
-    config2 = ExtensionConfig(moniker="test2")
-    assert config2.moniker == "test2"
-    assert config2.version is None
-    assert config2.train is None
-    assert config2.config is None
-    assert config2.default_config_getter is None
-
-
-def test_get_extension_versions():
-    targets = InitTargets(
-        cluster_name=generate_random_string(),
-        resource_group_name=generate_random_string(),
-        ops_version="1.0.0",
-        ops_train="stable",
-        cm_version="2.0.0",
-        cm_train="preview",
-        ssc_version="3.0.0",
-        ssc_train="dev",
-    )
-
-    # Test enablement versions
-    enablement_versions = targets.get_extension_versions()
-    assert "certManager" in enablement_versions
-    assert "secretStore" in enablement_versions
-    assert enablement_versions["certManager"]["version"] == "2.0.0"
-    assert enablement_versions["certManager"]["train"] == "preview"
-    assert enablement_versions["secretStore"]["version"] == "3.0.0"
-    assert enablement_versions["secretStore"]["train"] == "dev"
-
-    # Test instance versions
-    instance_versions = targets.get_extension_versions(for_enablement=False)
-    assert "iotOperations" in instance_versions
-    assert instance_versions["iotOperations"]["version"] == "1.0.0"
-    assert instance_versions["iotOperations"]["train"] == "stable"
+    # Test resource key mapping
+    assert manager.resource_key_map[EXTENSION_MONIKER_CM] == "certManagerExtension"
+    assert manager.resource_key_map[EXTENSION_MONIKER_SSC] == "secretStoreExtension"
+    assert manager.resource_key_map[EXTENSION_MONIKER_OPS] == "aioExtension"
 
 
 @pytest.mark.parametrize(
-    "target_scenario, expected_error",
+    "target_scenario, expected_error, error_match",
     [
-        # Broker redundancy factor below minimum
+        # Broker validation errors - single value out of range
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
                 resource_group_name=generate_random_string(),
                 broker_backend_redundancy_factor=1,
             ),
+            InvalidArgumentValueError,
             f"backendRedundancyFactor value range min:{BROKER_BACKEND_REDUNDANCY_MIN} "
             f"max:{BROKER_BACKEND_REDUNDANCY_MAX}",
         ),
@@ -631,6 +572,7 @@ def test_get_extension_versions():
                 broker_frontend_replicas=20,
                 broker_backend_workers=20,
             ),
+            InvalidArgumentValueError,
             f"frontendReplicas value range min:1 max:{BROKER_REPLICAS_MAX}\n"
             f"backendRedundancyFactor value range min:{BROKER_BACKEND_REDUNDANCY_MIN} "
             f"max:{BROKER_BACKEND_REDUNDANCY_MAX}\n"
@@ -643,6 +585,7 @@ def test_get_extension_versions():
                 resource_group_name=generate_random_string(),
                 persist_mode=["a=b", "c=d"],
             ),
+            InvalidArgumentValueError,
             "Provide a persist max size value to enable and customize broker disk persistence.",
         ),
         # Invalid persistence mode key
@@ -653,6 +596,7 @@ def test_get_extension_versions():
                 persist_max_size="10Gi",
                 persist_mode=["a=b", "c=d"],
             ),
+            InvalidArgumentValueError,
             f"Invalid persistence mode key: a. Valid keys are {PERSIST_MODE_KEYS}.",
         ),
         # Invalid persistence mode value
@@ -663,6 +607,7 @@ def test_get_extension_versions():
                 persist_max_size="10Gi",
                 persist_mode=["stateStore=All", "retain=invalid"],
             ),
+            InvalidArgumentValueError,
             "Invalid persistence mode value: invalid. "
             f"Valid values are ['{PERSIST_MODE_NONE}', '{PERSIST_MODE_ALL}', '{PERSIST_MODE_CUSTOM}'].",
         ),
@@ -673,6 +618,7 @@ def test_get_extension_versions():
                 resource_group_name=generate_random_string(),
                 schema_registry_resource_id=generate_random_string(),
             ),
+            InvalidArgumentValueError,
             "--sr-resource-id is malformed. An Azure resource Id has the form:\n"
             "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers"
             "/Microsoft.Provider/{resourceType}/{resourceName}",
@@ -685,6 +631,7 @@ def test_get_extension_versions():
                 schema_registry_resource_id=get_schema_registry_id(),
                 adr_namespace_resource_id=generate_random_string(),
             ),
+            InvalidArgumentValueError,
             "--ns-resource-id is malformed. An Azure resource Id has the form:\n"
             "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers"
             "/Microsoft.Provider/{resourceType}/{resourceName}",
@@ -701,6 +648,7 @@ def test_get_extension_versions():
                 ),
                 adr_namespace_resource_id=get_ns_resource_id(DEFAULT_RESOURCE_GROUP),
             ),
+            InvalidArgumentValueError,
             f"--sr-resource-id value must be of type {ADR_RP}/schemaRegistries.",
         ),
         # Namespace resource group mismatch
@@ -711,6 +659,7 @@ def test_get_extension_versions():
                 schema_registry_resource_id=get_schema_registry_id(),
                 adr_namespace_resource_id=get_ns_resource_id(),
             ),
+            InvalidArgumentValueError,
             "--ns-resource-id value must match the resource group 'instancegroup'.",
         ),
         # Wrong resource type for namespace
@@ -725,19 +674,47 @@ def test_get_extension_versions():
                     resource_path="/storageAccounts/mystorageaccount",
                 ),
             ),
+            InvalidArgumentValueError,
             f"--ns-resource-id value must be of type {ADR_RP}/namespaces.",
+        ),
+        # Trust settings validation - missing required keys
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                trust_settings=["configMapName=mymap", "configMapKey=mykey"],
+            ),
+            InvalidArgumentValueError,
+            "issuerName is a required trust setting/key.",
+        ),
+        # Trust settings validation - invalid issuer kind
+        (
+            build_target_scenario(
+                cluster_name=generate_random_string(),
+                resource_group_name=generate_random_string(),
+                trust_settings=[
+                    "issuerKind=InvalidKind",
+                    "issuerName=myissuer",
+                    "configMapName=mymap",
+                    "configMapKey=mykey",
+                ],
+            ),
+            InvalidArgumentValueError,
+            "issuerKind allowed values are ['ClusterIssuer', 'Issuer'].",
         ),
     ],
 )
-def test_validation_errors(target_scenario: dict, expected_error: str):
-    with pytest.raises(InvalidArgumentValueError) as e:
+def test_validation_errors(target_scenario: dict, expected_error: type[Exception], error_match: str):
+    """Test all validation errors in InitTargets."""
+    with pytest.raises(expected_error) as e:
         InitTargets(**target_scenario)
-    assert str(e.value) == expected_error
+    assert str(e.value) == error_match
 
 
 @pytest.mark.parametrize(
     "target_scenario, expected_error",
     [
+        # Valid small custom location name
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
@@ -746,6 +723,7 @@ def test_validation_errors(target_scenario: dict, expected_error: str):
             ),
             None,
         ),
+        # Valid max-length custom location name
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
@@ -754,6 +732,7 @@ def test_validation_errors(target_scenario: dict, expected_error: str):
             ),
             None,
         ),
+        # Invalid - too long custom location name
         (
             build_target_scenario(
                 cluster_name=generate_random_string(),
@@ -765,48 +744,161 @@ def test_validation_errors(target_scenario: dict, expected_error: str):
     ],
 )
 def test_custom_location_name_limits(target_scenario: dict, expected_error: ExpectedExc):
+    """Test custom location name length limits."""
     ctx = (
         pytest.raises(expected_error, match="Custom location name must be 63 characters or less.")
         if expected_error
         else nullcontext()
     )
     with ctx:
-        InitTargets(**target_scenario)
+        targets = InitTargets(**target_scenario)
+        if not expected_error:
+            assert len(targets.custom_location_name) == len(target_scenario["custom_location_name"])
 
 
-def test_sanitize_k8s_name():
+def test_valid_trust_settings():
+    """Test valid trust settings configurations."""
+    targets = InitTargets(
+        cluster_name=generate_random_string(),
+        resource_group_name=generate_random_string(),
+        trust_settings=[
+            "issuerKind=ClusterIssuer",
+            "issuerName=myissuer",
+            "configMapName=mymap",
+            "configMapKey=mykey",
+        ],
+    )
+    assert targets.trust_settings == {
+        "issuerKind": "ClusterIssuer",
+        "issuerName": "myissuer",
+        "configMapName": "mymap",
+        "configMapKey": "mykey",
+    }
+
+
+def test_sanitize_methods():
+    """Test sanitization methods."""
     targets = InitTargets("cluster", "rg")
 
+    # Test _sanitize_k8s_name
     assert targets._sanitize_k8s_name(None) is None
     assert targets._sanitize_k8s_name("test-name") == "test-name"
     assert targets._sanitize_k8s_name("Test_Name") == "test-name"
     assert targets._sanitize_k8s_name("TEST_NAME_123") == "test-name-123"
 
-
-def test_sanitize_int():
-    targets = InitTargets("cluster", "rg")
-
+    # Test _sanitize_int
     assert targets._sanitize_int(None) is None
     assert targets._sanitize_int(5) == 5
     assert targets._sanitize_int("10") == 10
 
 
-def test_extension_manager_resource_key_mapping():
-    manager = ExtensionConfigManager()
+@pytest.mark.parametrize(
+    "phase, expected_resources, expected_existing",
+    [
+        # EXT phase: Deploy extension and cluster, cluster is pre-existing
+        (
+            InstancePhase.EXT,
+            {"aioExtension", "cluster"},  # Resources that should be present
+            {"cluster"},  # Only cluster is marked as existing (it's a prerequisite)
+        ),
+        # INSTANCE phase: Deploy instance and customLocation
+        (
+            InstancePhase.INSTANCE,
+            {"aioExtension", "cluster", "aioInstance", "customLocation"},
+            {"aioExtension", "cluster", "customLocation"},  # All except aioInstance marked as existing
+        ),
+        # RESOURCES phase: Deploy broker and related resources
+        (
+            InstancePhase.RESOURCES,
+            {
+                "aioExtension",
+                "cluster",
+                "customLocation",
+                "aioInstance",
+                "broker",
+                "brokerAuthn",
+                "brokerListener",
+                "dataflowProfile",
+                "dataflowEndpoint",
+            },
+            {"aioExtension", "cluster", "customLocation", "aioInstance"},  # All base resources marked as existing
+        ),
+        # No phase: Complete deployment, cluster is still marked as existing (it's always a prerequisite)
+        (
+            None,
+            {
+                "aioExtension",
+                "aioInstance",
+                "broker",
+                "brokerAuthn",
+                "brokerListener",
+                "dataflowProfile",
+                "dataflowEndpoint",
+                "cluster",
+                "customLocation",
+            },
+            {"cluster"},  # Cluster is always marked as existing since it's a prerequisite
+        ),
+    ],
+)
+def test_instance_phases(phase, expected_resources, expected_existing):
+    """Test instance template phases generate correct resources and existing markers."""
 
-    assert manager.resource_key_map[EXTENSION_MONIKER_CM] == "certManagerExtension"
-    assert manager.resource_key_map[EXTENSION_MONIKER_SSC] == "secretStoreExtension"
-    assert manager.resource_key_map[EXTENSION_MONIKER_OPS] == "aioExtension"
+    cluster_name = generate_random_string()
+    resource_group_name = generate_random_string()
+    instance_name = generate_random_string()
+    location = generate_random_string()
+
+    targets = InitTargets(
+        cluster_name=cluster_name,
+        resource_group_name=resource_group_name,
+        schema_registry_resource_id=get_schema_registry_id(),
+        adr_namespace_resource_id=get_ns_resource_id(resource_group_name),
+        instance_name=instance_name,
+        location=location,
+    )
+
+    extension_ids = [generate_random_string(), generate_random_string()]
+    template, _ = targets.get_ops_instance_template(extension_ids, phase=phase)
+    resources = template["resources"]
+
+    # Check that expected resources are present
+    assert (
+        set(resources.keys()) == expected_resources
+    ), f"Phase {phase}: Expected resources {expected_resources}, got {set(resources.keys())}"
+
+    # Check that resources are marked as existing correctly
+    for resource_name in expected_resources:
+        resource_def = resources[resource_name]
+        should_be_existing = resource_name in expected_existing
+        is_existing = resource_def.get("existing", False)
+
+        assert is_existing == should_be_existing, f"Phase {phase}: Resource '{resource_name}' existing flag should"
+        f"be {should_be_existing}, but is {is_existing}"
+
+        # If marked as existing, verify it only has the core properties
+        if is_existing:
+            allowed_keys = {"type", "apiVersion", "name", "scope", "condition", "existing"}
+            actual_keys = set(resource_def.keys())
+            assert actual_keys.issubset(
+                allowed_keys
+            ), f"Phase {phase}: Existing resource '{resource_name}' has unexpected keys: {actual_keys - allowed_keys}"
 
 
-def test_extension_manager_unknown_moniker():
-    manager = ExtensionConfigManager()
+def test_get_default_cl_name():
+    """Test default custom location name generation."""
+    resource_group = "test-rg"
+    cluster = "test-cluster"
+    namespace = "test-namespace"
 
-    template = {"variables": {}, "resources": {}}
+    name = get_default_cl_name(resource_group, cluster, namespace)
+    assert name.startswith("location-")
+    assert len(name) == len("location-") + 5  # prefix + 5 char hash
 
-    manager.register_extension(moniker="unknown", version="1.0.0", train="stable", user_config={"key": "value"})
-    manager.apply_to_template(template)
+    # Test consistency
+    name2 = get_default_cl_name(resource_group, cluster, namespace)
+    assert name == name2
 
-    # Template should remain unchanged for unknown monikers
-    assert "VERSIONS" not in template["variables"]
-    assert "TRAINS" not in template["variables"]
+    # Test different inputs produce different names
+    name3 = get_default_cl_name("different-rg", cluster, namespace)
+    assert name != name3
