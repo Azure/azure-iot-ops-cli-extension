@@ -13,10 +13,6 @@ from azure.cli.core.azclierror import (
     InvalidArgumentValueError,
     FileOperationError
 )
-from urllib3.exceptions import MaxRetryError
-from ..base import DEFAULT_NAMESPACE
-from ..check.base.resource import validate_runtime_resource_ref
-from ..check.common import ValidationResourceType
 from .user_strings import (
     AUTH_REF_MISMATCH_ERROR,
     GENERAL_AUTH_REF_MISMATCH_ERROR,
@@ -224,46 +220,11 @@ def process_additional_configuration(
         )
 
 
-def _validate_secret_reference(secret_name: str, secret_type: str) -> None:
-    """
-    Validate that a secret reference exists in the IoT Operations namespace.
-    This is optional validation that warns users but doesn't fail the operation.
-    """
-    iot_ops_namespace = DEFAULT_NAMESPACE
-    try:
-        is_valid = validate_runtime_resource_ref(
-            name=secret_name,
-            namespace=iot_ops_namespace,
-            ref_type=ValidationResourceType.secret
-        )
-        if not is_valid:
-            logger.warning(
-                f"{secret_type} secret '{secret_name}' does not exist in IoT Operations namespace "
-                f"'{iot_ops_namespace}'. The endpoint may fail to authenticate until this secret is created."
-            )
-    except (ImportError, AttributeError) as e:
-        # Kubernetes client not available or misconfigured (likely in test environment)
-        logger.debug(f"Secret validation skipped due to missing Kubernetes client: {e}")
-    except ValueError as e:
-        # Invalid ref_type or validation parameter error
-        logger.debug(f"Secret validation parameter error for '{secret_name}': {e}")
-    except (OSError, ConnectionError, MaxRetryError) as e:
-        # Network connectivity, Kubernetes cluster connection issues, or HTTP retry errors
-        logger.debug(f"Secret validation failed due to connection error for '{secret_name}': {e}")
-    except PermissionError as e:
-        # Kubernetes RBAC permission denied
-        logger.debug(f"Secret validation failed due to permission error for '{secret_name}': {e}")
-
-
 def _setup_certificate_authentication(
     auth_props: Dict[str, str],
     certificate_reference: str,
 ) -> None:
     """Setup certificate-based authentication."""
-    # Validate certificate secret in IoT Operations namespace
-    if certificate_reference:
-        _validate_secret_reference(certificate_reference, "Certificate")
-
     auth_props["method"] = ADRAuthModes.certificate.value
     auth_props["x509Credentials"] = {"certificateSecretName": certificate_reference}
     if auth_props.pop("usernamePasswordCredentials", None):
@@ -283,12 +244,6 @@ def _setup_username_password_authentication(
 
     if not all([user_creds["usernameSecretName"], user_creds["passwordSecretName"]]):
         raise RequiredArgumentMissingError(MISSING_USERPASS_REF_ERROR)
-
-    # Validate username and password secrets in IoT Operations namespace
-    if username_reference:
-        _validate_secret_reference(username_reference, "Username")
-    if password_reference:
-        _validate_secret_reference(password_reference, "Password")
 
     auth_props["usernamePasswordCredentials"] = user_creds
     if auth_props.pop("x509Credentials", None):
