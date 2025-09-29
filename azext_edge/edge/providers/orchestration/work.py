@@ -35,8 +35,9 @@ from ...util.az_client import (
 from ...util.common import insert_newlines
 from .common import (
     CONTRIBUTOR_ROLE_ID,
+    EXTENSION_MONIKER_CM,
+    EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
-    EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     OPS_EXTENSION_DEPS,
     PROVISIONING_STATE_SUCCESS,
@@ -139,6 +140,8 @@ class WorkManager:
         version_map = self._targets.get_extension_versions()
         display_desc = "[dim]"
         for moniker in version_map:
+            if self._targets.user_trust and moniker == EXTENSION_MONIKER_CM:
+                continue
             display_desc += f"• {moniker}: {version_map[moniker]['version']} {version_map[moniker]['train']}\n"
         return display_desc[:-1]
 
@@ -216,7 +219,7 @@ class WorkManager:
         for ext_type in dependencies:
             ext_attr = dependencies.get(ext_type, {})
             if not ext_attr:
-                if ext_type != EXTENSION_TYPE_PLATFORM:  # Missing platform is not a failure.
+                if ext_type != EXTENSION_TYPE_CM:  # Missing certmanager is not a failure.
                     missing_exts.append(ext_type)
                 continue
 
@@ -238,9 +241,9 @@ class WorkManager:
                 + "\n\nInstance deployment will not continue. Please run 'az iot ops init'."
             )
 
-        # validate trust config in platform extension matches trust settings in create
-        platform_extension_config = dependencies.get(EXTENSION_TYPE_PLATFORM, {})
-        is_user_trust = not platform_extension_config
+        # validate trust config in certmanager extension matches trust settings in create
+        cm_extension_config = dependencies.get(EXTENSION_TYPE_CM, {})
+        is_user_trust = not cm_extension_config
         if is_user_trust and not self._targets.trust_settings:
             raise ValidationError(
                 "Cluster was enabled with user-managed trust configuration, "

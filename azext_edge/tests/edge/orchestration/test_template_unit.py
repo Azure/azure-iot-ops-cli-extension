@@ -9,8 +9,8 @@ from unittest import TestCase
 import pytest
 
 from azext_edge.edge.providers.orchestration.common import (
+    EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
-    EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
 )
@@ -26,7 +26,7 @@ from ...generators import generate_random_string
 EXPECTED_EXTENSION_RESOURCE_KEYS = frozenset(
     [
         "cluster",
-        "aioPlatformExtension",
+        "certManagerExtension",
         "secretStoreExtension",
     ]
 )
@@ -149,11 +149,11 @@ def test_template_blueprint(content: dict):
 
 EXTENSION_CONFIGS = {
     "enablement": [
-        (EXTENSION_TYPE_PLATFORM, "0.7.29", "preview"),
-        (EXTENSION_TYPE_SSC, "0.10.0", "preview"),
+        (EXTENSION_TYPE_CM, "0.6.2", "stable"),
+        (EXTENSION_TYPE_SSC, "1.0.2", "stable"),
     ],
     "instance": [
-        (EXTENSION_TYPE_OPS, "1.2.71", "integration"),
+        (EXTENSION_TYPE_OPS, "1.2.80-main.20250921.3", "dev"),
     ],
 }
 

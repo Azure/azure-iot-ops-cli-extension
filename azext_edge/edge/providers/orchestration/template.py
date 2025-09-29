@@ -7,6 +7,7 @@
 from copy import deepcopy
 from typing import Dict, List, NamedTuple, Optional, Union
 
+from ...util.az_client import IoTOpsMgmtApiVersion
 from .common import (
     AIO_INSECURE_LISTENER_NAME,
     AIO_INSECURE_LISTENER_SERVICE_NAME,
@@ -54,7 +55,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "2096840755032832432"}
+            "_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "12111583817498015341"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -600,8 +601,8 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"platform": "0.7.29", "secretStore": "0.10.0"},
-            "TRAINS": {"platform": "preview", "secretStore": "preview"},
+            "VERSIONS": {"certManager": "0.6.2", "secretStore": "1.0.2"},
+            "TRAINS": {"certManager": "stable", "secretStore": "stable"},
         },
         "resources": {
             "cluster": {
@@ -610,17 +611,17 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                 "apiVersion": "2021-03-01",
                 "name": "[parameters('clusterName')]",
             },
-            "aioPlatformExtension": {
+            "certManagerExtension": {
                 "condition": "[equals(parameters('trustConfig').source, 'SelfSigned')]",
                 "type": "Microsoft.KubernetesConfiguration/extensions",
                 "apiVersion": "2023-05-01",
                 "scope": "[format('Microsoft.Kubernetes/connectedClusters/{0}', parameters('clusterName'))]",
-                "name": "azure-iot-operations-platform",
+                "name": "cert-manager",
                 "identity": {"type": "SystemAssigned"},
                 "properties": {
-                    "extensionType": "microsoft.iotoperations.platform",
-                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'certManager'), 'train'), variables('TRAINS').platform)]",
-                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'certManager'), 'version'), variables('VERSIONS').platform)]",
+                    "extensionType": "microsoft.certmanagement",
+                    "releaseTrain": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'certManager'), 'train'), variables('TRAINS').certManager)]",
+                    "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'certManager'), 'version'), variables('VERSIONS').certManager)]",
                     "autoUpgradeMinorVersion": False,
                     "scope": {"cluster": {"releaseNamespace": "cert-manager"}},
                     "configurationSettings": {"AgentOperationTimeoutInMinutes": "20"},
@@ -642,7 +643,7 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "validatingAdmissionPolicies.applyPolicies": "false",
                     },
                 },
-                "dependsOn": ["aioPlatformExtension"],
+                "dependsOn": ["certManagerExtension"],
             },
         },
         "outputs": {
@@ -657,10 +658,10 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                 "type": "object",
                 "value": {
                     "certManager": {
-                        "name": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), 'azure-iot-operations-platform', null())]",
-                        "id": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'azure-iot-operations-platform'), null())]",
-                        "version": "[tryGet(if(equals(parameters('trustConfig').source, 'SelfSigned'), reference('aioPlatformExtension', '2023-05-01', 'full'), null()), 'properties', 'version')]",
-                        "releaseTrain": "[tryGet(if(equals(parameters('trustConfig').source, 'SelfSigned'), reference('aioPlatformExtension', '2023-05-01', 'full'), null()), 'properties', 'releaseTrain')]",
+                        "name": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), 'cert-manager', null())]",
+                        "id": "[if(equals(parameters('trustConfig').source, 'SelfSigned'), extensionResourceId(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName')), 'Microsoft.KubernetesConfiguration/extensions', 'cert-manager'), null())]",
+                        "version": "[tryGet(if(equals(parameters('trustConfig').source, 'SelfSigned'), reference('certManagerExtension', '2023-05-01', 'full'), null()), 'properties', 'version')]",
+                        "releaseTrain": "[tryGet(if(equals(parameters('trustConfig').source, 'SelfSigned'), reference('certManagerExtension', '2023-05-01', 'full'), null()), 'properties', 'releaseTrain')]",
                     },
                     "secretStore": {
                         "name": "azure-secret-store",
@@ -675,13 +676,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="f2ae3d4092574da28801818bc125001960c2667d",
+    commit_id="4dd374090a96122bc021452f03f11fd13629735a",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "1188375116436331530"}
+            "_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "10302267468035818626"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -1291,8 +1292,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.2.71"},
-            "TRAINS": {"iotOperations": "integration"},
+            "VERSIONS": {"iotOperations": "1.2.80-main.20250921.3"},
+            "TRAINS": {"iotOperations": "dev"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
@@ -1517,6 +1518,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                     "name": "[coalesce(parameters('customLocationName'), format('location-{0}', variables('HASH')))]",
                 },
             },
+            "location": {"type": "string", "value": "[parameters('clusterLocation')]"},
         },
     },
 )
@@ -1525,7 +1527,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
 def get_insecure_listener(instance_name: str, broker_name: str) -> dict:
     return {
         "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-        "apiVersion": "2025-07-01-preview",
+        "apiVersion": IoTOpsMgmtApiVersion.V20250701_preview.value,
         "name": f"{instance_name}/{broker_name}/{AIO_INSECURE_LISTENER_NAME}",
         "extendedLocation": {
             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",

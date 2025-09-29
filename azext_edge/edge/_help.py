@@ -22,6 +22,7 @@ from .common import GET_VERSIONS_URL
 from .providers.orchestration.common import (
     CLONE_INSTANCE_VERS_MAX,
     CLONE_INSTANCE_VERS_MIN,
+    MIN_INSTANCE_VERSION_FOR_MIGRATE,
 )
 from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
@@ -29,7 +30,6 @@ from .providers.support_bundle import (
     COMPAT_DEVICEREGISTRY_APIS,
     COMPAT_MQTT_BROKER_APIS,
 )
-
 
 # cause help barfs on anything not indented correctly
 DEVICEREGISTRY_API_STR_FOR_HELP = COMPAT_DEVICEREGISTRY_APIS.as_str().strip().replace('\n', '\n            - ')
@@ -1377,6 +1377,45 @@ def load_iotops_help():
     """
 
     helps[
+        "iot ops dataflow endpoint create otel"
+    ] = """
+        type: command
+        short-summary: Create or replace an OpenTelemetry dataflow endpoint.
+        long-summary: For more information on OpenTelemetry dataflow endpoint, see https://aka.ms/opentelemetry-endpoint.
+
+        examples:
+        - name: Create or replace a dataflow endpoint resource with minimum input.
+          text: >
+            az iot ops dataflow endpoint create otel
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --name myendpoint
+            --hostname https://otel-collector.monitoring.svc.cluster.local
+            --port 4317
+            --no-auth
+        - name: Show config for creating a dataflow endpoint resource.
+          text: >
+            az iot ops dataflow endpoint create otel
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname https://otel-collector.monitoring.svc.cluster.local
+            --port 4317
+            --no-auth
+            --show-config
+        - name: Create or replace a dataflow endpoint resource using X509 authentication method.
+          text: >
+            az iot ops dataflow endpoint create otel
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --hostname https://otel-collector.monitoring.svc.cluster.local
+            --port 4317
+            --secret-name mysecret
+    """
+
+    helps[
         "iot ops dataflow endpoint update"
     ] = """
         type: group
@@ -1622,6 +1661,31 @@ def load_iotops_help():
             --instance mycluster-ops-instance
             --resource-group myresourcegroup
             --pvc-ref newpvc
+    """
+
+    helps[
+        "iot ops dataflow endpoint update otel"
+    ] = """
+        type: command
+        short-summary: Update the properties of an existing OpenTelemetry dataflow endpoint.
+        long-summary: For more information on OpenTelemetry dataflow endpoint, see https://aka.ms/opentelemetry-endpoint.
+
+        examples:
+        - name: Update the config map reference for trusted CA certificate of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update otel
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --config-map-ref mynewconfigmap
+        - name: Update to use Kubernetes Service Account Token authentication method of the dataflow endpoint resource called 'myendpoint'.
+          text: >
+            az iot ops dataflow endpoint update otel
+            --name myendpoint
+            --instance mycluster-ops-instance
+            --resource-group myresourcegroup
+            --auth-type ServiceAccountToken
+            --audience myaudience
     """
 
     helps[
@@ -2654,10 +2718,12 @@ def load_iotops_help():
 
     helps[
         "iot ops migrate-assets"
-    ] = """
+    ] = f"""
         type: command
         short-summary: Migrate root assets to a namespace.
         long-summary: |
+          Requires an instance version >= {MIN_INSTANCE_VERSION_FOR_MIGRATE}.
+
           The target set of root assets will be converted to an equivalent namespace representation
           replacing the original root assets.
 

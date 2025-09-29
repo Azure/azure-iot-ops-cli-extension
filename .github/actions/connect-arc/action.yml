@@ -78,8 +78,8 @@ runs:
         resource-group: "${{ inputs.resource-group }}"
       run: |
         retry_count=0
-        max_retries=5
-        sleep=5
+        max_retries=20
+        sleep=15
 
         status=$(az connectedk8s show -n ${{ env.cluster-name }} -g ${{ env.resource-group }} --query "connectivityStatus" -o tsv)
 

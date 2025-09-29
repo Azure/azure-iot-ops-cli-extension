@@ -13,6 +13,7 @@ from knack.log import get_logger
 
 from azext_edge.edge.common import DEFAULT_BROKER, DEFAULT_BROKER_LISTENER
 from azext_edge.edge.util.common import assemble_nargs_to_dict
+from azext_edge.edge.providers.orchestration.common import EXTENSION_TYPE_CM, EXTENSION_TYPE_SSC
 
 from ....generators import generate_random_string
 from ....helpers import process_additional_args, run, strip_quotes
@@ -178,9 +179,11 @@ def assert_aio_init(
 
     current_extensions = {ext["properties"]["extensionType"] for ext in extensions}
 
-    expected_ext_types = ["microsoft.azure.secretstore"]
-    if not user_trust:
-        expected_ext_types.append("microsoft.iotoperations.platform")
+    expected_ext_types = [EXTENSION_TYPE_SSC]
+    if user_trust:
+        assert EXTENSION_TYPE_CM not in current_extensions
+    else:
+        expected_ext_types.append(EXTENSION_TYPE_CM)
 
     missing_extensions = []
     for ext in expected_ext_types:
@@ -253,7 +256,7 @@ def assert_aio_instance(
     tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
     assert expected_custom_location in tree
     if not trust_settings:
-        assert "azure-iot-operations-platform" in tree
+        assert "cert-manager" in tree
 
 
 def assert_broker_args(

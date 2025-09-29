@@ -24,7 +24,11 @@ from ...util.common import should_continue_prompt
 from ...util.id_tools import parse_resource_id
 from ...util.queryable import Queryable
 from ..adr.assets import ASSET_RESOURCE_TYPE
-from .common import ADR_RP_APP_ID, KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID
+from .common import (
+    ADR_RP_APP_ID,
+    KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID,
+    MIN_INSTANCE_VERSION_FOR_MIGRATE,
+)
 from .permissions import (
     ROLE_DEF_FORMAT_STR,
     PermissionManager,
@@ -44,6 +48,8 @@ logger = get_logger(__name__)
 class AssetMigrationManager(Queryable):
     def __init__(self, cmd, instance_name: str, resource_group_name: str):
         super().__init__(cmd=cmd)
+        from ...util.machinery import scoped_semver_import
+
         self.deviceregistry_mgmt_client = get_registry_mgmt_client(subscription_id=self.default_subscription_id)
         self.ops: "NamespacesOperations" = self.deviceregistry_mgmt_client.namespaces
         self.instances = Instances(self.cmd)
@@ -51,6 +57,7 @@ class AssetMigrationManager(Queryable):
         self.instance_name = instance_name
         self.resource_group_name = resource_group_name
         self.instance_record = self.instances.show(name=instance_name, resource_group_name=resource_group_name)
+        self.semver = scoped_semver_import()
 
     def _handle_adr_permission(self, status: Status, adr_sp_oid: Optional[str] = None):
         status.update("Checking Device Registry permission...")
@@ -94,6 +101,12 @@ class AssetMigrationManager(Queryable):
         **kwargs,
     ):
         with console.status("Querying resources...") as status:
+            instance_version = self.instance_record["properties"].get("version", "0.0.0")
+            if self.semver.parse(instance_version) < self.semver.parse(MIN_INSTANCE_VERSION_FOR_MIGRATE):
+                raise ValidationError(
+                    f"The instance must be at least version {MIN_INSTANCE_VERSION_FOR_MIGRATE} to migrate assets."
+                )
+
             instance_ns_id = self.instance_record["properties"].get("adrNamespaceRef", {}).get("resourceId")
             if not instance_ns_id:
                 raise ValidationError("The instance does not have an associated ADR namespace.")
