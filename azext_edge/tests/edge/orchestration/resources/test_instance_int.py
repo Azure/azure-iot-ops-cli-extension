@@ -51,7 +51,8 @@ def test_aio_instance(instance_test_setup, tracked_resources):
         logger.error(f"Possible bad instance in subscription `{sub}`.")
 
     tree = run(f"az iot ops show -n {instance_name} -g {resource_group} --tree")
-    assert "azure-iot-operations-platform" in tree
+    # an extension that should always be in there
+    assert "azure-iot-operations" in tree
     # instance name should be one of the resources
     assert instance_name in tree
 
