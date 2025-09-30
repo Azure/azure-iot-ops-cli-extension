@@ -407,12 +407,13 @@ class ExtensionUpgradeState:
                 "See https://aka.ms/aio-versions for version details."
             )
 
-        if (current_is_preview or desired_is_preview) and parsed_current != parsed_desired:
-            raise ValidationError(
-                f"Installed {self.moniker} extension is on train {self.current_version[1]}.\n"
-                f"Desired version would be on train {self.desired_version[1]}.\n"
-                f"Upgrades to or from non-stable release trains are not supported."
-            )
+        if current_is_preview or desired_is_preview:
+            if parsed_current != parsed_desired or self.current_version[1].lower() != self.desired_version[1].lower():
+                raise ValidationError(
+                    f"Installed {self.moniker} extension is on train {self.current_version[1]}.\n"
+                    f"Desired version would be on train {self.desired_version[1]}.\n"
+                    f"Upgrades to or from non-stable release trains are not supported."
+                )
 
 
 def get_default_table() -> Table:

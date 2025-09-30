@@ -467,7 +467,7 @@ def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT)
             .set_user_kwargs(ops_version="1.2.36", force=True),
             {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.36")},
         ),
-        # ========== Preview train validation (only when version changes) ==========
+        # ========== Preview train validation (blocks all changes except identical version+train) ==========
         (
             UpgradeScenario("Preview train blocked: From preview to stable with version change")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", ext_train="preview")
@@ -483,22 +483,31 @@ def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT)
             {},
         ),
         (
-            UpgradeScenario("Preview train allowed: Same version different train (train-only update)")
+            UpgradeScenario("Preview train blocked: Same version different train")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train="stable")
+            .set_user_kwargs(ops_version="1.1.0", ops_train="preview")
+            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
+            {},
+        ),
+        (
+            UpgradeScenario("Preview train blocked: Preview to different preview with same version")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train="preview")
+            .set_user_kwargs(ops_version="1.1.0", ops_train="canary")
+            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
+            {},
+        ),
+        (
+            UpgradeScenario("Preview train blocked: Preview to preview with version change")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0", ext_train="preview")
+            .set_user_kwargs(ops_version="1.1.0", ops_train="preview")
+            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
+            {},
+        ),
+        (
+            UpgradeScenario("Preview train allowed: Identical version and train")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train="preview")
             .set_user_kwargs(ops_version="1.1.0", ops_train="preview"),
             {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.1.0", train="preview")},
-        ),
-        (
-            UpgradeScenario("Preview train allowed: Preview to preview same version")
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train="preview")
-            .set_user_kwargs(ops_version="1.1.0", ops_train="canary"),
-            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.1.0", train="canary")},
-        ),
-        (
-            UpgradeScenario("Preview train allowed: Non-ops extension with preview train")
-            .set_extension(ext_type=EXTENSION_TYPE_CM, ext_vers="1.0.0", ext_train="preview")
-            .set_user_kwargs(cm_version="1.1.0"),
-            {EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version="1.1.0")},
         ),
         (
             UpgradeScenario("Preview train allowed with force")
