@@ -265,7 +265,6 @@ def process_authentication(
     certificate_reference: Optional[str] = None,
     password_reference: Optional[str] = None,
     username_reference: Optional[str] = None,
-    namespace: Optional[str] = None
 ) -> Dict[str, str]:
     """
     Create an authentication object to be used by namespace devices and AEPs.
