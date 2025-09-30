@@ -1121,10 +1121,9 @@ def test_add_inbound_custom_device_endpoint(
 
 
 @pytest.mark.parametrize("response_status", [200, 400])
-@pytest.mark.parametrize("cert_ref, username_ref, password_ref", [
-    (None, None, None),              # Anonymous auth
-    (None, "secretRef:username", "secretRef:password"),  # Username/Password auth
-    ("secretRef:certificate", None, None),  # Certificate auth
+@pytest.mark.parametrize("username_ref, password_ref", [
+    (None, None),              # Anonymous auth
+    ("secretRef:username", "secretRef:password"),  # Username/Password auth
 ])
 @pytest.mark.parametrize("endpoint_version", [None, "1.0"])
 @pytest.mark.parametrize("endpoints_present, replace", [
@@ -1135,7 +1134,6 @@ def test_add_inbound_custom_device_endpoint(
 def test_add_inbound_media_device_endpoint(
     mocked_cmd,
     mocked_responses: responses,
-    cert_ref: Optional[str],
     username_ref: Optional[str],
     password_ref: Optional[str],
     response_status: int,
@@ -1177,14 +1175,7 @@ def test_add_inbound_media_device_endpoint(
     }
 
     # Set up authentication structure based on auth type
-    if cert_ref:
-        expected_endpoint["authentication"] = {
-            "method": ADRAuthModes.certificate.value,
-            "x509Credentials": {
-                "certificateSecretName": cert_ref
-            }
-        }
-    elif username_ref and password_ref:
+    if username_ref and password_ref:
         expected_endpoint["authentication"] = {
             "method": ADRAuthModes.userpass.value,
             "usernamePasswordCredentials": {
@@ -1252,7 +1243,6 @@ def test_add_inbound_media_device_endpoint(
                 instance_resource_group=instance_resource_group,
                 endpoint_name=endpoint_name,
                 endpoint_address=endpoint_address,
-                certificate_reference=cert_ref,
                 username_reference=username_ref,
                 password_reference=password_ref,
                 endpoint_version=endpoint_version,
@@ -1269,7 +1259,6 @@ def test_add_inbound_media_device_endpoint(
         instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_address=endpoint_address,
-        certificate_reference=cert_ref,
         username_reference=username_ref,
         password_reference=password_ref,
         endpoint_version=endpoint_version,
@@ -1815,9 +1804,10 @@ def test_add_inbound_device_endpoint_error(
 
 
 @pytest.mark.parametrize("response_status", [200, 400])
-@pytest.mark.parametrize("username_ref, password_ref", [
-    (None, None),              # Anonymous auth
-    ("secretRef:username", "secretRef:password"),  # Username/Password auth
+@pytest.mark.parametrize("cert_ref, username_ref, password_ref", [
+    (None, None, None),              # Anonymous auth
+    (None, "secretRef:username", "secretRef:password"),  # Username/Password auth
+    ("secretRef:certificate", None, None),  # Certificate auth
 ])
 @pytest.mark.parametrize("endpoint_version", [None, "1.0"])
 @pytest.mark.parametrize("endpoints_present, replace", [
@@ -1828,6 +1818,7 @@ def test_add_inbound_device_endpoint_error(
 def test_add_inbound_rest_device_endpoint(
     mocked_cmd,
     mocked_responses: responses,
+    cert_ref: Optional[str],
     username_ref: Optional[str],
     password_ref: Optional[str],
     response_status: int,
@@ -1869,7 +1860,14 @@ def test_add_inbound_rest_device_endpoint(
     }
 
     # Set up authentication structure based on auth type
-    if username_ref and password_ref:
+    if cert_ref:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.certificate.value,
+            "x509Credentials": {
+                "certificateSecretName": cert_ref
+            }
+        }
+    elif username_ref and password_ref:
         expected_endpoint["authentication"] = {
             "method": ADRAuthModes.userpass.value,
             "usernamePasswordCredentials": {
@@ -1937,6 +1935,7 @@ def test_add_inbound_rest_device_endpoint(
                 instance_resource_group=instance_resource_group,
                 endpoint_name=endpoint_name,
                 endpoint_address=endpoint_address,
+                certificate_reference=cert_ref,
                 username_reference=username_ref,
                 password_reference=password_ref,
                 endpoint_version=endpoint_version,
@@ -1953,6 +1952,7 @@ def test_add_inbound_rest_device_endpoint(
         instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_address=endpoint_address,
+        certificate_reference=cert_ref,
         username_reference=username_ref,
         password_reference=password_ref,
         endpoint_version=endpoint_version,

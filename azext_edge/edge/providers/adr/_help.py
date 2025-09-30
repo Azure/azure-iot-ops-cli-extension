@@ -739,10 +739,6 @@ def load_iotops_adr_help():
         - name: Add a media endpoint with authentication
           text: >
             az iot ops ns device endpoint inbound add media --device mydevice --instance myInstance -g myInstanceResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --user-ref usernameSecret --pass-ref passwordSecret
-
-        - name: Add a media endpoint with certificate authentication
-          text: >
-            az iot ops ns device endpoint inbound add media --device mydevice --instance myInstance -g myInstanceResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --cert-ref certificateSecret
     """
 
     helps[
@@ -761,10 +757,6 @@ def load_iotops_adr_help():
         - name: Add an ONVIF endpoint with authentication
           text: >
             az iot ops ns device endpoint inbound add onvif --device mydevice --instance myInstance -g myInstanceResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service" --user-ref usernameSecret --pass-ref passwordSecret
-
-        - name: Add an ONVIF endpoint with certificate authentication
-          text: >
-            az iot ops ns device endpoint inbound add onvif --device mydevice --instance myInstance -g myInstanceResourceGroup --name myONVIFEndpoint --endpoint-address "http://192.168.1.100:8000/onvif/device_service" --cert-ref certificateSecret
 
         - name: Add an ONVIF endpoint that accepts invalid hostnames and certificates
           text: >
@@ -787,10 +779,6 @@ def load_iotops_adr_help():
         - name: Add an OPC UA endpoint with authentication
           text: >
             az iot ops ns device endpoint inbound add opcua --device mydevice --instance myInstance -g myInstanceResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --user-ref usernameSecret --pass-ref passwordSecret
-
-        - name: Add an OPC UA endpoint with certificate authentication
-          text: >
-            az iot ops ns device endpoint inbound add opcua --device mydevice --instance myInstance -g myInstanceResourceGroup --name myOPCUAEndpoint --endpoint-address "opc.tcp://192.168.1.100:4840" --cert-ref certificateSecret
 
         - name: Add an OPC UA endpoint with a custom application name
           text: >
