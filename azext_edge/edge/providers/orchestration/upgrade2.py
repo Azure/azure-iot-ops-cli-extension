@@ -369,6 +369,9 @@ class ExtensionUpgradeState:
         parsed_current = self.semver.parse(self.current_version[0])
         parsed_desired = self.semver.parse(self.desired_version[0])
 
+        current_is_preview = self.current_version[1].lower() != "stable"
+        desired_is_preview = self.desired_version[1].lower() != "stable"
+
         # Check for downgrade
         if parsed_desired < parsed_current:
             raise ValidationError(
@@ -392,6 +395,25 @@ class ExtensionUpgradeState:
                 f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
                 f"The desired {self.desired_version[0]} version is incompatible (more than 2 minor versions ahead)."
             )
+
+        min_v2_semver_broker_upgrade = self.semver.parse("1.1.59")
+        min_v2_semver = self.semver.parse("1.2.36")
+        if parsed_current < min_v2_semver_broker_upgrade and parsed_desired >= min_v2_semver:
+            raise ValidationError(
+                f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"
+                f"The desired {self.desired_version[0]} version is incompatible "
+                f"(min compatible upgrade version {min_v2_semver_broker_upgrade}).\n"
+                f"Please first upgrade to at least {min_v2_semver_broker_upgrade}/AIO2506. "
+                "See https://aka.ms/aio-versions for version details."
+            )
+
+        if current_is_preview or desired_is_preview:
+            if parsed_current != parsed_desired or self.current_version[1].lower() != self.desired_version[1].lower():
+                raise ValidationError(
+                    f"Installed {self.moniker} extension is on train {self.current_version[1]}.\n"
+                    f"Desired version would be on train {self.desired_version[1]}.\n"
+                    f"Upgrades to or from non-stable release trains are not supported."
+                )
 
 
 def get_default_table() -> Table:
