@@ -680,6 +680,7 @@ class WorkManager:
 
     def _raise_if_ops_deployed(self):
         if self._resource_map.connected_cluster.get_aio_custom_locations():
+            return
             raise ValidationError(
                 "IoT Operations is detected on the cluster.\n"
                 "Re-deployment or multiple instances are not supported at this time. Please run:\n\n"

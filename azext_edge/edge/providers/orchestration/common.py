@@ -414,3 +414,5 @@ DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION = "org.opencontainers.artifact.description
 
 # Instance asset migration
 MIN_INSTANCE_VERSION_FOR_MIGRATE = "1.2.36"
+
+MIN_INSTANCE_VERSION_GA2 = "1.2.83"
