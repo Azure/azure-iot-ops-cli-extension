@@ -707,6 +707,18 @@ def load_adr_arguments(self, _):
             arg_group="Authentication",
         )
         context.argument(
+            "key_reference",
+            options_list=["--key-ref"],
+            help="Private key reference for certificate authentication.",
+            arg_group="Authentication",
+        )
+        context.argument(
+            "intermediate_certificate_reference",
+            options_list=["--intermediate-cert-ref", "--icr"],
+            help="Intermediate certificates reference for certificate authentication.",
+            arg_group="Authentication",
+        )
+        context.argument(
             "password_reference",
             options_list=["--password-ref", "--pass-ref"],
             help="Reference for the password used in authentication.",

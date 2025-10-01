@@ -724,11 +724,11 @@ def load_iotops_adr_help():
 
         - name: Add a custom endpoint with certificate authentication including intermediate certificates
           text: >
-            az iot ops ns device endpoint inbound add custom --device mydevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref cert-secret/certificate --intermediate-cert-ref cert-secret/intermediateCerts
+            az iot ops ns device endpoint inbound add custom --device mydevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref cert-secret/certificate --icr cert-secret/intermediateCerts
 
         - name: Add a custom endpoint with full certificate chain authentication
           text: >
-            az iot ops ns device endpoint inbound add custom --device mydevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref cert-secret/certificate --key-ref cert-secret/privateKey --intermediate-cert-ref cert-secret/intermediateCerts
+            az iot ops ns device endpoint inbound add custom --device mydevice --instance myInstance -g myInstanceResourceGroup --name myCustomEndpoint --endpoint-type "Custom.Type" --endpoint-address "192.168.1.100:8080" --cert-ref cert-secret/certificate --key-ref cert-secret/privateKey --icr cert-secret/intermediateCerts
 
         - name: Add a custom endpoint with additional configuration
           text: >
@@ -830,11 +830,11 @@ def load_iotops_adr_help():
 
         - name: Add a rest endpoint with certificate authentication including intermediate certificates
           text: >
-            az iot ops ns device endpoint inbound add rest --device mydevice --instance myInstance -g myInstanceResourceGroup --name myEndpoint --endpoint-address "https://api.example.com/data" --cert-ref cert-secret/certificate --intermediate-cert-ref cert-secret/intermediateCerts
+            az iot ops ns device endpoint inbound add rest --device mydevice --instance myInstance -g myInstanceResourceGroup --name myEndpoint --endpoint-address "https://api.example.com/data" --cert-ref cert-secret/certificate --icr cert-secret/intermediateCerts
 
         - name: Add a rest endpoint with full certificate chain authentication
           text: >
-            az iot ops ns device endpoint inbound add rest --device mydevice --instance myInstance -g myInstanceResourceGroup --name myEndpoint --endpoint-address "https://api.example.com/data" --cert-ref cert-secret/certificate --key-ref cert-secret/privateKey --intermediate-cert-ref cert-secret/intermediateCerts
+            az iot ops ns device endpoint inbound add rest --device mydevice --instance myInstance -g myInstanceResourceGroup --name myEndpoint --endpoint-address "https://api.example.com/data" --cert-ref cert-secret/certificate --key-ref cert-secret/privateKey --icr cert-secret/intermediateCerts
     """
 
     helps[
