@@ -528,6 +528,19 @@ def test_process_additional_configuration_error(mocker):
         "certificate_reference": generate_random_string()
     },
     {
+        "certificate_reference": generate_random_string(),
+        "key_reference": generate_random_string()
+    },
+    {
+        "certificate_reference": generate_random_string(),
+        "intermediate_certificate_reference": generate_random_string()
+    },
+    {
+        "certificate_reference": generate_random_string(),
+        "key_reference": generate_random_string(),
+        "intermediate_certificate_reference": generate_random_string()
+    },
+    {
         "auth_mode": ADRAuthModes.userpass.value,
         "password_reference": generate_random_string(),
         "username_reference": generate_random_string()
@@ -562,6 +575,16 @@ def test_process_authentication(
         assert result.get("usernamePasswordCredentials") is None
     elif result.get("method") == ADRAuthModes.certificate.value:
         assert result["x509Credentials"]["certificateSecretName"] == req["certificate_reference"]
+        if req.get("key_reference"):
+            assert result["x509Credentials"]["keySecretName"] == req["key_reference"]
+        else:
+            assert "keySecretName" not in result["x509Credentials"]
+        if req.get("intermediate_certificate_reference"):
+            assert result["x509Credentials"]["intermediateCertificatesSecretName"] == (
+                req["intermediate_certificate_reference"]
+            )
+        else:
+            assert "intermediateCertificatesSecretName" not in result["x509Credentials"]
         assert result.get("usernamePasswordCredentials") is None
     elif result.get("method") == ADRAuthModes.userpass.value:
         assert result.get("x509Credentials") is None
@@ -622,6 +645,19 @@ def test_process_authentication(
     {
         "username_reference": generate_random_string(),
     },
+    # Key reference without certificate reference
+    {
+        "key_reference": generate_random_string(),
+    },
+    # Intermediate certificate reference without certificate reference
+    {
+        "intermediate_certificate_reference": generate_random_string(),
+    },
+    # Both optional certificate fields without required certificate reference
+    {
+        "key_reference": generate_random_string(),
+        "intermediate_certificate_reference": generate_random_string(),
+    },
 ])
 def test_process_authentication_error(
     req
@@ -637,6 +673,11 @@ def test_process_authentication_error(
         [req.get("username_reference"), req.get("password_reference")]
     ):
         assert isinstance(e.value, RequiredArgumentMissingError)
+    elif any([req.get("key_reference"), req.get("intermediate_certificate_reference")]) and not req.get(
+        "certificate_reference"
+    ):
+        assert isinstance(e.value, RequiredArgumentMissingError)
+        assert "Certificate reference (--cert-ref) is required" in str(e.value)
     else:
         assert isinstance(e.value, MutuallyExclusiveArgumentError)
 

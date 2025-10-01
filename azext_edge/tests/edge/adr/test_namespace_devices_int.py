@@ -207,13 +207,16 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     endpoint_address = "http://192.168.1.100:8080"
     custom_configuration = {"customSetting": "value"}
     certificate_reference = "secretRef:certificate"
+    key_reference = "secretRef:privateKey"
+    intermediate_cert_reference = "secretRef:intermediateCerts"
     trust_list = "cert1"
     result = run(
         f"az iot ops ns device endpoint inbound add custom --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group} --name {endpoint_name_custom} "
         f"--endpoint-type {endpoint_type} --endpoint-address {endpoint_address} "
         f"--additional-config \"{{\\\"customSetting\\\": \\\"value\\\"}}\" "
-        f"--cert-ref {certificate_reference} --trust-list {trust_list} "
+        f"--cert-ref {certificate_reference} --key-ref {key_reference} "
+        f"--intermediate-cert-ref {intermediate_cert_reference} --trust-list {trust_list} "
         f"--version 1.0.0"
     )
     assert_namespace_device_endpoint_props(
@@ -224,6 +227,8 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         custom_configuration=custom_configuration,
         authentication_method="Certificate",
         certificate_reference=certificate_reference,
+        key_reference=key_reference,
+        intermediate_certificate_reference=intermediate_cert_reference,
         trust_list=trust_list,
         version="1.0.0",
     )
@@ -255,11 +260,14 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     # Add REST endpoint with certificate authentication
     endpoint_address = "https://192.168.1.100:8443/rest/secure_service"
     certificate_reference = "secretRef:certificate"
+    key_reference = "secretRef:privateKey"
+    intermediate_cert_reference = "secretRef:intermediateCerts"
     result = run(
         f"az iot ops ns device endpoint inbound add rest --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group} --name {endpoint_name_rest} "
         f"--endpoint-address {endpoint_address} "
-        f"--cert-ref {certificate_reference} "
+        f"--cert-ref {certificate_reference} --key-ref {key_reference} "
+        f"--intermediate-cert-ref {intermediate_cert_reference} "
         f"--version 2.0"
     )
     assert_namespace_device_endpoint_props(
@@ -271,6 +279,8 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         accept_invalid_certificates=True,
         authentication_method="Certificate",
         certificate_reference=certificate_reference,
+        key_reference=key_reference,
+        intermediate_certificate_reference=intermediate_cert_reference,
         version="2.0",
     )
 
@@ -433,7 +443,20 @@ def assert_namespace_device_endpoint_props(
         assert result_auth["usernamePasswordCredentials"]["usernameSecretName"] == expected["username_reference"]
         assert result_auth["usernamePasswordCredentials"]["passwordSecretName"] == expected["password_reference"]
     elif "certificate_reference" in expected:
-        assert result_auth["x509Credentials"]["certificateSecretName"] == expected["certificate_reference"]
+        x509_creds = result_auth["x509Credentials"]
+        assert x509_creds["certificateSecretName"] == expected["certificate_reference"]
+
+        # Check optional key reference
+        if "key_reference" in expected:
+            assert x509_creds["keySecretName"] == expected["key_reference"]
+        else:
+            assert "keySecretName" not in x509_creds
+
+        # Check optional intermediate certificate reference
+        if "intermediate_certificate_reference" in expected:
+            assert x509_creds["intermediateCertificatesSecretName"] == expected["intermediate_certificate_reference"]
+        else:
+            assert "intermediateCertificatesSecretName" not in x509_creds
 
     if "trust_list" in expected:
         assert result_endpoint["trustSettings"]["trustList"] == expected["trust_list"]

@@ -307,6 +307,8 @@ class NamespaceDevices(Queryable):
         endpoint_type: str,
         endpoint_version: Optional[str] = None,
         certificate_reference: Optional[str] = None,
+        key_reference: Optional[str] = None,
+        intermediate_certificate_reference: Optional[str] = None,
         password_reference: Optional[str] = None,
         username_reference: Optional[str] = None,
         trust_list: Optional[str] = None,
@@ -334,6 +336,8 @@ class NamespaceDevices(Queryable):
             "version": endpoint_version,
             "authentication": process_authentication(
                 certificate_reference=certificate_reference,
+                key_reference=key_reference,
+                intermediate_certificate_reference=intermediate_certificate_reference,
                 password_reference=password_reference,
                 username_reference=username_reference
             )
