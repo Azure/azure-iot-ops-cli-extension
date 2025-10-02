@@ -750,7 +750,7 @@ def load_iotops_adr_help():
 
         - name: Add a media endpoint with authentication
           text: >
-            az iot ops ns device endpoint inbound add media --device mydevice --instance myInstance -g myInstanceResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --user-ref auth-secret/username --pass-ref auth-secret/password
+            az iot ops ns device endpoint inbound add media --device mydevice --instance myInstance -g myInstanceResourceGroup --name myCameraEndpoint --endpoint-address "rtsp://192.168.1.100:554/stream" --user-ref usernameSecret --pass-ref passwordSecret
     """
 
     helps[
