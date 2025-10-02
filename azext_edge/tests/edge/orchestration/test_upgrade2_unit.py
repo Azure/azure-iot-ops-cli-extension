@@ -787,6 +787,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.83"),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version=BUILT_IN_VALUE),
             },
         ),
         (
