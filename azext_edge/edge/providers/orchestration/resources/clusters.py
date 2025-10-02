@@ -58,7 +58,7 @@ class ClusterExtensions(Queryable):
         extension_name: str,
         update_payload: dict,
         **operation_kwargs,
-    ) -> Iterable[dict]:
+    ) -> dict:
         return wait_for_terminal_state(
             self.ops.begin_update(
                 resource_group_name=resource_group_name,
@@ -78,7 +78,7 @@ class ClusterExtensions(Queryable):
         extension_name: str,
         create_payload: dict,
         **operation_kwargs,
-    ) -> Iterable[dict]:
+    ) -> dict:
         return wait_for_terminal_state(
             self.ops.begin_create(
                 resource_group_name=resource_group_name,
