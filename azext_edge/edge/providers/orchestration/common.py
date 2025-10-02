@@ -412,7 +412,7 @@ DATAFLOW_GRAPH_MEDIA_TYPE = "application/vnd.microsoft.dataflow.graph.v1+json"
 DATAFLOW_GRAPH_ANNOTATION_DISPLAY_NAME = "org.opencontainers.artifact.displayName"
 DATAFLOW_GRAPH_ANNOTATION_DESCRIPTION = "org.opencontainers.artifact.description"
 
-# Instance asset migration
-MIN_INSTANCE_VERSION_FOR_MIGRATE = "1.2.36"
-
-MIN_INSTANCE_VERSION_GA2 = "1.2.83"
+# Notable instance versions
+MIN_INSTANCE_VERSION_V2 = "1.2.36"
+MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE = "1.1.59"
+MIN_INSTANCE_VERSION_FOR_CM_MIGRATE = "1.2.83"

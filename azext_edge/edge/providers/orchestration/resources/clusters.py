@@ -97,7 +97,7 @@ class ClusterExtensions(Queryable):
         cluster_name: str,
         extension_name: str,
         **operation_kwargs,
-    ) -> Iterable[dict]:
+    ) -> None:
         return wait_for_terminal_state(
             self.ops.begin_delete(
                 resource_group_name=resource_group_name,

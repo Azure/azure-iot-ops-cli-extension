@@ -33,7 +33,9 @@ from .common import (
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_TO_MONIKER_MAP,
-    MIN_INSTANCE_VERSION_GA2,
+    MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
+    MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE,
+    MIN_INSTANCE_VERSION_V2,
     ConfigSyncModeType,
 )
 from .resources import Instances
@@ -166,7 +168,7 @@ class UpgradeManager:
             for op_type in [ExtensionOperation.DELETE, ExtensionOperation.CREATE, ExtensionOperation.UPDATE]:
                 for ext in operations.get(op_type, []):
                     try:
-                        result = self._apply_single_operation(ext, op_type, headers)
+                        result = self._apply_single_operation(ext=ext, op_type=op_type, headers=headers)
                         return_payload.append(result)
                         progress.advance(task)
                     except HttpResponseError as e:
@@ -187,12 +189,17 @@ class UpgradeManager:
         cluster_name = self.resource_map.connected_cluster.cluster_name
 
         if op_type == ExtensionOperation.DELETE:
-            return self.resource_map.connected_cluster.clusters.extensions.delete_cluster_extension(
+            self.resource_map.connected_cluster.clusters.extensions.delete_cluster_extension(
                 resource_group_name=self.resource_group_name,
                 cluster_name=cluster_name,
                 extension_name=ext.extension["name"],
                 headers=headers,
             )
+            # DELETE returns None/empty, so we create a meaningful response for the user
+            return {
+                "name": ext.extension["name"],
+                "properties": {"extensionType": ext.extension_type, "provisioningState": "Deleted"},
+            }
         elif op_type == ExtensionOperation.CREATE:
             return self.resource_map.connected_cluster.clusters.extensions.create_cluster_extension(
                 resource_group_name=self.resource_group_name,
@@ -215,8 +222,7 @@ class UpgradeManager:
         # Get version with fallback
         version = ext.desired_version[0]
         if not version:
-            # Fallback to target versions from InitTargets
-            cm_versions = self.targets.get_extension_versions().get(EXTENSION_MONIKER_CM, {})
+            cm_versions = self.targets.get_extension_versions(True).get(EXTENSION_MONIKER_CM, {})
             version = cm_versions.get("version", "0.6.2")
 
         return {
@@ -343,7 +349,7 @@ class ClusterUpgradeState:
 
         # Check what operations we need
         should_delete_platform = self._should_delete_platform()
-        should_create_certmanager = self._should_create_certmanager()
+        should_create_certmanager = self._should_create_certmanager(deleting_platform=should_delete_platform)
 
         # Add deletion of platform if needed
         if should_delete_platform:
@@ -408,22 +414,24 @@ class ClusterUpgradeState:
 
         return self._is_target_version_above_migration_threshold()
 
-    def _should_create_certmanager(self) -> bool:
+    def _should_create_certmanager(self, deleting_platform: bool = False) -> bool:
+        """
+        Create certmanager extension when:
+        1. CertManager extension doesn't exist
+        2. Platform extension doesn't exist OR is being deleted
+        3. Target IoT Operations version v2
+        """
         has_certmanager = bool(self.extensions_map.get(EXTENSION_TYPE_CM))
         if has_certmanager:
             return False
 
-        # Don't create certmanager if platform still exists
         has_platform = bool(self.extensions_map.get(EXTENSION_TYPE_PLATFORM))
-        if has_platform:
+        if has_platform and not deleting_platform:
             return False
 
         return self._is_target_version_above_migration_threshold()
 
     def _is_target_version_above_migration_threshold(self) -> bool:
-        """
-        Check if target IoT Operations version >= MIN_INSTANCE_VERSION_GA2
-        """
         ops_extension = self.extensions_map.get(EXTENSION_TYPE_OPS)
         if not ops_extension:
             return False
@@ -441,7 +449,7 @@ class ClusterUpgradeState:
             return False
 
         target_semver = self.semver.parse(target_version)
-        min_migration_semver = self.semver.parse(MIN_INSTANCE_VERSION_GA2)
+        min_migration_semver = self.semver.parse(MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
         return target_semver >= min_migration_semver
 
 
@@ -621,8 +629,8 @@ class ExtensionUpgradeState:
                 f"The desired {self.desired_version[0]} version is incompatible (more than 2 minor versions ahead)."
             )
 
-        min_v2_semver_broker_upgrade = self.semver.parse("1.1.59")
-        min_v2_semver = self.semver.parse(MIN_INSTANCE_VERSION_GA2)
+        min_v2_semver_broker_upgrade = self.semver.parse(MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE)
+        min_v2_semver = self.semver.parse(MIN_INSTANCE_VERSION_V2)
         if parsed_current < min_v2_semver_broker_upgrade and parsed_desired >= min_v2_semver:
             raise ValidationError(
                 f"Installed {self.moniker} extension version is {self.current_version[0]}.\n"

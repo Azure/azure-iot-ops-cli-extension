@@ -29,7 +29,7 @@ CUSTOM_LOCATION_NAME = generate_random_string()
 CLUSTER_EXTENSIONS_URL_MATCH_RE = re.compile(
     r"^https:\/\/management\.azure\.com\/subscriptions\/[0-9a-fA-F\-]{36}\/resourceGroups\/[a-zA-Z0-9]+\/"
     r"providers\/Microsoft\.Kubernetes\/connectedClusters\/[a-zA-Z0-9]+\/providers\/"
-    r"Microsoft\.KubernetesConfiguration\/extensions\/[a-zA-Z0-9]+(\?api-version=2023-05-01)?$"
+    r"Microsoft\.KubernetesConfiguration\/extensions\/[a-zA-Z0-9\-]+(\?api-version=2023-05-01)?$"
 )
 ROLE_ASSIGNMENT_RP = "Microsoft.Authorization"
 ROLE_ASSIGNMENT_API_VERSION = "2022-04-01"

@@ -27,7 +27,7 @@ from ..adr.assets import ASSET_RESOURCE_TYPE
 from .common import (
     ADR_RP_APP_ID,
     KUBERNETES_ARC_CONTRIBUTOR_ROLE_ID,
-    MIN_INSTANCE_VERSION_FOR_MIGRATE,
+    MIN_INSTANCE_VERSION_V2,
 )
 from .permissions import (
     ROLE_DEF_FORMAT_STR,
@@ -102,9 +102,9 @@ class AssetMigrationManager(Queryable):
     ):
         with console.status("Querying resources...") as status:
             instance_version = self.instance_record["properties"].get("version", "0.0.0")
-            if self.semver.parse(instance_version) < self.semver.parse(MIN_INSTANCE_VERSION_FOR_MIGRATE):
+            if self.semver.parse(instance_version) < self.semver.parse(MIN_INSTANCE_VERSION_V2):
                 raise ValidationError(
-                    f"The instance must be at least version {MIN_INSTANCE_VERSION_FOR_MIGRATE} to migrate assets."
+                    f"The instance must be at least version {MIN_INSTANCE_VERSION_V2} to migrate assets."
                 )
 
             instance_ns_id = self.instance_record["properties"].get("adrNamespaceRef", {}).get("resourceId")

@@ -6,6 +6,7 @@
 
 import json
 import re
+from copy import deepcopy
 from typing import Dict, List, Optional, Tuple, TypeVar
 from unittest.mock import Mock, patch
 
@@ -17,7 +18,6 @@ from azure.core.exceptions import HttpResponseError
 
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_ALIAS_TO_TYPE_MAP,
-    EXTENSION_MONIKER_TO_ALIAS_MAP,
     EXTENSION_MONIKER_OPS,
     EXTENSION_TYPE_ACS,
     EXTENSION_TYPE_CM,
@@ -147,14 +147,21 @@ class UpgradeScenario:
         self.description = description
         self.confirm_yes = confirm_yes
         self.cluster_connected_status = ClusterConnectStatus.CONNECTED.value
+        self.delete_record: Dict[str, bool] = {}
+        self.create_record: Dict[str, dict] = {}
+        self.patch_call_count = 0
+
         self._build_defaults()
 
     def _build_defaults(self):
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
+            # Skip platform (deprecated) and ACS (optional)
             if ext_type in [EXTENSION_TYPE_ACS, EXTENSION_TYPE_PLATFORM]:
                 continue
-            vers = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"]
-            train = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["train"]
+
+            ext_moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
+            vers = self.init_version_map[ext_moniker]["version"]
+            train = self.init_version_map[ext_moniker]["train"]
 
             # Override train to "stable" for IoT Operations extension in test defaults
             # to avoid triggering the preview train validation during tests
@@ -169,7 +176,7 @@ class UpgradeScenario:
                     "configurationSettings": {},
                     "provisioningState": PROVISIONING_STATE_SUCCESS,
                 },
-                "name": EXTENSION_TYPE_TO_MONIKER_MAP[ext_type],
+                "name": ext_moniker,
             }
 
     def set_cluster_connected_status(self: T, status: str) -> T:
@@ -196,17 +203,40 @@ class UpgradeScenario:
         remove: bool = False,
     ) -> T:
         if remove:
-            del self.extensions[ext_type]
-            self.expect_exception = ValidationError
+            if ext_type in self.extensions:
+                del self.extensions[ext_type]
+            # Only expect ValidationError if removing IoT Ops
+            if ext_type == EXTENSION_TYPE_OPS:
+                self.expect_exception = ValidationError
             return self
-        if ext_vers:
-            if ext_vers == BUILT_IN_VALUE:
-                ext_vers = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"]
-            self.extensions[ext_type]["properties"]["version"] = ext_vers
-        if ext_train:
-            self.extensions[ext_type]["properties"]["releaseTrain"] = ext_train
-        if provisioning_state:
-            self.extensions[ext_type]["properties"]["provisioningState"] = provisioning_state
+
+        # Create extension if it doesn't exist (for adding platform in tests)
+        if ext_type not in self.extensions:
+            ext_moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
+            # Get version from init_version_map or use defaults
+            default_vers = self.init_version_map.get(ext_moniker, {}).get("version", "1.0.0")
+            default_train = self.init_version_map.get(ext_moniker, {}).get("train", "stable")
+
+            self.extensions[ext_type] = {
+                "properties": {
+                    "extensionType": ext_type,
+                    "version": ext_vers or default_vers,
+                    "releaseTrain": ext_train or default_train,
+                    "configurationSettings": {},
+                    "provisioningState": provisioning_state or PROVISIONING_STATE_SUCCESS,
+                },
+                "name": ext_moniker,
+            }
+        else:
+            # Update existing extension
+            if ext_vers:
+                if ext_vers == BUILT_IN_VALUE:
+                    ext_vers = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"]
+                self.extensions[ext_type]["properties"]["version"] = ext_vers
+            if ext_train:
+                self.extensions[ext_type]["properties"]["releaseTrain"] = ext_train
+            if provisioning_state:
+                self.extensions[ext_type]["properties"]["provisioningState"] = provisioning_state
         return self
 
     def set_response_on_patch(
@@ -254,7 +284,6 @@ class UpgradeScenario:
             status=200,
             content_type="application/json",
         )
-
         mocked_responses.add(
             method=responses.GET,
             url=get_cluster_extensions_endpoint(resource_group_name=resource_group_name),
@@ -262,13 +291,55 @@ class UpgradeScenario:
             status=200,
             content_type="application/json",
         )
+
         mocked_responses.add_callback(
             method=responses.PATCH,
             url=re.compile(CLUSTER_EXTENSIONS_URL_MATCH_RE),
             callback=self.patch_extension_response,
         )
+        mocked_responses.add_callback(
+            method=responses.DELETE,
+            url=re.compile(CLUSTER_EXTENSIONS_URL_MATCH_RE),
+            callback=self.delete_extension_response,
+        )
+        mocked_responses.add_callback(
+            method=responses.PUT,
+            url=re.compile(CLUSTER_EXTENSIONS_URL_MATCH_RE),
+            callback=self.create_extension_response,
+        )
+
+        return self
+
+    def delete_extension_response(self, request: requests.PreparedRequest) -> Optional[tuple]:
+        ext_moniker = request.path_url.split("?")[0].split("/")[-1]
+        assert_upgrade_headers(request.headers)
+        self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
+
+        for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
+            if EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] == ext_moniker:
+                self.delete_record[ext_type] = True
+                # Return 204 No Content - realistic response
+                return (204, STANDARD_HEADERS, "")  # 204 returns no body
+
+        return (HTTP_STATUS_SERVICE_UNAVAILABLE, STANDARD_HEADERS, json.dumps({"error": "server error"}))
+
+    def create_extension_response(self, request: requests.PreparedRequest) -> Optional[tuple]:
+        assert_upgrade_headers(request.headers)
+        self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
+
+        # Parse the body to get the extension type
+        body = json.loads(request.body)
+        ext_type = body.get("properties", {}).get("extensionType")
+
+        if ext_type:
+            self.create_record[ext_type] = body
+            # Return the created extension as if it was successful
+            return (HTTP_STATUS_OK, STANDARD_HEADERS, json.dumps(body))
+
+        return (HTTP_STATUS_SERVICE_UNAVAILABLE, STANDARD_HEADERS, json.dumps({"error": "server error"}))
 
     def patch_extension_response(self, request: requests.PreparedRequest) -> Optional[tuple]:
+        self.patch_call_count += 1  # Increment counter for retry testing
         ext_moniker = request.path_url.split("?")[0].split("/")[-1]
         assert_upgrade_headers(request.headers)
         self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
@@ -311,19 +382,78 @@ def build_extension_props(ext_type: str, version: str = None, train: str = None,
     return props
 
 
+def assert_upgrade_headers(headers: Dict[str, str]):
+    assert headers.get("User-Agent").startswith("IotOperationsCliExtension/")
+    assert headers.get("Accept") == "application/json"
+    # DELETE requests have no body, so no Content-Type header
+    if headers.get("Content-Length") != "0":
+        assert headers.get("Content-Type") == "application/json"
+    assert headers.get("x-ms-correlation-request-id")
+    assert headers.get("x-ms-client-request-id")
+    assert headers.get("CommandName")
+
+
 def assert_no_upgrades_performed(upgrade_result, logger_mock):
     assert upgrade_result is None
     logger_mock.warning.assert_called_once_with(DEFAULT_LOG_WARNING_MESSAGE)
 
 
-def assert_validation_error_raised(exc_info, expected_pattern: str):
-    assert isinstance(exc_info.value, ValidationError)
-    if expected_pattern:
-        assert re.search(expected_pattern, str(exc_info.value))
-
-
 def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT):
     assert len(mock_response.calls) == expected_count
+
+
+def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: List[dict]):
+    """Assert operations happen in correct order: DELETE -> CREATE -> UPDATE.
+    Also validates extension type order within each operation group."""
+
+    # Group results by operation type
+    deletes = []
+    creates = []
+    updates = []
+
+    for result in upgrade_result:
+        props = result.get("properties", {})
+        ext_type = props.get("extensionType")
+
+        if props.get("provisioningState") == "Deleted":
+            deletes.append(ext_type)
+        elif ext_type in target_scenario.create_record:
+            creates.append(ext_type)
+        else:
+            updates.append(ext_type)
+
+    # Verify operation groups match scenario expectations
+    assert set(deletes) == set(
+        target_scenario.delete_record.keys()
+    ), f"DELETE operations mismatch. Expected {set(target_scenario.delete_record.keys())}, got {set(deletes)}"
+    assert set(creates) == set(
+        target_scenario.create_record.keys()
+    ), f"CREATE operations mismatch. Expected {set(target_scenario.create_record.keys())}, got {set(creates)}"
+
+    # Build the actual operation sequence (non-empty groups only)
+    operation_sequence = []
+    if deletes:
+        operation_sequence.append(("DELETE", deletes))
+    if creates:
+        operation_sequence.append(("CREATE", creates))
+    if updates:
+        operation_sequence.append(("UPDATE", updates))
+
+    # Verify operations are in the correct order (DELETE -> CREATE -> UPDATE)
+    operation_types = [op[0] for op in operation_sequence]
+    expected_order = ["DELETE", "CREATE", "UPDATE"]
+    expected_types = [op for op in expected_order if op in operation_types]
+
+    assert (
+        operation_types == expected_types
+    ), f"Operations not in correct order. Expected {expected_types}, got {operation_types}"
+
+    # Within UPDATE operations, verify extension type order matches EXTENSION_TYPE_TO_MONIKER_MAP
+    if updates:
+        expected_update_order = [ext for ext in EXTENSION_TYPE_TO_MONIKER_MAP.keys() if ext in updates]
+        assert (
+            updates == expected_update_order
+        ), f"UPDATE operations not in expected extension order. Expected {expected_update_order}, got {updates}"
 
 
 @pytest.mark.parametrize("no_progress", [False, True])
@@ -600,8 +730,7 @@ def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT)
             {},
         ),
         (
-            UpgradeScenario("Error: IoT Ops extension missing")
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, remove=True),
+            UpgradeScenario("Error: IoT Ops extension missing").set_extension(ext_type=EXTENSION_TYPE_OPS, remove=True),
             {},
         ),
         (
@@ -639,6 +768,73 @@ def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT)
                 ext_type=EXTENSION_TYPE_CM, ext_vers="0.5.0"
             ),
             {EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE)},
+        ),
+        # ========== Platform to CertManager Migration (>= 1.2.83) ==========
+        (
+            UpgradeScenario("Migration: Platform exists, IoT Ops >= 1.2.83")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.83"),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+            },
+        ),
+        (
+            UpgradeScenario("Migration: Platform already deleted, create CertManager")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.83"),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+            },
+        ),
+        (
+            UpgradeScenario("No Migration: IoT Ops < 1.2.83")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.82"),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
+                # No platform delete, no certmanager create
+            },
+        ),
+        (
+            UpgradeScenario("No Migration: CertManager already exists")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, ext_vers="0.5.0")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.83"),
+            {
+                # Platform is deleted, CM is UPDATED (not created since it exists)
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+            },
+        ),
+        (
+            UpgradeScenario("No Migration: Platform exists, CM doesn't, IoT Ops < 1.2.83")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.82"),
+            {
+                # No platform delete or CM create since IoT Ops < 1.2.83
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
+            },
+        ),
+        (
+            UpgradeScenario("Migration: With other extension updates")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_extension(ext_type=EXTENSION_TYPE_SSC, ext_vers="0.3.0")
+            .set_user_kwargs(ops_version="1.2.83"),
+            {
+                # Platform is deleted, not in expected
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_SSC: build_extension_props(EXTENSION_TYPE_SSC, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+            },
         ),
     ],
 )
@@ -680,7 +876,7 @@ def test_ops_upgrade(
             upgrade_instance(**call_kwargs)
         if isinstance(err.value, HttpResponseError):
             mocked_logger.error.assert_called_once_with(
-                f"Correlation Id for failed upgrade operation: {target_scenario.last_correlation_id}"
+                f"Correlation Id for failed update operation: {target_scenario.last_correlation_id}"
             )
         assert_displays(spy_upgrade_displays, no_progress, error_context=err)
         return
@@ -693,10 +889,24 @@ def test_ops_upgrade(
         return
 
     assert upgrade_result
-    assert len(upgrade_result) == len(expected_patched_ext_types)
-    assert len(mocked_confirm.ask.mock_calls) == bool(not target_scenario.confirm_yes)
 
-    assert_patch_order(upgrade_result, expected_patched_ext_types)
+    # Count expected operations including deletes
+    delete_count = len(target_scenario.delete_record)
+    create_count = len(target_scenario.create_record)
+    # For updates, only count extensions that exist and are being updated (not created)
+    update_count = len(
+        [
+            ext
+            for ext in expected_patched_ext_types
+            if ext not in target_scenario.delete_record and ext not in target_scenario.create_record
+        ]
+    )
+    expected_count = delete_count + create_count + update_count
+
+    assert len(upgrade_result) == expected_count
+    assert len(mocked_confirm.ask.mock_calls) == int(not target_scenario.confirm_yes)
+
+    assert_operation_order(target_scenario, upgrade_result)
     assert_result(target_scenario, upgrade_result, expected_patched_ext_types)
     assert_displays(spy_upgrade_displays, no_progress, patched_ext_types=expected_patched_ext_types)
 
@@ -740,6 +950,7 @@ def test_ops_upgrade_retry_assertion(
     target_scenario.set_instance_mock(
         mocked_responses=mocked_responses, instance_name=instance_name, resource_group_name=resource_group_name
     )
+
     call_kwargs = {
         "cmd": mocked_cmd,
         "resource_group_name": resource_group_name,
@@ -747,86 +958,133 @@ def test_ops_upgrade_retry_assertion(
         "no_progress": True,
         "confirm_yes": True,
     }
+
     patch_status_code = target_scenario.ext_type_response_map[EXTENSION_TYPE_CM][0]
+    async_mock = None
+
     if patch_status_code == HTTP_STATUS_ACCEPTED:
-        # TODO Cheap pattern. Improve later.
-        mocked_responses.add(
+        # For async operations, add the async endpoint mock
+        async_mock = mocked_responses.add(
             method=target_scenario.aux_kwargs["async_method"],
             url=target_scenario.aux_kwargs["async_endpoint"],
             status=target_scenario.aux_kwargs["async_code"],
         )
+        error_status_code = target_scenario.aux_kwargs["async_code"]
+    else:
+        error_status_code = patch_status_code
 
     with pytest.raises(target_scenario.expect_exception) as err:
         upgrade_instance(**call_kwargs)
 
-    mock_response = mocked_responses.registered()[-1]
-    if patch_status_code == HTTP_STATUS_SERVICE_UNAVAILABLE:
-        # Assert ext patch call retries
-        error_status_code = patch_status_code
-        assert mock_response.method == responses.PATCH
-    if patch_status_code == HTTP_STATUS_ACCEPTED:
-        # Assert async op fetch retries
-        error_status_code = target_scenario.aux_kwargs["async_code"]
-        assert mock_response.method == target_scenario.aux_kwargs["async_method"]
+    assert err.value.status_code == error_status_code
 
-    assert err.value.status_code == error_status_code, f"Expected {error_status_code} but got {err.value.status_code}"
-    assert_retry_count(mock_response)
+    # Verify retries based on scenario type
+    if patch_status_code == HTTP_STATUS_SERVICE_UNAVAILABLE:
+        # Direct patch failure - verify callback was called DEFAULT_RETRY_COUNT times
+        assert (
+            target_scenario.patch_call_count == DEFAULT_RETRY_COUNT
+        ), f"Expected {DEFAULT_RETRY_COUNT} patch calls, got {target_scenario.patch_call_count}"
+    elif patch_status_code == HTTP_STATUS_ACCEPTED and async_mock:
+        # Async operation failure - verify async endpoint was retried
+        assert_retry_count(async_mock)
 
 
 def assert_result(
     target_scenario: UpgradeScenario, upgrade_result: List[dict], expected_types: Optional[Dict[str, dict]] = None
 ):
-    user_kwargs = target_scenario.user_kwargs
-    result_type_to_payload = {k["properties"]["extensionType"]: k for k in upgrade_result}
-    for moniker in EXTENSION_MONIKER_TO_ALIAS_MAP:
-        alias = EXTENSION_MONIKER_TO_ALIAS_MAP[moniker]
-        ext_type = EXTENSION_ALIAS_TO_TYPE_MAP[alias]
-        config = user_kwargs.get(f"{alias}_config")
-        if config:
-            parsed_config = parse_kvp_nargs(config)
-            assert result_type_to_payload[ext_type]["properties"]["configurationSettings"] == parsed_config
-        version = user_kwargs.get(f"{alias}_version")
-        if version:
-            assert result_type_to_payload[ext_type]["properties"]["version"] == version
-        release_train = user_kwargs.get(f"{alias}_train")
-        if release_train:
-            assert result_type_to_payload[ext_type]["properties"]["releaseTrain"] == release_train
+    if not upgrade_result:
+        return
 
+    result_by_type = {}
+    deleted_types = set()
+    created_types = set()
+
+    for result in upgrade_result:
+        props = result.get("properties", {})
+        ext_type = props.get("extensionType")
+
+        if props.get("provisioningState") == "Deleted":
+            deleted_types.add(ext_type)
+        else:
+            result_by_type[ext_type] = result
+            # Check if this was a create operation by checking scenario records
+            if ext_type in target_scenario.create_record:
+                created_types.add(ext_type)
+
+    # Validate user kwargs are applied
+    _assert_user_kwargs_applied(target_scenario.user_kwargs, result_by_type, deleted_types)
+
+    # Validate expected types if provided
     if expected_types:
-        for ext_type in expected_types:
-            expected_version = expected_types[ext_type]["properties"].get("version")
-            if expected_version == BUILT_IN_VALUE:
-                expected_types[ext_type]["properties"]["version"] = target_scenario.init_version_map[
-                    EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
-                ]["version"]
-            expected_train = expected_types[ext_type]["properties"].get("releaseTrain")
-            if expected_train == BUILT_IN_VALUE:
-                target_train = (
-                    "stable"
-                    if ext_type == EXTENSION_TYPE_OPS
-                    else target_scenario.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["train"]
-                )
-                expected_types[ext_type]["properties"]["releaseTrain"] = target_train
-        assert result_type_to_payload == expected_types
-        assert len(upgrade_result) == len(expected_types)
+        _assert_expected_types(expected_types, result_by_type, deleted_types, created_types, target_scenario)
 
 
-def assert_patch_order(upgrade_result: List[dict], expected_types: Dict[str, dict]):
-    result_type_to_payload = {k["properties"]["extensionType"]: k for k in upgrade_result}
-    for ext_type in expected_types:
-        assert ext_type in result_type_to_payload
+def _assert_user_kwargs_applied(user_kwargs: dict, result_by_type: dict, deleted_types: set):
+    for alias in EXTENSION_ALIAS_TO_TYPE_MAP:
+        ext_type = EXTENSION_ALIAS_TO_TYPE_MAP[alias]
 
-    order_map = {}
-    index = 0
-    for key in EXTENSION_TYPE_TO_MONIKER_MAP:
-        order_map[key] = index
-        index = index + 1
+        if ext_type in deleted_types or ext_type not in result_by_type:
+            continue
 
-    last_index = -1
-    for patched_ext in upgrade_result:
-        current_index = order_map[patched_ext["properties"]["extensionType"]]
-        assert current_index > last_index
-        last_index = current_index
+        result = result_by_type[ext_type]
+        props = result["properties"]
+
+        # Check each type of override
+        for suffix, prop_name in [
+            ("config", "configurationSettings"),
+            ("version", "version"),
+            ("train", "releaseTrain"),
+        ]:
+            key = f"{alias}_{suffix}"
+            if key in user_kwargs:
+                expected = user_kwargs[key]
+                if suffix == "config":
+                    expected = parse_kvp_nargs(expected)
+                assert props.get(prop_name) == expected, f"{key} not applied correctly"
+
+
+def _assert_expected_types(
+    expected_types: dict, result_by_type: dict, deleted_types: set, created_types: set, scenario
+):
+    expected = deepcopy(expected_types)
+    results = deepcopy(result_by_type)
+
+    for ext_type in expected:
+        _replace_built_in_values(expected[ext_type], ext_type, scenario)
+
+    assert deleted_types == set(scenario.delete_record.keys())
+    assert created_types == set(scenario.create_record.keys())
+
+    for ext_type in deleted_types:
+        if ext_type in expected:
+            del expected[ext_type]
+
+    for ext_type in created_types:
+        if ext_type in results and ext_type in expected:
+            _validate_created_extension(results[ext_type], expected[ext_type])
+            del results[ext_type]
+            del expected[ext_type]
+
+    assert results == expected
+
+
+def _replace_built_in_values(expected_ext: dict, ext_type: str, scenario):
+    props = expected_ext.get("properties", {})
+    moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
+
+    if props.get("version") == BUILT_IN_VALUE:
+        props["version"] = scenario.init_version_map[moniker]["version"]
+
+    if props.get("releaseTrain") == BUILT_IN_VALUE:
+        default_train = "stable" if ext_type == EXTENSION_TYPE_OPS else scenario.init_version_map[moniker]["train"]
+        props["releaseTrain"] = default_train
+
+
+def _validate_created_extension(actual: dict, expected: dict):
+    assert actual["properties"]["extensionType"] == expected["properties"]["extensionType"]
+    assert actual["properties"]["version"] == expected["properties"]["version"]
+    if "releaseTrain" in expected["properties"]:
+        assert actual["properties"]["releaseTrain"] == expected["properties"]["releaseTrain"]
 
 
 def assert_displays(
@@ -836,7 +1094,7 @@ def assert_displays(
     error_context: Optional[Exception] = None,
     patched_ext_types: Optional[Dict[str, dict]] = None,
 ):
-    # TODO: clean up function if spare cycles
+    # Handle error scenarios
     if error_context:
         error_context = error_context.value
         if isinstance(error_context, ValidationError):
@@ -849,18 +1107,30 @@ def assert_displays(
     if not progress_count:
         progress_count = 2
 
-    if all([not no_progress, not error_context, patched_ext_types]):
+    if not no_progress and not error_context and patched_ext_types:
         table = spy_upgrade_displays["print"].mock_calls[1].args[1]
         assert table.title
-        if patched_ext_types:
-            table_monikers = list(table.columns[0].cells)
-            # Ensures table column monikers exist and match the order of update
-            patched_ext_types_keys = list(patched_ext_types.keys())
-            for i in range(len(patched_ext_types_keys)):
-                ext_type = patched_ext_types_keys[i]
-                moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
-                assert moniker == table_monikers[i]
 
+        table_monikers = list(table.columns[0].cells)
+        expected_update_monikers = {EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] for ext_type in patched_ext_types.keys()}
+
+        for moniker in expected_update_monikers:
+            assert moniker in table_monikers, f"Expected {moniker} to be in table"
+
+        table_has_delete = any("Remove" in str(cell) for col in table.columns for cell in col.cells)
+        table_has_create = any("Not Installed" in str(cell) for col in table.columns for cell in col.cells)
+
+        if not table_has_delete and not table_has_create:
+            # Verify UPDATE-only scenarios maintain extension type order
+            update_monikers_in_table = [m for m in table_monikers if m in expected_update_monikers]
+            expected_order = sorted(
+                update_monikers_in_table, key=lambda m: list(EXTENSION_TYPE_TO_MONIKER_MAP.values()).index(m)
+            )
+            assert (
+                update_monikers_in_table == expected_order
+            ), f"Extensions not in expected order. Got {update_monikers_in_table}, expected {expected_order}"
+
+    # Verify progress bar initialization
     assert len(spy_upgrade_displays["progress.__init__"].mock_calls) == progress_count
     assert spy_upgrade_displays["progress.__init__"].mock_calls[0].kwargs == {
         "transient": True,
@@ -871,15 +1141,6 @@ def assert_displays(
             "transient": False,
             "disable": no_progress,
         }
-
-
-def assert_upgrade_headers(headers: Dict[str, str]):
-    assert headers.get("User-Agent").startswith("IotOperationsCliExtension/")
-    assert headers.get("Accept") == "application/json"
-    assert headers.get("Content-Type") == "application/json"
-    assert headers.get("x-ms-correlation-request-id")
-    assert headers.get("x-ms-client-request-id")
-    assert headers.get("CommandName")
 
 
 @pytest.mark.parametrize(
