@@ -926,12 +926,12 @@ def test_remove_namespace_device_inbound_endpoints(
 ])
 @pytest.mark.parametrize("cert_ref, key_ref, intermediate_cert_ref, username_ref, password_ref", [
     (None, None, None, None, None),              # Anonymous auth
-    (None, None, None, "secretRef:username", "secretRef:password"),  # Username/Password auth
-    ("secretRef:certificate", None, None, None, None),  # Basic certificate auth
-    ("secretRef:certificate", "secretRef:privateKey", None, None, None),  # Certificate with key
-    ("secretRef:certificate", None, "secretRef:intermediateCerts", None, None),  # Certificate with intermediate certs
+    (None, None, None, "auth-secret/username", "auth-secret/password"),  # Username/Password auth
+    ("cert-secret/certificate", None, None, None, None),  # Basic certificate auth
+    ("cert-secret/certificate", "cert-secret/privateKey", None, None, None),  # Certificate with key
+    ("cert-secret/certificate", None, "cert-secret/intermediateCerts", None, None),  # Certificate with intermediate
     (
-        "secretRef:certificate", "secretRef:privateKey", "secretRef:intermediateCerts", None, None
+        "cert-secret/certificate", "cert-secret/privateKey", "cert-secret/intermediateCerts", None, None
     ),  # Full certificate chain
 ])
 @pytest.mark.parametrize("endpoint_version", [None, "1.0"])
@@ -1821,12 +1821,12 @@ def test_add_inbound_device_endpoint_error(
 @pytest.mark.parametrize("response_status", [200, 400])
 @pytest.mark.parametrize("cert_ref, key_ref, intermediate_cert_ref, username_ref, password_ref", [
     (None, None, None, None, None),              # Anonymous auth
-    (None, None, None, "secretRef:username", "secretRef:password"),  # Username/Password auth
-    ("secretRef:certificate", None, None, None, None),  # Basic certificate auth
-    ("secretRef:certificate", "secretRef:privateKey", None, None, None),  # Certificate with key
-    ("secretRef:certificate", None, "secretRef:intermediateCerts", None, None),  # Certificate with intermediate certs
+    (None, None, None, "auth-secret/username", "auth-secret/password"),  # Username/Password auth
+    ("cert-secret/certificate", None, None, None, None),  # Basic certificate auth
+    ("cert-secret/certificate", "cert-secret/privateKey", None, None, None),  # Certificate with key
+    ("cert-secret/certificate", None, "cert-secret/intermediateCerts", None, None),  # Certificate with intermediate
     (
-        "secretRef:certificate", "secretRef:privateKey", "secretRef:intermediateCerts", None, None
+        "cert-secret/certificate", "cert-secret/privateKey", "cert-secret/intermediateCerts", None, None
     ),  # Full certificate chain
 ])
 @pytest.mark.parametrize("endpoint_version", [None, "1.0"])
