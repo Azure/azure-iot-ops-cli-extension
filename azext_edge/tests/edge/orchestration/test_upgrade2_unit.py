@@ -265,8 +265,6 @@ class UpgradeScenario:
     def set_instance_mock(self: T, mocked_responses: responses, instance_name: str, resource_group_name: str):
         mocked_responses.assert_all_requests_are_fired = False
 
-        # print(f"Test: {self.description}, remove_adr_for_test={self.remove_adr_for_test}")
-
         # Always use version 1.2.0+ (which includes ADR namespace)
         # unless explicitly testing scenario without ADR
         if self.remove_adr_for_test:
@@ -274,7 +272,7 @@ class UpgradeScenario:
             mock_instance_record = get_mock_instance_record(
                 name=instance_name,
                 resource_group_name=resource_group_name,
-                version="1.1.15",  # < 1.2.0, so no ADR namespace
+                version="1.1.15",
             )
         else:
             mock_instance_record = get_mock_instance_record(
@@ -1096,27 +1094,36 @@ def assert_result(
     result_by_type = {}
     deleted_types = set()
     created_types = set()
+    instance_updates = []
 
     for result in upgrade_result:
         props = result.get("properties", {})
         ext_type = props.get("extensionType")
 
-        # Skip instance updates (they don't have extensionType)
+        # Separate instance updates from extension operations
         if not ext_type:
+            # Instance updates don't have extensionType but should have specific properties
             if "adrNamespaceRef" in props:
-                # This is an instance update
-                assert target_scenario.expect_instance_update, "Unexpected instance update in results"
+                instance_updates.append(result)
             continue
 
+        # Process extension operations
         if props.get("provisioningState") == "Deleted":
             deleted_types.add(ext_type)
         else:
             result_by_type[ext_type] = result
-            # Check if this was a create operation by checking scenario records
             if ext_type in target_scenario.create_record:
                 created_types.add(ext_type)
 
-    # Validate user kwargs are applied
+    # Validate instance updates
+    if target_scenario.expect_instance_update:
+        assert instance_updates, "Expected instance update but none found in results"
+        assert len(instance_updates) == 1, f"Expected exactly 1 instance update, found {len(instance_updates)}"
+    else:
+        assert not instance_updates, (
+            f"Unexpected instance update(s) in results. Found {len(instance_updates)} instance update(s)"
+        )
+
     _assert_user_kwargs_applied(target_scenario.user_kwargs, result_by_type, deleted_types)
 
     # Validate expected types if provided
