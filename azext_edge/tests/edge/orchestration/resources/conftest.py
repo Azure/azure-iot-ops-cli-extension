@@ -12,13 +12,13 @@ import pytest
 import requests
 
 from ....generators import generate_random_string, get_zeroed_subscription
-from azext_edge.edge.util.az_client import IoTOpsMgmtApiVersion, DeviceRegistryMgmtApiVersion
+from azext_edge.edge.util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION, DeviceRegistryMgmtApiVersion
 
 ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 BASE_URL = "https://management.azure.com"
 RESOURCE_PROVIDER = "Microsoft.IoTOperations"
 QUALIFIED_INSTANCE_TYPE = f"{RESOURCE_PROVIDER}/instances"
-INSTANCES_API_VERSION = IoTOpsMgmtApiVersion.V20250701_preview.value
+INSTANCES_API_VERSION = DEFAULT_IOTOPS_MGMT_API_VERSION.value
 ADR_RP = "Microsoft.DeviceRegistry"
 ADR_API_VERSION = DeviceRegistryMgmtApiVersion.V20250701_preview.value
 STORAGE_RP = "Microsoft.Storage"

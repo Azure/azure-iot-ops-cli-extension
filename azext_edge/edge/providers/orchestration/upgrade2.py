@@ -275,7 +275,38 @@ def format_version_with_train(version: Optional[str], train: Optional[str]) -> s
         return "[dim]Not Available[/dim]"
     if not train:
         return version
-    return f"{version} \[{train}]"
+    return f"{version} \\[{train}]"
+
+
+def format_extension_row(ext: "ExtensionUpgradeState") -> Tuple[str, str, str, any]:
+    """Format an extension row for the upgrade table.
+    Returns: (current_version, desired_version, action, patch_payload)
+    """
+    # Add status indicator for non-succeeded states
+    status_indicator = ""
+    if ext.provisioning_state.lower() != "succeeded":
+        status_indicator = f" [yellow]({ext.provisioning_state})[/yellow]"
+
+    if ext.operation_type == ExtensionOperation.DELETE:
+        current = format_version_with_train(ext.current_version[0], ext.current_version[1]) + status_indicator
+        desired = "[red]Remove[/red]"
+        action = f"[red]Delete {ext.moniker}[/red]"
+        return current, desired, action
+
+    elif ext.operation_type == ExtensionOperation.CREATE:
+        current = "[dim]Not Installed[/dim]"
+        version = ext.desired_version[0] or "N/A"
+        train = ext.desired_version[1] or "N/A"
+        desired = f"[green]{format_version_with_train(version, train)}[/green]"
+        action = f"[green]Install {ext.moniker}[/green]"
+        return current, desired, action
+
+    else:  # UPDATE
+        current = format_version_with_train(ext.current_version[0], ext.current_version[1]) + status_indicator
+        desired = format_version_with_train(ext.desired_version[0], ext.desired_version[1])
+        patch = ext.get_patch()
+        action = JSON(dumps(patch)) if patch else None
+        return current, desired, action
 
 
 def get_default_table() -> Table:
@@ -301,40 +332,11 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):
         if not ext.can_upgrade():
             continue
 
-        # Format versions based on operation
-        if ext.operation_type == ExtensionOperation.DELETE:
-            current_version = format_version_with_train(ext.current_version[0], ext.current_version[1])
-            # Include status in current version if not succeeded
-            if ext.provisioning_state.lower() != "succeeded":
-                current_version = f"{current_version} [yellow]({ext.provisioning_state})[/yellow]"
-            desired_version = "[red]Remove[/red]"
-            patch_payload = f"[red]Delete {ext.moniker} extension[/red]"
-        elif ext.operation_type == ExtensionOperation.CREATE:
-            current_version = "[dim]Not Installed[/dim]"
-            desired_version = (
-                "[green]"
-                + format_version_with_train(ext.desired_version[0] or "N/A", ext.desired_version[1] or "N/A")
-                + "[/green]"
-            )
-            patch_payload = f"[green]Create {ext.moniker} extension[/green]"
-        else:  # UPDATE
-            current_version = format_version_with_train(ext.current_version[0], ext.current_version[1])
-            # Include status in current version if not succeeded
-            if ext.provisioning_state.lower() != "succeeded":
-                current_version = f"{current_version} [yellow]({ext.provisioning_state})[/yellow]"
-            desired_version = format_version_with_train(ext.desired_version[0], ext.desired_version[1])
-            patch_payload = ext.get_patch()
-            if patch_payload:
-                patch_payload = JSON(dumps(patch_payload))
-            else:
-                continue
+        row_data = format_extension_row(ext)
+        if row_data[2] is None:  # Skip if no action
+            continue
 
-        table.add_row(
-            ext.moniker,
-            current_version,
-            desired_version,
-            patch_payload,
-        )
+        table.add_row(ext.moniker, *row_data)
         table.add_section()
 
     # Add instance update row if needed
@@ -342,9 +344,18 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):
         adr_id = upgrade_state.adr_namespace_resource_id
         adr_name = adr_id.split("/")[-1] if "/" in adr_id else adr_id
 
+        # Show current state based on what's configured
+        namespace_ref = upgrade_state.instance.get("properties", {}).get("adrNamespaceRef")
+        if namespace_ref and namespace_ref.get("resourceId"):
+            current_adr_id = namespace_ref.get("resourceId")
+            current_adr_name = current_adr_id.split("/")[-1] if "/" in current_adr_id else current_adr_id
+            current_state = f"[dim]Linked to {current_adr_name}[/dim]"
+        else:
+            current_state = "[dim]No ADR namespace[/dim]"
+
         table.add_row(
             "instance",
-            "[dim]No ADR namespace ref[/dim]",
+            current_state,
             f"[green]Link {adr_name}[/green]",
             JSON(dumps({"properties": {"adrNamespaceRef": {"resourceId": f"*/{adr_name}"}}})),
         )
@@ -412,35 +423,37 @@ class ClusterUpgradeState:
         return any(ext_state.can_upgrade() for ext_state in self.extension_upgrades) or bool(self.instance_upgrade)
 
     def _check_instance_upgrade(self) -> bool:
-        """Check if instance needs ADR namespace update during v2 migration.
+        """Check if instance needs ADR namespace update.
 
         Returns True if:
-        - Instance exists
-        - Migration to v2 is happening (platform->certmanager)
-        - Instance doesn't already have an ADR namespace
-        - User provided an ADR namespace via --ns-resource-id
+        1. During v2 migration and instance needs ADR namespace (required)
+        2. User provided --ns-resource-id to update/set ADR namespace (optional update)
 
-        Raises ValidationError if ADR namespace is needed but not provided.
+        Raises ValidationError if ADR namespace is required but not provided.
         """
-
         if not self.instance:
             return False
 
-        should_migrate = self._is_target_version_above_migration_threshold()
-        if not should_migrate:
-            return False
+        namespace_ref = self.instance.get("properties", {}).get("adrNamespaceRef")
+        has_adr_namespace = namespace_ref and namespace_ref.get("resourceId")
 
-        namespace_ref: Optional[dict] = self.instance.get("properties", {}).get("adrNamespaceRef")
-        if namespace_ref and namespace_ref.get("resourceId"):
-            return False
+        # If user provided an ADR namespace, check if update is needed
+        if self.adr_namespace_resource_id:
+            # Update needed if no current ADR or different from provided
+            current_adr_id = namespace_ref.get("resourceId") if namespace_ref else None
+            return not current_adr_id or current_adr_id != self.adr_namespace_resource_id
 
-        if not self.adr_namespace_resource_id:
+        # If no ADR namespace provided, check if it's required for v2 migration
+        # Check if we're doing a v2 migration (platform -> certmanager)
+        is_v2_migration = self._is_target_version_above_migration_threshold()
+
+        if is_v2_migration and not has_adr_namespace:
             raise ValidationError(
                 "The instance requires an ADR namespace for migration to v2.\n"
                 "Please provide a value for --ns-resource-id."
             )
 
-        return True
+        return False
 
     def _refresh_upgrade_state(self) -> List["ExtensionUpgradeState"]:
         ext_queue: List["ExtensionUpgradeState"] = []

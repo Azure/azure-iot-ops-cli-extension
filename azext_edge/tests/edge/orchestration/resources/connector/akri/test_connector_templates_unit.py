@@ -7,12 +7,11 @@
 from typing import Optional
 
 from ...conftest import (
+    INSTANCES_API_VERSION,
+    RESOURCE_PROVIDER,
     get_base_endpoint,
     get_mock_resource,
 )
-
-CONNECTOR_TEMPLATE_RP = "Microsoft.IoTOperations"
-CONNECTOR_TEMPLATE_RP_API_VERSION = "2025-07-01-preview"
 
 
 def get_connector_template_endpoint(
@@ -24,8 +23,8 @@ def get_connector_template_endpoint(
     return get_base_endpoint(
         resource_group_name=resource_group_name,
         resource_path=resource_path,
-        resource_provider=CONNECTOR_TEMPLATE_RP,
-        api_version=CONNECTOR_TEMPLATE_RP_API_VERSION,
+        resource_provider=RESOURCE_PROVIDER,
+        api_version=INSTANCES_API_VERSION,
     )
 
 
@@ -41,7 +40,7 @@ def get_mock_connector_template_record(
         optional_kwargs["custom_location_name"] = cl_name
     record = get_mock_resource(
         name=name,
-        resource_provider=CONNECTOR_TEMPLATE_RP,
+        resource_provider=RESOURCE_PROVIDER,
         resource_path=f"/instances/{instance_name}/akriConnectorTemplates/{name}",
         location=location,
         properties={
@@ -80,7 +79,7 @@ def get_mock_connector_template_record(
             },
         },
         resource_group_name=resource_group_name,
-        qualified_type=f"{CONNECTOR_TEMPLATE_RP}/instances/akriConnectorTemplates",
+        qualified_type=f"{RESOURCE_PROVIDER}/instances/akriConnectorTemplates",
         is_proxy_resource=True,
         **optional_kwargs,
     )

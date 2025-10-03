@@ -174,9 +174,12 @@ class IoTOpsMgmtApiVersion(Enum):
     V20241101 = "2024-11-01"
 
 
+DEFAULT_IOTOPS_MGMT_API_VERSION = IoTOpsMgmtApiVersion.V20250901_preview
+
+
 def get_iotops_mgmt_client(
     subscription_id: str,
-    api_version: Union[IoTOpsMgmtApiVersion, str] = IoTOpsMgmtApiVersion.V20250701_preview,
+    api_version: Union[IoTOpsMgmtApiVersion, str] = DEFAULT_IOTOPS_MGMT_API_VERSION,
     **kwargs,
 ) -> "MicrosoftIoTOperationsManagementService":
     from ..vendor.clients.iotopsmgmt import MicrosoftIoTOperationsManagementService

@@ -150,6 +150,9 @@ class UpgradeScenario:
         self.delete_record: Dict[str, bool] = {}
         self.create_record: Dict[str, dict] = {}
         self.patch_call_count = 0
+        self.instance_adr_namespace_resource_id: Optional[str] = None
+        self.expect_instance_update = False
+        self.remove_adr_for_test = False
 
         self._build_defaults()
 
@@ -186,6 +189,8 @@ class UpgradeScenario:
         return self
 
     def set_user_kwargs(self: T, **kwargs) -> T:
+        if "ns_resource_id" in kwargs:
+            self.instance_adr_namespace_resource_id = kwargs["ns_resource_id"]
         self.user_kwargs.update(kwargs)
         return self
 
@@ -250,12 +255,35 @@ class UpgradeScenario:
         return self
 
     def set_auxiliary_kwargs(self: T, **kwargs):
+        if "remove_adr_for_test" in kwargs:
+            self.remove_adr_for_test = kwargs["remove_adr_for_test"]
+        if "expect_instance_update" in kwargs:
+            self.expect_instance_update = kwargs["expect_instance_update"]
         self.aux_kwargs = kwargs
         return self
 
     def set_instance_mock(self: T, mocked_responses: responses, instance_name: str, resource_group_name: str):
         mocked_responses.assert_all_requests_are_fired = False
-        mock_instance_record = get_mock_instance_record(name=instance_name, resource_group_name=resource_group_name)
+
+        # print(f"Test: {self.description}, remove_adr_for_test={self.remove_adr_for_test}")
+
+        # Always use version 1.2.0+ (which includes ADR namespace)
+        # unless explicitly testing scenario without ADR
+        if self.remove_adr_for_test:
+            # Explicitly create instance without ADR namespace for testing
+            mock_instance_record = get_mock_instance_record(
+                name=instance_name,
+                resource_group_name=resource_group_name,
+                version="1.1.15",  # < 1.2.0, so no ADR namespace
+            )
+        else:
+            mock_instance_record = get_mock_instance_record(
+                name=instance_name,
+                resource_group_name=resource_group_name,
+                version="1.2.0",  # >= 1.2.0, includes ADR namespace
+                adr_namespace_name="default-adr",
+            )
+
         mocked_responses.add(
             method=responses.GET,
             url=get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name),
@@ -263,6 +291,18 @@ class UpgradeScenario:
             status=200,
             content_type="application/json",
         )
+
+        # Add instance update mock if expected
+        if self.expect_instance_update:
+
+            def instance_update_callback(request):
+                return (200, STANDARD_HEADERS, request.body)
+
+            mocked_responses.add_callback(
+                method=responses.PUT,
+                url=get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name),
+                callback=instance_update_callback,
+            )
 
         cl_name = generate_random_string()
         mock_cl_record = get_mock_cl_record(name=cl_name, resource_group_name=resource_group_name)
@@ -403,17 +443,27 @@ def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT)
 
 
 def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: List[dict]):
-    """Assert operations happen in correct order: DELETE -> CREATE -> UPDATE.
+    """Assert operations happen in correct order: DELETE -> CREATE -> UPDATE -> INSTANCE_UPDATE.
     Also validates extension type order within each operation group."""
 
     # Group results by operation type
     deletes = []
     creates = []
     updates = []
+    instance_updates = []
 
     for result in upgrade_result:
         props = result.get("properties", {})
         ext_type = props.get("extensionType")
+
+        # Check if this is an instance update (has adrNamespaceRef but no extensionType)
+        if not ext_type and "adrNamespaceRef" in props:
+            instance_updates.append(result)
+            continue
+
+        # Skip if no extension type and not an instance update
+        if not ext_type:
+            continue
 
         if props.get("provisioningState") == "Deleted":
             deletes.append(ext_type)
@@ -429,6 +479,14 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
     assert set(creates) == set(
         target_scenario.create_record.keys()
     ), f"CREATE operations mismatch. Expected {set(target_scenario.create_record.keys())}, got {set(creates)}"
+
+    # If instance update is expected, verify it's last
+    if target_scenario.expect_instance_update:
+        assert len(instance_updates) == 1, "Expected exactly one instance update"
+        # Verify it's the last operation in the result list
+        if len(upgrade_result) > 0:
+            last_result = upgrade_result[-1]
+            assert "adrNamespaceRef" in last_result.get("properties", {}), "Instance update should be last operation"
 
     # Build the actual operation sequence (non-empty groups only)
     operation_sequence = []
@@ -837,6 +895,32 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                 EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
             },
         ),
+        # ========== ADR Namespace ==========
+        (
+            UpgradeScenario("ADR Required: Migration to v2 without ADR namespace")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.83")  # Triggers v2 migration
+            .set_auxiliary_kwargs(remove_adr_for_test=True)
+            .expecting_validation_error(r"The instance requires an ADR namespace for migration to v2"),
+            {},
+        ),
+        (
+            UpgradeScenario("ADR Provided: Migration to v2 with ADR namespace")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(
+                ops_version="1.2.83",
+                ns_resource_id="PLACEHOLDER_ADR_NAMESPACE_ID",  # TODO: Temporary.
+            )
+            .set_auxiliary_kwargs(remove_adr_for_test=True, expect_instance_update=True),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+            },
+        ),
     ],
 )
 def test_ops_upgrade(
@@ -856,6 +940,14 @@ def test_ops_upgrade(
     resource_group_name = generate_random_string()
     instance_name = generate_random_string()
 
+    ns_resource_id = target_scenario.user_kwargs.get("ns_resource_id")
+    if ns_resource_id and ns_resource_id == "PLACEHOLDER_ADR_NAMESPACE_ID":
+        # TODO: Placeholder is temp due to DOE limitation.
+        ns_resource_id = (
+            f"/subscriptions/sub1/resourceGroups/{resource_group_name}"
+            f"/providers/Microsoft.DeviceRegistry/namespaces/adr1"
+        )
+
     target_scenario.set_instance_mock(
         mocked_responses=mocked_responses, instance_name=instance_name, resource_group_name=resource_group_name
     )
@@ -864,10 +956,14 @@ def test_ops_upgrade(
         "resource_group_name": resource_group_name,
         "instance_name": instance_name,
         "no_progress": no_progress,
+        "force": target_scenario.user_kwargs.get("force"),
         "confirm_yes": target_scenario.confirm_yes,
+        "adr_namespace_resource_id": ns_resource_id,
     }
 
-    call_kwargs.update(target_scenario.user_kwargs)
+    for key, value in target_scenario.user_kwargs.items():
+        if key not in ["force", "ns_resource_id"]:  # Skip already handled keys
+            call_kwargs[key] = value
 
     expect_exception = target_scenario.expect_exception
     exception_match = target_scenario.expect_exception_match
@@ -902,7 +998,8 @@ def test_ops_upgrade(
             if ext not in target_scenario.delete_record and ext not in target_scenario.create_record
         ]
     )
-    expected_count = delete_count + create_count + update_count
+    instance_count = int(target_scenario.expect_instance_update)
+    expected_count = delete_count + create_count + update_count + instance_count
 
     assert len(upgrade_result) == expected_count
     assert len(mocked_confirm.ask.mock_calls) == int(not target_scenario.confirm_yes)
@@ -1003,6 +1100,13 @@ def assert_result(
     for result in upgrade_result:
         props = result.get("properties", {})
         ext_type = props.get("extensionType")
+
+        # Skip instance updates (they don't have extensionType)
+        if not ext_type:
+            if "adrNamespaceRef" in props:
+                # This is an instance update
+                assert target_scenario.expect_instance_update, "Unexpected instance update in results"
+            continue
 
         if props.get("provisioningState") == "Deleted":
             deleted_types.add(ext_type)
