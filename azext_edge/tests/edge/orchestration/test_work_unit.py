@@ -38,6 +38,7 @@ from azext_edge.edge.common import (
     DEFAULT_BROKER_LISTENER,
     DEFAULT_DATAFLOW_ENDPOINT,
     DEFAULT_DATAFLOW_PROFILE,
+    DEFAULT_ARTIFACT_REGISTRY,
 )
 from azext_edge.edge.providers.base import DEFAULT_NAMESPACE
 from azext_edge.edge.providers.orchestration.common import (
@@ -909,7 +910,7 @@ def get_expected_keys_for(phase: InstancePhase) -> Tuple[Set[str], Set[str]]:
     ext_keys = {"cluster", "aioExtension"}
     instance_keys = ext_keys.union({"customLocation", "aioInstance"})
     resource_keys = instance_keys.union(
-        {"broker", "brokerAuthn", "brokerListener", "dataflowProfile", "dataflowEndpoint"}
+        {"broker", "brokerAuthn", "brokerListener", "dataflowProfile", "dataflowEndpoint", "artifactRegistryEndpoint"}
     )
     if phase == InstancePhase.EXT:
         return ext_keys, {}
@@ -1028,8 +1029,8 @@ def assert_instance_deployment_body(body_str: str, target_scenario: dict, phase:
         assert resources["broker"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}"
         assert resources["brokerAuthn"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_AUTHN}"
         assert (
-            resources["brokerListener"]["name"]
-            == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
+            resources["brokerListener"]["name"] == f"{instance_name_lowered}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
         )
         assert resources["dataflowProfile"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_PROFILE}"
         assert resources["dataflowEndpoint"]["name"] == f"{instance_name_lowered}/{DEFAULT_DATAFLOW_ENDPOINT}"
+        assert resources["artifactRegistryEndpoint"]["name"] == f"{instance_name_lowered}/{DEFAULT_ARTIFACT_REGISTRY}"

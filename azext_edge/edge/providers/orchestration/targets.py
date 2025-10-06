@@ -268,7 +268,7 @@ class InitTargets:
         broker_listener = template.get_resource_by_key("brokerListener")
         dataflow_profile = template.get_resource_by_key("dataflowProfile")
         dataflow_endpoint = template.get_resource_by_key("dataflowEndpoint")
-        artifact_registry_endpoint = template.get_resource_by_key("artifactRegistry")
+        artifact_registry_endpoint = template.get_resource_by_key("artifactRegistryEndpoint")
 
         instance["properties"] = get_default_instance_config(
             description=self.instance_description,
