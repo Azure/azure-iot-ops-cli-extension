@@ -1,3 +1,8 @@
+# ----------------------------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License file in the project root for license information.
+# ----------------------------------------------------------------------------------------------
+
 [build-system]
 requires = ["setuptools == 70.0.0", "wheel == 0.30.0"]
 build-backend = "setuptools.build_meta"
@@ -6,7 +11,7 @@ build-backend = "setuptools.build_meta"
 name = "azure-iot-ops"
 dynamic = ["version"]
 description = "The Azure IoT Operations extension for Azure CLI."
-readme = "README.md"
+readme = { text = "The Azure IoT Operations extension for Azure CLI. Intended for power users and/or automation of Azure IoT Operations solutions at scale.", content-type = "text/plain" }
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Microsoft", email = "iotupx@microsoft.com" }]
