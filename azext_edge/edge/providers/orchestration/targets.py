@@ -15,6 +15,7 @@ from ...common import (
     DEFAULT_BROKER_LISTENER,
     DEFAULT_DATAFLOW_ENDPOINT,
     DEFAULT_DATAFLOW_PROFILE,
+    DEFAULT_ARTIFACT_REGISTRY,
 )
 from ...util import parse_kvp_nargs, url_safe_hash_phrase
 from ...util.id_tools import is_valid_resource_id, parse_resource_id
@@ -267,6 +268,7 @@ class InitTargets:
         broker_listener = template.get_resource_by_key("brokerListener")
         dataflow_profile = template.get_resource_by_key("dataflowProfile")
         dataflow_endpoint = template.get_resource_by_key("dataflowEndpoint")
+        artifact_registry_endpoint = template.get_resource_by_key("artifactRegistry")
 
         instance["properties"] = get_default_instance_config(
             description=self.instance_description,
@@ -280,6 +282,7 @@ class InitTargets:
             broker_listener["name"] = f"{self.instance_name}/{DEFAULT_BROKER}/{DEFAULT_BROKER_LISTENER}"
             dataflow_profile["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_PROFILE}"
             dataflow_endpoint["name"] = f"{self.instance_name}/{DEFAULT_DATAFLOW_ENDPOINT}"
+            artifact_registry_endpoint["name"] = f"{self.instance_name}/{DEFAULT_ARTIFACT_REGISTRY}"
 
             template.content["outputs"]["aio"]["value"]["name"] = self.instance_name
 

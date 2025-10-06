@@ -245,6 +245,10 @@ DEFAULT_BROKER_AUTHN = "default"
 DEFAULT_DATAFLOW_PROFILE = "default"
 DEFAULT_DATAFLOW_ENDPOINT = "default"
 
+# Artifact Registry constants
+DEFAULT_ARTIFACT_REGISTRY = "default"
+
+
 # OPC UA check constant
 OPCUA_SERVICE = "opcua"
 

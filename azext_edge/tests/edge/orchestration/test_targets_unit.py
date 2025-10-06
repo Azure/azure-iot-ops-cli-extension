@@ -820,6 +820,7 @@ def test_sanitize_methods():
                 "brokerListener",
                 "dataflowProfile",
                 "dataflowEndpoint",
+                "artifactRegistryEndpoint",
             },
             {"aioExtension", "cluster", "customLocation", "aioInstance"},  # All base resources marked as existing
         ),
@@ -834,6 +835,7 @@ def test_sanitize_methods():
                 "brokerListener",
                 "dataflowProfile",
                 "dataflowEndpoint",
+                "artifactRegistryEndpoint",
                 "cluster",
                 "customLocation",
             },
