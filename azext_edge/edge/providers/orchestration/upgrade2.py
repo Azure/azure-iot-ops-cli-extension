@@ -305,6 +305,7 @@ def format_extension_row(ext: "ExtensionUpgradeState") -> Tuple[str, str, str, a
         current = format_version_with_train(ext.current_version[0], ext.current_version[1]) + status_indicator
         desired = format_version_with_train(ext.desired_version[0], ext.desired_version[1])
         patch = ext.get_patch()
+
         action = JSON(dumps(patch)) if patch else None
         return current, desired, action
 
@@ -590,6 +591,7 @@ class ExtensionUpgradeState:
         self.config_delta = {}
         self.force = force
         self.operation_type = operation_type or ExtensionOperation.UPDATE
+        self._mqtt_migration_config = None
         self.semver = scoped_semver_import()
 
     @property
@@ -653,11 +655,92 @@ class ExtensionUpgradeState:
         if self._has_delta_in_train():
             payload["properties"]["releaseTrain"] = self.desired_version[1]
         if self._has_delta_in_config():
-            config_settings = self.config_delta
+            config_settings = {}
+
+            # Apply config delta first (respects sync_mode)
+            config_settings.update(self.config_delta)
+
+            # Apply user overrides (always overwrites if provided)
             config_settings.update(self.override.config)
+
+            # Add MQTT broker migration config using ADD mode (only new keys)
+            if self.moniker == EXTENSION_MONIKER_OPS and self._should_migrate_mqtt_config():
+                mqtt_migration_config = self._get_mqtt_migration_config()
+                if mqtt_migration_config:
+                    current_config = self.extension.get("properties", {}).get("configurationSettings", {})
+                    mqtt_delta = calculate_config_delta(
+                        current=current_config, target=mqtt_migration_config, sync_mode=ConfigSyncModeType.ADD.value
+                    )
+                    config_settings.update(mqtt_delta)
+
             payload["properties"]["configurationSettings"] = config_settings
 
         return payload
+
+    def _should_migrate_mqtt_config(self) -> bool:
+        if not self.extension:
+            return False
+
+        # Only for IoT Operations extension
+        if self.moniker != EXTENSION_MONIKER_OPS:
+            return False
+
+        # Check if target version is >= migration threshold
+        if not self.desired_version[0]:
+            return False
+
+        target_semver = self.semver.parse(self.desired_version[0])
+        min_migration_semver = self.semver.parse(MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+
+        return target_semver >= min_migration_semver
+
+    def _get_mqtt_migration_config(self) -> dict:
+        """Extract and transform MQTT broker config for v2 migration."""
+        # Use cached result if already calculated
+        if self._mqtt_migration_config is not None:
+            return self._mqtt_migration_config
+
+        # Initialize to empty dict (meaning "checked but no migration needed")
+        self._mqtt_migration_config = {}
+
+        if not self.extension:
+            return self._mqtt_migration_config
+
+        current_config = self.extension.get("properties", {}).get("configurationSettings", {})
+
+        # Extract existing MQTT broker settings
+        mqtt_address = current_config.get("connectors.values.mqttBroker.address")
+        token_audience = current_config.get("connectors.values.mqttBroker.serviceAccountTokenAudience")
+
+        if not mqtt_address:
+            logger.debug(f"No MQTT address found in {self.moniker} config, skipping migration")
+            return self._mqtt_migration_config
+
+        # Parse MQTT address (e.g., "mqtts://aio-broker.azure-iot-operations:18883")
+        mqtt_config = {}
+        try:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(mqtt_address)
+            if parsed.hostname:
+                mqtt_config["dataFlows.values.tinyKube.mqttBroker.hostName"] = parsed.hostname
+                if parsed.port:
+                    mqtt_config["dataFlows.values.tinyKube.mqttBroker.port"] = str(parsed.port)
+            else:
+                logger.debug(f"Could not parse hostname from MQTT address '{mqtt_address}'")
+
+        except Exception as e:
+            logger.debug(f"Failed to parse MQTT address '{mqtt_address}': {e}")
+
+        if token_audience:
+            mqtt_config["dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience"] = (
+                token_audience
+            )
+
+        logger.debug(f"MQTT migration config for {self.moniker}: {mqtt_config}")
+        if mqtt_config:
+            self._mqtt_migration_config = mqtt_config
+        return self._mqtt_migration_config
 
     def _has_delta_in_version(self) -> bool:
         # Can't have delta if no current version (CREATE/DELETE operations)
@@ -690,12 +773,28 @@ class ExtensionUpgradeState:
             return False
 
         if self.desired_config:
+            # Handle None sync_mode by defaulting to FULL
+            sync_mode = self.override.config_sync_mode or ConfigSyncModeType.FULL.value
+
             self.config_delta = calculate_config_delta(
                 current=self.extension["properties"].get("configurationSettings", {}),
                 target=self.desired_config,
-                sync_mode=self.override.config_sync_mode,
+                sync_mode=sync_mode,
             )
-        return bool(self.override.config) or bool(self.config_delta)
+
+        # Check for MQTT migration config changes
+        has_mqtt_migration = False
+        if self.moniker == EXTENSION_MONIKER_OPS and self._should_migrate_mqtt_config():
+            mqtt_migration_config = self._get_mqtt_migration_config()
+            if mqtt_migration_config:
+                # Just check if any keys would be added (simpler than calculating full delta)
+                current_config = self.extension["properties"].get("configurationSettings", {})
+                for key in mqtt_migration_config:
+                    if key not in current_config:
+                        has_mqtt_migration = True
+                        break
+
+        return self.override.config or self.config_delta or has_mqtt_migration
 
     def _has_non_success_state(self) -> bool:
         """
@@ -765,22 +864,37 @@ class ExtensionUpgradeState:
                 )
 
 
-def calculate_config_delta(
-    current: Dict[str, str], target: Dict[str, str], sync_mode: str = ConfigSyncModeType.FULL.value
-) -> dict:
+def calculate_config_delta(current: Dict[str, str], target: Dict[str, str], sync_mode: Optional[str] = None) -> dict:
+    """Calculate configuration delta between current and target state.
+
+    Args:
+        current: Current configuration settings
+        target: Target configuration settings
+        sync_mode: How to sync config (FULL, ADD, NONE). Defaults to FULL if None.
+
+    Returns:
+        Dictionary of configuration changes to apply
+    """
+    if sync_mode is None:
+        sync_mode = ConfigSyncModeType.FULL.value
+
     delta = {}
+
     if sync_mode == ConfigSyncModeType.NONE.value:
         return delta
 
     if sync_mode == ConfigSyncModeType.FULL.value:
+        # In FULL mode, update/delete existing keys to match target
         for key in current:
             if key in target and current[key] != target[key]:
                 delta[key] = target[key]
             elif key not in target:
-                delta[key] = None
+                delta[key] = None  # Mark for deletion
 
-    for key in target:
-        if key not in current:
-            delta[key] = target[key]
+    # In both FULL and ADD modes, add new keys from target
+    if sync_mode in [ConfigSyncModeType.FULL.value, ConfigSyncModeType.ADD.value]:
+        for key in target:
+            if key not in current:
+                delta[key] = target[key]
 
     return delta
