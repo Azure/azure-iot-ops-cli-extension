@@ -204,6 +204,7 @@ class UpgradeScenario:
         ext_type: str,
         ext_vers: Optional[str] = None,
         ext_train: Optional[str] = None,
+        config_settings: Optional[dict] = None,
         provisioning_state: Optional[str] = None,
         remove: bool = False,
     ) -> T:
@@ -227,7 +228,7 @@ class UpgradeScenario:
                     "extensionType": ext_type,
                     "version": ext_vers or default_vers,
                     "releaseTrain": ext_train or default_train,
-                    "configurationSettings": {},
+                    "configurationSettings": config_settings or {},
                     "provisioningState": provisioning_state or PROVISIONING_STATE_SUCCESS,
                 },
                 "name": ext_moniker,
@@ -242,6 +243,8 @@ class UpgradeScenario:
                 self.extensions[ext_type]["properties"]["releaseTrain"] = ext_train
             if provisioning_state:
                 self.extensions[ext_type]["properties"]["provisioningState"] = provisioning_state
+            if config_settings is not None:
+                self.extensions[ext_type]["properties"]["configurationSettings"] = config_settings
         return self
 
     def set_response_on_patch(
@@ -919,6 +922,186 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                 EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
             },
         ),
+        # ========== MQTT Broker Configuration Migration (>= 1.2.83) ==========
+        (
+            UpgradeScenario("MQTT Migration: Basic migration with default token")
+            .set_extension(
+                ext_type=EXTENSION_TYPE_OPS,
+                ext_vers="1.2.0",
+                config_settings={
+                    "connectors.values.mqttBroker.address": "mqtts://aio-broker.azure-iot-operations:18883",
+                    "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
+                },
+            )
+            .set_user_kwargs(ops_version="1.2.83"),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS,
+                    version="1.2.83",
+                    config={
+                        "dataFlows.values.tinyKube.mqttBroker.hostName": "aio-broker.azure-iot-operations",
+                        "dataFlows.values.tinyKube.mqttBroker.port": "18883",
+                        "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": (
+                            "aio-internal"
+                        ),
+                    },
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("MQTT Migration: Custom broker with IP address")
+            .set_extension(
+                ext_type=EXTENSION_TYPE_OPS,
+                ext_vers="1.2.0",
+                config_settings={
+                    "connectors.values.mqttBroker.address": "mqtts://192.168.1.1:8883",
+                    "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
+                },
+            )
+            .set_user_kwargs(ops_version="1.2.83"),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS,
+                    version="1.2.83",
+                    config={
+                        "dataFlows.values.tinyKube.mqttBroker.hostName": "192.168.1.1",
+                        "dataFlows.values.tinyKube.mqttBroker.port": "8883",
+                        "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": (
+                            "aio-internal"
+                        ),
+                    },
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("MQTT No Migration: Version < 1.2.83")
+            .set_extension(
+                ext_type=EXTENSION_TYPE_OPS,
+                ext_vers="1.2.0",
+                config_settings={
+                    "connectors.values.mqttBroker.address": "mqtts://aio-broker.azure-iot-operations:18883",
+                    "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
+                },
+            )
+            .set_user_kwargs(ops_version="1.2.82"),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS,
+                    version="1.2.82",
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("MQTT No Migration: Missing MQTT config")
+            .set_extension(
+                ext_type=EXTENSION_TYPE_OPS,
+                ext_vers="1.2.0",
+                config_settings={"some.other.setting": "value"},
+            )
+            .set_user_kwargs(ops_version="1.2.83"),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS,
+                    version="1.2.83",
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("MQTT Migration: Without token audience")
+            .set_extension(
+                ext_type=EXTENSION_TYPE_OPS,
+                ext_vers="1.2.0",
+                config_settings={
+                    "connectors.values.mqttBroker.address": "mqtts://broker-without-port",
+                },
+            )
+            .set_user_kwargs(ops_version="1.2.83"),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS,
+                    version="1.2.83",
+                    config={
+                        "dataFlows.values.tinyKube.mqttBroker.hostName": "broker-without-port",
+                    },
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("MQTT Migration: Existing keys not overwritten")
+            .set_extension(
+                ext_type=EXTENSION_TYPE_OPS,
+                ext_vers="1.2.0",
+                config_settings={
+                    "connectors.values.mqttBroker.address": "mqtts://aio-broker.azure-iot-operations:18883",
+                    "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
+                    "dataFlows.values.tinyKube.mqttBroker.hostName": "existing-broker",
+                    "dataFlows.values.tinyKube.mqttBroker.port": "9999",
+                },
+            )
+            .set_user_kwargs(ops_version="1.2.83"),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS,
+                    version="1.2.83",
+                    config={
+                        "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": (
+                            "aio-internal"
+                        )
+                    },
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("MQTT Migration: Invalid URL only migrates token")
+            .set_extension(
+                ext_type=EXTENSION_TYPE_OPS,
+                ext_vers="1.2.0",
+                config_settings={
+                    "connectors.values.mqttBroker.address": "not-a-valid-url",
+                    "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
+                },
+            )
+            .set_user_kwargs(ops_version="1.2.83"),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS,
+                    version="1.2.83",
+                    config={
+                        "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": (
+                            "aio-internal"
+                        )
+                    },
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("MQTT Migration: With Platform migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(
+                ext_type=EXTENSION_TYPE_OPS,
+                ext_vers="1.2.0",
+                config_settings={
+                    "connectors.values.mqttBroker.address": "mqtts://aio-broker.azure-iot-operations:18883",
+                    "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
+                },
+            )
+            .set_user_kwargs(ops_version="1.2.83"),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS,
+                    version="1.2.83",
+                    config={
+                        "dataFlows.values.tinyKube.mqttBroker.hostName": "aio-broker.azure-iot-operations",
+                        "dataFlows.values.tinyKube.mqttBroker.port": "18883",
+                        "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": (
+                            "aio-internal"
+                        ),
+                    },
+                ),
+            },
+        ),
     ],
 )
 def test_ops_upgrade(
@@ -1120,9 +1303,9 @@ def assert_result(
         assert instance_updates, "Expected instance update but none found in results"
         assert len(instance_updates) == 1, f"Expected exactly 1 instance update, found {len(instance_updates)}"
     else:
-        assert not instance_updates, (
-            f"Unexpected instance update(s) in results. Found {len(instance_updates)} instance update(s)"
-        )
+        assert (
+            not instance_updates
+        ), f"Unexpected instance update(s) in results. Found {len(instance_updates)} instance update(s)"
 
     _assert_user_kwargs_applied(target_scenario.user_kwargs, result_by_type, deleted_types)
 
@@ -1152,7 +1335,16 @@ def _assert_user_kwargs_applied(user_kwargs: dict, result_by_type: dict, deleted
                 expected = user_kwargs[key]
                 if suffix == "config":
                     expected = parse_kvp_nargs(expected)
-                assert props.get(prop_name) == expected, f"{key} not applied correctly"
+                    actual_config = props.get(prop_name, {})
+                    # For config, verify that all user-provided settings are present
+                    for config_key, config_value in expected.items():
+                        assert config_key in actual_config, f"{key}: missing key '{config_key}' in config"
+                        assert actual_config[config_key] == config_value, (
+                            f"{key}: value mismatch for '{config_key}'. "
+                            f"Expected: {config_value}, Got: {actual_config[config_key]}"
+                        )
+                else:
+                    assert props.get(prop_name) == expected, f"{key} not applied correctly"
 
 
 def _assert_expected_types(
