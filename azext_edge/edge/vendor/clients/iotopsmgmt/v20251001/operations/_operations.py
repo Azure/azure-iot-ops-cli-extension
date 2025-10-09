@@ -46,7 +46,7 @@ def build_operations_list_request(**kwargs: Any) -> HttpRequest:
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -67,7 +67,7 @@ def build_instance_list_by_subscription_request(  # pylint: disable=name-too-lon
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -93,7 +93,7 @@ def build_instance_list_by_resource_group_request(  # pylint: disable=name-too-l
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -124,7 +124,7 @@ def build_instance_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -157,7 +157,7 @@ def build_instance_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -192,7 +192,7 @@ def build_instance_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -226,7 +226,7 @@ def build_instance_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -258,7 +258,7 @@ def build_akri_connector_template_list_by_instance_resource_request(  # pylint: 
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -290,7 +290,7 @@ def build_akri_connector_template_get_request(  # pylint: disable=name-too-long
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -331,7 +331,7 @@ def build_akri_connector_template_create_or_update_request(  # pylint: disable=n
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -373,7 +373,7 @@ def build_akri_connector_template_delete_request(  # pylint: disable=name-too-lo
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -413,7 +413,7 @@ def build_akri_connector_list_by_template_request(  # pylint: disable=name-too-l
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -458,7 +458,7 @@ def build_akri_connector_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -512,7 +512,7 @@ def build_akri_connector_create_or_update_request(  # pylint: disable=name-too-l
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -567,7 +567,7 @@ def build_akri_connector_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -615,7 +615,7 @@ def build_broker_list_by_resource_group_request(  # pylint: disable=name-too-lon
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -647,7 +647,7 @@ def build_broker_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -683,7 +683,7 @@ def build_broker_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -720,7 +720,7 @@ def build_broker_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -755,7 +755,7 @@ def build_broker_authentication_list_by_resource_group_request(  # pylint: disab
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -795,7 +795,7 @@ def build_broker_authentication_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -844,7 +844,7 @@ def build_broker_authentication_create_or_update_request(  # pylint: disable=nam
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -894,7 +894,7 @@ def build_broker_authentication_delete_request(  # pylint: disable=name-too-long
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -937,7 +937,7 @@ def build_broker_authorization_list_by_resource_group_request(  # pylint: disabl
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -977,7 +977,7 @@ def build_broker_authorization_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1026,7 +1026,7 @@ def build_broker_authorization_create_or_update_request(  # pylint: disable=name
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1076,7 +1076,7 @@ def build_broker_authorization_delete_request(  # pylint: disable=name-too-long
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1119,7 +1119,7 @@ def build_broker_listener_list_by_resource_group_request(  # pylint: disable=nam
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1159,7 +1159,7 @@ def build_broker_listener_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1203,7 +1203,7 @@ def build_broker_listener_create_or_update_request(  # pylint: disable=name-too-
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1248,7 +1248,7 @@ def build_broker_listener_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1286,7 +1286,7 @@ def build_dataflow_endpoint_list_by_resource_group_request(  # pylint: disable=n
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1318,7 +1318,7 @@ def build_dataflow_endpoint_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1359,7 +1359,7 @@ def build_dataflow_endpoint_create_or_update_request(  # pylint: disable=name-to
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1401,7 +1401,7 @@ def build_dataflow_endpoint_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1441,7 +1441,7 @@ def build_dataflow_profile_list_by_resource_group_request(  # pylint: disable=na
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1473,7 +1473,7 @@ def build_dataflow_profile_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1514,7 +1514,7 @@ def build_dataflow_profile_create_or_update_request(  # pylint: disable=name-too
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1556,7 +1556,7 @@ def build_dataflow_profile_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1596,7 +1596,7 @@ def build_dataflow_graph_list_by_dataflow_profile_request(  # pylint: disable=na
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1641,7 +1641,7 @@ def build_dataflow_graph_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1695,7 +1695,7 @@ def build_dataflow_graph_create_or_update_request(  # pylint: disable=name-too-l
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1750,7 +1750,7 @@ def build_dataflow_graph_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1798,7 +1798,7 @@ def build_dataflow_list_by_profile_resource_request(  # pylint: disable=name-too
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1843,7 +1843,7 @@ def build_dataflow_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1892,7 +1892,7 @@ def build_dataflow_create_or_update_request(
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1942,7 +1942,7 @@ def build_dataflow_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -1985,7 +1985,7 @@ def build_registry_endpoint_list_by_instance_resource_request(  # pylint: disabl
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2017,7 +2017,7 @@ def build_registry_endpoint_get_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2058,7 +2058,7 @@ def build_registry_endpoint_create_or_update_request(  # pylint: disable=name-to
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
     content_type: Optional[str] = kwargs.pop("content_type", _headers.pop("Content-Type", None))
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2100,7 +2100,7 @@ def build_registry_endpoint_delete_request(
     _headers = case_insensitive_dict(kwargs.pop("headers", {}) or {})
     _params = case_insensitive_dict(kwargs.pop("params", {}) or {})
 
-    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-07-01-preview"))
+    api_version: str = kwargs.pop("api_version", _params.pop("api-version", "2025-10-01"))
     accept = _headers.pop("Accept", "application/json")
 
     # Construct URL
@@ -2140,7 +2140,7 @@ class Operations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`operations` attribute.
     """
 
@@ -2264,7 +2264,7 @@ class InstanceOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`instance` attribute.
     """
 
@@ -2341,6 +2341,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -2505,6 +2507,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -2672,6 +2676,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -2904,6 +2910,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -2986,6 +2994,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -3099,6 +3109,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -3204,6 +3216,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -3286,6 +3300,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -3472,6 +3488,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -3585,6 +3603,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -3716,6 +3736,8 @@ class InstanceOperations:
                                 }
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -3908,7 +3930,7 @@ class AkriConnectorTemplateOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`akri_connector_template` attribute.
     """
 
@@ -3938,94 +3960,6 @@ class AkriConnectorTemplateOperations:
 
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "runtimeConfigurationType":
-
-                # JSON input template for discriminator value "HelmConfiguration":
-                akri_connector_template_runtime_configuration = {
-                    "helmConfigurationSettings": {
-                        "releaseName": "str",  # The release name of the Helm chart.
-                          Required.
-                        "repositoryName": "str",  # The name of the repository. Required.
-                        "version": "str",  # The version of the Helm chart. Required.
-                        "advancedConfiguration": {
-                            "delete": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "install": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "upgrade": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            }
-                        },
-                        "registrySettings": akri_connector_template_helm_registry_settings,
-                        "values": {
-                            "str": "str"  # Optional. A map of values to pass to the helm
-                              chart.
-                        }
-                    },
-                    "runtimeConfigurationType": "HelmConfiguration"
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connector_template_helm_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The registry to use for the Helm chart.
-                          Required.
-                        "authSecretRef": {
-                            "passwordKey": "str",  # The key of the password in the
-                              secret. Required.
-                            "secretRef": "str",  # The name of the secret. Required.
-                            "usernameKey": "str"  # The key of the username in the
-                              secret. Required.
-                        }
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connector_template_helm_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
 
                 # JSON input template for discriminator value "ManagedConfiguration":
                 akri_connector_template_runtime_configuration = {
@@ -4082,6 +4016,34 @@ class AkriConnectorTemplateOperations:
                     }
                 }
 
+                # JSON input template for discriminator value "Bucketized":
+                akri_connector_template_allocation = {
+                    "bucketSize": 0,  # The bucketized allocation of AEPs for connectors.
+                      Required.
+                    "policy": "Bucketized"
+                }
+
+                # JSON input template for discriminator value "ContainerRegistry":
+                akri_connectors_registry_settings = {
+                    "containerRegistrySettings": {
+                        "registry": "str",  # The container registry to use for the artifact.
+                          Required.
+                        "imagePullSecrets": [
+                            {
+                                "secretRef": "str"  # The name of the image pull
+                                  secret. Required.
+                            }
+                        ]
+                    },
+                    "registrySettingsType": "ContainerRegistry"
+                }
+
+                # JSON input template for discriminator value "RegistryEndpointRef":
+                akri_connectors_registry_settings = {
+                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
+                    "registrySettingsType": "RegistryEndpointRef"
+                }
+
                 # response body for status code(s): 200
                 response == {
                     "extendedLocation": {
@@ -4096,22 +4058,8 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "configurationSchemaRefs": {
-                                    "additionalConfigSchemaRef": "str",  #
-                                      Optional. The additional configuration schema reference.
-                                    "defaultDatasetConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for
-                                      datasets.
-                                    "defaultEventsConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for events.
-                                    "defaultProcessControlConfigSchemaRef":
-                                      "str",  # Optional. The default configuration schema reference
-                                      for process control.
-                                    "defaultStreamsConfigSchemaRef": "str"  #
-                                      Optional. The default configuration schema reference for streams.
-                                },
-                                "description": "str",  # Optional. A description of
-                                  the device inbound endpoint.
+                                "displayName": "str",  # Optional. The display name
+                                  of the device inbound endpoint.
                                 "version": "str"  # Optional. The version of the
                                   device inbound endpoint.
                             }
@@ -4124,12 +4072,16 @@ class AkriConnectorTemplateOperations:
                             "aioMinVersion": "str"  # Optional. The minimum version of
                               AIO required for the connector.
                         },
+                        "connectorMetadataRef": "str",  # Optional. A reference to a
+                          connector metadata document reference in a container registry.
                         "diagnostics": {
                             "logs": {
                                 "level": "info"  # Optional. Default value is "info".
                                   The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mqttConnectionConfiguration": {
                             "authentication": akri_connectors_mqtt_authentication,
                             "host": "str",  # Optional. Host of the Broker in the form of
@@ -4268,94 +4220,6 @@ class AkriConnectorTemplateOperations:
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "runtimeConfigurationType":
 
-                # JSON input template for discriminator value "HelmConfiguration":
-                akri_connector_template_runtime_configuration = {
-                    "helmConfigurationSettings": {
-                        "releaseName": "str",  # The release name of the Helm chart.
-                          Required.
-                        "repositoryName": "str",  # The name of the repository. Required.
-                        "version": "str",  # The version of the Helm chart. Required.
-                        "advancedConfiguration": {
-                            "delete": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "install": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "upgrade": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            }
-                        },
-                        "registrySettings": akri_connector_template_helm_registry_settings,
-                        "values": {
-                            "str": "str"  # Optional. A map of values to pass to the helm
-                              chart.
-                        }
-                    },
-                    "runtimeConfigurationType": "HelmConfiguration"
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connector_template_helm_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The registry to use for the Helm chart.
-                          Required.
-                        "authSecretRef": {
-                            "passwordKey": "str",  # The key of the password in the
-                              secret. Required.
-                            "secretRef": "str",  # The name of the secret. Required.
-                            "usernameKey": "str"  # The key of the username in the
-                              secret. Required.
-                        }
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connector_template_helm_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
                 # JSON input template for discriminator value "ManagedConfiguration":
                 akri_connector_template_runtime_configuration = {
                     "managedConfigurationSettings":
@@ -4411,6 +4275,34 @@ class AkriConnectorTemplateOperations:
                     }
                 }
 
+                # JSON input template for discriminator value "Bucketized":
+                akri_connector_template_allocation = {
+                    "bucketSize": 0,  # The bucketized allocation of AEPs for connectors.
+                      Required.
+                    "policy": "Bucketized"
+                }
+
+                # JSON input template for discriminator value "ContainerRegistry":
+                akri_connectors_registry_settings = {
+                    "containerRegistrySettings": {
+                        "registry": "str",  # The container registry to use for the artifact.
+                          Required.
+                        "imagePullSecrets": [
+                            {
+                                "secretRef": "str"  # The name of the image pull
+                                  secret. Required.
+                            }
+                        ]
+                    },
+                    "registrySettingsType": "ContainerRegistry"
+                }
+
+                # JSON input template for discriminator value "RegistryEndpointRef":
+                akri_connectors_registry_settings = {
+                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
+                    "registrySettingsType": "RegistryEndpointRef"
+                }
+
                 # response body for status code(s): 200
                 response == {
                     "extendedLocation": {
@@ -4425,22 +4317,8 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "configurationSchemaRefs": {
-                                    "additionalConfigSchemaRef": "str",  #
-                                      Optional. The additional configuration schema reference.
-                                    "defaultDatasetConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for
-                                      datasets.
-                                    "defaultEventsConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for events.
-                                    "defaultProcessControlConfigSchemaRef":
-                                      "str",  # Optional. The default configuration schema reference
-                                      for process control.
-                                    "defaultStreamsConfigSchemaRef": "str"  #
-                                      Optional. The default configuration schema reference for streams.
-                                },
-                                "description": "str",  # Optional. A description of
-                                  the device inbound endpoint.
+                                "displayName": "str",  # Optional. The display name
+                                  of the device inbound endpoint.
                                 "version": "str"  # Optional. The version of the
                                   device inbound endpoint.
                             }
@@ -4453,12 +4331,16 @@ class AkriConnectorTemplateOperations:
                             "aioMinVersion": "str"  # Optional. The minimum version of
                               AIO required for the connector.
                         },
+                        "connectorMetadataRef": "str",  # Optional. A reference to a
+                          connector metadata document reference in a container registry.
                         "diagnostics": {
                             "logs": {
                                 "level": "info"  # Optional. Default value is "info".
                                   The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mqttConnectionConfiguration": {
                             "authentication": akri_connectors_mqtt_authentication,
                             "host": "str",  # Optional. Host of the Broker in the form of
@@ -4667,94 +4549,6 @@ class AkriConnectorTemplateOperations:
                 # The input is polymorphic. The following are possible polymorphic inputs based off
                   discriminator "runtimeConfigurationType":
 
-                # JSON input template for discriminator value "HelmConfiguration":
-                akri_connector_template_runtime_configuration = {
-                    "helmConfigurationSettings": {
-                        "releaseName": "str",  # The release name of the Helm chart.
-                          Required.
-                        "repositoryName": "str",  # The name of the repository. Required.
-                        "version": "str",  # The version of the Helm chart. Required.
-                        "advancedConfiguration": {
-                            "delete": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "install": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "upgrade": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            }
-                        },
-                        "registrySettings": akri_connector_template_helm_registry_settings,
-                        "values": {
-                            "str": "str"  # Optional. A map of values to pass to the helm
-                              chart.
-                        }
-                    },
-                    "runtimeConfigurationType": "HelmConfiguration"
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connector_template_helm_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The registry to use for the Helm chart.
-                          Required.
-                        "authSecretRef": {
-                            "passwordKey": "str",  # The key of the password in the
-                              secret. Required.
-                            "secretRef": "str",  # The name of the secret. Required.
-                            "usernameKey": "str"  # The key of the username in the
-                              secret. Required.
-                        }
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connector_template_helm_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
                 # JSON input template for discriminator value "ManagedConfiguration":
                 akri_connector_template_runtime_configuration = {
                     "managedConfigurationSettings":
@@ -4810,6 +4604,34 @@ class AkriConnectorTemplateOperations:
                     }
                 }
 
+                # JSON input template for discriminator value "Bucketized":
+                akri_connector_template_allocation = {
+                    "bucketSize": 0,  # The bucketized allocation of AEPs for connectors.
+                      Required.
+                    "policy": "Bucketized"
+                }
+
+                # JSON input template for discriminator value "ContainerRegistry":
+                akri_connectors_registry_settings = {
+                    "containerRegistrySettings": {
+                        "registry": "str",  # The container registry to use for the artifact.
+                          Required.
+                        "imagePullSecrets": [
+                            {
+                                "secretRef": "str"  # The name of the image pull
+                                  secret. Required.
+                            }
+                        ]
+                    },
+                    "registrySettingsType": "ContainerRegistry"
+                }
+
+                # JSON input template for discriminator value "RegistryEndpointRef":
+                akri_connectors_registry_settings = {
+                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
+                    "registrySettingsType": "RegistryEndpointRef"
+                }
+
                 # JSON input template you can fill out and use as your body input.
                 resource = {
                     "extendedLocation": {
@@ -4824,22 +4646,8 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "configurationSchemaRefs": {
-                                    "additionalConfigSchemaRef": "str",  #
-                                      Optional. The additional configuration schema reference.
-                                    "defaultDatasetConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for
-                                      datasets.
-                                    "defaultEventsConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for events.
-                                    "defaultProcessControlConfigSchemaRef":
-                                      "str",  # Optional. The default configuration schema reference
-                                      for process control.
-                                    "defaultStreamsConfigSchemaRef": "str"  #
-                                      Optional. The default configuration schema reference for streams.
-                                },
-                                "description": "str",  # Optional. A description of
-                                  the device inbound endpoint.
+                                "displayName": "str",  # Optional. The display name
+                                  of the device inbound endpoint.
                                 "version": "str"  # Optional. The version of the
                                   device inbound endpoint.
                             }
@@ -4852,12 +4660,16 @@ class AkriConnectorTemplateOperations:
                             "aioMinVersion": "str"  # Optional. The minimum version of
                               AIO required for the connector.
                         },
+                        "connectorMetadataRef": "str",  # Optional. A reference to a
+                          connector metadata document reference in a container registry.
                         "diagnostics": {
                             "logs": {
                                 "level": "info"  # Optional. Default value is "info".
                                   The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mqttConnectionConfiguration": {
                             "authentication": akri_connectors_mqtt_authentication,
                             "host": "str",  # Optional. Host of the Broker in the form of
@@ -4906,94 +4718,6 @@ class AkriConnectorTemplateOperations:
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "runtimeConfigurationType":
 
-                # JSON input template for discriminator value "HelmConfiguration":
-                akri_connector_template_runtime_configuration = {
-                    "helmConfigurationSettings": {
-                        "releaseName": "str",  # The release name of the Helm chart.
-                          Required.
-                        "repositoryName": "str",  # The name of the repository. Required.
-                        "version": "str",  # The version of the Helm chart. Required.
-                        "advancedConfiguration": {
-                            "delete": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "install": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "upgrade": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            }
-                        },
-                        "registrySettings": akri_connector_template_helm_registry_settings,
-                        "values": {
-                            "str": "str"  # Optional. A map of values to pass to the helm
-                              chart.
-                        }
-                    },
-                    "runtimeConfigurationType": "HelmConfiguration"
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connector_template_helm_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The registry to use for the Helm chart.
-                          Required.
-                        "authSecretRef": {
-                            "passwordKey": "str",  # The key of the password in the
-                              secret. Required.
-                            "secretRef": "str",  # The name of the secret. Required.
-                            "usernameKey": "str"  # The key of the username in the
-                              secret. Required.
-                        }
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connector_template_helm_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
                 # JSON input template for discriminator value "ManagedConfiguration":
                 akri_connector_template_runtime_configuration = {
                     "managedConfigurationSettings":
@@ -5047,99 +4771,39 @@ class AkriConnectorTemplateOperations:
                         "trustListSecretRef": "str"  # The secret reference for certificates
                           to trust. Required.
                     }
+                }
+
+                # JSON input template for discriminator value "Bucketized":
+                akri_connector_template_allocation = {
+                    "bucketSize": 0,  # The bucketized allocation of AEPs for connectors.
+                      Required.
+                    "policy": "Bucketized"
+                }
+
+                # JSON input template for discriminator value "ContainerRegistry":
+                akri_connectors_registry_settings = {
+                    "containerRegistrySettings": {
+                        "registry": "str",  # The container registry to use for the artifact.
+                          Required.
+                        "imagePullSecrets": [
+                            {
+                                "secretRef": "str"  # The name of the image pull
+                                  secret. Required.
+                            }
+                        ]
+                    },
+                    "registrySettingsType": "ContainerRegistry"
+                }
+
+                # JSON input template for discriminator value "RegistryEndpointRef":
+                akri_connectors_registry_settings = {
+                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
+                    "registrySettingsType": "RegistryEndpointRef"
                 }
 
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "runtimeConfigurationType":
 
-                # JSON input template for discriminator value "HelmConfiguration":
-                akri_connector_template_runtime_configuration = {
-                    "helmConfigurationSettings": {
-                        "releaseName": "str",  # The release name of the Helm chart.
-                          Required.
-                        "repositoryName": "str",  # The name of the repository. Required.
-                        "version": "str",  # The version of the Helm chart. Required.
-                        "advancedConfiguration": {
-                            "delete": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "install": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "upgrade": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            }
-                        },
-                        "registrySettings": akri_connector_template_helm_registry_settings,
-                        "values": {
-                            "str": "str"  # Optional. A map of values to pass to the helm
-                              chart.
-                        }
-                    },
-                    "runtimeConfigurationType": "HelmConfiguration"
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connector_template_helm_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The registry to use for the Helm chart.
-                          Required.
-                        "authSecretRef": {
-                            "passwordKey": "str",  # The key of the password in the
-                              secret. Required.
-                            "secretRef": "str",  # The name of the secret. Required.
-                            "usernameKey": "str"  # The key of the username in the
-                              secret. Required.
-                        }
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connector_template_helm_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
                 # JSON input template for discriminator value "ManagedConfiguration":
                 akri_connector_template_runtime_configuration = {
                     "managedConfigurationSettings":
@@ -5193,6 +4857,34 @@ class AkriConnectorTemplateOperations:
                         "trustListSecretRef": "str"  # The secret reference for certificates
                           to trust. Required.
                     }
+                }
+
+                # JSON input template for discriminator value "Bucketized":
+                akri_connector_template_allocation = {
+                    "bucketSize": 0,  # The bucketized allocation of AEPs for connectors.
+                      Required.
+                    "policy": "Bucketized"
+                }
+
+                # JSON input template for discriminator value "ContainerRegistry":
+                akri_connectors_registry_settings = {
+                    "containerRegistrySettings": {
+                        "registry": "str",  # The container registry to use for the artifact.
+                          Required.
+                        "imagePullSecrets": [
+                            {
+                                "secretRef": "str"  # The name of the image pull
+                                  secret. Required.
+                            }
+                        ]
+                    },
+                    "registrySettingsType": "ContainerRegistry"
+                }
+
+                # JSON input template for discriminator value "RegistryEndpointRef":
+                akri_connectors_registry_settings = {
+                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
+                    "registrySettingsType": "RegistryEndpointRef"
                 }
 
                 # response body for status code(s): 200, 201
@@ -5209,22 +4901,8 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "configurationSchemaRefs": {
-                                    "additionalConfigSchemaRef": "str",  #
-                                      Optional. The additional configuration schema reference.
-                                    "defaultDatasetConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for
-                                      datasets.
-                                    "defaultEventsConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for events.
-                                    "defaultProcessControlConfigSchemaRef":
-                                      "str",  # Optional. The default configuration schema reference
-                                      for process control.
-                                    "defaultStreamsConfigSchemaRef": "str"  #
-                                      Optional. The default configuration schema reference for streams.
-                                },
-                                "description": "str",  # Optional. A description of
-                                  the device inbound endpoint.
+                                "displayName": "str",  # Optional. The display name
+                                  of the device inbound endpoint.
                                 "version": "str"  # Optional. The version of the
                                   device inbound endpoint.
                             }
@@ -5237,12 +4915,16 @@ class AkriConnectorTemplateOperations:
                             "aioMinVersion": "str"  # Optional. The minimum version of
                               AIO required for the connector.
                         },
+                        "connectorMetadataRef": "str",  # Optional. A reference to a
+                          connector metadata document reference in a container registry.
                         "diagnostics": {
                             "logs": {
                                 "level": "info"  # Optional. Default value is "info".
                                   The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mqttConnectionConfiguration": {
                             "authentication": akri_connectors_mqtt_authentication,
                             "host": "str",  # Optional. Host of the Broker in the form of
@@ -5325,94 +5007,6 @@ class AkriConnectorTemplateOperations:
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "runtimeConfigurationType":
 
-                # JSON input template for discriminator value "HelmConfiguration":
-                akri_connector_template_runtime_configuration = {
-                    "helmConfigurationSettings": {
-                        "releaseName": "str",  # The release name of the Helm chart.
-                          Required.
-                        "repositoryName": "str",  # The name of the repository. Required.
-                        "version": "str",  # The version of the Helm chart. Required.
-                        "advancedConfiguration": {
-                            "delete": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "install": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "upgrade": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            }
-                        },
-                        "registrySettings": akri_connector_template_helm_registry_settings,
-                        "values": {
-                            "str": "str"  # Optional. A map of values to pass to the helm
-                              chart.
-                        }
-                    },
-                    "runtimeConfigurationType": "HelmConfiguration"
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connector_template_helm_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The registry to use for the Helm chart.
-                          Required.
-                        "authSecretRef": {
-                            "passwordKey": "str",  # The key of the password in the
-                              secret. Required.
-                            "secretRef": "str",  # The name of the secret. Required.
-                            "usernameKey": "str"  # The key of the username in the
-                              secret. Required.
-                        }
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connector_template_helm_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
                 # JSON input template for discriminator value "ManagedConfiguration":
                 akri_connector_template_runtime_configuration = {
                     "managedConfigurationSettings":
@@ -5466,99 +5060,39 @@ class AkriConnectorTemplateOperations:
                         "trustListSecretRef": "str"  # The secret reference for certificates
                           to trust. Required.
                     }
+                }
+
+                # JSON input template for discriminator value "Bucketized":
+                akri_connector_template_allocation = {
+                    "bucketSize": 0,  # The bucketized allocation of AEPs for connectors.
+                      Required.
+                    "policy": "Bucketized"
+                }
+
+                # JSON input template for discriminator value "ContainerRegistry":
+                akri_connectors_registry_settings = {
+                    "containerRegistrySettings": {
+                        "registry": "str",  # The container registry to use for the artifact.
+                          Required.
+                        "imagePullSecrets": [
+                            {
+                                "secretRef": "str"  # The name of the image pull
+                                  secret. Required.
+                            }
+                        ]
+                    },
+                    "registrySettingsType": "ContainerRegistry"
+                }
+
+                # JSON input template for discriminator value "RegistryEndpointRef":
+                akri_connectors_registry_settings = {
+                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
+                    "registrySettingsType": "RegistryEndpointRef"
                 }
 
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "runtimeConfigurationType":
 
-                # JSON input template for discriminator value "HelmConfiguration":
-                akri_connector_template_runtime_configuration = {
-                    "helmConfigurationSettings": {
-                        "releaseName": "str",  # The release name of the Helm chart.
-                          Required.
-                        "repositoryName": "str",  # The name of the repository. Required.
-                        "version": "str",  # The version of the Helm chart. Required.
-                        "advancedConfiguration": {
-                            "delete": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "install": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "upgrade": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            }
-                        },
-                        "registrySettings": akri_connector_template_helm_registry_settings,
-                        "values": {
-                            "str": "str"  # Optional. A map of values to pass to the helm
-                              chart.
-                        }
-                    },
-                    "runtimeConfigurationType": "HelmConfiguration"
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connector_template_helm_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The registry to use for the Helm chart.
-                          Required.
-                        "authSecretRef": {
-                            "passwordKey": "str",  # The key of the password in the
-                              secret. Required.
-                            "secretRef": "str",  # The name of the secret. Required.
-                            "usernameKey": "str"  # The key of the username in the
-                              secret. Required.
-                        }
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connector_template_helm_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
                 # JSON input template for discriminator value "ManagedConfiguration":
                 akri_connector_template_runtime_configuration = {
                     "managedConfigurationSettings":
@@ -5612,6 +5146,34 @@ class AkriConnectorTemplateOperations:
                         "trustListSecretRef": "str"  # The secret reference for certificates
                           to trust. Required.
                     }
+                }
+
+                # JSON input template for discriminator value "Bucketized":
+                akri_connector_template_allocation = {
+                    "bucketSize": 0,  # The bucketized allocation of AEPs for connectors.
+                      Required.
+                    "policy": "Bucketized"
+                }
+
+                # JSON input template for discriminator value "ContainerRegistry":
+                akri_connectors_registry_settings = {
+                    "containerRegistrySettings": {
+                        "registry": "str",  # The container registry to use for the artifact.
+                          Required.
+                        "imagePullSecrets": [
+                            {
+                                "secretRef": "str"  # The name of the image pull
+                                  secret. Required.
+                            }
+                        ]
+                    },
+                    "registrySettingsType": "ContainerRegistry"
+                }
+
+                # JSON input template for discriminator value "RegistryEndpointRef":
+                akri_connectors_registry_settings = {
+                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
+                    "registrySettingsType": "RegistryEndpointRef"
                 }
 
                 # response body for status code(s): 200, 201
@@ -5628,22 +5190,8 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "configurationSchemaRefs": {
-                                    "additionalConfigSchemaRef": "str",  #
-                                      Optional. The additional configuration schema reference.
-                                    "defaultDatasetConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for
-                                      datasets.
-                                    "defaultEventsConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for events.
-                                    "defaultProcessControlConfigSchemaRef":
-                                      "str",  # Optional. The default configuration schema reference
-                                      for process control.
-                                    "defaultStreamsConfigSchemaRef": "str"  #
-                                      Optional. The default configuration schema reference for streams.
-                                },
-                                "description": "str",  # Optional. A description of
-                                  the device inbound endpoint.
+                                "displayName": "str",  # Optional. The display name
+                                  of the device inbound endpoint.
                                 "version": "str"  # Optional. The version of the
                                   device inbound endpoint.
                             }
@@ -5656,12 +5204,16 @@ class AkriConnectorTemplateOperations:
                             "aioMinVersion": "str"  # Optional. The minimum version of
                               AIO required for the connector.
                         },
+                        "connectorMetadataRef": "str",  # Optional. A reference to a
+                          connector metadata document reference in a container registry.
                         "diagnostics": {
                             "logs": {
                                 "level": "info"  # Optional. Default value is "info".
                                   The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mqttConnectionConfiguration": {
                             "authentication": akri_connectors_mqtt_authentication,
                             "host": "str",  # Optional. Host of the Broker in the form of
@@ -5740,94 +5292,6 @@ class AkriConnectorTemplateOperations:
                 # The input is polymorphic. The following are possible polymorphic inputs based off
                   discriminator "runtimeConfigurationType":
 
-                # JSON input template for discriminator value "HelmConfiguration":
-                akri_connector_template_runtime_configuration = {
-                    "helmConfigurationSettings": {
-                        "releaseName": "str",  # The release name of the Helm chart.
-                          Required.
-                        "repositoryName": "str",  # The name of the repository. Required.
-                        "version": "str",  # The version of the Helm chart. Required.
-                        "advancedConfiguration": {
-                            "delete": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "install": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "upgrade": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            }
-                        },
-                        "registrySettings": akri_connector_template_helm_registry_settings,
-                        "values": {
-                            "str": "str"  # Optional. A map of values to pass to the helm
-                              chart.
-                        }
-                    },
-                    "runtimeConfigurationType": "HelmConfiguration"
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connector_template_helm_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The registry to use for the Helm chart.
-                          Required.
-                        "authSecretRef": {
-                            "passwordKey": "str",  # The key of the password in the
-                              secret. Required.
-                            "secretRef": "str",  # The name of the secret. Required.
-                            "usernameKey": "str"  # The key of the username in the
-                              secret. Required.
-                        }
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connector_template_helm_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
                 # JSON input template for discriminator value "ManagedConfiguration":
                 akri_connector_template_runtime_configuration = {
                     "managedConfigurationSettings":
@@ -5883,6 +5347,34 @@ class AkriConnectorTemplateOperations:
                     }
                 }
 
+                # JSON input template for discriminator value "Bucketized":
+                akri_connector_template_allocation = {
+                    "bucketSize": 0,  # The bucketized allocation of AEPs for connectors.
+                      Required.
+                    "policy": "Bucketized"
+                }
+
+                # JSON input template for discriminator value "ContainerRegistry":
+                akri_connectors_registry_settings = {
+                    "containerRegistrySettings": {
+                        "registry": "str",  # The container registry to use for the artifact.
+                          Required.
+                        "imagePullSecrets": [
+                            {
+                                "secretRef": "str"  # The name of the image pull
+                                  secret. Required.
+                            }
+                        ]
+                    },
+                    "registrySettingsType": "ContainerRegistry"
+                }
+
+                # JSON input template for discriminator value "RegistryEndpointRef":
+                akri_connectors_registry_settings = {
+                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
+                    "registrySettingsType": "RegistryEndpointRef"
+                }
+
                 # JSON input template you can fill out and use as your body input.
                 resource = {
                     "extendedLocation": {
@@ -5897,22 +5389,8 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "configurationSchemaRefs": {
-                                    "additionalConfigSchemaRef": "str",  #
-                                      Optional. The additional configuration schema reference.
-                                    "defaultDatasetConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for
-                                      datasets.
-                                    "defaultEventsConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for events.
-                                    "defaultProcessControlConfigSchemaRef":
-                                      "str",  # Optional. The default configuration schema reference
-                                      for process control.
-                                    "defaultStreamsConfigSchemaRef": "str"  #
-                                      Optional. The default configuration schema reference for streams.
-                                },
-                                "description": "str",  # Optional. A description of
-                                  the device inbound endpoint.
+                                "displayName": "str",  # Optional. The display name
+                                  of the device inbound endpoint.
                                 "version": "str"  # Optional. The version of the
                                   device inbound endpoint.
                             }
@@ -5925,12 +5403,16 @@ class AkriConnectorTemplateOperations:
                             "aioMinVersion": "str"  # Optional. The minimum version of
                               AIO required for the connector.
                         },
+                        "connectorMetadataRef": "str",  # Optional. A reference to a
+                          connector metadata document reference in a container registry.
                         "diagnostics": {
                             "logs": {
                                 "level": "info"  # Optional. Default value is "info".
                                   The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mqttConnectionConfiguration": {
                             "authentication": akri_connectors_mqtt_authentication,
                             "host": "str",  # Optional. Host of the Broker in the form of
@@ -5979,94 +5461,6 @@ class AkriConnectorTemplateOperations:
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "runtimeConfigurationType":
 
-                # JSON input template for discriminator value "HelmConfiguration":
-                akri_connector_template_runtime_configuration = {
-                    "helmConfigurationSettings": {
-                        "releaseName": "str",  # The release name of the Helm chart.
-                          Required.
-                        "repositoryName": "str",  # The name of the repository. Required.
-                        "version": "str",  # The version of the Helm chart. Required.
-                        "advancedConfiguration": {
-                            "delete": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "install": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "upgrade": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            }
-                        },
-                        "registrySettings": akri_connector_template_helm_registry_settings,
-                        "values": {
-                            "str": "str"  # Optional. A map of values to pass to the helm
-                              chart.
-                        }
-                    },
-                    "runtimeConfigurationType": "HelmConfiguration"
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connector_template_helm_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The registry to use for the Helm chart.
-                          Required.
-                        "authSecretRef": {
-                            "passwordKey": "str",  # The key of the password in the
-                              secret. Required.
-                            "secretRef": "str",  # The name of the secret. Required.
-                            "usernameKey": "str"  # The key of the username in the
-                              secret. Required.
-                        }
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connector_template_helm_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
                 # JSON input template for discriminator value "ManagedConfiguration":
                 akri_connector_template_runtime_configuration = {
                     "managedConfigurationSettings":
@@ -6120,99 +5514,39 @@ class AkriConnectorTemplateOperations:
                         "trustListSecretRef": "str"  # The secret reference for certificates
                           to trust. Required.
                     }
+                }
+
+                # JSON input template for discriminator value "Bucketized":
+                akri_connector_template_allocation = {
+                    "bucketSize": 0,  # The bucketized allocation of AEPs for connectors.
+                      Required.
+                    "policy": "Bucketized"
+                }
+
+                # JSON input template for discriminator value "ContainerRegistry":
+                akri_connectors_registry_settings = {
+                    "containerRegistrySettings": {
+                        "registry": "str",  # The container registry to use for the artifact.
+                          Required.
+                        "imagePullSecrets": [
+                            {
+                                "secretRef": "str"  # The name of the image pull
+                                  secret. Required.
+                            }
+                        ]
+                    },
+                    "registrySettingsType": "ContainerRegistry"
+                }
+
+                # JSON input template for discriminator value "RegistryEndpointRef":
+                akri_connectors_registry_settings = {
+                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
+                    "registrySettingsType": "RegistryEndpointRef"
                 }
 
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "runtimeConfigurationType":
 
-                # JSON input template for discriminator value "HelmConfiguration":
-                akri_connector_template_runtime_configuration = {
-                    "helmConfigurationSettings": {
-                        "releaseName": "str",  # The release name of the Helm chart.
-                          Required.
-                        "repositoryName": "str",  # The name of the repository. Required.
-                        "version": "str",  # The version of the Helm chart. Required.
-                        "advancedConfiguration": {
-                            "delete": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "install": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            },
-                            "upgrade": {
-                                "atomic": bool,  # Optional. If set, the operation
-                                  will be atomic. If the operation fails, all changes will be rolled
-                                  back.
-                                "disableHooks": bool,  # Optional. Disable pre/post
-                                  upgrade hooks for the operation.
-                                "timeout": 0,  # Optional. Time to wait for any
-                                  individual Kubernetes operation (like ``Jobs`` for hooks).
-                                "wait": bool,  # Optional. If set, the operation will
-                                  wait until all Pods, PVCs, Services, and minimum number of Pods of a
-                                  ``Deployment``"" , ``StatefulSet``"" , or ``ReplicaSet`` are in a
-                                  ready state before marking the release as successful.
-                                "waitForJobs": bool  # Optional. If set, the
-                                  operation will wait for jobs to complete before marking the release
-                                  as successful.
-                            }
-                        },
-                        "registrySettings": akri_connector_template_helm_registry_settings,
-                        "values": {
-                            "str": "str"  # Optional. A map of values to pass to the helm
-                              chart.
-                        }
-                    },
-                    "runtimeConfigurationType": "HelmConfiguration"
-                }
-
-                # JSON input template for discriminator value "ContainerRegistry":
-                akri_connector_template_helm_registry_settings = {
-                    "containerRegistrySettings": {
-                        "registry": "str",  # The registry to use for the Helm chart.
-                          Required.
-                        "authSecretRef": {
-                            "passwordKey": "str",  # The key of the password in the
-                              secret. Required.
-                            "secretRef": "str",  # The name of the secret. Required.
-                            "usernameKey": "str"  # The key of the username in the
-                              secret. Required.
-                        }
-                    },
-                    "registrySettingsType": "ContainerRegistry"
-                }
-
-                # JSON input template for discriminator value "RegistryEndpointRef":
-                akri_connector_template_helm_registry_settings = {
-                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
-                    "registrySettingsType": "RegistryEndpointRef"
-                }
-
                 # JSON input template for discriminator value "ManagedConfiguration":
                 akri_connector_template_runtime_configuration = {
                     "managedConfigurationSettings":
@@ -6266,6 +5600,34 @@ class AkriConnectorTemplateOperations:
                         "trustListSecretRef": "str"  # The secret reference for certificates
                           to trust. Required.
                     }
+                }
+
+                # JSON input template for discriminator value "Bucketized":
+                akri_connector_template_allocation = {
+                    "bucketSize": 0,  # The bucketized allocation of AEPs for connectors.
+                      Required.
+                    "policy": "Bucketized"
+                }
+
+                # JSON input template for discriminator value "ContainerRegistry":
+                akri_connectors_registry_settings = {
+                    "containerRegistrySettings": {
+                        "registry": "str",  # The container registry to use for the artifact.
+                          Required.
+                        "imagePullSecrets": [
+                            {
+                                "secretRef": "str"  # The name of the image pull
+                                  secret. Required.
+                            }
+                        ]
+                    },
+                    "registrySettingsType": "ContainerRegistry"
+                }
+
+                # JSON input template for discriminator value "RegistryEndpointRef":
+                akri_connectors_registry_settings = {
+                    "registryEndpointRef": "str",  # The name of the registry endpoint. Required.
+                    "registrySettingsType": "RegistryEndpointRef"
                 }
 
                 # response body for status code(s): 200, 201
@@ -6282,22 +5644,8 @@ class AkriConnectorTemplateOperations:
                             {
                                 "endpointType": "str",  # The type of the device
                                   inbound endpoint. Required.
-                                "configurationSchemaRefs": {
-                                    "additionalConfigSchemaRef": "str",  #
-                                      Optional. The additional configuration schema reference.
-                                    "defaultDatasetConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for
-                                      datasets.
-                                    "defaultEventsConfigSchemaRef": "str",  #
-                                      Optional. The default configuration schema reference for events.
-                                    "defaultProcessControlConfigSchemaRef":
-                                      "str",  # Optional. The default configuration schema reference
-                                      for process control.
-                                    "defaultStreamsConfigSchemaRef": "str"  #
-                                      Optional. The default configuration schema reference for streams.
-                                },
-                                "description": "str",  # Optional. A description of
-                                  the device inbound endpoint.
+                                "displayName": "str",  # Optional. The display name
+                                  of the device inbound endpoint.
                                 "version": "str"  # Optional. The version of the
                                   device inbound endpoint.
                             }
@@ -6310,12 +5658,16 @@ class AkriConnectorTemplateOperations:
                             "aioMinVersion": "str"  # Optional. The minimum version of
                               AIO required for the connector.
                         },
+                        "connectorMetadataRef": "str",  # Optional. A reference to a
+                          connector metadata document reference in a container registry.
                         "diagnostics": {
                             "logs": {
                                 "level": "info"  # Optional. Default value is "info".
                                   The log level. Examples - 'debug', 'info', 'warn', 'error', 'trace'.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mqttConnectionConfiguration": {
                             "authentication": akri_connectors_mqtt_authentication,
                             "host": "str",  # Optional. Host of the Broker in the form of
@@ -6522,7 +5874,7 @@ class AkriConnectorOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`akri_connector` attribute.
     """
 
@@ -6564,6 +5916,16 @@ class AkriConnectorOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "allocatedDevices": [
+                            {
+                                "deviceInboundEndpointName": "str",  # The name of
+                                  the inbound endpoint for the device. Required.
+                                "deviceName": "str"  # The name of the device.
+                                  Required.
+                            }
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -6696,6 +6058,16 @@ class AkriConnectorOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "allocatedDevices": [
+                            {
+                                "deviceInboundEndpointName": "str",  # The name of
+                                  the inbound endpoint for the device. Required.
+                                "deviceName": "str"  # The name of the device.
+                                  Required.
+                            }
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -6896,6 +6268,16 @@ class AkriConnectorOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "allocatedDevices": [
+                            {
+                                "deviceInboundEndpointName": "str",  # The name of
+                                  the inbound endpoint for the device. Required.
+                                "deviceName": "str"  # The name of the device.
+                                  Required.
+                            }
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -6930,6 +6312,16 @@ class AkriConnectorOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "allocatedDevices": [
+                            {
+                                "deviceInboundEndpointName": "str",  # The name of
+                                  the inbound endpoint for the device. Required.
+                                "deviceName": "str"  # The name of the device.
+                                  Required.
+                            }
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -7001,6 +6393,16 @@ class AkriConnectorOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "allocatedDevices": [
+                            {
+                                "deviceInboundEndpointName": "str",  # The name of
+                                  the inbound endpoint for the device. Required.
+                                "deviceName": "str"  # The name of the device.
+                                  Required.
+                            }
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -7068,6 +6470,16 @@ class AkriConnectorOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "allocatedDevices": [
+                            {
+                                "deviceInboundEndpointName": "str",  # The name of
+                                  the inbound endpoint for the device. Required.
+                                "deviceName": "str"  # The name of the device.
+                                  Required.
+                            }
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -7102,6 +6514,16 @@ class AkriConnectorOperations:
                       "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}".
                     "name": "str",  # Optional. The name of the resource.
                     "properties": {
+                        "allocatedDevices": [
+                            {
+                                "deviceInboundEndpointName": "str",  # The name of
+                                  the inbound endpoint for the device. Required.
+                                "deviceName": "str"  # The name of the device.
+                                  Required.
+                            }
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -7302,7 +6724,7 @@ class BrokerOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker` attribute.
     """
 
@@ -7382,10 +6804,6 @@ class BrokerOperations:
                         "subscriberClientIds": [
                             "str"  # Optional. List of client IDs of the subscribers,
                               wildcard * supported.
-                        ],
-                        "topics": [
-                            "str"  # Optional. List of topics under which messages would
-                              be persisted to disk for each subscriber. Wildcards # and + supported.
                         ]
                     }
                 }
@@ -7684,6 +7102,8 @@ class BrokerOperations:
                             "cpu": "str"  # Optional. The toggle to enable/disable cpu
                               resource limits. Known values are: "Enabled" and "Disabled".
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "memoryProfile": "str",  # Optional. Memory profile of Broker. Known
                           values are: "Tiny", "Low", "Medium", and "High".
                         "persistence": {
@@ -7692,12 +7112,6 @@ class BrokerOperations:
                               this size is used as the request and limit sizes of that template. If a
                               PVC template isn't specified Then local-path provisioner is requested
                               with this size limit. Required. Required.
-                            "dynamicSettings": {
-                                "userPropertyKey": "str",  # The user property key to
-                                  enable persistence. Required.
-                                "userPropertyValue": "str"  # The user property value
-                                  to enable persistence. Required.
-                            },
                             "encryption": {
                                 "mode": "str"  # Determines if encryption is enabled.
                                   Required. Known values are: "Enabled" and "Disabled".
@@ -7960,10 +7374,6 @@ class BrokerOperations:
                         "subscriberClientIds": [
                             "str"  # Optional. List of client IDs of the subscribers,
                               wildcard * supported.
-                        ],
-                        "topics": [
-                            "str"  # Optional. List of topics under which messages would
-                              be persisted to disk for each subscriber. Wildcards # and + supported.
                         ]
                     }
                 }
@@ -8262,6 +7672,8 @@ class BrokerOperations:
                             "cpu": "str"  # Optional. The toggle to enable/disable cpu
                               resource limits. Known values are: "Enabled" and "Disabled".
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "memoryProfile": "str",  # Optional. Memory profile of Broker. Known
                           values are: "Tiny", "Low", "Medium", and "High".
                         "persistence": {
@@ -8270,12 +7682,6 @@ class BrokerOperations:
                               this size is used as the request and limit sizes of that template. If a
                               PVC template isn't specified Then local-path provisioner is requested
                               with this size limit. Required. Required.
-                            "dynamicSettings": {
-                                "userPropertyKey": "str",  # The user property key to
-                                  enable persistence. Required.
-                                "userPropertyValue": "str"  # The user property value
-                                  to enable persistence. Required.
-                            },
                             "encryption": {
                                 "mode": "str"  # Determines if encryption is enabled.
                                   Required. Known values are: "Enabled" and "Disabled".
@@ -8610,10 +8016,6 @@ class BrokerOperations:
                         "subscriberClientIds": [
                             "str"  # Optional. List of client IDs of the subscribers,
                               wildcard * supported.
-                        ],
-                        "topics": [
-                            "str"  # Optional. List of topics under which messages would
-                              be persisted to disk for each subscriber. Wildcards # and + supported.
                         ]
                     }
                 }
@@ -8912,6 +8314,8 @@ class BrokerOperations:
                             "cpu": "str"  # Optional. The toggle to enable/disable cpu
                               resource limits. Known values are: "Enabled" and "Disabled".
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "memoryProfile": "str",  # Optional. Memory profile of Broker. Known
                           values are: "Tiny", "Low", "Medium", and "High".
                         "persistence": {
@@ -8920,12 +8324,6 @@ class BrokerOperations:
                               this size is used as the request and limit sizes of that template. If a
                               PVC template isn't specified Then local-path provisioner is requested
                               with this size limit. Required. Required.
-                            "dynamicSettings": {
-                                "userPropertyKey": "str",  # The user property key to
-                                  enable persistence. Required.
-                                "userPropertyValue": "str"  # The user property value
-                                  to enable persistence. Required.
-                            },
                             "encryption": {
                                 "mode": "str"  # Determines if encryption is enabled.
                                   Required. Known values are: "Enabled" and "Disabled".
@@ -9100,10 +8498,6 @@ class BrokerOperations:
                         "subscriberClientIds": [
                             "str"  # Optional. List of client IDs of the subscribers,
                               wildcard * supported.
-                        ],
-                        "topics": [
-                            "str"  # Optional. List of topics under which messages would
-                              be persisted to disk for each subscriber. Wildcards # and + supported.
                         ]
                     }
                 }
@@ -9160,10 +8554,6 @@ class BrokerOperations:
                         "subscriberClientIds": [
                             "str"  # Optional. List of client IDs of the subscribers,
                               wildcard * supported.
-                        ],
-                        "topics": [
-                            "str"  # Optional. List of topics under which messages would
-                              be persisted to disk for each subscriber. Wildcards # and + supported.
                         ]
                     }
                 }
@@ -9462,6 +8852,8 @@ class BrokerOperations:
                             "cpu": "str"  # Optional. The toggle to enable/disable cpu
                               resource limits. Known values are: "Enabled" and "Disabled".
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "memoryProfile": "str",  # Optional. Memory profile of Broker. Known
                           values are: "Tiny", "Low", "Medium", and "High".
                         "persistence": {
@@ -9470,12 +8862,6 @@ class BrokerOperations:
                               this size is used as the request and limit sizes of that template. If a
                               PVC template isn't specified Then local-path provisioner is requested
                               with this size limit. Required. Required.
-                            "dynamicSettings": {
-                                "userPropertyKey": "str",  # The user property key to
-                                  enable persistence. Required.
-                                "userPropertyValue": "str"  # The user property value
-                                  to enable persistence. Required.
-                            },
                             "encryption": {
                                 "mode": "str"  # Determines if encryption is enabled.
                                   Required. Known values are: "Enabled" and "Disabled".
@@ -9684,10 +9070,6 @@ class BrokerOperations:
                         "subscriberClientIds": [
                             "str"  # Optional. List of client IDs of the subscribers,
                               wildcard * supported.
-                        ],
-                        "topics": [
-                            "str"  # Optional. List of topics under which messages would
-                              be persisted to disk for each subscriber. Wildcards # and + supported.
                         ]
                     }
                 }
@@ -9744,10 +9126,6 @@ class BrokerOperations:
                         "subscriberClientIds": [
                             "str"  # Optional. List of client IDs of the subscribers,
                               wildcard * supported.
-                        ],
-                        "topics": [
-                            "str"  # Optional. List of topics under which messages would
-                              be persisted to disk for each subscriber. Wildcards # and + supported.
                         ]
                     }
                 }
@@ -10046,6 +9424,8 @@ class BrokerOperations:
                             "cpu": "str"  # Optional. The toggle to enable/disable cpu
                               resource limits. Known values are: "Enabled" and "Disabled".
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "memoryProfile": "str",  # Optional. Memory profile of Broker. Known
                           values are: "Tiny", "Low", "Medium", and "High".
                         "persistence": {
@@ -10054,12 +9434,6 @@ class BrokerOperations:
                               this size is used as the request and limit sizes of that template. If a
                               PVC template isn't specified Then local-path provisioner is requested
                               with this size limit. Required. Required.
-                            "dynamicSettings": {
-                                "userPropertyKey": "str",  # The user property key to
-                                  enable persistence. Required.
-                                "userPropertyValue": "str"  # The user property value
-                                  to enable persistence. Required.
-                            },
                             "encryption": {
                                 "mode": "str"  # Determines if encryption is enabled.
                                   Required. Known values are: "Enabled" and "Disabled".
@@ -10264,10 +9638,6 @@ class BrokerOperations:
                         "subscriberClientIds": [
                             "str"  # Optional. List of client IDs of the subscribers,
                               wildcard * supported.
-                        ],
-                        "topics": [
-                            "str"  # Optional. List of topics under which messages would
-                              be persisted to disk for each subscriber. Wildcards # and + supported.
                         ]
                     }
                 }
@@ -10566,6 +9936,8 @@ class BrokerOperations:
                             "cpu": "str"  # Optional. The toggle to enable/disable cpu
                               resource limits. Known values are: "Enabled" and "Disabled".
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "memoryProfile": "str",  # Optional. Memory profile of Broker. Known
                           values are: "Tiny", "Low", "Medium", and "High".
                         "persistence": {
@@ -10574,12 +9946,6 @@ class BrokerOperations:
                               this size is used as the request and limit sizes of that template. If a
                               PVC template isn't specified Then local-path provisioner is requested
                               with this size limit. Required. Required.
-                            "dynamicSettings": {
-                                "userPropertyKey": "str",  # The user property key to
-                                  enable persistence. Required.
-                                "userPropertyValue": "str"  # The user property value
-                                  to enable persistence. Required.
-                            },
                             "encryption": {
                                 "mode": "str"  # Determines if encryption is enabled.
                                   Required. Known values are: "Enabled" and "Disabled".
@@ -10754,10 +10120,6 @@ class BrokerOperations:
                         "subscriberClientIds": [
                             "str"  # Optional. List of client IDs of the subscribers,
                               wildcard * supported.
-                        ],
-                        "topics": [
-                            "str"  # Optional. List of topics under which messages would
-                              be persisted to disk for each subscriber. Wildcards # and + supported.
                         ]
                     }
                 }
@@ -10814,10 +10176,6 @@ class BrokerOperations:
                         "subscriberClientIds": [
                             "str"  # Optional. List of client IDs of the subscribers,
                               wildcard * supported.
-                        ],
-                        "topics": [
-                            "str"  # Optional. List of topics under which messages would
-                              be persisted to disk for each subscriber. Wildcards # and + supported.
                         ]
                     }
                 }
@@ -11116,6 +10474,8 @@ class BrokerOperations:
                             "cpu": "str"  # Optional. The toggle to enable/disable cpu
                               resource limits. Known values are: "Enabled" and "Disabled".
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "memoryProfile": "str",  # Optional. Memory profile of Broker. Known
                           values are: "Tiny", "Low", "Medium", and "High".
                         "persistence": {
@@ -11124,12 +10484,6 @@ class BrokerOperations:
                               this size is used as the request and limit sizes of that template. If a
                               PVC template isn't specified Then local-path provisioner is requested
                               with this size limit. Required. Required.
-                            "dynamicSettings": {
-                                "userPropertyKey": "str",  # The user property key to
-                                  enable persistence. Required.
-                                "userPropertyValue": "str"  # The user property value
-                                  to enable persistence. Required.
-                            },
                             "encryption": {
                                 "mode": "str"  # Determines if encryption is enabled.
                                   Required. Known values are: "Enabled" and "Disabled".
@@ -11413,7 +10767,7 @@ class BrokerAuthenticationOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_authentication` attribute.
     """
 
@@ -11505,6 +10859,8 @@ class BrokerAuthenticationOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -11682,6 +11038,8 @@ class BrokerAuthenticationOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -11932,6 +11290,8 @@ class BrokerAuthenticationOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -12016,6 +11376,8 @@ class BrokerAuthenticationOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -12137,6 +11499,8 @@ class BrokerAuthenticationOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -12254,6 +11618,8 @@ class BrokerAuthenticationOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -12338,6 +11704,8 @@ class BrokerAuthenticationOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -12528,7 +11896,7 @@ class BrokerAuthorizationOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_authorization` attribute.
     """
 
@@ -12643,6 +12011,8 @@ class BrokerAuthorizationOperations:
                                 }
                             ]
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -12843,6 +12213,8 @@ class BrokerAuthorizationOperations:
                                 }
                             ]
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -13116,6 +12488,8 @@ class BrokerAuthorizationOperations:
                                 }
                             ]
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -13223,6 +12597,8 @@ class BrokerAuthorizationOperations:
                                 }
                             ]
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -13367,6 +12743,8 @@ class BrokerAuthorizationOperations:
                                 }
                             ]
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -13507,6 +12885,8 @@ class BrokerAuthorizationOperations:
                                 }
                             ]
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -13614,6 +12994,8 @@ class BrokerAuthorizationOperations:
                                 }
                             ]
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -13804,7 +13186,7 @@ class BrokerListenerOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`broker_listener` attribute.
     """
 
@@ -13914,6 +13296,8 @@ class BrokerListenerOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -14113,6 +13497,8 @@ class BrokerListenerOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -14385,6 +13771,8 @@ class BrokerListenerOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -14491,6 +13879,8 @@ class BrokerListenerOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -14634,6 +14024,8 @@ class BrokerListenerOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -14773,6 +14165,8 @@ class BrokerListenerOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -14879,6 +14273,8 @@ class BrokerListenerOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "provisioningState": "str",  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
@@ -15073,7 +14469,7 @@ class DataflowEndpointOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow_endpoint` attribute.
     """
 
@@ -15237,6 +14633,8 @@ class DataflowEndpointOperations:
                                   100000. Maximum number of messages in a batch.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "hostType": "str",  # Optional. The type of the Kafka host. E.g
                           FabricRT, EventGrid. Known values are: "FabricRT", "EventGrid",
                           "LocalBroker", "Eventhub", "CustomMqtt", and "CustomKafka".
@@ -15633,6 +15031,8 @@ class DataflowEndpointOperations:
                                   100000. Maximum number of messages in a batch.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "hostType": "str",  # Optional. The type of the Kafka host. E.g
                           FabricRT, EventGrid. Known values are: "FabricRT", "EventGrid",
                           "LocalBroker", "Eventhub", "CustomMqtt", and "CustomKafka".
@@ -16101,6 +15501,8 @@ class DataflowEndpointOperations:
                                   100000. Maximum number of messages in a batch.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "hostType": "str",  # Optional. The type of the Kafka host. E.g
                           FabricRT, EventGrid. Known values are: "FabricRT", "EventGrid",
                           "LocalBroker", "Eventhub", "CustomMqtt", and "CustomKafka".
@@ -16436,6 +15838,8 @@ class DataflowEndpointOperations:
                                   100000. Maximum number of messages in a batch.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "hostType": "str",  # Optional. The type of the Kafka host. E.g
                           FabricRT, EventGrid. Known values are: "FabricRT", "EventGrid",
                           "LocalBroker", "Eventhub", "CustomMqtt", and "CustomKafka".
@@ -16805,6 +16209,8 @@ class DataflowEndpointOperations:
                                   100000. Maximum number of messages in a batch.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "hostType": "str",  # Optional. The type of the Kafka host. E.g
                           FabricRT, EventGrid. Known values are: "FabricRT", "EventGrid",
                           "LocalBroker", "Eventhub", "CustomMqtt", and "CustomKafka".
@@ -17143,6 +16549,8 @@ class DataflowEndpointOperations:
                                   100000. Maximum number of messages in a batch.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "hostType": "str",  # Optional. The type of the Kafka host. E.g
                           FabricRT, EventGrid. Known values are: "FabricRT", "EventGrid",
                           "LocalBroker", "Eventhub", "CustomMqtt", and "CustomKafka".
@@ -17478,6 +16886,8 @@ class DataflowEndpointOperations:
                                   100000. Maximum number of messages in a batch.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "hostType": "str",  # Optional. The type of the Kafka host. E.g
                           FabricRT, EventGrid. Known values are: "FabricRT", "EventGrid",
                           "LocalBroker", "Eventhub", "CustomMqtt", and "CustomKafka".
@@ -17811,7 +17221,7 @@ class DataflowProfileOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow_profile` attribute.
     """
 
@@ -17859,6 +17269,8 @@ class DataflowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
@@ -17994,6 +17406,8 @@ class DataflowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
@@ -18201,6 +17615,8 @@ class DataflowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
@@ -18248,6 +17664,8 @@ class DataflowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
@@ -18329,6 +17747,8 @@ class DataflowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
@@ -18406,6 +17826,8 @@ class DataflowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
@@ -18453,6 +17875,8 @@ class DataflowProfileOperations:
                                   9600. The prometheus port to expose the metrics.
                             }
                         },
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "instanceCount": 1,  # Optional. Default value is 1. To manually
                           scale the dataflow profile, specify the maximum number of instances you want
                           to run.
@@ -18641,7 +18065,7 @@ class DataflowGraphOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow_graph` attribute.
     """
 
@@ -18706,6 +18130,8 @@ class DataflowGraphOperations:
                         "nodes": [
                             dataflow_graph_node
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. The mode of the dataflow graph. Known
                           values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The provisioning state of
@@ -18865,6 +18291,8 @@ class DataflowGraphOperations:
                         "nodes": [
                             dataflow_graph_node
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. The mode of the dataflow graph. Known
                           values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The provisioning state of
@@ -19092,6 +18520,8 @@ class DataflowGraphOperations:
                         "nodes": [
                             dataflow_graph_node
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. The mode of the dataflow graph. Known
                           values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The provisioning state of
@@ -19153,6 +18583,8 @@ class DataflowGraphOperations:
                         "nodes": [
                             dataflow_graph_node
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. The mode of the dataflow graph. Known
                           values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The provisioning state of
@@ -19251,6 +18683,8 @@ class DataflowGraphOperations:
                         "nodes": [
                             dataflow_graph_node
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. The mode of the dataflow graph. Known
                           values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The provisioning state of
@@ -19345,6 +18779,8 @@ class DataflowGraphOperations:
                         "nodes": [
                             dataflow_graph_node
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. The mode of the dataflow graph. Known
                           values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The provisioning state of
@@ -19406,6 +18842,8 @@ class DataflowGraphOperations:
                         "nodes": [
                             dataflow_graph_node
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. The mode of the dataflow graph. Known
                           values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The provisioning state of
@@ -19610,7 +19048,7 @@ class DataflowOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`dataflow` attribute.
     """
 
@@ -19732,9 +19170,12 @@ class DataflowOperations:
                                       location, can be a topic or table name. Supports dynamic values
                                       with $topic, $systemProperties, $userProperties, $payload,
                                       $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
+                                    "endpointRef": "str",  # Reference to the
                                       Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
                                       Required.
+                                    "headers": [
+                                        dataflow_destination_header_action
+                                    ]
                                 },
                                 "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
@@ -19758,6 +19199,8 @@ class DataflowOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The status of the last
@@ -19974,9 +19417,12 @@ class DataflowOperations:
                                       location, can be a topic or table name. Supports dynamic values
                                       with $topic, $systemProperties, $userProperties, $payload,
                                       $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
+                                    "endpointRef": "str",  # Reference to the
                                       Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
                                       Required.
+                                    "headers": [
+                                        dataflow_destination_header_action
+                                    ]
                                 },
                                 "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
@@ -20000,6 +19446,8 @@ class DataflowOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The status of the last
@@ -20284,9 +19732,12 @@ class DataflowOperations:
                                       location, can be a topic or table name. Supports dynamic values
                                       with $topic, $systemProperties, $userProperties, $payload,
                                       $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
+                                    "endpointRef": "str",  # Reference to the
                                       Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
                                       Required.
+                                    "headers": [
+                                        dataflow_destination_header_action
+                                    ]
                                 },
                                 "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
@@ -20310,6 +19761,8 @@ class DataflowOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The status of the last
@@ -20428,9 +19881,12 @@ class DataflowOperations:
                                       location, can be a topic or table name. Supports dynamic values
                                       with $topic, $systemProperties, $userProperties, $payload,
                                       $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
+                                    "endpointRef": "str",  # Reference to the
                                       Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
                                       Required.
+                                    "headers": [
+                                        dataflow_destination_header_action
+                                    ]
                                 },
                                 "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
@@ -20454,6 +19910,8 @@ class DataflowOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The status of the last
@@ -20609,9 +20067,12 @@ class DataflowOperations:
                                       location, can be a topic or table name. Supports dynamic values
                                       with $topic, $systemProperties, $userProperties, $payload,
                                       $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
+                                    "endpointRef": "str",  # Reference to the
                                       Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
                                       Required.
+                                    "headers": [
+                                        dataflow_destination_header_action
+                                    ]
                                 },
                                 "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
@@ -20635,6 +20096,8 @@ class DataflowOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The status of the last
@@ -20786,9 +20249,12 @@ class DataflowOperations:
                                       location, can be a topic or table name. Supports dynamic values
                                       with $topic, $systemProperties, $userProperties, $payload,
                                       $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
+                                    "endpointRef": "str",  # Reference to the
                                       Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
                                       Required.
+                                    "headers": [
+                                        dataflow_destination_header_action
+                                    ]
                                 },
                                 "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
@@ -20812,6 +20278,8 @@ class DataflowOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The status of the last
@@ -20930,9 +20398,12 @@ class DataflowOperations:
                                       location, can be a topic or table name. Supports dynamic values
                                       with $topic, $systemProperties, $userProperties, $payload,
                                       $context, and $subscription. Required.
-                                    "endpointRef": "str"  # Reference to the
+                                    "endpointRef": "str",  # Reference to the
                                       Endpoint CR. Can be of Broker, Kafka, Fabric, ADLS, ADX type.
                                       Required.
+                                    "headers": [
+                                        dataflow_destination_header_action
+                                    ]
                                 },
                                 "name": "str",  # Optional. Optional user provided
                                   name of the transformation.
@@ -20956,6 +20427,8 @@ class DataflowOperations:
                                 }
                             }
                         ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
                         "mode": "str",  # Optional. Mode for Dataflow. Optional; defaults to
                           Enabled. Known values are: "Enabled" and "Disabled".
                         "provisioningState": "str",  # Optional. The status of the last
@@ -21160,7 +20633,7 @@ class RegistryEndpointOperations:
         **DO NOT** instantiate this class directly.
 
         Instead, you should access the following operations through
-        :class:`~aziotops.mgmt.MicrosoftIoTOperationsManagementService`'s
+        :class:`~iotopsmgmt.20251001.MicrosoftIoTOperationsManagementService`'s
         :attr:`registry_endpoint` attribute.
     """
 
@@ -21228,12 +20701,6 @@ class RegistryEndpointOperations:
                     }
                 }
 
-                # JSON input template for discriminator value "ConfigMap":
-                registry_endpoint_trusted_signing_key = {
-                    "configMapRef": "str",  # The name of the configmap. Required.
-                    "type": "ConfigMap"
-                }
-
                 # response body for status code(s): 200
                 response == {
                     "extendedLocation": {
@@ -21246,12 +20713,14 @@ class RegistryEndpointOperations:
                     "properties": {
                         "authentication": registry_endpoint_authentication,
                         "host": "str",  # The Container Registry endpoint hostname. Required.
-                        "provisioningState": "str",  # Optional. The status of the last
+                        "codeSigningCas": [
+                            registry_endpoint_trusted_signing_key
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
+                        "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "trustSettings": {
-                            "trustedSigningKeys": registry_endpoint_trusted_signing_key
-                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -21401,12 +20870,6 @@ class RegistryEndpointOperations:
                     }
                 }
 
-                # JSON input template for discriminator value "ConfigMap":
-                registry_endpoint_trusted_signing_key = {
-                    "configMapRef": "str",  # The name of the configmap. Required.
-                    "type": "ConfigMap"
-                }
-
                 # response body for status code(s): 200
                 response == {
                     "extendedLocation": {
@@ -21419,12 +20882,14 @@ class RegistryEndpointOperations:
                     "properties": {
                         "authentication": registry_endpoint_authentication,
                         "host": "str",  # The Container Registry endpoint hostname. Required.
-                        "provisioningState": "str",  # Optional. The status of the last
+                        "codeSigningCas": [
+                            registry_endpoint_trusted_signing_key
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
+                        "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "trustSettings": {
-                            "trustedSigningKeys": registry_endpoint_trusted_signing_key
-                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -21646,12 +21111,6 @@ class RegistryEndpointOperations:
                     }
                 }
 
-                # JSON input template for discriminator value "ConfigMap":
-                registry_endpoint_trusted_signing_key = {
-                    "configMapRef": "str",  # The name of the configmap. Required.
-                    "type": "ConfigMap"
-                }
-
                 # JSON input template you can fill out and use as your body input.
                 resource = {
                     "extendedLocation": {
@@ -21664,12 +21123,14 @@ class RegistryEndpointOperations:
                     "properties": {
                         "authentication": registry_endpoint_authentication,
                         "host": "str",  # The Container Registry endpoint hostname. Required.
-                        "provisioningState": "str",  # Optional. The status of the last
+                        "codeSigningCas": [
+                            registry_endpoint_trusted_signing_key
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
+                        "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "trustSettings": {
-                            "trustedSigningKeys": registry_endpoint_trusted_signing_key
-                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -21731,12 +21192,6 @@ class RegistryEndpointOperations:
                     }
                 }
 
-                # JSON input template for discriminator value "ConfigMap":
-                registry_endpoint_trusted_signing_key = {
-                    "configMapRef": "str",  # The name of the configmap. Required.
-                    "type": "ConfigMap"
-                }
-
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "method":
 
@@ -21777,12 +21232,6 @@ class RegistryEndpointOperations:
                     }
                 }
 
-                # JSON input template for discriminator value "ConfigMap":
-                registry_endpoint_trusted_signing_key = {
-                    "configMapRef": "str",  # The name of the configmap. Required.
-                    "type": "ConfigMap"
-                }
-
                 # response body for status code(s): 200, 201
                 response == {
                     "extendedLocation": {
@@ -21795,12 +21244,14 @@ class RegistryEndpointOperations:
                     "properties": {
                         "authentication": registry_endpoint_authentication,
                         "host": "str",  # The Container Registry endpoint hostname. Required.
-                        "provisioningState": "str",  # Optional. The status of the last
+                        "codeSigningCas": [
+                            registry_endpoint_trusted_signing_key
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
+                        "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "trustSettings": {
-                            "trustedSigningKeys": registry_endpoint_trusted_signing_key
-                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -21896,12 +21347,6 @@ class RegistryEndpointOperations:
                     }
                 }
 
-                # JSON input template for discriminator value "ConfigMap":
-                registry_endpoint_trusted_signing_key = {
-                    "configMapRef": "str",  # The name of the configmap. Required.
-                    "type": "ConfigMap"
-                }
-
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "method":
 
@@ -21942,12 +21387,6 @@ class RegistryEndpointOperations:
                     }
                 }
 
-                # JSON input template for discriminator value "ConfigMap":
-                registry_endpoint_trusted_signing_key = {
-                    "configMapRef": "str",  # The name of the configmap. Required.
-                    "type": "ConfigMap"
-                }
-
                 # response body for status code(s): 200, 201
                 response == {
                     "extendedLocation": {
@@ -21960,12 +21399,14 @@ class RegistryEndpointOperations:
                     "properties": {
                         "authentication": registry_endpoint_authentication,
                         "host": "str",  # The Container Registry endpoint hostname. Required.
-                        "provisioningState": "str",  # Optional. The status of the last
+                        "codeSigningCas": [
+                            registry_endpoint_trusted_signing_key
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
+                        "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "trustSettings": {
-                            "trustedSigningKeys": registry_endpoint_trusted_signing_key
-                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -22057,12 +21498,6 @@ class RegistryEndpointOperations:
                     }
                 }
 
-                # JSON input template for discriminator value "ConfigMap":
-                registry_endpoint_trusted_signing_key = {
-                    "configMapRef": "str",  # The name of the configmap. Required.
-                    "type": "ConfigMap"
-                }
-
                 # JSON input template you can fill out and use as your body input.
                 resource = {
                     "extendedLocation": {
@@ -22075,12 +21510,14 @@ class RegistryEndpointOperations:
                     "properties": {
                         "authentication": registry_endpoint_authentication,
                         "host": "str",  # The Container Registry endpoint hostname. Required.
-                        "provisioningState": "str",  # Optional. The status of the last
+                        "codeSigningCas": [
+                            registry_endpoint_trusted_signing_key
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
+                        "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "trustSettings": {
-                            "trustedSigningKeys": registry_endpoint_trusted_signing_key
-                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of
@@ -22142,12 +21579,6 @@ class RegistryEndpointOperations:
                     }
                 }
 
-                # JSON input template for discriminator value "ConfigMap":
-                registry_endpoint_trusted_signing_key = {
-                    "configMapRef": "str",  # The name of the configmap. Required.
-                    "type": "ConfigMap"
-                }
-
                 # The response is polymorphic. The following are possible polymorphic responses based
                   off discriminator "method":
 
@@ -22188,12 +21619,6 @@ class RegistryEndpointOperations:
                     }
                 }
 
-                # JSON input template for discriminator value "ConfigMap":
-                registry_endpoint_trusted_signing_key = {
-                    "configMapRef": "str",  # The name of the configmap. Required.
-                    "type": "ConfigMap"
-                }
-
                 # response body for status code(s): 200, 201
                 response == {
                     "extendedLocation": {
@@ -22206,12 +21631,14 @@ class RegistryEndpointOperations:
                     "properties": {
                         "authentication": registry_endpoint_authentication,
                         "host": "str",  # The Container Registry endpoint hostname. Required.
-                        "provisioningState": "str",  # Optional. The status of the last
+                        "codeSigningCas": [
+                            registry_endpoint_trusted_signing_key
+                        ],
+                        "healthState": "str",  # Optional. The health state of the resource.
+                          Known values are: "Available", "Degraded", "Unavailable", and "Unknown".
+                        "provisioningState": "str"  # Optional. The status of the last
                           operation. Known values are: "Succeeded", "Failed", "Canceled",
                           "Provisioning", "Updating", "Deleting", and "Accepted".
-                        "trustSettings": {
-                            "trustedSigningKeys": registry_endpoint_trusted_signing_key
-                        }
                     },
                     "systemData": {
                         "createdAt": "2020-02-20 00:00:00",  # Optional. The timestamp of

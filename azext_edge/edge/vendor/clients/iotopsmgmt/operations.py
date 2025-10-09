@@ -5,10 +5,9 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from .v20250901_preview.operations import (
+from .v20251001.operations import (
     AkriConnectorOperations,
     AkriConnectorTemplateOperations,
-    AkriDiscoveryHandlerOperations,
     BrokerAuthenticationOperations,
     BrokerAuthorizationOperations,
     BrokerListenerOperations,
@@ -17,7 +16,6 @@ from .v20250901_preview.operations import (
     DataflowGraphOperations,
     DataflowOperations,
     DataflowProfileOperations,
-    DiagnosticOperations,
     InstanceOperations,
     RegistryEndpointOperations,
 )
@@ -25,7 +23,6 @@ from .v20250901_preview.operations import (
 __all__ = [
     "AkriConnectorOperations",
     "AkriConnectorTemplateOperations",
-    "AkriDiscoveryHandlerOperations",
     "BrokerAuthenticationOperations",
     "BrokerAuthorizationOperations",
     "BrokerListenerOperations",
@@ -34,7 +31,6 @@ __all__ = [
     "DataflowGraphOperations",
     "DataflowOperations",
     "DataflowProfileOperations",
-    "DiagnosticOperations",
     "InstanceOperations",
     "RegistryEndpointOperations",
 ]
