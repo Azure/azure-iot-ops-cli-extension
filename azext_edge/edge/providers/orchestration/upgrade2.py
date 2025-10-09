@@ -38,12 +38,15 @@ from .common import (
     MIN_INSTANCE_VERSION_V2,
     ConfigSyncModeType,
 )
-from .resources import Instances
+from .resources import Instances, RegistryEndpoints
 from .targets import InitTargets
 
 logger = get_logger(__name__)
 
 console = Console()
+
+
+DEFAULT_REGISTRY_HOST = "mcr.microsoft.com"
 
 
 class ExtensionOperation(Enum):
@@ -103,6 +106,7 @@ class UpgradeManager:
         self.no_progress = no_progress
         self.force = force
         self.instances = Instances(self.cmd)
+        self.registry_endpoints = RegistryEndpoints(self.cmd)
         self.instance_record = self.instances.show(
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
@@ -148,8 +152,23 @@ class UpgradeManager:
                 override_map=build_override_map(**override_kwargs),
                 instance=self.instance_record,
                 adr_namespace_resource_id=self.targets.adr_namespace_resource_id,
+                registry_endpoint_check=self._check_default_registry_needed,
                 force=self.force,
             )
+
+    def _check_default_registry_needed(self) -> bool:
+        try:
+            existing_endpoints = self.registry_endpoints.list(
+                instance_name=self.instance_name, resource_group_name=self.resource_group_name
+            )
+            for endpoint in existing_endpoints:
+                if endpoint["name"].lower() == "default":
+                    logger.debug("Default registry endpoint already exists.")
+                    return False
+            return True
+        except HttpResponseError as e:
+            logger.debug(f"Error checking registry endpoints: {e}")
+            return False
 
     def apply_upgrades(
         self,
@@ -169,6 +188,9 @@ class UpgradeManager:
             total = sum(len(ops) for ops in operations.values())
 
             if upgrade_state.instance_upgrade:
+                total += 1
+
+            if upgrade_state.registry_endpoint_needed:
                 total += 1
 
             return_payload = []
@@ -198,6 +220,16 @@ class UpgradeManager:
                     logger.error(f"Correlation Id for failed instance update: {correlation_id}")
                     raise e
 
+            if upgrade_state.registry_endpoint_needed:
+                try:
+                    registry_result = self._create_default_registry_endpoint(headers)
+                    return_payload.append(registry_result)
+                    progress.advance(task)
+                except HttpResponseError as e:
+                    progress.stop()
+                    logger.error(f"Correlation Id for failed registry endpoint creation: {correlation_id}")
+                    raise e
+
             return return_payload
 
     def _apply_instance_update(self, headers: dict) -> dict:
@@ -208,6 +240,17 @@ class UpgradeManager:
             adr_namespace_resource_id=self.targets.adr_namespace_resource_id,
             headers=headers,
             no_status=True,  # Disable status since we're already in a Progress context
+        )
+
+    def _create_default_registry_endpoint(self, headers: dict) -> dict:
+        return self.registry_endpoints.add(
+            instance_name=self.instance_name,
+            resource_group_name=self.resource_group_name,
+            registry_endpoint_name="default",
+            host=DEFAULT_REGISTRY_HOST,
+            no_auth=True,
+            headers=headers,
+            no_status=True,
         )
 
     def _group_by_operation(self, extensions: List["ExtensionUpgradeState"]) -> Dict[ExtensionOperation, List]:
@@ -362,6 +405,26 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):
         )
         table.add_section()
 
+    # Add registry endpoint row if needed
+    if upgrade_state.registry_endpoint_needed:
+        table.add_row(
+            "default registry",
+            "[dim]Not configured[/dim]",
+            "[green]Create 'default'[/green]",
+            JSON(
+                dumps(
+                    {
+                        "name": "default",
+                        "properties": {
+                            "host": DEFAULT_REGISTRY_HOST,
+                            "authentication": {"method": "Anonymous", "anonymousSettings": {}},
+                        },
+                    }
+                )
+            ),
+        )
+        table.add_section()
+
     console.print(table)
 
 
@@ -407,6 +470,7 @@ class ClusterUpgradeState:
         override_map: Dict[str, "ConfigOverride"],
         instance: Optional[dict] = None,
         adr_namespace_resource_id: Optional[str] = None,
+        registry_endpoint_check: Optional[callable] = None,
         force: Optional[bool] = None,
     ):
         self.extensions_map = extensions_map
@@ -415,13 +479,19 @@ class ClusterUpgradeState:
         self.override_map = override_map
         self.instance = instance
         self.adr_namespace_resource_id = adr_namespace_resource_id
+        self.registry_endpoint_check = registry_endpoint_check
         self.force = force
         self.semver = scoped_semver_import()
         self.extension_upgrades = self._refresh_upgrade_state()
         self.instance_upgrade = self._check_instance_upgrade()
+        self.registry_endpoint_needed = self._check_registry_endpoint_needed()
 
     def has_upgrades(self) -> bool:
-        return any(ext_state.can_upgrade() for ext_state in self.extension_upgrades) or bool(self.instance_upgrade)
+        return (
+            any(ext_state.can_upgrade() for ext_state in self.extension_upgrades)
+            or bool(self.instance_upgrade)
+            or bool(self.registry_endpoint_needed)
+        )
 
     def _check_instance_upgrade(self) -> bool:
         """Check if instance needs ADR namespace update.
@@ -453,6 +523,23 @@ class ClusterUpgradeState:
                 "The instance requires an ADR namespace for migration to v2.\n"
                 "Please provide a value for --ns-resource-id."
             )
+
+        return False
+
+    def _check_registry_endpoint_needed(self) -> bool:
+        """Check if default registry endpoint needs to be created.
+
+        Returns True if:
+        - Target IoT Operations version >= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+        - Default registry endpoint check function is provided and returns True (doesn't exist)
+        """
+
+        if not self._is_target_version_above_migration_threshold():
+            return False
+
+        # Check if the registry endpoint check function was provided and what it returns
+        if self.registry_endpoint_check:
+            return self.registry_endpoint_check()
 
         return False
 
