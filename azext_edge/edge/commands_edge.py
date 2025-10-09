@@ -169,6 +169,7 @@ def create_instance(
     persist_mode: Optional[List[str]] = None,
     # Tags
     tags: Optional[dict] = None,
+    skip_sr_ra: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
@@ -215,6 +216,7 @@ def create_instance(
         persist_pvc_sc=persist_pvc_sc,
         persist_mode=persist_mode,
         tags=tags,
+        skip_sr_ra=skip_sr_ra,
         **kwargs,
     )
     if no_progress and result_payload:

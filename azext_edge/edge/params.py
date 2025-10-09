@@ -1225,170 +1225,181 @@ def load_iotops_arguments(self, _):
             help="Mqtt broker name.",
         )
 
+    with self.argument_context("iot ops create") as context:
+        context.argument(
+            "skip_sr_ra",
+            options_list=["--skip-sr-ra"],
+            arg_type=get_three_state_flag(),
+            help="When used the role assignment between the IoT Operations extension "
+            "system-managed identity and schema registry will be skipped.",
+        )
+        context.argument(
+            "cluster_namespace",
+            options_list=["--cluster-namespace"],
+            help="The cluster namespace IoT Operations infra will be deployed to. Must be lowercase.",
+        )
+        context.argument(
+            "custom_location_name",
+            options_list=["--custom-location"],
+            help="The custom location name corresponding to the IoT Operations deployment. "
+            "The default is in the form 'location-{hash(5)}'.",
+        )
+        context.argument(
+            "location",
+            options_list=["--location"],
+            help="The region that will be used for provisioned resource collateral. "
+            "If not provided the connected cluster location will be used.",
+        )
+        # Schema Registry
+        context.argument(
+            "schema_registry_resource_id",
+            options_list=["--sr-resource-id"],
+            help="The schema registry resource Id to use with IoT Operations.",
+        )
+        # Broker
+        context.argument(
+            "custom_broker_config_file",
+            options_list=["--broker-config-file"],
+            help="Path to a json file with custom broker config properties. "
+            "File config content is used over individual broker config parameters. "
+            "Useful for advanced scenarios. "
+            "The expected format is described at https://aka.ms/aziotops-broker-config.",
+            arg_group="Broker",
+        )
+        context.argument(
+            "add_insecure_listener",
+            options_list=[
+                "--add-insecure-listener",
+                context.deprecate(
+                    target="--mq-insecure",
+                    redirect="--add-insecure-listener",
+                    hide=True,
+                ),
+            ],
+            arg_type=get_three_state_flag(),
+            help="When enabled the mqtt broker deployment will include a listener "
+            f"of service type {MqServiceType.LOADBALANCER.value}, bound to port 1883 with no authN or authZ. "
+            "For non-production workloads only.",
+            arg_group="Broker",
+        )
+        # Broker Config
+        context.argument(
+            "broker_frontend_replicas",
+            type=int,
+            options_list=["--broker-frontend-replicas", "--fr"],
+            help="Mqtt broker frontend replicas. Min value: 1, max value: 16.",
+            arg_group="Broker",
+        )
+        context.argument(
+            "broker_frontend_workers",
+            type=int,
+            options_list=["--broker-frontend-workers", "--fw"],
+            help="Mqtt broker frontend workers. Min value: 1, max value: 16.",
+            arg_group="Broker",
+        )
+        context.argument(
+            "broker_backend_redundancy_factor",
+            type=int,
+            options_list=["--broker-backend-rf", "--br"],
+            help="Mqtt broker backend redundancy factor. Indicates the desired numbers of backend replicas (pods)"
+            " in a physical partition. Min value: 1, max value: 5.",
+            arg_group="Broker",
+        )
+        context.argument(
+            "broker_backend_workers",
+            type=int,
+            options_list=["--broker-backend-workers", "--bw"],
+            help="Mqtt broker backend workers. Min value: 1, max value: 16.",
+            arg_group="Broker",
+        )
+        context.argument(
+            "broker_backend_partitions",
+            type=int,
+            options_list=["--broker-backend-part", "--bp"],
+            help="Mqtt broker backend partitions. Min value: 1, max value: 16.",
+            arg_group="Broker",
+        )
+        context.argument(
+            "broker_memory_profile",
+            arg_type=get_enum_type(MqMemoryProfile),
+            options_list=["--broker-mem-profile", "--mp"],
+            help="Mqtt broker memory profile.",
+            arg_group="Broker",
+        )
+        context.argument(
+            "persist_max_size",
+            options_list=["--persist-max-size"],
+            help="The max size of the message buffer on disk. Setting a value will enable disk persistence. "
+            "Kubernetes resource units must be used e.g. the following value suffixes are supported: "
+            "E, P, T, G, M, K. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.",
+            arg_group="Disk Persistence",
+        )
+        context.argument(
+            "persist_pvc_sc",
+            options_list=["--persist-pvc-sc"],
+            help="Name of the storage class required by the persistent volume claim.",
+            arg_group="Disk Persistence",
+        )
+        context.argument(
+            "persist_mode",
+            options_list=["--persist-mode"],
+            nargs="+",
+            action="extend",
+            help="Configure disk persistence mode for state store, retain messages and subscriber queues. "
+            "Format is space-separated key=value pairs. Supported keys include: 'stateStore', "
+            "'retain', 'subscriberQueue'. Supported values for each key include: 'None', 'All', 'Custom'. "
+            "By default each mode is set to min Custom with dynamic persistence enabled. "
+            "This option can be used one or more times.",
+            arg_group="Disk Persistence",
+        )
+        context.argument(
+            "dataflow_profile_instances",
+            type=int,
+            options_list=["--df-profile-instances"],
+            help="The instance count associated with the default dataflow profile.",
+            arg_group="Dataflow",
+        )
+        context.argument(
+            "trust_settings",
+            options_list=["--trust-settings"],
+            nargs="+",
+            action="store",
+            help="Settings for user provided trust bundle. Used for component TLS. Format is space-separated "
+            f"key=value pairs. The following keys are required: `{'`, `'.join(TRUST_SETTING_KEYS)}`. If not "
+            "used, a system provided self-signed trust bundle is configured.",
+            arg_group="Trust",
+        )
+
+    with self.argument_context("iot ops init") as context:
+        context.argument(
+            "ensure_latest",
+            options_list=["--ensure-latest"],
+            arg_type=get_three_state_flag(),
+            help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
+        )
+        # Cluster Precheck opt-in
+        context.argument(
+            "check_cluster",
+            options_list=["--check-cluster"],
+            arg_type=get_three_state_flag(),
+            help="Enforce a check for minimum cluster requirements before bootstrapping.",
+            is_preview=True,
+        )
+        context.argument(
+            "user_trust",
+            options_list=["--user-trust", "--ut"],
+            arg_type=get_three_state_flag(),
+            help="Skip the deployment of the system cert-manager and trust-manager "
+            "in favor of a user-provided configuration.",
+            arg_group="Trust",
+        )
+
     for cmd_space in ["iot ops init", "iot ops create"]:
         with self.argument_context(cmd_space) as context:
             context.argument(
                 "cluster_name",
                 options_list=["--cluster"],
                 help="Target cluster name for IoT Operations deployment.",
-            )
-            context.argument(
-                "cluster_namespace",
-                options_list=["--cluster-namespace"],
-                help="The cluster namespace IoT Operations infra will be deployed to. Must be lowercase.",
-            )
-            context.argument(
-                "custom_location_name",
-                options_list=["--custom-location"],
-                help="The custom location name corresponding to the IoT Operations deployment. "
-                "The default is in the form 'location-{hash(5)}'.",
-            )
-            context.argument(
-                "location",
-                options_list=["--location"],
-                help="The region that will be used for provisioned resource collateral. "
-                "If not provided the connected cluster location will be used.",
-            )
-            context.argument(
-                "ensure_latest",
-                options_list=["--ensure-latest"],
-                arg_type=get_three_state_flag(),
-                help="Ensure the latest IoT Ops CLI is being used, raising an error if an upgrade is available.",
-            )
-            # Cluster Precheck opt-in
-            context.argument(
-                "check_cluster",
-                options_list=["--check-cluster"],
-                arg_type=get_three_state_flag(),
-                help="Enforce a check for minimum cluster requirements before bootstrapping.",
-                is_preview=True,
-            )
-            # Schema Registry
-            context.argument(
-                "schema_registry_resource_id",
-                options_list=["--sr-resource-id"],
-                help="The schema registry resource Id to use with IoT Operations.",
-            )
-            # Broker
-            context.argument(
-                "custom_broker_config_file",
-                options_list=["--broker-config-file"],
-                help="Path to a json file with custom broker config properties. "
-                "File config content is used over individual broker config parameters. "
-                "Useful for advanced scenarios. "
-                "The expected format is described at https://aka.ms/aziotops-broker-config.",
-                arg_group="Broker",
-            )
-            context.argument(
-                "add_insecure_listener",
-                options_list=[
-                    "--add-insecure-listener",
-                    context.deprecate(
-                        target="--mq-insecure",
-                        redirect="--add-insecure-listener",
-                        hide=True,
-                    ),
-                ],
-                arg_type=get_three_state_flag(),
-                help="When enabled the mqtt broker deployment will include a listener "
-                f"of service type {MqServiceType.LOADBALANCER.value}, bound to port 1883 with no authN or authZ. "
-                "For non-production workloads only.",
-                arg_group="Broker",
-            )
-            # Broker Config
-            context.argument(
-                "broker_frontend_replicas",
-                type=int,
-                options_list=["--broker-frontend-replicas", "--fr"],
-                help="Mqtt broker frontend replicas. Min value: 1, max value: 16.",
-                arg_group="Broker",
-            )
-            context.argument(
-                "broker_frontend_workers",
-                type=int,
-                options_list=["--broker-frontend-workers", "--fw"],
-                help="Mqtt broker frontend workers. Min value: 1, max value: 16.",
-                arg_group="Broker",
-            )
-            context.argument(
-                "broker_backend_redundancy_factor",
-                type=int,
-                options_list=["--broker-backend-rf", "--br"],
-                help="Mqtt broker backend redundancy factor. Indicates the desired numbers of backend replicas (pods)"
-                " in a physical partition. Min value: 1, max value: 5.",
-                arg_group="Broker",
-            )
-            context.argument(
-                "broker_backend_workers",
-                type=int,
-                options_list=["--broker-backend-workers", "--bw"],
-                help="Mqtt broker backend workers. Min value: 1, max value: 16.",
-                arg_group="Broker",
-            )
-            context.argument(
-                "broker_backend_partitions",
-                type=int,
-                options_list=["--broker-backend-part", "--bp"],
-                help="Mqtt broker backend partitions. Min value: 1, max value: 16.",
-                arg_group="Broker",
-            )
-            context.argument(
-                "broker_memory_profile",
-                arg_type=get_enum_type(MqMemoryProfile),
-                options_list=["--broker-mem-profile", "--mp"],
-                help="Mqtt broker memory profile.",
-                arg_group="Broker",
-            )
-            context.argument(
-                "persist_max_size",
-                options_list=["--persist-max-size"],
-                help="The max size of the message buffer on disk. Setting a value will enable disk persistence. "
-                "Kubernetes resource units must be used e.g. the following value suffixes are supported: "
-                "E, P, T, G, M, K. You can also use the power-of-two equivalents: Ei, Pi, Ti, Gi, Mi, Ki.",
-                arg_group="Disk Persistence",
-            )
-            context.argument(
-                "persist_pvc_sc",
-                options_list=["--persist-pvc-sc"],
-                help="Name of the storage class required by the persistent volume claim.",
-                arg_group="Disk Persistence",
-            )
-            context.argument(
-                "persist_mode",
-                options_list=["--persist-mode"],
-                nargs="+",
-                action="extend",
-                help="Configure disk persistence mode for state store, retain messages and subscriber queues. "
-                "Format is space-separated key=value pairs. Supported keys include: 'stateStore', "
-                "'retain', 'subscriberQueue'. Supported values for each key include: 'None', 'All', 'Custom'. "
-                "By default each mode is set to min Custom with dynamic persistence enabled. "
-                "This option can be used one or more times.",
-                arg_group="Disk Persistence",
-            )
-            context.argument(
-                "dataflow_profile_instances",
-                type=int,
-                options_list=["--df-profile-instances"],
-                help="The instance count associated with the default dataflow profile.",
-                arg_group="Dataflow",
-            )
-            context.argument(
-                "trust_settings",
-                options_list=["--trust-settings"],
-                nargs="+",
-                action="store",
-                help="Settings for user provided trust bundle. Used for component TLS. Format is space-separated "
-                f"key=value pairs. The following keys are required: `{'`, `'.join(TRUST_SETTING_KEYS)}`. If not "
-                "used, a system provided self-signed trust bundle is configured.",
-                arg_group="Trust",
-            )
-            context.argument(
-                "user_trust",
-                options_list=["--user-trust", "--ut"],
-                arg_type=get_three_state_flag(),
-                help="Skip the deployment of the system cert-manager and trust-manager "
-                "in favor of a user-provided configuration.",
-                arg_group="Trust",
             )
 
     for cmd_space in ["iot ops create", "iot ops update"]:

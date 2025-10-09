@@ -349,6 +349,7 @@ class WorkManager:
         self._warnings: List[str] = []
         self._ops_ext_dependencies = None
         self._ops_ext = None
+        self._skip_sr_ra = kwargs.pop("skip_sr_ra", False)
 
         self._build_display()
 
@@ -489,7 +490,8 @@ class WorkManager:
                 )
                 self._render_display(category=WorkCategoryKey.DEPLOY_IOT_OPS)
                 wait_for_terminal_state(instance_poller)
-                self._apply_sr_role_assignment()
+                if not self._skip_sr_ra:
+                    self._apply_sr_role_assignment()
 
                 self._complete_step(
                     category=WorkCategoryKey.DEPLOY_IOT_OPS,

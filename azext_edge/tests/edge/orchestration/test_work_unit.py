@@ -777,6 +777,9 @@ def assert_cluster_prechecks(mock_prechecks: Dict[str, Mock], target_scenario: d
             ),
             omit_http_methods=frozenset([responses.PUT, responses.POST]),
         ),
+        build_target_scenario(
+            skip_sr_ra=True,
+        ),
     ],
 )
 def test_iot_ops_create(
@@ -829,6 +832,9 @@ def test_iot_ops_create(
         if key in target_scenario:
             create_call_kwargs[key] = target_scenario[key]
 
+    skip_sr_ra = target_scenario.get("skip_sr_ra")
+    create_call_kwargs["skip_sr_ra"] = skip_sr_ra
+
     exc_meta: Optional[ExceptionMeta] = target_scenario.get("raises")
     if exc_meta:
         exc_meta: ExceptionMeta
@@ -845,8 +851,8 @@ def test_iot_ops_create(
         CallKey.GET_ADR_NAMESPACE: 1,
         CallKey.GET_CLUSTER_EXTENSIONS: 2,
         CallKey.GET_EXISTING_DEPLOYMENTS: 1,
-        CallKey.GET_SCHEMA_REGISTRY_RA: 1,
-        CallKey.PUT_SCHEMA_REGISTRY_RA: 1,
+        CallKey.GET_SCHEMA_REGISTRY_RA: 0 if skip_sr_ra else 1,
+        CallKey.PUT_SCHEMA_REGISTRY_RA: 0 if skip_sr_ra else 1,
         CallKey.CREATE_CUSTOM_LOCATION: 2,
         CallKey.DEPLOY_CREATE_EXT: 1,
         CallKey.DEPLOY_CREATE_INSTANCE: 1,
