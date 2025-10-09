@@ -46,6 +46,9 @@ logger = get_logger(__name__)
 console = Console()
 
 
+DEFAULT_REGISTRY_HOST = "mcr.microsoft.com"
+
+
 class ExtensionOperation(Enum):
     CREATE = "create"
     UPDATE = "update"
@@ -158,7 +161,6 @@ class UpgradeManager:
             existing_endpoints = self.registry_endpoints.list(
                 instance_name=self.instance_name, resource_group_name=self.resource_group_name
             )
-            # Check if 'default' exists in the list
             for endpoint in existing_endpoints:
                 if endpoint["name"].lower() == "default":
                     logger.debug("Default registry endpoint already exists.")
@@ -245,7 +247,7 @@ class UpgradeManager:
             instance_name=self.instance_name,
             resource_group_name=self.resource_group_name,
             registry_endpoint_name="default",
-            host="mcr.microsoft.com",
+            host=DEFAULT_REGISTRY_HOST,
             no_auth=True,
             headers=headers,
             no_status=True,
@@ -414,7 +416,7 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):
                     {
                         "name": "default",
                         "properties": {
-                            "host": "mcr.microsoft.com",
+                            "host": DEFAULT_REGISTRY_HOST,
                             "authentication": {"method": "Anonymous", "anonymousSettings": {}},
                         },
                     }

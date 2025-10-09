@@ -25,6 +25,7 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
+    MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
     PROVISIONING_STATE_FAILED,
     PROVISIONING_STATE_SUCCESS,
     ClusterConnectStatus,
@@ -41,6 +42,9 @@ from .resources.conftest import (
     CONNECTED_CLUSTER_API_VERSION,
     get_base_endpoint,
     get_mock_resource,
+)
+from .resources.registry_endpoint.test_registry_endpoints_unit import (
+    get_registry_endpoint_endpoint,
 )
 from .resources.test_instances_unit import (
     get_instance_endpoint,
@@ -59,6 +63,24 @@ HTTP_STATUS_OK = 200
 HTTP_STATUS_ACCEPTED = 202
 HTTP_STATUS_SERVICE_ERROR = 500
 HTTP_STATUS_SERVICE_UNAVAILABLE = 503
+
+expected_default_registry = {
+    "name": "default",
+    "type": "Microsoft.IoTOperations/instances/registryEndpoints",
+    "properties": {
+        "host": "mcr.microsoft.com",
+        "authentication": {"method": "Anonymous", "anonymousSettings": {}},
+        "provisioningState": "Succeeded",
+    },
+}
+
+
+def expects_registry_creation(target_scenario: "UpgradeScenario") -> bool:
+    return (
+        hasattr(target_scenario, "aux_kwargs")
+        and target_scenario.aux_kwargs.get("default_registry_exists") is False
+        and target_scenario.user_kwargs.get("ops_version", "") >= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+    )
 
 
 def get_mock_cluster_record(
@@ -262,10 +284,15 @@ class UpgradeScenario:
             self.remove_adr_for_test = kwargs["remove_adr_for_test"]
         if "expect_instance_update" in kwargs:
             self.expect_instance_update = kwargs["expect_instance_update"]
+        if "default_registry_exists" in kwargs:
+            self.default_registry_exists = kwargs["default_registry_exists"]
+        if "registry_list_error" in kwargs:
+            self.registry_list_error = kwargs["registry_list_error"]
+
         self.aux_kwargs = kwargs
         return self
 
-    def set_instance_mock(self: T, mocked_responses: responses, instance_name: str, resource_group_name: str):
+    def set_instance_mock(self: T, mocked_responses: responses, instance_name: str, resource_group_name: str) -> T:
         mocked_responses.assert_all_requests_are_fired = False
 
         # Always use version 1.2.0+ (which includes ADR namespace)
@@ -349,7 +376,88 @@ class UpgradeScenario:
             callback=self.create_extension_response,
         )
 
+        # Always setup registry endpoint mocks when IoT Ops extension exists
+        # The upgrade code checks registry endpoints when target version >= migration version
+        if EXTENSION_TYPE_OPS in self.extensions:
+            self._setup_registry_endpoint_mocks(mocked_responses, instance_name, resource_group_name)
+
         return self
+
+    def _setup_registry_endpoint_mocks(self, mocked_responses: responses, instance_name: str, resource_group_name: str):
+        """Set up registry endpoint mocks for tests.
+
+        By default:
+        - GET returns a default registry endpoint (simulating it already exists)
+        - PUT is mocked to handle any creation attempts
+
+        This can be overridden via auxiliary kwargs for specific test scenarios.
+        """
+        list_endpoint = get_registry_endpoint_endpoint(
+            instance_name=instance_name, resource_group_name=resource_group_name
+        )
+
+        # Check if we have explicit test configuration
+        has_explicit_config = hasattr(self, "aux_kwargs")
+        registry_list_error = has_explicit_config and self.aux_kwargs.get("registry_list_error", False)
+        default_exists = has_explicit_config and self.aux_kwargs.get("default_registry_exists", False)
+
+        if registry_list_error:
+            # Simulate an error when listing endpoints
+            mocked_responses.add(
+                method=responses.GET,
+                url=list_endpoint,
+                status=500,
+                json={"error": {"message": "Failed to list registry endpoints", "code": "InternalServerError"}},
+                content_type="application/json",
+            )
+        else:
+            # Determine what to return for GET request
+            existing_endpoints = []
+
+            # Add default endpoint if:
+            # 1. Explicitly configured to exist (default_registry_exists=True), OR
+            # 2. No explicit configuration (simulate it exists to prevent unwanted creation)
+            if default_exists or not has_explicit_config:
+                # Use the global expected_default_registry and add the ID
+                endpoint = deepcopy(expected_default_registry)
+                endpoint["id"] = f"{list_endpoint}/default"
+                existing_endpoints.append(endpoint)
+
+            mocked_responses.add(
+                method=responses.GET,
+                url=list_endpoint,
+                json={"value": existing_endpoints},
+                status=200,
+                content_type="application/json",
+            )
+
+        # Always add PUT mock to handle creation attempts
+        # This prevents "Connection refused" errors for any test where creation might be attempted
+        create_endpoint = get_registry_endpoint_endpoint(
+            instance_name=instance_name, resource_group_name=resource_group_name, registry_endpoint_name="default"
+        )
+
+        def registry_create_callback(request):
+            assert_upgrade_headers(request.headers)
+            self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
+
+            # Parse body to verify correct payload
+            body = json.loads(request.body)
+            assert "properties" in body
+            assert body["properties"]["host"] == expected_default_registry["properties"]["host"]
+            assert body["properties"]["authentication"] == expected_default_registry["properties"]["authentication"]
+
+            # Return the created endpoint (reuse expected_default_registry)
+            response_body = deepcopy(expected_default_registry)
+            response_body["id"] = create_endpoint
+
+            return (200, STANDARD_HEADERS, json.dumps(response_body))
+
+        mocked_responses.add_callback(
+            method=responses.PUT,
+            url=create_endpoint,
+            callback=registry_create_callback,
+        )
 
     def delete_extension_response(self, request: requests.PreparedRequest) -> Optional[tuple]:
         ext_moniker = request.path_url.split("?")[0].split("/")[-1]
@@ -359,8 +467,7 @@ class UpgradeScenario:
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
             if EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] == ext_moniker:
                 self.delete_record[ext_type] = True
-                # Return 204 No Content - realistic response
-                return (204, STANDARD_HEADERS, "")  # 204 returns no body
+                return (204, STANDARD_HEADERS, "")
 
         return (HTTP_STATUS_SERVICE_UNAVAILABLE, STANDARD_HEADERS, json.dumps({"error": "server error"}))
 
@@ -386,16 +493,24 @@ class UpgradeScenario:
         self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
             if EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] == ext_moniker:
-                status_code, response_body, headers = self.ext_type_response_map.get(ext_type) or (
-                    HTTP_STATUS_OK,
-                    json.loads(request.body),
-                    {},
-                )
-                if response_body and "properties" in response_body:
+                self.patch_record[ext_type] = json.loads(request.body)
+
+                # Check if we have a specific response configured for this extension type
+                if ext_type in self.ext_type_response_map:
+                    code, body, headers = self.ext_type_response_map[ext_type]
+                    if not body:
+                        body = self.patch_record[ext_type]
+                    return (code, {**STANDARD_HEADERS, **headers}, json.dumps(body) if body else "")
+
+                # Default success response - ensure extensionType is included
+                response_body = self.patch_record[ext_type]
+                # Add extensionType if not present (patch requests might only send changed fields)
+                if "properties" not in response_body:
+                    response_body = {"properties": response_body}
+                if "extensionType" not in response_body["properties"]:
                     response_body["properties"]["extensionType"] = ext_type
-                self.patch_record[ext_type] = response_body
-                response_headers = dict(STANDARD_HEADERS, **headers)
-                return (status_code, response_headers, json.dumps(response_body))
+
+                return (HTTP_STATUS_OK, STANDARD_HEADERS, json.dumps(response_body))
 
         return (HTTP_STATUS_SERVICE_UNAVAILABLE, STANDARD_HEADERS, json.dumps({"error": "server error"}))
 
@@ -444,7 +559,7 @@ def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT)
 
 
 def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: List[dict]):
-    """Assert operations happen in correct order: DELETE -> CREATE -> UPDATE -> INSTANCE_UPDATE.
+    """Assert operations happen in correct order: DELETE -> CREATE -> UPDATE -> INSTANCE_UPDATE -> REGISTRY_CREATE.
     Also validates extension type order within each operation group."""
 
     # Group results by operation type
@@ -452,17 +567,26 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
     creates = []
     updates = []
     instance_updates = []
+    registry_creates = []
 
     for result in upgrade_result:
         props = result.get("properties", {})
         ext_type = props.get("extensionType")
+
+        # Check if this is a registry endpoint creation
+        if (
+            result.get("name") == "default"
+            and result.get("type") == "Microsoft.IoTOperations/instances/registryEndpoints"
+        ):
+            registry_creates.append(result)
+            continue
 
         # Check if this is an instance update (has adrNamespaceRef but no extensionType)
         if not ext_type and "adrNamespaceRef" in props:
             instance_updates.append(result)
             continue
 
-        # Skip if no extension type and not an instance update
+        # Skip if no extension type and not an instance update or registry endpoint
         if not ext_type:
             continue
 
@@ -481,13 +605,17 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         target_scenario.create_record.keys()
     ), f"CREATE operations mismatch. Expected {set(target_scenario.create_record.keys())}, got {set(creates)}"
 
-    # If instance update is expected, verify it's last
+    # If instance update is expected, verify it exists
     if target_scenario.expect_instance_update:
         assert len(instance_updates) == 1, "Expected exactly one instance update"
+
+    # If registry creation is expected, verify it's last
+    if expects_registry_creation(target_scenario):
+        assert len(registry_creates) == 1, "Expected exactly one registry endpoint creation"
         # Verify it's the last operation in the result list
         if len(upgrade_result) > 0:
             last_result = upgrade_result[-1]
-            assert "adrNamespaceRef" in last_result.get("properties", {}), "Instance update should be last operation"
+            assert last_result.get("name") == "default", "Registry endpoint creation should be last operation"
 
     # Build the actual operation sequence (non-empty groups only)
     operation_sequence = []
@@ -828,29 +956,31 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             ),
             {EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE)},
         ),
-        # ========== Platform to CertManager Migration (>= 1.2.83) ==========
+        # ========== Platform to CertManager Migration (>= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE) ==========
         (
-            UpgradeScenario("Migration: Platform exists, IoT Ops >= 1.2.83")
+            UpgradeScenario("Migration: Platform exists, IoT Ops >= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
             },
         ),
         (
             UpgradeScenario("Migration: Platform already deleted, create CertManager")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.83"),
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
                 EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version=BUILT_IN_VALUE),
             },
         ),
         (
-            UpgradeScenario("No Migration: IoT Ops < 1.2.83")
+            UpgradeScenario("No Migration: IoT Ops < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
             .set_user_kwargs(ops_version="1.2.82"),
@@ -864,21 +994,23 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, ext_vers="0.5.0")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 # Platform is deleted, CM is UPDATED (not created since it exists)
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
             },
         ),
         (
-            UpgradeScenario("No Migration: Platform exists, CM doesn't, IoT Ops < 1.2.83")
+            UpgradeScenario("No Migration: Platform exists, CM doesn't, IoT Ops < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
             .set_user_kwargs(ops_version="1.2.82"),
             {
-                # No platform delete or CM create since IoT Ops < 1.2.83
+                # No platform delete or CM create since IoT Ops < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
                 EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
             },
         ),
@@ -888,12 +1020,14 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
             .set_extension(ext_type=EXTENSION_TYPE_SSC, ext_vers="0.3.0")
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 # Platform is deleted, not in expected
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
                 EXTENSION_TYPE_SSC: build_extension_props(EXTENSION_TYPE_SSC, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
             },
         ),
         # ========== ADR Namespace ==========
@@ -902,7 +1036,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
-            .set_user_kwargs(ops_version="1.2.83")  # Triggers v2 migration
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)  # Triggers v2 migration
             .set_auxiliary_kwargs(remove_adr_for_test=True)
             .expecting_validation_error(r"The instance requires an ADR namespace for migration to v2"),
             {},
@@ -913,16 +1047,18 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
             .set_user_kwargs(
-                ops_version="1.2.83",
-                ns_resource_id="PLACEHOLDER_ADR_NAMESPACE_ID",  # TODO: Temporary.
+                ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
+                ns_resource_id="PLACEHOLDER_ADR_NAMESPACE_ID",
             )
-            .set_auxiliary_kwargs(remove_adr_for_test=True, expect_instance_update=True),
+            .set_auxiliary_kwargs(remove_adr_for_test=True, expect_instance_update=True, default_registry_exists=False),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
             },
         ),
-        # ========== MQTT Broker Configuration Migration (>= 1.2.83) ==========
+        # ========== MQTT Broker Configuration Migration (>= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE) ==========
         (
             UpgradeScenario("MQTT Migration: Basic migration with default token")
             .set_extension(
@@ -933,11 +1069,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.hostName": "aio-broker.azure-iot-operations",
                         "dataFlows.values.tinyKube.mqttBroker.port": "18883",
@@ -958,11 +1094,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.hostName": "192.168.1.1",
                         "dataFlows.values.tinyKube.mqttBroker.port": "8883",
@@ -974,7 +1110,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             },
         ),
         (
-            UpgradeScenario("MQTT No Migration: Version < 1.2.83")
+            UpgradeScenario("MQTT No Migration: Version < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
             .set_extension(
                 ext_type=EXTENSION_TYPE_OPS,
                 ext_vers="1.2.0",
@@ -998,11 +1134,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                 ext_vers="1.2.0",
                 config_settings={"some.other.setting": "value"},
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                 ),
             },
         ),
@@ -1015,11 +1151,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "connectors.values.mqttBroker.address": "mqtts://broker-without-port",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.hostName": "broker-without-port",
                     },
@@ -1038,11 +1174,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "dataFlows.values.tinyKube.mqttBroker.port": "9999",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": (
                             "aio-internal"
@@ -1061,11 +1197,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": (
                             "aio-internal"
@@ -1086,12 +1222,12 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.hostName": "aio-broker.azure-iot-operations",
                         "dataFlows.values.tinyKube.mqttBroker.port": "18883",
@@ -1099,6 +1235,58 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                             "aio-internal"
                         ),
                     },
+                ),
+            },
+        ),
+        # ========== Registry Endpoint Creation (>= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE) ==========
+        (
+            UpgradeScenario("Registry: Create default endpoint on v2 migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(default_registry_exists=False),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("Registry: Skip creation when default exists")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(default_registry_exists=True),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("Registry: No creation when version < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.82")
+            .set_auxiliary_kwargs(default_registry_exists=False),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
+            },
+        ),
+        (
+            UpgradeScenario("Registry: Handle error gracefully when checking endpoints")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(registry_list_error=True),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
                 ),
             },
         ),
@@ -1123,7 +1311,7 @@ def test_ops_upgrade(
 
     ns_resource_id = target_scenario.user_kwargs.get("ns_resource_id")
     if ns_resource_id and ns_resource_id == "PLACEHOLDER_ADR_NAMESPACE_ID":
-        # TODO: Placeholder is temp due to DOE limitation.
+        # TODO: Placeholder is temp due to DOE limitation (same rg constraint).
         ns_resource_id = (
             f"/subscriptions/sub1/resourceGroups/{resource_group_name}"
             f"/providers/Microsoft.DeviceRegistry/namespaces/adr1"
@@ -1168,7 +1356,7 @@ def test_ops_upgrade(
 
     assert upgrade_result
 
-    # Count expected operations including deletes
+    # Count expected operations
     delete_count = len(target_scenario.delete_record)
     create_count = len(target_scenario.create_record)
     # For updates, only count extensions that exist and are being updated (not created)
@@ -1180,7 +1368,9 @@ def test_ops_upgrade(
         ]
     )
     instance_count = int(target_scenario.expect_instance_update)
-    expected_count = delete_count + create_count + update_count + instance_count
+    registry_count = int(expects_registry_creation(target_scenario))
+
+    expected_count = delete_count + create_count + update_count + instance_count + registry_count
 
     assert len(upgrade_result) == expected_count
     assert len(mocked_confirm.ask.mock_calls) == int(not target_scenario.confirm_yes)
@@ -1278,10 +1468,19 @@ def assert_result(
     deleted_types = set()
     created_types = set()
     instance_updates = []
+    registry_endpoints = []
 
     for result in upgrade_result:
         props = result.get("properties", {})
         ext_type = props.get("extensionType")
+
+        # Check if this is a registry endpoint
+        if (
+            result.get("name") == "default"
+            and result.get("type") == "Microsoft.IoTOperations/instances/registryEndpoints"
+        ):
+            registry_endpoints.append(result)
+            continue
 
         # Separate instance updates from extension operations
         if not ext_type:
@@ -1306,6 +1505,16 @@ def assert_result(
         assert (
             not instance_updates
         ), f"Unexpected instance update(s) in results. Found {len(instance_updates)} instance update(s)"
+
+    # Validate registry endpoint creation
+    if expects_registry_creation(target_scenario):
+        assert registry_endpoints, "Expected registry endpoint creation but none found in results"
+        assert len(registry_endpoints) == 1, f"Expected exactly 1 registry endpoint, found {len(registry_endpoints)}"
+        endpoint = registry_endpoints[0]
+        assert endpoint["properties"]["host"] == expected_default_registry["properties"]["host"]
+        assert endpoint["properties"]["authentication"] == expected_default_registry["properties"]["authentication"]
+    else:
+        assert not registry_endpoints, f"Unexpected registry endpoint(s) in results. Found {len(registry_endpoints)}"
 
     _assert_user_kwargs_applied(target_scenario.user_kwargs, result_by_type, deleted_types)
 
@@ -1332,19 +1541,11 @@ def _assert_user_kwargs_applied(user_kwargs: dict, result_by_type: dict, deleted
         ]:
             key = f"{alias}_{suffix}"
             if key in user_kwargs:
-                expected = user_kwargs[key]
+                value = user_kwargs[key]
                 if suffix == "config":
-                    expected = parse_kvp_nargs(expected)
-                    actual_config = props.get(prop_name, {})
-                    # For config, verify that all user-provided settings are present
-                    for config_key, config_value in expected.items():
-                        assert config_key in actual_config, f"{key}: missing key '{config_key}' in config"
-                        assert actual_config[config_key] == config_value, (
-                            f"{key}: value mismatch for '{config_key}'. "
-                            f"Expected: {config_value}, Got: {actual_config[config_key]}"
-                        )
-                else:
-                    assert props.get(prop_name) == expected, f"{key} not applied correctly"
+                    value = parse_kvp_nargs(value)
+                if value:
+                    assert props.get(prop_name) == value, f"Expected {prop_name}={value} for {alias}"
 
 
 def _assert_expected_types(
@@ -1406,7 +1607,7 @@ def assert_displays(
             progress_count = 1
             if validation_err_str.startswith("Installed") and no_progress:
                 # Error is raised in first get_patch(). Table render is skipped if no_progress.
-                progress_count += 1
+                progress_count = 2
 
     if not progress_count:
         progress_count = 2
