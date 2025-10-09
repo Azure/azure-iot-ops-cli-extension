@@ -4,6 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Iterable, Optional
 
 from azure.cli.core.azclierror import (
@@ -217,6 +218,12 @@ class RegistryEndpoints(Queryable):
         :param kwargs: Additional keyword arguments for the operation.
         :returns: The created registry endpoint.
         """
+
+        status_text = kwargs.pop("status_text", "Working...")
+        no_status = kwargs.pop("no_status", False)
+        headers = kwargs.pop("headers", None)
+        operation_kwargs = {"headers": headers or {"CommandName": "iot ops registry add"}}
+
         # Process authentication configuration
         auth_config = self._process_registry_endpoint_authentication(
             type=auth_type,
@@ -252,12 +259,14 @@ class RegistryEndpoints(Queryable):
             "properties": properties,
         }
 
-        with console.status("Working..."):
+        status_context = nullcontext() if no_status else console.status(status_text)
+        with status_context:
             poller = self.registry_endpoints.begin_create_or_update(
                 resource_group_name=resource_group_name,
                 instance_name=instance_name,
                 registry_endpoint_name=registry_endpoint_name,
                 resource=resource,
+                **operation_kwargs,
             )
             return wait_for_terminal_state(poller, **kwargs)
 

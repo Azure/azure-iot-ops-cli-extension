@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import re
+from contextlib import nullcontext
 from typing import Dict, Iterable, List, Optional
 
 from azure.cli.core.azclierror import (
@@ -161,10 +162,14 @@ class Instances(Queryable):
         tags: Optional[Dict[str, str]] = None,
         description: Optional[str] = None,
         features: Optional[List[str]] = None,
+        adr_namespace_resource_id: Optional[str] = None,
         **kwargs: dict,
     ) -> dict:
         instance = kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
         status_text = kwargs.pop("status_text", "Working...")
+        no_status = kwargs.pop("no_status", False)
+        headers = kwargs.pop("headers", None)
+        operation_kwargs = {"headers": headers or {"CommandName": "iot ops update"}}
 
         if description:
             instance["properties"]["description"] = description
@@ -175,14 +180,19 @@ class Instances(Queryable):
             current_features.update(desired_features)
             instance["properties"]["features"] = current_features
 
+        if adr_namespace_resource_id:
+            instance["properties"]["adrNamespaceRef"] = {"resourceId": adr_namespace_resource_id}
+
         if tags or tags == {}:
             instance["tags"] = tags
 
-        with console.status(status_text):
+        status_context = nullcontext() if no_status else console.status(status_text)
+        with status_context:
             poller = self.iotops_mgmt_client.instance.begin_create_or_update(
                 instance_name=name,
                 resource_group_name=resource_group_name,
                 resource=instance,
+                **operation_kwargs,
             )
             return wait_for_terminal_state(poller, **kwargs)
 

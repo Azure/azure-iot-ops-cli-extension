@@ -132,14 +132,14 @@ def test_schema_registry_lifecycle(settings_with_rg, tracked_resources):
 
 def run_with_retry(command: str, max_tries: int = MAX_TRIES, sleep_interval: int = SLEEP_INTERVAL):
     tries = 0
-    while tries < MAX_TRIES:
+    while tries < max_tries:
         try:
             return run(command)
         except CLIInternalError as e:
             tries += 1
-            if tries == MAX_TRIES:
+            if tries == max_tries:
                 raise e
-            sleep(SLEEP_INTERVAL)
+            sleep(sleep_interval)
 
 
 def assert_schema_registry(registry: dict, **expected):

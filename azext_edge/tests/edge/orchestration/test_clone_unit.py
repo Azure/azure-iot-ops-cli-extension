@@ -454,7 +454,7 @@ class CloneScenario:
             self.resource_configs["adrNamespaceId"] = mock_instance_record["properties"]["adrNamespaceRef"][
                 "resourceId"
             ]
-        instance_fetch_by_apis = [IoTOpsMgmtApiVersion.V20250701_preview.value]
+        instance_fetch_by_apis = [IoTOpsMgmtApiVersion.V20251001.value]
         if not self.api_config.v2_enabled:
             instance_fetch_by_apis.append(self.api_config.iotops_mgmt_api)
         for api_version in instance_fetch_by_apis:
@@ -1755,7 +1755,7 @@ class CloneAssertor:
             target_iotops_api = IoTOpsMgmtApiVersion.V20250401
             target_adr_api = DeviceRegistryMgmtApiVersion.V20241101
         elif parsed_version < semver.parse("1.3.0"):
-            target_iotops_api = IoTOpsMgmtApiVersion.V20250701_preview
+            target_iotops_api = IoTOpsMgmtApiVersion.V20251001
             target_adr_api = DeviceRegistryMgmtApiVersion.V20250701_preview
 
         assert target_iotops_api.value == self.api_config.iotops_mgmt_api

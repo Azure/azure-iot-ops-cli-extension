@@ -58,7 +58,7 @@ class ClusterExtensions(Queryable):
         extension_name: str,
         update_payload: dict,
         **operation_kwargs,
-    ) -> Iterable[dict]:
+    ) -> dict:
         return wait_for_terminal_state(
             self.ops.begin_update(
                 resource_group_name=resource_group_name,
@@ -67,6 +67,44 @@ class ClusterExtensions(Queryable):
                 cluster_name=cluster_name,
                 extension_name=extension_name,
                 patch_extension=update_payload,
+                **operation_kwargs,
+            )
+        )
+
+    def create_cluster_extension(
+        self,
+        resource_group_name: str,
+        cluster_name: str,
+        extension_name: str,
+        create_payload: dict,
+        **operation_kwargs,
+    ) -> dict:
+        return wait_for_terminal_state(
+            self.ops.begin_create(
+                resource_group_name=resource_group_name,
+                cluster_rp="Microsoft.Kubernetes",
+                cluster_resource_name="connectedClusters",
+                cluster_name=cluster_name,
+                extension_name=extension_name,
+                extension=create_payload,
+                **operation_kwargs,
+            )
+        )
+
+    def delete_cluster_extension(
+        self,
+        resource_group_name: str,
+        cluster_name: str,
+        extension_name: str,
+        **operation_kwargs,
+    ) -> None:
+        return wait_for_terminal_state(
+            self.ops.begin_delete(
+                resource_group_name=resource_group_name,
+                cluster_rp="Microsoft.Kubernetes",
+                cluster_resource_name="connectedClusters",
+                cluster_name=cluster_name,
+                extension_name=extension_name,
                 **operation_kwargs,
             )
         )

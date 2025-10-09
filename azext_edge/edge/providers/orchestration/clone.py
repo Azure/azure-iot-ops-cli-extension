@@ -1683,7 +1683,7 @@ class VersionGuru:
                 registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20241101.value,
             )
         return InstanceApiConfig(
-            iotops_mgmt_api=IoTOpsMgmtApiVersion.V20250701_preview.value,
+            iotops_mgmt_api=IoTOpsMgmtApiVersion.V20251001.value,
             registry_mgmt_api=DeviceRegistryMgmtApiVersion.V20250701_preview.value,
         )
 
@@ -1694,7 +1694,7 @@ class InstanceApiConfig:
         self._registry_mgmt_api = registry_mgmt_api
         self.v2_enabled = False
 
-        if self._iotops_mgmt_api in [IoTOpsMgmtApiVersion.V20250701_preview.value]:
+        if self._iotops_mgmt_api in [IoTOpsMgmtApiVersion.V20251001.value]:
             self.v2_enabled = True
 
     @property

@@ -7,7 +7,7 @@
 from copy import deepcopy
 from typing import Dict, List, NamedTuple, Optional, Union
 
-from ...util.az_client import IoTOpsMgmtApiVersion
+from ...util.az_client import DEFAULT_IOTOPS_MGMT_API_VERSION
 from .common import (
     AIO_INSECURE_LISTENER_NAME,
     AIO_INSECURE_LISTENER_SERVICE_NAME,
@@ -49,14 +49,12 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="1226b67b31806ffc811b67246d0a65288d412434",
+    commit_id="4e06ce3bfdff9885cf2b658f530484cadd5dd63a",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {
-            "_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "12111583817498015341"}
-        },
+        "metadata": {"_generator": {"name": "bicep", "version": "0.38.5.1644", "templateHash": "17832072683996127711"}},
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -74,6 +72,11 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "properties": {
                             "version": {"type": "string", "nullable": True},
                             "train": {"type": "string", "nullable": True},
+                            "telemetry": {
+                                "type": "object",
+                                "properties": {"enabled": {"type": "string", "nullable": True}},
+                                "nullable": True,
+                            },
                         },
                         "nullable": True,
                     },
@@ -192,13 +195,6 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
             "_1.BrokerPersistence": {
                 "type": "object",
                 "properties": {
-                    "dynamicSettings": {
-                        "$ref": "#/definitions/_1.BrokerPersistenceDynamicSettings",
-                        "nullable": True,
-                        "metadata": {
-                            "description": "Client sets the specified user property key/value in the CONNECT/SUBSCRIBE/PUBLISH.\nOptionally, if the customer specifies a configurable user property, it will work to enable persistence dynamically.\nDefault: key 'aio-persistence', value 'true'.\n"
-                        },
-                    },
                     "maxSize": {
                         "type": "string",
                         "metadata": {
@@ -243,23 +239,6 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                 },
                 "metadata": {
                     "description": "Disk persistence configuration for the Broker.\nOptional. Everything is in-memory if not set.\nNote: if configured, all MQTT session states are written to disk.\n",
-                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
-                },
-            },
-            "_1.BrokerPersistenceDynamicSettings": {
-                "type": "object",
-                "properties": {
-                    "userPropertyKey": {
-                        "type": "string",
-                        "metadata": {"description": "The user property key to enable persistence."},
-                    },
-                    "userPropertyValue": {
-                        "type": "string",
-                        "metadata": {"description": "The user property value to enable persistence."},
-                    },
-                },
-                "metadata": {
-                    "description": "Dynamic settings to toggle persistence via MQTTv5 user properties.",
                     "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
                 },
             },
@@ -449,12 +428,6 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                         "$ref": "#/definitions/_1.BrokerSubscriberQueueDynamic",
                         "nullable": True,
                         "metadata": {"description": "Dynamic toggle via MQTTv5 user property."},
-                    },
-                    "topics": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "nullable": True,
-                        "metadata": {"description": "Topics to persist per subscriber (wildcards # and + supported)."},
                     },
                 },
                 "metadata": {
@@ -624,7 +597,10 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
                     "version": "[coalesce(tryGet(tryGet(parameters('advancedConfig'), 'certManager'), 'version'), variables('VERSIONS').certManager)]",
                     "autoUpgradeMinorVersion": False,
                     "scope": {"cluster": {"releaseNamespace": "cert-manager"}},
-                    "configurationSettings": {"AgentOperationTimeoutInMinutes": "20"},
+                    "configurationSettings": {
+                        "AgentOperationTimeoutInMinutes": "20",
+                        "global.telemetry.enabled": "[coalesce(tryGet(tryGet(tryGet(parameters('advancedConfig'), 'certManager'), 'telemetry'), 'enabled'), 'true')]",
+                    },
                 },
             },
             "secretStoreExtension": {
@@ -676,13 +652,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="4dd374090a96122bc021452f03f11fd13629735a",
+    commit_id="4e06ce3bfdff9885cf2b658f530484cadd5dd63a",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.37.4.10188", "templateHash": "10302267468035818626"}
+            "_generator": {"name": "bicep", "version": "0.38.33.27573", "templateHash": "8572094046543653990"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -701,6 +677,11 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                         "properties": {
                             "version": {"type": "string", "nullable": True},
                             "train": {"type": "string", "nullable": True},
+                            "telemetry": {
+                                "type": "object",
+                                "properties": {"enabled": {"type": "string", "nullable": True}},
+                                "nullable": True,
+                            },
                         },
                         "nullable": True,
                     },
@@ -819,13 +800,6 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "_1.BrokerPersistence": {
                 "type": "object",
                 "properties": {
-                    "dynamicSettings": {
-                        "$ref": "#/definitions/_1.BrokerPersistenceDynamicSettings",
-                        "nullable": True,
-                        "metadata": {
-                            "description": "Client sets the specified user property key/value in the CONNECT/SUBSCRIBE/PUBLISH.\nOptionally, if the customer specifies a configurable user property, it will work to enable persistence dynamically.\nDefault: key 'aio-persistence', value 'true'.\n"
-                        },
-                    },
                     "maxSize": {
                         "type": "string",
                         "metadata": {
@@ -870,23 +844,6 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 },
                 "metadata": {
                     "description": "Disk persistence configuration for the Broker.\nOptional. Everything is in-memory if not set.\nNote: if configured, all MQTT session states are written to disk.\n",
-                    "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
-                },
-            },
-            "_1.BrokerPersistenceDynamicSettings": {
-                "type": "object",
-                "properties": {
-                    "userPropertyKey": {
-                        "type": "string",
-                        "metadata": {"description": "The user property key to enable persistence."},
-                    },
-                    "userPropertyValue": {
-                        "type": "string",
-                        "metadata": {"description": "The user property value to enable persistence."},
-                    },
-                },
-                "metadata": {
-                    "description": "Dynamic settings to toggle persistence via MQTTv5 user properties.",
                     "__bicep_imported_from!": {"sourceTemplate": "types.bicep"},
                 },
             },
@@ -1076,12 +1033,6 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                         "$ref": "#/definitions/_1.BrokerSubscriberQueueDynamic",
                         "nullable": True,
                         "metadata": {"description": "Dynamic toggle via MQTTv5 user property."},
-                    },
-                    "topics": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "nullable": True,
-                        "metadata": {"description": "Topics to persist per subscriber (wildcards # and + supported)."},
                     },
                 },
                 "metadata": {
@@ -1292,8 +1243,8 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             "advancedConfig": {"$ref": "#/definitions/_1.AdvancedConfig", "defaultValue": {}},
         },
         "variables": {
-            "VERSIONS": {"iotOperations": "1.2.80-main.20250921.3"},
-            "TRAINS": {"iotOperations": "dev"},
+            "VERSIONS": {"iotOperations": "1.2.91"},
+            "TRAINS": {"iotOperations": "integration"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
@@ -1322,6 +1273,9 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                 "AgentOperationTimeoutInMinutes": "120",
                 "connectors.values.mqttBroker.address": "[format('mqtts://{0}:{1}', variables('MQTT_SETTINGS').brokerListenerHost, variables('MQTT_SETTINGS').brokerListenerPort)]",
                 "connectors.values.mqttBroker.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
+                "dataFlows.values.tinyKube.mqttBroker.hostName": "[variables('MQTT_SETTINGS').brokerListenerHost]",
+                "dataFlows.values.tinyKube.mqttBroker.port": "[variables('MQTT_SETTINGS').brokerListenerPort]",
+                "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": "[variables('MQTT_SETTINGS').serviceAccountAudience]",
                 "observability.metrics.enabled": "[format('{0}', coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()))]",
                 "observability.metrics.openTelemetryCollectorAddress": "[if(coalesce(tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'enabled'), false()), format('{0}', tryGet(tryGet(parameters('advancedConfig'), 'observability'), 'otelCollectorAddress')), '')]",
                 "trustSource": "[parameters('trustConfig').source]",
@@ -1374,7 +1328,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "aioInstance": {
                 "type": "Microsoft.IoTOperations/instances",
-                "apiVersion": "2025-07-01-preview",
+                "apiVersion": "2025-10-01",
                 "name": "[coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH')))]",
                 "location": "[parameters('clusterLocation')]",
                 "extendedLocation": "[variables('extendedLocation')]",
@@ -1389,7 +1343,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "broker": {
                 "type": "Microsoft.IoTOperations/instances/brokers",
-                "apiVersion": "2025-07-01-preview",
+                "apiVersion": "2025-10-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1413,7 +1367,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "brokerAuthn": {
                 "type": "Microsoft.IoTOperations/instances/brokers/authentications",
-                "apiVersion": "2025-07-01-preview",
+                "apiVersion": "2025-10-01",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1430,7 +1384,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "brokerListener": {
                 "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-                "apiVersion": "2025-07-01-preview",
+                "apiVersion": "2025-10-01",
                 "name": "[format('{0}/{1}/{2}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default', 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1457,7 +1411,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "dataflowProfile": {
                 "type": "Microsoft.IoTOperations/instances/dataflowProfiles",
-                "apiVersion": "2025-07-01-preview",
+                "apiVersion": "2025-10-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {"instanceCount": "[parameters('defaultDataflowInstanceCount')]"},
@@ -1465,7 +1419,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
             },
             "dataflowEndpoint": {
                 "type": "Microsoft.IoTOperations/instances/dataflowEndpoints",
-                "apiVersion": "2025-07-01-preview",
+                "apiVersion": "2025-10-01",
                 "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
                 "extendedLocation": "[variables('extendedLocation')]",
                 "properties": {
@@ -1483,6 +1437,17 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
                             "trustedCaCertificateConfigMapRef": "[variables('TRUST_CONFIG_MAP')]",
                         },
                     },
+                },
+                "dependsOn": ["aioInstance", "customLocation"],
+            },
+            "artifactRegistryEndpoint": {
+                "type": "Microsoft.IoTOperations/instances/registryEndpoints",
+                "apiVersion": "2025-10-01",
+                "name": "[format('{0}/{1}', coalesce(parameters('aioInstanceName'), format('aio-{0}', variables('HASH'))), 'default')]",
+                "extendedLocation": "[variables('extendedLocation')]",
+                "properties": {
+                    "host": "mcr.microsoft.com",
+                    "authentication": {"method": "Anonymous", "anonymousSettings": {}},
                 },
                 "dependsOn": ["aioInstance", "customLocation"],
             },
@@ -1527,7 +1492,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
 def get_insecure_listener(instance_name: str, broker_name: str) -> dict:
     return {
         "type": "Microsoft.IoTOperations/instances/brokers/listeners",
-        "apiVersion": IoTOpsMgmtApiVersion.V20250701_preview.value,
+        "apiVersion": DEFAULT_IOTOPS_MGMT_API_VERSION.value,
         "name": f"{instance_name}/{broker_name}/{AIO_INSECURE_LISTENER_NAME}",
         "extendedLocation": {
             "name": "[resourceId('Microsoft.ExtendedLocation/customLocations', parameters('customLocationName'))]",

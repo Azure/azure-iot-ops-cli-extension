@@ -107,6 +107,9 @@ def init(
     ssc_config: Optional[List[str]] = None,
     ssc_version: Optional[str] = None,
     ssc_train: Optional[str] = None,
+    cm_config: Optional[List[str]] = None,
+    cm_version: Optional[str] = None,
+    cm_train: Optional[str] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
     from .providers.orchestration.work import WorkManager
@@ -123,6 +126,9 @@ def init(
         ssc_config=ssc_config,
         ssc_version=ssc_version,
         ssc_train=ssc_train,
+        cm_config=cm_config,
+        cm_version=cm_version,
+        cm_train=cm_train,
         **kwargs,
     )
     if no_progress and result_payload:
@@ -222,6 +228,7 @@ def upgrade_instance(
     cmd,
     resource_group_name: str,
     instance_name: str,
+    adr_namespace_resource_id: Optional[str] = None,
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
     ops_config: Optional[List[str]] = None,
@@ -245,6 +252,7 @@ def upgrade_instance(
         cmd=cmd,
         resource_group_name=resource_group_name,
         instance_name=instance_name,
+        adr_namespace_resource_id=adr_namespace_resource_id,
         no_progress=no_progress,
         confirm_yes=confirm_yes,
         ops_config=ops_config,

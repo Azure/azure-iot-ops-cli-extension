@@ -154,6 +154,11 @@ def load_iotops_arguments(self, _):
             help="When used the role assignment step of the operation will be skipped.",
             arg_group="Role Assignment",
         )
+        context.argument(
+            "adr_namespace_resource_id",
+            options_list=["--ns-resource-id"],
+            help="The device registry namespace resource Id to use with IoT Operations.",
+        )
 
     with self.argument_context("iot ops identity") as context:
         context.argument(
@@ -1263,12 +1268,6 @@ def load_iotops_arguments(self, _):
                 "schema_registry_resource_id",
                 options_list=["--sr-resource-id"],
                 help="The schema registry resource Id to use with IoT Operations.",
-            )
-            # Schema Registry
-            context.argument(
-                "adr_namespace_resource_id",
-                options_list=["--ns-resource-id"],
-                help="The device registry namespace resource Id to use with IoT Operations.",
             )
             # Broker
             context.argument(

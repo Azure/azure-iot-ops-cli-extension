@@ -22,7 +22,7 @@ from .common import GET_VERSIONS_URL
 from .providers.orchestration.common import (
     CLONE_INSTANCE_VERS_MAX,
     CLONE_INSTANCE_VERS_MIN,
-    MIN_INSTANCE_VERSION_FOR_MIGRATE,
+    MIN_INSTANCE_VERSION_V2,
 )
 from .providers.support_bundle import (
     COMPAT_CLUSTER_CONFIG_APIS,
@@ -2722,7 +2722,7 @@ def load_iotops_help():
         type: command
         short-summary: Migrate root assets to a namespace.
         long-summary: |
-          Requires an instance version >= {MIN_INSTANCE_VERSION_FOR_MIGRATE}.
+          Requires an instance version >= {MIN_INSTANCE_VERSION_V2}.
 
           The target set of root assets will be converted to an equivalent namespace representation
           replacing the original root assets.

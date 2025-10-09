@@ -43,6 +43,7 @@ EXPECTED_INSTANCE_RESOURCE_KEYS = frozenset(
         "brokerListener",
         "dataflowProfile",
         "dataflowEndpoint",
+        "artifactRegistryEndpoint",
     ]
 )
 
@@ -153,7 +154,7 @@ EXTENSION_CONFIGS = {
         (EXTENSION_TYPE_SSC, "1.0.2", "stable"),
     ],
     "instance": [
-        (EXTENSION_TYPE_OPS, "1.2.80-main.20250921.3", "dev"),
+        (EXTENSION_TYPE_OPS, "1.2.91", "integration"),
     ],
 }
 
