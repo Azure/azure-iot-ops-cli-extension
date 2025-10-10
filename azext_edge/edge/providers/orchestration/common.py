@@ -103,6 +103,7 @@ class MqServiceType(Enum):
 class IdentityUsageType(Enum):
     DATAFLOW = "dataflow"
     SCHEMA = "schema"
+    WASM_GRAPH = "wasm-graph"
 
 
 class SchemaType(Enum):

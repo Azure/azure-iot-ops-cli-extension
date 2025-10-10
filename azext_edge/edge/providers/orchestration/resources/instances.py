@@ -58,6 +58,7 @@ SECRET_SYNC_RESOURCE_TYPE = "microsoft.secretsynccontroller/secretsyncs"
 SERVICE_ACCOUNT_DATAFLOW = "aio-dataflow"
 SERVICE_ACCOUNT_SECRETSYNC = "aio-ssc-sa"
 SERVICE_ACCOUNT_SCHEMA = "adr-schema-registry"
+SERVICE_ACCOUNT_WASM = "aio-wasm-graph-controller"
 KEYVAULT_ROLE_ID_SECRETS_USER = "4633458b-17de-408a-b874-0445c86b69e6"
 KEYVAULT_ROLE_ID_READER = "21090545-7ca7-4776-b22c-e363652d74d2"
 MANAGED_IDENTITY_API_VERSION = "2023-01-31"
@@ -267,9 +268,14 @@ class Instances(Queryable):
         oidc_issuer = self._ensure_oidc_issuer(cluster_resource, use_self_hosted_issuer)
         custom_location = self.get_associated_cl(instance)
         namespace = custom_location["properties"]["namespace"]
-        service_account_name = (
-            SERVICE_ACCOUNT_SCHEMA if usage_type == IdentityUsageType.SCHEMA.value else SERVICE_ACCOUNT_DATAFLOW
-        )
+
+        if usage_type == IdentityUsageType.SCHEMA.value:
+            service_account_name = SERVICE_ACCOUNT_SCHEMA
+        elif usage_type == IdentityUsageType.WASM_GRAPH.value:
+            service_account_name = SERVICE_ACCOUNT_WASM
+        else:
+            service_account_name = SERVICE_ACCOUNT_DATAFLOW
+
         cred_subject = get_cred_subject(namespace=namespace, service_account_name=service_account_name)
 
         if not federated_credential_name:
