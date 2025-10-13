@@ -1759,7 +1759,6 @@ def evaluate_registry_endpoints(
             target_name=target,
             namespace=namespace,
             conditions=[
-                "endsWith(spec.host, 'azurecr.io')",
                 "spec.authentication.method",
             ],
         )
@@ -1797,17 +1796,6 @@ def evaluate_registry_endpoints(
                 resource_kind=DataflowResourceKinds.REGISTRYENDPOINT.value,
                 detail_level=detail_level,
                 padding=INNER_PADDING,
-            )
-
-            # evaluate host condition - endsWith(spec.host, 'azurecr.io')
-            host_status = CheckTaskStatus.success if host.endswith("azurecr.io") else CheckTaskStatus.error
-            check_manager.add_target_eval(
-                target_name=target,
-                namespace=namespace,
-                status=host_status.value,
-                resource_name=registry_endpoint_name,
-                resource_kind=DataflowResourceKinds.REGISTRYENDPOINT.value,
-                value={"spec.host": host},
             )
 
             # display host information always
