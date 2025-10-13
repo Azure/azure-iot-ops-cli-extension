@@ -933,16 +933,18 @@ def load_iotops_arguments(self, _):
             help="Explictly use anonymous authentication.",
         )
         context.argument(
-            "trusted_signing_configmap_key",
-            options_list=["--trust-config-map-ref", "--tcmr"],
-            help="Trusted signing config map reference.",
-            arg_group="Trusted Signing",
+            "code_signing_configmap_refs",
+            options_list=["--cs-config-map-refs", "--cscmr"],
+            nargs="*",
+            help="Code signing ConfigMap references. Space-separated list of ConfigMap names.",
+            arg_group="Code Signing CAs",
         )
         context.argument(
-            "trusted_signing_secret_key",
-            options_list=["--trust-secret-ref", "--tsr"],
-            help="Trusted signing secret reference.",
-            arg_group="Trusted Signing",
+            "code_signing_secret_refs",
+            options_list=["--cs-secret-refs", "--cssr"],
+            nargs="*",
+            help="Code signing Secret references. Space-separated list of Secret names.",
+            arg_group="Code Signing CAs",
         )
 
     with self.argument_context("iot ops broker") as context:

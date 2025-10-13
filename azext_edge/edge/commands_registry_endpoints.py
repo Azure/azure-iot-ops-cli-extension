@@ -26,8 +26,8 @@ def add_registry_endpoint(
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
     no_auth: Optional[bool] = None,
-    trusted_signing_configmap_key: Optional[str] = None,
-    trusted_signing_secret_key: Optional[str] = None,
+    code_signing_configmap_refs: Optional[list] = None,
+    code_signing_secret_refs: Optional[list] = None,
     **kwargs,
 ) -> dict:
     """Add a registry endpoint to an IoT Operations instance."""
@@ -43,8 +43,8 @@ def add_registry_endpoint(
         tenant_id=tenant_id,
         scope=scope,
         no_auth=no_auth,
-        trusted_signing_configmap_key=trusted_signing_configmap_key,
-        trusted_signing_secret_key=trusted_signing_secret_key,
+        code_signing_configmap_refs=code_signing_configmap_refs,
+        code_signing_secret_refs=code_signing_secret_refs,
         **kwargs,
     )
 
@@ -62,8 +62,8 @@ def update_registry_endpoint(
     tenant_id: Optional[str] = None,
     scope: Optional[str] = None,
     no_auth: Optional[bool] = None,
-    trusted_signing_configmap_key: Optional[str] = None,
-    trusted_signing_secret_key: Optional[str] = None,
+    code_signing_configmap_refs: Optional[list] = None,
+    code_signing_secret_refs: Optional[list] = None,
     **kwargs,
 ) -> dict:
     """Update a registry endpoint in an IoT Operations instance."""
@@ -79,8 +79,8 @@ def update_registry_endpoint(
         tenant_id=tenant_id,
         scope=scope,
         no_auth=no_auth,
-        trusted_signing_configmap_key=trusted_signing_configmap_key,
-        trusted_signing_secret_key=trusted_signing_secret_key,
+        code_signing_configmap_refs=code_signing_configmap_refs,
+        code_signing_secret_refs=code_signing_secret_refs,
         **kwargs,
     )
 

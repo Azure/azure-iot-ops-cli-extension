@@ -782,14 +782,14 @@ def load_iotops_help():
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type UserAssignedManagedIdentity --scope myscope --cid myclientid --tid mytenantid
-        - name: Add a registry endpoint with a trusted signing key config map reference
+        - name: Add a registry endpoint with a single code signing CA secret reference
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
-            --trust-config-map-ref my-trust-configmap
-        - name: Add a registry endpoint with a trusted signing key secret reference
+            --cs-secret-refs mysecret
+        - name: Add a registry endpoint with two code signing CA config maps references
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
-            --trust-secret-ref my-trust-secret
+            --cs-config-map-refs myconfigmap1 myconfigmap2
     """
 
     helps[
@@ -802,9 +802,12 @@ def load_iotops_help():
         - name: Update an endpoint's hostname and auth-type to use a system-assigned managed identity
           text: >
             az iot ops registry update -n myregistry --host newregistry.azurecr.io -i myinstance -g myresourcegroup --auth-type SystemAssignedManagedIdentity
-        - name: Update an endpoint to use trusted signing with a config map reference
+        - name: Update an endpoint to use a code signing CA config map reference
           text: >
-            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --trust-config-map-ref my-trust-configmap
+            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --cs-config-map-refs myconfigmap
+        - name: Update an endpoint to use code signing CA config map and secret references
+          text: >
+            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --cs-config-map-refs myconfigmap --cs-secret-refs mysecret
     """
 
     helps[
