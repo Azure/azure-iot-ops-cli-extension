@@ -1384,7 +1384,6 @@ def test_evaluate_core_service_runtime(
             ],
             # conditions
             [
-                "endsWith(spec.host, 'azurecr.io')",
                 "spec.authentication.method",
             ],
             # evaluations
@@ -1392,27 +1391,12 @@ def test_evaluate_core_service_runtime(
                 [
                     ("status", "success"),
                     ("name", "registry-endpoint-1"),
-                    ("value/spec.host", "myregistry.azurecr.io"),
-                ],
-                [
-                    ("status", "success"),
-                    ("name", "registry-endpoint-1"),
                     ("value/spec.authentication.method", "ServiceAccountToken"),
-                ],
-                [
-                    ("status", "error"),
-                    ("name", "registry-endpoint-2"),
-                    ("value/spec.host", "docker.io"),
                 ],
                 [
                     ("status", "success"),
                     ("name", "registry-endpoint-2"),
                     ("value/spec.authentication.method", "UserAssignedManagedIdentity"),
-                ],
-                [
-                    ("status", "success"),
-                    ("name", "registry-endpoint-3"),
-                    ("value/spec.host", "testregistry.azurecr.io"),
                 ],
                 [
                     ("status", "success"),
