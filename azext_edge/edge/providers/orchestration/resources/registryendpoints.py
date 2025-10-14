@@ -148,7 +148,7 @@ class RegistryEndpoints(Queryable):
         self,
         code_signing_configmap_refs: Optional[list] = None,
         code_signing_secret_refs: Optional[list] = None,
-    ) -> Optional[list]:
+    ) -> list:
         """
         Process code signing CA configuration for registry endpoints.
 
@@ -181,7 +181,7 @@ class RegistryEndpoints(Queryable):
                 for secret_ref in code_signing_secret_refs
             ]
 
-        return cas if cas else None
+        return cas
 
     def add(
         self,
@@ -331,14 +331,12 @@ class RegistryEndpoints(Queryable):
             )
             existing_endpoint["properties"]["authentication"] = auth_config
 
-        # Process code signing CAs configuration
-        if any([code_signing_configmap_refs, code_signing_secret_refs]):
-            code_signing_cas = self._process_code_signing_cas(
+        # Process code signing CAs configuration if provided
+        if code_signing_configmap_refs is not None or code_signing_secret_refs is not None:
+            existing_endpoint["properties"]["codeSigningCas"] = self._process_code_signing_cas(
                 code_signing_configmap_refs=code_signing_configmap_refs,
                 code_signing_secret_refs=code_signing_secret_refs,
             )
-            if code_signing_cas:
-                existing_endpoint["properties"]["codeSigningCas"] = code_signing_cas
 
         with console.status("Working..."):
             poller = self.registry_endpoints.begin_create_or_update(
