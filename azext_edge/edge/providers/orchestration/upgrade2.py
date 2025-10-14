@@ -38,9 +38,10 @@ from .common import (
     MIN_INSTANCE_VERSION_V2,
     ConfigSyncModeType,
 )
-from .resources import Instances, RegistryEndpoints
-from .targets import InitTargets
 from .migration import SecretSyncMigrationManager
+from .resources import RegistryEndpoints
+from .resources.instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
+from .targets import InitTargets
 
 logger = get_logger(__name__)
 
@@ -118,7 +119,14 @@ class UpgradeManager:
             adr_namespace_resource_id=adr_namespace_resource_id,
         )
         self.secretsync_migration = SecretSyncMigrationManager(
-            cmd=self.cmd, instance_record=self.instance_record, resource_map=self.resource_map
+            cmd=self.cmd,
+            instance_record=self.instance_record,
+            resource_map=self.resource_map,
+            secretsync_resources=self.resource_map.connected_cluster.get_cl_resources_by_type(
+                custom_location_id=self.instance_record["extendedLocation"]["name"],
+                resource_types={SPC_RESOURCE_TYPE, SECRET_SYNC_RESOURCE_TYPE},
+                show_properties=True,
+            ),
         )
 
     def get_desired_config(self) -> Dict[str, str]:

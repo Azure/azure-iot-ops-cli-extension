@@ -182,37 +182,33 @@ class AssetMigrationManager(Queryable):
 
 
 class SecretSyncMigrationManager(Queryable):
-    def __init__(self, cmd, instance_record: dict, resource_map: IoTOperationsResourceMap):
+    def __init__(
+        self,
+        cmd,
+        instance_record: dict,
+        resource_map: IoTOperationsResourceMap,
+        secretsync_resources: dict[str, list[dict]],
+    ):
         super().__init__(cmd=cmd)
         self.ssc_mgmt_client = get_ssc_mgmt_client(subscription_id=self.default_subscription_id)
         self.instance_record = instance_record
         self.resource_map = resource_map
         self.instance_version = self.instance_record["properties"].get("version", "0.0.0")
+        self.secretsync_resources = secretsync_resources
+
         self.spc_opcua: Optional[dict] = None
         self.spc_default: Optional[dict] = None
-        self.secretsync_resources: Optional[list[dict]] = None
-        self.spc_resources: Optional[list[dict]] = None
-
-    def _get_secretsync_resources(self) -> dict[str, list[dict]]:
-        return self.resource_map.connected_cluster.get_cl_resources_by_type(
-            custom_location_id=self.instance_record["extendedLocation"]["name"],
-            resource_types={SPC_RESOURCE_TYPE, SECRET_SYNC_RESOURCE_TYPE},
-            show_properties=True,
-        )
 
     def has_v1_spc(self) -> bool:
-        secretsync_resources = self._get_secretsync_resources()
-        if not secretsync_resources:
+        if not self.secretsync_resources:
             return False
 
-        self.spc_resources = secretsync_resources.get(SPC_RESOURCE_TYPE, [])
-        for spc in self.spc_resources:
+        for spc in self.secretsync_resources.get(SPC_RESOURCE_TYPE, []):
             if spc["name"].lower() == "opc-ua-connector":
                 self.spc_opcua = spc
             else:
                 self.spc_default = spc
 
-        self.secretsync_resources = secretsync_resources.get(SECRET_SYNC_RESOURCE_TYPE, [])
         return bool(self.spc_opcua)
 
     def migrate_to_v2(self, headers: Optional[dict] = None) -> Optional[dict]:
@@ -227,7 +223,7 @@ class SecretSyncMigrationManager(Queryable):
             if entry not in default_spc_set:
                 default_spc_object["array"].append(entry)
         object_text = yaml.safe_dump(default_spc_object, indent=6)
-        # TODO: formatting will be removed once fortos service fixes the formatting issue
+        # TODO: formatting: will be removed once fortos service fixes the formatting issue
         object_text = object_text.replace("\n- |", "\n    - |")
         property_patch = {"properties": {"objects": object_text}}
 
@@ -242,16 +238,17 @@ class SecretSyncMigrationManager(Queryable):
         )
 
         # Change secretsync association to default SPC.
-        for secretsync in self.secretsync_resources or []:
-            secretsync_property_patch = {"properties": {"secretProviderClassName": self.spc_default["name"]}}
-            wait_for_terminal_state(
-                self.ssc_mgmt_client.secret_syncs.begin_update(
-                    resource_group_name=self.resource_map.connected_cluster.resource_group_name,
-                    secret_sync_name=secretsync["name"],
-                    properties=secretsync_property_patch,
-                    headers=headers,
+        for secretsync in self.secretsync_resources.get(SECRET_SYNC_RESOURCE_TYPE, []):
+            if secretsync["properties"].get("secretProviderClassName") == self.spc_opcua["name"]:
+                secretsync_property_patch = {"properties": {"secretProviderClassName": self.spc_default["name"]}}
+                wait_for_terminal_state(
+                    self.ssc_mgmt_client.secret_syncs.begin_update(
+                        resource_group_name=self.resource_map.connected_cluster.resource_group_name,
+                        secret_sync_name=secretsync["name"],
+                        properties=secretsync_property_patch,
+                        headers=headers,
+                    )
                 )
-            )
 
         # Delete legacy opc-ua-connector SPC.
         wait_for_terminal_state(
