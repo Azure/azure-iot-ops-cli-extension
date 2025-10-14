@@ -394,16 +394,17 @@ def process_custom_resource_status(
     padding: int,
     detail_level: int = ResourceOutputDetailLevel.summary.value,
 ) -> None:
-    runtime_status = status.get("runtimeStatus", {})
     provisioning_status = status.get("provisioningStatus", {})
+    health_state = status.get("healthState")  # IoT Operations resources use healthState
+
     check_manager.add_target_conditions(
         target_name=target_name,
         conditions=["status"],
         namespace=namespace,
     )
 
-    if not runtime_status and not provisioning_status:
-        # if no status for both runtime and provisioning, set status to error
+    if not provisioning_status and not health_state:
+        # if no status for both provisioning and health state, set status to error
         check_manager.add_target_eval(
             target_name=target_name,
             namespace=namespace,
@@ -420,15 +421,16 @@ def process_custom_resource_status(
 
     status_eval_value = {"status": status}
     status_list = []
-    if runtime_status:
-        runtime_status_state = runtime_status.get("status")
-        status_list.append(calculate_status(runtime_status_state))
-
     if provisioning_status:
         provisioning_status_state = provisioning_status.get("status")
         status_list.append(calculate_status(provisioning_status_state))
 
-    # combine runtime and provisioning status
+    # Handle healthState for IoT Operations resources
+    if health_state:
+        health_state_status = health_state.get("status")
+        status_list.append(calculate_status(health_state_status))
+
+    # combine provisioning and health state status
     status_eval_status = combine_statuses(status_list)
     check_manager.add_target_eval(
         target_name=target_name,
@@ -456,10 +458,12 @@ def process_custom_resource_status(
 
         for prop_name, prop_value in {
             "Provisioning Status": provisioning_status,
-            "Runtime Status": runtime_status,
+            "Health Status": health_state,
         }.items():
             if prop_value:
-                status_text = f"{prop_name} {{{decorate_resource_status(prop_value.get('status'))}}}."
+                # Both healthState and provisioningStatus are objects
+                status_value = prop_value.get('status')
+                status_text = f"{prop_name} {{{decorate_resource_status(status_value)}}}."
                 if detail_level == ResourceOutputDetailLevel.verbose.value:
                     status_description = prop_value.get("description") or prop_value.get("output", {}).get("message")
                     if status_description:

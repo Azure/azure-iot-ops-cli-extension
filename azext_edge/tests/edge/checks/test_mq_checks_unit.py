@@ -74,8 +74,8 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     "mode": "distributed",
                 },
                 status={
-                    "runtimeStatus": {
-                        "status": ResourceState.running.value,
+                    "healthState": {
+                        "status": ResourceState.available.value,
                         "description": "All replicas are running.",
                     }
                 },
@@ -111,8 +111,8 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     (
                         "value/status",
                         {
-                            "runtimeStatus": {
-                                "status": ResourceState.running.value,
+                            "healthState": {
+                                "status": ResourceState.available.value,
                                 "description": "All replicas are running.",
                             }
                         },
@@ -146,8 +146,8 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     },
                 },
                 status={
-                    "runtimeStatus": {
-                        "status": ResourceState.starting.value,
+                    "healthState": {
+                        "status": ResourceState.degraded.value,
                         "description": "Waiting for all replicas to report ready.",
                     },
                 },
@@ -178,8 +178,8 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     (
                         "value/status",
                         {
-                            "runtimeStatus": {
-                                "status": ResourceState.starting.value,
+                            "healthState": {
+                                "status": ResourceState.degraded.value,
                                 "description": "Waiting for all replicas to report ready.",
                             }
                         },
@@ -218,8 +218,8 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     "mode": "distributed",
                 },
                 status={
-                    "runtimeStatus": {
-                        "status": ResourceState.running.value,
+                    "healthState": {
+                        "status": ResourceState.available.value,
                         "description": "All replicas are running.",
                     }
                 },
@@ -255,8 +255,8 @@ def test_check_mq_by_resource_types(ops_service, mocker, mock_resource_types, re
                     (
                         "value/status",
                         {
-                            "runtimeStatus": {
-                                "status": ResourceState.running.value,
+                            "healthState": {
+                                "status": ResourceState.available.value,
                                 "description": "All replicas are running.",
                             }
                         },
@@ -316,7 +316,7 @@ def test_broker_checks(
                     "port": 8080,
                     "authenticationEnabled": "True",
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "description": ""}},
             ),
             # service obj
             generate_resource_stub(
@@ -338,7 +338,7 @@ def test_broker_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
+                        {"healthState": {"status": ResourceState.available.value, "description": ""}},
                     ),
                 ],
                 [
@@ -377,7 +377,7 @@ def test_broker_checks(
                     "port": 8080,
                     "authenticationEnabled": "True",
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "description": ""}},
             ),
             # service obj
             generate_resource_stub(
@@ -399,7 +399,7 @@ def test_broker_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
+                        {"healthState": {"status": ResourceState.available.value, "description": ""}},
                     ),
                 ],
                 [
@@ -440,7 +440,7 @@ def test_broker_checks(
                     ],
                     "authenticationEnabled": "True",
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
             ),
             # service obj
             generate_resource_stub(
@@ -464,7 +464,7 @@ def test_broker_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
                     ),
                 ],
                 [
@@ -516,7 +516,7 @@ def test_broker_checks(
                     "port": 8080,
                     "authenticationEnabled": "True",
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "description": ""}},
             ),
             # service obj
             generate_resource_stub(
@@ -538,7 +538,7 @@ def test_broker_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "description": ""}},
+                        {"healthState": {"status": ResourceState.available.value, "description": ""}},
                     ),
                 ],
                 [
@@ -650,7 +650,7 @@ def test_broker_listener_checks(
                         {"kind": "broker", "name": "broker"},
                     ]
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
             ),
             # valid_resource_names
             ["broker"],
@@ -672,7 +672,7 @@ def test_broker_listener_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
                     ),
                 ],
                 [
@@ -735,7 +735,7 @@ def test_broker_listener_checks(
                         {"kind": "broker", "name": "broker"},
                     ]
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
             ),
             # valid_resource_names
             ["broker"],
@@ -759,7 +759,7 @@ def test_broker_listener_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
                     ),
                 ],
                 [
@@ -809,7 +809,7 @@ def test_broker_listener_checks(
                         {"kind": "broker", "name": "broker"},
                     ]
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
             ),
             # valid_resource_names
             ["broker"],
@@ -831,7 +831,7 @@ def test_broker_listener_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
                     ),
                 ],
                 [
@@ -881,7 +881,7 @@ def test_broker_listener_checks(
                         {"kind": "broker", "name": "broker"},
                     ]
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
             ),
             # valid_resource_names
             ["broker"],
@@ -900,7 +900,7 @@ def test_broker_listener_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
                     ),
                 ],
                 [
@@ -947,7 +947,7 @@ def test_broker_listener_checks(
                         {"kind": "broker", "name": "broker"},
                     ]
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
             ),
             # valid_resource_names
             [],
@@ -974,7 +974,7 @@ def test_broker_listener_checks(
                         {"kind": "broker", "name": "broker"},
                     ]
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
             ),
             # valid_resource_names
             ["broker"],
@@ -995,7 +995,7 @@ def test_broker_listener_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
                     ),
                 ],
                 [
@@ -1086,7 +1086,7 @@ def test_broker_authentication_checks(
                         {"kind": "broker", "name": "broker"},
                     ]
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
             ),
             # valid_resource_names
             ["broker"],
@@ -1100,7 +1100,7 @@ def test_broker_authentication_checks(
                     ("name", "mock-name"),
                     (
                         "value/status",
-                        {"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                        {"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
                     ),
                 ],
                 [
@@ -1167,7 +1167,7 @@ def test_broker_authentication_checks(
                         {"kind": "broker", "name": "broker"},
                     ]
                 },
-                status={"runtimeStatus": {"status": ResourceState.running.value, "statusDescription": ""}},
+                status={"healthState": {"status": ResourceState.available.value, "statusDescription": ""}},
             ),
             # valid_resource_names
             [],
