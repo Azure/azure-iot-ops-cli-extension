@@ -29,4 +29,4 @@ MQTT_BROKER_API_V1B1 = EdgeResourceApi(
     label="microsoft-iotoperations-mqttbroker",
 )
 
-MQ_ACTIVE_API = MQTT_BROKER_API_V1B1
+MQ_ACTIVE_API = MQTT_BROKER_API_V1

@@ -13,7 +13,7 @@ from rich.console import Console, NewLine
 
 from ..common import OpsServiceType
 from ..providers.edge_api import (
-    AKRI_API_V1B1,
+    AKRI_API_V1,
     ARCCONTAINERSTORAGE_API_V1,
     AZUREMONITOR_API_V1,
     CERTMANAGER_API_V1,
@@ -49,7 +49,7 @@ COMPAT_META_APIS = EdgeApiManager(resource_apis=[META_API_V1, META_API_V1B1])
 COMPAT_ARCCONTAINERSTORAGE_APIS = EdgeApiManager(resource_apis=[ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1])
 COMPAT_SECRETSTORE_APIS = EdgeApiManager(resource_apis=[SECRETSYNC_API_V1, SECRETSTORE_API_V1])
 COMPAT_AZUREMONITOR_APIS = EdgeApiManager(resource_apis=[AZUREMONITOR_API_V1])
-COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V1B1])
+COMPAT_AKRI_APIS = EdgeApiManager(resource_apis=[AKRI_API_V1])
 
 
 def build_bundle(

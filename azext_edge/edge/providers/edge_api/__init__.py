@@ -4,7 +4,7 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-from .akri import AKRI_ACTIVE_API, AKRI_API_V1B1, AkriResourceKinds
+from .akri import AKRI_ACTIVE_API, AKRI_API_V1, AkriResourceKinds
 from .arccontainerstorage import ARCCONTAINERSTORAGE_API_V1, CONTAINERSTORAGE_API_V1
 from .azuremonitor import AZUREMONITOR_API_V1
 from .base import EdgeApiManager, EdgeResourceApi
@@ -25,7 +25,7 @@ from .mq import MQ_ACTIVE_API, MQTT_BROKER_API_V1, MQTT_BROKER_API_V1B1, MqResou
 from .secretstore import SECRETSTORE_API_V1, SECRETSYNC_API_V1
 
 __all__ = [
-    "AKRI_API_V1B1",
+    "AKRI_API_V1",
     "AKRI_ACTIVE_API",
     "AkriResourceKinds",
     "ARCCONTAINERSTORAGE_API_V1",
