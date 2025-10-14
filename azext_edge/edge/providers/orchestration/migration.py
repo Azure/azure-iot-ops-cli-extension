@@ -5,9 +5,10 @@
 # ----------------------------------------------------------------------------------------------
 
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 from uuid import uuid4
 
+import yaml
 from azure.cli.core.azclierror import (
     AzureResponseError,
     ValidationError,
@@ -18,6 +19,7 @@ from rich.status import Status
 
 from ...util.az_client import (
     get_registry_mgmt_client,
+    get_ssc_mgmt_client,
     wait_for_terminal_state,
 )
 from ...util.common import should_continue_prompt
@@ -35,7 +37,8 @@ from .permissions import (
     PrincipalType,
     get_ra_user_error_msg,
 )
-from .resources import Instances
+from .resource_map import IoTOperationsResourceMap
+from .resources.instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 
 if TYPE_CHECKING:
     from ...vendor.clients.deviceregistrymgmt.operations import NamespacesOperations
@@ -176,3 +179,103 @@ class AssetMigrationManager(Queryable):
                 headers=headers,
             )
             return wait_for_terminal_state(poller, **kwargs)
+
+
+class SecretSyncMigrationManager(Queryable):
+    def __init__(self, cmd, instance_record: dict, resource_map: IoTOperationsResourceMap):
+        super().__init__(cmd=cmd)
+        from ...util.machinery import scoped_semver_import
+        from .resources.connector.opcua.certs import OpcUACerts
+
+        self.ssc_mgmt_client = get_ssc_mgmt_client(
+            subscription_id=self.default_subscription_id,
+        )
+        self.instance_record = instance_record
+        self.resource_map = resource_map
+        self.semver = scoped_semver_import()
+        self.instance_version = self.instance_record["properties"].get("version", "0.0.0")
+        self.spc_opcua: Optional[dict] = None
+        self.spc_default: Optional[dict] = None
+        self.secretsync_resources: Optional[list[dict]] = None
+        self.spc_resources: Optional[list[dict]] = None
+
+    def _get_secretsync_resources(self) -> dict[str, list[dict]]:
+        return self.resource_map.connected_cluster.get_cl_resources_by_type(
+            custom_location_id=self.instance_record["extendedLocation"]["name"],
+            resource_types={SPC_RESOURCE_TYPE, SECRET_SYNC_RESOURCE_TYPE},
+            show_properties=True,
+        )
+
+    def _add_entry_to_fortos_yaml(
+        self,
+        object_text: str,
+        secret_entry: Optional[dict] = None,
+    ) -> str:
+        if object_text:
+            objects_obj = yaml.safe_load(object_text)
+        else:
+            objects_obj = {"array": []}
+        entry_text = yaml.safe_dump(secret_entry, indent=6)
+        if entry_text not in objects_obj["array"]:
+            objects_obj["array"].append(entry_text)
+        object_text = yaml.safe_dump(objects_obj, indent=6)
+        # TODO: formatting will be removed once fortos service fixes the formatting issue
+        return object_text.replace("\n- |", "\n    - |")
+
+    # def _add_secrets_to_spc(
+    #     self,
+    #     secrets: List[str],
+    #     spc: dict,
+    #     resource_group: str,
+    # ):
+ 
+    #     # add new secret to the list
+    #     for secret_name in secrets:
+    #         secret_entry = {
+    #             "objectName": secret_name,
+    #             "objectType": "secret",
+    #             "objectEncoding": "hex",
+    #         }
+
+    #         spc_object = self._add_entry_to_fortos_yaml(
+    #             object_text=spc_object,
+    #             secret_entry=secret_entry,
+    #         )
+
+    #     spc["properties"]["objects"] = spc_object
+
+    def has_v1_spc(self) -> bool:
+        secretsync_resources = self._get_secretsync_resources()
+        if not secretsync_resources:
+            return False
+
+        self.spc_resources = secretsync_resources.get(SPC_RESOURCE_TYPE, [])
+        for spc in self.spc_resources:
+            if spc["name"].lower() == "opc-ua-connector":
+                self.spc_opcua = spc
+            else:
+                self.spc_default = spc
+
+        self.secretsync_resources = secretsync_resources.get(SECRET_SYNC_RESOURCE_TYPE, [])
+        return bool(self.spc_opcua)
+
+    def migrate_to_v2(self, headers: Optional[dict] = None):
+        # for secretsync in self.secretsync_resources or []:
+        #     properties = {"properties": {"secretProviderClassName": self.spc_default["name"]}}
+        #     wait_for_terminal_state(
+        #         self.ssc_mgmt_client.secret_syncs.begin_update(
+        #             resource_group_name=self.instance_record["resourceGroup"],
+        #             secret_sync_name=secretsync["name"],
+        #             secret_sync_update_parameters=properties,
+        #             headers=headers,
+        #         )
+        #     )
+
+        import pdb; pdb.set_trace()
+        spc_properties: dict = self.spc_opcua.get("properties", {})
+        # stringified yaml array
+        spc_object = spc_properties.get("objects", "")
+        if spc_object:
+            pass
+
+        return
