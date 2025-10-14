@@ -782,14 +782,14 @@ def load_iotops_help():
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type UserAssignedManagedIdentity --scope myscope --cid myclientid --tid mytenantid
-        - name: Add a registry endpoint with a single code signing CA secret reference
+        - name: Add a registry endpoint with a code signing CA secret reference
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --cs-secret-refs mysecret
-        - name: Add a registry endpoint with two code signing CA config maps references
+        - name: Add a registry endpoint with multiple code signing CA secret and configmap references
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
-            --cs-config-map-refs myconfigmap1 myconfigmap2
+            --cs-config-map-refs configmap1 configmap2 --cs-secret-refs secret1 secret2
     """
 
     helps[
@@ -802,12 +802,12 @@ def load_iotops_help():
         - name: Update an endpoint's hostname and auth-type to use a system-assigned managed identity
           text: >
             az iot ops registry update -n myregistry --host newregistry.azurecr.io -i myinstance -g myresourcegroup --auth-type SystemAssignedManagedIdentity
-        - name: Update an endpoint to use a code signing CA config map reference
+        - name: Update an endpoint to add a code signing CA config map reference
           text: >
             az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --cs-config-map-refs myconfigmap
-        - name: Update an endpoint to use code signing CA config map and secret references
+        - name: Update an endpoint to remove existing code signing CA config map refs and add a new secret reference
           text: >
-            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --cs-config-map-refs myconfigmap --cs-secret-refs mysecret
+            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --cs-config-map-refs --cs-secret-refs mysecret
     """
 
     helps[

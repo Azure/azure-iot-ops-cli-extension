@@ -154,14 +154,14 @@ class RegistryEndpoints(Queryable):
 
         :param code_signing_configmap_refs: List of ConfigMap references for code signing CAs.
         :param code_signing_secret_refs: List of Secret references for code signing CAs.
-        :returns: List of code signing CAs or None
+        :returns: List of code signing CA objects
         """
         if not code_signing_configmap_refs and not code_signing_secret_refs:
             return None
 
         cas = []
 
-        # Add ConfigMap references using list comprehension
+        # Add ConfigMap references
         if code_signing_configmap_refs:
             cas += [
                 {
@@ -171,7 +171,7 @@ class RegistryEndpoints(Queryable):
                 for configmap_ref in code_signing_configmap_refs
             ]
 
-        # Add Secret references using list comprehension
+        # Add Secret references
         if code_signing_secret_refs:
             cas += [
                 {
@@ -214,8 +214,8 @@ class RegistryEndpoints(Queryable):
         :param tenant_id: Tenant ID for UserAssignedManagedIdentity authentication.
         :param scope: Scope for UserAssignedManagedIdentity authentication.
         :param no_auth: Whether to use anonymous authentication.
-        :param code_signing_configmap_refs: List of ConfigMap references for code signing CAs.
-        :param code_signing_secret_refs: List of Secret references for code signing CAs.
+        :param code_signing_configmap_refs: List of code signing CA config map references.
+        :param code_signing_secret_refs: List of code signing CA secret references.
         :param kwargs: Additional keyword arguments for the operation.
         :returns: The created registry endpoint.
         """
@@ -302,8 +302,8 @@ class RegistryEndpoints(Queryable):
         :param tenant_id: Tenant ID for UserAssignedManagedIdentity authentication.
         :param scope: Scope for UserAssignedManagedIdentity authentication.
         :param no_auth: Whether to use anonymous authentication.
-        :param code_signing_configmap_refs: List of ConfigMap references for code signing CAs.
-        :param code_signing_secret_refs: List of Secret references for code signing CAs.
+        :param code_signing_configmap_refs: List of code signing CA config map references.
+        :param code_signing_secret_refs: List of code signing CA secret references.
         :param kwargs: Additional keyword arguments for the operation.
         :returns: The updated registry endpoint.
         """

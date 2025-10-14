@@ -936,15 +936,15 @@ def load_iotops_arguments(self, _):
             "code_signing_configmap_refs",
             options_list=["--cs-config-map-refs", "--cscmr"],
             nargs="*",
-            help="Code signing ConfigMap references. Space-separated list of ConfigMap names.",
-            arg_group="Code Signing CAs",
+            help="Space-separated list of code signing CA config map references.",
+            arg_group="Code Signing CA",
         )
         context.argument(
             "code_signing_secret_refs",
             options_list=["--cs-secret-refs", "--cssr"],
             nargs="*",
-            help="Code signing Secret references. Space-separated list of Secret names.",
-            arg_group="Code Signing CAs",
+            help="Space-separated list of code signing CA secret references.",
+            arg_group="Code Signing CA",
         )
 
     with self.argument_context("iot ops broker") as context:
