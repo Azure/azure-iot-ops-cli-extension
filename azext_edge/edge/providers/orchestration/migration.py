@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from fnmatch import fnmatch
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
 import yaml
@@ -184,15 +184,9 @@ class AssetMigrationManager(Queryable):
 class SecretSyncMigrationManager(Queryable):
     def __init__(self, cmd, instance_record: dict, resource_map: IoTOperationsResourceMap):
         super().__init__(cmd=cmd)
-        from ...util.machinery import scoped_semver_import
-        from .resources.connector.opcua.certs import OpcUACerts
-
-        self.ssc_mgmt_client = get_ssc_mgmt_client(
-            subscription_id=self.default_subscription_id,
-        )
+        self.ssc_mgmt_client = get_ssc_mgmt_client(subscription_id=self.default_subscription_id)
         self.instance_record = instance_record
         self.resource_map = resource_map
-        self.semver = scoped_semver_import()
         self.instance_version = self.instance_record["properties"].get("version", "0.0.0")
         self.spc_opcua: Optional[dict] = None
         self.spc_default: Optional[dict] = None
@@ -205,44 +199,6 @@ class SecretSyncMigrationManager(Queryable):
             resource_types={SPC_RESOURCE_TYPE, SECRET_SYNC_RESOURCE_TYPE},
             show_properties=True,
         )
-
-    def _add_entry_to_fortos_yaml(
-        self,
-        object_text: str,
-        secret_entry: Optional[dict] = None,
-    ) -> str:
-        if object_text:
-            objects_obj = yaml.safe_load(object_text)
-        else:
-            objects_obj = {"array": []}
-        entry_text = yaml.safe_dump(secret_entry, indent=6)
-        if entry_text not in objects_obj["array"]:
-            objects_obj["array"].append(entry_text)
-        object_text = yaml.safe_dump(objects_obj, indent=6)
-        # TODO: formatting will be removed once fortos service fixes the formatting issue
-        return object_text.replace("\n- |", "\n    - |")
-
-    # def _add_secrets_to_spc(
-    #     self,
-    #     secrets: List[str],
-    #     spc: dict,
-    #     resource_group: str,
-    # ):
- 
-    #     # add new secret to the list
-    #     for secret_name in secrets:
-    #         secret_entry = {
-    #             "objectName": secret_name,
-    #             "objectType": "secret",
-    #             "objectEncoding": "hex",
-    #         }
-
-    #         spc_object = self._add_entry_to_fortos_yaml(
-    #             object_text=spc_object,
-    #             secret_entry=secret_entry,
-    #         )
-
-    #     spc["properties"]["objects"] = spc_object
 
     def has_v1_spc(self) -> bool:
         secretsync_resources = self._get_secretsync_resources()
@@ -259,23 +215,50 @@ class SecretSyncMigrationManager(Queryable):
         self.secretsync_resources = secretsync_resources.get(SECRET_SYNC_RESOURCE_TYPE, [])
         return bool(self.spc_opcua)
 
-    def migrate_to_v2(self, headers: Optional[dict] = None):
-        # for secretsync in self.secretsync_resources or []:
-        #     properties = {"properties": {"secretProviderClassName": self.spc_default["name"]}}
-        #     wait_for_terminal_state(
-        #         self.ssc_mgmt_client.secret_syncs.begin_update(
-        #             resource_group_name=self.instance_record["resourceGroup"],
-        #             secret_sync_name=secretsync["name"],
-        #             secret_sync_update_parameters=properties,
-        #             headers=headers,
-        #         )
-        #     )
+    def migrate_to_v2(self, headers: Optional[dict] = None) -> Optional[dict]:
+        if not self.spc_opcua or not self.spc_default:
+            return
 
-        import pdb; pdb.set_trace()
-        spc_properties: dict = self.spc_opcua.get("properties", {})
-        # stringified yaml array
-        spc_object = spc_properties.get("objects", "")
-        if spc_object:
-            pass
+        # Merge secret refs with opc-ua-connector.
+        opcua_spc_object: dict[str, list] = yaml.safe_load(self.spc_opcua["properties"].get("objects", "array: []"))
+        default_spc_object: dict[str, list] = yaml.safe_load(self.spc_default["properties"].get("objects", "array: []"))
+        default_spc_set = set(default_spc_object["array"])
+        for entry in opcua_spc_object["array"]:
+            if entry not in default_spc_set:
+                default_spc_object["array"].append(entry)
+        object_text = yaml.safe_dump(default_spc_object, indent=6)
+        # TODO: formatting will be removed once fortos service fixes the formatting issue
+        object_text = object_text.replace("\n- |", "\n    - |")
+        property_patch = {"properties": {"objects": object_text}}
 
-        return
+        # PATCH default SPC.
+        return_payload = wait_for_terminal_state(
+            self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_update(
+                resource_group_name=self.resource_map.connected_cluster.resource_group_name,
+                azure_key_vault_secret_provider_class_name=self.spc_default["name"],
+                properties=property_patch,
+                headers=headers,
+            )
+        )
+
+        # Change secretsync association to default SPC.
+        for secretsync in self.secretsync_resources or []:
+            secretsync_property_patch = {"properties": {"secretProviderClassName": self.spc_default["name"]}}
+            wait_for_terminal_state(
+                self.ssc_mgmt_client.secret_syncs.begin_update(
+                    resource_group_name=self.resource_map.connected_cluster.resource_group_name,
+                    secret_sync_name=secretsync["name"],
+                    properties=secretsync_property_patch,
+                    headers=headers,
+                )
+            )
+
+        # Delete legacy opc-ua-connector SPC.
+        wait_for_terminal_state(
+            self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_delete(
+                resource_group_name=self.resource_map.connected_cluster.resource_group_name,
+                azure_key_vault_secret_provider_class_name=self.spc_opcua["name"],
+            )
+        )
+
+        return return_payload
