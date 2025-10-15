@@ -193,7 +193,6 @@ class SecretSyncMigrationManager(Queryable):
         self.ssc_mgmt_client = get_ssc_mgmt_client(subscription_id=self.default_subscription_id)
         self.instance_record = instance_record
         self.resource_map = resource_map
-        self.instance_version = self.instance_record["properties"].get("version", "0.0.0")
         self.secretsync_resources = secretsync_resources
 
         self.spc_opcua: Optional[dict] = None
@@ -255,6 +254,7 @@ class SecretSyncMigrationManager(Queryable):
             self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_delete(
                 resource_group_name=self.resource_map.connected_cluster.resource_group_name,
                 azure_key_vault_secret_provider_class_name=self.spc_opcua["name"],
+                headers=headers,
             )
         )
 
