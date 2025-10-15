@@ -38,7 +38,9 @@ from .common import (
     MIN_INSTANCE_VERSION_V2,
     ConfigSyncModeType,
 )
-from .resources import Instances, RegistryEndpoints
+from .migration import SecretSyncMigrationManager
+from .resources import RegistryEndpoints
+from .resources.instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from .targets import InitTargets
 
 logger = get_logger(__name__)
@@ -116,6 +118,16 @@ class UpgradeManager:
             resource_group_name=resource_group_name,
             adr_namespace_resource_id=adr_namespace_resource_id,
         )
+        self.secretsync_migration = SecretSyncMigrationManager(
+            cmd=self.cmd,
+            instance_record=self.instance_record,
+            resource_map=self.resource_map,
+            secretsync_resources=self.resource_map.connected_cluster.get_cl_resources_by_type(
+                custom_location_id=self.instance_record["extendedLocation"]["name"],
+                resource_types={SPC_RESOURCE_TYPE, SECRET_SYNC_RESOURCE_TYPE},
+                show_properties=True,
+            ),
+        )
 
     def get_desired_config(self) -> Dict[str, str]:
         return {}
@@ -153,6 +165,7 @@ class UpgradeManager:
                 instance=self.instance_record,
                 adr_namespace_resource_id=self.targets.adr_namespace_resource_id,
                 registry_endpoint_check=self._check_default_registry_needed,
+                secretsync_check=self.secretsync_migration.has_v1_spc,
                 force=self.force,
             )
 
@@ -187,11 +200,13 @@ class UpgradeManager:
             operations = self._group_by_operation(upgrade_state.extension_upgrades)
             total = sum(len(ops) for ops in operations.values())
 
-            if upgrade_state.instance_upgrade:
-                total += 1
-
-            if upgrade_state.registry_endpoint_needed:
-                total += 1
+            for aux_upgrade in [
+                upgrade_state.instance_upgrade,
+                upgrade_state.registry_endpoint_needed,
+                upgrade_state.secretsync_migration_needed,
+            ]:
+                if aux_upgrade:
+                    total += 1
 
             return_payload = []
             correlation_id = str(uuid4())
@@ -228,6 +243,16 @@ class UpgradeManager:
                 except HttpResponseError as e:
                     progress.stop()
                     logger.error(f"Correlation Id for failed registry endpoint creation: {correlation_id}")
+                    raise e
+
+            if upgrade_state.secretsync_migration_needed:
+                try:
+                    default_spc = self.secretsync_migration.migrate_to_v2(headers)
+                    return_payload.append(default_spc)
+                    progress.advance(task)
+                except HttpResponseError as e:
+                    progress.stop()
+                    logger.error(f"Correlation Id for failed secretsync migration: {correlation_id}")
                     raise e
 
             return return_payload
@@ -425,6 +450,16 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):
         )
         table.add_section()
 
+    # Add registry endpoint row if needed
+    if upgrade_state.secretsync_migration_needed:
+        table.add_row(
+            "opc-ua-connector SPC",
+            "[cyan]Created[/cyan]",
+            "[red]Remove[/red]",
+            "- Migrate secret sync refs to default SPC.\n- Delete this SPC after migration.",
+        )
+        table.add_section()
+
     console.print(table)
 
 
@@ -471,6 +506,7 @@ class ClusterUpgradeState:
         instance: Optional[dict] = None,
         adr_namespace_resource_id: Optional[str] = None,
         registry_endpoint_check: Optional[callable] = None,
+        secretsync_check: Optional[callable] = None,
         force: Optional[bool] = None,
     ):
         self.extensions_map = extensions_map
@@ -480,17 +516,20 @@ class ClusterUpgradeState:
         self.instance = instance
         self.adr_namespace_resource_id = adr_namespace_resource_id
         self.registry_endpoint_check = registry_endpoint_check
+        self.secretsync_check = secretsync_check
         self.force = force
         self.semver = scoped_semver_import()
         self.extension_upgrades = self._refresh_upgrade_state()
         self.instance_upgrade = self._check_instance_upgrade()
         self.registry_endpoint_needed = self._check_registry_endpoint_needed()
+        self.secretsync_migration_needed = self._check_secretsync_migration_needed()
 
     def has_upgrades(self) -> bool:
         return (
             any(ext_state.can_upgrade() for ext_state in self.extension_upgrades)
             or bool(self.instance_upgrade)
             or bool(self.registry_endpoint_needed)
+            or bool(self.secretsync_migration_needed)
         )
 
     def _check_instance_upgrade(self) -> bool:
@@ -540,6 +579,22 @@ class ClusterUpgradeState:
         # Check if the registry endpoint check function was provided and what it returns
         if self.registry_endpoint_check:
             return self.registry_endpoint_check()
+
+        return False
+
+    def _check_secretsync_migration_needed(self) -> bool:
+        """Check if SecretSync migration is needed.
+
+        Returns True if:
+        - Target IoT Operations version >= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+        - SecretSync migration check function is provided and returns True (migration needed)
+        """
+
+        if not self._is_target_version_above_migration_threshold():
+            return False
+
+        if self.secretsync_check:
+            return self.secretsync_check()
 
         return False
 

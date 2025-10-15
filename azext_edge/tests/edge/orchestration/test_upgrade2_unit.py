@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 import responses
+import yaml
 from azure.cli.core.azclierror import ValidationError
 from azure.core.exceptions import HttpResponseError
 
@@ -31,8 +32,13 @@ from azext_edge.edge.providers.orchestration.common import (
     ClusterConnectStatus,
     ConfigSyncModeType,
 )
+from azext_edge.edge.providers.orchestration.resources.instances import (
+    SECRET_SYNC_RESOURCE_TYPE,
+    SPC_RESOURCE_TYPE,
+)
 from azext_edge.edge.providers.orchestration.targets import InitTargets
 from azext_edge.edge.util import parse_kvp_nargs
+from azext_edge.edge.util.machinery import scoped_semver_import
 
 from ...generators import generate_random_string
 from .resources.conftest import (
@@ -64,6 +70,9 @@ HTTP_STATUS_ACCEPTED = 202
 HTTP_STATUS_SERVICE_ERROR = 500
 HTTP_STATUS_SERVICE_UNAVAILABLE = 503
 
+DEFAULT_SPC_NAME = "spc-ops-abc123"
+OPC_UA_SPC_NAME = "opc-ua-connector"
+
 expected_default_registry = {
     "name": "default",
     "type": "Microsoft.IoTOperations/instances/registryEndpoints",
@@ -74,12 +83,25 @@ expected_default_registry = {
     },
 }
 
+# Fine in testing context.
+semver = scoped_semver_import()
+
 
 def expects_registry_creation(target_scenario: "UpgradeScenario") -> bool:
     return (
         hasattr(target_scenario, "aux_kwargs")
         and target_scenario.aux_kwargs.get("default_registry_exists") is False
-        and target_scenario.user_kwargs.get("ops_version", "") >= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+        and semver.parse(target_scenario.user_kwargs.get("ops_version", ""))
+        >= semver.parse(MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+    )
+
+
+def expects_secretsync_migration(target_scenario: "UpgradeScenario") -> bool:
+    return (
+        hasattr(target_scenario, "aux_kwargs")
+        and target_scenario.aux_kwargs.get("secretsync_migration_needed") is True
+        and semver.parse(target_scenario.user_kwargs.get("ops_version", ""))
+        >= semver.parse(MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
     )
 
 
@@ -172,9 +194,11 @@ class UpgradeScenario:
         self.delete_record: Dict[str, bool] = {}
         self.create_record: Dict[str, dict] = {}
         self.patch_call_count = 0
-        self.instance_adr_namespace_resource_id: Optional[str] = None
         self.expect_instance_update = False
         self.remove_adr_for_test = False
+        self.secretsync_migration_needed = False
+        self.secretsync_resources = {}
+        self.aux_kwargs = {}
 
         self._build_defaults()
 
@@ -211,8 +235,6 @@ class UpgradeScenario:
         return self
 
     def set_user_kwargs(self: T, **kwargs) -> T:
-        if "ns_resource_id" in kwargs:
-            self.instance_adr_namespace_resource_id = kwargs["ns_resource_id"]
         self.user_kwargs.update(kwargs)
         return self
 
@@ -280,16 +302,16 @@ class UpgradeScenario:
         return self
 
     def set_auxiliary_kwargs(self: T, **kwargs):
+        self.aux_kwargs = kwargs
+
+        # Set instance attributes for commonly used flags
         if "remove_adr_for_test" in kwargs:
             self.remove_adr_for_test = kwargs["remove_adr_for_test"]
         if "expect_instance_update" in kwargs:
             self.expect_instance_update = kwargs["expect_instance_update"]
-        if "default_registry_exists" in kwargs:
-            self.default_registry_exists = kwargs["default_registry_exists"]
-        if "registry_list_error" in kwargs:
-            self.registry_list_error = kwargs["registry_list_error"]
+        if "secretsync_migration_needed" in kwargs:
+            self.secretsync_migration_needed = kwargs["secretsync_migration_needed"]
 
-        self.aux_kwargs = kwargs
         return self
 
     def set_instance_mock(self: T, mocked_responses: responses, instance_name: str, resource_group_name: str) -> T:
@@ -376,33 +398,156 @@ class UpgradeScenario:
             callback=self.create_extension_response,
         )
 
+        self.instance_record = mock_instance_record
+
         # Always setup registry endpoint mocks when IoT Ops extension exists
         # The upgrade code checks registry endpoints when target version >= migration version
         if EXTENSION_TYPE_OPS in self.extensions:
             self._setup_registry_endpoint_mocks(mocked_responses, instance_name, resource_group_name)
 
+        self._setup_secretsync_mocks(mocked_responses, resource_group_name)
+
         return self
 
+    def _setup_secretsync_mocks(self, mocked_responses: responses, resource_group_name: str):
+        """Set up SecretSync resource graph mock and migration API mocks if needed."""
+        self.mock_calls_tracker = {"resource_graph": [], "patch_spc": [], "patch_secretsync": [], "delete_spc": []}
+
+        if self.secretsync_migration_needed:
+            self.secretsync_resources = {
+                SPC_RESOURCE_TYPE: [
+                    {
+                        "name": OPC_UA_SPC_NAME,
+                        "properties": {"objects": yaml.safe_dump({"array": ["|secret1", "|secret2"]})},
+                    },
+                    {"name": DEFAULT_SPC_NAME, "properties": {"objects": yaml.safe_dump({"array": ["|secret3"]})}},
+                ],
+                SECRET_SYNC_RESOURCE_TYPE: [
+                    {"name": "secretsync1", "properties": {"secretProviderClassName": OPC_UA_SPC_NAME}},
+                    {"name": "secretsync2", "properties": {"secretProviderClassName": OPC_UA_SPC_NAME}},
+                    {"name": "secretsync3", "properties": {"secretProviderClassName": DEFAULT_SPC_NAME}},
+                ],
+            }
+        else:
+            self.secretsync_resources = {}
+
+        def handle_resource_graph_query(request: requests.PreparedRequest):
+            from .resources.conftest import get_request_kpis
+
+            request_kpis = get_request_kpis(request)
+            if request_kpis.body_str:
+                request_payload = json.loads(request_kpis.body_str)
+                query = request_payload.get("query", "")
+
+                if "microsoft.secretsynccontroller" in query.lower():
+                    self.mock_calls_tracker["resource_graph"].append(
+                        {"query": query, "resources_returned": len(self.secretsync_resources)}
+                    )
+
+                    response_data = {"data": []}
+                    if self.secretsync_resources:
+                        for resource_type, resources in self.secretsync_resources.items():
+                            for resource in resources:
+                                response_data["data"].append(
+                                    {
+                                        "type": resource_type,
+                                        "name": resource["name"],
+                                        "properties": resource["properties"],
+                                    }
+                                )
+
+                    return request_kpis.respond_with(200, response_body=response_data)
+            return None
+
+        mocked_responses.add_callback(
+            method="POST",
+            url=re.compile(
+                r"https://management\.azure\.com/providers/Microsoft\.ResourceGraph/resources\?api-version=.*"
+            ),
+            callback=handle_resource_graph_query,
+        )
+
+        if self.secretsync_migration_needed:
+
+            def create_patch_callback(operation_name: str, response_factory):
+                """Factory to create PATCH callbacks with common logic."""
+
+                def callback(request):
+                    assert_upgrade_headers(request.headers)
+                    body = json.loads(request.body)
+
+                    # Common validations for PATCH
+                    assert "properties" in body, f"PATCH {operation_name} request should have properties"
+
+                    # Track the call
+                    self.mock_calls_tracker[f"patch_{operation_name}"].append(
+                        {
+                            "url": request.path_url,
+                            "body": body,
+                            "name": request.path_url.split("/")[-1].split("?")[0],  # Extract resource name
+                        }
+                    )
+
+                    return (200, STANDARD_HEADERS, json.dumps(response_factory(request, body)))
+
+                return callback
+
+            # SPC PATCH
+            def spc_response_factory(_, body):
+                assert "objects" in body["properties"], "PATCH SPC should update objects"
+                return {
+                    "name": DEFAULT_SPC_NAME,
+                    "properties": {"objects": yaml.safe_dump({"array": ["|secret3", "|secret1", "|secret2"]})},
+                }
+
+            mocked_responses.add_callback(
+                method=responses.PATCH,
+                url=re.compile(rf".*azureKeyVaultSecretProviderClasses/{DEFAULT_SPC_NAME}.*"),
+                callback=create_patch_callback("spc", spc_response_factory),
+            )
+
+            # SecretSync PATCH
+            def secretsync_response_factory(request, body):
+                name = request.path_url.split("/")[-1].split("?")[0]
+                assert "secretProviderClassName" in body["properties"], "PATCH SecretSync should update SPC reference"
+                assert body["properties"]["secretProviderClassName"] == DEFAULT_SPC_NAME, (
+                    f"SecretSync should reference {DEFAULT_SPC_NAME}, "
+                    f"got {body['properties']['secretProviderClassName']}"
+                )
+                return {"name": name, "properties": {"secretProviderClassName": DEFAULT_SPC_NAME}}
+
+            mocked_responses.add_callback(
+                method=responses.PATCH,
+                url=re.compile(r".*/secretSyncs/secretsync.*"),
+                callback=create_patch_callback("secretsync", secretsync_response_factory),
+            )
+
+            # DELETE callback
+            def delete_spc_callback(request):
+                assert_upgrade_headers(request.headers)
+                assert (
+                    OPC_UA_SPC_NAME in request.path_url
+                ), f"Should delete {OPC_UA_SPC_NAME}, but URL is {request.path_url}"
+                self.mock_calls_tracker["delete_spc"].append({"url": request.path_url})
+                return (204, {}, "")
+
+            mocked_responses.add_callback(
+                method=responses.DELETE,
+                url=re.compile(rf".*azureKeyVaultSecretProviderClasses/{OPC_UA_SPC_NAME}.*"),
+                callback=delete_spc_callback,
+            )
+
     def _setup_registry_endpoint_mocks(self, mocked_responses: responses, instance_name: str, resource_group_name: str):
-        """Set up registry endpoint mocks for tests.
-
-        By default:
-        - GET returns a default registry endpoint (simulating it already exists)
-        - PUT is mocked to handle any creation attempts
-
-        This can be overridden via auxiliary kwargs for specific test scenarios.
-        """
+        """Set up registry endpoint mocks for tests."""
         list_endpoint = get_registry_endpoint_endpoint(
             instance_name=instance_name, resource_group_name=resource_group_name
         )
 
-        # Check if we have explicit test configuration
-        has_explicit_config = hasattr(self, "aux_kwargs")
-        registry_list_error = has_explicit_config and self.aux_kwargs.get("registry_list_error", False)
-        default_exists = has_explicit_config and self.aux_kwargs.get("default_registry_exists", False)
+        # Determine test configuration
+        registry_list_error = self.aux_kwargs.get("registry_list_error", False)
+        default_exists = self.aux_kwargs.get("default_registry_exists", True)
 
         if registry_list_error:
-            # Simulate an error when listing endpoints
             mocked_responses.add(
                 method=responses.GET,
                 url=list_endpoint,
@@ -411,14 +556,8 @@ class UpgradeScenario:
                 content_type="application/json",
             )
         else:
-            # Determine what to return for GET request
             existing_endpoints = []
-
-            # Add default endpoint if:
-            # 1. Explicitly configured to exist (default_registry_exists=True), OR
-            # 2. No explicit configuration (simulate it exists to prevent unwanted creation)
-            if default_exists or not has_explicit_config:
-                # Use the global expected_default_registry and add the ID
+            if default_exists:
                 endpoint = deepcopy(expected_default_registry)
                 endpoint["id"] = f"{list_endpoint}/default"
                 existing_endpoints.append(endpoint)
@@ -431,8 +570,7 @@ class UpgradeScenario:
                 content_type="application/json",
             )
 
-        # Always add PUT mock to handle creation attempts
-        # This prevents "Connection refused" errors for any test where creation might be attempted
+        # Always add PUT mock for creation attempts
         create_endpoint = get_registry_endpoint_endpoint(
             instance_name=instance_name, resource_group_name=resource_group_name, registry_endpoint_name="default"
         )
@@ -441,16 +579,13 @@ class UpgradeScenario:
             assert_upgrade_headers(request.headers)
             self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
 
-            # Parse body to verify correct payload
             body = json.loads(request.body)
             assert "properties" in body
             assert body["properties"]["host"] == expected_default_registry["properties"]["host"]
             assert body["properties"]["authentication"] == expected_default_registry["properties"]["authentication"]
 
-            # Return the created endpoint (reuse expected_default_registry)
             response_body = deepcopy(expected_default_registry)
             response_body["id"] = create_endpoint
-
             return (200, STANDARD_HEADERS, json.dumps(response_body))
 
         mocked_responses.add_callback(
@@ -559,7 +694,8 @@ def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT)
 
 
 def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: List[dict]):
-    """Assert operations happen in correct order: DELETE -> CREATE -> UPDATE -> INSTANCE_UPDATE -> REGISTRY_CREATE.
+    """Assert operations happen in correct order:
+    DELETE -> CREATE -> UPDATE -> INSTANCE_UPDATE -> REGISTRY_CREATE -> SECRETSYNC_MIGRATION.
     Also validates extension type order within each operation group."""
 
     # Group results by operation type
@@ -568,6 +704,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
     updates = []
     instance_updates = []
     registry_creates = []
+    secretsync_migrations = []
 
     for result in upgrade_result:
         props = result.get("properties", {})
@@ -581,12 +718,17 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             registry_creates.append(result)
             continue
 
+        # Check if this is a secretsync migration result (patched default SPC)
+        if not ext_type and result.get("name", "").startswith("spc-ops-") and "objects" in props:
+            secretsync_migrations.append(result)
+            continue
+
         # Check if this is an instance update (has adrNamespaceRef but no extensionType)
         if not ext_type and "adrNamespaceRef" in props:
             instance_updates.append(result)
             continue
 
-        # Skip if no extension type and not an instance update or registry endpoint
+        # Skip if no extension type and not a special operation
         if not ext_type:
             continue
 
@@ -609,13 +751,28 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
     if target_scenario.expect_instance_update:
         assert len(instance_updates) == 1, "Expected exactly one instance update"
 
-    # If registry creation is expected, verify it's last
-    if expects_registry_creation(target_scenario):
+    # Verify registry and secretsync ordering at the end of operations
+    expects_registry = expects_registry_creation(target_scenario)
+    expects_secretsync = expects_secretsync_migration(target_scenario)
+
+    if expects_registry:
         assert len(registry_creates) == 1, "Expected exactly one registry endpoint creation"
-        # Verify it's the last operation in the result list
-        if len(upgrade_result) > 0:
-            last_result = upgrade_result[-1]
-            assert last_result.get("name") == "default", "Registry endpoint creation should be last operation"
+
+    if expects_secretsync:
+        assert len(secretsync_migrations) == 1, "Expected exactly one secretsync migration"
+
+    # Check ordering of final operations (registry and/or secretsync)
+    if len(upgrade_result) > 0:
+        if expects_registry and expects_secretsync:
+            # Both registry and secretsync: secretsync should be last, registry second to last
+            assert upgrade_result[-1] in secretsync_migrations, "SecretSync migration should be last operation"
+            assert upgrade_result[-2] in registry_creates, "Registry creation should be before secretsync migration"
+        elif expects_secretsync:
+            # Only secretsync: should be last
+            assert upgrade_result[-1] in secretsync_migrations, "SecretSync migration should be last operation"
+        elif expects_registry:
+            # Only registry: should be last
+            assert upgrade_result[-1] in registry_creates, "Registry endpoint creation should be last operation"
 
     # Build the actual operation sequence (non-empty groups only)
     operation_sequence = []
@@ -1290,6 +1447,80 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                 ),
             },
         ),
+        # ========== SecretSync Migration (>= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE) ==========
+        (
+            UpgradeScenario("SecretSync: Migrate opc-ua-connector SPC to default")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(secretsync_migration_needed=True, default_registry_exists=False),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SecretSync: No migration when version < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.82")
+            .set_auxiliary_kwargs(secretsync_migration_needed=False, default_registry_exists=True),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
+            },
+        ),
+        (
+            UpgradeScenario("SecretSync: No migration when has_v1_spc returns False")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(secretsync_migration_needed=False, default_registry_exists=False),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SecretSync: Migration without registry creation")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(secretsync_migration_needed=True, default_registry_exists=True),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SecretSync: Migration with all other migrations")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(
+                ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
+                ns_resource_id="PLACEHOLDER_ADR_NAMESPACE_ID",
+            )
+            .set_auxiliary_kwargs(
+                remove_adr_for_test=True,
+                expect_instance_update=True,
+                default_registry_exists=False,
+                secretsync_migration_needed=True,
+            ),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
     ],
 )
 def test_ops_upgrade(
@@ -1369,8 +1600,9 @@ def test_ops_upgrade(
     )
     instance_count = int(target_scenario.expect_instance_update)
     registry_count = int(expects_registry_creation(target_scenario))
+    secretsync_count = int(expects_secretsync_migration(target_scenario))
 
-    expected_count = delete_count + create_count + update_count + instance_count + registry_count
+    expected_count = delete_count + create_count + update_count + instance_count + registry_count + secretsync_count
 
     assert len(upgrade_result) == expected_count
     assert len(mocked_confirm.ask.mock_calls) == int(not target_scenario.confirm_yes)
@@ -1378,6 +1610,7 @@ def test_ops_upgrade(
     assert_operation_order(target_scenario, upgrade_result)
     assert_result(target_scenario, upgrade_result, expected_patched_ext_types)
     assert_displays(spy_upgrade_displays, no_progress, patched_ext_types=expected_patched_ext_types)
+    assert_secretsync_migration(target_scenario)
 
 
 @pytest.mark.parametrize(
@@ -1458,6 +1691,39 @@ def test_ops_upgrade_retry_assertion(
         assert_retry_count(async_mock)
 
 
+def assert_secretsync_migration(target_scenario: UpgradeScenario):
+    """Verify SecretSync migration mocks were called correctly."""
+    if not expects_secretsync_migration(target_scenario):
+        # Verify no migration operations occurred when not expected
+        if hasattr(target_scenario, "mock_calls_tracker"):
+            tracker = target_scenario.mock_calls_tracker
+            assert len(tracker["resource_graph"]) == 1, "Resource graph should be called even when no migration"
+            assert len(tracker["patch_spc"]) == 0, "No SPC patches should occur when migration not needed"
+            assert len(tracker["patch_secretsync"]) == 0, "No SecretSync patches should occur when migration not needed"
+            assert len(tracker["delete_spc"]) == 0, "No SPC deletes should occur when migration not needed"
+        return
+
+    tracker = target_scenario.mock_calls_tracker
+
+    # Verify resource graph query
+    assert len(tracker["resource_graph"]) == 1, "Resource graph query should be called during init"
+
+    # Verify PATCH operations
+    assert len(tracker["patch_spc"]) == 1, f"Expected 1 PATCH SPC call, got {len(tracker['patch_spc'])}"
+
+    if tracker["patch_spc"]:
+        patched_objects = yaml.safe_load(tracker["patch_spc"][0]["body"]["properties"]["objects"])
+        assert len(patched_objects["array"]) >= 2, "Merged SPC should have multiple secrets"
+
+    # Two v1 SecretSyncs need to be patched based on our test data
+    assert (
+        len(tracker["patch_secretsync"]) == 2
+    ), f"Expected 2 PATCH SecretSync calls, got {len(tracker['patch_secretsync'])}"
+
+    # Verify DELETE operation
+    assert len(tracker["delete_spc"]) == 1, f"Expected 1 DELETE SPC call, got {len(tracker['delete_spc'])}"
+
+
 def assert_result(
     target_scenario: UpgradeScenario, upgrade_result: List[dict], expected_types: Optional[Dict[str, dict]] = None
 ):
@@ -1469,6 +1735,7 @@ def assert_result(
     created_types = set()
     instance_updates = []
     registry_endpoints = []
+    secretsync_migrations = []
 
     for result in upgrade_result:
         props = result.get("properties", {})
@@ -1480,6 +1747,12 @@ def assert_result(
             and result.get("type") == "Microsoft.IoTOperations/instances/registryEndpoints"
         ):
             registry_endpoints.append(result)
+            continue
+
+        # Check if this is a secretsync migration result
+        # The migration returns the patched default SPC which has a name like "spc-ops-*" and contains "objects"
+        if not ext_type and result.get("name", "").startswith("spc-ops-") and "objects" in props:
+            secretsync_migrations.append(result)
             continue
 
         # Separate instance updates from extension operations
@@ -1515,6 +1788,25 @@ def assert_result(
         assert endpoint["properties"]["authentication"] == expected_default_registry["properties"]["authentication"]
     else:
         assert not registry_endpoints, f"Unexpected registry endpoint(s) in results. Found {len(registry_endpoints)}"
+
+    # Validate secretsync migration
+    if expects_secretsync_migration(target_scenario):
+        assert secretsync_migrations, "Expected secretsync migration but none found in results"
+        assert (
+            len(secretsync_migrations) == 1
+        ), f"Expected exactly 1 secretsync migration, found {len(secretsync_migrations)}"
+        migration = secretsync_migrations[0]
+        # Verify the objects were merged correctly
+        objects = yaml.safe_load(migration["properties"]["objects"])
+        assert len(objects["array"]) == 3, f"Expected 3 merged secrets in default SPC, got {len(objects['array'])}"
+        # Verify all secrets from both SPCs are present
+        expected_secrets = {"|secret1", "|secret2", "|secret3"}
+        actual_secrets = set(objects["array"])
+        assert actual_secrets == expected_secrets, f"Expected secrets {expected_secrets}, got {actual_secrets}"
+    else:
+        assert (
+            not secretsync_migrations
+        ), f"Unexpected secretsync migration(s) in results. Found {len(secretsync_migrations)}"
 
     _assert_user_kwargs_applied(target_scenario.user_kwargs, result_by_type, deleted_types)
 

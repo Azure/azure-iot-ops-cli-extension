@@ -8,6 +8,7 @@ from fnmatch import fnmatch
 from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
+import yaml
 from azure.cli.core.azclierror import (
     AzureResponseError,
     ValidationError,
@@ -18,6 +19,7 @@ from rich.status import Status
 
 from ...util.az_client import (
     get_registry_mgmt_client,
+    get_ssc_mgmt_client,
     wait_for_terminal_state,
 )
 from ...util.common import should_continue_prompt
@@ -35,7 +37,8 @@ from .permissions import (
     PrincipalType,
     get_ra_user_error_msg,
 )
-from .resources import Instances
+from .resource_map import IoTOperationsResourceMap
+from .resources.instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 
 if TYPE_CHECKING:
     from ...vendor.clients.deviceregistrymgmt.operations import NamespacesOperations
@@ -176,3 +179,83 @@ class AssetMigrationManager(Queryable):
                 headers=headers,
             )
             return wait_for_terminal_state(poller, **kwargs)
+
+
+class SecretSyncMigrationManager(Queryable):
+    def __init__(
+        self,
+        cmd,
+        instance_record: dict,
+        resource_map: IoTOperationsResourceMap,
+        secretsync_resources: dict[str, list[dict]],
+    ):
+        super().__init__(cmd=cmd)
+        self.ssc_mgmt_client = get_ssc_mgmt_client(subscription_id=self.default_subscription_id)
+        self.instance_record = instance_record
+        self.resource_map = resource_map
+        self.secretsync_resources = secretsync_resources
+
+        self.spc_opcua: Optional[dict] = None
+        self.spc_default: Optional[dict] = None
+
+    def has_v1_spc(self) -> bool:
+        if not self.secretsync_resources:
+            return False
+
+        for spc in self.secretsync_resources.get(SPC_RESOURCE_TYPE, []):
+            if spc["name"].lower() == "opc-ua-connector":
+                self.spc_opcua = spc
+            else:
+                self.spc_default = spc
+
+        return bool(self.spc_opcua)
+
+    def migrate_to_v2(self, headers: Optional[dict] = None) -> Optional[dict]:
+        if not self.spc_opcua or not self.spc_default:
+            return
+
+        # Merge secret refs with opc-ua-connector.
+        opcua_spc_object: dict[str, list] = yaml.safe_load(self.spc_opcua["properties"].get("objects", "array: []"))
+        default_spc_object: dict[str, list] = yaml.safe_load(self.spc_default["properties"].get("objects", "array: []"))
+        default_spc_set = set(default_spc_object["array"])
+        for entry in opcua_spc_object["array"]:
+            if entry not in default_spc_set:
+                default_spc_object["array"].append(entry)
+        object_text = yaml.safe_dump(default_spc_object, indent=6)
+        # TODO: formatting: will be removed once fortos service fixes the formatting issue
+        object_text = object_text.replace("\n- |", "\n    - |")
+        property_patch = {"properties": {"objects": object_text}}
+
+        # PATCH default SPC.
+        return_payload = wait_for_terminal_state(
+            self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_update(
+                resource_group_name=self.resource_map.connected_cluster.resource_group_name,
+                azure_key_vault_secret_provider_class_name=self.spc_default["name"],
+                properties=property_patch,
+                headers=headers,
+            )
+        )
+
+        # Change secretsync association to default SPC.
+        for secretsync in self.secretsync_resources.get(SECRET_SYNC_RESOURCE_TYPE, []):
+            if secretsync["properties"].get("secretProviderClassName") == self.spc_opcua["name"]:
+                secretsync_property_patch = {"properties": {"secretProviderClassName": self.spc_default["name"]}}
+                wait_for_terminal_state(
+                    self.ssc_mgmt_client.secret_syncs.begin_update(
+                        resource_group_name=self.resource_map.connected_cluster.resource_group_name,
+                        secret_sync_name=secretsync["name"],
+                        properties=secretsync_property_patch,
+                        headers=headers,
+                    )
+                )
+
+        # Delete legacy opc-ua-connector SPC.
+        wait_for_terminal_state(
+            self.ssc_mgmt_client.azure_key_vault_secret_provider_classes.begin_delete(
+                resource_group_name=self.resource_map.connected_cluster.resource_group_name,
+                azure_key_vault_secret_provider_class_name=self.spc_opcua["name"],
+                headers=headers,
+            )
+        )
+
+        return return_payload
