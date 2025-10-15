@@ -6,6 +6,7 @@
 
 from enum import Enum
 from json import dumps
+from time import sleep
 from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
@@ -49,6 +50,7 @@ console = Console()
 
 
 DEFAULT_REGISTRY_HOST = "mcr.microsoft.com"
+IOT_OPS_DELAY = 30  # seconds
 
 
 class ExtensionOperation(Enum):
@@ -165,7 +167,7 @@ class UpgradeManager:
                 instance=self.instance_record,
                 adr_namespace_resource_id=self.targets.adr_namespace_resource_id,
                 registry_endpoint_check=self._check_default_registry_needed,
-                secretsync_check=self.secretsync_migration.has_v1_spc,
+                secretsync_migration=self.secretsync_migration,
                 force=self.force,
             )
 
@@ -227,7 +229,11 @@ class UpgradeManager:
 
             if upgrade_state.instance_upgrade:
                 try:
-                    instance_result = self._apply_instance_update(headers)
+                    instance_result = self._apply_instance_update(
+                        needs_adr_update=upgrade_state._check_adr_namespace_update(),
+                        needs_spc_update=upgrade_state._check_spc_reference_update(),
+                        headers=headers,
+                    )
                     return_payload.append(instance_result)
                     progress.advance(task)
                 except HttpResponseError as e:
@@ -257,12 +263,32 @@ class UpgradeManager:
 
             return return_payload
 
-    def _apply_instance_update(self, headers: dict) -> dict:
+    def _apply_instance_update(self, needs_adr_update: bool, needs_spc_update: bool, headers: dict) -> dict:
+        """Apply instance updates based on what's needed.
+
+        Args:
+            needs_adr_update: Whether ADR namespace needs updating
+            needs_spc_update: Whether SPC reference needs updating
+            headers: Request headers
+
+        Returns:
+            Updated instance resource dictionary
+        """
+        adr_resource_id = None
+        spc_resource_id = None
+
+        if needs_adr_update:
+            adr_resource_id = self.targets.adr_namespace_resource_id
+
+        if needs_spc_update and self.secretsync_migration and self.secretsync_migration.spc_default:
+            spc_resource_id = self.secretsync_migration.spc_default.get("id")
+
         return self.instances.update(
             name=self.instance_name,
             resource_group_name=self.resource_group_name,
             instance=self.instance_record,
-            adr_namespace_resource_id=self.targets.adr_namespace_resource_id,
+            adr_namespace_resource_id=adr_resource_id,
+            spc_resource_id=spc_resource_id,
             headers=headers,
             no_status=True,  # Disable status since we're already in a Progress context
         )
@@ -309,13 +335,19 @@ class UpgradeManager:
                 headers=headers,
             )
         else:  # UPDATE
-            return self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
+            result = self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
                 resource_group_name=self.resource_group_name,
                 cluster_name=cluster_name,
                 extension_name=ext.extension["name"],
                 update_payload=ext.get_patch(),
                 headers=headers,
             )
+
+            if ext.moniker == EXTENSION_MONIKER_OPS:
+                logger.debug(f"Wait {IOT_OPS_DELAY} seconds for iot ops extension version update to propagate...")
+                sleep(IOT_OPS_DELAY)
+
+            return result
 
     def _build_creation_payload(self, ext: "ExtensionUpgradeState") -> dict:
         """Build creation payload for certmanager extension"""
@@ -506,7 +538,7 @@ class ClusterUpgradeState:
         instance: Optional[dict] = None,
         adr_namespace_resource_id: Optional[str] = None,
         registry_endpoint_check: Optional[callable] = None,
-        secretsync_check: Optional[callable] = None,
+        secretsync_migration: Optional["SecretSyncMigrationManager"] = None,
         force: Optional[bool] = None,
     ):
         self.extensions_map = extensions_map
@@ -516,7 +548,7 @@ class ClusterUpgradeState:
         self.instance = instance
         self.adr_namespace_resource_id = adr_namespace_resource_id
         self.registry_endpoint_check = registry_endpoint_check
-        self.secretsync_check = secretsync_check
+        self.secretsync_migration = secretsync_migration
         self.force = force
         self.semver = scoped_semver_import()
         self.extension_upgrades = self._refresh_upgrade_state()
@@ -533,35 +565,69 @@ class ClusterUpgradeState:
         )
 
     def _check_instance_upgrade(self) -> bool:
-        """Check if instance needs ADR namespace update.
+        """Check if instance needs updates.
 
-        Returns True if:
-        1. During v2 migration and instance needs ADR namespace (required)
-        2. User provided --ns-resource-id to update/set ADR namespace (optional update)
+        Instance updates include:
+        1. ADR namespace reference update
+        2. Default SPC reference update
 
-        Raises ValidationError if ADR namespace is required but not provided.
+        Returns:
+            bool: True if any updates are needed
         """
         if not self.instance:
             return False
 
+        if not self._is_target_version_above_migration_threshold():
+            return False
+
+        needs_adr_update = self._check_adr_namespace_update()
+        needs_spc_update = self._check_spc_reference_update()
+
+        return needs_adr_update or needs_spc_update
+
+    def _check_adr_namespace_update(self) -> bool:
+        """Check if ADR namespace reference needs updating.
+
+        Note: This assumes v2 migration check has already been done by caller.
+
+        Returns:
+            bool: True if ADR namespace update is needed
+
+        Raises:
+            ValidationError: If ADR namespace is required for v2 migration but not provided
+        """
         namespace_ref = self.instance.get("properties", {}).get("adrNamespaceRef")
-        has_adr_namespace = namespace_ref and namespace_ref.get("resourceId")
+        current_adr_id = namespace_ref.get("resourceId") if namespace_ref else None
 
-        # If user provided an ADR namespace, check if update is needed
+        # User explicitly provided an ADR namespace to set/update
         if self.adr_namespace_resource_id:
-            # Update needed if no current ADR or different from provided
-            current_adr_id = namespace_ref.get("resourceId") if namespace_ref else None
-            return not current_adr_id or current_adr_id != self.adr_namespace_resource_id
+            return current_adr_id != self.adr_namespace_resource_id
 
-        # If no ADR namespace provided, check if it's required for v2 migration
-        # Check if we're doing a v2 migration (platform -> certmanager)
-        is_v2_migration = self._is_target_version_above_migration_threshold()
-
-        if is_v2_migration and not has_adr_namespace:
+        # Check if ADR namespace is required but missing (v2 migration requirement)
+        if not current_adr_id:
             raise ValidationError(
                 "The instance requires an ADR namespace for migration to v2.\n"
                 "Please provide a value for --ns-resource-id."
             )
+
+        return False
+
+    def _check_spc_reference_update(self) -> bool:
+        """Check if default SPC reference needs to be added to instance.
+
+        Note: This assumes v2 migration check has already been done by caller.
+
+        Returns:
+            bool: True if SPC reference should be added
+        """
+        # Check if instance already has a default SPC reference
+        current_spc_ref = self.instance.get("properties", {}).get("defaultSecretProviderClassRef")
+        if current_spc_ref and current_spc_ref.get("resourceId"):
+            return False
+
+        # Check if a default SPC exists that needs linking
+        if self.secretsync_migration and self.secretsync_migration.spc_default:
+            return True
 
         return False
 
@@ -593,8 +659,8 @@ class ClusterUpgradeState:
         if not self._is_target_version_above_migration_threshold():
             return False
 
-        if self.secretsync_check:
-            return self.secretsync_check()
+        if self.secretsync_migration:
+            return self.secretsync_migration.has_v1_spc()
 
         return False
 

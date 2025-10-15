@@ -44,6 +44,8 @@ if TYPE_CHECKING:
     from ...vendor.clients.deviceregistrymgmt.operations import NamespacesOperations
 
 
+OPCUA_SPC_NAME = "opc-ua-connector"
+
 console = Console()
 logger = get_logger(__name__)
 
@@ -198,17 +200,20 @@ class SecretSyncMigrationManager(Queryable):
         self.spc_opcua: Optional[dict] = None
         self.spc_default: Optional[dict] = None
 
-    def has_v1_spc(self) -> bool:
-        if not self.secretsync_resources:
-            return False
+        self._identify_spcs()
 
-        for spc in self.secretsync_resources.get(SPC_RESOURCE_TYPE, []):
-            if spc["name"].lower() == "opc-ua-connector":
+    def _identify_spcs(self):
+        spc_resources = self.secretsync_resources.get(SPC_RESOURCE_TYPE, [])
+
+        for spc in spc_resources:
+            spc_name = spc["name"].lower()
+            if spc_name == OPCUA_SPC_NAME.lower():
                 self.spc_opcua = spc
             else:
                 self.spc_default = spc
 
-        return bool(self.spc_opcua)
+    def has_v1_spc(self) -> bool:
+        return self.spc_opcua is not None
 
     def migrate_to_v2(self, headers: Optional[dict] = None) -> Optional[dict]:
         if not self.spc_opcua or not self.spc_default:

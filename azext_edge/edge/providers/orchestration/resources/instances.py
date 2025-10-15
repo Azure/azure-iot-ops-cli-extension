@@ -164,6 +164,7 @@ class Instances(Queryable):
         description: Optional[str] = None,
         features: Optional[List[str]] = None,
         adr_namespace_resource_id: Optional[str] = None,
+        spc_resource_id: Optional[str] = None,
         **kwargs: dict,
     ) -> dict:
         instance = kwargs.pop("instance", None) or self.show(name=name, resource_group_name=resource_group_name)
@@ -183,6 +184,9 @@ class Instances(Queryable):
 
         if adr_namespace_resource_id:
             instance["properties"]["adrNamespaceRef"] = {"resourceId": adr_namespace_resource_id}
+
+        if spc_resource_id:
+            instance["properties"]["defaultSecretProviderClassRef"] = {"resourceId": spc_resource_id}
 
         if tags or tags == {}:
             instance["tags"] = tags
