@@ -797,17 +797,18 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update a container registry endpoint.
+        long-summary: Note: updating code signing CA reference properties will overwrite existing config map and secret references.
 
         examples:
         - name: Update an endpoint's hostname and auth-type to use a system-assigned managed identity
           text: >
             az iot ops registry update -n myregistry --host newregistry.azurecr.io -i myinstance -g myresourcegroup --auth-type SystemAssignedManagedIdentity
-        - name: Update an endpoint to add a code signing CA config map reference
+        - name: Update an endpoint to set a code signing CA config map reference
           text: >
             az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --cs-config-map-refs myconfigmap
-        - name: Update an endpoint to remove existing code signing CA config map refs and add a new secret reference
+        - name: Update an endpoint to set multiple code signing CA secret references
           text: >
-            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --cs-config-map-refs --cs-secret-refs mysecret
+            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --cs-secret-refs secret1 secret2
     """
 
     helps[
