@@ -510,9 +510,10 @@ class UpgradeScenario:
             def secretsync_response_factory(request, body):
                 name = request.path_url.split("/")[-1].split("?")[0]
                 assert "secretProviderClassName" in body["properties"], "PATCH SecretSync should update SPC reference"
-                assert (
-                    body["properties"]["secretProviderClassName"] == DEFAULT_SPC_NAME
-                ), f"SecretSync should reference {DEFAULT_SPC_NAME}, got {body['properties']['secretProviderClassName']}"
+                assert body["properties"]["secretProviderClassName"] == DEFAULT_SPC_NAME, (
+                    f"SecretSync should reference {DEFAULT_SPC_NAME}, "
+                    f"got {body['properties']['secretProviderClassName']}"
+                )
                 return {"name": name, "properties": {"secretProviderClassName": DEFAULT_SPC_NAME}}
 
             mocked_responses.add_callback(
@@ -693,7 +694,8 @@ def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT)
 
 
 def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: List[dict]):
-    """Assert operations happen in correct order: DELETE -> CREATE -> UPDATE -> INSTANCE_UPDATE -> REGISTRY_CREATE -> SECRETSYNC_MIGRATION.
+    """Assert operations happen in correct order:
+    DELETE -> CREATE -> UPDATE -> INSTANCE_UPDATE -> REGISTRY_CREATE -> SECRETSYNC_MIGRATION.
     Also validates extension type order within each operation group."""
 
     # Group results by operation type
