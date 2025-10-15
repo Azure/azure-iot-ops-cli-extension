@@ -797,7 +797,8 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update a container registry endpoint.
-        long-summary: Note: updating code signing CA reference properties will overwrite existing config map and secret references.
+        long-summary: |
+          Note: updating code signing CA reference properties will overwrite existing config map and secret references.
 
         examples:
         - name: Update an endpoint's hostname and auth-type to use a system-assigned managed identity
