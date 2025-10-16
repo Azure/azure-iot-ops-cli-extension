@@ -353,10 +353,7 @@ class UpgradeScenario:
         # Add existing SPC reference if specified in aux_kwargs
         if self.aux_kwargs.get("has_existing_spc_ref"):
             mock_instance_record["properties"]["defaultSecretProviderClassRef"] = {
-                "resourceId": (
-                    "/subscriptions/sub1/resourceGroups/rg1/providers/"
-                    "Microsoft.SecretSyncController/secretProviderClasses/default-spc"
-                )
+                "resourceId": build_spc_resource_id(resource_group_name, DEFAULT_SPC_NAME)
             }
 
         mocked_responses.add(
