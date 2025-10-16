@@ -220,10 +220,10 @@ class UpgradeManager:
                         result = self._apply_single_operation(ext=ext, op_type=op_type, headers=headers)
                         return_payload.append(result)
                         progress.advance(task)
-                    except HttpResponseError as e:
+                    except HttpResponseError as _:
                         progress.stop()
                         logger.error(f"Correlation Id for failed {op_type.value} operation: {correlation_id}")
-                        raise e
+                        raise
 
             if upgrade_state.instance_upgrade:
                 try:
@@ -234,30 +234,30 @@ class UpgradeManager:
                     )
                     return_payload.append(instance_result)
                     progress.advance(task)
-                except HttpResponseError as e:
+                except HttpResponseError as _:
                     progress.stop()
                     logger.error(f"Correlation Id for failed instance update: {correlation_id}")
-                    raise e
+                    raise
 
             if upgrade_state.registry_endpoint_needed:
                 try:
                     registry_result = self._create_default_registry_endpoint(headers)
                     return_payload.append(registry_result)
                     progress.advance(task)
-                except HttpResponseError as e:
+                except HttpResponseError as _:
                     progress.stop()
                     logger.error(f"Correlation Id for failed registry endpoint creation: {correlation_id}")
-                    raise e
+                    raise
 
             if upgrade_state.secretsync_migration_needed:
                 try:
                     default_spc = self.secretsync_migration.migrate_to_v2(headers)
                     return_payload.append(default_spc)
                     progress.advance(task)
-                except HttpResponseError as e:
+                except HttpResponseError as _:
                     progress.stop()
                     logger.error(f"Correlation Id for failed secretsync migration: {correlation_id}")
-                    raise e
+                    raise
 
             return return_payload
 

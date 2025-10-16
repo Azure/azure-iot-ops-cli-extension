@@ -277,6 +277,11 @@ def test_delete_lifecycle(
 
     assert spy_deletion_manager["_delete_batch"].call_count == expected_delete_calls
     assert mocked_live_display.call_count >= 1
+    for begin_delete_by_id_call in mocked_get_resource_client("stub").mock_calls:
+        assert begin_delete_by_id_call.kwargs["resource_id"]
+        assert begin_delete_by_id_call.kwargs["api_version"]
+        assert begin_delete_by_id_call.kwargs["headers"]["x-ms-correlation-request-id"]
+        assert begin_delete_by_id_call.kwargs["headers"]["CommandName"] == "iot ops delete"
 
     if kwargs["no_progress"]:
         mocked_live_display.assert_called_once_with(None, transient=False, refresh_per_second=8, auto_refresh=False)
