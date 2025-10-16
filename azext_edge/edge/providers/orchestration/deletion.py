@@ -243,6 +243,6 @@ class DeletionManager:
                     for resource in resource_batch
                 ]
             )
-        except HttpResponseError as _:
+        except HttpResponseError:
             logger.error(f"Correlation Id for failed deletion: {self.headers['x-ms-correlation-request-id']}")
             raise
