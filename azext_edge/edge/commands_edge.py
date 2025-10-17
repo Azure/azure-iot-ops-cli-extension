@@ -245,6 +245,7 @@ def upgrade_instance(
     cm_version: Optional[str] = None,
     cm_train: Optional[str] = None,
     cm_config_sync_mode: Optional[str] = None,
+    no_cm_install: Optional[bool] = None,
     force: Optional[bool] = None,
     **kwargs,
 ) -> Optional[List[dict]]:
@@ -269,6 +270,7 @@ def upgrade_instance(
         cm_version=cm_version,
         cm_train=cm_train,
         cm_config_sync_mode=cm_config_sync_mode,
+        no_cm_install=no_cm_install,
         force=force,
         **kwargs,
     )

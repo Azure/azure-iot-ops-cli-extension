@@ -7,8 +7,10 @@
 from sys import maxsize
 from time import sleep
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from uuid import uuid4
 
 from azure.cli.core.azclierror import ArgumentUsageError
+from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
 from rich import print
 from rich.console import NewLine
@@ -87,6 +89,9 @@ class DeletionManager:
         # Ensure cluster exists with existing resource_map pattern.
         self.resource_map.connected_cluster.resource
         self.resource_map.refresh_resource_state()
+        self.correlation_id = str(uuid4())
+        self.headers = {"x-ms-correlation-request-id": self.correlation_id, "CommandName": "iot ops delete"}
+
         self._display_resource_tree()
 
         should_bail = not should_continue_prompt(confirm_yes=confirm_yes)
@@ -112,6 +117,7 @@ class DeletionManager:
 
     def _display_resource_tree(self):
         if self._render_progress:
+            logger.info(f"Deletion correlation Id: {self.correlation_id}")
             print(self.resource_map.build_tree(include_dependencies=self.include_dependencies, category_color="red"))
 
     def _render_display(self, description: str):
@@ -228,11 +234,15 @@ class DeletionManager:
         return batched_work
 
     def _delete_batch(self, resource_batch: List[IoTOperationsResource]) -> Tuple["LROPoller"]:
-        return wait_for_terminal_states(
-            *[
-                self.resource_client.resources.begin_delete_by_id(
-                    resource_id=resource.resource_id, api_version=resource.api_version
-                )
-                for resource in resource_batch
-            ]
-        )
+        try:
+            return wait_for_terminal_states(
+                *[
+                    self.resource_client.resources.begin_delete_by_id(
+                        resource_id=resource.resource_id, api_version=resource.api_version, headers=self.headers
+                    )
+                    for resource in resource_batch
+                ]
+            )
+        except HttpResponseError:
+            logger.error(f"Correlation Id for failed deletion: {self.headers['x-ms-correlation-request-id']}")
+            raise
