@@ -6,6 +6,7 @@
 
 import pytest
 
+from azext_edge.edge.providers.orchestration.common import TrustedSigningKeyType
 from azext_edge.tests.generators import generate_random_string
 from azext_edge.tests.helpers import run
 from azext_edge.tests.settings import EnvironmentVariables
@@ -415,20 +416,25 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         raise
 
 
-def test_registry_endpoint_trusted_signing_key(registry_endpoint_test_setup, tracked_resources):
-    """Test complete lifecycle of registry endpoint with trusted signing settings."""
+def test_registry_endpoint_code_signing_cas(registry_endpoint_test_setup, tracked_resources):
+    """Test complete lifecycle of registry endpoint with code signing CAs."""
     resource_group = registry_endpoint_test_setup["resourceGroup"]
     instance_name = registry_endpoint_test_setup["instanceName"]
     registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
     host = "trustregistry.azurecr.io"
-    trust_configmap = "my-trust-configmap"
+
+    # Define test values
+    configmap1 = "configmap1"
+    configmap2 = "configmap2"
+    secret1 = "secret1"
+    secret2 = "secret2"
 
     try:
-        # CREATE - with trusted signing configmap
+        # CREATE - with one configmap
         registry_endpoint = run(
             f"az iot ops registry add -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
-            f"--host {host} --trust-config-map-ref {trust_configmap}"
+            f"--host {host} --cs-config-map-refs {configmap1}"
         )
         tracked_resources.append(registry_endpoint["id"])
 
@@ -441,30 +447,18 @@ def test_registry_endpoint_trusted_signing_key(registry_endpoint_test_setup, tra
             auth_method="SystemAssignedManagedIdentity",
         )
 
-        # Verify trust settings
-        trust_settings = registry_endpoint["properties"].get("trustSettings")
-        assert trust_settings is not None
-        trusted_signing_keys = trust_settings.get("trustedSigningKeys")
-        assert trusted_signing_keys is not None
-        assert trusted_signing_keys.get("configMapRef") == trust_configmap
-        assert trusted_signing_keys.get("type") == "ConfigMap"
+        # Verify single configmap type
+        code_signing_cas = registry_endpoint["properties"].get("codeSigningCas")
+        assert code_signing_cas is not None
+        assert len(code_signing_cas) == 1
+        assert code_signing_cas[0]["type"] == TrustedSigningKeyType.CONFIGMAP.value
+        assert code_signing_cas[0]["configMapRef"] == configmap1
 
-        # UPDATE - test mutual exclusivity
-        with pytest.raises(Exception) as exc_info:
-            run(
-                f"az iot ops registry update -n {registry_endpoint_name} "
-                f"-g {resource_group} --instance {instance_name} "
-                f"--host {host} --trust-config-map-ref my-configmap --trust-secret-ref my-secret"
-            )
-        # The CLI should fail with the mutual exclusivity error
-        assert exc_info.value.error_msg is not None
-
-        # UPDATE - switch to signing secret instead of configmap
-        trust_secret = "my-trust-secret"
+        # UPDATE - two configmaps and one secret ref
         updated_endpoint = run(
             f"az iot ops registry update -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
-            f"--trust-secret-ref {trust_secret}"
+            f"--cs-config-map-refs {configmap1} {configmap2} --cs-secret-refs {secret1}"
         )
 
         assert_registry_endpoint(
@@ -476,15 +470,47 @@ def test_registry_endpoint_trusted_signing_key(registry_endpoint_test_setup, tra
             auth_method="SystemAssignedManagedIdentity",
         )
 
-        # Verify trust settings were updated
-        trust_settings = updated_endpoint["properties"].get("trustSettings")
-        assert trust_settings is not None
-        trusted_signing_keys = trust_settings.get("trustedSigningKeys")
-        assert trusted_signing_keys is not None
-        assert trusted_signing_keys.get("secretRef") == trust_secret
-        assert trusted_signing_keys.get("type") == "Secret"
-        # Ensure configMapRef is no longer present
-        assert "configMapRef" not in trusted_signing_keys
+        code_signing_cas = updated_endpoint["properties"].get("codeSigningCas")
+        assert code_signing_cas is not None
+        assert len(code_signing_cas) == 3
+
+        configmap_refs = [ca for ca in code_signing_cas if ca["type"] == TrustedSigningKeyType.CONFIGMAP.value]
+        secret_refs = [ca for ca in code_signing_cas if ca["type"] == TrustedSigningKeyType.SECRET.value]
+
+        assert len(configmap_refs) == 2
+        assert len(secret_refs) == 1
+        assert any(ca["configMapRef"] == configmap1 for ca in configmap_refs)
+        assert any(ca["configMapRef"] == configmap2 for ca in configmap_refs)
+        assert secret_refs[0]["secretRef"] == secret1
+
+        # UPDATE - remove configmaps, add second secret ref
+        updated_endpoint = run(
+            f"az iot ops registry update -n {registry_endpoint_name} "
+            f"-g {resource_group} --instance {instance_name} "
+            f"--cs-secret-refs {secret1} {secret2}"
+        )
+
+        code_signing_cas = updated_endpoint["properties"].get("codeSigningCas")
+        assert len(code_signing_cas) == 2
+
+        configmap_refs = [ca for ca in code_signing_cas if ca["type"] == TrustedSigningKeyType.CONFIGMAP.value]
+        secret_refs = [ca for ca in code_signing_cas if ca["type"] == TrustedSigningKeyType.SECRET.value]
+
+        assert len(configmap_refs) == 0
+        assert len(secret_refs) == 2
+        assert any(ca["secretRef"] == secret1 for ca in secret_refs)
+        assert any(ca["secretRef"] == secret2 for ca in secret_refs)
+
+        # UPDATE - remove all code signing CAs
+        updated_endpoint = run(
+            f"az iot ops registry update -n {registry_endpoint_name} "
+            f"-g {resource_group} --instance {instance_name} "
+            f"--cs-config-map-refs --cs-secret-refs"
+        )
+
+        # Verify code signing CAs are cleared
+        code_signing_cas = updated_endpoint["properties"].get("codeSigningCas")
+        assert code_signing_cas is None or len(code_signing_cas) == 0
 
         # REMOVE
         run(
@@ -505,25 +531,6 @@ def test_registry_endpoint_trusted_signing_key(registry_endpoint_test_setup, tra
             except Exception:
                 pass
         raise
-
-
-def test_registry_endpoint_trusted_signing_mutual_exclusivity(registry_endpoint_test_setup, tracked_resources):
-    """Test that specifying both configmap and secret raises an error."""
-    resource_group = registry_endpoint_test_setup["resourceGroup"]
-    instance_name = registry_endpoint_test_setup["instanceName"]
-    registry_endpoint_name = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
-    host = "trustregistry.azurecr.io"
-
-    # Test mutual exclusivity on add
-    with pytest.raises(Exception) as exc_info:
-        run(
-            f"az iot ops registry add -n {registry_endpoint_name} "
-            f"-g {resource_group} --instance {instance_name} "
-            f"--host {host} --trust-config-map-ref my-configmap --trust-secret-ref my-secret"
-        )
-
-    # The CLI should fail with the mutual exclusivity error
-    assert exc_info.value.error_msg is not None
 
 
 def assert_registry_endpoint(endpoint: dict, **expected):

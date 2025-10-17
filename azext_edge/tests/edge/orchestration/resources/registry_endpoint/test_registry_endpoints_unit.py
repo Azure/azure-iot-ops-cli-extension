@@ -857,62 +857,81 @@ def test_registry_endpoint_update_host_and_auth(mocked_cmd, mocked_responses: re
     assert len(mocked_responses.calls) == 2  # GET + PUT
 
 
-class TestRegistryEndpointsTrustedSigningKey:
-    """Test class for RegistryEndpoints trusted signing key functionality."""
+class TestRegistryEndpointsCodeSigningCas:
+    """Test class for RegistryEndpoints code signing CAs functionality."""
 
-    def test_process_trusted_signing_key_none(self, mocked_cmd):
-        """Test _process_trusted_signing_key returns None when no parameters provided."""
+    def test_process_code_signing_cas_none(self, mocked_cmd):
+        """Test _process_code_signing_cas returns None when no parameters provided."""
         registry_endpoints = RegistryEndpoints(cmd=mocked_cmd)
 
-        result = registry_endpoints._process_trusted_signing_key()
+        result = registry_endpoints._process_code_signing_cas()
         assert result is None
 
-    def test_process_trusted_signing_key_configmap(self, mocked_cmd):
-        """Test _process_trusted_signing_key with configmap reference."""
+    def test_process_code_signing_cas_configmap_refs(self, mocked_cmd):
+        """Test _process_code_signing_cas with configmap references."""
         registry_endpoints = RegistryEndpoints(cmd=mocked_cmd)
 
-        result = registry_endpoints._process_trusted_signing_key(trusted_signing_configmap_key="my-configmap")
+        result = registry_endpoints._process_code_signing_cas(code_signing_configmap_refs=["configmap1", "configmap2"])
 
-        expected = {
-            "trustedSigningKeys": {
-                "configMapRef": "my-configmap",
+        expected = [
+            {
                 "type": "ConfigMap",
+                "configMapRef": "configmap1",
+            },
+            {
+                "type": "ConfigMap",
+                "configMapRef": "configmap2",
             }
-        }
+        ]
         assert result == expected
 
-    def test_process_trusted_signing_key_secret(self, mocked_cmd):
-        """Test _process_trusted_signing_key with secret reference."""
+    def test_process_code_signing_cas_secret_refs(self, mocked_cmd):
+        """Test _process_code_signing_cas with secret references."""
         registry_endpoints = RegistryEndpoints(cmd=mocked_cmd)
 
-        result = registry_endpoints._process_trusted_signing_key(trusted_signing_secret_key="my-secret")
+        result = registry_endpoints._process_code_signing_cas(code_signing_secret_refs=["secret1", "secret2"])
 
-        expected = {
-            "trustedSigningKeys": {
-                "secretRef": "my-secret",
+        expected = [
+            {
                 "type": "Secret",
+                "secretRef": "secret1",
+            },
+            {
+                "type": "Secret",
+                "secretRef": "secret2",
             }
-        }
+        ]
         assert result == expected
 
-    def test_process_trusted_signing_key_mutually_exclusive(self, mocked_cmd):
-        """Test _process_trusted_signing_key raises error when both configmap and secret provided."""
+    def test_process_code_signing_cas_mixed_refs(self, mocked_cmd):
+        """Test _process_code_signing_cas with both configmap and secret references."""
         registry_endpoints = RegistryEndpoints(cmd=mocked_cmd)
 
-        with pytest.raises(MutuallyExclusiveArgumentError):
-            registry_endpoints._process_trusted_signing_key(
-                trusted_signing_configmap_key="my-configmap",
-                trusted_signing_secret_key="my-secret",
-            )
+        result = registry_endpoints._process_code_signing_cas(
+            code_signing_configmap_refs=["configmap1"],
+            code_signing_secret_refs=["secret1"],
+        )
+
+        expected = [
+            {
+                "type": "ConfigMap",
+                "configMapRef": "configmap1",
+            },
+            {
+                "type": "Secret",
+                "secretRef": "secret1",
+            },
+        ]
+        assert result == expected
 
 
-def test_registry_endpoint_add_with_trust_configmap(mocked_cmd, mocked_responses: responses):
-    """Test adding a registry endpoint with trusted signing configmap."""
+def test_registry_endpoint_add_with_code_signing_configmap(mocked_cmd, mocked_responses: responses):
+    """Test adding a registry endpoint with code signing ConfigMap CAs."""
     registry_endpoint_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
     host = "myregistry.azurecr.io"
-    trust_configmap = "my-trust-configmap"
+    code_signing_configmaps = ["configmap1", "configmap2"]
 
     # Mock the instance record for extended location retrieval
     mock_instance_record = get_mock_instance_record(
@@ -932,19 +951,23 @@ def test_registry_endpoint_add_with_trust_configmap(mocked_cmd, mocked_responses
         content_type="application/json",
     )
 
-    # Create expected record with trust settings
+    # Create expected record with code signing CAs
     mock_registry_record = get_mock_registry_endpoint_record(
         registry_endpoint_name=registry_endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         host=host,
     )
-    mock_registry_record["properties"]["trustSettings"] = {
-        "trustedSigningKeys": {
-            "configMapRef": trust_configmap,
+    mock_registry_record["properties"]["codeSigningCas"] = [
+        {
             "type": "ConfigMap",
+            "configMapRef": "configmap1",
+        },
+        {
+            "type": "ConfigMap",
+            "configMapRef": "configmap2",
         }
-    }
+    ]
 
     mocked_responses.add(
         method=responses.PUT,
@@ -964,26 +987,29 @@ def test_registry_endpoint_add_with_trust_configmap(mocked_cmd, mocked_responses
         resource_group_name=resource_group_name,
         registry_endpoint_name=registry_endpoint_name,
         host=host,
-        trusted_signing_configmap_key=trust_configmap,
+        code_signing_configmap_refs=code_signing_configmaps,
         wait_sec=0,
     )
 
     assert result == mock_registry_record
     assert len(mocked_responses.calls) == 2  # GET instance + PUT registry
 
-    # Verify trust settings in the result
-    trust_settings = result["properties"]["trustSettings"]
-    assert trust_settings["trustedSigningKeys"]["configMapRef"] == trust_configmap
-    assert trust_settings["trustedSigningKeys"]["type"] == "ConfigMap"
+    # Verify code signing CAs in the result
+    cas = result["properties"]["codeSigningCas"]
+    assert len(cas) == 2
+    assert cas[0]["configMapRef"] == "configmap1"
+    assert cas[0]["type"] == "ConfigMap"
+    assert cas[1]["configMapRef"] == "configmap2"
+    assert cas[1]["type"] == "ConfigMap"
 
 
-def test_registry_endpoint_add_with_trust_secret(mocked_cmd, mocked_responses: responses):
-    """Test adding a registry endpoint with trusted signing secret."""
+def test_registry_endpoint_add_with_code_signing_secret(mocked_cmd, mocked_responses: responses):
+    """Test adding a registry endpoint with code signing Secret CAs."""
     registry_endpoint_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
     host = "myregistry.azurecr.io"
-    trust_secret = "my-trust-secret"
+    code_signing_secrets = ["secret1"]
 
     # Mock the instance record for extended location retrieval
     mock_instance_record = get_mock_instance_record(
@@ -1003,19 +1029,19 @@ def test_registry_endpoint_add_with_trust_secret(mocked_cmd, mocked_responses: r
         content_type="application/json",
     )
 
-    # Create expected record with trust settings
+    # Create expected record with code signing CAs
     mock_registry_record = get_mock_registry_endpoint_record(
         registry_endpoint_name=registry_endpoint_name,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         host=host,
     )
-    mock_registry_record["properties"]["trustSettings"] = {
-        "trustedSigningKeys": {
-            "secretRef": trust_secret,
+    mock_registry_record["properties"]["codeSigningCas"] = [
+        {
             "type": "Secret",
+            "secretRef": "secret1",
         }
-    }
+    ]
 
     mocked_responses.add(
         method=responses.PUT,
@@ -1035,25 +1061,26 @@ def test_registry_endpoint_add_with_trust_secret(mocked_cmd, mocked_responses: r
         resource_group_name=resource_group_name,
         registry_endpoint_name=registry_endpoint_name,
         host=host,
-        trusted_signing_secret_key=trust_secret,
+        code_signing_secret_refs=code_signing_secrets,
         wait_sec=0,
     )
 
     assert result == mock_registry_record
     assert len(mocked_responses.calls) == 2  # GET instance + PUT registry
 
-    # Verify trust settings in the result
-    trust_settings = result["properties"]["trustSettings"]
-    assert trust_settings["trustedSigningKeys"]["secretRef"] == trust_secret
-    assert trust_settings["trustedSigningKeys"]["type"] == "Secret"
+    # Verify code signing CAs in the result
+    cas = result["properties"]["codeSigningCas"]
+    assert len(cas) == 1
+    assert cas[0]["secretRef"] == "secret1"
+    assert cas[0]["type"] == "Secret"
 
 
-def test_registry_endpoint_update_with_trust_configmap(mocked_cmd, mocked_responses: responses):
-    """Test updating a registry endpoint with trusted signing configmap."""
+def test_registry_endpoint_update_with_code_signing_configmap(mocked_cmd, mocked_responses: responses):
+    """Test updating a registry endpoint with code signing ConfigMap CAs."""
     registry_endpoint_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
-    trust_configmap = "my-trust-configmap"
+    code_signing_configmaps = ["configmap1"]
 
     # Mock existing registry endpoint
     existing_record = get_mock_registry_endpoint_record(
@@ -1075,14 +1102,14 @@ def test_registry_endpoint_update_with_trust_configmap(mocked_cmd, mocked_respon
         content_type="application/json",
     )
 
-    # Create updated record with trust settings
+    # Create updated record with code signing CAs
     updated_record = existing_record.copy()
-    updated_record["properties"]["trustSettings"] = {
-        "trustedSigningKeys": {
-            "configMapRef": trust_configmap,
+    updated_record["properties"]["codeSigningCas"] = [
+        {
             "type": "ConfigMap",
+            "configMapRef": "configmap1",
         }
-    }
+    ]
 
     # Mock the PUT call to update endpoint
     mocked_responses.add(
@@ -1102,25 +1129,26 @@ def test_registry_endpoint_update_with_trust_configmap(mocked_cmd, mocked_respon
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         registry_endpoint_name=registry_endpoint_name,
-        trusted_signing_configmap_key=trust_configmap,
+        code_signing_configmap_refs=code_signing_configmaps,
         wait_sec=0,
     )
 
     assert result == updated_record
     assert len(mocked_responses.calls) == 2  # GET + PUT
 
-    # Verify trust settings in the result
-    trust_settings = result["properties"]["trustSettings"]
-    assert trust_settings["trustedSigningKeys"]["configMapRef"] == trust_configmap
-    assert trust_settings["trustedSigningKeys"]["type"] == "ConfigMap"
+    # Verify code signing CAs in the result
+    cas = result["properties"]["codeSigningCas"]
+    assert len(cas) == 1
+    assert cas[0]["configMapRef"] == "configmap1"
+    assert cas[0]["type"] == "ConfigMap"
 
 
-def test_registry_endpoint_update_with_trust_secret(mocked_cmd, mocked_responses: responses):
-    """Test updating a registry endpoint with trusted signing secret."""
+def test_registry_endpoint_update_with_code_signing_secret(mocked_cmd, mocked_responses: responses):
+    """Test updating a registry endpoint with code signing Secret CAs."""
     registry_endpoint_name = generate_random_string()
     instance_name = generate_random_string()
     resource_group_name = generate_random_string()
-    trust_secret = "my-trust-secret"
+    code_signing_secrets = ["secret1"]
 
     # Mock existing registry endpoint
     existing_record = get_mock_registry_endpoint_record(
@@ -1142,14 +1170,14 @@ def test_registry_endpoint_update_with_trust_secret(mocked_cmd, mocked_responses
         content_type="application/json",
     )
 
-    # Create updated record with trust settings
+    # Create updated record with code signing CAs
     updated_record = existing_record.copy()
-    updated_record["properties"]["trustSettings"] = {
-        "trustedSigningKeys": {
-            "secretRef": trust_secret,
+    updated_record["properties"]["codeSigningCas"] = [
+        {
             "type": "Secret",
+            "secretRef": "secret1",
         }
-    }
+    ]
 
     # Mock the PUT call to update endpoint
     mocked_responses.add(
@@ -1169,14 +1197,15 @@ def test_registry_endpoint_update_with_trust_secret(mocked_cmd, mocked_responses
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         registry_endpoint_name=registry_endpoint_name,
-        trusted_signing_secret_key=trust_secret,
+        code_signing_secret_refs=code_signing_secrets,
         wait_sec=0,
     )
 
     assert result == updated_record
     assert len(mocked_responses.calls) == 2  # GET + PUT
 
-    # Verify trust settings in the result
-    trust_settings = result["properties"]["trustSettings"]
-    assert trust_settings["trustedSigningKeys"]["secretRef"] == trust_secret
-    assert trust_settings["trustedSigningKeys"]["type"] == "Secret"
+    # Verify code signing CAs in the result
+    cas = result["properties"]["codeSigningCas"]
+    assert len(cas) == 1
+    assert cas[0]["secretRef"] == "secret1"
+    assert cas[0]["type"] == "Secret"
