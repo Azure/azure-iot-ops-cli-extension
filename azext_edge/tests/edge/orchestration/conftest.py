@@ -75,6 +75,7 @@ def mocked_sleep(mocker):
     patched = {
         "az_client.sleep": mocker.patch("azext_edge.edge.util.az_client.sleep", autospec=True),
         "work.sleep": mocker.patch("azext_edge.edge.providers.orchestration.work.sleep", autospec=True),
+        "upgrade.sleep": mocker.patch("azext_edge.edge.providers.orchestration.upgrade2.sleep", autospec=True),
     }
     yield patched
 
