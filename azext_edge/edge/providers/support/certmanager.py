@@ -29,9 +29,10 @@ CERT_DIRECTORY_PATH = CERTMANAGER_API_V1.moniker
 # No common label for azuremonitor
 CERT_MANAGER_NAMESPACE = "cert-manager"
 TRUST_BUNDLE_LABEL = "trust.cert-manager.io/bundle"
-CERT_MANAGER_WEBHOOK_NAME = "aio-cert-manager-webhook"
+CERT_MANAGER_WEBHOOK_NAME = "cert-manager-webhook"
 CERT_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR = RESOURCE_NAME_FIELD_FORMAT.format(name=CERT_MANAGER_WEBHOOK_NAME)
-TRUST_MANAGER_WEBHOOK_LABEL = NAME_LABEL_FORMAT.format(label="aio-trust-manager")
+TRUST_MANAGER_WEBHOOK_NAME = "trust-manager"
+TRUST_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR = RESOURCE_NAME_FIELD_FORMAT.format(name=TRUST_MANAGER_WEBHOOK_NAME)
 
 
 def fetch_deployments():
@@ -84,7 +85,7 @@ def fetch_validating_webhooks():
     results.extend(
         process_validating_webhook_configurations(
             directory_path=CERT_DIRECTORY_PATH,
-            label_selector=TRUST_MANAGER_WEBHOOK_LABEL,
+            field_selector=TRUST_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
         )
     )
     results.extend(

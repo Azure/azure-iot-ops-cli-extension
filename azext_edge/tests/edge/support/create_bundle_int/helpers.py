@@ -445,7 +445,7 @@ def get_file_map(
     elif ops_service == "acs":
         if acstor_namespace:
             # resources in both acstor_namespace and acs_namespace
-            assert len(walk_result) == 2 + num_additional_services, f"walk result keys: {walk_result.keys()}"
+            assert len(walk_result) == 1 + num_additional_services, f"walk result keys: {walk_result.keys()}"
             acstor_path = path.join(BASE_ZIP_PATH, acstor_namespace, "containerstorage")
             file_map["acstor"] = convert_file_names(walk_result[acstor_path]["files"])
             file_map["__namespaces__"]["acstor"] = acstor_namespace
@@ -456,9 +456,10 @@ def get_file_map(
             # TODO: should probably have a better way of determining something is not there (as in rely on something
             # beyond folder structure)
             pytest.skip(f"No bundles created for {ops_service}.")
-        acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
-        file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
-        file_map["__namespaces__"]["acs"] = acs_namespace
+        if acs_namespace:
+            acs_path = path.join(BASE_ZIP_PATH, acs_namespace, "arccontainerstorage")
+            file_map["acs"] = convert_file_names(walk_result[acs_path]["files"])
+            file_map["__namespaces__"]["acs"] = acs_namespace
 
         # no files for aio, skip the rest assertions
         return file_map
@@ -772,9 +773,12 @@ def _clean_up_folders(
         or acs_namespace
         and path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace) in walk_result
     ):
-        services = [OpsServiceType.certmanager.value] if certmanager_namespace else []
+        services = []
         level_1 = walk_result.pop(path.join(BASE_ZIP_PATH, acstor_namespace or acs_namespace))
 
+        # Only add certmanager if the folder actually exists
+        if certmanager_namespace and OpsServiceType.certmanager.value in level_1["folders"]:
+            services.append(OpsServiceType.certmanager.value)
         if acs_namespace:
             services.append("arccontainerstorage")
         if (
