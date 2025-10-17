@@ -86,7 +86,7 @@ def fetch_validating_webhooks():
     results.extend(
         process_validating_webhook_configurations(
             directory_path=CERT_DIRECTORY_PATH,
-            field_selector=TRUST_MANAGER_WEBHOOK_NAME_FIELD_SELECTOR,
+            label_selector=TRUST_MANAGER_WEBHOOK_LABEL,
         )
     )
     results.extend(
