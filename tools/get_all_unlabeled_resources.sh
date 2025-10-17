@@ -32,7 +32,7 @@ RESOURCE_TYPES=(
     "statefulsets"
     "daemonsets"
     "configmaps"
-    "secrets"
+    # "secrets"
     "serviceaccounts"
     "persistentvolumeclaims"
     "jobs"
