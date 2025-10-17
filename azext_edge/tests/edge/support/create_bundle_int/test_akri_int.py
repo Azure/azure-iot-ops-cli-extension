@@ -14,12 +14,12 @@ logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
 AKRI_PREFIXES = [
-    "aio-akri", 
-    "aiomedia", 
-    "aioonvif", 
+    "aio-akri",
+    "aiomedia",
+    "aioonvif",
     "media-connector-template",
-    "onvif-connector-template", 
-    "rest-connector-template", 
+    "onvif-connector-template",
+    "rest-connector-template",
     "sse-connector-template"
 ]
 AKRI_WORKLOAD_TYPES = [

@@ -380,7 +380,7 @@ def get_all_kinds_from_manager(
     return result - set(exclude_kinds)
 
 
-def get_file_map(
+def get_file_map(  # noqa: C901
     walk_result: Dict[str, Dict[str, List[str]]],
     ops_service: str,
     mq_traces: bool = False,
