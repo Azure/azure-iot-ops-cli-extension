@@ -375,7 +375,8 @@ def get_all_kinds_from_manager(
     exclude_kinds = exclude_kinds or []
     result = set()
     for api in manager.resource_apis:
-        result.update(api.kinds)
+        if api.kinds:
+            result.update(api.kinds)
     return result - set(exclude_kinds)
 
 

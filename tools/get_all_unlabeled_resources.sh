@@ -1,6 +1,7 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 
 # Script to find Kubernetes resources with specific keywords but WITHOUT their corresponding labels
+# Compatible with bash 4+ and zsh
 
 # Color codes
 GREEN='\033[0;32m'      # Green for correct labels
@@ -50,8 +51,8 @@ matches_keyword() {
     local keywords=$2
     local name_lower=$(echo "${name}" | tr '[:upper:]' '[:lower:]')
     
-    # Split keywords by |
-    IFS='|' read -rA keyword_array <<< "${keywords}"
+    # Split keywords by | (compatible with both bash and zsh)
+    IFS='|' read -ra keyword_array <<< "${keywords}"
     for keyword in "${keyword_array[@]}"; do
         if echo "${name_lower}" | grep -q "${keyword}"; then
             return 0
@@ -98,7 +99,8 @@ is_label_valid() {
 }
 
 # Check each keyword-label pair
-for keywords_pattern in "${(@k)KEYWORD_LABEL_MAP}"; do
+# Compatible iteration over associative array keys (works in both bash and zsh)
+for keywords_pattern in "${!KEYWORD_LABEL_MAP[@]}"; do
     expected_label="${KEYWORD_LABEL_MAP[$keywords_pattern]}"
     
     echo "========================================"
