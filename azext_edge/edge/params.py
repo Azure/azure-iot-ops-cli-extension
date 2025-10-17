@@ -1467,6 +1467,13 @@ def load_iotops_arguments(self, _):
             arg_group="Extension Config",
             deprecate_info=context.deprecate(hide=True),
         )
+        context.argument(
+            "no_cm_install",
+            options_list=["--no-cm-install"],
+            help="Flag to disable cert-manager arc extension installation.",
+            arg_type=get_three_state_flag(),
+            arg_group="Extension Config",
+        )
 
     with self.argument_context("iot ops delete") as context:
         context.argument(

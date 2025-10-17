@@ -65,6 +65,7 @@ def upgrade_ops_instance(
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
     force: Optional[bool] = None,
+    no_cm_install: Optional[bool] = None,
     **kwargs,
 ):
     upgrade_manager = UpgradeManager(
@@ -74,6 +75,7 @@ def upgrade_ops_instance(
         adr_namespace_resource_id=adr_namespace_resource_id,
         no_progress=no_progress,
         force=force,
+        no_cm_install=no_cm_install,
     )
 
     upgrade_state = upgrade_manager.analyze_cluster(**kwargs)
@@ -101,12 +103,14 @@ class UpgradeManager:
         adr_namespace_resource_id: Optional[str] = None,
         no_progress: Optional[bool] = None,
         force: Optional[bool] = None,
+        no_cm_install: Optional[bool] = None,
     ):
         self.cmd = cmd
         self.instance_name = instance_name
         self.resource_group_name = resource_group_name
         self.no_progress = no_progress
         self.force = force
+        self.no_cm_install = no_cm_install
         self.instances = Instances(self.cmd)
         self.registry_endpoints = RegistryEndpoints(self.cmd)
         self.instance_record = self.instances.show(
@@ -167,6 +171,7 @@ class UpgradeManager:
                 registry_endpoint_check=self._check_default_registry_needed,
                 secretsync_migration=self.secretsync_migration,
                 force=self.force,
+                no_cm_install=self.no_cm_install,
             )
 
     def _check_default_registry_needed(self) -> bool:
@@ -491,6 +496,20 @@ def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):  # noqa: C901
     try:
         table = get_default_table()
 
+        # Check if cert-manager installation was skipped due to --no-cm-install
+        if upgrade_state.no_cm_install and upgrade_state._is_target_version_above_migration_threshold():
+            has_certmanager = bool(upgrade_state.extensions_map.get(EXTENSION_TYPE_CM))
+
+            # Would have installed certManager if not for no_cm_install flag
+            if not has_certmanager:
+                table.add_row(
+                    "certManager",
+                    "[dim]Not Installed[/dim]",
+                    "[yellow]Skipped[/yellow]",
+                    "[yellow]Installation disabled by --no-cm-install[/yellow]",
+                )
+                table.add_section()
+
         # Add extension rows
         for ext in upgrade_state.extension_upgrades:
             if not ext.can_upgrade():
@@ -642,6 +661,7 @@ class ClusterUpgradeState:
         registry_endpoint_check: Optional[callable] = None,
         secretsync_migration: Optional["SecretSyncMigrationManager"] = None,
         force: Optional[bool] = None,
+        no_cm_install: Optional[bool] = None,
     ):
         self.extensions_map = extensions_map
         self.init_version_map = init_version_map
@@ -652,6 +672,7 @@ class ClusterUpgradeState:
         self.registry_endpoint_check = registry_endpoint_check
         self.secretsync_migration = secretsync_migration
         self.force = force
+        self.no_cm_install = no_cm_install
         self.semver = scoped_semver_import()
         self.extension_upgrades = self._refresh_upgrade_state()
         self.instance_upgrade = self._check_instance_upgrade()
@@ -847,7 +868,11 @@ class ClusterUpgradeState:
         1. CertManager extension doesn't exist
         2. Platform extension doesn't exist OR is being deleted
         3. Target IoT Operations version v2
+        4. no_cm_install is not True (i.e., cert-manager installation is not disabled)
         """
+        if self.no_cm_install:
+            return False
+
         has_certmanager = bool(self.extensions_map.get(EXTENSION_TYPE_CM))
         if has_certmanager:
             return False

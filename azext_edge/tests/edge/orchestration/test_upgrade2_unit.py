@@ -1311,6 +1311,85 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                 ),
             },
         ),
+        # ========== no_cm_install flag tests ==========
+        (
+            UpgradeScenario("No CM Install: Skip cert-manager creation during v2 migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=True),
+            {
+                # Platform is deleted, but CM is NOT created due to no_cm_install
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("No CM Install: Skip cert-manager when platform already deleted")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=True),
+            {
+                # No CM creation due to no_cm_install
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("No CM Install: No effect when cert-manager already exists")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, ext_vers="0.5.0")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=True),
+            {
+                # Platform deleted, CM updated normally (no_cm_install only affects creation)
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("No CM Install: No effect when target version < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.82", no_cm_install=True),
+            {
+                # Target version doesn't trigger migration, so no_cm_install has no effect
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
+            },
+        ),
+        (
+            UpgradeScenario("No CM Install: Works with other migrations (registry, secretsync)")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=True)
+            .set_auxiliary_kwargs(default_registry_exists=False, secretsync_migration_needed=True),
+            {
+                # No CM creation, but other migrations still happen
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("No CM Install: False explicitly allows cert-manager creation")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=False),
+            {
+                # no_cm_install=False (explicit) should create CM normally
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
         # ========== ADR Namespace ==========
         (
             UpgradeScenario("ADR Required: Migration to v2 without ADR namespace")
