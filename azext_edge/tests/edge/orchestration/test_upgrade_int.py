@@ -13,6 +13,7 @@ import pytest
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_ALIAS_TO_TYPE_MAP,
     EXTENSION_TYPE_ACS,
+    EXTENSION_MONIKER_PLATFORM,
 )
 from azext_edge.edge.util import parse_kvp_nargs
 
@@ -20,7 +21,9 @@ from ...generators import generate_random_string
 from ...helpers import process_additional_args, run, strip_quotes
 
 EXTENSION_TYPE_TO_ALIAS_MAP = {
-    val: key for key, val in EXTENSION_ALIAS_TO_TYPE_MAP.items() if val != EXTENSION_TYPE_ACS
+    val: key
+    for key, val in EXTENSION_ALIAS_TO_TYPE_MAP.items()
+    if val not in [EXTENSION_TYPE_ACS, EXTENSION_MONIKER_PLATFORM]
 }
 EXTENSIONS = list(EXTENSION_TYPE_TO_ALIAS_MAP.values())
 

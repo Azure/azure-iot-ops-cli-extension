@@ -39,7 +39,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/azure/azure-iot-ops-cli-extension"
+homepage = "https://github.com/azure/azure-iot-ops-cli-extension"
 
 [tool.setuptools.dynamic]
 version = { attr = "azext_edge.constants.VERSION" }
