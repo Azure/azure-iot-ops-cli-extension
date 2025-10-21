@@ -1851,7 +1851,7 @@ class CloneAssertor:
             target_adr_api = DeviceRegistryMgmtApiVersion.V20241101
         elif parsed_version < semver.parse("1.3.0"):
             target_iotops_api = IoTOpsMgmtApiVersion.V20251001
-            target_adr_api = DeviceRegistryMgmtApiVersion.V20250701_preview
+            target_adr_api = DeviceRegistryMgmtApiVersion.V20251001
 
         assert target_iotops_api.value == self.api_config.iotops_mgmt_api
         assert target_adr_api.value == self.api_config.registry_mgmt_api
