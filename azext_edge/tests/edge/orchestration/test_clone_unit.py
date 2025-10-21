@@ -1718,8 +1718,8 @@ def _replace_generic_resource(context: dict, **kwargs: dict) -> dict:
 def _get_asset_api_version(**kwargs: dict) -> str:
     v2_enabled = kwargs.get("v2_enabled", False)
     if v2_enabled:
-        return "2025-07-01-preview"
-    return "2024-11-01"
+        return DeviceRegistryMgmtApiVersion.V20251001.value
+    return DeviceRegistryMgmtApiVersion.V20241101.value
 
 
 def _get_ns_asset_name(**kwargs: dict) -> str:
@@ -1877,21 +1877,15 @@ class CloneAssertor:
 
         if self.api_config.v2_enabled:
             # For v2: certManager, secretStore, iotOperations (and optionally containerStorage)
-            extension_order = []
-            if EXT_NAME_CM in self.resource_configs["extensions"]:
-                extension_order.append(self.resource_configs["extensions"][EXT_NAME_CM])
-            if EXT_NAME_ACS in self.resource_configs["extensions"]:
-                extension_order.append(self.resource_configs["extensions"][EXT_NAME_ACS])
-            if EXT_NAME_SSC in self.resource_configs["extensions"]:
-                extension_order.append(self.resource_configs["extensions"][EXT_NAME_SSC])
-            if EXT_NAME_OPS in self.resource_configs["extensions"]:
-                extension_order.append(self.resource_configs["extensions"][EXT_NAME_OPS])
+            ext_check_order = [EXT_NAME_CM, EXT_NAME_ACS, EXT_NAME_SSC, EXT_NAME_OPS]
         else:
             # For v1: platform, containerStorage, secretStore, iotOperations
-            extension_order = []
-            for ext_name in [EXT_NAME_PLAT, EXT_NAME_ACS, EXT_NAME_SSC, EXT_NAME_OPS]:
-                if ext_name in self.resource_configs["extensions"]:
-                    extension_order.append(self.resource_configs["extensions"][ext_name])
+            ext_check_order = [EXT_NAME_PLAT, EXT_NAME_ACS, EXT_NAME_SSC, EXT_NAME_OPS]
+
+        extension_order = []
+        for ext_name in ext_check_order:
+            if ext_name in self.resource_configs["extensions"]:
+                extension_order.append(self.resource_configs["extensions"][ext_name])
 
         for i in range(len(expected_ext_keys)):
             key_name = expected_ext_keys[i]
