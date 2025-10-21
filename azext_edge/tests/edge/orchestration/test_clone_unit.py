@@ -44,6 +44,11 @@ from azext_edge.edge.providers.orchestration.clone import (
     get_fc_name,
 )
 from azext_edge.edge.providers.orchestration.common import (
+    EXTENSION_MONIKER_ACS,
+    EXTENSION_MONIKER_CM,
+    EXTENSION_MONIKER_OPS,
+    EXTENSION_MONIKER_PLATFORM,
+    EXTENSION_MONIKER_SSC,
     EXTENSION_TYPE_ACS,
     EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
@@ -1507,66 +1512,49 @@ EXPECTED_PARAMETER_KEYS = {
 
 
 def get_expected_ext_resource_map(v2_enabled: bool) -> dict:
-    """Get expected extension resource map based on API version."""
-    base_map = {}
+    base_extension = {
+        "replacements": {
+            "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
+            "apiVersion": "2023-05-01",
+        }
+    }
 
-    if v2_enabled:
-        base_map["certManager"] = {
+    base_map = {}
+    base_ext_moniker = EXTENSION_MONIKER_CM if v2_enabled else EXTENSION_MONIKER_PLATFORM
+    base_map[base_ext_moniker] = deepcopy(base_extension)
+
+    if not v2_enabled:
+        base_map[EXTENSION_MONIKER_ACS] = {
+            **deepcopy(base_extension),
             "replacements": {
-                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-                "apiVersion": "2023-05-01",
+                **base_extension["replacements"],
+                "dependsOn": [EXTENSION_MONIKER_PLATFORM],
             },
         }
-        base_map["secretStore"] = {
-            "replacements": {
-                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-                "apiVersion": "2023-05-01",
-                "dependsOn": ["certManager"],
+
+    base_map[EXTENSION_MONIKER_SSC] = {
+        **deepcopy(base_extension),
+        "replacements": {
+            **base_extension["replacements"],
+            "dependsOn": [base_ext_moniker],
+        },
+    }
+
+    iot_deps = [base_ext_moniker, EXTENSION_MONIKER_SSC]
+    if not v2_enabled:
+        iot_deps.insert(1, EXTENSION_MONIKER_ACS)
+
+    base_map[EXTENSION_MONIKER_OPS] = {
+        **deepcopy(base_extension),
+        "replacements": {
+            **base_extension["replacements"],
+            "name": "[parameters('opsExtensionName')]",
+            "identity": {
+                "type": "SystemAssigned",
             },
-        }
-        base_map["iotOperations"] = {
-            "replacements": {
-                "name": "[parameters('opsExtensionName')]",
-                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-                "apiVersion": "2023-05-01",
-                "identity": {
-                    "type": "SystemAssigned",
-                },
-                "dependsOn": ["certManager", "secretStore"],
-            },
-        }
-    else:
-        base_map["platform"] = {
-            "replacements": {
-                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-                "apiVersion": "2023-05-01",
-            },
-        }
-        base_map["containerStorage"] = {
-            "replacements": {
-                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-                "apiVersion": "2023-05-01",
-                "dependsOn": ["platform"],
-            },
-        }
-        base_map["secretStore"] = {
-            "replacements": {
-                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-                "apiVersion": "2023-05-01",
-                "dependsOn": ["platform"],
-            },
-        }
-        base_map["iotOperations"] = {
-            "replacements": {
-                "name": "[parameters('opsExtensionName')]",
-                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-                "apiVersion": "2023-05-01",
-                "identity": {
-                    "type": "SystemAssigned",
-                },
-                "dependsOn": ["platform", "containerStorage", "secretStore"],
-            },
-        }
+            "dependsOn": iot_deps,
+        },
+    }
 
     return base_map
 
@@ -1580,23 +1568,23 @@ def _replace_cl(context: dict) -> dict:
 
     if v2_enabled:
         if EXT_NAME_CM in resource_configs["extensions"]:
-            depends_on.append("certManager")
+            depends_on.append(EXTENSION_MONIKER_CM)
     else:
         if EXT_NAME_PLAT in resource_configs["extensions"]:
-            depends_on.append("platform")
+            depends_on.append(EXTENSION_MONIKER_PLATFORM)
 
     if not v2_enabled and EXT_NAME_ACS in resource_configs["extensions"]:
-        depends_on.append("containerStorage")
+        depends_on.append(EXTENSION_MONIKER_ACS)
 
     expected_ext_names = []
 
     if EXT_NAME_SSC in resource_configs["extensions"]:
         expected_ext_names.append(EXT_NAME_SSC)
-        depends_on.append("secretStore")
+        depends_on.append(EXTENSION_MONIKER_SSC)
 
     if EXT_NAME_OPS in resource_configs["extensions"]:
         expected_ext_names.append(EXT_NAME_OPS)
-        depends_on.append("iotOperations")
+        depends_on.append(EXTENSION_MONIKER_OPS)
 
     for ext_name in expected_ext_names:
         if ext_name == EXT_NAME_OPS:
@@ -1744,8 +1732,9 @@ _replace_secretsync_resource = partial(_replace_generic_resource, api_version=SE
 
 
 def get_expected_min_resource_map(v2_enabled: bool) -> dict:
+    ext_resource_map = get_expected_ext_resource_map(v2_enabled)
     return {
-        **get_expected_ext_resource_map(v2_enabled),
+        **ext_resource_map,
         "customLocation": {"replacements": _replace_cl},
         "instance": {"replacements": _replace_instance},
         "roleAssignments": {},
@@ -1922,7 +1911,6 @@ class CloneAssertor:
         expected_copy = deepcopy(expected)
         actual_copy = deepcopy(actual)
 
-        # Handle dependsOn as sets
         if "dependsOn" in expected_copy:
             expected_copy["dependsOn"] = set(expected_copy["dependsOn"])
         if "dependsOn" in actual_copy:
