@@ -33,8 +33,8 @@ from azext_edge.edge.common import (
 from azext_edge.edge.providers.orchestration.clone import (
     DEPLOYMENT_CHUNK_LEN,
     SERVICE_ACCOUNT_DATAFLOW,
-    SERVICE_ACCOUNT_SECRETSYNC,
     SERVICE_ACCOUNT_SCHEMA,
+    SERVICE_ACCOUNT_SECRETSYNC,
     TEMPLATE_PARAMS_SET,
     CloneManager,
     InstanceRestore,
@@ -45,6 +45,7 @@ from azext_edge.edge.providers.orchestration.clone import (
 )
 from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_ACS,
+    EXTENSION_TYPE_CM,
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
@@ -73,6 +74,10 @@ from .resources.connector.akri.test_connector_templates_unit import (
 from .resources.dataflow_endpoint.conftest import (
     get_dataflow_endpoint_endpoint,
     get_mock_dataflow_endpoint_record,
+)
+from .resources.registry_endpoint.test_registry_endpoints_unit import (
+    get_mock_registry_endpoint_record,
+    get_registry_endpoint_endpoint,
 )
 from .resources.test_aeps_unit import get_mock_aep_record
 from .resources.test_assets_unit import get_mock_asset_record
@@ -121,12 +126,14 @@ ZEROED_SUBSCRIPTION = get_zeroed_subscription()
 
 C = TypeVar("C", bound="CloneScenario")
 
+EXT_NAME_CM = "cert-manager"
 EXT_NAME_PLAT = "azure-iot-operations-platform"
 EXT_NAME_SSC = "azure-secrets-store"
 EXT_NAME_OPS = "azure-iot-operations"
 EXT_NAME_ACS = "azure-arc-containerstorage"
 
 EXTENSIONS_TYPE_TO_NAME = [
+    (EXTENSION_TYPE_CM, EXT_NAME_CM),
     (EXTENSION_TYPE_PLATFORM, EXT_NAME_PLAT),
     (EXTENSION_TYPE_ACS, EXT_NAME_ACS),
     (EXTENSION_TYPE_SSC, EXT_NAME_SSC),
@@ -145,6 +152,7 @@ PLURALS = [
     "assetEndpointProfiles",
     "assets",
     "connectorTemplates",
+    "registryEndpoints",
     "namespaceDevices",
     "namespaceAssets",
 ]
@@ -239,6 +247,7 @@ class CloneScenario:
         self.add_secretsync_spcs()
         self.add_secretsyncs()
         self.add_connector_templates()
+        self.add_registry_endpoints()
         self.add_arg_handler()
 
         return self
@@ -361,7 +370,24 @@ class CloneScenario:
 
         extensions = []
         extensions_name_map = {}
-        for ext_type, ext_name in EXTENSIONS_TYPE_TO_NAME:
+
+        if self.api_config.v2_enabled:
+            extensions_to_create = [
+                (EXTENSION_TYPE_CM, EXT_NAME_CM),
+                (EXTENSION_TYPE_SSC, EXT_NAME_SSC),
+                (EXTENSION_TYPE_OPS, EXT_NAME_OPS),
+            ]
+            if self.add_resources_map.get("includeContainerStorage", False):
+                extensions_to_create.append((EXTENSION_TYPE_ACS, EXT_NAME_ACS))
+        else:
+            extensions_to_create = [
+                (EXTENSION_TYPE_PLATFORM, EXT_NAME_PLAT),
+                (EXTENSION_TYPE_ACS, EXT_NAME_ACS),
+                (EXTENSION_TYPE_SSC, EXT_NAME_SSC),
+                (EXTENSION_TYPE_OPS, EXT_NAME_OPS),
+            ]
+
+        for ext_type, ext_name in extensions_to_create:
             record_name = ext_name
             if ext_name == EXT_NAME_OPS:
                 record_name = f"{ext_name}-{generate_random_string()}"
@@ -747,6 +773,31 @@ class CloneScenario:
         )
         self.resource_configs["connectorTemplates"] = connector_templates
 
+    def add_registry_endpoints(self: C):
+        if not self.api_config.v2_enabled:
+            return
+        registry_endpoints = []
+        for _ in range(self.add_resources_map.get("registryEndpoints", 0)):
+            registry_endpoints.append(
+                get_mock_registry_endpoint_record(
+                    registry_endpoint_name=generate_random_string(),
+                    instance_name=self.instance_name,
+                    resource_group_name=self.resource_group_name,
+                    host="mcr.microsoft.com",
+                )
+            )
+        payload = {"value": registry_endpoints}
+        self.responses.add(
+            method=responses.GET,
+            url=get_registry_endpoint_endpoint(
+                instance_name=self.instance_name, resource_group_name=self.resource_group_name
+            ),
+            json=payload,
+            status=200,
+            content_type="application/json",
+        )
+        self.resource_configs["registryEndpoints"] = registry_endpoints
+
     def add_arg_handler(self: C):
         def _handle_requests(request: requests.PreparedRequest) -> Optional[tuple]:
             request_kpis = get_request_kpis(request)
@@ -933,9 +984,9 @@ def test_clone_manager(
 @pytest.mark.parametrize("add_dataflows", [0, 2])
 @pytest.mark.parametrize("add_dataflow_endpoints", [0, 2])
 @pytest.mark.parametrize("add_aeps", [0, 5])
-@pytest.mark.parametrize("add_assets", [0, 5])
 @pytest.mark.parametrize("add_spcs", [0, 2])
 @pytest.mark.parametrize("add_connector_templates", [0, 5])
+@pytest.mark.parametrize("add_registry_endpoints", [0, 5])
 @pytest.mark.parametrize("add_ns_devices", [0, 5])
 @pytest.mark.parametrize("add_ns_assets", [0, 5])
 def test_clone_manager_instance_v2(
@@ -944,9 +995,9 @@ def test_clone_manager_instance_v2(
     add_dataflow_endpoints: int,
     add_dataflows: int,
     add_aeps: int,
-    add_assets: int,
     add_spcs: int,
     add_connector_templates: int,
+    add_registry_endpoints: int,
     add_ns_devices: int,
     add_ns_assets: int,
 ):
@@ -957,9 +1008,9 @@ def test_clone_manager_instance_v2(
         "dataflowEndpoints": add_dataflow_endpoints,
         "dataflows": add_dataflows,
         "aeps": add_aeps,
-        "assets": add_assets,
         "spcs": add_spcs,
         "connectorTemplates": add_connector_templates,
+        "registryEndpoints": add_registry_endpoints,
         "nsDevices": add_ns_devices,
         "nsAssets": add_ns_assets,
     }
@@ -1454,47 +1505,85 @@ EXPECTED_PARAMETER_KEYS = {
     "applyRoleAssignments",
 }
 
-EXPECTED_ORD_EXT_RESOURCE_MAP = {
-    "platform": {
-        "replacements": {
-            "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-            "apiVersion": "2023-05-01",
-        },
-    },
-    "containerStorage": {
-        "replacements": {
-            "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-            "apiVersion": "2023-05-01",
-            "dependsOn": ["platform"],
-        },
-    },
-    "secretStore": {
-        "replacements": {
-            "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-            "apiVersion": "2023-05-01",
-            "dependsOn": ["platform"],
-        },
-    },
-    "iotOperations": {
-        "replacements": {
-            "name": "[parameters('opsExtensionName')]",
-            "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
-            "apiVersion": "2023-05-01",
-            "dependsOn": ["platform", "containerStorage", "secretStore"],
-            "identity": {
-                "type": "SystemAssigned",
+
+def get_expected_ext_resource_map(v2_enabled: bool) -> dict:
+    """Get expected extension resource map based on API version."""
+    base_map = {}
+
+    if v2_enabled:
+        base_map["certManager"] = {
+            "replacements": {
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
+                "apiVersion": "2023-05-01",
             },
-        },
-    },
-}
+        }
+        base_map["secretStore"] = {
+            "replacements": {
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
+                "apiVersion": "2023-05-01",
+                "dependsOn": ["certManager"],
+            },
+        }
+        base_map["iotOperations"] = {
+            "replacements": {
+                "name": "[parameters('opsExtensionName')]",
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
+                "apiVersion": "2023-05-01",
+                "identity": {
+                    "type": "SystemAssigned",
+                },
+                "dependsOn": ["certManager", "secretStore"],
+            },
+        }
+    else:
+        base_map["platform"] = {
+            "replacements": {
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
+                "apiVersion": "2023-05-01",
+            },
+        }
+        base_map["containerStorage"] = {
+            "replacements": {
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
+                "apiVersion": "2023-05-01",
+                "dependsOn": ["platform"],
+            },
+        }
+        base_map["secretStore"] = {
+            "replacements": {
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
+                "apiVersion": "2023-05-01",
+                "dependsOn": ["platform"],
+            },
+        }
+        base_map["iotOperations"] = {
+            "replacements": {
+                "name": "[parameters('opsExtensionName')]",
+                "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
+                "apiVersion": "2023-05-01",
+                "identity": {
+                    "type": "SystemAssigned",
+                },
+                "dependsOn": ["platform", "containerStorage", "secretStore"],
+            },
+        }
+
+    return base_map
 
 
 def _replace_cl(context: dict) -> dict:
     resource_configs = context["resource_configs"]
+    v2_enabled = context.get("v2_enabled", False)
 
     extension_ids = []
+    expected_ext_names = [EXT_NAME_SSC, EXT_NAME_OPS]
+    if v2_enabled:
+        expected_ext_names.insert(0, EXT_NAME_CM)
+    else:
+        expected_ext_names.insert(0, EXT_NAME_PLAT)
+
     for ext_name in resource_configs["extensions"]:
-        if ext_name not in [EXT_NAME_PLAT, EXT_NAME_SSC, EXT_NAME_OPS]:
+        if ext_name not in expected_ext_names:
             continue
 
         if ext_name == EXT_NAME_OPS:
@@ -1512,6 +1601,12 @@ def _replace_cl(context: dict) -> dict:
                 )
             )
 
+    depends_on = ["secretStore", "iotOperations"]
+    if v2_enabled:
+        depends_on.insert(0, "certManager")
+    else:
+        depends_on.insert(0, "platform")
+
     return {
         "apiVersion": "2021-08-31-preview",
         "location": "[parameters('location')]",
@@ -1523,7 +1618,7 @@ def _replace_cl(context: dict) -> dict:
             "clusterExtensionIds": extension_ids,
             "authentication": {},
         },
-        "dependsOn": ["platform", "secretStore", "iotOperations"],
+        "dependsOn": depends_on,
     }
 
 
@@ -1535,7 +1630,7 @@ def _replace_instance_resource(context: dict) -> dict:
 
     if type_segment in ["authentications", "authorizations", "listeners"]:
         config_name = f"/default/{config_name}"
-    if type_segment in ["dataflowprofiles", "dataflowendpoints", "akriconnectortemplates"]:
+    if type_segment in ["dataflowprofiles", "dataflowendpoints", "akriconnectortemplates", "registryendpoints"]:
         config_name = f"/{config_name}"
     if type_segment in ["dataflows"]:
         profile_name = config["id"].split("/dataflowProfiles/")[-1].split("/dataflows/")[0]
@@ -1641,26 +1736,28 @@ _replace_namespace_asset_resource = partial(_replace_asset_resource, name_callba
 _replace_secretsync_resource = partial(_replace_generic_resource, api_version=SECRET_SYNC_API_VERSION)
 
 
-EXPECTED_ORD_MIN_RESOURCE_MAP = {
-    **EXPECTED_ORD_EXT_RESOURCE_MAP,
-    "customLocation": {"replacements": _replace_cl},
-    "instance": {"replacements": _replace_instance},
-    "roleAssignments": {},
-    "broker": {"replacements": _replace_instance_broker},
-    "listeners": {"replacements": _replace_instance_resource},
-    "authns": {"replacements": _replace_instance_resource},
-    "authzs": {"replacements": _replace_instance_resource},
-    "dataflowProfiles": {"replacements": _replace_instance_resource},
-    "dataflowEndpoints": {"replacements": _replace_instance_resource},
-    "dataflows": {"replacements": _replace_instance_resource},
-    "connectorTemplates": {"replacements": _replace_instance_resource},
-    "assetEndpointProfiles": {"replacements": _replace_asset_resource},
-    "assets": {"replacements": _replace_asset_resource},
-    "namespaceDevices": {"replacements": _replace_namespace_asset_resource},
-    "namespaceAssets": {"replacements": _replace_namespace_asset_resource},
-    "secretProviderClasss": {"replacements": _replace_secretsync_resource},
-    "secretSyncs": {"replacements": _replace_secretsync_resource},
-}
+def get_expected_min_resource_map(v2_enabled: bool) -> dict:
+    return {
+        **get_expected_ext_resource_map(v2_enabled),
+        "customLocation": {"replacements": _replace_cl},
+        "instance": {"replacements": _replace_instance},
+        "roleAssignments": {},
+        "broker": {"replacements": _replace_instance_broker},
+        "listeners": {"replacements": _replace_instance_resource},
+        "authns": {"replacements": _replace_instance_resource},
+        "authzs": {"replacements": _replace_instance_resource},
+        "dataflowProfiles": {"replacements": _replace_instance_resource},
+        "dataflowEndpoints": {"replacements": _replace_instance_resource},
+        "dataflows": {"replacements": _replace_instance_resource},
+        "connectorTemplates": {"replacements": _replace_instance_resource},
+        "registryEndpoints": {"replacements": _replace_instance_resource},
+        "assetEndpointProfiles": {"replacements": _replace_asset_resource},
+        "assets": {"replacements": _replace_asset_resource},
+        "namespaceDevices": {"replacements": _replace_namespace_asset_resource},
+        "namespaceAssets": {"replacements": _replace_namespace_asset_resource},
+        "secretProviderClasss": {"replacements": _replace_secretsync_resource},
+        "secretSyncs": {"replacements": _replace_secretsync_resource},
+    }
 
 
 class CloneAssertor:
@@ -1673,6 +1770,8 @@ class CloneAssertor:
         self.resource_configs = clone_scenario.resource_configs
         self.extension_name_map = {}
         self.api_config = clone_scenario.api_config
+        self.expected_ext_resource_map = get_expected_ext_resource_map(self.api_config.v2_enabled)
+        self.expected_min_resource_map = get_expected_min_resource_map(self.api_config.v2_enabled)
         self._assert_instance_apis()
 
     def assert_content(self, content: dict):
@@ -1778,31 +1877,65 @@ class CloneAssertor:
         self._assert_deployments(resources)
 
     def _assert_extensions(self, resources: dict):
-        expected_ext_keys = list(EXPECTED_ORD_EXT_RESOURCE_MAP.keys())
-        extensions = list(self.resource_configs["extensions"].values())
+        expected_ext_keys = list(self.expected_ext_resource_map.keys())
+
+        if self.api_config.v2_enabled:
+            # For v2: certManager, secretStore, iotOperations (and optionally containerStorage)
+            extension_order = []
+            if EXT_NAME_CM in self.resource_configs["extensions"]:
+                extension_order.append(self.resource_configs["extensions"][EXT_NAME_CM])
+            if EXT_NAME_ACS in self.resource_configs["extensions"]:
+                extension_order.append(self.resource_configs["extensions"][EXT_NAME_ACS])
+            if EXT_NAME_SSC in self.resource_configs["extensions"]:
+                extension_order.append(self.resource_configs["extensions"][EXT_NAME_SSC])
+            if EXT_NAME_OPS in self.resource_configs["extensions"]:
+                extension_order.append(self.resource_configs["extensions"][EXT_NAME_OPS])
+        else:
+            # For v1: platform, containerStorage, secretStore, iotOperations
+            extension_order = []
+            for ext_name in [EXT_NAME_PLAT, EXT_NAME_ACS, EXT_NAME_SSC, EXT_NAME_OPS]:
+                if ext_name in self.resource_configs["extensions"]:
+                    extension_order.append(self.resource_configs["extensions"][ext_name])
+
         for i in range(len(expected_ext_keys)):
             key_name = expected_ext_keys[i]
-            extension_config: dict = deepcopy(extensions[i])
-            expected_ext_meta: dict = EXPECTED_ORD_EXT_RESOURCE_MAP[key_name]
+            extension_config: dict = deepcopy(extension_order[i])
+            expected_ext_meta: dict = self.expected_ext_resource_map[key_name]
             clone_replacements = expected_ext_meta.get("replacements")
             if clone_replacements:
                 extension_config.update(clone_replacements)
             self._prune_resource(extension_config)
-            assert extension_config == resources[key_name], f"Extension resource mismatch for {key_name}"
+
+            actual_resource = resources[key_name]
+            self._assert_resource_equality(
+                extension_config, actual_resource, f"Extension resource mismatch for {key_name}"
+            )
+
+    def _assert_resource_equality(self, expected: dict, actual: dict, error_msg: str):
+        expected_copy = deepcopy(expected)
+        actual_copy = deepcopy(actual)
+
+        # Handle dependsOn as sets
+        if "dependsOn" in expected_copy:
+            expected_copy["dependsOn"] = set(expected_copy["dependsOn"])
+        if "dependsOn" in actual_copy:
+            actual_copy["dependsOn"] = set(actual_copy["dependsOn"])
+
+        assert expected_copy == actual_copy, error_msg
 
     def _assert_root_components(self, resources: dict):
         keys = ["customLocation", "instance", "broker"]
         for key in keys:
             component_config = deepcopy(self.resource_configs[key])
-            self._handle_component_conversion(component_config, key)
-            assert component_config == resources[key], f"Root resource mismatch for {key}"
+            component_config = self._handle_component_conversion(component_config, key)
+            self._assert_resource_equality(component_config, resources[key], f"Root resource mismatch for {key}")
 
     def _handle_component_conversion(self, component_config: dict, conversion_map_key: str) -> dict:
         """
         This method is responsible for taking resources returned from APIs and converting them to the expected format.
         It does generally via callback strategy, where are arranged in the EXPECTED_ORD_MIN_RESOURCE_MAP.
         """
-        component_meta: dict = EXPECTED_ORD_MIN_RESOURCE_MAP[conversion_map_key]
+        component_meta: dict = self.expected_min_resource_map[conversion_map_key]
         component_replacements = component_meta.get("replacements")
         if component_replacements:
             if callable(component_replacements):
@@ -1922,6 +2055,7 @@ class CloneAssertor:
             "assetEndpointProfiles": ["listeners", "instance"],
             "secretSyncs": ["secretProviderClasss"],
             "connectorTemplates": ["instance"],
+            "registryEndpoints": ["instance"],
             "namespaceAssets": ["namespaceDevices"],
             "namespaceDevices": ["listeners", "instance"],
         }
@@ -1996,7 +2130,7 @@ class CloneAssertor:
                 paged_key = f"{r}_{i + 1}"
                 resource_keys.append(paged_key)
 
-        resource_keys = [*list(EXPECTED_ORD_EXT_RESOURCE_MAP.keys()), *SINGLETONS] + resource_keys
+        resource_keys = [*list(self.expected_ext_resource_map.keys()), *SINGLETONS] + resource_keys
 
         return resource_keys
 
@@ -2036,7 +2170,7 @@ class CloneAssertor:
         if resource_group:
             assert deployment["resourceGroup"] == resource_group
         if depends_on:
-            assert set(deployment["dependsOn"]) == set(depends_on)
+            assert set(deployment.get("dependsOn", [])) == set(depends_on)
 
     def _prune_resource(self, resource: dict):
         resource.pop("id", None)

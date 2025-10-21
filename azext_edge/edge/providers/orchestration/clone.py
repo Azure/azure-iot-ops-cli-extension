@@ -57,6 +57,7 @@ from .common import (
     EXTENSION_TYPE_OPS,
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
+    EXTENSION_TYPE_CM,
     EXTENSION_TYPE_TO_MONIKER_MAP,
     ROLE_ASSIGNMENT_API_VERSION,
     SECRET_SYNC_API_VERSION,
@@ -104,6 +105,7 @@ class StateResourceKey(Enum):
     ROLE_ASSIGNMENT = "roleAssignment"
     FEDERATE = "identityFederation"
     CONNECTOR_TEMPLATE = "connectorTemplate"
+    REGISTRY_ENDPOINT = "registryEndpoint"
     NS_DEVICE = "namespaceDevice"
     NS_ASSET = "namespaceAsset"
 
@@ -905,25 +907,35 @@ class CloneManager:
             """
         )["data"]
 
-    def _analyze_extensions(self):
-        depends_on_map = {
-            EXTENSION_TYPE_SSC: [EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_PLATFORM]],
-            EXTENSION_TYPE_ACS: [
-                EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_PLATFORM],
-            ],
+    def _build_extension_dependencies(self) -> Dict[str, List[str]]:
+        cm_extension_type = EXTENSION_TYPE_CM if self.api_config.v2_enabled else EXTENSION_TYPE_PLATFORM
+
+        deps = {
+            EXTENSION_TYPE_SSC: [EXTENSION_TYPE_TO_MONIKER_MAP[cm_extension_type]],
             EXTENSION_TYPE_OPS: [
-                EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_PLATFORM],
-                EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_ACS],
+                EXTENSION_TYPE_TO_MONIKER_MAP[cm_extension_type],
                 EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_SSC],
             ],
         }
+
+        if not self.api_config.v2_enabled:
+            deps[EXTENSION_TYPE_ACS] = [EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_PLATFORM]]
+            deps[EXTENSION_TYPE_OPS].insert(1, EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_ACS])
+
+        return deps
+
+    def _analyze_extensions(self):
+        depends_on_map = self._build_extension_dependencies()
+
         api_version = (
             self.resource_map.connected_cluster.clusters.extensions.clusterconfig_mgmt_client._config.api_version
         )
         extension_map = self.resource_map.connected_cluster.get_extensions_by_type(
-            EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_ACS, EXTENSION_TYPE_SSC, EXTENSION_TYPE_OPS
+            EXTENSION_TYPE_CM, EXTENSION_TYPE_PLATFORM, EXTENSION_TYPE_ACS, EXTENSION_TYPE_SSC, EXTENSION_TYPE_OPS
         )
         for extension_type in extension_map:
+            if extension_type not in extension_map or not extension_map[extension_type]:
+                continue
             extension_moniker = EXTENSION_TYPE_TO_MONIKER_MAP[extension_type]
             depends_on = depends_on_map.get(extension_type)
             extension_map[extension_type]["scope"] = TEMPLATE_EXPRESSION_MAP["clusterId"]
@@ -945,15 +957,22 @@ class CloneManager:
         custom_location["name"] = TEMPLATE_EXPRESSION_MAP["customLocationName"]
 
         cl_extension_ids = []
+        cm_extension_type = EXTENSION_TYPE_CM if self.api_config.v2_enabled else EXTENSION_TYPE_PLATFORM
         cl_monikers = [
-            EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_PLATFORM],
+            EXTENSION_TYPE_TO_MONIKER_MAP[cm_extension_type],
             EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_SSC],
             EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS],
         ]
+
+        actual_dependencies = []
+
         for moniker in cl_monikers:
             ext_resource = self.rcontainer_map.get(moniker)
             if not ext_resource:
                 continue
+
+            actual_dependencies.append(moniker)
+
             if moniker == EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS]:
                 cl_extension_ids.append(
                     TEMPLATE_EXPRESSION_MAP["extensionId"].format("', parameters('opsExtensionName')")
@@ -972,7 +991,7 @@ class CloneManager:
             api_version=CUSTOM_LOCATIONS_API_VERSION,
             data=custom_location,
             config={"apply_nested_name": False},
-            depends_on=cl_monikers,
+            depends_on=actual_dependencies,
         )
 
         # Ensuring instance is fetched with the version used for deployment.
@@ -1182,6 +1201,18 @@ class CloneManager:
             key=StateResourceKey.CONNECTOR_TEMPLATE,
             api_version=self.api_config.iotops_mgmt_api,
             data_iter=connecter_template_iter,
+            depends_on=instance_resource_id_expr,
+            parameters=nested_params,
+        )
+        registry_endpoint_iter = list(
+            self.instances.iotops_mgmt_client.registry_endpoint.list_by_instance_resource(
+                resource_group_name=self.resource_group_name, instance_name=self.instance_name
+            )
+        )
+        self._add_deployment(
+            key=StateResourceKey.REGISTRY_ENDPOINT,
+            api_version=self.api_config.iotops_mgmt_api,
+            data_iter=registry_endpoint_iter,
             depends_on=instance_resource_id_expr,
             parameters=nested_params,
         )
