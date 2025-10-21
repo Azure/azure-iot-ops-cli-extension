@@ -1576,16 +1576,29 @@ def _replace_cl(context: dict) -> dict:
     v2_enabled = context.get("v2_enabled", False)
 
     extension_ids = []
-    expected_ext_names = [EXT_NAME_SSC, EXT_NAME_OPS]
+    depends_on = []
+
     if v2_enabled:
-        expected_ext_names.insert(0, EXT_NAME_CM)
+        if EXT_NAME_CM in resource_configs["extensions"]:
+            depends_on.append("certManager")
     else:
-        expected_ext_names.insert(0, EXT_NAME_PLAT)
+        if EXT_NAME_PLAT in resource_configs["extensions"]:
+            depends_on.append("platform")
 
-    for ext_name in resource_configs["extensions"]:
-        if ext_name not in expected_ext_names:
-            continue
+    if not v2_enabled and EXT_NAME_ACS in resource_configs["extensions"]:
+        depends_on.append("containerStorage")
 
+    expected_ext_names = []
+
+    if EXT_NAME_SSC in resource_configs["extensions"]:
+        expected_ext_names.append(EXT_NAME_SSC)
+        depends_on.append("secretStore")
+
+    if EXT_NAME_OPS in resource_configs["extensions"]:
+        expected_ext_names.append(EXT_NAME_OPS)
+        depends_on.append("iotOperations")
+
+    for ext_name in expected_ext_names:
         if ext_name == EXT_NAME_OPS:
             extension_ids.append(
                 (
@@ -1600,12 +1613,6 @@ def _replace_cl(context: dict) -> dict:
                     f"'/providers/Microsoft.KubernetesConfiguration/extensions/{ext_name}')]"
                 )
             )
-
-    depends_on = ["secretStore", "iotOperations"]
-    if v2_enabled:
-        depends_on.insert(0, "certManager")
-    else:
-        depends_on.insert(0, "platform")
 
     return {
         "apiVersion": "2021-08-31-preview",

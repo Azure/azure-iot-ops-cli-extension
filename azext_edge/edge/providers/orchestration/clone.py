@@ -311,6 +311,7 @@ class ResourceContainer:
             "currentVersion",
             "statuses",
             "status",
+            "healthState",
         }
         self.resource_state["properties"] = self._prune_resource_keys(
             filter_keys=filter_keys, resource=self.resource_state["properties"]
@@ -957,14 +958,23 @@ class CloneManager:
         custom_location["name"] = TEMPLATE_EXPRESSION_MAP["customLocationName"]
 
         cl_extension_ids = []
-        cm_extension_type = EXTENSION_TYPE_CM if self.api_config.v2_enabled else EXTENSION_TYPE_PLATFORM
         cl_monikers = [
-            EXTENSION_TYPE_TO_MONIKER_MAP[cm_extension_type],
             EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_SSC],
             EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS],
         ]
 
         actual_dependencies = []
+
+        cm_extension_type = EXTENSION_TYPE_CM if self.api_config.v2_enabled else EXTENSION_TYPE_PLATFORM
+        cm_install_moniker = EXTENSION_TYPE_TO_MONIKER_MAP[cm_extension_type]
+        if cm_install_moniker in self.rcontainer_map:
+            actual_dependencies.append(cm_install_moniker)
+
+        # For v1, also check for containerStorage
+        if not self.api_config.v2_enabled:
+            acs_moniker = EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_ACS]
+            if acs_moniker in self.rcontainer_map:
+                actual_dependencies.append(acs_moniker)
 
         for moniker in cl_monikers:
             ext_resource = self.rcontainer_map.get(moniker)
@@ -986,6 +996,7 @@ class CloneManager:
         custom_location["properties"]["displayName"] = TEMPLATE_EXPRESSION_MAP["customLocationName"]
 
         # Custom location needs to be treated as a root resource.
+        # Depend on all extensions that exist, but only reference SSC and OPS in clusterExtensionIds
         self._add_resource(
             key=StateResourceKey.CL,
             api_version=CUSTOM_LOCATIONS_API_VERSION,
