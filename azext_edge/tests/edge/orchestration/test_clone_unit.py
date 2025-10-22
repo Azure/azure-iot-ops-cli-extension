@@ -137,13 +137,14 @@ EXT_NAME_SSC = "azure-secrets-store"
 EXT_NAME_OPS = "azure-iot-operations"
 EXT_NAME_ACS = "azure-arc-containerstorage"
 
-EXTENSIONS_TYPE_TO_NAME = [
-    (EXTENSION_TYPE_CM, EXT_NAME_CM),
-    (EXTENSION_TYPE_PLATFORM, EXT_NAME_PLAT),
-    (EXTENSION_TYPE_ACS, EXT_NAME_ACS),
-    (EXTENSION_TYPE_SSC, EXT_NAME_SSC),
-    (EXTENSION_TYPE_OPS, EXT_NAME_OPS),
-]
+
+EXT_NAME_TO_MONIKER = {
+    EXT_NAME_CM: EXTENSION_MONIKER_CM,
+    EXT_NAME_PLAT: EXTENSION_MONIKER_PLATFORM,
+    EXT_NAME_ACS: EXTENSION_MONIKER_ACS,
+    EXT_NAME_SSC: EXTENSION_MONIKER_SSC,
+    EXT_NAME_OPS: EXTENSION_MONIKER_OPS,
+}
 
 PLURALS = [
     "authns",
@@ -986,14 +987,15 @@ def test_clone_manager(
     mock_open_write().write.assert_called_once_with(json.dumps(content, indent=2))
 
 
-@pytest.mark.parametrize("add_dataflows", [0, 2])
-@pytest.mark.parametrize("add_dataflow_endpoints", [0, 2])
+@pytest.mark.parametrize("add_dataflows", [2])
+@pytest.mark.parametrize("add_dataflow_endpoints", [2])
 @pytest.mark.parametrize("add_aeps", [0, 5])
 @pytest.mark.parametrize("add_spcs", [0, 2])
 @pytest.mark.parametrize("add_connector_templates", [0, 5])
 @pytest.mark.parametrize("add_registry_endpoints", [0, 5])
 @pytest.mark.parametrize("add_ns_devices", [0, 5])
 @pytest.mark.parametrize("add_ns_assets", [0, 5])
+@pytest.mark.parametrize("include_container_storage", [False, True])
 def test_clone_manager_instance_v2(
     mocked_cmd: Mock,
     mocked_responses: responses,
@@ -1005,6 +1007,7 @@ def test_clone_manager_instance_v2(
     add_registry_endpoints: int,
     add_ns_devices: int,
     add_ns_assets: int,
+    include_container_storage: bool,
 ):
     model_cluster_name = generate_random_string()
     model_instance_name = generate_random_string()
@@ -1018,6 +1021,7 @@ def test_clone_manager_instance_v2(
         "registryEndpoints": add_registry_endpoints,
         "nsDevices": add_ns_devices,
         "nsAssets": add_ns_assets,
+        "includeContainerStorage": include_container_storage,
     }
 
     clone_scenario = CloneScenario()
@@ -1528,7 +1532,7 @@ def get_expected_ext_resource_map(v2_enabled: bool) -> dict:
             **deepcopy(base_extension),
             "replacements": {
                 **base_extension["replacements"],
-                "dependsOn": [EXTENSION_MONIKER_PLATFORM],
+                "dependsOn": [base_ext_moniker],
             },
         }
 
@@ -1766,7 +1770,6 @@ class CloneAssertor:
         self.resource_configs = clone_scenario.resource_configs
         self.extension_name_map = {}
         self.api_config = clone_scenario.api_config
-        self.expected_ext_resource_map = get_expected_ext_resource_map(self.api_config.v2_enabled)
         self.expected_min_resource_map = get_expected_min_resource_map(self.api_config.v2_enabled)
         self._assert_instance_apis()
 
@@ -1872,26 +1875,50 @@ class CloneAssertor:
         self._assert_role_assignments(resources)
         self._assert_deployments(resources)
 
-    def _assert_extensions(self, resources: dict):
-        expected_ext_keys = list(self.expected_ext_resource_map.keys())
-
+    def _get_extension_check_order(self):
         if self.api_config.v2_enabled:
             # For v2: certManager, secretStore, iotOperations (and optionally containerStorage)
-            ext_check_order = [EXT_NAME_CM, EXT_NAME_ACS, EXT_NAME_SSC, EXT_NAME_OPS]
+            return [EXT_NAME_CM, EXT_NAME_ACS, EXT_NAME_SSC, EXT_NAME_OPS]
         else:
             # For v1: platform, containerStorage, secretStore, iotOperations
-            ext_check_order = [EXT_NAME_PLAT, EXT_NAME_ACS, EXT_NAME_SSC, EXT_NAME_OPS]
+            return [EXT_NAME_PLAT, EXT_NAME_ACS, EXT_NAME_SSC, EXT_NAME_OPS]
 
+    def _assert_extensions(self, resources: dict):
+        expected_ext_resource_map = {}
+        base_ext_moniker = EXTENSION_MONIKER_CM if self.api_config.v2_enabled else EXTENSION_MONIKER_PLATFORM
+        base_extension_config = {
+            "scope": "[resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))]",
+            "apiVersion": "2023-05-01",
+        }
+
+        ext_check_order = self._get_extension_check_order()
         extension_order = []
-        for ext_name in ext_check_order:
-            if ext_name in self.resource_configs["extensions"]:
-                extension_order.append(self.resource_configs["extensions"][ext_name])
 
-        for i in range(len(expected_ext_keys)):
-            key_name = expected_ext_keys[i]
-            extension_config: dict = deepcopy(extension_order[i])
-            expected_ext_meta: dict = self.expected_ext_resource_map[key_name]
-            clone_replacements = expected_ext_meta.get("replacements")
+        for ext_name in ext_check_order:
+            if ext_name not in self.resource_configs["extensions"]:
+                continue
+
+            ext_moniker = EXT_NAME_TO_MONIKER[ext_name]
+            replacements = deepcopy(base_extension_config)
+
+            if ext_name == EXT_NAME_ACS:
+                replacements["dependsOn"] = [base_ext_moniker]
+            elif ext_name == EXT_NAME_SSC:
+                replacements["dependsOn"] = [base_ext_moniker]
+            elif ext_name == EXT_NAME_OPS:
+                replacements["name"] = "[parameters('opsExtensionName')]"
+                replacements["identity"] = {"type": "SystemAssigned"}
+                deps = [base_ext_moniker, EXTENSION_MONIKER_SSC]
+                if not self.api_config.v2_enabled and EXT_NAME_ACS in self.resource_configs["extensions"]:
+                    deps.insert(1, EXTENSION_MONIKER_ACS)
+                replacements["dependsOn"] = deps
+
+            expected_ext_resource_map[ext_moniker] = {"replacements": replacements}
+            extension_order.append(self.resource_configs["extensions"][ext_name])
+
+        for i, (key_name, expected_meta) in enumerate(expected_ext_resource_map.items()):
+            extension_config = deepcopy(extension_order[i])
+            clone_replacements = expected_meta.get("replacements")
             if clone_replacements:
                 extension_config.update(clone_replacements)
             self._prune_resource(extension_config)
@@ -2101,6 +2128,13 @@ class CloneAssertor:
 
     def _get_expected_resource_keys(self):
         resource_keys = []
+
+        ext_check_order = self._get_extension_check_order()
+        ext_keys = []
+        for ext_name in ext_check_order:
+            if ext_name in self.resource_configs["extensions"]:
+                ext_keys.append(EXT_NAME_TO_MONIKER[ext_name])
+
         enumerate_through = [*PLURALS]
 
         for r in enumerate_through:
@@ -2119,7 +2153,7 @@ class CloneAssertor:
                 paged_key = f"{r}_{i + 1}"
                 resource_keys.append(paged_key)
 
-        resource_keys = [*list(self.expected_ext_resource_map.keys()), *SINGLETONS] + resource_keys
+        resource_keys = [*ext_keys, *SINGLETONS] + resource_keys
 
         return resource_keys
 

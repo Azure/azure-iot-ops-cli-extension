@@ -913,6 +913,7 @@ class CloneManager:
 
         deps = {
             EXTENSION_TYPE_SSC: [EXTENSION_TYPE_TO_MONIKER_MAP[cm_extension_type]],
+            EXTENSION_TYPE_ACS: [EXTENSION_TYPE_TO_MONIKER_MAP[cm_extension_type]],
             EXTENSION_TYPE_OPS: [
                 EXTENSION_TYPE_TO_MONIKER_MAP[cm_extension_type],
                 EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_SSC],
@@ -920,7 +921,6 @@ class CloneManager:
         }
 
         if not self.api_config.v2_enabled:
-            deps[EXTENSION_TYPE_ACS] = [EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_PLATFORM]]
             deps[EXTENSION_TYPE_OPS].insert(1, EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_ACS])
 
         return deps
