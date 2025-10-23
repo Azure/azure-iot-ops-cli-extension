@@ -1810,38 +1810,7 @@ def load_iotops_arguments(self, _):
             arg_group="Cluster Target",
         )
 
-    with self.argument_context("iot ops rsync") as context:
-        context.argument(
-            "instance_name",
-            options_list=["--instance", "-i", "-n"],
-            help="IoT Operations instance name.",
-        )
-        context.argument(
-            "rule_ops_name",
-            options_list=["--rule-ops-name"],
-            help="The desired name of the resource sync rule to create for IoT Operations.",
-            arg_group="Custom Rule",
-        )
-        context.argument(
-            "rule_adr_name",
-            options_list=["--rule-adr-name"],
-            help="The desired name of the resource sync rule to create for Device Registry.",
-            arg_group="Custom Rule",
-        )
-        context.argument(
-            "rule_ops_pri",
-            type=int,
-            options_list=["--rule-ops-pri"],
-            help="The desired priority of the resource sync rule to create for IoT Operations.",
-            arg_group="Custom Rule",
-        )
-        context.argument(
-            "rule_adr_pri",
-            type=int,
-            options_list=["--rule-adr-pri"],
-            help="The desired priority of the resource sync rule to create for Device Registry.",
-            arg_group="Custom Rule",
-        )
+    with self.argument_context("iot ops enable-rsync") as context:
         context.argument(
             "k8_bridge_sp_oid",
             options_list=["--k8-bridge-sp-oid"],
