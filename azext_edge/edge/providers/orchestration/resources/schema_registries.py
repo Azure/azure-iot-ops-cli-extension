@@ -21,8 +21,7 @@ from ....util.az_client import (
     get_registry_mgmt_client,
     get_storage_mgmt_client,
     parse_resource_id,
-    wait_for_terminal_state,
-    DeviceRegistryMgmtApiVersion
+    wait_for_terminal_state
 )
 from ....util.common import should_continue_prompt
 from ....util.queryable import Queryable
