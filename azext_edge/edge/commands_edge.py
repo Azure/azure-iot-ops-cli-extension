@@ -428,22 +428,24 @@ def enable_rsync(
     )
 
 
-def get_versions():
-    import webbrowser
+def get_versions(inline: Optional[bool] = None):
+    # TODO: quick and dirty, refactor this in the future.
+    if inline:
+        return {}
+    else:
+        import webbrowser
+        from rich.console import Console
+        from .common import GET_VERSIONS_URL
 
-    from rich.console import Console
+        console = Console(stderr=True)
 
-    from .common import GET_VERSIONS_URL
-
-    console = Console(stderr=True)
-
-    with console.status("Working..."):
-        success = webbrowser.open(GET_VERSIONS_URL, new=1)
-    if not success:
-        console.log(
-            f"Failed to open browser. Please visit {GET_VERSIONS_URL} to "
-            "view the Azure IoT Operations version reference."
-        )
+        with console.status("Working..."):
+            success = webbrowser.open(GET_VERSIONS_URL, new=1)
+        if not success:
+            console.log(
+                f"Failed to open browser. Please visit {GET_VERSIONS_URL} to "
+                "view the Azure IoT Operations version reference."
+            )
 
 
 def migrate_assets(
