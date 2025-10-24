@@ -53,7 +53,6 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops secretsync",
         command_type=secretsync_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         cmd_group.command("enable", "secretsync_enable")
         cmd_group.command("disable", "secretsync_disable")
@@ -78,7 +77,7 @@ def load_iotops_commands(self, _):
         "iot ops broker persist",
         command_type=mq_resource_ops,
     ) as cmd_group:
-        cmd_group.command("update", "update_broker_persist", is_preview=True)
+        cmd_group.command("update", "update_broker_persist")
 
     with self.command_group(
         "iot ops broker listener",
@@ -384,7 +383,6 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops schema",
         command_type=schema_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         cmd_group.command("create", "create_schema")
         cmd_group.show_command("show", "show_schema")

@@ -2110,7 +2110,7 @@ def load_iotops_help():
         "iot ops schema"
     ] = """
         type: group
-        short-summary: Schema and registry management.
+        short-summary: Schema registry and schema management.
         long-summary: |
           Schemas are documents that describe data to enable processing and contextualization.
           Message schemas describe the format of a message and its contents.
