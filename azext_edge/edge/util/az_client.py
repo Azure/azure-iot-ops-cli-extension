@@ -142,7 +142,6 @@ class DeviceRegistryMgmtApiVersion(Enum):
     V20250701_preview = "2025-07-01-preview"
     V20241101 = "2024-11-01"
     V20240901_preview = "2024-09-01-preview"
-    V20251001 = "2025-10-01"
 
 
 def get_registry_mgmt_client(
