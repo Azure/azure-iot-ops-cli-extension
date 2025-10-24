@@ -56,8 +56,7 @@ class SchemaRegistries(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id,
-            api_version=DeviceRegistryMgmtApiVersion.V20251001.value
+            subscription_id=self.default_subscription_id
         )
         self.ops: "SchemaRegistriesOperations" = self.registry_mgmt_client.schema_registries
 
@@ -186,8 +185,7 @@ class Schemas(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
         self.registry_mgmt_client = get_registry_mgmt_client(
-            subscription_id=self.default_subscription_id,
-            api_version=DeviceRegistryMgmtApiVersion.V20251001.value
+            subscription_id=self.default_subscription_id
         )
         self.ops: "SchemasOperations" = self.registry_mgmt_client.schemas
         self.version_ops: "SchemaVersionsOperations" = self.registry_mgmt_client.schema_versions
