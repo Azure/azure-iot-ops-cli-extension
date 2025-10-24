@@ -39,16 +39,8 @@ def load_iotops_commands(self, _):
         cmd_group.command("delete", "delete")
         cmd_group.command("clone", "clone_instance", is_preview=True)
         cmd_group.command("get-versions", "get_versions", is_experimental=True)
-        cmd_group.command("migrate-assets", "migrate_assets", is_preview=True)
-
-    with self.command_group(
-        "iot ops rsync",
-        command_type=edge_resource_ops,
-        is_preview=True,
-    ) as cmd_group:
-        cmd_group.command("enable", "enable_rsync")
-        cmd_group.command("disable", "disable_rsync")
-        cmd_group.command("list", "list_rsync")
+        cmd_group.command("migrate-assets", "migrate_assets")
+        cmd_group.command("enable-rsync", "enable_rsync")
 
     with self.command_group(
         "iot ops identity",
@@ -61,7 +53,6 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops secretsync",
         command_type=secretsync_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         cmd_group.command("enable", "secretsync_enable")
         cmd_group.command("disable", "secretsync_disable")
@@ -86,7 +77,7 @@ def load_iotops_commands(self, _):
         "iot ops broker persist",
         command_type=mq_resource_ops,
     ) as cmd_group:
-        cmd_group.command("update", "update_broker_persist", is_preview=True)
+        cmd_group.command("update", "update_broker_persist")
 
     with self.command_group(
         "iot ops broker listener",
@@ -392,7 +383,6 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops schema",
         command_type=schema_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         cmd_group.command("create", "create_schema")
         cmd_group.show_command("show", "show_schema")
