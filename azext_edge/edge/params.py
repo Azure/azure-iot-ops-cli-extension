@@ -1622,7 +1622,7 @@ def load_iotops_arguments(self, _):
             "version_name",
             options_list=["--version", "--ver", "--name", "-n"],
             help="Schema version name.",
-            type=int
+            type=int,
         )
         context.argument(
             "schema_name",
@@ -1832,4 +1832,12 @@ def load_iotops_arguments(self, _):
             help="Provide an explicit Device Registry service principal OID for the custom location role assignment. "
             "This is useful if the logged-in principal does not have permission to query apps from MS Graph.",
             arg_group="Role Assignment",
+        )
+
+    with self.argument_context("iot ops get-versions") as context:
+        context.argument(
+            "inline",
+            options_list=["--inline"],
+            arg_type=get_three_state_flag(),
+            help="Provides key version attributes in console output.",
         )

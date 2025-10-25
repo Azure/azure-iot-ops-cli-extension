@@ -20,7 +20,7 @@ from .helpers import (
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
-DATAFLOW_PREFIXES = ["aio-dataflow"]
+DATAFLOW_PREFIXES = ["aio-dataflow", "aio-wasm-graph-controller"]
 DATAFLOW_WORKLOAD_TYPES = ["deployment", "pod", "replicaset", "service", "vwc", "mwc"]
 
 

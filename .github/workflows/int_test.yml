@@ -410,6 +410,7 @@ jobs:
           az iot ops check --as-object
           az iot ops check --svc broker --resources broker brokerlistener
           az iot ops asset query -g ${{ env.RESOURCE_GROUP }} --location westus -o table
+          az iot ops get-versions --inline
       - name: "Keep cluster alive"
         if: ${{ env.KEEP_ALIVE > 0 && failure() }}
         run: |

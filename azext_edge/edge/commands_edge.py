@@ -431,7 +431,18 @@ def enable_rsync(
 def get_versions(inline: Optional[bool] = None):
     # TODO: quick and dirty, refactor this in the future.
     if inline:
-        return {}
+        from .providers.orchestration.targets import InitTargets
+        from ..constants import VERSION, AIO_RELEASE
+
+        targets = InitTargets("", "")
+        return {
+            "cliVersion": VERSION,
+            "iotOpsRelease": AIO_RELEASE,
+            "extensions": {
+                **targets.get_extension_versions(),
+                **targets.get_extension_versions(False),
+            },
+        }
     else:
         import webbrowser
         from rich.console import Console
