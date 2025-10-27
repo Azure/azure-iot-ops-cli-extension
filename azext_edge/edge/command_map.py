@@ -411,7 +411,6 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops connector",
         command_type=connector_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         pass
 
