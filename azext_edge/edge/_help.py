@@ -32,7 +32,7 @@ from .providers.support_bundle import (
 )
 
 # cause help barfs on anything not indented correctly
-DEVICEREGISTRY_API_STR_FOR_HELP = COMPAT_DEVICEREGISTRY_APIS.as_str().strip().replace('\n', '\n            - ')
+DEVICEREGISTRY_API_STR_FOR_HELP = COMPAT_DEVICEREGISTRY_APIS.as_str().strip().replace("\n", "\n            - ")
 
 
 def load_iotops_help():
@@ -782,14 +782,14 @@ def load_iotops_help():
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type UserAssignedManagedIdentity --scope myscope --cid myclientid --tid mytenantid
-        - name: Add a registry endpoint with a trusted signing key config map reference
+        - name: Add a registry endpoint with a code signing CA secret reference
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
-            --trust-config-map-ref my-trust-configmap
-        - name: Add a registry endpoint with a trusted signing key secret reference
+            --cs-secret-refs mysecret
+        - name: Add a registry endpoint with multiple code signing CA secret and configmap references
           text: >
             az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
-            --trust-secret-ref my-trust-secret
+            --cs-config-map-refs configmap1 configmap2 --cs-secret-refs secret1 secret2
     """
 
     helps[
@@ -797,14 +797,19 @@ def load_iotops_help():
     ] = """
         type: command
         short-summary: Update a container registry endpoint.
+        long-summary: |
+          Note: updating code signing CA reference properties will overwrite existing config map and secret references.
 
         examples:
         - name: Update an endpoint's hostname and auth-type to use a system-assigned managed identity
           text: >
             az iot ops registry update -n myregistry --host newregistry.azurecr.io -i myinstance -g myresourcegroup --auth-type SystemAssignedManagedIdentity
-        - name: Update an endpoint to use trusted signing with a config map reference
+        - name: Update an endpoint to set a code signing CA config map reference
           text: >
-            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --trust-config-map-ref my-trust-configmap
+            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --cs-config-map-refs myconfigmap
+        - name: Update an endpoint to set multiple code signing CA secret references
+          text: >
+            az iot ops registry update -n myregistry -i myinstance -g myresourcegroup --cs-secret-refs secret1 secret2
     """
 
     helps[
@@ -2105,7 +2110,7 @@ def load_iotops_help():
         "iot ops schema"
     ] = """
         type: group
-        short-summary: Schema and registry management.
+        short-summary: Schema registry and schema management.
         long-summary: |
           Schemas are documents that describe data to enable processing and contextualization.
           Message schemas describe the format of a message and its contents.
@@ -2647,61 +2652,22 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops rsync"
-    ] = """
-        type: group
-        short-summary: Resource sync rules management.
-    """
-
-    helps[
-        "iot ops rsync enable"
+        "iot ops enable-rsync"
     ] = """
         type: command
-        short-summary: Enable edge to cloud hydration by creating resource sync rules for the instance.
+        short-summary: Enable edge to cloud hydration.
         long-summary: |
-          This operation will create two resource sync rules. One for IoT Operations and one for
-          Device Registry. It will then apply a role assignment between the K8 Bridge service
-          principal and the IoT Operations instance custom location.
+          This operation will lookup the K8 Bridge service principal then assign
+          it to the scope of the IoT Operations instance custom location with the built-in
+          role of Azure Kubernetes Service Arc Contributor by default.
 
         examples:
         - name: Enable resource sync for the instance.
           text: >
-            az iot ops rsync enable -n myinstance -g myresourcegroup
-        - name: Enable resource sync for the instance but skip the role assignment step.
-          text: >
-            az iot ops rsync enable -n myinstance -g myresourcegroup --skip-ra
+            az iot ops enable-rsync -n myinstance -g myresourcegroup
         - name: Enable resource sync for the instance and explictly provide the K8 Bridge principal OID.
           text: >
-            az iot ops rsync enable -n myinstance -g myresourcegroup --k8-bridge-sp-oid $TENANT_K8_BRIDGE_SP_OID
-        - name: Enable resource sync for the instance with some customization.
-          text: >
-            az iot ops rsync enable -n myinstance -g myresourcegroup
-            --rule-adr-name myadrsync --rule-ops-name myopsync
-            --rule-adr-pri 100 --rule-ops-pri 200
-    """
-
-    helps[
-        "iot ops rsync list"
-    ] = """
-        type: command
-        short-summary: List resource sync rules associated with the instance.
-
-        examples:
-        - name: List resource sync rules associated with the instance.
-          text: >
-            az iot ops rsync list -n myinstance -g myresourcegroup
-    """
-
-    helps[
-        "iot ops rsync disable"
-    ] = """
-        type: command
-        short-summary: Disable edge to cloud hydration by deleting instance associated resource sync rules.
-
-        examples:
-        - name: Disable resource sync for the target instance.
-          text: >
-            az iot ops rsync disable -n myinstance -g myresourcegroup
+            az iot ops enable-rsync -n myinstance -g myresourcegroup --k8-bridge-sp-oid $TENANT_K8_BRIDGE_SP_OID
     """
 
     helps[

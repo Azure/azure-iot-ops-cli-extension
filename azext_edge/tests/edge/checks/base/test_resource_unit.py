@@ -431,7 +431,7 @@ def test_process_list_resource(mocker, mocked_check_manager, resource, expected_
         ("Warn", "[yellow]{}[/yellow]"),
         ("Error", "[red]{}[/red]"),
         ("N/A", "[yellow]{}[/yellow]"),
-        ("Unknown", "[green]{}[/green]"),
+        ("Unknown", "[bright white]{}[/bright white]"),
     ],
 )
 def test_decorate_resource_status(status, expected_status_text):
@@ -808,6 +808,11 @@ def test_combine_statuses(status_list, expected_final_status):
         ("warn", "warning"),
         ("Error", "error"),
         ("N/A", "warning"),
+        # IoT Operations healthState values
+        ("Available", "success"),
+        ("Degraded", "warning"),
+        ("Unavailable", "error"),
+        ("Unknown", "skipped"),
     ],
 )
 def test_calculate_status(resource_state, expected_status):
@@ -821,10 +826,10 @@ def test_calculate_status(resource_state, expected_status):
 @pytest.mark.parametrize(
     "status, detail_level, expected_display_texts, expected_conditions_calls, expected_eval_calls",
     [
-        # Scenario 1: Both runtimeStatus and provisioningStatus are provided with summary detail level.
+        # Scenario 1: Both healthState and provisioningStatus are provided with summary detail level.
         (
             {
-                "runtimeStatus": {"status": "Running", "description": "All good"},
+                "healthState": {"status": "Available"},
                 "provisioningStatus": {"status": "Success"},
             },
             ResourceOutputDetailLevel.summary.value,
@@ -837,7 +842,7 @@ def test_calculate_status(resource_state, expected_status):
                     status="success",
                     value={
                         "status": {
-                            "runtimeStatus": {"status": "Running", "description": "All good"},
+                            "healthState": {"status": "Available"},
                             "provisioningStatus": {"status": "Success"},
                         }
                     },
@@ -845,9 +850,9 @@ def test_calculate_status(resource_state, expected_status):
                 )
             ],
         ),
-        # Scenario 2: No runtimeStatus and provisioningStatus provided.
+        # Scenario 2: No healthState and provisioningStatus provided.
         (
-            {"runtimeStatus": {}, "provisioningStatus": {}},
+            {"healthState": {}, "provisioningStatus": {}},
             ResourceOutputDetailLevel.summary.value,
             ["Status [red]not found[/red]."],
             [call(target_name="test_target", namespace="test_namespace", conditions=["status"])],
@@ -856,7 +861,7 @@ def test_calculate_status(resource_state, expected_status):
                     target_name="test_target",
                     namespace="test_namespace",
                     status=CheckTaskStatus.error.value,
-                    value={"status": {"runtimeStatus": {}, "provisioningStatus": {}}},
+                    value={"status": {"healthState": {}, "provisioningStatus": {}}},
                     resource_name="test_resource",
                 )
             ],
@@ -864,14 +869,14 @@ def test_calculate_status(resource_state, expected_status):
         # Scenario 3: Both statuses, verbose detail level.
         (
             {
-                "runtimeStatus": {"status": "Running", "description": "All good"},
+                "healthState": {"status": "Available", "description": "Resource is healthy"},
                 "provisioningStatus": {"status": "Success"},
             },
             ResourceOutputDetailLevel.verbose.value,
             [
                 "Status:",
                 "Provisioning Status {[green]Success[/green]}.",
-                "Runtime Status {[green]Running[/green]}, [cyan]All good[/cyan].",
+                "Health Status {[green]Available[/green]}, [cyan]Resource is healthy[/cyan].",
             ],
             [call(target_name="test_target", namespace="test_namespace", conditions=["status"])],
             [
@@ -881,7 +886,7 @@ def test_calculate_status(resource_state, expected_status):
                     status="success",
                     value={
                         "status": {
-                            "runtimeStatus": {"status": "Running", "description": "All good"},
+                            "healthState": {"status": "Available", "description": "Resource is healthy"},
                             "provisioningStatus": {"status": "Success"},
                         }
                     },

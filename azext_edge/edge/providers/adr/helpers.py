@@ -220,10 +220,64 @@ def process_additional_configuration(
         )
 
 
+def _setup_certificate_authentication(
+    auth_props: Dict[str, str],
+    certificate_reference: str,
+    key_reference: Optional[str] = None,
+    intermediate_certificate_reference: Optional[str] = None,
+) -> None:
+    """Setup certificate-based authentication."""
+    auth_props["method"] = ADRAuthModes.certificate.value
+
+    x509_credentials = {"certificateSecretName": certificate_reference}
+
+    if key_reference:
+        x509_credentials["keySecretName"] = key_reference
+
+    if intermediate_certificate_reference:
+        x509_credentials["intermediateCertificatesSecretName"] = intermediate_certificate_reference
+
+    auth_props["x509Credentials"] = x509_credentials
+    if auth_props.pop("usernamePasswordCredentials", None):
+        logger.warning(REMOVED_USERPASS_REF_MSG)
+
+    return auth_props
+
+
+def _setup_username_password_authentication(
+    auth_props: Dict[str, str],
+    username_reference: str,
+    password_reference: str,
+) -> None:
+    """Setup username/password-based authentication."""
+    auth_props["method"] = ADRAuthModes.userpass.value
+    user_creds = auth_props.get("usernamePasswordCredentials", {})
+    user_creds["usernameSecretName"] = username_reference
+    user_creds["passwordSecretName"] = password_reference
+
+    if not all([user_creds["usernameSecretName"], user_creds["passwordSecretName"]]):
+        raise RequiredArgumentMissingError(MISSING_USERPASS_REF_ERROR)
+
+    auth_props["usernamePasswordCredentials"] = user_creds
+    if auth_props.pop("x509Credentials", None):
+        logger.warning(REMOVED_CERT_REF_MSG)
+
+
+def _setup_anonymous_authentication(auth_props: Dict[str, str]) -> None:
+    """Setup anonymous authentication."""
+    auth_props["method"] = ADRAuthModes.anonymous.value
+    if auth_props.pop("x509Credentials", None):
+        logger.warning(REMOVED_CERT_REF_MSG)
+    if auth_props.pop("usernamePasswordCredentials", None):
+        logger.warning(REMOVED_USERPASS_REF_MSG)
+
+
 def process_authentication(
     auth_mode: Optional[str] = None,
     auth_props: Optional[Dict[str, str]] = None,
     certificate_reference: Optional[str] = None,
+    key_reference: Optional[str] = None,
+    intermediate_certificate_reference: Optional[str] = None,
     password_reference: Optional[str] = None,
     username_reference: Optional[str] = None
 ) -> Dict[str, str]:
@@ -250,41 +304,40 @@ def process_authentication(
     {
         "method": "Certificate",
         "x509Credentials": {
-            "certificateSecretName":
-                "str"
+            "certificateSecretName": "str",
+            "keySecretName": "str",  # optional
+            "intermediateCertificatesSecretName": "str"  # optional
         }
     }
     """
     if not auth_props:
         auth_props = {}
 
+    # Validate that optional certificate fields are only used with required certificate_reference
+    if (key_reference or intermediate_certificate_reference) and not certificate_reference:
+        raise RequiredArgumentMissingError(
+            "Certificate reference (--cert-ref) is required when using --key-ref or --intermediate-cert-ref."
+        )
+
     # add checking for ensuring auth mode is set with proper params
     if certificate_reference and (username_reference or password_reference):
         raise MutuallyExclusiveArgumentError(AUTH_REF_MISMATCH_ERROR)
 
     if certificate_reference and auth_mode in [None, ADRAuthModes.certificate.value]:
-        auth_props["method"] = ADRAuthModes.certificate.value
-        auth_props["x509Credentials"] = {"certificateSecretName": certificate_reference}
-        if auth_props.pop("usernamePasswordCredentials", None):
-            logger.warning(REMOVED_USERPASS_REF_MSG)
+        _setup_certificate_authentication(
+            auth_props,
+            certificate_reference,
+            key_reference,
+            intermediate_certificate_reference
+        )
     elif (username_reference or password_reference) and auth_mode in [None, ADRAuthModes.userpass.value]:
-        auth_props["method"] = ADRAuthModes.userpass.value
-        user_creds = auth_props.get("usernamePasswordCredentials", {})
-        user_creds["usernameSecretName"] = username_reference
-        user_creds["passwordSecretName"] = password_reference
-        if not all([user_creds["usernameSecretName"], user_creds["passwordSecretName"]]):
-            raise RequiredArgumentMissingError(MISSING_USERPASS_REF_ERROR)
-        auth_props["usernamePasswordCredentials"] = user_creds
-        if auth_props.pop("x509Credentials", None):
-            logger.warning(REMOVED_CERT_REF_MSG)
+        _setup_username_password_authentication(
+            auth_props, username_reference, password_reference
+        )
     elif auth_mode == ADRAuthModes.anonymous.value and not any(
         [certificate_reference, username_reference, password_reference]
     ):
-        auth_props["method"] = ADRAuthModes.anonymous.value
-        if auth_props.pop("x509Credentials", None):
-            logger.warning(REMOVED_CERT_REF_MSG)
-        if auth_props.pop("usernamePasswordCredentials", None):
-            logger.warning(REMOVED_USERPASS_REF_MSG)
+        _setup_anonymous_authentication(auth_props)
     elif not auth_mode and not auth_props:
         auth_props["method"] = ADRAuthModes.anonymous.value
     elif any([auth_mode, certificate_reference, username_reference, password_reference]):

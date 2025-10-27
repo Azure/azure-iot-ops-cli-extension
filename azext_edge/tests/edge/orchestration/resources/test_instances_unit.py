@@ -32,6 +32,7 @@ from azext_edge.edge.providers.orchestration.resources.instances import (
     SERVICE_ACCOUNT_DATAFLOW,
     SERVICE_ACCOUNT_SCHEMA,
     SERVICE_ACCOUNT_SECRETSYNC,
+    SERVICE_ACCOUNT_WASM,
     get_fc_name,
     get_spc_name,
     parse_feature_kvp_nargs,
@@ -1099,7 +1100,7 @@ def test_secretsync_disable(
 
 @pytest.mark.parametrize(
     "usage_type",
-    [None, IdentityUsageType.DATAFLOW.value, IdentityUsageType.SCHEMA.value],
+    [None, IdentityUsageType.DATAFLOW.value, IdentityUsageType.SCHEMA.value, IdentityUsageType.WASM_GRAPH.value],
 )
 @pytest.mark.parametrize(
     "use_self_hosted_issuer",
@@ -1235,6 +1236,8 @@ def test_add_mi_user_assigned(
     use_service_account = SERVICE_ACCOUNT_DATAFLOW
     if usage_type == IdentityUsageType.SCHEMA.value:
         use_service_account = SERVICE_ACCOUNT_SCHEMA
+    if usage_type == IdentityUsageType.WASM_GRAPH.value:
+        use_service_account = SERVICE_ACCOUNT_WASM
 
     subject = f"system:serviceaccount:{cl_payload['properties']['namespace']}:{use_service_account}"
     federation_capture = mocked_responses.add(

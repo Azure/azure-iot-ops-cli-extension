@@ -76,7 +76,10 @@ def generate_stream(
     (
         "custom",
         add_namespace_custom_asset_stream,
-        {"stream_custom_configuration": json.dumps({"customProperty": "testValue", "streamType": "sensor-data"})},
+        {
+            "stream_custom_configuration": json.dumps({"customProperty": "testValue", "streamType": "sensor-data"}),
+            "type_ref": f"custom.stream{randint(0, 1000)}"
+        },
     ),
     # Media asset stream tests - snapshot-to-mqtt
     (
@@ -186,7 +189,8 @@ def test_add_namespace_asset_stream(
     if asset_type == "custom":
         expected_stream = {
             "name": stream_name,
-            "streamConfiguration": stream_params["stream_custom_configuration"]
+            "streamConfiguration": stream_params["stream_custom_configuration"],
+            "typeRef": stream_params.get("type_ref")
         }
     else:  # media
         # Build stream configuration based on task type and parameters
@@ -337,6 +341,7 @@ def test_add_namespace_asset_stream(
     assert added_stream is not None, "Added stream not found in the list of streams"
 
     # Verify stream configuration
+    assert added_stream["typeRef"] == expected_stream.get("typeRef")
     check_stream_configuration(added_stream, expected_stream)
     check_destinations(added_stream, expected_stream)
 
@@ -691,9 +696,12 @@ def test_remove_namespace_asset_stream(
     (
         "custom",
         update_namespace_custom_asset_stream,
-        {"stream_custom_configuration": json.dumps({
-            "customProperty": "updatedValue", "streamType": "updated-sensor-data"
-        })},
+        {
+            "stream_custom_configuration": json.dumps({
+                "customProperty": "updatedValue", "streamType": "updated-sensor-data"
+            }),
+            "type_ref": f"custom.stream{randint(0, 1000)}"
+        },
     ),
     (
         "custom",
@@ -870,7 +878,8 @@ def test_update_namespace_asset_stream(
 
         expected_stream = {
             "name": stream_name,
-            "streamConfiguration": expected_stream_config
+            "streamConfiguration": expected_stream_config,
+            "typeRef": stream_params.get("type_ref", initial_stream.get("typeRef"))
         }
     else:  # media
         # Start with initial config and update with provided parameters
@@ -982,7 +991,7 @@ def test_update_namespace_asset_stream(
     assert updated_stream is not None, "Updated stream not found in the list of streams"
 
     # Verify stream configuration was updated correctly
-    # Verify stream configuration
+    assert updated_stream.get("typeRef") == expected_stream.get("typeRef")
     check_stream_configuration(updated_stream, expected_stream)
     check_destinations(updated_stream, expected_stream)
 

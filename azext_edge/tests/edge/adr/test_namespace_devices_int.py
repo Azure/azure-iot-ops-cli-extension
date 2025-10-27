@@ -30,6 +30,7 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     endpoint_name_opcua = f"opcua-{generate_random_string(8)}"
     endpoint_name_media = f"media-{generate_random_string(8)}"
     endpoint_name_custom = f"custom-{generate_random_string(8)}"
+    endpoint_name_rest = f"rest-{generate_random_string(8)}"
 
     # Create 1st device with minimal inputs
     result = run(
@@ -206,13 +207,16 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     endpoint_address = "http://192.168.1.100:8080"
     custom_configuration = {"customSetting": "value"}
     certificate_reference = "secretRef:certificate"
+    key_reference = "secretRef:privateKey"
+    intermediate_cert_reference = "secretRef:intermediateCerts"
     trust_list = "cert1"
     result = run(
         f"az iot ops ns device endpoint inbound add custom --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group} --name {endpoint_name_custom} "
         f"--endpoint-type {endpoint_type} --endpoint-address {endpoint_address} "
         f"--additional-config \"{{\\\"customSetting\\\": \\\"value\\\"}}\" "
-        f"--cert-ref {certificate_reference} --trust-list {trust_list} "
+        f"--cert-ref {certificate_reference} --key-ref {key_reference} "
+        f"--intermediate-cert-ref {intermediate_cert_reference} --trust-list {trust_list} "
         f"--version 1.0.0"
     )
     assert_namespace_device_endpoint_props(
@@ -223,6 +227,8 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         custom_configuration=custom_configuration,
         authentication_method="Certificate",
         certificate_reference=certificate_reference,
+        key_reference=key_reference,
+        intermediate_certificate_reference=intermediate_cert_reference,
         trust_list=trust_list,
         version="1.0.0",
     )
@@ -251,16 +257,44 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         version="1",
     )
 
+    # Add REST endpoint with certificate authentication
+    endpoint_address = "https://192.168.1.100:8443/rest/secure_service"
+    certificate_reference = "secretRef:certificate"
+    key_reference = "secretRef:privateKey"
+    intermediate_cert_reference = "secretRef:intermediateCerts"
+    result = run(
+        f"az iot ops ns device endpoint inbound add rest --device {device_name_2} "
+        f"--instance {instance_name} -g {resource_group} --name {endpoint_name_rest} "
+        f"--endpoint-address {endpoint_address} "
+        f"--cert-ref {certificate_reference} --key-ref {key_reference} "
+        f"--intermediate-cert-ref {intermediate_cert_reference} "
+        f"--version 2.0"
+    )
+    assert_namespace_device_endpoint_props(
+        result,
+        endpoint_name=endpoint_name_rest,
+        endpoint_type=DeviceEndpointType.REST.value,
+        endpoint_address=endpoint_address,
+        accept_invalid_hostnames=True,
+        accept_invalid_certificates=True,
+        authentication_method="Certificate",
+        certificate_reference=certificate_reference,
+        key_reference=key_reference,
+        intermediate_certificate_reference=intermediate_cert_reference,
+        version="2.0",
+    )
+
     # List (all) endpoints
     result = run(
         f"az iot ops ns device endpoint list --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group}"
     )
-    assert len(result["inbound"]) == 4
+    assert len(result["inbound"]) == 5
     assert endpoint_name_onvif in result["inbound"]
     assert endpoint_name_media in result["inbound"]
     assert endpoint_name_opcua in result["inbound"]
     assert endpoint_name_custom in result["inbound"]
+    assert endpoint_name_rest in result["inbound"]
 
     # List inbound endpoints option a
     result_1 = run(
@@ -273,12 +307,13 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
         f"az iot ops ns device endpoint inbound list --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group}"
     )
-    assert len(result_1) == len(result_2) == 4
+    assert len(result_1) == len(result_2) == 5
     assert result_1 == result_2
     assert endpoint_name_onvif in result_1
     assert endpoint_name_media in result_1
     assert endpoint_name_opcua in result_1
     assert endpoint_name_custom in result_1
+    assert endpoint_name_rest in result_1
 
     # List inbound endpoints with specific type
     result = run(
@@ -289,17 +324,25 @@ def test_namespace_device_lifecycle_operations(require_init, tracked_resources: 
     assert endpoint_name_media in result
     assert endpoint_name_custom not in result
 
-    # Remove endpoints
+    # Remove endpoints (including the certificate authenticated REST endpoint)
     result = run(
         f"az iot ops ns device endpoint inbound remove --device {device_name_2} "
         f"--instance {instance_name} -g {resource_group} "
-        f"--endpoint {endpoint_name_onvif} {endpoint_name_media} -y"
+        f"--endpoint {endpoint_name_onvif} {endpoint_name_media} {endpoint_name_rest} -y"
     )
-    assert len(result) == 2
-    assert endpoint_name_onvif not in result
-    assert endpoint_name_media not in result
-    assert endpoint_name_opcua in result
-    assert endpoint_name_custom in result
+    # Filter out None values (removed endpoints) to get only active endpoints
+    active_endpoints = {k: v for k, v in result.items() if v is not None}
+    assert len(active_endpoints) == 2
+    # Removed endpoints should be present as keys but with None values
+    assert endpoint_name_onvif in result
+    assert result[endpoint_name_onvif] is None
+    assert endpoint_name_media in result
+    assert result[endpoint_name_media] is None
+    assert endpoint_name_rest in result
+    assert result[endpoint_name_rest] is None
+    # Remaining endpoints should be present with their configurations
+    assert endpoint_name_opcua in active_endpoints
+    assert endpoint_name_custom in active_endpoints
 
     # Test device query functionality
     # Query for specific device by name
@@ -407,7 +450,20 @@ def assert_namespace_device_endpoint_props(
         assert result_auth["usernamePasswordCredentials"]["usernameSecretName"] == expected["username_reference"]
         assert result_auth["usernamePasswordCredentials"]["passwordSecretName"] == expected["password_reference"]
     elif "certificate_reference" in expected:
-        assert result_auth["x509Credentials"]["certificateSecretName"] == expected["certificate_reference"]
+        x509_creds = result_auth["x509Credentials"]
+        assert x509_creds["certificateSecretName"] == expected["certificate_reference"]
+
+        # Check optional key reference
+        if "key_reference" in expected:
+            assert x509_creds["keySecretName"] == expected["key_reference"]
+        else:
+            assert "keySecretName" not in x509_creds
+
+        # Check optional intermediate certificate reference
+        if "intermediate_certificate_reference" in expected:
+            assert x509_creds["intermediateCertificatesSecretName"] == expected["intermediate_certificate_reference"]
+        else:
+            assert "intermediateCertificatesSecretName" not in x509_creds
 
     if "trust_list" in expected:
         assert result_endpoint["trustSettings"]["trustList"] == expected["trust_list"]

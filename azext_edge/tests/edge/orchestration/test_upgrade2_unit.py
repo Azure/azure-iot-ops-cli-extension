@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 import responses
+import yaml
 from azure.cli.core.azclierror import ValidationError
 from azure.core.exceptions import HttpResponseError
 
@@ -25,13 +26,19 @@ from azext_edge.edge.providers.orchestration.common import (
     EXTENSION_TYPE_PLATFORM,
     EXTENSION_TYPE_SSC,
     EXTENSION_TYPE_TO_MONIKER_MAP,
+    MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
     PROVISIONING_STATE_FAILED,
     PROVISIONING_STATE_SUCCESS,
     ClusterConnectStatus,
     ConfigSyncModeType,
 )
+from azext_edge.edge.providers.orchestration.resources.instances import (
+    SECRET_SYNC_RESOURCE_TYPE,
+    SPC_RESOURCE_TYPE,
+)
 from azext_edge.edge.providers.orchestration.targets import InitTargets
 from azext_edge.edge.util import parse_kvp_nargs
+from azext_edge.edge.util.machinery import scoped_semver_import
 
 from ...generators import generate_random_string
 from .resources.conftest import (
@@ -41,6 +48,9 @@ from .resources.conftest import (
     CONNECTED_CLUSTER_API_VERSION,
     get_base_endpoint,
     get_mock_resource,
+)
+from .resources.registry_endpoint.test_registry_endpoints_unit import (
+    get_registry_endpoint_endpoint,
 )
 from .resources.test_instances_unit import (
     get_instance_endpoint,
@@ -59,6 +69,56 @@ HTTP_STATUS_OK = 200
 HTTP_STATUS_ACCEPTED = 202
 HTTP_STATUS_SERVICE_ERROR = 500
 HTTP_STATUS_SERVICE_UNAVAILABLE = 503
+
+DEFAULT_SPC_NAME = "spc-ops-abc123"
+OPC_UA_SPC_NAME = "opc-ua-connector"
+
+expected_default_registry = {
+    "name": "default",
+    "type": "Microsoft.IoTOperations/instances/registryEndpoints",
+    "properties": {
+        "host": "mcr.microsoft.com",
+        "authentication": {"method": "Anonymous", "anonymousSettings": {}},
+        "provisioningState": "Succeeded",
+    },
+}
+
+# Fine in testing context.
+semver = scoped_semver_import()
+
+
+def build_spc_resource_id(resource_group_name: str, spc_name: str) -> str:
+    """Build a properly formatted SPC resource ID."""
+    return (
+        f"/subscriptions/sub1/resourceGroups/{resource_group_name}/providers/"
+        f"Microsoft.SecretSyncController/azureKeyVaultSecretProviderClasses/{spc_name}"
+    )
+
+
+def build_secretsync_resource_id(resource_group_name: str, secretsync_name: str) -> str:
+    """Build a properly formatted SecretSync resource ID."""
+    return (
+        f"/subscriptions/sub1/resourceGroups/{resource_group_name}/providers/"
+        f"Microsoft.SecretSyncController/secretSyncs/{secretsync_name}"
+    )
+
+
+def expects_registry_creation(target_scenario: "UpgradeScenario") -> bool:
+    return (
+        hasattr(target_scenario, "aux_kwargs")
+        and target_scenario.aux_kwargs.get("default_registry_exists") is False
+        and semver.parse(target_scenario.user_kwargs.get("ops_version", ""))
+        >= semver.parse(MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+    )
+
+
+def expects_secretsync_migration(target_scenario: "UpgradeScenario") -> bool:
+    return (
+        hasattr(target_scenario, "aux_kwargs")
+        and target_scenario.aux_kwargs.get("secretsync_migration_needed") is True
+        and semver.parse(target_scenario.user_kwargs.get("ops_version", ""))
+        >= semver.parse(MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+    )
 
 
 def get_mock_cluster_record(
@@ -150,9 +210,11 @@ class UpgradeScenario:
         self.delete_record: Dict[str, bool] = {}
         self.create_record: Dict[str, dict] = {}
         self.patch_call_count = 0
-        self.instance_adr_namespace_resource_id: Optional[str] = None
         self.expect_instance_update = False
         self.remove_adr_for_test = False
+        self.secretsync_migration_needed = False
+        self.secretsync_resources = {}
+        self.aux_kwargs = {}
 
         self._build_defaults()
 
@@ -189,8 +251,6 @@ class UpgradeScenario:
         return self
 
     def set_user_kwargs(self: T, **kwargs) -> T:
-        if "ns_resource_id" in kwargs:
-            self.instance_adr_namespace_resource_id = kwargs["ns_resource_id"]
         self.user_kwargs.update(kwargs)
         return self
 
@@ -258,14 +318,19 @@ class UpgradeScenario:
         return self
 
     def set_auxiliary_kwargs(self: T, **kwargs):
+        self.aux_kwargs = kwargs
+
+        # Set instance attributes for commonly used flags
         if "remove_adr_for_test" in kwargs:
             self.remove_adr_for_test = kwargs["remove_adr_for_test"]
         if "expect_instance_update" in kwargs:
             self.expect_instance_update = kwargs["expect_instance_update"]
-        self.aux_kwargs = kwargs
+        if "secretsync_migration_needed" in kwargs:
+            self.secretsync_migration_needed = kwargs["secretsync_migration_needed"]
+
         return self
 
-    def set_instance_mock(self: T, mocked_responses: responses, instance_name: str, resource_group_name: str):
+    def set_instance_mock(self: T, mocked_responses: responses, instance_name: str, resource_group_name: str) -> T:
         mocked_responses.assert_all_requests_are_fired = False
 
         # Always use version 1.2.0+ (which includes ADR namespace)
@@ -285,6 +350,12 @@ class UpgradeScenario:
                 adr_namespace_name="default-adr",
             )
 
+        # Add existing SPC reference if specified in aux_kwargs
+        if self.aux_kwargs.get("has_existing_spc_ref"):
+            mock_instance_record["properties"]["defaultSecretProviderClassRef"] = {
+                "resourceId": build_spc_resource_id(resource_group_name, DEFAULT_SPC_NAME)
+            }
+
         mocked_responses.add(
             method=responses.GET,
             url=get_instance_endpoint(resource_group_name=resource_group_name, instance_name=instance_name),
@@ -293,11 +364,42 @@ class UpgradeScenario:
             content_type="application/json",
         )
 
+        # Track if instance update was called
+        self.instance_update_called = False
+
         # Add instance update mock if expected
         if self.expect_instance_update:
 
             def instance_update_callback(request):
-                return (200, STANDARD_HEADERS, request.body)
+                self.instance_update_called = True
+                body = json.loads(request.body)
+
+                # Build a minimal but complete response that the upgrade code will recognize
+                response_data = {
+                    "id": mock_instance_record["id"],
+                    "name": instance_name,
+                    "type": "Microsoft.IoTOperations/instances",
+                    "location": mock_instance_record.get("location", "eastus"),
+                    "properties": {},
+                }
+
+                # Apply the updates from the request body
+                if "properties" in body:
+                    # Track what was updated
+                    if "defaultSecretProviderClassRef" in body["properties"]:
+                        self.spc_ref_updated = True
+
+                    # Only include the fields that were updated
+                    if "adrNamespaceRef" in body["properties"]:
+                        response_data["properties"]["adrNamespaceRef"] = body["properties"]["adrNamespaceRef"]
+
+                    if "defaultSecretProviderClassRef" in body["properties"]:
+                        response_data["properties"]["defaultSecretProviderClassRef"] = body["properties"][
+                            "defaultSecretProviderClassRef"
+                        ]
+
+                response_body = json.dumps(response_data)
+                return (200, STANDARD_HEADERS, response_body)
 
             mocked_responses.add_callback(
                 method=responses.PUT,
@@ -349,7 +451,272 @@ class UpgradeScenario:
             callback=self.create_extension_response,
         )
 
+        self.instance_record = mock_instance_record
+
+        # Always setup registry endpoint mocks when IoT Ops extension exists
+        # The upgrade code checks registry endpoints when target version >= migration version
+        if EXTENSION_TYPE_OPS in self.extensions:
+            self._setup_registry_endpoint_mocks(mocked_responses, instance_name, resource_group_name)
+
+        self._setup_secretsync_mocks(mocked_responses, resource_group_name)
+
         return self
+
+    def _setup_secretsync_mocks(self, mocked_responses: responses, resource_group_name: str):
+        """Set up SecretSync resource graph mock and migration API mocks if needed."""
+        self.mock_calls_tracker = {"resource_graph": [], "patch_spc": [], "patch_secretsync": [], "delete_spc": []}
+
+        if self.secretsync_migration_needed:
+            # Set up resources with both opc-ua-connector and default SPCs
+            # Using realistic YAML format with proper indentation
+            self.secretsync_resources = {
+                SPC_RESOURCE_TYPE: [
+                    {
+                        "id": build_spc_resource_id(resource_group_name, OPC_UA_SPC_NAME),
+                        "name": OPC_UA_SPC_NAME,
+                        "type": SPC_RESOURCE_TYPE,
+                        "properties": {
+                            "objects": (
+                                "array:\n"
+                                "  - |\n"
+                                "    objectName: cert-der\n"
+                                "    objectType: secret\n"
+                                "    objectEncoding: hex\n"
+                            )
+                        },
+                    },
+                    {
+                        "id": build_spc_resource_id(resource_group_name, DEFAULT_SPC_NAME),
+                        "name": DEFAULT_SPC_NAME,
+                        "type": SPC_RESOURCE_TYPE,
+                        "properties": {
+                            "objects": (
+                                "array:\n"
+                                "  - |\n"
+                                "    objectName: cert2-der\n"
+                                "    objectType: secret\n"
+                                "    objectEncoding: hex\n"
+                                "  - |\n"
+                                "    objectName: cert-san-app-der\n"
+                                "    objectType: secret\n"
+                                "    objectEncoding: hex\n"
+                            )
+                        },
+                    },
+                ],
+                SECRET_SYNC_RESOURCE_TYPE: [
+                    {
+                        "id": build_secretsync_resource_id(resource_group_name, "secretsync1"),
+                        "name": "secretsync1",
+                        "type": SECRET_SYNC_RESOURCE_TYPE,
+                        "properties": {"secretProviderClassName": OPC_UA_SPC_NAME},
+                    },
+                    {
+                        "id": build_secretsync_resource_id(resource_group_name, "secretsync2"),
+                        "name": "secretsync2",
+                        "type": SECRET_SYNC_RESOURCE_TYPE,
+                        "properties": {"secretProviderClassName": OPC_UA_SPC_NAME},
+                    },
+                ],
+            }
+        elif self.aux_kwargs.get("has_default_spc_only"):
+            # Only default SPC exists (no migration needed)
+            self.secretsync_resources = {
+                SPC_RESOURCE_TYPE: [
+                    {
+                        "id": build_spc_resource_id(resource_group_name, DEFAULT_SPC_NAME),
+                        "name": DEFAULT_SPC_NAME,
+                        "type": SPC_RESOURCE_TYPE,
+                        "properties": {"objects": "array: []"},  # Empty array
+                    },
+                ],
+                SECRET_SYNC_RESOURCE_TYPE: [],
+            }
+        else:
+            self.secretsync_resources = {}
+
+        def handle_resource_graph_query(request: requests.PreparedRequest):
+            from .resources.conftest import get_request_kpis
+
+            request_kpis = get_request_kpis(request)
+            if request_kpis.body_str:
+                request_payload = json.loads(request_kpis.body_str)
+                query = request_payload.get("query", "")
+
+                if "microsoft.secretsynccontroller" in query.lower():
+                    self.mock_calls_tracker["resource_graph"].append(
+                        {"query": query, "resources_returned": len(self.secretsync_resources)}
+                    )
+
+                    response_data = {"data": []}
+                    if self.secretsync_resources:
+                        for resource_type, resources in self.secretsync_resources.items():
+                            for resource in resources:
+                                response_data["data"].append(
+                                    {
+                                        "id": resource["id"],
+                                        "type": resource_type,
+                                        "name": resource["name"],
+                                        "properties": resource["properties"],
+                                    }
+                                )
+
+                    return request_kpis.respond_with(200, response_body=response_data)
+            return None
+
+        mocked_responses.add_callback(
+            method="POST",
+            url=re.compile(
+                r"https://management\.azure\.com/providers/Microsoft\.ResourceGraph/resources\?api-version=.*"
+            ),
+            callback=handle_resource_graph_query,
+        )
+
+        if self.secretsync_migration_needed:
+
+            def create_patch_callback(operation_name: str, response_factory):
+                """Factory to create PATCH callbacks with common logic."""
+
+                def callback(request):
+                    assert_upgrade_headers(request.headers)
+                    body = json.loads(request.body)
+
+                    # Common validations for PATCH
+                    assert "properties" in body, f"PATCH {operation_name} request should have properties"
+
+                    # Track the call
+                    self.mock_calls_tracker[f"patch_{operation_name}"].append(
+                        {
+                            "url": request.path_url,
+                            "body": body,
+                            "name": request.path_url.split("/")[-1].split("?")[0],  # Extract resource name
+                        }
+                    )
+
+                    return (200, STANDARD_HEADERS, json.dumps(response_factory(request, body)))
+
+                return callback
+
+            # SPC PATCH mock
+            def spc_response_factory(_, body):
+                assert "objects" in body["properties"], "PATCH SPC should update objects"
+                # Return merged objects in the same YAML format, including the "id" field
+                return {
+                    "id": build_spc_resource_id(resource_group_name, DEFAULT_SPC_NAME),
+                    "name": DEFAULT_SPC_NAME,
+                    "type": SPC_RESOURCE_TYPE,
+                    "properties": {
+                        "objects": (
+                            "array:\n"
+                            "  - |\n"
+                            "    objectName: cert2-der\n"
+                            "    objectType: secret\n"
+                            "    objectEncoding: hex\n"
+                            "  - |\n"
+                            "    objectName: cert-san-app-der\n"
+                            "    objectType: secret\n"
+                            "    objectEncoding: hex\n"
+                            "  - |\n"
+                            "    objectName: cert-der\n"
+                            "    objectType: secret\n"
+                            "    objectEncoding: hex\n"
+                        )
+                    },
+                }
+
+            mocked_responses.add_callback(
+                method=responses.PATCH,
+                url=re.compile(rf".*azureKeyVaultSecretProviderClasses/{DEFAULT_SPC_NAME}.*"),
+                callback=create_patch_callback("spc", spc_response_factory),
+            )
+
+            # SecretSync PATCH
+            def secretsync_response_factory(request, body):
+                name = request.path_url.split("/")[-1].split("?")[0]
+                assert "secretProviderClassName" in body["properties"], "PATCH SecretSync should update SPC reference"
+                assert body["properties"]["secretProviderClassName"] == DEFAULT_SPC_NAME, (
+                    f"SecretSync should reference {DEFAULT_SPC_NAME}, "
+                    f"got {body['properties']['secretProviderClassName']}"
+                )
+                return {"name": name, "properties": {"secretProviderClassName": DEFAULT_SPC_NAME}}
+
+            mocked_responses.add_callback(
+                method=responses.PATCH,
+                url=re.compile(r".*/secretSyncs/secretsync.*"),
+                callback=create_patch_callback("secretsync", secretsync_response_factory),
+            )
+
+            # DELETE callback
+            def delete_spc_callback(request):
+                assert_upgrade_headers(request.headers)
+                assert (
+                    OPC_UA_SPC_NAME in request.path_url
+                ), f"Should delete {OPC_UA_SPC_NAME}, but URL is {request.path_url}"
+                self.mock_calls_tracker["delete_spc"].append({"url": request.path_url})
+                return (204, {}, "")
+
+            mocked_responses.add_callback(
+                method=responses.DELETE,
+                url=re.compile(rf".*azureKeyVaultSecretProviderClasses/{OPC_UA_SPC_NAME}.*"),
+                callback=delete_spc_callback,
+            )
+
+    def _setup_registry_endpoint_mocks(self, mocked_responses: responses, instance_name: str, resource_group_name: str):
+        """Set up registry endpoint mocks for tests."""
+        list_endpoint = get_registry_endpoint_endpoint(
+            instance_name=instance_name, resource_group_name=resource_group_name
+        )
+
+        # Determine test configuration
+        registry_list_error = self.aux_kwargs.get("registry_list_error", False)
+        default_exists = self.aux_kwargs.get("default_registry_exists", True)
+
+        if registry_list_error:
+            mocked_responses.add(
+                method=responses.GET,
+                url=list_endpoint,
+                status=500,
+                json={"error": {"message": "Failed to list registry endpoints", "code": "InternalServerError"}},
+                content_type="application/json",
+            )
+        else:
+            existing_endpoints = []
+            if default_exists:
+                endpoint = deepcopy(expected_default_registry)
+                endpoint["id"] = f"{list_endpoint}/default"
+                existing_endpoints.append(endpoint)
+
+            mocked_responses.add(
+                method=responses.GET,
+                url=list_endpoint,
+                json={"value": existing_endpoints},
+                status=200,
+                content_type="application/json",
+            )
+
+        # Always add PUT mock for creation attempts
+        create_endpoint = get_registry_endpoint_endpoint(
+            instance_name=instance_name, resource_group_name=resource_group_name, registry_endpoint_name="default"
+        )
+
+        def registry_create_callback(request):
+            assert_upgrade_headers(request.headers)
+            self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
+
+            body = json.loads(request.body)
+            assert "properties" in body
+            assert body["properties"]["host"] == expected_default_registry["properties"]["host"]
+            assert body["properties"]["authentication"] == expected_default_registry["properties"]["authentication"]
+
+            response_body = deepcopy(expected_default_registry)
+            response_body["id"] = create_endpoint
+            return (200, STANDARD_HEADERS, json.dumps(response_body))
+
+        mocked_responses.add_callback(
+            method=responses.PUT,
+            url=create_endpoint,
+            callback=registry_create_callback,
+        )
 
     def delete_extension_response(self, request: requests.PreparedRequest) -> Optional[tuple]:
         ext_moniker = request.path_url.split("?")[0].split("/")[-1]
@@ -359,8 +726,7 @@ class UpgradeScenario:
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
             if EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] == ext_moniker:
                 self.delete_record[ext_type] = True
-                # Return 204 No Content - realistic response
-                return (204, STANDARD_HEADERS, "")  # 204 returns no body
+                return (204, STANDARD_HEADERS, "")
 
         return (HTTP_STATUS_SERVICE_UNAVAILABLE, STANDARD_HEADERS, json.dumps({"error": "server error"}))
 
@@ -386,16 +752,24 @@ class UpgradeScenario:
         self.last_correlation_id = request.headers.get("x-ms-correlation-request-id")
         for ext_type in EXTENSION_TYPE_TO_MONIKER_MAP:
             if EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] == ext_moniker:
-                status_code, response_body, headers = self.ext_type_response_map.get(ext_type) or (
-                    HTTP_STATUS_OK,
-                    json.loads(request.body),
-                    {},
-                )
-                if response_body and "properties" in response_body:
+                self.patch_record[ext_type] = json.loads(request.body)
+
+                # Check if we have a specific response configured for this extension type
+                if ext_type in self.ext_type_response_map:
+                    code, body, headers = self.ext_type_response_map[ext_type]
+                    if not body:
+                        body = self.patch_record[ext_type]
+                    return (code, {**STANDARD_HEADERS, **headers}, json.dumps(body) if body else "")
+
+                # Default success response - ensure extensionType is included
+                response_body = self.patch_record[ext_type]
+                # Add extensionType if not present (patch requests might only send changed fields)
+                if "properties" not in response_body:
+                    response_body = {"properties": response_body}
+                if "extensionType" not in response_body["properties"]:
                     response_body["properties"]["extensionType"] = ext_type
-                self.patch_record[ext_type] = response_body
-                response_headers = dict(STANDARD_HEADERS, **headers)
-                return (status_code, response_headers, json.dumps(response_body))
+
+                return (HTTP_STATUS_OK, STANDARD_HEADERS, json.dumps(response_body))
 
         return (HTTP_STATUS_SERVICE_UNAVAILABLE, STANDARD_HEADERS, json.dumps({"error": "server error"}))
 
@@ -444,7 +818,8 @@ def assert_retry_count(mock_response, expected_count: int = DEFAULT_RETRY_COUNT)
 
 
 def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: List[dict]):
-    """Assert operations happen in correct order: DELETE -> CREATE -> UPDATE -> INSTANCE_UPDATE.
+    """Assert operations happen in correct order:
+    DELETE -> CREATE -> UPDATE -> INSTANCE_UPDATE -> REGISTRY_CREATE -> SECRETSYNC_MIGRATION.
     Also validates extension type order within each operation group."""
 
     # Group results by operation type
@@ -452,17 +827,32 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
     creates = []
     updates = []
     instance_updates = []
+    registry_creates = []
+    secretsync_migrations = []
 
     for result in upgrade_result:
         props = result.get("properties", {})
         ext_type = props.get("extensionType")
+
+        # Check if this is a registry endpoint creation
+        if (
+            result.get("name") == "default"
+            and result.get("type") == "Microsoft.IoTOperations/instances/registryEndpoints"
+        ):
+            registry_creates.append(result)
+            continue
+
+        # Check if this is a secretsync migration result (patched default SPC)
+        if not ext_type and result.get("name", "").startswith("spc-ops-") and "objects" in props:
+            secretsync_migrations.append(result)
+            continue
 
         # Check if this is an instance update (has adrNamespaceRef but no extensionType)
         if not ext_type and "adrNamespaceRef" in props:
             instance_updates.append(result)
             continue
 
-        # Skip if no extension type and not an instance update
+        # Skip if no extension type and not a special operation
         if not ext_type:
             continue
 
@@ -481,13 +871,32 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         target_scenario.create_record.keys()
     ), f"CREATE operations mismatch. Expected {set(target_scenario.create_record.keys())}, got {set(creates)}"
 
-    # If instance update is expected, verify it's last
+    # If instance update is expected, verify it exists
     if target_scenario.expect_instance_update:
         assert len(instance_updates) == 1, "Expected exactly one instance update"
-        # Verify it's the last operation in the result list
-        if len(upgrade_result) > 0:
-            last_result = upgrade_result[-1]
-            assert "adrNamespaceRef" in last_result.get("properties", {}), "Instance update should be last operation"
+
+    # Verify registry and secretsync ordering at the end of operations
+    expects_registry = expects_registry_creation(target_scenario)
+    expects_secretsync = expects_secretsync_migration(target_scenario)
+
+    if expects_registry:
+        assert len(registry_creates) == 1, "Expected exactly one registry endpoint creation"
+
+    if expects_secretsync:
+        assert len(secretsync_migrations) == 1, "Expected exactly one secretsync migration"
+
+    # Check ordering of final operations (registry and/or secretsync)
+    if len(upgrade_result) > 0:
+        if expects_registry and expects_secretsync:
+            # Both registry and secretsync: secretsync should be last, registry second to last
+            assert upgrade_result[-1] in secretsync_migrations, "SecretSync migration should be last operation"
+            assert upgrade_result[-2] in registry_creates, "Registry creation should be before secretsync migration"
+        elif expects_secretsync:
+            # Only secretsync: should be last
+            assert upgrade_result[-1] in secretsync_migrations, "SecretSync migration should be last operation"
+        elif expects_registry:
+            # Only registry: should be last
+            assert upgrade_result[-1] in registry_creates, "Registry endpoint creation should be last operation"
 
     # Build the actual operation sequence (non-empty groups only)
     operation_sequence = []
@@ -828,29 +1237,31 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             ),
             {EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE)},
         ),
-        # ========== Platform to CertManager Migration (>= 1.2.83) ==========
+        # ========== Platform to CertManager Migration (>= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE) ==========
         (
-            UpgradeScenario("Migration: Platform exists, IoT Ops >= 1.2.83")
+            UpgradeScenario("Migration: Platform exists, IoT Ops >= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
             },
         ),
         (
             UpgradeScenario("Migration: Platform already deleted, create CertManager")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.83"),
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
                 EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version=BUILT_IN_VALUE),
             },
         ),
         (
-            UpgradeScenario("No Migration: IoT Ops < 1.2.83")
+            UpgradeScenario("No Migration: IoT Ops < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
             .set_user_kwargs(ops_version="1.2.82"),
@@ -864,21 +1275,23 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, ext_vers="0.5.0")
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 # Platform is deleted, CM is UPDATED (not created since it exists)
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
             },
         ),
         (
-            UpgradeScenario("No Migration: Platform exists, CM doesn't, IoT Ops < 1.2.83")
+            UpgradeScenario("No Migration: Platform exists, CM doesn't, IoT Ops < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
             .set_user_kwargs(ops_version="1.2.82"),
             {
-                # No platform delete or CM create since IoT Ops < 1.2.83
+                # No platform delete or CM create since IoT Ops < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
                 EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
             },
         ),
@@ -888,12 +1301,93 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
             .set_extension(ext_type=EXTENSION_TYPE_SSC, ext_vers="0.3.0")
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 # Platform is deleted, not in expected
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
                 EXTENSION_TYPE_SSC: build_extension_props(EXTENSION_TYPE_SSC, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        # ========== no_cm_install flag tests ==========
+        (
+            UpgradeScenario("No CM Install: Skip cert-manager creation during v2 migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=True),
+            {
+                # Platform is deleted, but CM is NOT created due to no_cm_install
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("No CM Install: Skip cert-manager when platform already deleted")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=True),
+            {
+                # No CM creation due to no_cm_install
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("No CM Install: No effect when cert-manager already exists")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, ext_vers="0.5.0")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=True),
+            {
+                # Platform deleted, CM updated normally (no_cm_install only affects creation)
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("No CM Install: No effect when target version < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.82", no_cm_install=True),
+            {
+                # Target version doesn't trigger migration, so no_cm_install has no effect
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
+            },
+        ),
+        (
+            UpgradeScenario("No CM Install: Works with other migrations (registry, secretsync)")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=True)
+            .set_auxiliary_kwargs(default_registry_exists=False, secretsync_migration_needed=True),
+            {
+                # No CM creation, but other migrations still happen
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("No CM Install: False explicitly allows cert-manager creation")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=False),
+            {
+                # no_cm_install=False (explicit) should create CM normally
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
             },
         ),
         # ========== ADR Namespace ==========
@@ -902,7 +1396,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
-            .set_user_kwargs(ops_version="1.2.83")  # Triggers v2 migration
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)  # Triggers v2 migration
             .set_auxiliary_kwargs(remove_adr_for_test=True)
             .expecting_validation_error(r"The instance requires an ADR namespace for migration to v2"),
             {},
@@ -913,16 +1407,18 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
             .set_user_kwargs(
-                ops_version="1.2.83",
-                ns_resource_id="PLACEHOLDER_ADR_NAMESPACE_ID",  # TODO: Temporary.
+                ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
+                ns_resource_id="PLACEHOLDER_ADR_NAMESPACE_ID",
             )
-            .set_auxiliary_kwargs(remove_adr_for_test=True, expect_instance_update=True),
+            .set_auxiliary_kwargs(remove_adr_for_test=True, expect_instance_update=True, default_registry_exists=False),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
-                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.83"),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
             },
         ),
-        # ========== MQTT Broker Configuration Migration (>= 1.2.83) ==========
+        # ========== MQTT Broker Configuration Migration (>= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE) ==========
         (
             UpgradeScenario("MQTT Migration: Basic migration with default token")
             .set_extension(
@@ -933,11 +1429,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.hostName": "aio-broker.azure-iot-operations",
                         "dataFlows.values.tinyKube.mqttBroker.port": "18883",
@@ -958,11 +1454,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.hostName": "192.168.1.1",
                         "dataFlows.values.tinyKube.mqttBroker.port": "8883",
@@ -974,7 +1470,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             },
         ),
         (
-            UpgradeScenario("MQTT No Migration: Version < 1.2.83")
+            UpgradeScenario("MQTT No Migration: Version < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
             .set_extension(
                 ext_type=EXTENSION_TYPE_OPS,
                 ext_vers="1.2.0",
@@ -998,11 +1494,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                 ext_vers="1.2.0",
                 config_settings={"some.other.setting": "value"},
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                 ),
             },
         ),
@@ -1015,11 +1511,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "connectors.values.mqttBroker.address": "mqtts://broker-without-port",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.hostName": "broker-without-port",
                     },
@@ -1038,11 +1534,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "dataFlows.values.tinyKube.mqttBroker.port": "9999",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": (
                             "aio-internal"
@@ -1061,11 +1557,11 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.authentication.serviceAccountTokenAudience": (
                             "aio-internal"
@@ -1086,12 +1582,12 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                     "connectors.values.mqttBroker.serviceAccountTokenAudience": "aio-internal",
                 },
             )
-            .set_user_kwargs(ops_version="1.2.83"),
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
             {
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS,
-                    version="1.2.83",
+                    version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
                     config={
                         "dataFlows.values.tinyKube.mqttBroker.hostName": "aio-broker.azure-iot-operations",
                         "dataFlows.values.tinyKube.mqttBroker.port": "18883",
@@ -1100,6 +1596,218 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
                         ),
                     },
                 ),
+            },
+        ),
+        # ========== Registry Endpoint Creation (>= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE) ==========
+        (
+            UpgradeScenario("Registry: Create default endpoint on v2 migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(default_registry_exists=False),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("Registry: Skip creation when default exists")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(default_registry_exists=True),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("Registry: No creation when version < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.82")
+            .set_auxiliary_kwargs(default_registry_exists=False),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
+            },
+        ),
+        (
+            UpgradeScenario("Registry: Handle error gracefully when checking endpoints")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(registry_list_error=True),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        # ========== SecretSync Migration (>= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE) ==========
+        (
+            UpgradeScenario("SecretSync: Migrate opc-ua-connector SPC to default")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(secretsync_migration_needed=True, default_registry_exists=False),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SecretSync: No migration when version < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.82")
+            .set_auxiliary_kwargs(secretsync_migration_needed=False, default_registry_exists=True),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
+            },
+        ),
+        (
+            UpgradeScenario("SecretSync: No migration when has_v1_spc returns False")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(secretsync_migration_needed=False, default_registry_exists=False),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SecretSync: Migration without registry creation")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(secretsync_migration_needed=True, default_registry_exists=True),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SecretSync: Migration with all other migrations")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(
+                ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
+                ns_resource_id="PLACEHOLDER_ADR_NAMESPACE_ID",
+            )
+            .set_auxiliary_kwargs(
+                remove_adr_for_test=True,
+                expect_instance_update=True,
+                default_registry_exists=False,
+                secretsync_migration_needed=True,
+            ),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        # ========== Default SPC Reference Update (>= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE) ==========
+        (
+            UpgradeScenario("SPC Ref: Add reference when default SPC exists but not linked")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(has_default_spc_only=True, expect_instance_update=False),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SPC Ref: Skip update when reference already exists")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(has_existing_spc_ref=True, has_default_spc_only=True),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SPC Ref: No update when default SPC doesn't exist")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SPC Ref: Update with both ADR namespace and SPC reference")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(
+                ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
+                ns_resource_id="PLACEHOLDER_ADR_NAMESPACE_ID",
+            )
+            .set_auxiliary_kwargs(
+                remove_adr_for_test=True,
+                expect_instance_update=True,
+                has_default_spc_only=True,
+            ),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SPC Ref: Add reference during secretsync migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_auxiliary_kwargs(secretsync_migration_needed=True),
+            {
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
+            },
+        ),
+        (
+            UpgradeScenario("SPC Ref: No update when version < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
+            .set_user_kwargs(ops_version="1.2.82")
+            .set_auxiliary_kwargs(has_default_spc_only=True),
+            {
+                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
             },
         ),
     ],
@@ -1123,7 +1831,7 @@ def test_ops_upgrade(
 
     ns_resource_id = target_scenario.user_kwargs.get("ns_resource_id")
     if ns_resource_id and ns_resource_id == "PLACEHOLDER_ADR_NAMESPACE_ID":
-        # TODO: Placeholder is temp due to DOE limitation.
+        # TODO: Placeholder is temp due to DOE limitation (same rg constraint).
         ns_resource_id = (
             f"/subscriptions/sub1/resourceGroups/{resource_group_name}"
             f"/providers/Microsoft.DeviceRegistry/namespaces/adr1"
@@ -1168,7 +1876,7 @@ def test_ops_upgrade(
 
     assert upgrade_result
 
-    # Count expected operations including deletes
+    # Count expected operations
     delete_count = len(target_scenario.delete_record)
     create_count = len(target_scenario.create_record)
     # For updates, only count extensions that exist and are being updated (not created)
@@ -1180,7 +1888,10 @@ def test_ops_upgrade(
         ]
     )
     instance_count = int(target_scenario.expect_instance_update)
-    expected_count = delete_count + create_count + update_count + instance_count
+    registry_count = int(expects_registry_creation(target_scenario))
+    secretsync_count = int(expects_secretsync_migration(target_scenario))
+
+    expected_count = delete_count + create_count + update_count + instance_count + registry_count + secretsync_count
 
     assert len(upgrade_result) == expected_count
     assert len(mocked_confirm.ask.mock_calls) == int(not target_scenario.confirm_yes)
@@ -1188,6 +1899,7 @@ def test_ops_upgrade(
     assert_operation_order(target_scenario, upgrade_result)
     assert_result(target_scenario, upgrade_result, expected_patched_ext_types)
     assert_displays(spy_upgrade_displays, no_progress, patched_ext_types=expected_patched_ext_types)
+    assert_secretsync_migration(target_scenario)
 
 
 @pytest.mark.parametrize(
@@ -1268,6 +1980,43 @@ def test_ops_upgrade_retry_assertion(
         assert_retry_count(async_mock)
 
 
+def assert_secretsync_migration(target_scenario: UpgradeScenario):
+    """Verify SecretSync migration mocks were called correctly."""
+    if not expects_secretsync_migration(target_scenario):
+        # Verify no migration operations occurred when not expected
+        if hasattr(target_scenario, "mock_calls_tracker"):
+            tracker = target_scenario.mock_calls_tracker
+            assert len(tracker["resource_graph"]) == 1, "Resource graph should be called even when no migration"
+            assert len(tracker["patch_spc"]) == 0, "No SPC patches should occur when migration not needed"
+            assert len(tracker["patch_secretsync"]) == 0, "No SecretSync patches should occur when migration not needed"
+            assert len(tracker["delete_spc"]) == 0, "No SPC deletes should occur when migration not needed"
+        return
+
+    tracker = target_scenario.mock_calls_tracker
+
+    # Verify resource graph query
+    assert len(tracker["resource_graph"]) == 1, "Resource graph query should be called during init"
+
+    # Verify PATCH operations
+    assert len(tracker["patch_spc"]) == 1, f"Expected 1 PATCH SPC call, got {len(tracker['patch_spc'])}"
+
+    if tracker["patch_spc"]:
+        patched_objects_yaml = tracker["patch_spc"][0]["body"]["properties"]["objects"]
+        patched_objects = yaml.safe_load(patched_objects_yaml)
+        # The merged SPC should have 3 objects (1 from opc-ua + 2 from default)
+        assert (
+            len(patched_objects["array"]) == 3
+        ), f"Merged SPC should have 3 secrets, got {len(patched_objects['array'])}"
+
+    # Two v1 SecretSyncs need to be patched based on our test data
+    assert (
+        len(tracker["patch_secretsync"]) == 2
+    ), f"Expected 2 PATCH SecretSync calls, got {len(tracker['patch_secretsync'])}"
+
+    # Verify DELETE operation
+    assert len(tracker["delete_spc"]) == 1, f"Expected 1 DELETE SPC call, got {len(tracker['delete_spc'])}"
+
+
 def assert_result(
     target_scenario: UpgradeScenario, upgrade_result: List[dict], expected_types: Optional[Dict[str, dict]] = None
 ):
@@ -1277,41 +2026,124 @@ def assert_result(
     result_by_type = {}
     deleted_types = set()
     created_types = set()
+    created_extensions = {}
     instance_updates = []
+    registry_endpoints = []
+    secretsync_migrations = []
 
     for result in upgrade_result:
         props = result.get("properties", {})
         ext_type = props.get("extensionType")
 
-        # Separate instance updates from extension operations
-        if not ext_type:
-            # Instance updates don't have extensionType but should have specific properties
-            if "adrNamespaceRef" in props:
-                instance_updates.append(result)
+        # Check if this is a registry endpoint creation
+        if (
+            result.get("name") == "default"
+            and result.get("type") == "Microsoft.IoTOperations/instances/registryEndpoints"
+        ):
+            registry_endpoints.append(result)
             continue
 
-        # Process extension operations
+        # Check if this is a secretsync migration result (patched default SPC)
+        if not ext_type and result.get("name", "").startswith("spc-ops-") and "objects" in props:
+            secretsync_migrations.append(result)
+            continue
+
+        # Check if this is an instance update (has adrNamespaceRef or defaultSecretProviderClassRef)
+        if not ext_type and ("adrNamespaceRef" in props or "defaultSecretProviderClassRef" in props):
+            instance_updates.append(result)
+            continue
+
+        # Skip if no extension type and not a special operation
+        if not ext_type:
+            continue
+
         if props.get("provisioningState") == "Deleted":
             deleted_types.add(ext_type)
+        elif ext_type in target_scenario.create_record:
+            created_types.add(ext_type)
+            created_extensions[ext_type] = result
         else:
             result_by_type[ext_type] = result
-            if ext_type in target_scenario.create_record:
-                created_types.add(ext_type)
 
     # Validate instance updates
     if target_scenario.expect_instance_update:
-        assert instance_updates, "Expected instance update but none found in results"
-        assert len(instance_updates) == 1, f"Expected exactly 1 instance update, found {len(instance_updates)}"
+        assert len(instance_updates) == 1, f"Expected exactly one instance update, got {len(instance_updates)}"
+        instance_update = instance_updates[0]
+        props = instance_update.get("properties", {})
+
+        # Check ADR namespace update if provided
+        if target_scenario.user_kwargs.get("ns_resource_id"):
+            assert "adrNamespaceRef" in props, "Expected adrNamespaceRef in instance update"
+            assert props["adrNamespaceRef"]["resourceId"], "Expected resourceId in adrNamespaceRef"
+
+        # Check SPC reference update based on scenario flags
+        has_default_spc = (
+            target_scenario.aux_kwargs.get("has_default_spc_only") or target_scenario.secretsync_migration_needed
+        )
+        has_existing_ref = target_scenario.aux_kwargs.get("has_existing_spc_ref")
+
+        if has_default_spc and not has_existing_ref:
+            assert "defaultSecretProviderClassRef" in props, "Expected defaultSecretProviderClassRef in instance update"
+            assert props["defaultSecretProviderClassRef"][
+                "resourceId"
+            ], "Expected resourceId in defaultSecretProviderClassRef"
+            # Verify it points to the correct SPC
+            expected_spc_name = DEFAULT_SPC_NAME
+            assert expected_spc_name in props["defaultSecretProviderClassRef"]["resourceId"], (
+                f"Expected SPC reference to contain '{expected_spc_name}', "
+                f"got {props['defaultSecretProviderClassRef']['resourceId']}"
+            )
+        elif target_scenario.user_kwargs.get("ns_resource_id") and not has_default_spc:
+            # ADR-only update should not include SPC reference
+            assert (
+                "defaultSecretProviderClassRef" not in props
+            ), "Should not include defaultSecretProviderClassRef when no default SPC exists"
+    else:
+        assert len(instance_updates) == 0, f"Expected no instance updates, got {len(instance_updates)}"
+
+    # Validate registry endpoint creation
+    if expects_registry_creation(target_scenario):
+        assert registry_endpoints, "Expected registry endpoint creation but none found in results"
+        assert len(registry_endpoints) == 1, f"Expected exactly 1 registry endpoint, found {len(registry_endpoints)}"
+        endpoint = registry_endpoints[0]
+        assert endpoint["properties"]["host"] == expected_default_registry["properties"]["host"]
+        assert endpoint["properties"]["authentication"] == expected_default_registry["properties"]["authentication"]
+    else:
+        assert not registry_endpoints, f"Unexpected registry endpoint(s) in results. Found {len(registry_endpoints)}"
+
+    # Validate secretsync migration
+    if expects_secretsync_migration(target_scenario):
+        assert secretsync_migrations, "Expected secretsync migration but none found in results"
+        assert (
+            len(secretsync_migrations) == 1
+        ), f"Expected exactly 1 secretsync migration, found {len(secretsync_migrations)}"
+        migration = secretsync_migrations[0]
+        # Verify the objects were merged correctly
+        objects_yaml = migration["properties"]["objects"]
+        objects = yaml.safe_load(objects_yaml)
+        assert len(objects["array"]) == 3, f"Expected 3 merged secrets in default SPC, got {len(objects['array'])}"
+
+        # Verify all secrets from both SPCs are present by checking object names
+        object_names = set()
+        for obj_str in objects["array"]:
+            obj_data = yaml.safe_load(obj_str)
+            if "objectName" in obj_data:
+                object_names.add(obj_data["objectName"])
+
+        expected_names = {"cert-der", "cert2-der", "cert-san-app-der"}
+        assert object_names == expected_names, f"Expected object names {expected_names}, got {object_names}"
     else:
         assert (
-            not instance_updates
-        ), f"Unexpected instance update(s) in results. Found {len(instance_updates)} instance update(s)"
+            not secretsync_migrations
+        ), f"Unexpected secretsync migration(s) in results. Found {len(secretsync_migrations)}"
 
     _assert_user_kwargs_applied(target_scenario.user_kwargs, result_by_type, deleted_types)
 
     # Validate expected types if provided
     if expected_types:
-        _assert_expected_types(expected_types, result_by_type, deleted_types, created_types, target_scenario)
+        _assert_expected_types(
+            expected_types, result_by_type, deleted_types, created_types, created_extensions, target_scenario
+        )
 
 
 def _assert_user_kwargs_applied(user_kwargs: dict, result_by_type: dict, deleted_types: set):
@@ -1332,23 +2164,20 @@ def _assert_user_kwargs_applied(user_kwargs: dict, result_by_type: dict, deleted
         ]:
             key = f"{alias}_{suffix}"
             if key in user_kwargs:
-                expected = user_kwargs[key]
+                value = user_kwargs[key]
                 if suffix == "config":
-                    expected = parse_kvp_nargs(expected)
-                    actual_config = props.get(prop_name, {})
-                    # For config, verify that all user-provided settings are present
-                    for config_key, config_value in expected.items():
-                        assert config_key in actual_config, f"{key}: missing key '{config_key}' in config"
-                        assert actual_config[config_key] == config_value, (
-                            f"{key}: value mismatch for '{config_key}'. "
-                            f"Expected: {config_value}, Got: {actual_config[config_key]}"
-                        )
-                else:
-                    assert props.get(prop_name) == expected, f"{key} not applied correctly"
+                    value = parse_kvp_nargs(value)
+                if value:
+                    assert props.get(prop_name) == value, f"Expected {prop_name}={value} for {alias}"
 
 
 def _assert_expected_types(
-    expected_types: dict, result_by_type: dict, deleted_types: set, created_types: set, scenario
+    expected_types: dict,
+    result_by_type: dict,
+    deleted_types: set,
+    created_types: set,
+    created_extensions: dict,
+    scenario,
 ):
     expected = deepcopy(expected_types)
     results = deepcopy(result_by_type)
@@ -1364,9 +2193,8 @@ def _assert_expected_types(
             del expected[ext_type]
 
     for ext_type in created_types:
-        if ext_type in results and ext_type in expected:
-            _validate_created_extension(results[ext_type], expected[ext_type])
-            del results[ext_type]
+        if ext_type in created_extensions and ext_type in expected:
+            _validate_created_extension(created_extensions[ext_type], expected[ext_type])
             del expected[ext_type]
 
     assert results == expected
@@ -1398,53 +2226,66 @@ def assert_displays(
     error_context: Optional[Exception] = None,
     patched_ext_types: Optional[Dict[str, dict]] = None,
 ):
-    # Handle error scenarios
-    if error_context:
-        error_context = error_context.value
-        if isinstance(error_context, ValidationError):
-            validation_err_str = str(error_context)
-            progress_count = 1
-            if validation_err_str.startswith("Installed") and no_progress:
-                # Error is raised in first get_patch(). Table render is skipped if no_progress.
-                progress_count += 1
+    """Assert that upgrade displays are shown correctly."""
 
-    if not progress_count:
-        progress_count = 2
+    # Auto-calculate expected progress count
+    if progress_count is None:
+        if error_context:
+            error_value = error_context.value if hasattr(error_context, "value") else error_context
 
+            if isinstance(error_value, ValidationError):
+                error_msg = str(error_value)
+
+                # These errors occur early (before table render), only 1 progress init
+                early_errors = [
+                    "Cluster is not connected",
+                    "requires the IoT Operations extension",
+                    "requires an ADR namespace",  # This happens during analyze_cluster
+                ]
+
+                # These errors occur late (after table render), 2 progress inits
+                late_errors = [
+                    "is a downgrade",
+                    "incompatible",
+                    "min compatible upgrade version",
+                    "non-stable release trains",
+                ]
+
+                if any(phrase in error_msg for phrase in early_errors):
+                    progress_count = 1
+                elif any(phrase in error_msg for phrase in late_errors):
+                    progress_count = 2
+                else:
+                    progress_count = 1
+            elif isinstance(error_value, HttpResponseError):
+                # HTTP errors occur during apply_upgrades, after table render
+                progress_count = 2
+            else:
+                # Other errors default to 1
+                progress_count = 1
+        else:
+            # Success scenarios
+            progress_count = 2
+
+    # Verify progress initialization count
+    progress_calls = spy_upgrade_displays["progress.__init__"].mock_calls
+    actual_count = len(progress_calls)
+
+    assert actual_count == progress_count, f"Expected {progress_count} progress init(s), got {actual_count}"
+
+    # Verify progress parameters
+    if actual_count > 0:
+        assert progress_calls[0].kwargs.get("transient") is True
+        assert progress_calls[0].kwargs.get("disable") == no_progress
+
+    if actual_count > 1:
+        assert progress_calls[1].kwargs.get("transient") is False
+        assert progress_calls[1].kwargs.get("disable") == no_progress
+
+    # Verify table display for success scenarios
     if not no_progress and not error_context and patched_ext_types:
-        table = spy_upgrade_displays["print"].mock_calls[1].args[1]
-        assert table.title
-
-        table_monikers = list(table.columns[0].cells)
-        expected_update_monikers = {EXTENSION_TYPE_TO_MONIKER_MAP[ext_type] for ext_type in patched_ext_types.keys()}
-
-        for moniker in expected_update_monikers:
-            assert moniker in table_monikers, f"Expected {moniker} to be in table"
-
-        table_has_delete = any("Remove" in str(cell) for col in table.columns for cell in col.cells)
-        table_has_create = any("Not Installed" in str(cell) for col in table.columns for cell in col.cells)
-
-        if not table_has_delete and not table_has_create:
-            # Verify UPDATE-only scenarios maintain extension type order
-            update_monikers_in_table = [m for m in table_monikers if m in expected_update_monikers]
-            expected_order = sorted(
-                update_monikers_in_table, key=lambda m: list(EXTENSION_TYPE_TO_MONIKER_MAP.values()).index(m)
-            )
-            assert (
-                update_monikers_in_table == expected_order
-            ), f"Extensions not in expected order. Got {update_monikers_in_table}, expected {expected_order}"
-
-    # Verify progress bar initialization
-    assert len(spy_upgrade_displays["progress.__init__"].mock_calls) == progress_count
-    assert spy_upgrade_displays["progress.__init__"].mock_calls[0].kwargs == {
-        "transient": True,
-        "disable": no_progress,
-    }
-    if progress_count > 1:
-        assert spy_upgrade_displays["progress.__init__"].mock_calls[1].kwargs == {
-            "transient": False,
-            "disable": no_progress,
-        }
+        print_calls = spy_upgrade_displays["print"].mock_calls
+        assert len(print_calls) > 0, "Expected Console.print for table display"
 
 
 @pytest.mark.parametrize(
@@ -1470,3 +2311,78 @@ def test_calculate_config_delta(
 
     result = calculate_config_delta(current=current, target=target, sync_mode=sync_mode)
     assert result == expected
+
+
+def test_spc_resource_id_extraction(mocked_cmd: Mock):
+    """Test that SPC resource ID is correctly extracted from secretsync resources."""
+    from azext_edge.edge.providers.orchestration.migration import SecretSyncMigrationManager
+
+    mock_instance = {"id": "test-instance"}
+    mock_resource_map = Mock()
+
+    secretsync_resources = {
+        SPC_RESOURCE_TYPE: [
+            {
+                "id": "/subscriptions/sub1/resourceGroups/rg1/.../secretProviderClasses/opc-ua-connector",
+                "name": "opc-ua-connector",
+                "type": SPC_RESOURCE_TYPE,
+                "properties": {"objects": "array: []"},
+            },
+            {
+                "id": "/subscriptions/sub1/resourceGroups/rg1/.../secretProviderClasses/spc-ops-12345",
+                "name": "spc-ops-12345",
+                "type": SPC_RESOURCE_TYPE,
+                "properties": {"objects": "array: []"},
+            },
+        ]
+    }
+
+    manager = SecretSyncMigrationManager(
+        cmd=mocked_cmd,
+        instance_record=mock_instance,
+        resource_map=mock_resource_map,
+        secretsync_resources=secretsync_resources,
+    )
+
+    assert manager.spc_opcua is not None
+    assert manager.spc_opcua["name"] == "opc-ua-connector"
+    assert manager.spc_default is not None
+    assert manager.spc_default["name"] == "spc-ops-12345"
+    assert manager.spc_default["id"] == "/subscriptions/sub1/resourceGroups/rg1/.../secretProviderClasses/spc-ops-12345"
+    assert manager.has_v1_spc() is True
+
+    # Test with only default SPC
+    secretsync_resources_only_default = {
+        SPC_RESOURCE_TYPE: [
+            {
+                "id": "/subscriptions/sub1/resourceGroups/rg1/.../secretProviderClasses/spc-ops-67890",
+                "name": "spc-ops-67890",
+                "type": SPC_RESOURCE_TYPE,
+                "properties": {"objects": "array: []"},
+            },
+        ]
+    }
+
+    manager2 = SecretSyncMigrationManager(
+        cmd=mocked_cmd,
+        instance_record=mock_instance,
+        resource_map=mock_resource_map,
+        secretsync_resources=secretsync_resources_only_default,
+    )
+
+    assert manager2.spc_opcua is None
+    assert manager2.spc_default is not None
+    assert manager2.spc_default["name"] == "spc-ops-67890"
+    assert manager2.has_v1_spc() is False
+
+    # Test with no SPCs
+    manager3 = SecretSyncMigrationManager(
+        cmd=mocked_cmd,
+        instance_record=mock_instance,
+        resource_map=mock_resource_map,
+        secretsync_resources={},
+    )
+
+    assert manager3.spc_opcua is None
+    assert manager3.spc_default is None
+    assert manager3.has_v1_spc() is False

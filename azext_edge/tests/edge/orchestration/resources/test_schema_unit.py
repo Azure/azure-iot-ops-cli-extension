@@ -28,7 +28,7 @@ from ....generators import generate_random_string
 from .conftest import get_base_endpoint, get_mock_resource
 
 SCHEMA_RP = "Microsoft.DeviceRegistry"
-SCHEMA_REGISTRY_RP_API_VERSION = DeviceRegistryMgmtApiVersion.V20250701_preview.value
+SCHEMA_REGISTRY_RP_API_VERSION = DeviceRegistryMgmtApiVersion.V20251001.value
 
 
 def get_schema_endpoint(
@@ -190,7 +190,7 @@ def test_schema_delete(mocked_cmd, mocked_responses: responses):
             registry_name=registry_name,
             schema_name=schema_name
         ),
-        status=200,
+        status=202,
         content_type="application/json",
     )
     delete_schema(
@@ -396,7 +396,7 @@ def test_version_remove(mocked_cmd, mocked_responses: responses):
             schema_name=schema_name,
             schema_version=version_num
         ),
-        status=200,
+        status=202,
         content_type="application/json",
     )
     remove_version(

@@ -154,7 +154,7 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     datapoint_result_1 = run(
-        f"az iot ops ns asset custom dataset point add --asset {asset_name} "
+        f"az iot ops ns asset custom datapoint add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
         f"--name {datapoint_name_1} --data-source {datapoint_data_source_1} "
         f"--config {custom_config_path}"
@@ -181,7 +181,7 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
 
     # list dataset points
     datapoints_list = run(
-        f"az iot ops ns asset custom dataset point list --asset {asset_name} "
+        f"az iot ops ns asset custom datapoint list --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
     )
 
@@ -190,22 +190,41 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     assert len(datapoints_list) == 1
 
     # EVENT
-    event_name = f"event{generate_random_string(size=4)}"
-    event_notifier = "temperature.alarm"
+    # First create an event group
+    event_group_name = f"event{generate_random_string(size=4)}"
+    data_source = "temperature.alarm"
     custom_config_path, custom_config = create_config_file(tracked_files)
     event_destinations = "topic=factory/custom/events qos=Qos1 retain=Never ttl=3600"
 
-    event_result = run(
-        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {event_name} --event-notifier {event_notifier} "
+    event_group_result = run(
+        f"az iot ops ns asset custom event-group add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name} --data-source {data_source} "
         f"--config {custom_config_path} --destination {event_destinations}"
     )
 
     assert_event_properties(
+        event_group_result,
+        name=event_group_name,
+        data_source=data_source,
+        custom_configuration=custom_config,
+    )
+
+    # Now add an event to the event group
+    event_name = f"event{generate_random_string(size=4)}"
+    event_data_source = "temperature.level"
+    custom_config_path, custom_config = create_config_file(tracked_files)
+
+    event_result = run(
+        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name} --name {event_name} "
+        f"--data-source {event_data_source} --config {custom_config_path}"
+    )
+
+    assert_point_properties(
         event_result,
         name=event_name,
-        event_notifier=event_notifier,
-        custom_configuration=custom_config,
+        data_source=event_data_source,
+        custom_configuration=custom_config
     )
 
     # add event point
@@ -214,8 +233,8 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     datapoint_result = run(
-        f"az iot ops ns asset custom event point add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --event {event_name} --name {datapoint_name_2} "
+        f"az iot ops ns asset custom event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name} --name {datapoint_name_2} "
         f"--data-source {datapoint_data_source} --config {custom_config_path}"
     )
 
@@ -247,19 +266,21 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     # MANAGEMENT GROUP
     # add management group
     mgmt_group_name = f"mgmt-{generate_random_string(8)}"
+    mgmt_data_source = "management.control"
     default_topic = "factory/custom/management/responses"
     default_timeout = 30
     custom_config_path, custom_config = create_config_file(tracked_files)
 
     mgmt_group_result = run(
-        f"az iot ops ns asset custom mgmt add --asset {asset_name} --instance {instance_name} "
-        f"-g {resource_group} --name {mgmt_group_name} --default-topic {default_topic} "
-        f"--default-timeout {default_timeout} --config {custom_config_path}"
+        f"az iot ops ns asset custom mgmt-group add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {mgmt_group_name} --data-source {mgmt_data_source} "
+        f"--default-topic {default_topic} --default-timeout {default_timeout} --config {custom_config_path}"
     )
 
     assert_management_group_properties(
         mgmt_group_result,
         name=mgmt_group_name,
+        data_source=mgmt_data_source,
         default_topic=default_topic,
         default_timeout=default_timeout,
         custom_configuration=custom_config,
@@ -273,7 +294,7 @@ def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], 
     action_topic = "factory/opcua/actions/production"
 
     action_result = run(
-        f"az iot ops ns asset opcua mgmt action add --asset {asset_name} --instance {instance_name} "
+        f"az iot ops ns asset opcua mgmt-action add --asset {asset_name} --instance {instance_name} "
         f"-g {resource_group} --group {mgmt_group_name} --name {action_name} "
         f"--target-uri {action_target_uri} --action-type {action_type} --timeout {action_timeout} "
         f"--topic {action_topic}"

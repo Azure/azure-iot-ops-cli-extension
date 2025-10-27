@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 
-from .v20250901_preview import MicrosoftIoTOperationsManagementService
+from .v20251001 import MicrosoftIoTOperationsManagementService
 
 __all__ = [
     "MicrosoftIoTOperationsManagementService",

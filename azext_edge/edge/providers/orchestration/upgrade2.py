@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from enum import Enum
-from json import dumps
+from time import sleep
 from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
@@ -13,7 +13,6 @@ from azure.cli.core.azclierror import ValidationError
 from azure.core.exceptions import HttpResponseError
 from knack.log import get_logger
 from rich.console import Console
-from rich.json import JSON
 from rich.progress import (
     BarColumn,
     Progress,
@@ -38,12 +37,18 @@ from .common import (
     MIN_INSTANCE_VERSION_V2,
     ConfigSyncModeType,
 )
-from .resources import Instances
+from .migration import SecretSyncMigrationManager
+from .resources import RegistryEndpoints
+from .resources.instances import SECRET_SYNC_RESOURCE_TYPE, SPC_RESOURCE_TYPE, Instances
 from .targets import InitTargets
 
 logger = get_logger(__name__)
 
 console = Console()
+
+
+DEFAULT_REGISTRY_HOST = "mcr.microsoft.com"
+IOT_OPS_DELAY = 30  # seconds
 
 
 class ExtensionOperation(Enum):
@@ -60,6 +65,7 @@ def upgrade_ops_instance(
     no_progress: Optional[bool] = None,
     confirm_yes: Optional[bool] = None,
     force: Optional[bool] = None,
+    no_cm_install: Optional[bool] = None,
     **kwargs,
 ):
     upgrade_manager = UpgradeManager(
@@ -69,6 +75,7 @@ def upgrade_ops_instance(
         adr_namespace_resource_id=adr_namespace_resource_id,
         no_progress=no_progress,
         force=force,
+        no_cm_install=no_cm_install,
     )
 
     upgrade_state = upgrade_manager.analyze_cluster(**kwargs)
@@ -96,13 +103,16 @@ class UpgradeManager:
         adr_namespace_resource_id: Optional[str] = None,
         no_progress: Optional[bool] = None,
         force: Optional[bool] = None,
+        no_cm_install: Optional[bool] = None,
     ):
         self.cmd = cmd
         self.instance_name = instance_name
         self.resource_group_name = resource_group_name
         self.no_progress = no_progress
         self.force = force
+        self.no_cm_install = no_cm_install
         self.instances = Instances(self.cmd)
+        self.registry_endpoints = RegistryEndpoints(self.cmd)
         self.instance_record = self.instances.show(
             name=self.instance_name, resource_group_name=self.resource_group_name
         )
@@ -111,6 +121,16 @@ class UpgradeManager:
             cluster_name=self.resource_map.connected_cluster.cluster_name,
             resource_group_name=resource_group_name,
             adr_namespace_resource_id=adr_namespace_resource_id,
+        )
+        self.secretsync_migration = SecretSyncMigrationManager(
+            cmd=self.cmd,
+            instance_record=self.instance_record,
+            resource_map=self.resource_map,
+            secretsync_resources=self.resource_map.connected_cluster.get_cl_resources_by_type(
+                custom_location_id=self.instance_record["extendedLocation"]["name"],
+                resource_types={SPC_RESOURCE_TYPE, SECRET_SYNC_RESOURCE_TYPE},
+                show_properties=True,
+            ),
         )
 
     def get_desired_config(self) -> Dict[str, str]:
@@ -148,8 +168,25 @@ class UpgradeManager:
                 override_map=build_override_map(**override_kwargs),
                 instance=self.instance_record,
                 adr_namespace_resource_id=self.targets.adr_namespace_resource_id,
+                registry_endpoint_check=self._check_default_registry_needed,
+                secretsync_migration=self.secretsync_migration,
                 force=self.force,
+                no_cm_install=self.no_cm_install,
             )
+
+    def _check_default_registry_needed(self) -> bool:
+        try:
+            existing_endpoints = self.registry_endpoints.list(
+                instance_name=self.instance_name, resource_group_name=self.resource_group_name
+            )
+            for endpoint in existing_endpoints:
+                if endpoint["name"].lower() == "default":
+                    logger.debug("Default registry endpoint already exists.")
+                    return False
+            return True
+        except HttpResponseError as e:
+            logger.debug(f"Error checking registry endpoints: {e}")
+            return False
 
     def apply_upgrades(
         self,
@@ -168,8 +205,13 @@ class UpgradeManager:
             operations = self._group_by_operation(upgrade_state.extension_upgrades)
             total = sum(len(ops) for ops in operations.values())
 
-            if upgrade_state.instance_upgrade:
-                total += 1
+            for aux_upgrade in [
+                upgrade_state.instance_upgrade,
+                upgrade_state.registry_endpoint_needed,
+                upgrade_state.secretsync_migration_needed,
+            ]:
+                if aux_upgrade:
+                    total += 1
 
             return_payload = []
             correlation_id = str(uuid4())
@@ -183,31 +225,86 @@ class UpgradeManager:
                         result = self._apply_single_operation(ext=ext, op_type=op_type, headers=headers)
                         return_payload.append(result)
                         progress.advance(task)
-                    except HttpResponseError as e:
+                    except HttpResponseError:
                         progress.stop()
                         logger.error(f"Correlation Id for failed {op_type.value} operation: {correlation_id}")
-                        raise e
+                        raise
 
             if upgrade_state.instance_upgrade:
                 try:
-                    instance_result = self._apply_instance_update(headers)
+                    instance_result = self._apply_instance_update(
+                        needs_adr_update=upgrade_state._check_adr_namespace_update(),
+                        needs_spc_update=upgrade_state._check_spc_reference_update(),
+                        headers=headers,
+                    )
                     return_payload.append(instance_result)
                     progress.advance(task)
-                except HttpResponseError as e:
+                except HttpResponseError:
                     progress.stop()
                     logger.error(f"Correlation Id for failed instance update: {correlation_id}")
-                    raise e
+                    raise
+
+            if upgrade_state.registry_endpoint_needed:
+                try:
+                    registry_result = self._create_default_registry_endpoint(headers)
+                    return_payload.append(registry_result)
+                    progress.advance(task)
+                except HttpResponseError:
+                    progress.stop()
+                    logger.error(f"Correlation Id for failed registry endpoint creation: {correlation_id}")
+                    raise
+
+            if upgrade_state.secretsync_migration_needed:
+                try:
+                    default_spc = self.secretsync_migration.migrate_to_v2(headers)
+                    return_payload.append(default_spc)
+                    progress.advance(task)
+                except HttpResponseError:
+                    progress.stop()
+                    logger.error(f"Correlation Id for failed secretsync migration: {correlation_id}")
+                    raise
 
             return return_payload
 
-    def _apply_instance_update(self, headers: dict) -> dict:
+    def _apply_instance_update(self, needs_adr_update: bool, needs_spc_update: bool, headers: dict) -> dict:
+        """Apply instance updates based on what's needed.
+
+        Args:
+            needs_adr_update: Whether ADR namespace needs updating
+            needs_spc_update: Whether SPC reference needs updating
+            headers: Request headers
+
+        Returns:
+            Updated instance resource dictionary
+        """
+        adr_resource_id = None
+        spc_resource_id = None
+
+        if needs_adr_update:
+            adr_resource_id = self.targets.adr_namespace_resource_id
+
+        if needs_spc_update and self.secretsync_migration and self.secretsync_migration.spc_default:
+            spc_resource_id = self.secretsync_migration.spc_default.get("id")
+
         return self.instances.update(
             name=self.instance_name,
             resource_group_name=self.resource_group_name,
             instance=self.instance_record,
-            adr_namespace_resource_id=self.targets.adr_namespace_resource_id,
+            adr_namespace_resource_id=adr_resource_id,
+            spc_resource_id=spc_resource_id,
             headers=headers,
             no_status=True,  # Disable status since we're already in a Progress context
+        )
+
+    def _create_default_registry_endpoint(self, headers: dict) -> dict:
+        return self.registry_endpoints.add(
+            instance_name=self.instance_name,
+            resource_group_name=self.resource_group_name,
+            registry_endpoint_name="default",
+            host=DEFAULT_REGISTRY_HOST,
+            no_auth=True,
+            headers=headers,
+            no_status=True,
         )
 
     def _group_by_operation(self, extensions: List["ExtensionUpgradeState"]) -> Dict[ExtensionOperation, List]:
@@ -241,13 +338,19 @@ class UpgradeManager:
                 headers=headers,
             )
         else:  # UPDATE
-            return self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
+            result = self.resource_map.connected_cluster.clusters.extensions.update_cluster_extension(
                 resource_group_name=self.resource_group_name,
                 cluster_name=cluster_name,
                 extension_name=ext.extension["name"],
                 update_payload=ext.get_patch(),
                 headers=headers,
             )
+
+            if ext.moniker == EXTENSION_MONIKER_OPS:
+                logger.debug(f"Wait {IOT_OPS_DELAY} seconds for iot ops extension version update to propagate...")
+                sleep(IOT_OPS_DELAY)
+
+            return result
 
     def _build_creation_payload(self, ext: "ExtensionUpgradeState") -> dict:
         """Build creation payload for certmanager extension"""
@@ -273,41 +376,103 @@ class UpgradeManager:
 def format_version_with_train(version: Optional[str], train: Optional[str]) -> str:
     if not version:
         return "[dim]Not Available[/dim]"
+
     if not train:
         return version
+
+    # Use brackets to show train info, escaped for Rich formatting
     return f"{version} \\[{train}]"
 
 
-def format_extension_row(ext: "ExtensionUpgradeState") -> Tuple[str, str, str, any]:
+# Color Strategy:
+# - [green] = Additions/installations/new resources
+# - [red] = Deletions/removals
+# - [cyan] = Updates/modifications/changes to existing resources
+# - [yellow] = Warnings/non-ideal states
+# - [dim] = Not available/no changes/secondary information
+# - [bold] = Important values (hostnames, versions, etc.)
+
+
+def format_extension_row(ext: "ExtensionUpgradeState") -> Tuple[str, str, str]:
     """Format an extension row for the upgrade table.
-    Returns: (current_version, desired_version, action, patch_payload)
+    Returns: (current_version, desired_version, action)
     """
-    # Add status indicator for non-succeeded states
-    status_indicator = ""
-    if ext.provisioning_state.lower() != "succeeded":
-        status_indicator = f" [yellow]({ext.provisioning_state})[/yellow]"
+    try:
+        status_indicator = ""
+        if ext.provisioning_state and ext.provisioning_state.lower() != "succeeded":
+            status_indicator = f" [yellow]({ext.provisioning_state})[/yellow]"
 
-    if ext.operation_type == ExtensionOperation.DELETE:
+        if ext.operation_type == ExtensionOperation.DELETE:
+            current = format_version_with_train(ext.current_version[0], ext.current_version[1]) + status_indicator
+            desired = "[red]Removed[/red]"
+            action = f"[red]Delete {ext.moniker}[/red]"
+            return current, desired, action
+
+        if ext.operation_type == ExtensionOperation.CREATE:
+            current = "[dim]Not Installed[/dim]"
+            version = ext.desired_version[0] or "[dim]default[/dim]"
+            train = ext.desired_version[1] or "stable"
+            desired = f"[green]{format_version_with_train(version, train)}[/green]"
+            action = f"[green]Install {ext.moniker}[/green]"
+            return current, desired, action
+
+        # UPDATE operation
         current = format_version_with_train(ext.current_version[0], ext.current_version[1]) + status_indicator
-        desired = "[red]Remove[/red]"
-        action = f"[red]Delete {ext.moniker}[/red]"
-        return current, desired, action
+        desired = f"[cyan]{format_version_with_train(ext.desired_version[0], ext.desired_version[1])}[/cyan]"
 
-    elif ext.operation_type == ExtensionOperation.CREATE:
-        current = "[dim]Not Installed[/dim]"
-        version = ext.desired_version[0] or "N/A"
-        train = ext.desired_version[1] or "N/A"
-        desired = f"[green]{format_version_with_train(version, train)}[/green]"
-        action = f"[green]Install {ext.moniker}[/green]"
-        return current, desired, action
-
-    else:  # UPDATE
-        current = format_version_with_train(ext.current_version[0], ext.current_version[1]) + status_indicator
-        desired = format_version_with_train(ext.desired_version[0], ext.desired_version[1])
         patch = ext.get_patch()
+        if not patch or "properties" not in patch:
+            return current, desired, "[dim]No changes[/dim]"
 
-        action = JSON(dumps(patch)) if patch else None
-        return current, desired, action
+        props = patch.get("properties", {})
+        action_lines = []
+
+        if "version" in props:
+            action_lines.append(f"[cyan]•[/cyan] Update version to [bold]{props['version']}[/bold]")
+
+        if "releaseTrain" in props:
+            action_lines.append(f"[cyan]•[/cyan] Change release train to [bold]{props['releaseTrain']}[/bold]")
+
+        if "configurationSettings" in props:
+            config_settings = props.get("configurationSettings", {})
+            wasm_settings = [
+                (k, v) for k, v in config_settings.items() if k and k.startswith("dataFlows.values.tinyKube.mqttBroker")
+            ]
+            other_settings = [
+                (k, v)
+                for k, v in config_settings.items()
+                if k and not k.startswith("dataFlows.values.tinyKube.mqttBroker")
+            ]
+
+            if wasm_settings:
+                action_lines.append("[cyan]•[/cyan] WASM Graph config:")
+                for key, value in wasm_settings:
+                    if "hostName" in key:
+                        action_lines.append(f"  [dim]◦[/dim] Hostname: [bold]{value}[/bold]")
+                    elif "port" in key:
+                        action_lines.append(f"  [dim]◦[/dim] Port: [bold]{value}[/bold]")
+                    elif "serviceAccountTokenAudience" in key:
+                        action_lines.append(f"  [dim]◦[/dim] Token audience: [bold]{value}[/bold]")
+                    else:
+                        key_parts = key.split(".")
+                        simple_key = key_parts[-1] if key_parts else key
+                        display_value = f"[bold]{value}[/bold]" if value else "[dim]removed[/dim]"
+                        action_lines.append(f"  [dim]◦[/dim] {simple_key}: {display_value}")
+
+            for key, value in other_settings:
+                if value is None:
+                    action_lines.append(f"[red]•[/red] Remove config: [strike]{key}[/strike]")
+                else:
+                    display_value = str(value)
+                    if len(display_value) > 50:
+                        display_value = display_value[:47] + "..."
+                    action_lines.append(f"[cyan]•[/cyan] Set {key}: [bold]{display_value}[/bold]")
+
+        return current, desired, "\n".join(action_lines) if action_lines else "[dim]No changes[/dim]"
+
+    except Exception as e:
+        logger.debug(f"Error formatting extension row for {ext.moniker}: {e}")
+        return "[dim]Unknown[/dim]", "[dim]Unknown[/dim]", "[yellow]Check configuration[/yellow]"
 
 
 def get_default_table() -> Table:
@@ -326,43 +491,129 @@ def get_default_table() -> Table:
     return table
 
 
-def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):
-    table = get_default_table()
+def render_upgrade_table(upgrade_state: "ClusterUpgradeState"):  # noqa: C901
+    """Render the upgrade table with all planned changes."""
+    try:
+        table = get_default_table()
 
-    for ext in upgrade_state.extension_upgrades:
-        if not ext.can_upgrade():
-            continue
+        # Check if cert-manager installation was skipped due to --no-cm-install
+        if upgrade_state.no_cm_install and upgrade_state._is_target_version_above_migration_threshold():
+            has_certmanager = bool(upgrade_state.extensions_map.get(EXTENSION_TYPE_CM))
 
-        row_data = format_extension_row(ext)
-        if row_data[2] is None:  # Skip if no action
-            continue
+            # Would have installed certManager if not for no_cm_install flag
+            if not has_certmanager:
+                table.add_row(
+                    "certManager",
+                    "[dim]Not Installed[/dim]",
+                    "[yellow]Skipped[/yellow]",
+                    "[yellow]Installation disabled by --no-cm-install[/yellow]",
+                )
+                table.add_section()
 
-        table.add_row(ext.moniker, *row_data)
-        table.add_section()
+        # Add extension rows
+        for ext in upgrade_state.extension_upgrades:
+            if not ext.can_upgrade():
+                continue
+            try:
+                current, desired, action = format_extension_row(ext)
+                if action:
+                    table.add_row(ext.moniker, current, desired, action)
+                    table.add_section()
+            except Exception as e:
+                logger.debug(f"Error adding row for {ext.moniker}: {e}")
 
-    # Add instance update row if needed
-    if upgrade_state.instance_upgrade:
-        adr_id = upgrade_state.adr_namespace_resource_id
-        adr_name = adr_id.split("/")[-1] if "/" in adr_id else adr_id
+        # Add instance update row if needed
+        if upgrade_state.instance_upgrade:
+            try:
+                action_lines = []
+                needs_adr = upgrade_state._check_adr_namespace_update()
+                needs_spc = upgrade_state._check_spc_reference_update()
 
-        # Show current state based on what's configured
-        namespace_ref = upgrade_state.instance.get("properties", {}).get("adrNamespaceRef")
-        if namespace_ref and namespace_ref.get("resourceId"):
-            current_adr_id = namespace_ref.get("resourceId")
-            current_adr_name = current_adr_id.split("/")[-1] if "/" in current_adr_id else current_adr_id
-            current_state = f"[dim]Linked to {current_adr_name}[/dim]"
-        else:
-            current_state = "[dim]No ADR namespace[/dim]"
+                if needs_adr and upgrade_state.adr_namespace_resource_id:
+                    adr_parts = upgrade_state.adr_namespace_resource_id.split("/")
+                    adr_name = adr_parts[-1] if adr_parts else "ADR namespace"
+                    action_lines.append(f"[cyan]•[/cyan] Link ADR namespace: [bold]{adr_name}[/bold]")
 
-        table.add_row(
-            "instance",
-            current_state,
-            f"[green]Link {adr_name}[/green]",
-            JSON(dumps({"properties": {"adrNamespaceRef": {"resourceId": f"*/{adr_name}"}}})),
-        )
-        table.add_section()
+                if needs_spc and upgrade_state.secretsync_migration and upgrade_state.secretsync_migration.spc_default:
+                    spc_resource_id = upgrade_state.secretsync_migration.spc_default.get("id", "")
+                    spc_parts = spc_resource_id.split("/")
+                    spc_name = spc_parts[-1] if spc_parts else "default SPC"
+                    action_lines.append(f"[cyan]•[/cyan] Link default SPC: [bold]{spc_name}[/bold]")
 
-    console.print(table)
+                # Format current state
+                instance_props = upgrade_state.instance.get("properties", {})
+                current_namespace_ref = instance_props.get("adrNamespaceRef")
+                current_spc_ref = instance_props.get("defaultSecretProviderClassRef")
+
+                current_parts = []
+                if current_namespace_ref and current_namespace_ref.get("resourceId"):
+                    ns_parts = current_namespace_ref.get("resourceId", "").split("/")
+                    current_parts.append(f"ADR: {ns_parts[-1] if ns_parts else 'configured'}")
+                else:
+                    current_parts.append("[dim]No ADR namespace[/dim]")
+
+                if current_spc_ref and current_spc_ref.get("resourceId"):
+                    spc_parts = current_spc_ref.get("resourceId", "").split("/")
+                    current_parts.append(f"SPC: {spc_parts[-1] if spc_parts else 'configured'}")
+                else:
+                    current_parts.append("[dim]No SPC ref[/dim]")
+
+                # Format desired state
+                desired_parts = []
+                if needs_adr and upgrade_state.adr_namespace_resource_id:
+                    adr_parts = upgrade_state.adr_namespace_resource_id.split("/")
+                    desired_parts.append(f"[cyan]Linked {adr_parts[-1] if adr_parts else 'namespace'}[/cyan]")
+                elif current_namespace_ref:
+                    desired_parts.append("[dim]Keep ADR ref[/dim]")
+
+                if needs_spc:
+                    desired_parts.append("[cyan]Linked default SPC[/cyan]")
+                elif current_spc_ref:
+                    desired_parts.append("[dim]Keep SPC ref[/dim]")
+
+                table.add_row(
+                    "instance",
+                    "\n".join(current_parts),
+                    "\n".join(desired_parts) if desired_parts else "[dim]No changes[/dim]",
+                    "\n".join(action_lines) if action_lines else "[dim]No changes[/dim]",
+                )
+                table.add_section()
+            except Exception as e:
+                logger.debug(f"Error adding instance row: {e}")
+
+        # Add registry endpoint row if needed
+        if upgrade_state.registry_endpoint_needed:
+            try:
+                table.add_row(
+                    "default registry",
+                    "[dim]Not configured[/dim]",
+                    "[green]Created 'default'[/green]",
+                    f"[green]•[/green] Create registry endpoint\n"
+                    f"[green]•[/green] Host: [bold]{DEFAULT_REGISTRY_HOST}[/bold]\n"
+                    f"[green]•[/green] Auth: [bold]Anonymous[/bold]",
+                )
+                table.add_section()
+            except Exception as e:
+                logger.debug(f"Error adding registry row: {e}")
+
+        # Add secretsync migration row if needed
+        if upgrade_state.secretsync_migration_needed:
+            try:
+                table.add_row(
+                    "opc-ua-connector SPC",
+                    "Created",
+                    "[red]Removed[/red]",
+                    "[cyan]•[/cyan] Migrate secret refs to default SPC\n" "[red]•[/red] Delete opc-ua-connector SPC",
+                )
+                table.add_section()
+            except Exception as e:
+                logger.debug(f"Error adding secretsync migration row: {e}")
+
+        console.print(table)
+
+    except Exception as e:
+        logger.error(f"Error rendering upgrade table: {e}")
+        console.print("[yellow]Unable to render upgrade table. Please check the logs.[/yellow]")
 
 
 def build_override_map(**override_kwargs: dict) -> Dict[str, "ConfigOverride"]:
@@ -407,7 +658,10 @@ class ClusterUpgradeState:
         override_map: Dict[str, "ConfigOverride"],
         instance: Optional[dict] = None,
         adr_namespace_resource_id: Optional[str] = None,
+        registry_endpoint_check: Optional[callable] = None,
+        secretsync_migration: Optional["SecretSyncMigrationManager"] = None,
         force: Optional[bool] = None,
+        no_cm_install: Optional[bool] = None,
     ):
         self.extensions_map = extensions_map
         self.init_version_map = init_version_map
@@ -415,44 +669,121 @@ class ClusterUpgradeState:
         self.override_map = override_map
         self.instance = instance
         self.adr_namespace_resource_id = adr_namespace_resource_id
+        self.registry_endpoint_check = registry_endpoint_check
+        self.secretsync_migration = secretsync_migration
         self.force = force
+        self.no_cm_install = no_cm_install
         self.semver = scoped_semver_import()
         self.extension_upgrades = self._refresh_upgrade_state()
         self.instance_upgrade = self._check_instance_upgrade()
+        self.registry_endpoint_needed = self._check_registry_endpoint_needed()
+        self.secretsync_migration_needed = self._check_secretsync_migration_needed()
 
     def has_upgrades(self) -> bool:
-        return any(ext_state.can_upgrade() for ext_state in self.extension_upgrades) or bool(self.instance_upgrade)
+        return (
+            any(ext_state.can_upgrade() for ext_state in self.extension_upgrades)
+            or bool(self.instance_upgrade)
+            or bool(self.registry_endpoint_needed)
+            or bool(self.secretsync_migration_needed)
+        )
 
     def _check_instance_upgrade(self) -> bool:
-        """Check if instance needs ADR namespace update.
+        """Check if instance needs updates.
 
-        Returns True if:
-        1. During v2 migration and instance needs ADR namespace (required)
-        2. User provided --ns-resource-id to update/set ADR namespace (optional update)
+        Instance updates include:
+        1. ADR namespace reference update
+        2. Default SPC reference update
 
-        Raises ValidationError if ADR namespace is required but not provided.
+        Returns:
+            bool: True if any updates are needed
         """
         if not self.instance:
             return False
 
+        if not self._is_target_version_above_migration_threshold():
+            return False
+
+        needs_adr_update = self._check_adr_namespace_update()
+        needs_spc_update = self._check_spc_reference_update()
+
+        return needs_adr_update or needs_spc_update
+
+    def _check_adr_namespace_update(self) -> bool:
+        """Check if ADR namespace reference needs updating.
+
+        Note: This assumes v2 migration check has already been done by caller.
+
+        Returns:
+            bool: True if ADR namespace update is needed
+
+        Raises:
+            ValidationError: If ADR namespace is required for v2 migration but not provided
+        """
         namespace_ref = self.instance.get("properties", {}).get("adrNamespaceRef")
-        has_adr_namespace = namespace_ref and namespace_ref.get("resourceId")
+        current_adr_id = namespace_ref.get("resourceId") if namespace_ref else None
 
-        # If user provided an ADR namespace, check if update is needed
+        # User explicitly provided an ADR namespace to set/update
         if self.adr_namespace_resource_id:
-            # Update needed if no current ADR or different from provided
-            current_adr_id = namespace_ref.get("resourceId") if namespace_ref else None
-            return not current_adr_id or current_adr_id != self.adr_namespace_resource_id
+            return current_adr_id != self.adr_namespace_resource_id
 
-        # If no ADR namespace provided, check if it's required for v2 migration
-        # Check if we're doing a v2 migration (platform -> certmanager)
-        is_v2_migration = self._is_target_version_above_migration_threshold()
-
-        if is_v2_migration and not has_adr_namespace:
+        # Check if ADR namespace is required but missing (v2 migration requirement)
+        if not current_adr_id:
             raise ValidationError(
                 "The instance requires an ADR namespace for migration to v2.\n"
                 "Please provide a value for --ns-resource-id."
             )
+
+        return False
+
+    def _check_spc_reference_update(self) -> bool:
+        """Check if default SPC reference needs to be added to instance.
+
+        Note: This assumes v2 migration check has already been done by caller.
+
+        Returns:
+            bool: True if SPC reference should be added
+        """
+        # Check if instance already has a default SPC reference
+        current_spc_ref = self.instance.get("properties", {}).get("defaultSecretProviderClassRef")
+        if current_spc_ref and current_spc_ref.get("resourceId"):
+            return False
+
+        # Check if a default SPC exists that needs linking
+        if self.secretsync_migration and self.secretsync_migration.spc_default:
+            return True
+
+        return False
+
+    def _check_registry_endpoint_needed(self) -> bool:
+        """Check if default registry endpoint needs to be created.
+
+        Returns True if:
+        - Target IoT Operations version >= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+        - Default registry endpoint check function is provided and returns True (doesn't exist)
+        """
+
+        if not self._is_target_version_above_migration_threshold():
+            return False
+
+        # Check if the registry endpoint check function was provided and what it returns
+        if self.registry_endpoint_check:
+            return self.registry_endpoint_check()
+
+        return False
+
+    def _check_secretsync_migration_needed(self) -> bool:
+        """Check if SecretSync migration is needed.
+
+        Returns True if:
+        - Target IoT Operations version >= MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+        - SecretSync migration check function is provided and returns True (migration needed)
+        """
+
+        if not self._is_target_version_above_migration_threshold():
+            return False
+
+        if self.secretsync_migration:
+            return self.secretsync_migration.has_v1_spc()
 
         return False
 
@@ -537,7 +868,11 @@ class ClusterUpgradeState:
         1. CertManager extension doesn't exist
         2. Platform extension doesn't exist OR is being deleted
         3. Target IoT Operations version v2
+        4. no_cm_install is not True (i.e., cert-manager installation is not disabled)
         """
+        if self.no_cm_install:
+            return False
+
         has_certmanager = bool(self.extensions_map.get(EXTENSION_TYPE_CM))
         if has_certmanager:
             return False

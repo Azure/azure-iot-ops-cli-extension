@@ -43,12 +43,14 @@ def generate_management_group(
     group_name = group_name or f"group{generate_random_string(12)}"
     management_group = {
         "name": group_name,
+        "dataSource": f"nsu=original;i={randint(1, 1000)}",
         "defaultTopic": f"/contoso/mgmt/{group_name}",
         "defaultTimeoutInSeconds": randint(1000, 10000),
         "actions": [
             generate_management_group_action(asset_type=asset_type)
             for _ in range(num_actions)
-        ]
+        ],
+        "typeRef": None
     }
 
     if asset_type == "custom":
@@ -93,7 +95,8 @@ def generate_management_group_action(
                 "customProperty": "testValue",
                 "groupType": "management-ops",
                 "operationMode": "async"
-            })
+            }),
+            "type_ref": f"custom.management{randint(0, 1000)}"
         },
     ),
     # OPC UA asset management group tests
@@ -133,6 +136,7 @@ def test_add_namespace_asset_management_group(
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
     group_name = f"test{asset_type.title()}Group{generate_random_string(5)}"
+    data_source = f"nsu=test;i={randint(1, 1000)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
@@ -152,8 +156,9 @@ def test_add_namespace_asset_management_group(
         expected_group["defaultTimeoutInSeconds"] = default_timeout
 
     # Add custom configuration for custom assets
-    if asset_type == "custom" and "mgmt_custom_configuration" in mgmt_params:
-        expected_group["managementGroupConfiguration"] = mgmt_params["mgmt_custom_configuration"]
+    if asset_type == "custom":
+        expected_group["managementGroupConfiguration"] = mgmt_params.get("mgmt_custom_configuration")
+        expected_group["typeRef"] = mgmt_params.get("type_ref")
 
     # Generate mock asset
     mocked_asset = get_namespace_asset_record(
@@ -236,6 +241,7 @@ def test_add_namespace_asset_management_group(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
         group_name=group_name,
+        data_source=data_source,
         replace=replace_group,
         wait_sec=0,
         default_topic=default_topic,
@@ -265,6 +271,8 @@ def test_add_namespace_asset_management_group(
 
     # Verify management group properties
     assert added_group["name"] == group_name
+    assert added_group["dataSource"] == data_source
+    assert added_group["typeRef"] == mgmt_params.get("type_ref")
     assert added_group["defaultTopic"] == default_topic
     assert added_group["defaultTimeoutInSeconds"] == default_timeout
     assert added_group["managementGroupConfiguration"] == mgmt_params.get("mgmt_custom_configuration")
@@ -300,6 +308,7 @@ def test_add_namespace_asset_management_group_error(
     instance_name = "testInstance"
     instance_resource_group = "testInstanceResourceGroup"
     group_name = f"test{generate_random_string(5)}"
+    data_source = f"nsu=test;i={randint(1, 1000)}"
 
     # Get the namespace from the mocked function
     namespace_resource = mocked_get_namespace_for_instance.return_value
@@ -313,6 +322,7 @@ def test_add_namespace_asset_management_group_error(
         "instance_resource_group": instance_resource_group,
         "asset_name": asset_name,
         "group_name": group_name,
+        "data_source": data_source,
         "wait_sec": 0
     }
 
@@ -632,7 +642,8 @@ def test_remove_namespace_asset_management_group(
                 "customProperty": "updatedValue",
                 "groupType": "updated-management-ops",
                 "operationMode": "sync"
-            })
+            }),
+            "type_ref": f"custom.management{randint(0, 1000)}"
         },
     ),
     (
@@ -664,6 +675,7 @@ def test_remove_namespace_asset_management_group(
         },
     ),
 ])
+@pytest.mark.parametrize("data_source", [None, f"nsu=test;i={randint(1, 999)}"])
 @pytest.mark.parametrize("default_topic", [None, "/factory/mgmt/operations", ""])
 @pytest.mark.parametrize("default_timeout", [None, 5000, 0])
 def test_update_namespace_asset_management_group(
@@ -672,6 +684,7 @@ def test_update_namespace_asset_management_group(
     asset_type: str,
     command_func,
     mgmt_params: dict,
+    data_source: Optional[str],
     default_topic: Optional[str],
     default_timeout: Optional[int],
     mocked_check_cluster_connectivity,
@@ -728,6 +741,10 @@ def test_update_namespace_asset_management_group(
     # Build expected updated management group
     expected_group = deepcopy(initial_management_group)
 
+    # Update data source if provided
+    if data_source:
+        expected_group["dataSource"] = data_source
+
     # Update default topic if provided
     if default_topic == "":
         # Remove the property if empty string
@@ -742,6 +759,8 @@ def test_update_namespace_asset_management_group(
     # Update custom configuration for custom assets
     if "mgmt_custom_configuration" in mgmt_params:
         expected_group["managementGroupConfiguration"] = mgmt_params["mgmt_custom_configuration"]
+    if "type_ref" in mgmt_params:
+        expected_group["typeRef"] = mgmt_params["type_ref"]
 
     # Create expected asset after update
     expected_asset_payload = deepcopy(mocked_asset)
@@ -782,6 +801,7 @@ def test_update_namespace_asset_management_group(
         instance_resource_group=instance_resource_group,
         group_name=group_name,
         wait_sec=0,
+        data_source=data_source,
         default_topic=default_topic,
         default_timeout=default_timeout,
         **mgmt_params
@@ -811,6 +831,8 @@ def test_update_namespace_asset_management_group(
     assert updated_group["name"] == group_name
     assert updated_group["actions"] == initial_management_group["actions"]  # Actions should remain unchanged
 
+    assert updated_group.get("typeRef") == expected_group.get("typeRef")
+    assert updated_group.get("dataSource") == expected_group.get("dataSource")
     assert updated_group.get("defaultTopic") == expected_group.get("defaultTopic")
     assert updated_group.get("defaultTimeoutInSeconds") == expected_group.get("defaultTimeoutInSeconds")
     assert updated_group.get("managementGroupConfiguration") == expected_group.get("managementGroupConfiguration")
@@ -841,7 +863,10 @@ def test_update_namespace_asset_management_group(
     (
         "custom",
         add_namespace_custom_asset_management_group_action,
-        {"custom_configuration": json.dumps({"method": "execute", "parameters": {"param1": "value1"}})}
+        {
+            "custom_configuration": json.dumps({"method": "execute", "parameters": {"param1": "value1"}}),
+            "type_ref": f"custom.management{randint(0, 1000)}"
+        }
     ),
     # Custom asset management group action without custom configuration
     (
@@ -949,7 +974,8 @@ def test_add_namespace_asset_management_group_action(
         "targetUri": target_uri,
         "topic": topic,
         "actionType": action_type,
-        "timeoutInSeconds": timeout
+        "timeoutInSeconds": timeout,
+        "typeRef": config_params.get("type_ref")
     }
 
     # Add configuration based on asset type
@@ -1036,6 +1062,7 @@ def test_add_namespace_asset_management_group_action(
     assert patched_action["topic"] == topic
     assert patched_action["actionType"] == action_type
     assert patched_action["timeoutInSeconds"] == timeout
+    assert patched_action.get("typeRef") == expected_action.get("typeRef")
 
     if "actionConfiguration" in expected_action:
         assert patched_action["actionConfiguration"] == expected_action["actionConfiguration"]

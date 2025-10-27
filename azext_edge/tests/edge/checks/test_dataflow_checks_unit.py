@@ -967,10 +967,7 @@ def test_evaluate_dataflow_endpoints(
                                 "message": "message",
                             },
                         },
-                        "runtimeStatus": {
-                            "level": "ok",
-                            "description": "runtime status",
-                        },
+                        "healthState": {"status": "Available"},
                     },
                 },
             ],
@@ -1003,7 +1000,7 @@ def test_evaluate_dataflow_endpoints(
                         "name",
                         DEFAULT_DATAFLOW_PROFILE,
                     ),
-                    ("value", {"status.runtimeStatus.level": "ok"}),
+                    ("value", {"status.healthState.status": "Available"}),
                 ],
                 [
                     ("status", "success"),
@@ -1127,10 +1124,7 @@ def test_evaluate_dataflow_endpoints(
                             },
                             "failureCause": "failure cause",
                         },
-                        "runtimeStatus": {
-                            "level": "ok",
-                            "description": "runtime status",
-                        },
+                        "healthState": {"status": "Available"},
                     },
                 },
             ],
@@ -1171,7 +1165,7 @@ def test_evaluate_dataflow_endpoints(
                     (
                         "value",
                         {
-                            "status.runtimeStatus.level": "ok",
+                            "status.healthState.status": "Available",
                         },
                     ),
                 ],
@@ -1210,6 +1204,74 @@ def test_evaluate_dataflow_endpoints(
                         "No Dataflow Profiles detected in any namespace.",
                     ),
                 ]
+            ],
+        ),
+        # profile with healthState (IoT Operations API)
+        (
+            # profiles
+            [
+                {
+                    "metadata": {
+                        "name": DEFAULT_DATAFLOW_PROFILE,
+                        "namespace": DEFAULT_NAMESPACE,
+                    },
+                    "spec": {
+                        "instanceCount": 1,
+                    },
+                    "status": {
+                        "provisioningStatus": {
+                            "status": "success",
+                        },
+                        "healthState": {"status": "Available"},
+                    },
+                },
+            ],
+            # pods
+            [
+                generate_pod_stub(
+                    name=f"aio-dataflow-{DEFAULT_DATAFLOW_PROFILE}-0",
+                    phase="Running",
+                ),
+            ],
+            # conditions
+            [
+                "spec.instanceCount",
+                f"[*].metadata.name=='{DEFAULT_DATAFLOW_PROFILE}'",
+            ],
+            # evaluations
+            [
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        DEFAULT_DATAFLOW_PROFILE,
+                    ),
+                    ("value", {"status.provisioningStatus.status": "success"}),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        DEFAULT_DATAFLOW_PROFILE,
+                    ),
+                    ("value", {"status.healthState.status": "Available"}),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        DEFAULT_DATAFLOW_PROFILE,
+                    ),
+                    ("value", {"spec.instanceCount": 1}),
+                ],
+                [
+                    ("status", "success"),
+                    (
+                        "name",
+                        "pod/aio-dataflow-default-0",
+                    ),
+                    ("value", {"status.phase": "Running"}),
+                ],
             ],
         ),
     ],
@@ -1384,7 +1446,6 @@ def test_evaluate_core_service_runtime(
             ],
             # conditions
             [
-                "endsWith(spec.host, 'azurecr.io')",
                 "spec.authentication.method",
             ],
             # evaluations
@@ -1392,27 +1453,12 @@ def test_evaluate_core_service_runtime(
                 [
                     ("status", "success"),
                     ("name", "registry-endpoint-1"),
-                    ("value/spec.host", "myregistry.azurecr.io"),
-                ],
-                [
-                    ("status", "success"),
-                    ("name", "registry-endpoint-1"),
                     ("value/spec.authentication.method", "ServiceAccountToken"),
-                ],
-                [
-                    ("status", "error"),
-                    ("name", "registry-endpoint-2"),
-                    ("value/spec.host", "docker.io"),
                 ],
                 [
                     ("status", "success"),
                     ("name", "registry-endpoint-2"),
                     ("value/spec.authentication.method", "UserAssignedManagedIdentity"),
-                ],
-                [
-                    ("status", "success"),
-                    ("name", "registry-endpoint-3"),
-                    ("value/spec.host", "testregistry.azurecr.io"),
                 ],
                 [
                     ("status", "success"),

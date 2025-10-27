@@ -13,7 +13,15 @@ from .helpers import check_workload_resource_files, get_file_map, run_bundle_com
 logger = get_logger(__name__)
 
 pytestmark = pytest.mark.e2e
-AKRI_PREFIXES = ["aio-akri", "aiomedia", "aioonvif"]
+AKRI_PREFIXES = [
+    "aio-akri",
+    "aiomedia",
+    "aioonvif",
+    "media-connector-template",
+    "onvif-connector-template",
+    "rest-connector-template",
+    "sse-connector-template"
+]
 AKRI_WORKLOAD_TYPES = [
     "deployment",
     "pod",
@@ -22,7 +30,7 @@ AKRI_WORKLOAD_TYPES = [
     "service",
     "vwc",
     "mwc",
-    "connectorinstance",
+    "connector",
     "connectortemplate",
     "discoveryhandler",
 ]

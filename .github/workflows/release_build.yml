@@ -38,12 +38,14 @@ jobs:
           pip install $wheel
           version=$(pip show azure_iot_ops | grep Version: | awk '{print $2}')
           echo "version=$version" >> $GITHUB_ENV
+      - name: Generate temporary setup.py for SBOM
+        run: |
+          python tools/gen_setup.py
       - name: Generate SBOM
         run: |
           curl -Lo $RUNNER_TEMP/sbom-tool https://github.com/microsoft/sbom-tool/releases/download/v2.2.3/sbom-tool-linux-x64
           chmod +x $RUNNER_TEMP/sbom-tool
           $RUNNER_TEMP/sbom-tool generate -b ./dist -bc . -pn "Azure IoT Operations CLI Extension" -pv "${{ env.version }}" -ps Microsoft
-
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v4
         with:

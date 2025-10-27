@@ -30,4 +30,4 @@ DATAFLOW_API_V1B1 = EdgeResourceApi(
     label="microsoft-iotoperations-dataflows",
 )
 
-DATAFLOW_ACTIVE_API = DATAFLOW_API_V1B1
+DATAFLOW_ACTIVE_API = DATAFLOW_API_V1

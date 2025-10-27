@@ -45,7 +45,7 @@ def get_namespace_device_mgmt_uri(namespace_name: str, resource_group_name: str,
     )
     if device_name:
         base_uri += f"/{device_name}"
-    return f"{base_uri}?api-version={DeviceRegistryMgmtApiVersion.V20250701_preview.value}"
+    return f"{base_uri}?api-version={DeviceRegistryMgmtApiVersion.V20251001.value}"
 
 
 def get_namespace_device_record(device_name: str, namespace_name: str, resource_group_name: str) -> Dict:
@@ -924,10 +924,15 @@ def test_remove_namespace_device_inbound_endpoints(
     (False, '{"customSetting": "value"}'),  # Test with JSON string
     (True, '{"fileContent": "content"}'),   # Test with file content
 ])
-@pytest.mark.parametrize("cert_ref, username_ref, password_ref", [
-    (None, None, None),              # Anonymous auth
-    (None, "secretRef:username", "secretRef:password"),  # Username/Password auth
-    ("secretRef:certificate", None, None),  # Certificate auth
+@pytest.mark.parametrize("cert_ref, key_ref, intermediate_cert_ref, username_ref, password_ref", [
+    (None, None, None, None, None),              # Anonymous auth
+    (None, None, None, "auth-secret/username", "auth-secret/password"),  # Username/Password auth
+    ("cert-secret/certificate", None, None, None, None),  # Basic certificate auth
+    ("cert-secret/certificate", "cert-secret/privateKey", None, None, None),  # Certificate with key
+    ("cert-secret/certificate", None, "cert-secret/intermediateCerts", None, None),  # Certificate with intermediate
+    (
+        "cert-secret/certificate", "cert-secret/privateKey", "cert-secret/intermediateCerts", None, None
+    ),  # Full certificate chain
 ])
 @pytest.mark.parametrize("endpoint_version", [None, "1.0"])
 @pytest.mark.parametrize("endpoints_present, replace", [
@@ -942,6 +947,8 @@ def test_add_inbound_custom_device_endpoint(
     config_is_file: bool,
     additional_configuration: str,
     cert_ref: Optional[str],
+    key_ref: Optional[str],
+    intermediate_cert_ref: Optional[str],
     username_ref: Optional[str],
     password_ref: Optional[str],
     response_status: int,
@@ -995,11 +1002,15 @@ def test_add_inbound_custom_device_endpoint(
 
     # Set up authentication structure based on auth type
     if cert_ref:
+        x509_credentials = {"certificateSecretName": cert_ref}
+        if key_ref:
+            x509_credentials["keySecretName"] = key_ref
+        if intermediate_cert_ref:
+            x509_credentials["intermediateCertificatesSecretName"] = intermediate_cert_ref
+
         expected_endpoint["authentication"] = {
             "method": ADRAuthModes.certificate.value,
-            "x509Credentials": {
-                "certificateSecretName": cert_ref
-            }
+            "x509Credentials": x509_credentials
         }
     elif username_ref and password_ref:
         expected_endpoint["authentication"] = {
@@ -1071,6 +1082,8 @@ def test_add_inbound_custom_device_endpoint(
                 endpoint_address=endpoint_address,
                 additional_configuration=additional_configuration,
                 certificate_reference=cert_ref,
+                key_reference=key_ref,
+                intermediate_certificate_reference=intermediate_cert_ref,
                 username_reference=username_ref,
                 password_reference=password_ref,
                 endpoint_version=endpoint_version,
@@ -1090,6 +1103,8 @@ def test_add_inbound_custom_device_endpoint(
         endpoint_address=endpoint_address,
         additional_configuration=additional_configuration,
         certificate_reference=cert_ref,
+        key_reference=key_ref,
+        intermediate_certificate_reference=intermediate_cert_ref,
         username_reference=username_ref,
         password_reference=password_ref,
         endpoint_version=endpoint_version,
@@ -1804,9 +1819,15 @@ def test_add_inbound_device_endpoint_error(
 
 
 @pytest.mark.parametrize("response_status", [200, 400])
-@pytest.mark.parametrize("username_ref, password_ref", [
-    (None, None),              # Anonymous auth
-    ("secretRef:username", "secretRef:password"),  # Username/Password auth
+@pytest.mark.parametrize("cert_ref, key_ref, intermediate_cert_ref, username_ref, password_ref", [
+    (None, None, None, None, None),              # Anonymous auth
+    (None, None, None, "auth-secret/username", "auth-secret/password"),  # Username/Password auth
+    ("cert-secret/certificate", None, None, None, None),  # Basic certificate auth
+    ("cert-secret/certificate", "cert-secret/privateKey", None, None, None),  # Certificate with key
+    ("cert-secret/certificate", None, "cert-secret/intermediateCerts", None, None),  # Certificate with intermediate
+    (
+        "cert-secret/certificate", "cert-secret/privateKey", "cert-secret/intermediateCerts", None, None
+    ),  # Full certificate chain
 ])
 @pytest.mark.parametrize("endpoint_version", [None, "1.0"])
 @pytest.mark.parametrize("endpoints_present, replace", [
@@ -1817,6 +1838,9 @@ def test_add_inbound_device_endpoint_error(
 def test_add_inbound_rest_device_endpoint(
     mocked_cmd,
     mocked_responses: responses,
+    cert_ref: Optional[str],
+    key_ref: Optional[str],
+    intermediate_cert_ref: Optional[str],
     username_ref: Optional[str],
     password_ref: Optional[str],
     response_status: int,
@@ -1858,7 +1882,18 @@ def test_add_inbound_rest_device_endpoint(
     }
 
     # Set up authentication structure based on auth type
-    if username_ref and password_ref:
+    if cert_ref:
+        x509_credentials = {"certificateSecretName": cert_ref}
+        if key_ref:
+            x509_credentials["keySecretName"] = key_ref
+        if intermediate_cert_ref:
+            x509_credentials["intermediateCertificatesSecretName"] = intermediate_cert_ref
+
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.certificate.value,
+            "x509Credentials": x509_credentials
+        }
+    elif username_ref and password_ref:
         expected_endpoint["authentication"] = {
             "method": ADRAuthModes.userpass.value,
             "usernamePasswordCredentials": {
@@ -1926,6 +1961,7 @@ def test_add_inbound_rest_device_endpoint(
                 instance_resource_group=instance_resource_group,
                 endpoint_name=endpoint_name,
                 endpoint_address=endpoint_address,
+                certificate_reference=cert_ref,
                 username_reference=username_ref,
                 password_reference=password_ref,
                 endpoint_version=endpoint_version,
@@ -1942,6 +1978,9 @@ def test_add_inbound_rest_device_endpoint(
         instance_resource_group=instance_resource_group,
         endpoint_name=endpoint_name,
         endpoint_address=endpoint_address,
+        certificate_reference=cert_ref,
+        key_reference=key_ref,
+        intermediate_certificate_reference=intermediate_cert_ref,
         username_reference=username_ref,
         password_reference=password_ref,
         endpoint_version=endpoint_version,

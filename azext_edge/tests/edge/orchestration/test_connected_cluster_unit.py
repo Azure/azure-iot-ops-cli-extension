@@ -81,7 +81,7 @@ def test_connected_cluster_queries(
         kubernetesconfigurationresources
         | where type =~ 'microsoft.kubernetesconfiguration/extensions'
         | where id startswith '{connected_cluster.resource_id}'
-        | where properties.ExtensionType =~ 'microsoft.iotoperations'
+        | where properties.ExtensionType startswith 'microsoft.iotoperations'
             or properties.ExtensionType =~ 'microsoft.azure.secretstore'
             or properties.ExtensionType =~ 'microsoft.arc.containerstorage'
             or properties.ExtensionType =~ 'microsoft.certmanagement'

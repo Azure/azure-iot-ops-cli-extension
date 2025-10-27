@@ -22,10 +22,10 @@ from azext_edge.edge.providers.orchestration.resources.schema_registries import 
     STORAGE_BLOB_DATA_CONTRIBUTOR_ROLE_ID,
 )
 from azext_edge.edge.providers.orchestration.rp_namespace import ADR_PROVIDER
+from azext_edge.edge.util.az_client import DeviceRegistryMgmtApiVersion
 
 from ....generators import generate_random_string
 from .conftest import (
-    ADR_API_VERSION,
     ADR_RP,
     STORAGE_RP,
     ZEROED_SUBSCRIPTION,
@@ -37,6 +37,8 @@ from .conftest import (
 
 STORAGE_API_VERSION = "2023-05-01"
 RESOURCES_API_VERSION = "2024-03-01"
+# Use latest stable API version for schema registry tests
+SCHEMA_REGISTRY_ADR_API_VERSION = DeviceRegistryMgmtApiVersion.V20251001.value
 
 
 def get_schema_registry_endpoint(resource_group_name: Optional[str] = None, registry_name: Optional[str] = None) -> str:
@@ -47,7 +49,7 @@ def get_schema_registry_endpoint(resource_group_name: Optional[str] = None, regi
         resource_group_name=resource_group_name,
         resource_path=resource_path,
         resource_provider=ADR_RP,
-        api_version=ADR_API_VERSION,
+        api_version=SCHEMA_REGISTRY_ADR_API_VERSION,
     )
 
 

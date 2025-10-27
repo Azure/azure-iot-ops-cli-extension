@@ -138,6 +138,7 @@ def get_storage_mgmt_client(subscription_id: str, **kwargs) -> "StorageManagemen
 
 
 class DeviceRegistryMgmtApiVersion(Enum):
+    V20251001 = "2025-10-01"
     V20250701_preview = "2025-07-01-preview"
     V20241101 = "2024-11-01"
     V20240901_preview = "2024-09-01-preview"
@@ -145,7 +146,7 @@ class DeviceRegistryMgmtApiVersion(Enum):
 
 def get_registry_mgmt_client(
     subscription_id: str,
-    api_version: Union[DeviceRegistryMgmtApiVersion, str] = DeviceRegistryMgmtApiVersion.V20250701_preview,
+    api_version: Union[DeviceRegistryMgmtApiVersion, str] = DeviceRegistryMgmtApiVersion.V20251001,
     **kwargs,
 ) -> "MicrosoftDeviceRegistryManagementService":
     from ..vendor.clients.deviceregistrymgmt import (

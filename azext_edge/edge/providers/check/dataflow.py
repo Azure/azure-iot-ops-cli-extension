@@ -154,27 +154,28 @@ def _process_dataflow_resource_status(
                 display=Padding("Log Errors:", (0, 0, 0, inner_padding)),
             )
 
-    # runtime status (required for profiles)
-    runtime_status = status.get("runtimeStatus", {})
-    if runtime_status:
-        # calculate status
-        runtime_level = runtime_status.get("level")
-        runtime_status_enum = ResourceState.map_to_status(runtime_level)
-        description = runtime_status.get("description")
+    # status handling - IoT Operations resources use healthState (optional)
+    health_state = status.get("healthState")
+    if health_state:
+        # healthState is an object like provisioningStatus
+        health_state_status = health_state.get("status")
+        runtime_status_enum = ResourceState.map_to_status(health_state_status)
 
-        # create display
-        runtime_status_display = (
-            f"Runtime Status: {{{colorize_string(color=runtime_status_enum.color, value=runtime_status.get('level'))}}}"
+        # create display for health state
+        health_status_display = (
+            f"Health Status: {{{colorize_string(color=runtime_status_enum.color, value=health_state_status)}}}"
         )
-        if description and detail_level > ResourceOutputDetailLevel.summary.value:
-            runtime_status_display += f" - {colorize_string(description)}"
+        # Add description for higher detail levels
+        if detail_level > ResourceOutputDetailLevel.summary.value:
+            description = health_state.get("description")
+            if description:
+                health_status_display += f" - {colorize_string(description)}"
+
         check_manager.add_display(
             target_name=target_name,
             namespace=namespace,
-            display=Padding(runtime_status_display, (0, 0, 0, padding)),
+            display=Padding(health_status_display, (0, 0, 0, padding)),
         )
-    elif resource_kind == DataflowResourceKinds.DATAFLOWPROFILE.value:
-        runtime_status_enum = CheckTaskStatus.error
 
     # add evals if necessary
     if provisioning_status_enum != CheckTaskStatus.skipped:
@@ -191,13 +192,17 @@ def _process_dataflow_resource_status(
             value=status_obj,
         )
     if runtime_status_enum != CheckTaskStatus.skipped:
+        # Only healthState is supported (runtimeStatus removed from API)
+        # healthState is an object like provisioningStatus
+        status_value = {"status.healthState.status": health_state.get("status")}
+
         check_manager.add_target_eval(
             target_name=target_name,
             namespace=namespace,
             status=runtime_status_enum.value,
             resource_name=resource_name,
             resource_kind=resource_kind,
-            value={"status.runtimeStatus.level": runtime_status.get("level")},
+            value=status_value,
         )
 
 
@@ -1759,7 +1764,6 @@ def evaluate_registry_endpoints(
             target_name=target,
             namespace=namespace,
             conditions=[
-                "endsWith(spec.host, 'azurecr.io')",
                 "spec.authentication.method",
             ],
         )
@@ -1797,17 +1801,6 @@ def evaluate_registry_endpoints(
                 resource_kind=DataflowResourceKinds.REGISTRYENDPOINT.value,
                 detail_level=detail_level,
                 padding=INNER_PADDING,
-            )
-
-            # evaluate host condition - endsWith(spec.host, 'azurecr.io')
-            host_status = CheckTaskStatus.success if host.endswith("azurecr.io") else CheckTaskStatus.error
-            check_manager.add_target_eval(
-                target_name=target,
-                namespace=namespace,
-                status=host_status.value,
-                resource_name=registry_endpoint_name,
-                resource_kind=DataflowResourceKinds.REGISTRYENDPOINT.value,
-                value={"spec.host": host},
             )
 
             # display host information always

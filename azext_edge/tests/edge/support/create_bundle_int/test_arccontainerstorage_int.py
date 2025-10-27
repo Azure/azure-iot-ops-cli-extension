@@ -84,20 +84,22 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
     walk_result, bundle_path = run_bundle_command(command=command, tracked_files=tracked_files)
     file_map = get_file_map(walk_result, ops_service)
 
-    # ACS azure-arc-containerstorage
-    acs_file_map = file_map["acs"]
+    if "acs" in file_map:
+        # ACS azure-arc-containerstorage
+        acs_file_map = file_map["acs"]
 
-    expected_types = set(ACS_WORKLOAD_TYPES).union(ARCCONTAINERSTORAGE_API_V1.kinds)
-    assert set(acs_file_map.keys()).issubset(set(expected_types))
-    check_workload_resource_files(
-        file_objs=acs_file_map,
-        pre_bundle_items=pre_bundle_acs_workload_items,
-        prefixes=acs_workload_resource_prefixes,
-        bundle_path=bundle_path,
-    )
-    check_custom_resource_files(
-        file_objs=acs_file_map, resource_apis=ARCCONTAINERSTORAGE_API_V1
-    )
+        arccontainerstorage_kinds = ARCCONTAINERSTORAGE_API_V1.kinds or set()
+        expected_types = set(ACS_WORKLOAD_TYPES).union(arccontainerstorage_kinds)
+        assert set(acs_file_map.keys()).issubset(set(expected_types))
+        check_workload_resource_files(
+            file_objs=acs_file_map,
+            pre_bundle_items=pre_bundle_acs_workload_items,
+            prefixes=acs_workload_resource_prefixes,
+            bundle_path=bundle_path,
+        )
+        check_custom_resource_files(
+            file_objs=acs_file_map, resource_apis=ARCCONTAINERSTORAGE_API_V1
+        )
 
     # ACSTOR validate azure-arc-acstor if exists
     if "acstor" not in file_map:
@@ -105,7 +107,8 @@ def test_create_bundle_arccontainerstorage(cluster_connection, tracked_files):
         return
 
     acstor_file_map = file_map["acstor"]
-    expected_types = set(ACSTOR_WORKLOAD_TYPES).union(CONTAINERSTORAGE_API_V1.kinds)
+    containerstorage_kinds = CONTAINERSTORAGE_API_V1.kinds or set()
+    expected_types = set(ACSTOR_WORKLOAD_TYPES).union(containerstorage_kinds)
     assert set(acstor_file_map.keys()).issubset(set(expected_types))
 
     check_workload_resource_files(

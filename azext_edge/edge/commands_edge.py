@@ -169,6 +169,7 @@ def create_instance(
     persist_mode: Optional[List[str]] = None,
     # Tags
     tags: Optional[dict] = None,
+    skip_sr_ra: Optional[bool] = None,
     no_progress: Optional[bool] = None,
     **kwargs,
 ) -> Union[Dict[str, Any], None]:
@@ -215,6 +216,7 @@ def create_instance(
         persist_pvc_sc=persist_pvc_sc,
         persist_mode=persist_mode,
         tags=tags,
+        skip_sr_ra=skip_sr_ra,
         **kwargs,
     )
     if no_progress and result_payload:
@@ -243,6 +245,7 @@ def upgrade_instance(
     cm_version: Optional[str] = None,
     cm_train: Optional[str] = None,
     cm_config_sync_mode: Optional[str] = None,
+    no_cm_install: Optional[bool] = None,
     force: Optional[bool] = None,
     **kwargs,
 ) -> Optional[List[dict]]:
@@ -267,6 +270,7 @@ def upgrade_instance(
         cm_version=cm_version,
         cm_train=cm_train,
         cm_config_sync_mode=cm_config_sync_mode,
+        no_cm_install=no_cm_install,
         force=force,
         **kwargs,
     )
@@ -411,65 +415,48 @@ def enable_rsync(
     cmd,
     instance_name: str,
     resource_group_name: str,
-    skip_role_assignments: Optional[bool] = None,
     custom_role_id: Optional[str] = None,
     k8_bridge_sp_oid: Optional[str] = None,
-    rule_ops_name: Optional[str] = None,
-    rule_adr_name: Optional[str] = None,
-    rule_ops_pri: Optional[int] = None,
-    rule_adr_pri: Optional[int] = None,
-    tags: Optional[dict] = None,
     **kwargs,
 ):
     from .providers.orchestration.resources import SyncRules
 
     return SyncRules(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).enable(
-        skip_role_assignments=skip_role_assignments,
         custom_role_id=custom_role_id,
         k8_bridge_sp_oid=k8_bridge_sp_oid,
-        rule_ops_name=rule_ops_name,
-        rule_adr_name=rule_adr_name,
-        rule_ops_pri=rule_ops_pri,
-        rule_adr_pri=rule_adr_pri,
-        tags=tags,
         **kwargs,
     )
 
 
-def disable_rsync(cmd, instance_name: str, resource_group_name: str, confirm_yes: Optional[bool] = None):
-    from .providers.orchestration.resources import SyncRules
+def get_versions(inline: Optional[bool] = None):
+    # TODO: quick and dirty, refactor this in the future.
+    if inline:
+        from .providers.orchestration.targets import InitTargets
+        from ..constants import VERSION, AIO_RELEASE
 
-    return SyncRules(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).disable(
-        confirm_yes=confirm_yes
-    )
+        targets = InitTargets("", "")
+        return {
+            "cliVersion": VERSION,
+            "iotOpsRelease": AIO_RELEASE,
+            "extensions": {
+                **targets.get_extension_versions(),
+                **targets.get_extension_versions(False),
+            },
+        }
+    else:
+        import webbrowser
+        from rich.console import Console
+        from .common import GET_VERSIONS_URL
 
+        console = Console(stderr=True)
 
-def list_rsync(
-    cmd,
-    instance_name: str,
-    resource_group_name: str,
-) -> List[dict]:
-    from .providers.orchestration.resources import SyncRules
-
-    return SyncRules(cmd=cmd, resource_group_name=resource_group_name, instance_name=instance_name).list()
-
-
-def get_versions():
-    import webbrowser
-
-    from rich.console import Console
-
-    from .common import GET_VERSIONS_URL
-
-    console = Console(stderr=True)
-
-    with console.status("Working..."):
-        success = webbrowser.open(GET_VERSIONS_URL, new=1)
-    if not success:
-        console.log(
-            f"Failed to open browser. Please visit {GET_VERSIONS_URL} to "
-            "view the Azure IoT Operations version reference."
-        )
+        with console.status("Working..."):
+            success = webbrowser.open(GET_VERSIONS_URL, new=1)
+        if not success:
+            console.log(
+                f"Failed to open browser. Please visit {GET_VERSIONS_URL} to "
+                "view the Azure IoT Operations version reference."
+            )
 
 
 def migrate_assets(

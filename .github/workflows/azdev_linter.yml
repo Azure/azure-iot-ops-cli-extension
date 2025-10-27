@@ -16,41 +16,49 @@ jobs:
     name: Evaluate command table
     runs-on: ubuntu-latest
     steps:
-    # checkout source (for linter_exclusions)
-    - uses: actions/checkout@v4
+      # checkout source (for linter_exclusions)
+      - uses: actions/checkout@v4
 
-    # download built wheel (from ./release_build.yml)
-    - name: Download Wheel
-      uses: actions/download-artifact@v4
-      with:
-        name: azure-iot-ops-cli-ext
-        path: ./extension
+      # download built wheel (from ./release_build.yml)
+      - name: Download Wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: azure-iot-ops-cli-ext
+          path: ../drop
 
-    # Install python
-    - uses: actions/setup-python@v5
-      name: Setup python
-      with:
+      # Install python
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
           python-version: "3.13"
 
-    # Lint
-    - name: azdev linter
-      run: |
-        set -ev
-        pip install virtualenv
-        python -m virtualenv venv/
-        source ./venv/bin/activate
-        git clone --single-branch -b dev https://github.com/Azure/azure-cli.git ../azure-cli
-        pip install azdev
-        azdev --version
-        azdev setup -c ../azure-cli -r ./
-        AZURE_EXTENSION_DIR=~/.azure/cliextensions
-        ARTIFACTS_DIR=./extension
-        WHEELS=$(ls $ARTIFACTS_DIR/*.whl)
-        az --version
-        for i in $WHEELS; do
-          az extension add --source $i -y --debug
-        done
-        cp ./linter_exclusions.yml $AZURE_EXTENSION_DIR/azure-iot-ops/
-        # temp fix for newest azdev v0.1.65
-        cp .pylintrc pylintrc
-        azdev linter --include-whl-extensions azure-iot-ops --min-severity medium
+      # Lint
+      - name: azdev linter
+        run: |
+          set -ev
+          python -m pip install --upgrade pip
+
+          git clone --single-branch -b dev https://github.com/Azure/azure-cli.git ../azure-cli
+
+          python -m venv ../env
+          source ../env/bin/activate
+
+          pip install azdev
+          azdev --version
+
+          cd ../azure-cli
+          azdev setup -r ../azure-iot-ops-cli-extension/
+          cd ../azure-iot-ops-cli-extension
+
+          az --version
+
+          AZURE_EXTENSION_DIR=~/.azure/cliextensions
+          ARTIFACTS_DIR=../drop
+          WHEELS=$(ls $ARTIFACTS_DIR/*.whl)
+          for i in $WHEELS; do
+            az extension add --source $i -y --debug
+          done
+          cp ./linter_exclusions.yml $AZURE_EXTENSION_DIR/azure-iot-ops/
+          # temp fix for newest azdev v0.1.65
+          cp .pylintrc pylintrc
+          azdev linter --include-whl-extensions azure-iot-ops --min-severity medium

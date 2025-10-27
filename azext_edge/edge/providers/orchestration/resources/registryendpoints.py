@@ -144,43 +144,44 @@ class RegistryEndpoints(Queryable):
         auth_config[settings_key] = auth_settings
         return auth_config
 
-    def _process_trusted_signing_key(
+    def _process_code_signing_cas(
         self,
-        trusted_signing_configmap_key: Optional[str] = None,
-        trusted_signing_secret_key: Optional[str] = None,
-    ) -> Optional[dict]:
+        code_signing_configmap_refs: Optional[list] = None,
+        code_signing_secret_refs: Optional[list] = None,
+    ) -> list:
         """
-        Process trusted signing key configuration for registry endpoints.
+        Process code signing CA configuration for registry endpoints.
 
-        :param trusted_signing_configmap_key: ConfigMap reference for trusted signing key.
-        :param trusted_signing_secret_key: Secret reference for trusted signing key.
-        :returns: Trusted signing key configuration or None if not provided.
-        :raises MutuallyExclusiveArgumentError: If both configmap and secret keys are provided.
+        :param code_signing_configmap_refs: List of ConfigMap references for code signing CAs.
+        :param code_signing_secret_refs: List of Secret references for code signing CAs.
+        :returns: List of code signing CA objects
         """
-        if not trusted_signing_configmap_key and not trusted_signing_secret_key:
+        if not code_signing_configmap_refs and not code_signing_secret_refs:
             return None
 
-        # Ensure mutual exclusivity
-        if trusted_signing_configmap_key and trusted_signing_secret_key:
-            raise MutuallyExclusiveArgumentError(
-                "Cannot specify both config map and secret for trusted signing key settings. "
-                "Choose one trusted signing key type."
-            )
+        cas = []
 
-        if trusted_signing_configmap_key:
-            return {
-                "trustedSigningKeys": {
-                    "configMapRef": trusted_signing_configmap_key,
+        # Add ConfigMap references
+        if code_signing_configmap_refs:
+            cas += [
+                {
                     "type": TrustedSigningKeyType.CONFIGMAP.value,
+                    "configMapRef": configmap_ref,
                 }
-            }
-        elif trusted_signing_secret_key:
-            return {
-                "trustedSigningKeys": {
-                    "secretRef": trusted_signing_secret_key,
+                for configmap_ref in code_signing_configmap_refs
+            ]
+
+        # Add Secret references
+        if code_signing_secret_refs:
+            cas += [
+                {
                     "type": TrustedSigningKeyType.SECRET.value,
+                    "secretRef": secret_ref,
                 }
-            }
+                for secret_ref in code_signing_secret_refs
+            ]
+
+        return cas
 
     def add(
         self,
@@ -195,8 +196,8 @@ class RegistryEndpoints(Queryable):
         tenant_id: Optional[str] = None,
         scope: Optional[str] = None,
         no_auth: Optional[bool] = None,
-        trusted_signing_configmap_key: Optional[str] = None,
-        trusted_signing_secret_key: Optional[str] = None,
+        code_signing_configmap_refs: Optional[list] = None,
+        code_signing_secret_refs: Optional[list] = None,
         **kwargs,
     ) -> dict:
         """
@@ -213,8 +214,8 @@ class RegistryEndpoints(Queryable):
         :param tenant_id: Tenant ID for UserAssignedManagedIdentity authentication.
         :param scope: Scope for UserAssignedManagedIdentity authentication.
         :param no_auth: Whether to use anonymous authentication.
-        :param trusted_signing_configmap_key: ConfigMap reference for trusted signing key.
-        :param trusted_signing_secret_key: Secret reference for trusted signing key.
+        :param code_signing_configmap_refs: List of code signing CA config map references.
+        :param code_signing_secret_refs: List of code signing CA secret references.
         :param kwargs: Additional keyword arguments for the operation.
         :returns: The created registry endpoint.
         """
@@ -235,10 +236,10 @@ class RegistryEndpoints(Queryable):
             no_auth=no_auth,
         )
 
-        # Process trusted signing key configuration
-        trust_settings = self._process_trusted_signing_key(
-            trusted_signing_configmap_key=trusted_signing_configmap_key,
-            trusted_signing_secret_key=trusted_signing_secret_key,
+        # Process code signing CAs configuration
+        code_signing_cas = self._process_code_signing_cas(
+            code_signing_configmap_refs=code_signing_configmap_refs,
+            code_signing_secret_refs=code_signing_secret_refs,
         )
 
         # Build the resource configuration
@@ -247,9 +248,9 @@ class RegistryEndpoints(Queryable):
             "authentication": auth_config,
         }
 
-        # Add trust settings if provided
-        if trust_settings:
-            properties["trustSettings"] = trust_settings
+        # Add code signing CAs if provided
+        if code_signing_cas:
+            properties["codeSigningCas"] = code_signing_cas
 
         resource = {
             "extendedLocation": self.instances.get_ext_loc(
@@ -283,8 +284,8 @@ class RegistryEndpoints(Queryable):
         tenant_id: Optional[str] = None,
         scope: Optional[str] = None,
         no_auth: Optional[bool] = None,
-        trusted_signing_configmap_key: Optional[str] = None,
-        trusted_signing_secret_key: Optional[str] = None,
+        code_signing_configmap_refs: Optional[list] = None,
+        code_signing_secret_refs: Optional[list] = None,
         **kwargs,
     ) -> dict:
         """
@@ -301,8 +302,8 @@ class RegistryEndpoints(Queryable):
         :param tenant_id: Tenant ID for UserAssignedManagedIdentity authentication.
         :param scope: Scope for UserAssignedManagedIdentity authentication.
         :param no_auth: Whether to use anonymous authentication.
-        :param trusted_signing_configmap_key: ConfigMap reference for trusted signing key.
-        :param trusted_signing_secret_key: Secret reference for trusted signing key.
+        :param code_signing_configmap_refs: List of code signing CA config map references.
+        :param code_signing_secret_refs: List of code signing CA secret references.
         :param kwargs: Additional keyword arguments for the operation.
         :returns: The updated registry endpoint.
         """
@@ -330,14 +331,12 @@ class RegistryEndpoints(Queryable):
             )
             existing_endpoint["properties"]["authentication"] = auth_config
 
-        # Process trusted signing key configuration
-        if any([trusted_signing_configmap_key, trusted_signing_secret_key]):
-            trusted_signing_config = self._process_trusted_signing_key(
-                trusted_signing_configmap_key=trusted_signing_configmap_key,
-                trusted_signing_secret_key=trusted_signing_secret_key,
+        # Process code signing CAs configuration if provided
+        if code_signing_configmap_refs is not None or code_signing_secret_refs is not None:
+            existing_endpoint["properties"]["codeSigningCas"] = self._process_code_signing_cas(
+                code_signing_configmap_refs=code_signing_configmap_refs,
+                code_signing_secret_refs=code_signing_secret_refs,
             )
-            if trusted_signing_config:
-                existing_endpoint["properties"]["trustSettings"] = trusted_signing_config
 
         with console.status("Working..."):
             poller = self.registry_endpoints.begin_create_or_update(
