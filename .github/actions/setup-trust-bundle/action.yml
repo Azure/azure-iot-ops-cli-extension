@@ -2,7 +2,7 @@ name: Setup Trust Bundle
 description: Setup cert-manager and trust bundle for clusters that need workload identity
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Install Cert Manager and Trust Manager
       shell: bash
@@ -25,7 +25,7 @@ runs:
           --namespace cert-manager \
           --set app.trust.namespace=cert-manager \
           --wait
-    
+
     - name: Apply Trust Configuration
       shell: bash
       run: |

@@ -14,30 +14,29 @@
 scenarios:
   - name: custom-input
     description: "Custom init/create arguments"
-    tox_env: all  # Run all (non-wlif) tests
+    tox_env: all # Run all (non-wlif) tests
     custom_only: true
-    
+
   - name: edge
     description: "Edge tests"
     tox_env: python-edge-int
-    
+
   - name: insecure-listener
     description: "Insecure listener deployment tests"
     create_extra_args: "--add-insecure-listener --persist-max-size 10Gi"
     no_preflight: true
-    
+
   - name: rpsaas
     description: "Cloud tests"
     tox_env: python-rpsaas-int
-    
+
   - name: redeploy
     description: "Redeployment tests"
     test_redeploy: true
-    
+
   - name: trustbundle
     description: "Workload identity tests"
     tox_env: python-wlif-int
     needs_trust: true
     init_extra_args: "--user-trust"
     create_extra_args: "--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer"
-
