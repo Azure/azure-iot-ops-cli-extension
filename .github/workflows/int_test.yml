@@ -264,7 +264,7 @@ jobs:
         uses: ./.github/actions/create-k3s-cluster
 
       - name: "Setup Trust Bundle"
-        if: ${{ (matrix.scenario.needs_trust == 'true' || contains(env.RUNTIME_INIT_ARGS, '--user-trust')) }}
+        if: ${{ matrix.scenario.needs_trust || contains(env.RUNTIME_INIT_ARGS, '--user-trust') }}
         uses: ./.github/actions/setup-trust-bundle
       - name: "Tox test environment setup"
         
