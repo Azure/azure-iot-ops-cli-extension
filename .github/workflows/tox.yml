@@ -26,9 +26,9 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-22.04
-          - windows-2022
-          - macos-13
+          - ubuntu-slim
+          - windows-2025
+          - macos-15
         py:
           - "3.13"
           - "3.12"
