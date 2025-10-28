@@ -10,7 +10,7 @@ on:
         required: true
         default: ops-cli-int-test-rg
       test-scenarios:
-        description: 'Run only specific scenarios (comma-separated list)'
+        description: "Run only specific scenarios (comma-separated list)"
         type: string
         required: false
         default: "edge,insecure-listener,rpsaas,redeploy,trustbundle"
@@ -39,6 +39,11 @@ on:
         type: number
         required: false
         default: 0
+      use-self-hosted:
+        description: Use 1ES hosted pool
+        type: boolean
+        required: false
+        default: true
     secrets:
       AZURE_CLIENT_ID:
         required: true
@@ -54,7 +59,7 @@ on:
         required: true
         default: ops-cli-int-test-rg
       test-scenarios:
-        description: 'Run only specific scenarios (comma-separated list)'
+        description: "Run only specific scenarios (comma-separated list)"
         type: string
         required: false
         default: "edge,insecure-listener,rpsaas,redeploy,trustbundle"
@@ -83,6 +88,11 @@ on:
         type: number
         required: false
         default: 0
+      use-self-hosted:
+        description: Use 1ES hosted pool
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   # required for OpenID federation
@@ -119,7 +129,7 @@ jobs:
         run: |
           echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
           echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
-  
+
   build-matrix:
     name: "Build Test Matrix"
     needs: setup
@@ -129,7 +139,7 @@ jobs:
     steps:
       - name: "Checkout for config"
         uses: actions/checkout@v4
-      
+
       - name: "Build Matrix from Config"
         id: matrix
         run: |
@@ -138,14 +148,14 @@ jobs:
           import yaml
           import json
           import os
-          
+
           with open('.github/test-scenarios.yml') as f:
               config = yaml.safe_load(f)
-          
+
           scenarios = config['scenarios']
           has_custom_args = '${{ needs.setup.outputs.init_args }}' != '' or '${{ needs.setup.outputs.create_args }}' != ''
           user_selected = '${{ env.TEST_SCENARIOS }}'.strip()
-          
+
           # Filter scenarios based on conditions
           filtered = []
           for scenario in scenarios:
@@ -174,14 +184,14 @@ jobs:
                   scenario.setdefault('test_redeploy', False)
                   scenario.setdefault('no_preflight', False)
                   filtered.append(scenario)
-          
+
           output = json.dumps(filtered)
           print(f"Matrix: {output}")
-          
+
           with open(os.getenv('GITHUB_OUTPUT'), 'a') as f:
               f.write(f"scenarios={output}\n")
           PYTHON
-  
+
   unit-test:
     name: "Run linter and unit tests"
     runs-on: ubuntu-24.04
@@ -205,7 +215,7 @@ jobs:
           name: coverage-unit
           path: ./.coverage
           include-hidden-files: true
-  
+
   int-test:
     needs: [setup, build-matrix]
     if: ${{ needs.build-matrix.outputs.matrix != '[]' }}
@@ -220,7 +230,7 @@ jobs:
       matrix:
         scenario: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
     name: "${{ matrix.scenario.description }}"
-    runs-on: ubuntu-24.04
+    runs-on: ${{ inputs.use-self-hosted && fromJSON('["self-hosted", "1ES.Pool=iotupx-github-hosted-pool", "1ES.ImageOverride=MMSUbuntu20.04"]') || 'ubuntu-24.04' }}
     steps:
       - name: "Checkout extension source for build"
         uses: actions/checkout@v4
@@ -240,7 +250,7 @@ jobs:
           fi
 
       - name: "Output variables for future steps"
-        
+
         id: "env_out"
         run: |
           echo "RESOURCE_GROUP=${{ env.RESOURCE_GROUP }}" >> $GITHUB_OUTPUT
@@ -248,26 +258,25 @@ jobs:
           echo "INSTANCE_NAME=${{ env.INSTANCE_NAME }}" >> $GITHUB_OUTPUT
 
       - name: "Setup python"
-        
+
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
       - name: "Build and install local IoT Ops extension from source"
-        
+
         run: |
           pip install -r dev_requirements.txt
           python -m build
           wheel=$(find ./dist/*.whl)
           az extension add --source $wheel -y
       - name: "Create k3s cluster"
-        
         uses: ./.github/actions/create-k3s-cluster
 
       - name: "Setup Trust Bundle"
         if: ${{ matrix.scenario.needs_trust || contains(env.RUNTIME_INIT_ARGS, '--user-trust') }}
         uses: ./.github/actions/setup-trust-bundle
       - name: "Tox test environment setup"
-        
+
         run: |
           python -m pip install tox
           tox r -vv -e python-init-int --notest
@@ -276,14 +285,13 @@ jobs:
             tox r -vv -e "${{ matrix.scenario.tox_env }}" --notest
           fi
       - name: "Az CLI login"
-        
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: "ARC connect cluster"
-        
+
         uses: ./.github/actions/connect-arc
         with:
           cluster-name: ${{ env.CLUSTER_NAME }}
@@ -291,7 +299,7 @@ jobs:
           custom-locations-oid: ${{ env.CUSTOM_LOCATIONS_OID }}
           enable-workload-identity: ${{ matrix.scenario.needs_trust == 'true' }}
       - name: "Az CLI login"
-        
+
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -299,7 +307,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: "Setup Cluster Resources"
-        
+
         id: "init_reqs"
         uses: ./.github/actions/setup-cluster-resources
         with:
@@ -307,7 +315,7 @@ jobs:
           resource-group: ${{ env.RESOURCE_GROUP }}
 
       - name: "Tox INIT Integration Tests"
-        
+
         env:
           AIO_CLI_INIT_PREFLIGHT_DISABLED: ${{ steps.init.outputs.NO_PREFLIGHT }}
           azext_edge_init_continue_on_error: ${{ inputs.init-continue-on-error || '' }}
@@ -340,7 +348,7 @@ jobs:
           path: ./.coverage
           include-hidden-files: true
       - name: "Run smoke tests"
-        
+
         run: |
           az iot ops support create-bundle
           az iot ops support create-bundle --svc broker --broker-traces
