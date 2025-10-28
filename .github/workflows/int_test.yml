@@ -54,10 +54,10 @@ on:
         required: true
         default: ops-cli-int-test-rg
       test-scenarios:
-        description: 'Comma-separated list of scenarios to run (e.g., "default,syncrules" or leave empty for auto)'
+        description: 'Run only specific scenarios (comma-separated list)'
         type: string
         required: false
-        default: ""
+        default: "edge,insecure-listener,rpsaas,redeploy,trustbundle"
       custom-locations-oid:
         description: Object ID of Custom Locations RP
         type: string
