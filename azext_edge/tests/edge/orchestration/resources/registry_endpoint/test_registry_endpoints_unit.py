@@ -11,9 +11,9 @@ import responses
 from azure.cli.core.azclierror import MutuallyExclusiveArgumentError, RequiredArgumentMissingError
 
 from azext_edge.edge.commands_registry_endpoints import (
-    add_registry_endpoint,
+    create_registry_endpoint,
     list_registry_endpoints,
-    remove_registry_endpoint,
+    delete_registry_endpoint,
     show_registry_endpoint,
     update_registry_endpoint,
 )
@@ -142,7 +142,7 @@ def test_registry_endpoint_remove(mocked_cmd, mocked_responses: responses):
         status=204,
     )
 
-    remove_registry_endpoint(
+    delete_registry_endpoint(
         cmd=mocked_cmd,
         registry_endpoint_name=registry_endpoint_name,
         instance_name=instance_name,
@@ -532,7 +532,7 @@ def test_registry_endpoint_add_anonymous(mocked_cmd, mocked_responses: responses
         content_type="application/json",
     )
 
-    result = add_registry_endpoint(
+    result = create_registry_endpoint(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
@@ -618,7 +618,7 @@ def test_registry_endpoint_add_with_auth(
         content_type="application/json",
     )
 
-    result = add_registry_endpoint(
+    result = create_registry_endpoint(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
@@ -981,7 +981,7 @@ def test_registry_endpoint_add_with_code_signing_configmap(mocked_cmd, mocked_re
         content_type="application/json",
     )
 
-    result = add_registry_endpoint(
+    result = create_registry_endpoint(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,
@@ -1055,7 +1055,7 @@ def test_registry_endpoint_add_with_code_signing_secret(mocked_cmd, mocked_respo
         content_type="application/json",
     )
 
-    result = add_registry_endpoint(
+    result = create_registry_endpoint(
         cmd=mocked_cmd,
         instance_name=instance_name,
         resource_group_name=resource_group_name,

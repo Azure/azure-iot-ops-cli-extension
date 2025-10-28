@@ -185,9 +185,9 @@ def load_iotops_commands(self, _):
         is_preview=True,
     ) as cmd_group:
         cmd_group.command("list", "list_registry_endpoints")
-        cmd_group.command("add", "add_registry_endpoint")
+        cmd_group.command("add", "create_registry_endpoint")
         cmd_group.command("update", "update_registry_endpoint")
-        cmd_group.command("remove", "remove_registry_endpoint")
+        cmd_group.command("remove", "delete_registry_endpoint")
         cmd_group.show_command("show", "show_registry_endpoint")
 
     with self.command_group(

@@ -42,7 +42,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
     try:
         # CREATE - SAMI authentication (default)
         registry_endpoint = run(
-            f"az iot ops registry add -n {registry_endpoint_name} "
+            f"az iot ops registry create -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host {host}"
         )
@@ -93,7 +93,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
 
         # REMOVE
         run(
-            f"az iot ops registry remove -n {registry_endpoint_name} "
+            f"az iot ops registry delete -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} -y"
         )
         tracked_resources.remove(registry_endpoint["id"])
@@ -108,7 +108,7 @@ def test_registry_endpoint_lifecycle_anonymous(registry_endpoint_test_setup, tra
         if registry_endpoint.get("id") in tracked_resources:
             try:
                 run(
-                    f"az iot ops registry remove -n {registry_endpoint_name} "
+                    f"az iot ops registry delete -n {registry_endpoint_name} "
                     f"-g {resource_group} --instance {instance_name} -y"
                 )
                 tracked_resources.remove(registry_endpoint["id"])
@@ -128,7 +128,7 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
     try:
         # CREATE - ArtifactPullSecret authentication
         registry_endpoint = run(
-            f"az iot ops registry add -n {registry_endpoint_name} "
+            f"az iot ops registry create -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host {host} --secret-ref {secret_ref}"
         )
@@ -158,7 +158,7 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
 
         # REMOVE
         run(
-            f"az iot ops registry remove -n {registry_endpoint_name} "
+            f"az iot ops registry delete -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} -y"
         )
         tracked_resources.remove(registry_endpoint["id"])
@@ -168,7 +168,7 @@ def test_registry_endpoint_artifact_pull_secret(registry_endpoint_test_setup, tr
         if registry_endpoint.get("id") in tracked_resources:
             try:
                 run(
-                    f"az iot ops registry remove -n {registry_endpoint_name} "
+                    f"az iot ops registry delete -n {registry_endpoint_name} "
                     f"-g {resource_group} --instance {instance_name} -y"
                 )
                 tracked_resources.remove(registry_endpoint["id"])
@@ -188,7 +188,7 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
     try:
         # CREATE - SystemAssigned authentication with audience
         registry_endpoint = run(
-            f"az iot ops registry add -n {registry_endpoint_name} "
+            f"az iot ops registry create -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host {host} --auth-type SystemAssignedManagedIdentity --audience {audience}"
         )
@@ -218,7 +218,7 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
 
         # REMOVE
         run(
-            f"az iot ops registry remove -n {registry_endpoint_name} "
+            f"az iot ops registry delete -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} -y"
         )
         tracked_resources.remove(registry_endpoint["id"])
@@ -228,7 +228,7 @@ def test_registry_endpoint_system_assigned_auth(registry_endpoint_test_setup, tr
         if registry_endpoint.get("id") in tracked_resources:
             try:
                 run(
-                    f"az iot ops registry remove -n {registry_endpoint_name} "
+                    f"az iot ops registry delete -n {registry_endpoint_name} "
                     f"-g {resource_group} --instance {instance_name} -y"
                 )
                 tracked_resources.remove(registry_endpoint["id"])
@@ -250,7 +250,7 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
     try:
         # CREATE - UserAssigned authentication with full parameters
         registry_endpoint = run(
-            f"az iot ops registry add -n {registry_endpoint_name} "
+            f"az iot ops registry create -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host {host} --auth-type UserAssignedManagedIdentity "
             f"--client-id {client_id} --tenant-id {tenant_id} --scope {scope}"
@@ -281,7 +281,7 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
 
         # REMOVE
         run(
-            f"az iot ops registry remove -n {registry_endpoint_name} "
+            f"az iot ops registry delete -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} -y"
         )
         tracked_resources.remove(registry_endpoint["id"])
@@ -291,7 +291,7 @@ def test_registry_endpoint_user_assigned_auth(registry_endpoint_test_setup, trac
         if registry_endpoint.get("id") in tracked_resources:
             try:
                 run(
-                    f"az iot ops registry remove -n {registry_endpoint_name} "
+                    f"az iot ops registry delete -n {registry_endpoint_name} "
                     f"-g {resource_group} --instance {instance_name} -y"
                 )
                 tracked_resources.remove(registry_endpoint["id"])
@@ -335,7 +335,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Auto-detect ArtifactPullSecret (secret_ref provided)
         name1 = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
         endpoint1 = run(
-            f"az iot ops registry add -n {name1} "
+            f"az iot ops registry create -n {name1} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host registry1.azurecr.io --secret-ref my-secret"
         )
@@ -352,7 +352,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Auto-detect SystemAssigned (no auth parameters provided)
         name2 = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
         endpoint2 = run(
-            f"az iot ops registry add -n {name2} "
+            f"az iot ops registry create -n {name2} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host registry2.azurecr.io"
         )
@@ -369,7 +369,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Auto-detect UserAssigned (client-id and tenant-id provided)
         name3 = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
         endpoint3 = run(
-            f"az iot ops registry add -n {name3} "
+            f"az iot ops registry create -n {name3} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host registry3.azurecr.io --client-id my-client --tenant-id my-tenant"
         )
@@ -386,7 +386,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Auto-detect Anonymous --no-auth
         name4 = f"test-registry-{generate_random_string(force_lower=True, size=8)}"
         endpoint4 = run(
-            f"az iot ops registry add -n {name4} "
+            f"az iot ops registry create -n {name4} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host registry4.azurecr.io --no-auth"
         )
@@ -402,7 +402,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
 
         # Cleanup all endpoints
         for ep_id, ep_name in endpoints_to_cleanup:
-            run(f"az iot ops registry remove -n {ep_name} " f"-g {resource_group} --instance {instance_name} -y")
+            run(f"az iot ops registry delete -n {ep_name} " f"-g {resource_group} --instance {instance_name} -y")
             tracked_resources.append(ep_id)  # Add to tracked for safety
             tracked_resources.remove(ep_id)  # Remove after successful deletion
 
@@ -410,7 +410,7 @@ def test_registry_endpoint_authentication_auto_detection(registry_endpoint_test_
         # Cleanup in case of failure
         for ep_id, ep_name in endpoints_to_cleanup:
             try:
-                run(f"az iot ops registry remove -n {ep_name} " f"-g {resource_group} --instance {instance_name} -y")
+                run(f"az iot ops registry delete -n {ep_name} " f"-g {resource_group} --instance {instance_name} -y")
             except Exception:
                 pass  # Best effort cleanup
         raise
@@ -432,7 +432,7 @@ def test_registry_endpoint_code_signing_cas(registry_endpoint_test_setup, tracke
     try:
         # CREATE - with one configmap
         registry_endpoint = run(
-            f"az iot ops registry add -n {registry_endpoint_name} "
+            f"az iot ops registry create -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} "
             f"--host {host} --cs-config-map-refs {configmap1}"
         )
@@ -514,7 +514,7 @@ def test_registry_endpoint_code_signing_cas(registry_endpoint_test_setup, tracke
 
         # REMOVE
         run(
-            f"az iot ops registry remove -n {registry_endpoint_name} "
+            f"az iot ops registry delete -n {registry_endpoint_name} "
             f"-g {resource_group} --instance {instance_name} -y"
         )
         tracked_resources.remove(registry_endpoint["id"])
@@ -524,7 +524,7 @@ def test_registry_endpoint_code_signing_cas(registry_endpoint_test_setup, tracke
         if registry_endpoint.get("id") in tracked_resources:
             try:
                 run(
-                    f"az iot ops registry remove -n {registry_endpoint_name} "
+                    f"az iot ops registry delete -n {registry_endpoint_name} "
                     f"-g {resource_group} --instance {instance_name} -y"
                 )
                 tracked_resources.remove(registry_endpoint["id"])
