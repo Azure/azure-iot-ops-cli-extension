@@ -52,7 +52,7 @@ env:
 jobs:
   test:
     name: "Run cluster tests"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: "Setup python"
         uses: actions/setup-python@v5
