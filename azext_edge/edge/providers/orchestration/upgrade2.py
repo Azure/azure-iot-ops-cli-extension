@@ -297,7 +297,7 @@ class UpgradeManager:
         )
 
     def _create_default_registry_endpoint(self, headers: dict) -> dict:
-        return self.registry_endpoints.add(
+        return self.registry_endpoints.create(
             instance_name=self.instance_name,
             resource_group_name=self.resource_group_name,
             registry_endpoint_name="default",

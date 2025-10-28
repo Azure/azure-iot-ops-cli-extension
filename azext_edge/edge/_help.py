@@ -754,41 +754,40 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops registry add"
+        "iot ops registry create"
     ] = """
         type: command
-        short-summary: Add a container registry endpoint to an instance.
+        short-summary: Create a container registry endpoint for an instance.
         long-summary: |
-          Only Azure Container Registry (ACR) endpoints are supported.
           By default, the registry endpoint will use System Assigned Managed Identity authentication.
           Use the --no-auth flag to explicitly configure anonymous authentication.
 
         examples:
-        - name: Add a registry endpoint with default System Assigned Managed Identity authentication.
+        - name: Create a registry endpoint with default System Assigned Managed Identity authentication.
           text: >
-            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
-        - name: Add a registry endpoint with explicit anonymous authentication.
+            az iot ops registry create -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+        - name: Create a registry endpoint with explicit anonymous authentication.
           text: >
-            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup --no-auth
-        - name: Add a registry endpoint with system-assigned managed identity and optional audience configuration
+            az iot ops registry create -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup --no-auth
+        - name: Create a registry endpoint with system-assigned managed identity and optional audience configuration
           text: >
-            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            az iot ops registry create -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type SystemAssignedManagedIdentity --aud myaudience
-        - name: Add a registry endpoint with kubernetes secret reference authentication
+        - name: Create a registry endpoint with kubernetes secret reference authentication
           text: >
-            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            az iot ops registry create -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type ArtifactPullSecret --secret-ref mysecret
-        - name: Add a registry endpoint with user-assigned managed identity configuration
+        - name: Create a registry endpoint with user-assigned managed identity configuration
           text: >
-            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            az iot ops registry create -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --auth-type UserAssignedManagedIdentity --scope myscope --cid myclientid --tid mytenantid
-        - name: Add a registry endpoint with a code signing CA secret reference
+        - name: Create a registry endpoint with a code signing CA secret reference
           text: >
-            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            az iot ops registry create -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --cs-secret-refs mysecret
-        - name: Add a registry endpoint with multiple code signing CA secret and configmap references
+        - name: Create a registry endpoint with multiple code signing CA secret and configmap references
           text: >
-            az iot ops registry add -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
+            az iot ops registry create -n myregistry --host myregistry.azurecr.io -i myinstance -g myresourcegroup
             --cs-config-map-refs configmap1 configmap2 --cs-secret-refs secret1 secret2
     """
 
@@ -837,15 +836,15 @@ def load_iotops_help():
     """
 
     helps[
-        "iot ops registry remove"
+        "iot ops registry delete"
     ] = """
         type: command
-        short-summary: Remove a container registry endpoint.
+        short-summary: Delete a container registry endpoint.
 
         examples:
-        - name: Remove a registry endpoint.
+        - name: Delete a registry endpoint.
           text: >
-            az iot ops registry remove -n myregistry -i myinstance -g myresourcegroup
+            az iot ops registry delete -n myregistry -i myinstance -g myresourcegroup
     """
 
     helps[

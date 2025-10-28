@@ -49,12 +49,14 @@ class TemplateBlueprint(NamedTuple):
 
 
 TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
-    commit_id="4e06ce3bfdff9885cf2b658f530484cadd5dd63a",
+    commit_id="758c84b62ee869138ffb1c34a774830db01c1daf",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
-        "metadata": {"_generator": {"name": "bicep", "version": "0.38.5.1644", "templateHash": "17832072683996127711"}},
+        "metadata": {
+            "_generator": {"name": "bicep", "version": "0.38.33.27573", "templateHash": "6203925150928073722"}
+        },
         "definitions": {
             "_1.AdvancedConfig": {
                 "type": "object",
@@ -652,13 +654,13 @@ TEMPLATE_BLUEPRINT_ENABLEMENT = TemplateBlueprint(
 )
 
 TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
-    commit_id="2dbe066de203f20008c99402cf306dbb65c95d11",
+    commit_id="758c84b62ee869138ffb1c34a774830db01c1daf",
     content={
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "languageVersion": "2.0",
         "contentVersion": "1.0.0.0",
         "metadata": {
-            "_generator": {"name": "bicep", "version": "0.38.33.27573", "templateHash": "8572094046543653990"}
+            "_generator": {"name": "bicep", "version": "0.38.33.27573", "templateHash": "4982288606057222896"}
         },
         "definitions": {
             "_1.AdvancedConfig": {
@@ -1244,7 +1246,7 @@ TEMPLATE_BLUEPRINT_INSTANCE = TemplateBlueprint(
         },
         "variables": {
             "VERSIONS": {"iotOperations": "1.2.112"},
-            "TRAINS": {"iotOperations": "integration"},
+            "TRAINS": {"iotOperations": "stable"},
             "HASH": "[coalesce(tryGet(parameters('advancedConfig'), 'resourceSuffix'), take(uniqueString(resourceGroup().id, parameters('clusterName'), parameters('clusterNamespace')), 5))]",
             "AIO_EXTENSION_SUFFIX": "[take(uniqueString(resourceId('Microsoft.Kubernetes/connectedClusters', parameters('clusterName'))), 5)]",
             "CUSTOM_LOCATION_NAMESPACE": "[parameters('clusterNamespace')]",
