@@ -182,7 +182,6 @@ def load_iotops_commands(self, _):
     with self.command_group(
         "iot ops registry",
         command_type=registry_endpoint_resource_ops,
-        is_preview=True,
     ) as cmd_group:
         cmd_group.command("list", "list_registry_endpoints")
         cmd_group.command("add", "create_registry_endpoint")
