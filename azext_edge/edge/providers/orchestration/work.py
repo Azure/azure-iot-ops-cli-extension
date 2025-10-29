@@ -434,7 +434,7 @@ class WorkManager:
                 ]:
                     self.resource_client.resources.get_by_id(
                         resource_id=resource_id,
-                        api_version=DeviceRegistryMgmtApiVersion.V20250701_preview.value,
+                        api_version=DeviceRegistryMgmtApiVersion.V20251001.value,
                     )
 
                 self._process_extension_dependencies()
