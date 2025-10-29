@@ -52,8 +52,8 @@ def test_dataflow_profile(dataflow_profile_test_setup, tracked_resources):
     )
 
     # UPDATE
-    sleep(30)  # TODO: Follow up on profile being returned too early.
-    log_level = "error"
+    sleep(90)  # TODO: Follow up on profile being returned too early.
+    log_level = "debug"
     update_profile1 = run(
         f"az iot ops dataflow profile create -n {profile1_name} -g {rg} -i {instance} --log-level {log_level}"
     )
