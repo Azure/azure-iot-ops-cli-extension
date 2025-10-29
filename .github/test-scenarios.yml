@@ -4,7 +4,7 @@
 #   - name: Scenario identifier (used in matrix)
 #   - description: Test step name in workflow run
 #   - tox_env: Which tox environment to run after init
-#   - custom_only: only run when custom args provided
+#   - custom_only: Optional condition - only run when custom args provided
 #   - needs_trust: Whether this scenario requires trust bundle setup (default: false)
 #   - init_extra_args: Additional arguments to pass to `init`
 #   - create_extra_args: Additional arguments to pass to `create`

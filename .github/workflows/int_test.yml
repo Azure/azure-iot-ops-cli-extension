@@ -314,6 +314,17 @@ jobs:
           cluster-name: ${{ env.CLUSTER_NAME }}
           resource-group: ${{ env.RESOURCE_GROUP }}
 
+      - name: "OIDC Token exchange service"
+        
+        run: |
+          while true; do
+            token_request=$ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            token_uri=$ACTIONS_ID_TOKEN_REQUEST_URL
+            token=$(curl -H "Authorization: bearer $token_request" "${token_uri}&audience=api://AzureADTokenExchange" | jq .value -r)
+            az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -t ${{ secrets.AZURE_TENANT_ID }} --federated-token $token --output none
+            # Sleep for 4 minutes
+            sleep 240
+          done &
       - name: "Tox INIT Integration Tests"
 
         env:
