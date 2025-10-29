@@ -29,7 +29,7 @@ runs:
   using: 'composite'
   steps:
     - name: "Install connectedk8s extension"
-      run: az extension add -n connectedk8s -y
+      run: az extension add --upgrade -n connectedk8s --version 1.10.3 -y
       shell: bash
     - name: "Write local kubeconfig"
       if: inputs.config
