@@ -15,11 +15,12 @@ from .helpers import (
     assert_spc_secret_not_exists,
     assert_ssc_secret_exists,
     assert_ssc_secret_not_exists,
+    cleanup_test_resources,
     ensure_env_vars,
     ensure_key_vault,
     ensure_managed_identity,
+    ensure_secretsync_enabled,
     generate_self_signed_der_cert,
-    restore_tracked_resources
 )
 import pytest
 from knack.log import get_logger
@@ -42,18 +43,8 @@ def opcua_certs_trust_test_setup(settings, tracked_resources: List[str]):
     instance_name = settings.env.azext_edge_instance
     resource_group = settings.env.azext_edge_rg
 
-    initial_list_result = run(f"az iot ops secretsync list -n {instance_name} -g {resource_group}")
-    if not initial_list_result:
-        spc_name = run(
-            f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
-            f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id}"
-        )["name"]
-    else:
-        spc_results = [
-            rec for rec in initial_list_result
-            if rec["type"].lower() == SPC_RESOURCE_TYPE
-        ]
-        spc_name = spc_results[0]["name"]
+    # Ensure secretsync is enabled with a valid Key Vault
+    spc_name = ensure_secretsync_enabled(settings, instance_name, resource_group, kv_id, mi_id)
 
     yield {
         "resourceGroup": resource_group,
@@ -63,7 +54,8 @@ def opcua_certs_trust_test_setup(settings, tracked_resources: List[str]):
         "spcName": spc_name,
     }
 
-    restore_tracked_resources(settings, initial_list_result, instance_name, resource_group, kv_name)
+    # Clean up only the resources we created during this test
+    cleanup_test_resources(settings, kv_name)
 
 
 @pytest.mark.rpsaas

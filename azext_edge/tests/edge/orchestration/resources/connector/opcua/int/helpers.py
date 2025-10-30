@@ -8,6 +8,7 @@ from base64 import b64decode
 from pathlib import Path
 from time import sleep
 from azext_edge.tests.settings import EnvironmentVariables
+from azext_edge.edge.providers.orchestration.resources.instances import SPC_RESOURCE_TYPE
 from typing import Optional
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
@@ -76,37 +77,61 @@ def ensure_managed_identity(settings, tracked_resources):
     return mi_id
 
 
-def restore_tracked_resources(settings, initial_list_result, instance_name, resource_group, kv_name):
+def cleanup_test_resources(settings, kv_name):
     """
-    Restore any resources created during the test.
+    Clean up any resources created during the test.
     """
-    # KV deletion/purging
+    # KV deletion/purging - only delete if we created it during the test
     if kv_name:
         try:
             run(f"az keyvault delete -n {kv_name} -g {settings.env.azext_edge_rg}")
             sleep(ROLE_RETRY_INTERVAL)
             run(f"az keyvault purge -n {kv_name}")
+            logger.info(f"Successfully deleted and purged Key Vault {kv_name}")
         except CLIInternalError as e:
             logger.error(f"Failed to delete the keyvault {kv_name} properly. {e.error_msg}")
 
-    # restoring previous state
-    if initial_list_result:
-        spc_results = [
-            rec for rec in initial_list_result
-            if rec["type"].lower() == "microsoft.secretsynccontroller/azurekeyvaultsecretproviderclasses"
-        ]
-        kv_name = spc_results[0]["properties"]["keyvaultName"]
-        mi_client_id = spc_results[0]["properties"]["clientId"]
-        spc_name = spc_results[0]["name"]
-        try:
-            kv_id = run(f"az keyvault show -n {kv_name}")["id"]
-            mi_id = run(f"az identity list --query \"[?clientId=='{mi_client_id}']\"")[0]["id"]
-            run(
-                f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
-                f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id} --spc {spc_name} --skip-ra"
-            )
-        except (CLIInternalError, IndexError):
-            logger.error("Could not reenable secretsync correctly.")
+
+def ensure_secretsync_enabled(settings, instance_name, resource_group, kv_id, mi_id):
+    """
+    Ensure secretsync is enabled for the instance. Returns the SPC name.
+    If secretsync is already enabled with a valid Key Vault, reuses it.
+    Otherwise, enables secretsync with the provided Key Vault and managed identity.
+    """
+    try:
+        # Check if secretsync is already enabled
+        secretsync_list = run(f"az iot ops secretsync list -n {instance_name} -g {resource_group}")
+        if secretsync_list:
+            spc_results = [rec for rec in secretsync_list if rec["type"].lower() == SPC_RESOURCE_TYPE]
+            if spc_results:
+                spc_name = spc_results[0]["name"]
+                existing_kv_name = spc_results[0]["properties"]["keyvaultName"]
+                
+                # Verify the existing Key Vault is still valid
+                try:
+                    run(f"az keyvault show -n {existing_kv_name}")
+                    logger.info(f"Secretsync already enabled with Key Vault {existing_kv_name}, reusing SPC {spc_name}")
+                    return spc_name
+                except CLIInternalError:
+                    logger.warning(f"Existing Key Vault {existing_kv_name} not accessible, re-enabling secretsync")
+                    # The existing Key Vault is not accessible, need to re-enable
+                    try:
+                        run(f"az iot ops secretsync disable -n {instance_name} -g {resource_group} -y")
+                        logger.info("Disabled secretsync with inaccessible Key Vault")
+                    except CLIInternalError as disable_error:
+                        logger.warning(f"Failed to disable secretsync: {str(disable_error)}")
+        
+        # Enable secretsync with the provided Key Vault
+        spc_name = run(
+            f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
+            f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id}"
+        )["name"]
+        logger.info(f"Enabled secretsync with Key Vault, SPC name: {spc_name}")
+        return spc_name
+        
+    except CLIInternalError as e:
+        logger.error(f"Failed to ensure secretsync is enabled: {str(e)}")
+        raise
 
 
 def assert_kv_secret_exists(kv_id: str, cert_file: str):
