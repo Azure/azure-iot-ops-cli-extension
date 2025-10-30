@@ -18,8 +18,8 @@ logger = get_logger(__name__)
 QUERY_RETRIES = 4
 QUERY_RETRY_INT = 30
 
-# pytest mark for rpsaas (cloud-side) tests
-pytestmark = pytest.mark.rpsaas
+# pytest mark for cloud (cloud-side) tests
+pytestmark = pytest.mark.cloud
 
 
 def test_asset_lifecycle(require_init, tracked_resources):

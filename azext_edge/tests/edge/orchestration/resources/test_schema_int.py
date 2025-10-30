@@ -14,8 +14,8 @@ from ....helpers import create_file, run
 logger = get_logger(__name__)
 MAX_TRIES = 3
 VERSION_STRINGIFY_FORMAT = "aio-sr://{schema_name}:{version}"
-# pytest mark for rpsaas (cloud-side) tests
-pytestmark = pytest.mark.rpsaas
+# pytest mark for cloud (cloud-side) tests
+pytestmark = pytest.mark.cloud
 
 
 def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):

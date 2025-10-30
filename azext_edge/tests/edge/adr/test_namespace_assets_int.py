@@ -20,7 +20,7 @@ from .namespace_helpers import (
     assert_dataset_properties
 )
 
-pytestmark = pytest.mark.rpsaas
+pytestmark = pytest.mark.cloud
 
 
 def test_namespace_asset_smoke_test(require_init, tracked_resources: List[str], tracked_files: List[str]):

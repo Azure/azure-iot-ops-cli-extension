@@ -12,8 +12,8 @@ from azure.cli.core.azclierror import CLIInternalError
 from ....generators import generate_random_string
 from ....helpers import run
 
-# pytest mark for rpsaas (cloud-side) tests
-pytestmark = pytest.mark.rpsaas
+# pytest mark for cloud (cloud-side) tests
+pytestmark = pytest.mark.cloud
 # role assignments may take a while
 MAX_TRIES = 3
 SLEEP_INTERVAL = 30

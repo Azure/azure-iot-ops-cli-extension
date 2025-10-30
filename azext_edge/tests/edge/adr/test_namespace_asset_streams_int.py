@@ -14,7 +14,7 @@ from .namespace_helpers import (
 )
 
 
-pytestmark = pytest.mark.long_running
+pytestmark = [pytest.mark.cloud, pytest.mark.slow]
 
 
 def test_namespace_custom_asset_stream_lifecycle_operations(

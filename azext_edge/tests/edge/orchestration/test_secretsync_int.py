@@ -102,8 +102,7 @@ def secretsync_int_setup(settings, tracked_resources: List[str]):
             logger.error("Could not reenable secretsync correctly.")
 
 
-@pytest.mark.rpsaas
-@pytest.mark.require_wlif_setup
+@pytest.mark.trust
 def test_secretsync(cluster_connection, secretsync_int_setup, tracked_files: List[str]):
     resource_group = secretsync_int_setup["resourceGroup"]
     instance_name = secretsync_int_setup["instanceName"]

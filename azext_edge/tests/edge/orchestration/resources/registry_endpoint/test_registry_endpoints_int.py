@@ -11,8 +11,8 @@ from azext_edge.tests.generators import generate_random_string
 from azext_edge.tests.helpers import run
 from azext_edge.tests.settings import EnvironmentVariables
 
-# pytest mark for rpsaas (cloud-side) tests
-pytestmark = pytest.mark.rpsaas
+# pytest mark for cloud (cloud-side) tests
+pytestmark = pytest.mark.cloud
 
 
 @pytest.fixture(scope="function")

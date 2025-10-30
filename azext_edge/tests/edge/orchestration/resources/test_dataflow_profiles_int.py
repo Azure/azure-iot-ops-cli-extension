@@ -10,8 +10,8 @@ from time import sleep
 from ....generators import generate_random_string
 from ....helpers import run
 
-# pytest mark for rpsaas (cloud-side) tests
-pytestmark = pytest.mark.rpsaas
+# pytest mark for cloud (cloud-side) tests
+pytestmark = pytest.mark.cloud
 
 
 @pytest.fixture(scope="function")

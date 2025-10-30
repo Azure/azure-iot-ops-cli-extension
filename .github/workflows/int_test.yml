@@ -13,7 +13,7 @@ on:
         description: "Run only specific scenarios (comma-separated list)"
         type: string
         required: false
-        default: "edge,insecure-listener,rpsaas,redeploy,trustbundle"
+        default: "edge,insecure-listener,cloud,cloud-slow,redeploy,trust"
       runtime-init-args:
         description: Additional INIT arguments (beyond cluster name, resource group, schema registry).
         type: string
@@ -62,7 +62,7 @@ on:
         description: "Run only specific scenarios (comma-separated list)"
         type: string
         required: false
-        default: "edge,insecure-listener,rpsaas,redeploy,trustbundle"
+        default: "edge,insecure-listener,cloud,cloud-slow,redeploy,trust"
       custom-locations-oid:
         description: Object ID of Custom Locations RP
         type: string
@@ -349,7 +349,7 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
         run: |
-          tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- --durations=0 --dist loadfile -n logical
           tox r -e report
       - name: "Upload coverage artifacts"
         if: ${{ always() }}

@@ -91,7 +91,7 @@ def init_test_setup(settings, tracked_resources):
         )
 
 
-@pytest.mark.init_scenario_test
+@pytest.mark.init
 def test_init_scenario(init_test_setup: dict, tracked_files: list):
     additional_init_args = init_test_setup["additionalInitArgs"] or ""
     init_arg_dict = process_additional_args(additional_init_args)

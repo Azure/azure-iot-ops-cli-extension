@@ -13,8 +13,8 @@ from ....helpers import run
 
 logger = get_logger(__name__)
 
-# pytest mark for rpsaas (cloud-side) tests
-pytestmark = pytest.mark.rpsaas
+# pytest mark for cloud (cloud-side) tests
+pytestmark = pytest.mark.cloud
 
 
 @pytest.fixture(scope="function")

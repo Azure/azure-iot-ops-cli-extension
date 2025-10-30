@@ -1,9 +1,9 @@
 # Test scenario configuration for integration tests
 # Parsed by workflows/int_test.yml
 # config options:
-#   - name: Scenario identifier (used in matrix)
+#   - name: Scenario identifier
 #   - description: Test step name in workflow run
-#   - tox_env: Which tox environment to run after init
+#   - tox_env: Which tox environment(s) to run after init
 #   - custom_only: Optional condition - only run when custom args provided
 #   - needs_trust: Whether this scenario requires trust bundle setup (default: false)
 #   - init_extra_args: Additional arguments to pass to `init`
@@ -14,29 +14,30 @@
 scenarios:
   - name: custom-input
     description: "Custom init/create arguments"
-    tox_env: all # Run all (non-wlif) tests
+    tox_env: python-all-int
     custom_only: true
 
   - name: edge
     description: "Edge tests"
     tox_env: python-edge-int
 
-  - name: insecure-listener
-    description: "Insecure listener deployment tests"
+  - name: cloud
+    description: "Cloud tests (fast)"
+    tox_env: python-cloud-int
     create_extra_args: "--add-insecure-listener --persist-max-size 10Gi"
     no_preflight: true
 
-  - name: rpsaas
-    description: "Cloud tests"
-    tox_env: python-rpsaas-int
+  - name: cloud-slow
+    description: "Cloud tests (slow)"
+    tox_env: python-cloud-slow-int
 
   - name: redeploy
     description: "Redeployment tests"
     test_redeploy: true
 
-  - name: trustbundle
-    description: "Workload identity tests"
-    tox_env: python-wlif-int
+  - name: trust
+    description: "Trust bundle / workload identity tests"
+    tox_env: python-trust-int
     needs_trust: true
     init_extra_args: "--user-trust"
     create_extra_args: "--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer"

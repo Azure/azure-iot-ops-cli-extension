@@ -16,7 +16,7 @@ from ...generators import generate_random_string
 from ...helpers import run
 
 logger = get_logger(__name__)
-pytestmark = pytest.mark.rpsaas
+pytestmark = pytest.mark.cloud
 
 
 def test_namespace_device_lifecycle_operations(require_init, tracked_resources: List[str]):
