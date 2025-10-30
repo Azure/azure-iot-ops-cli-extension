@@ -62,7 +62,7 @@ runs:
         ${{ env.ARC_CLUSTER_CONFIG && format('--kube-config {0}', env.ARC_CLUSTER_CONFIG) || '' }}
       shell: bash
     - name: "Update cluster to enable workload identity"
-      if: inputs.enable-workload-identity
+      if: inputs.enable-workload-identity == 'true'
       env:
         cluster-name: "${{ inputs.cluster-name }}"
         resource-group: "${{ inputs.resource-group }}"
@@ -95,7 +95,7 @@ runs:
         fi
       shell: bash
     - name: "Update the cluster issuer's URL"
-      if: inputs.enable-workload-identity
+      if: inputs.enable-workload-identity == 'true'
       env:
         cluster-name: "${{ inputs.cluster-name }}"
         resource-group: "${{ inputs.resource-group }}"
@@ -112,7 +112,7 @@ runs:
         sleep 15s
       shell: bash
     - name: "Check OpenID Configuration"
-      if: inputs.enable-workload-identity
+      if: inputs.enable-workload-identity == 'true'
       run: |
         kubectl get --raw /.well-known/openid-configuration
       shell: bash
