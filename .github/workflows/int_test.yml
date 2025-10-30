@@ -380,8 +380,9 @@ jobs:
           azext_edge_rg: ${{ steps.env_out.outputs.RESOURCE_GROUP }}
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
+          azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
         run: |
-          tox r -e "python-rpsaas-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          tox r -e "python-rpsaas-int" --skip-pkg-install -- --durations=0
           tox r -e report
       - name: "Tox Workload Identity Integration Tests"
         if: ${{ matrix.feature == 'trustbundle' }}
@@ -390,7 +391,7 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
         run: |
-          tox r -e "python-wlif-int" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          tox r -e "python-wlif-int" --skip-pkg-install -- --durations=0
           tox r -e report
       - name: "Upload coverage artifacts"
         if: always()
