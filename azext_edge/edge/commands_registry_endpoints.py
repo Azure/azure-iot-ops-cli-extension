@@ -13,7 +13,7 @@ from typing import Iterable, Optional
 from .providers.orchestration.resources import RegistryEndpoints
 
 
-def add_registry_endpoint(
+def create_registry_endpoint(
     cmd,
     instance_name: str,
     resource_group_name: str,
@@ -30,8 +30,8 @@ def add_registry_endpoint(
     code_signing_secret_refs: Optional[list] = None,
     **kwargs,
 ) -> dict:
-    """Add a registry endpoint to an IoT Operations instance."""
-    return RegistryEndpoints(cmd).add(
+    """Create a registry endpoint for an IoT Operations instance."""
+    return RegistryEndpoints(cmd).create(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         registry_endpoint_name=registry_endpoint_name,
@@ -102,7 +102,7 @@ def list_registry_endpoints(cmd, instance_name: str, resource_group_name: str) -
     )
 
 
-def remove_registry_endpoint(
+def delete_registry_endpoint(
     cmd,
     registry_endpoint_name: str,
     instance_name: str,
@@ -110,8 +110,8 @@ def remove_registry_endpoint(
     confirm_yes: Optional[bool] = None,
     **kwargs,
 ) -> None:
-    """Remove a registry endpoint from an IoT Operations instance."""
-    return RegistryEndpoints(cmd).remove(
+    """Delete a registry endpoint from an IoT Operations instance."""
+    return RegistryEndpoints(cmd).delete(
         instance_name=instance_name,
         resource_group_name=resource_group_name,
         registry_endpoint_name=registry_endpoint_name,

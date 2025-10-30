@@ -183,7 +183,7 @@ class RegistryEndpoints(Queryable):
 
         return cas
 
-    def add(
+    def create(
         self,
         instance_name: str,
         resource_group_name: str,
@@ -201,7 +201,7 @@ class RegistryEndpoints(Queryable):
         **kwargs,
     ) -> dict:
         """
-        Add a registry endpoint to an IoT Operations instance.
+        Create a registry endpoint for an IoT Operations Instance.
 
         :param instance_name: Name of the IoT Operations instance.
         :param resource_group_name: Name of the resource group.
@@ -223,7 +223,7 @@ class RegistryEndpoints(Queryable):
         status_text = kwargs.pop("status_text", "Working...")
         no_status = kwargs.pop("no_status", False)
         headers = kwargs.pop("headers", None)
-        operation_kwargs = {"headers": headers or {"CommandName": "iot ops registry add"}}
+        operation_kwargs = {"headers": headers or {"CommandName": "iot ops registry create"}}
 
         # Process authentication configuration
         auth_config = self._process_registry_endpoint_authentication(
@@ -347,7 +347,7 @@ class RegistryEndpoints(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
-    def remove(
+    def delete(
         self,
         instance_name: str,
         resource_group_name: str,
@@ -356,7 +356,7 @@ class RegistryEndpoints(Queryable):
         **kwargs,
     ) -> None:
         """
-        Remove a registry endpoint from an IoT Operations instance.
+        Delete a registry endpoint from an IoT Operations instance.
 
         :param instance_name: Name of the IoT Operations instance.
         :param resource_group_name: Name of the resource group.
@@ -368,14 +368,14 @@ class RegistryEndpoints(Queryable):
         if should_bail:
             return
 
-        with console.status(f"Removing registry endpoint '{registry_endpoint_name}'..."):
+        with console.status(f"Deleting registry endpoint '{registry_endpoint_name}'..."):
             poller = self.registry_endpoints.begin_delete(
                 resource_group_name=resource_group_name,
                 instance_name=instance_name,
                 registry_endpoint_name=registry_endpoint_name,
             )
             wait_for_terminal_state(poller, **kwargs)
-        logger.info(f"Registry endpoint '{registry_endpoint_name}' removed successfully.")
+        logger.info(f"Registry endpoint '{registry_endpoint_name}' deleted successfully.")
 
     def _identify_authentication_method(
         self,
