@@ -5,7 +5,6 @@
 # ----------------------------------------------------------------------------------------------
 
 from azext_edge.edge.providers.orchestration.resources.connector.opcua.certs import OPCUA_CLIENT_CERT_SECRET_SYNC_NAME
-from azext_edge.edge.providers.orchestration.resources.instances import SPC_RESOURCE_TYPE
 from .helpers import (
     assert_cluster_side_secret_exists,
     assert_cluster_side_secret_not_exists,
@@ -59,7 +58,6 @@ def opcua_certs_client_test_setup(settings, tracked_resources: List[str]):
     cleanup_test_resources(settings, kv_name)
 
 
-@pytest.mark.rpsaas
 @pytest.mark.require_wlif_setup
 def test_opcua_cert_client(cluster_connection, opcua_certs_client_test_setup, tracked_files: List[str]):
     resource_group = opcua_certs_client_test_setup["resourceGroup"]

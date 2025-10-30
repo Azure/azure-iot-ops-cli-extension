@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from base64 import b64decode
+from contextlib import contextmanager
 from pathlib import Path
 from time import sleep
 from azext_edge.tests.settings import EnvironmentVariables
@@ -24,6 +25,26 @@ import datetime
 logger = get_logger(__name__)
 ROLE_MAX_RETRIES = 5
 ROLE_RETRY_INTERVAL = 15
+
+
+@contextmanager
+def suppress_expected_errors():
+    """Context manager to temporarily suppress ERROR level logs for expected test failures."""
+    # Get the Python standard logger that knack uses internally
+    import logging as std_logging
+    test_logger = std_logging.getLogger("cli.azext_edge.tests.helpers")
+    original_level = test_logger.level
+    original_propagate = test_logger.propagate
+    try:
+        # Temporarily raise log level to suppress ERROR messages
+        test_logger.setLevel(std_logging.CRITICAL)
+        # Also disable propagation to parent loggers to prevent the error from bubbling up
+        test_logger.propagate = False
+        yield
+    finally:
+        # Restore original settings
+        test_logger.setLevel(original_level)
+        test_logger.propagate = original_propagate
 
 
 def ensure_env_vars(settings):
@@ -106,7 +127,7 @@ def ensure_secretsync_enabled(settings, instance_name, resource_group, kv_id, mi
             if spc_results:
                 spc_name = spc_results[0]["name"]
                 existing_kv_name = spc_results[0]["properties"]["keyvaultName"]
-                
+
                 # Verify the existing Key Vault is still valid
                 try:
                     run(f"az keyvault show -n {existing_kv_name}")
@@ -120,7 +141,7 @@ def ensure_secretsync_enabled(settings, instance_name, resource_group, kv_id, mi
                         logger.info("Disabled secretsync with inaccessible Key Vault")
                     except CLIInternalError as disable_error:
                         logger.warning(f"Failed to disable secretsync: {str(disable_error)}")
-        
+
         # Enable secretsync with the provided Key Vault
         spc_name = run(
             f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
@@ -128,7 +149,7 @@ def ensure_secretsync_enabled(settings, instance_name, resource_group, kv_id, mi
         )["name"]
         logger.info(f"Enabled secretsync with Key Vault, SPC name: {spc_name}")
         return spc_name
-        
+
     except CLIInternalError as e:
         logger.error(f"Failed to ensure secretsync is enabled: {str(e)}")
         raise
@@ -210,12 +231,16 @@ def assert_kv_secret_not_exists(kv_id: str, cert_file: str):
     file_name_info = (p.stem, p.suffix)
     cert_extension = file_name_info[1].replace(".", "")
     secret_name = f"{file_name_info[0]}-{cert_extension}"
-    try:
-        run(f"az keyvault secret show --vault-name {kv_name} -n {secret_name}")
-    except CLIInternalError as e:
-        if "SecretNotFound" in e.error_msg:
-            return
-        raise e
+
+    # Suppress expected error logs when checking if secret doesn't exist
+    with suppress_expected_errors():
+        try:
+            run(f"az keyvault secret show --vault-name {kv_name} -n {secret_name}")
+        except CLIInternalError as e:
+            # Expected error - secret should not exist
+            if "SecretNotFound" in e.error_msg:
+                return
+            raise e
     raise AssertionError(f"Secret {secret_name} still found in keyvault {kv_name}.")
 
 
@@ -276,12 +301,16 @@ def assert_cluster_side_secret_not_exists(
     assert list_result
     spc_data = next(spc for spc in list_result if spc["metadata"]["name"] == spc_name)
     aio_namespace = spc_data["metadata"]["namespace"]
-    try:
-        run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json")
-    except CLIInternalError as e:
-        if "NotFound" in e.error_msg:
-            return
-        raise e
+
+    # Suppress expected error logs when checking if secret doesn't exist
+    with suppress_expected_errors():
+        try:
+            run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json")
+        except CLIInternalError as e:
+            # Expected error - secret should not exist
+            if "NotFound" in e.error_msg:
+                return
+            raise e
     raise AssertionError(f"Secret {secret_sync_name} still found in namespace {aio_namespace}.")
 
 
