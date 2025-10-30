@@ -24,6 +24,11 @@ on:
         type: string
         required: false
         default: ""
+      pytest-custom:
+        description: Custom pytest command for python-custom-int (e.g., "azext_edge/tests/edge/custom/path.py")
+        type: string
+        required: false
+        default: ""
       custom-locations-oid:
         description: Custom Locations OID
         type: string
@@ -78,6 +83,11 @@ on:
         type: string
         required: false
         default: ""
+      pytest-custom:
+        description: Custom pytest command for python-custom-int (e.g., "azext_edge/tests/edge/custom/path.py")
+        type: string
+        required: false
+        default: ""
       init-continue-on-error:
         description: Continue on error for init integration tests
         type: boolean
@@ -106,6 +116,7 @@ env:
   KEEP_ALIVE: ${{ inputs.keep-on-failure || 0 }}
   RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args  }}"
   RUNTIME_INIT_ARGS: "${{ inputs.runtime-init-args }}"
+  PYTEST_CUSTOM: "${{ inputs.pytest-custom || '' }}"
   TEST_SCENARIOS: "${{ inputs.test-scenarios || '' }}"
 
 jobs:
@@ -153,7 +164,7 @@ jobs:
               config = yaml.safe_load(f)
 
           scenarios = config['scenarios']
-          has_custom_args = '${{ needs.setup.outputs.init_args }}' != '' or '${{ needs.setup.outputs.create_args }}' != ''
+          has_custom_args = '${{ needs.setup.outputs.init_args }}' != '' or '${{ needs.setup.outputs.create_args }}' != '' or '${{ env.PYTEST_CUSTOM }}' != ''
           user_selected = '${{ env.TEST_SCENARIOS }}'.strip()
 
           # Filter scenarios based on conditions
@@ -167,8 +178,8 @@ jobs:
                   selected_list = [s.strip() for s in user_selected.split(',')]
                   should_include = scenario_name in selected_list
                   
-                  # Auto-include custom-input if custom args are provided
-                  if has_custom_args and scenario_name == 'custom-input' and scenario_name not in selected_list:
+                  # Auto-include custom if custom args are provided
+                  if has_custom_args and scenario_name == 'custom' and scenario_name not in selected_list:
                       should_include = True
               else:
                   # Auto-select based on 'custom_only' condition
@@ -238,8 +249,8 @@ jobs:
       - name: "Determine Init Args"
         id: "init"
         run: |
-          # For custom-input scenario, use runtime args; otherwise use scenario config
-          if [[ "${{ matrix.scenario.name }}" == "custom-input" ]]; then
+          # For custom scenario, use runtime args; otherwise use scenario config
+          if [[ "${{ matrix.scenario.name }}" == "custom" ]]; then
             echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
             echo "CREATE_ARG=${{ env.RUNTIME_CREATE_ARGS }}" >> $GITHUB_OUTPUT
             echo "NO_PREFLIGHT=false" >> $GITHUB_OUTPUT
@@ -348,6 +359,7 @@ jobs:
           azext_edge_cluster: ${{ steps.env_out.outputs.CLUSTER_NAME }}
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
+          PYTEST_CUSTOM: ${{ env.PYTEST_CUSTOM }}
         run: |
           tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- --durations=0 --dist loadfile -n logical
           tox r -e report

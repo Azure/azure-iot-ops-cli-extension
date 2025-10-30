@@ -12,9 +12,9 @@
 #   - no_preflight: Disable preflight checks (default: false)
 
 scenarios:
-  - name: custom-input
+  - name: custom
     description: "Custom init/create arguments"
-    tox_env: python-all-int
+    tox_env: python-custom-int
     custom_only: true
 
   - name: edge
