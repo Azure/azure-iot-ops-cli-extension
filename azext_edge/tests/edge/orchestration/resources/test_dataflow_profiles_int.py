@@ -51,12 +51,30 @@ def test_dataflow_profile(dataflow_profile_test_setup, tracked_resources):
         profile=show_profile1, name=profile1_name, resource_group=rg, instance_count=1, log_level="info"
     )
 
-    # UPDATE
-    sleep(90)  # TODO: Follow up on profile being returned too early.
+    # UPDATE with retry
     log_level = "debug"
-    update_profile1 = run(
-        f"az iot ops dataflow profile create -n {profile1_name} -g {rg} -i {instance} --log-level {log_level}"
-    )
+    max_retries = 10
+    retry_delay = 60
+    update_profile1 = None
+    
+    for attempt in range(max_retries):
+        try:
+            update_profile1 = run(
+                f"az iot ops dataflow profile create -n {profile1_name} -g {rg} -i {instance} --log-level {log_level}"
+            )
+            break  # Success, exit retry loop
+        except Exception as e:
+            error_message = str(e)
+            if "Conflict" in error_message:
+                if attempt < max_retries - 1:
+                    print(f"Conflict detected on attempt {attempt + 1}/{max_retries}. Retrying in {retry_delay} seconds...")
+                    sleep(retry_delay)
+                else:
+                    raise  # Re-raise on final attempt
+            else:
+                raise  # Re-raise non-conflict errors
+    
+    assert update_profile1 is not None, "Update failed after all retry attempts"
     assert_dataflow_profile(
         profile=update_profile1,
         name=profile1_name,
