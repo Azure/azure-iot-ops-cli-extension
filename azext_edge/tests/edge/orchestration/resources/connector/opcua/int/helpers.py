@@ -305,11 +305,10 @@ def assert_cluster_side_secret_not_exists(
                 if attempt < max_retries - 1:
                     sleep(retry_interval)
                     continue
-                else:
-                    raise AssertionError(
-                        f"Secret {secret_sync_name} still found in namespace {aio_namespace} "
-                        f"after {max_retries} attempts."
-                    )
+                raise AssertionError(
+                    f"Secret {secret_sync_name} still found in namespace {aio_namespace} "
+                    f"after {max_retries} attempts."
+                )
             # Some other unexpected error, re-raise
             raise
 
