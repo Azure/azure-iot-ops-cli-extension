@@ -63,8 +63,9 @@ def test_opcua_cert_trust(cluster_connection, opcua_certs_trust_test_setup, trac
     instance_name = opcua_certs_trust_test_setup["instanceName"]
     kv_id = opcua_certs_trust_test_setup["keyvaultId"]
 
-    extended_loc = run(f"az iot ops show -g {resource_group} -n {instance_name}")["extendedLocation"]["name"]
-    spc_name = run(f"az iot ops show -n {instance_name} -g {resource_group}")["properties"].get(
+    instance_info = run(f"az iot ops show -g {resource_group} -n {instance_name}")
+    extended_loc = instance_info["extendedLocation"]["name"]  # type: ignore[index]
+    spc_name = instance_info["properties"].get(  # type: ignore[union-attr]
         "defaultSecretProviderClassRef", {}
     ).get("resourceId", "")
     # get last part of the id
@@ -104,7 +105,7 @@ def test_opcua_cert_trust(cluster_connection, opcua_certs_trust_test_setup, trac
 
     # show secret sync
     show_result = run(f"az iot ops connector opcua trust show --instance {instance_name} -g {resource_group}")
-    assert show_result["name"] == OPCUA_TRUST_LIST_SECRET_SYNC_NAME
+    assert show_result["name"] == OPCUA_TRUST_LIST_SECRET_SYNC_NAME  # type: ignore[index]
 
     # remove cert from trust list
     certificate_name = cert_file.name

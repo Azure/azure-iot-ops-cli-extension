@@ -211,7 +211,7 @@ def remove_file(file_path):
             logger.error(f"Failed to remove file: {file_path}. {e}")
 
 
-def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
+def run(command: str, shell_mode: bool = True, expect_failure: bool = False) -> Union[Dict[str, Any], str, None]:
     """
     Wrapper function for run_host_command used for testing.
     Parameter `expect_failure` determines if an error will be raised for the command result.
@@ -233,6 +233,7 @@ def run(command: str, shell_mode: bool = True, expect_failure: bool = False):
             return json.loads(result.stdout)
         except json.JSONDecodeError:
             return result.stdout
+    return None
 
 
 def sort_kubectl_items_by_namespace(

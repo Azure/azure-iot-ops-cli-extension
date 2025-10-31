@@ -5,12 +5,11 @@
 # ----------------------------------------------------------------------------------------------
 
 from base64 import b64decode
-from contextlib import contextmanager
 from pathlib import Path
 from time import sleep
 from azext_edge.tests.settings import EnvironmentVariables
 from azext_edge.edge.providers.orchestration.resources.instances import SPC_RESOURCE_TYPE
-from typing import Optional
+from typing import Any, Dict, Optional, cast
 import pytest
 from azure.cli.core.azclierror import CLIInternalError
 from .......generators import generate_random_string
@@ -27,24 +26,14 @@ ROLE_MAX_RETRIES = 5
 ROLE_RETRY_INTERVAL = 15
 
 
-@contextmanager
-def suppress_expected_errors():
-    """Context manager to temporarily suppress ERROR level logs for expected test failures."""
-    # Get the Python standard logger that knack uses internally
-    import logging as std_logging
-    test_logger = std_logging.getLogger("cli.azext_edge.tests.helpers")
-    original_level = test_logger.level
-    original_propagate = test_logger.propagate
-    try:
-        # Temporarily raise log level to suppress ERROR messages
-        test_logger.setLevel(std_logging.CRITICAL)
-        # Also disable propagation to parent loggers to prevent the error from bubbling up
-        test_logger.propagate = False
-        yield
-    finally:
-        # Restore original settings
-        test_logger.setLevel(original_level)
-        test_logger.propagate = original_propagate
+def run_json(command: str, **kwargs) -> Dict[str, Any]:
+    """
+    Run a command and return the result as a dictionary.
+    Asserts that the result is not None and is a dict.
+    """
+    result = run(command, **kwargs)
+    assert isinstance(result, dict), f"Expected dict from command, got {type(result)}"
+    return cast(Dict[str, Any], result)
 
 
 def ensure_env_vars(settings):
@@ -77,7 +66,7 @@ def ensure_key_vault(settings):
     kv_name = None
     if not kv_id:
         kv_name = "spc" + generate_random_string(size=6)
-        kv_id = run(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_rg}")["id"]
+        kv_id = run_json(f"az keyvault create -n {kv_name} -g {settings.env.azext_edge_rg}")["id"]
         run(
             "az role assignment create --role b86a8fe4-44ce-4948-aee5-eccb2c155cd7 "
             f"--assignee {settings.env.azext_edge_sp_object_id} --scope {kv_id}"
@@ -91,7 +80,7 @@ def ensure_managed_identity(settings, tracked_resources):
     """
     mi_id = settings.env.azext_edge_user_assigned_mi_id
     if not mi_id:
-        mi_id = run(
+        mi_id = run_json(
             f"az identity create -n spc{generate_random_string(size=6)} -g {settings.env.azext_edge_rg}"
         )["id"]
         tracked_resources.append(mi_id)
@@ -143,7 +132,7 @@ def ensure_secretsync_enabled(settings, instance_name, resource_group, kv_id, mi
                         logger.warning(f"Failed to disable secretsync: {str(disable_error)}")
 
         # Enable secretsync with the provided Key Vault
-        spc_name = run(
+        spc_name = run_json(
             f"az iot ops secretsync enable -n {instance_name} -g {resource_group} "
             f"--mi-user-assigned {mi_id} --kv-resource-id {kv_id}"
         )["name"]
@@ -198,6 +187,7 @@ def assert_ssc_secret_exists(
     cert_extension = file_name_info[1].replace(".", "")
     secret_name = f"{file_name_info[0]}-{cert_extension}"
     result = next((rec for rec in secretsync_records if rec["name"] == ssc_name), None)
+    assert result is not None, f"SecretSync record '{ssc_name}' not found"
     assert result["extendedLocation"]["name"] == extended_location
     assert result["resourceGroup"] == resource_group
     assert result["name"] == ssc_name
@@ -214,11 +204,11 @@ def assert_cluster_side_secret_exists(
     secret_name = f"{p.stem}{p.suffix}"
     secret_value = p.read_bytes()
     # get the current secret provider class
-    list_result = run("kubectl get secretproviderclass -A -o json")["items"]
+    list_result = run_json("kubectl get secretproviderclass -A -o json")["items"]
     assert list_result
     spc_data = next(spc for spc in list_result if spc["metadata"]["name"] == spc_name)
     aio_namespace = spc_data["metadata"]["namespace"]
-    secret_data = run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json")
+    secret_data = run_json(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json")
     assert secret_name in secret_data["data"]
     # decode the secret value into bytes
     decoded = b64decode(secret_data["data"][secret_name])
@@ -231,17 +221,17 @@ def assert_kv_secret_not_exists(kv_id: str, cert_file: str):
     file_name_info = (p.stem, p.suffix)
     cert_extension = file_name_info[1].replace(".", "")
     secret_name = f"{file_name_info[0]}-{cert_extension}"
-
-    # Suppress expected error logs when checking if secret doesn't exist
-    with suppress_expected_errors():
-        try:
-            run(f"az keyvault secret show --vault-name {kv_name} -n {secret_name}")
-        except CLIInternalError as e:
-            # Expected error - secret should not exist
-            if "SecretNotFound" in e.error_msg:
-                return
-            raise e
-    raise AssertionError(f"Secret {secret_name} still found in keyvault {kv_name}.")
+    
+    try:
+        run(f"az keyvault secret show --vault-name {kv_name} -n {secret_name}", expect_failure=True)
+        # If we get here, the command failed (as expected), meaning the secret doesn't exist
+        return
+    except CLIInternalError as e:
+        # The command succeeded when we expected failure - meaning the secret still exists!
+        if "did not fail as expected" in e.error_msg:
+            raise AssertionError(f"Secret {secret_name} still found in keyvault {kv_name}.")
+        # Some other unexpected error, re-raise
+        raise
 
 
 def assert_spc_secret_not_exists(
@@ -281,7 +271,7 @@ def assert_ssc_secret_not_exists(
         assert result["name"] == ssc_name
         secret_mappings = result["properties"].get("objectSecretMapping", [])
         assert not any(mapping.get("sourcePath", "") == secret_name for mapping in secret_mappings)
-        show_result = run(f"az iot ops secretsync show --name {ssc_name} -g {resource_group}")
+        show_result = run_json(f"az iot ops secretsync show --name {ssc_name} -g {resource_group}")
         assert show_result["name"] == ssc_name
         assert show_result["extendedLocation"]["name"] == extended_location
         assert show_result["resourceGroup"] == resource_group
@@ -295,23 +285,30 @@ def assert_ssc_secret_not_exists(
 def assert_cluster_side_secret_not_exists(
     spc_name: str,
     secret_sync_name: str,
+    max_retries: int = 10,
+    retry_interval: int = 5,
 ):
     # get the current secret provider class
-    list_result = run("kubectl get secretproviderclass -A -o json")["items"]
+    list_result = run_json("kubectl get secretproviderclass -A -o json")["items"]
     assert list_result
     spc_data = next(spc for spc in list_result if spc["metadata"]["name"] == spc_name)
     aio_namespace = spc_data["metadata"]["namespace"]
-
-    # Suppress expected error logs when checking if secret doesn't exist
-    with suppress_expected_errors():
+    
+    for attempt in range(max_retries):
         try:
-            run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json")
+            run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json", expect_failure=True)
+            # If we get here, the command failed (as expected), meaning the secret doesn't exist
+            return
         except CLIInternalError as e:
-            # Expected error - secret should not exist
-            if "NotFound" in e.error_msg:
-                return
-            raise e
-    raise AssertionError(f"Secret {secret_sync_name} still found in namespace {aio_namespace}.")
+            # The command succeeded when we expected failure - meaning the secret still exists!
+            if "did not fail as expected" in e.error_msg:
+                if attempt < max_retries - 1:
+                    sleep(retry_interval)
+                    continue
+                else:
+                    raise AssertionError(f"Secret {secret_sync_name} still found in namespace {aio_namespace} after {max_retries} attempts.")
+            # Some other unexpected error, re-raise
+            raise
 
 
 def generate_self_signed_cert(
