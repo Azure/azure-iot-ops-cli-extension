@@ -221,7 +221,7 @@ def assert_kv_secret_not_exists(kv_id: str, cert_file: str):
     file_name_info = (p.stem, p.suffix)
     cert_extension = file_name_info[1].replace(".", "")
     secret_name = f"{file_name_info[0]}-{cert_extension}"
-    
+
     try:
         run(f"az keyvault secret show --vault-name {kv_name} -n {secret_name}", expect_failure=True)
         # If we get here, the command failed (as expected), meaning the secret doesn't exist
@@ -293,7 +293,7 @@ def assert_cluster_side_secret_not_exists(
     assert list_result
     spc_data = next(spc for spc in list_result if spc["metadata"]["name"] == spc_name)
     aio_namespace = spc_data["metadata"]["namespace"]
-    
+
     for attempt in range(max_retries):
         try:
             run(f"kubectl get secret {secret_sync_name} -n {aio_namespace} -o json", expect_failure=True)
@@ -306,7 +306,10 @@ def assert_cluster_side_secret_not_exists(
                     sleep(retry_interval)
                     continue
                 else:
-                    raise AssertionError(f"Secret {secret_sync_name} still found in namespace {aio_namespace} after {max_retries} attempts.")
+                    raise AssertionError(
+                        f"Secret {secret_sync_name} still found in namespace {aio_namespace} "
+                        f"after {max_retries} attempts."
+                    )
             # Some other unexpected error, re-raise
             raise
 
