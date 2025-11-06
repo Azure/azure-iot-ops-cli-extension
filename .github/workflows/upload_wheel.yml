@@ -22,7 +22,7 @@ jobs:
       [
         self-hosted,
         1ES.Pool=iotupx-github-hosted-pool,
-        1ES.ImageOverride=MMSUbuntu20.04,
+        1ES.ImageOverride=AzureLinux3,
       ]
     steps:
       - name: Download wheel
