@@ -91,7 +91,7 @@ env:
 jobs:
   setup:
     name: "Check Inputs"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     # Run on dispatch, or ensure scheduled runs only on dev branch
     if: github.event_name != 'schedule' || (github.repository == 'azure/azure-iot-ops-cli-extension' && github.ref == 'refs/heads/dev')
     outputs:
@@ -111,7 +111,7 @@ jobs:
           echo "INIT_ARG=${{ env.RUNTIME_INIT_ARGS }}" >> $GITHUB_OUTPUT
   unit-test:
     name: "Run linter and unit tests"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: "Checkout Source"
         uses: actions/checkout@v4
@@ -168,7 +168,7 @@ jobs:
           - feature: trustbundle
             runtime-args: true
     name: "Run cluster integration tests"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: "Determine Init Args"
         id: "init"
@@ -481,7 +481,7 @@ jobs:
     name: "Combine coverage reports"
     if: ${{ always() }}
     needs: [unit-test, int-test]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: "Checkout source"
         uses: actions/checkout@v4
