@@ -817,3 +817,42 @@ def test_trust_show_error(
             resource_group=rg_name,
         )
     assert e.value.args[0] == expected_error
+
+
+def test_trust_add_accepts_expiration_parameter(mocker):
+    """Test that the trust add command accepts and passes through the expiration_date parameter."""
+    from azext_edge.edge.commands_connector import add_connector_opcua_trust
+
+    # Mock the OpcUACerts class
+    mock_opcua_certs = mocker.patch('azext_edge.edge.commands_connector.OpcUACerts')
+    mock_instance = mock_opcua_certs.return_value
+    mock_instance.trust_add.return_value = {"status": "success"}
+
+    # Test with expiration_date parameter
+    expiration_date = "2026-12-31T23:59:59Z"
+    add_connector_opcua_trust(
+        cmd=mocker.MagicMock(),
+        instance_name="test-instance",
+        resource_group="test-rg",
+        file="/fake/cert.der",
+        expiration_date=expiration_date,
+    )
+
+    # Verify trust_add was called with expiration_date
+    mock_instance.trust_add.assert_called_once()
+    call_kwargs = mock_instance.trust_add.call_args[1]
+    assert 'expiration_date' in call_kwargs, "expiration_date parameter should be passed to trust_add"
+    assert call_kwargs['expiration_date'] == expiration_date, "expiration_date value should match"
+
+    # Test without expiration_date parameter (should default to None)
+    mock_instance.trust_add.reset_mock()
+    add_connector_opcua_trust(
+        cmd=mocker.MagicMock(),
+        instance_name="test-instance",
+        resource_group="test-rg",
+        file="/fake/cert.der",
+    )
+
+    call_kwargs = mock_instance.trust_add.call_args[1]
+    assert 'expiration_date' in call_kwargs, "expiration_date parameter should be passed to trust_add"
+    assert call_kwargs['expiration_date'] is None, "expiration_date should be None when not provided"

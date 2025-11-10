@@ -20,6 +20,7 @@ def add_connector_opcua_trust(
     file: str,
     overwrite_secret: bool = False,
     secret_name: Optional[str] = None,
+    expiration_date: Optional[str] = None,
 ) -> dict:
     return OpcUACerts(
         cmd,
@@ -29,6 +30,7 @@ def add_connector_opcua_trust(
         file=file,
         secret_name=secret_name,
         overwrite_secret=overwrite_secret,
+        expiration_date=expiration_date,
     )
 
 

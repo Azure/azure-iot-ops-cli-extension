@@ -136,3 +136,115 @@ def test_opcua_cert_trust(cluster_connection, opcua_certs_trust_test_setup, trac
     )
     # clean up the cert file created
     cert_file.unlink(missing_ok=True)
+
+
+@pytest.mark.require_wlif_setup
+def test_opcua_cert_trust_with_user_expiration(
+    cluster_connection, opcua_certs_trust_test_setup, tracked_files: List[str]
+):
+    """Test adding certificate with user-provided expiration date."""
+    from datetime import datetime, timezone, timedelta
+
+    resource_group = opcua_certs_trust_test_setup["resourceGroup"]
+    instance_name = opcua_certs_trust_test_setup["instanceName"]
+    kv_id = opcua_certs_trust_test_setup["keyvaultId"]
+    kv_name = kv_id.rsplit("/", maxsplit=1)[-1]
+
+    # Generate certificate
+    cert_file = generate_self_signed_der_cert()
+
+    # Set expiration date to 2 years from now
+    expiration_date = (datetime.now(timezone.utc) + timedelta(days=730)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Add cert with expiration date
+    run(f"az iot ops connector opcua trust add --instance {instance_name} \
+        -g {resource_group} --certificate-file {cert_file} --expiration-date {expiration_date} --overwrite-secret")
+
+    # Get secret name
+    from pathlib import Path
+    p = Path(cert_file)
+    file_name_info = (p.stem, p.suffix)
+    cert_extension = file_name_info[1].replace(".", "")
+    secret_name = f"{file_name_info[0]}-{cert_extension}"
+
+    # Verify secret exists with expiration date
+    secret = run(f"az keyvault secret show --vault-name {kv_name} -n {secret_name}")
+    assert "attributes" in secret, "Secret should have attributes"
+    assert "expires" in secret["attributes"], "Secret attributes should have expires field"
+    assert secret["attributes"]["expires"] is not None, "Expiration date should be set"
+
+    # Verify the expiration date matches what we provided (allowing for timezone differences)
+    from dateutil import parser as date_parser
+    expected_expiration = date_parser.isoparse(expiration_date)
+    if expected_expiration.tzinfo is None:
+        expected_expiration = expected_expiration.replace(tzinfo=timezone.utc)
+    actual_expiration = date_parser.isoparse(secret["attributes"]["expires"])
+
+    # Allow 1 second difference due to rounding
+    time_diff = abs((actual_expiration - expected_expiration).total_seconds())
+    assert time_diff < 2, f"Expiration date should match. Expected: {expected_expiration}, Got: {actual_expiration}"
+
+    logger.info(f"✅ User-provided expiration test passed. Expiration: {actual_expiration}")
+
+    # Cleanup
+    run(f"az iot ops connector opcua trust remove --instance {instance_name} -g {resource_group} \
+        --certificate-names {cert_file.name} -y --include-secrets")
+    cert_file.unlink(missing_ok=True)
+
+
+@pytest.mark.require_wlif_setup
+def test_opcua_cert_trust_with_cert_expiration(
+    cluster_connection, opcua_certs_trust_test_setup, tracked_files: List[str]
+):
+    """Test adding certificate without user expiration - should extract from certificate."""
+    resource_group = opcua_certs_trust_test_setup["resourceGroup"]
+    instance_name = opcua_certs_trust_test_setup["instanceName"]
+    kv_id = opcua_certs_trust_test_setup["keyvaultId"]
+    kv_name = kv_id.rsplit("/", maxsplit=1)[-1]
+
+    # Generate certificate (will have its own expiration date)
+    cert_file = generate_self_signed_der_cert()
+
+    # Get the certificate's expiration date
+    cert_info = run(f"openssl x509 -inform DER -in {cert_file} -noout -enddate")
+    # Parse the openssl output: "notAfter=Nov  6 00:34:25 2026 GMT"
+    import re
+    from datetime import datetime, timezone
+    match = re.search(r"notAfter=(.+)", cert_info)
+    assert match, "Could not parse certificate expiration"
+    cert_expiration_str = match.group(1).strip()
+    # Parse the date (format: "Nov  6 00:34:25 2026 GMT")
+    cert_expiration = datetime.strptime(cert_expiration_str, "%b %d %H:%M:%S %Y %Z")
+    cert_expiration = cert_expiration.replace(tzinfo=timezone.utc)
+
+    # Add cert WITHOUT expiration date parameter
+    run(f"az iot ops connector opcua trust add --instance {instance_name} \
+        -g {resource_group} --certificate-file {cert_file} --overwrite-secret")
+
+    # Get secret name
+    from pathlib import Path
+    p = Path(cert_file)
+    file_name_info = (p.stem, p.suffix)
+    cert_extension = file_name_info[1].replace(".", "")
+    secret_name = f"{file_name_info[0]}-{cert_extension}"
+
+    # Verify secret exists with expiration date
+    secret = run(f"az keyvault secret show --vault-name {kv_name} -n {secret_name}")
+    assert "attributes" in secret, "Secret should have attributes"
+    assert "expires" in secret["attributes"], "Secret attributes should have expires field"
+    assert secret["attributes"]["expires"] is not None, "Expiration date should be set"
+
+    # Verify the expiration date matches the certificate's expiration
+    from dateutil import parser as date_parser
+    actual_expiration = date_parser.isoparse(secret["attributes"]["expires"])
+
+    # Allow 2 seconds difference due to rounding and parsing
+    time_diff = abs((actual_expiration - cert_expiration).total_seconds())
+    assert time_diff < 2, f"Expiration should match certificate. Expected: {cert_expiration}, Got: {actual_expiration}"
+
+    logger.info(f"✅ Certificate expiration extraction test passed. Expiration: {actual_expiration}")
+
+    # Cleanup
+    run(f"az iot ops connector opcua trust remove --instance {instance_name} -g {resource_group} \
+        --certificate-names {cert_file.name} -y --include-secrets")
+    cert_file.unlink(missing_ok=True)

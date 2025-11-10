@@ -1689,6 +1689,13 @@ def load_iotops_arguments(self, _):
             help="Secret name in the Key Vault. If not provided, the "
             "certificate file name will be used to generate the secret name.",
         )
+        context.argument(
+            "expiration_date",
+            options_list=["--expiration-date", "--ed"],
+            help="Expiration date for the Key Vault secret in ISO 8601 format (e.g., 2025-12-31T23:59:59Z). "
+            "If not provided, the certificate's expiration date will be used. "
+            "If the certificate expiration cannot be determined, defaults to 180 days from the current date.",
+        )
 
     with self.argument_context("iot ops connector opcua issuer") as context:
         context.argument(

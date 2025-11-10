@@ -42,6 +42,7 @@ SERVICE_ACCOUNT_NAME = "aio-ssc-sa"
 KEYVAULT_URL = "https://{keyvaultName}.vault.azure.net/"
 SECRET_DELETE_MAX_RETRIES = 10
 SECRET_DELETE_RETRY_INTERVAL = 2
+DEFAULT_SECRET_EXPIRATION_DAYS = 180  # Default to 180 days for governance policy compliance
 
 
 class OpcUACerts(Queryable):
@@ -73,6 +74,7 @@ class OpcUACerts(Queryable):
         file: str,
         overwrite_secret: bool = False,
         secret_name: Optional[str] = None,
+        expiration_date: Optional[str] = None,
     ) -> dict:
         default_spc = self.instances.get_default_spc(
             instance_name=self.instance_name,
@@ -107,7 +109,11 @@ class OpcUACerts(Queryable):
             return
 
         self._upload_to_key_vault(
-            keyvault_name=spc_keyvault_name, secret_name=secret_name, file_path=file, cert_extension=cert_extension
+            keyvault_name=spc_keyvault_name,
+            secret_name=secret_name,
+            file_path=file,
+            cert_extension=cert_extension,
+            expiration_date=expiration_date,
         )
 
         self._add_secrets_to_spc(
@@ -207,7 +213,10 @@ class OpcUACerts(Queryable):
             return
 
         self._upload_to_key_vault(
-            keyvault_name=spc_keyvault_name, secret_name=secret_name, file_path=file, cert_extension=cert_extension
+            keyvault_name=spc_keyvault_name,
+            secret_name=secret_name,
+            file_path=file,
+            cert_extension=cert_extension,
         )
 
         self._add_secrets_to_spc(
@@ -295,7 +304,10 @@ class OpcUACerts(Queryable):
                 return
 
             self._upload_to_key_vault(
-                keyvault_name=spc_keyvault_name, secret_name=secret_name, file_path=file, cert_extension=cert_extension
+                keyvault_name=spc_keyvault_name,
+                secret_name=secret_name,
+                file_path=file,
+                cert_extension=cert_extension,
             )
             secrets_to_add.append((secret_name, file_name))
 
@@ -496,6 +508,28 @@ class OpcUACerts(Queryable):
         cl_resources = self.resource_map.connected_cluster.get_aio_resources(custom_location_id=custom_location["id"])
         return cl_resources
 
+    def _extract_cert_expiration(self, cert: x509.Certificate) -> datetime:
+        """
+        Extract the expiration date from a certificate, handling both old and new cryptography library versions.
+
+        Args:
+            cert: The certificate object
+
+        Returns:
+            datetime: UTC-aware datetime of the certificate's expiration
+        """
+        # Handle both old and new cryptography library versions
+        try:
+            expiry_date = cert.not_valid_after_utc
+        except AttributeError:
+            # Fallback for older cryptography versions (< 41.0)
+            expiry_date = cert.not_valid_after
+            # Convert to UTC-aware datetime if it's naive
+            if expiry_date.tzinfo is None:
+                expiry_date = expiry_date.replace(tzinfo=timezone.utc)
+
+        return expiry_date
+
     def _check_secret_name(
         self,
         secret_names: List[str],
@@ -528,9 +562,121 @@ class OpcUACerts(Queryable):
 
         return new_secret_name
 
-    def _upload_to_key_vault(self, keyvault_name: str, secret_name: str, file_path: str, cert_extension: str):
+    def _calculate_secret_expiration(
+        self,
+        file_path: str,
+        cert_extension: str,
+        expiration_date: Optional[str] = None,
+    ) -> datetime:
+        """
+        Calculate the appropriate expiration date for a Key Vault secret.
+
+        Priority order:
+        1. If expiration_date is provided by user, use that
+        2. For certificate files (.der, .crt), extract the certificate's expiration date
+        3. Default to 180 days from now
+
+        Args:
+            file_path: Path to the certificate/key file
+            cert_extension: File extension indicating the file type
+            expiration_date: Optional expiration date string in ISO 8601 format (user-provided)
+
+        Returns:
+            datetime: UTC-aware datetime for secret expiration
+        """
+        from datetime import timedelta
+        from dateutil import parser as date_parser
+
+        # Priority 1: User-provided expiration date
+        if expiration_date is not None:
+            try:
+                user_expiration = date_parser.isoparse(expiration_date)
+                # Ensure it's UTC-aware
+                if user_expiration.tzinfo is None:
+                    user_expiration = user_expiration.replace(tzinfo=timezone.utc)
+
+                # Validate it's in the future
+                if user_expiration <= datetime.now(timezone.utc):
+                    raise InvalidArgumentValueError(
+                        f"Expiration date must be in the future. Provided: {expiration_date}"
+                    )
+
+                logger.info(
+                    f"Using user-provided expiration date: {user_expiration.strftime('%Y-%m-%d %H:%M:%S UTC')} "
+                    f"for Key Vault secret."
+                )
+                return user_expiration
+            except (ValueError, TypeError) as e:
+                raise InvalidArgumentValueError(
+                    f"Invalid expiration date format. Expected ISO 8601 format (e.g., 2025-12-31T23:59:59Z). "
+                    f"Provided: {expiration_date}. Error: {str(e)}"
+                )
+
+        # Priority 2: For certificate files, try to extract the certificate's actual expiration date
+        if cert_extension in {X509FileExtension.DER.value, X509FileExtension.CRT.value}:
+            try:
+                cert_data = read_file_content(file_path=file_path, read_as_binary=True)
+                expected_format = (
+                    X509FileExtension.PEM.name if cert_extension == X509FileExtension.CRT.value
+                    else X509FileExtension.DER.name
+                )
+                certs = decode_x509_files(cert_data, expected_format, cert_extension)
+
+                if certs:
+                    cert = certs[0]
+                    expiry_date = self._extract_cert_expiration(cert)
+
+                    logger.info(
+                        f"Using certificate expiration date: {expiry_date.strftime('%Y-%m-%d %H:%M:%S UTC')} "
+                        f"for Key Vault secret."
+                    )
+                    return expiry_date
+            except Exception as e:
+                # If certificate parsing fails, log warning and fall through to default
+                logger.warning(
+                    f"Could not extract expiration from certificate: {str(e)}. "
+                    f"Using default expiration of {DEFAULT_SECRET_EXPIRATION_DAYS} days."
+                )
+
+        # Priority 3: Default to 180 days from now for:
+        # - Private keys (.pem)
+        # - Certificate Revocation Lists (.crl)
+        # - Any files where certificate parsing failed
+        default_expiration = datetime.now(timezone.utc) + timedelta(days=DEFAULT_SECRET_EXPIRATION_DAYS)
+        logger.info(
+            f"Using default expiration date: {default_expiration.strftime('%Y-%m-%d %H:%M:%S UTC')} "
+            f"({DEFAULT_SECRET_EXPIRATION_DAYS} days) for Key Vault secret."
+        )
+        return default_expiration
+
+    def _upload_to_key_vault(
+        self,
+        keyvault_name: str,
+        secret_name: str,
+        file_path: str,
+        cert_extension: str,
+        expiration_date: Optional[str] = None,
+    ):
+        """
+        Upload a certificate or key file to Azure Key Vault as a secret with expiration date.
+
+        This method ensures Key Vault governance policy compliance by setting an expiration
+        date on the secret (required by many enterprise policies).
+
+        Args:
+            keyvault_name: Name of the Azure Key Vault
+            secret_name: Name for the secret in Key Vault
+            file_path: Path to the certificate/key file
+            cert_extension: File extension indicating the file type
+            expiration_date: Optional expiration date string in ISO 8601 format (user-provided via CLI)
+
+        Returns:
+            The Key Vault secret response
+        """
         with console.status(f"Uploading certificate to keyvault as secret {secret_name}..."):
             content = read_file_content(file_path=file_path, read_as_binary=True).hex()
+
+            # Determine content type based on file extension
             if cert_extension == X509FileExtension.CRL.value:
                 content_type = "application/pkix-crl"
             elif cert_extension == X509FileExtension.DER.value:
@@ -538,11 +684,26 @@ class OpcUACerts(Queryable):
             else:
                 content_type = "application/x-pem-file"
 
+            # Calculate expiration date for Key Vault compliance
+            # Priority: user-provided > certificate expiration > 180-day default
+            calculated_expiration = self._calculate_secret_expiration(file_path, cert_extension, expiration_date)
+
+            # Build parameters with compliance attributes
+            # Note: Key Vault API expects expiration in attributes.exp (Unix timestamp format)
             parameters = {
                 "value": content,
                 "contentType": content_type,
                 "tags": {"file-encoding": "hex"},
+                "attributes": {
+                    "exp": int(calculated_expiration.timestamp()),  # Required by Key Vault governance policies
+                },
             }
+
+            logger.info(
+                f"Creating Key Vault secret '{secret_name}' with expiration: "
+                f"{calculated_expiration.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            )
+
             return self.keyvault_client.set_secret(
                 vault_base_url=KEYVAULT_URL.format(keyvaultName=keyvault_name),
                 secret_name=secret_name,
@@ -896,7 +1057,8 @@ class OpcUACerts(Queryable):
         # check for certificate expiry
         if not cert_extension == X509FileExtension.CRL.value:
             # check if the certificate is expired
-            expiry_date = cert.not_valid_after_utc
+            expiry_date = self._extract_cert_expiration(cert)
+
             if expiry_date < datetime.now(timezone.utc):
                 raise InvalidArgumentValueError(
                     f"Certificate in file '{file_name}' is expired. Please provide a valid certificate."

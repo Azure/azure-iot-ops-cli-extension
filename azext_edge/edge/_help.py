@@ -2299,6 +2299,10 @@ def load_iotops_help():
           text: >
             az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
             --certificate-file "certificate.der" --overwrite-secret
+        - name: Add a trusted certificate with a custom expiration date for the Key Vault secret.
+          text: >
+            az iot ops connector opcua trust add --instance instance --resource-group instanceresourcegroup
+            --certificate-file "certificate.der" --expiration-date "2026-12-31T23:59:59Z"
     """
 
     helps[
