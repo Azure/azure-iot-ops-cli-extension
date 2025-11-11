@@ -98,7 +98,7 @@ def evaluate_broker_listeners(
         resource_name=resource_name,
     )
     if not all_listeners:
-        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
+        status = CheckTaskStatus.skipped.value
         fetch_listeners_error_text = f"Unable to fetch {MqResourceKinds.BROKER_LISTENER.value}s in any namespace."
         check_manager.add_target(target_name=target_listeners)
         check_manager.add_target_eval(
@@ -386,6 +386,7 @@ def evaluate_brokers(
     )
 
     if not all_brokers:
+        # Broker is a core component - return error if none found in general check
         status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
         fetch_brokers_error_text = f"Unable to fetch {MqResourceKinds.BROKER.value}s in any namespace."
         check_manager.add_target(target_name=target_brokers)
@@ -655,7 +656,7 @@ def evaluate_broker_authentications(
     )
 
     if not all_authentications:
-        status = CheckTaskStatus.skipped.value if resource_name else CheckTaskStatus.error.value
+        status = CheckTaskStatus.skipped.value
         fetch_authentications_error_text = (
             f"Unable to fetch {MqResourceKinds.BROKER_AUTHENTICATION.value}s in any namespace."
         )
