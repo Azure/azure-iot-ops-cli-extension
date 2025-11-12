@@ -1,0 +1,83 @@
+name: Setup Trust Bundle
+description: Setup cert-manager and trust bundle for clusters that need workload identity
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Cert Manager and Trust Manager
+      shell: bash
+      run: |
+        set -x
+        helm repo add jetstack https://charts.jetstack.io --force-update
+
+        helm install \
+          cert-manager jetstack/cert-manager \
+          --namespace cert-manager \
+          --create-namespace \
+          --version v1.13.6 \
+          --set installCRDs=true \
+          --set startupapicheck.timeout=5m
+
+        kubectl create namespace azure-iot-operations
+
+        helm upgrade trust-manager jetstack/trust-manager \
+          --install \
+          --namespace cert-manager \
+          --set app.trust.namespace=cert-manager \
+          --wait
+
+    - name: Apply Trust Configuration
+      shell: bash
+      run: |
+        kubectl apply -f - <<EOF
+        apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata:
+          name: selfsigned-issuer
+          namespace: cert-manager
+        spec:
+          selfSigned: {}
+        ---
+        apiVersion: cert-manager.io/v1
+        kind: Certificate
+        metadata:
+          name: trust-manager-example-ca
+          namespace: cert-manager
+        spec:
+          isCA: true
+          commonName: trust-manager-example-ca
+          secretName: trust-manager-example-ca-secret
+          privateKey:
+            algorithm: ECDSA
+            size: 256
+          issuerRef:
+            name: selfsigned-issuer
+            kind: Issuer
+            group: cert-manager.io
+        ---
+        apiVersion: trust.cert-manager.io/v1alpha1
+        kind: Bundle
+        metadata:
+          name: example-bundle
+          namespace: cert-manager
+        spec:
+          sources:
+          - useDefaultCAs: true
+          - secret:
+              name: "trust-manager-example-ca-secret"
+              key: "tls.crt"
+          target:
+            configMap:
+              key: "trust-bundle.pem"
+            namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: azure-iot-operations
+        ---
+        apiVersion: cert-manager.io/v1
+        kind: Issuer
+        metadata:
+          name: selfsigned-issuer
+          namespace: azure-iot-operations
+        spec:
+          selfSigned: {}
+        EOF

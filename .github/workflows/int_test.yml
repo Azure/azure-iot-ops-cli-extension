@@ -35,7 +35,6 @@ on:
         required: false
         default: 0
     secrets:
-      # required for az login
       AZURE_CLIENT_ID:
         required: true
       AZURE_TENANT_ID:
@@ -85,7 +84,7 @@ env:
   K3S_VERSION: "v1.29.15+k3s1"
   CUSTOM_LOCATIONS_OID: "${{ inputs.custom-locations-oid || '51dfe1e8-70c6-4de5-a08e-e18aff23d815' }}"
   KEEP_ALIVE: ${{ inputs.keep-on-failure || 0 }}
-  RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args  }}"
+  RUNTIME_CREATE_ARGS: "${{ inputs.runtime-create-args }}"
   RUNTIME_INIT_ARGS: "${{ inputs.runtime-init-args }}"
 
 jobs:
@@ -206,82 +205,7 @@ jobs:
         uses: ./.github/actions/create-k3s-cluster
       - name: "Apply custom cluster issuer"
         if: ${{ matrix.feature == 'trustbundle' || contains(env.RUNTIME_INIT_ARGS, '--user-trust') }}
-        run: |
-          set -x
-          helm repo add jetstack https://charts.jetstack.io --force-update
-
-          helm install \
-            cert-manager jetstack/cert-manager \
-            --namespace cert-manager \
-            --create-namespace \
-            --version v1.13.6 \
-            --set installCRDs=true \
-            --set startupapicheck.timeout=5m
-
-          kubectl create namespace azure-iot-operations
-
-          helm upgrade trust-manager jetstack/trust-manager \
-            --install \
-            --namespace cert-manager \
-            --set app.trust.namespace=cert-manager \
-            --wait
-
-          kubectl apply -f - <<EOF
-          apiVersion: cert-manager.io/v1
-          kind: Issuer
-          metadata:
-            name: selfsigned-issuer
-            namespace: cert-manager
-          spec:
-            selfSigned: {}
-          ---
-          apiVersion: cert-manager.io/v1
-          kind: Certificate
-          metadata:
-            name: trust-manager-example-ca
-            namespace: cert-manager
-          spec:
-            isCA: true
-            commonName: trust-manager-example-ca
-            secretName: trust-manager-example-ca-secret
-            privateKey:
-              algorithm: ECDSA
-              size: 256
-            issuerRef:
-              name: selfsigned-issuer
-              kind: Issuer
-              group: cert-manager.io
-          EOF
-
-          kubectl apply -f - <<EOF
-          apiVersion: trust.cert-manager.io/v1alpha1
-          kind: Bundle
-          metadata:
-            name: example-bundle
-            namespace: cert-manager
-          spec:
-            sources:
-            - useDefaultCAs: true
-            - secret:
-                name: "trust-manager-example-ca-secret"
-                key: "tls.crt"
-            target:
-              configMap:
-                key: "trust-bundle.pem"
-              namespaceSelector:
-                matchLabels:
-                  kubernetes.io/metadata.name: azure-iot-operations
-          EOF
-
-          kubectl apply -f - <<EOF
-          apiVersion: cert-manager.io/v1
-          kind: Issuer
-          metadata:
-            name: selfsigned-issuer
-            namespace: azure-iot-operations
-          spec:
-            selfSigned: {}
-          EOF
+        uses: ./.github/actions/setup-trust-bundle
       - name: "Tox test environment setup for init"
         run: |
           python -m pip install tox
@@ -317,23 +241,12 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: "Create Storage, Schema Registry, and Namespace for init tests"
+      - name: "Setup Cluster Resources"
         id: "init_reqs"
-        run: |
-          # Remove -'s and limit name length to 20 chars for storage accounts
-          storage_account_name=$(echo "initstore${{ env.CLUSTER_NAME }}" | tr -d '-' | cut -c 1-20)
-          storage_id=$(az storage account create -g ${{ env.RESOURCE_GROUP }} -n $storage_account_name --enable-hierarchical-namespace --public-network-access Disabled --allow-shared-key-access false --allow-blob-public-access false --default-action Deny -o tsv --query id)
-          echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
-
-          # limit both names - 30 for registry, 20 for namespace
-          schema_registry_name=$(echo "init-registry${{ env.CLUSTER_NAME }}" | cut -c 1-30)
-          schema_namespace=$(echo "init-ns-${{ env.CLUSTER_NAME }}" | cut -c 1-20)
-          registry_id=$(az iot ops schema registry create -g ${{ env.RESOURCE_GROUP }} -n $schema_registry_name --rn $schema_namespace --sa-resource-id $storage_id -o tsv --query id)
-          echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
-
-          adr_namespace_name=$(echo "init-adr-ns-${{ env.CLUSTER_NAME }}" | cut -c 1-30)
-          adr_namespace_id=$(az iot ops ns create -g ${{ env.RESOURCE_GROUP }} -n $adr_namespace_name --query "id" -o tsv)
-          echo "ADR_NAMESPACE_ID=$adr_namespace_id" >> $GITHUB_OUTPUT
+        uses: ./.github/actions/setup-cluster-resources
+        with:
+          suffix: ${{ env.CLUSTER_NAME }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
       - name: "OIDC Token exchange service"
         run: |
           while true; do

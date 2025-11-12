@@ -1,0 +1,71 @@
+name: Setup Cluster Resources
+description: Setup common resources needed for all clusters (storage, schema registry, ADR namespace)
+
+inputs:
+  suffix:
+    description: "Common resource name suffix"
+    required: true
+  resource-group:
+    description: "Resource group"
+    required: true
+
+outputs:
+  STORAGE_ID:
+    description: "Storage account resource ID"
+    value: ${{ steps.resources.outputs.STORAGE_ID }}
+  SCHEMA_REGISTRY_ID:
+    description: "Schema registry resource ID"
+    value: ${{ steps.resources.outputs.SCHEMA_REGISTRY_ID }}
+  ADR_NAMESPACE_ID:
+    description: "ADR namespace resource ID"
+    value: ${{ steps.resources.outputs.ADR_NAMESPACE_ID }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Create Storage, Schema Registry, and Namespace
+      id: resources
+      shell: bash
+      run: |
+        set -e
+
+        # Storage account - remove -'s and limit name length to 20 chars
+        storage_account_name=$(echo "initstore${{ inputs.suffix }}" | tr -d '-' | cut -c 1-20)
+        echo "Creating storage account: $storage_account_name"
+
+        storage_id=$(az storage account create \
+          -g ${{ inputs.resource-group }} \
+          -n $storage_account_name \
+          --enable-hierarchical-namespace \
+          --public-network-access Disabled \
+          --allow-shared-key-access false \
+          --allow-blob-public-access false \
+          --default-action Deny \
+          -o tsv --query id)
+        echo "STORAGE_ID=$storage_id" >> $GITHUB_OUTPUT
+        echo "Storage account created: $storage_id"
+
+        # Schema registry - limit name to 30 chars
+        schema_registry_name=$(echo "init-registry${{ inputs.suffix }}" | cut -c 1-30)
+        schema_namespace=$(echo "init-ns-${{ inputs.suffix }}" | cut -c 1-20)
+        echo "Creating schema registry: $schema_registry_name with namespace: $schema_namespace"
+
+        registry_id=$(az iot ops schema registry create \
+          -g ${{ inputs.resource-group }} \
+          -n $schema_registry_name \
+          --rn $schema_namespace \
+          --sa-resource-id $storage_id \
+          -o tsv --query id)
+        echo "SCHEMA_REGISTRY_ID=$registry_id" >> $GITHUB_OUTPUT
+        echo "Schema registry created: $registry_id"
+
+        # ADR namespace - limit name to 30 chars
+        adr_namespace_name=$(echo "init-adr-ns-${{ inputs.suffix }}" | cut -c 1-30)
+        echo "Creating ADR namespace: $adr_namespace_name"
+
+        adr_namespace_id=$(az iot ops ns create \
+          -g ${{ inputs.resource-group }} \
+          -n $adr_namespace_name \
+          --query "id" -o tsv)
+        echo "ADR_NAMESPACE_ID=$adr_namespace_id" >> $GITHUB_OUTPUT
+        echo "ADR namespace created: $adr_namespace_id"
