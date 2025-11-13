@@ -1,11 +1,7 @@
 # Integration test scenarios.
-# Fields: name (required), description, tox_env (optional), needs_trust (bool), test_redeploy (bool), init_args, create_args, env (array of single-key maps).
+# Fields: name (required), description, tox_env (optional), needs_trust (bool), test_redeploy (bool), parallel (bool, default: true), init_args, create_args, env (array of single-key maps).
 
 scenarios:
-  - name: custom
-    description: "Custom init/create arguments"
-    tox_env: python-all-int
-
   - name: edge
     description: "Edge tests"
     tox_env: python-edge-int
@@ -30,3 +26,4 @@ scenarios:
     needs_trust: true
     init_args: "--user-trust"
     create_args: "--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer"
+    parallel: false

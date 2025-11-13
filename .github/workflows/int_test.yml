@@ -273,7 +273,11 @@ jobs:
           azext_edge_instance: ${{ steps.env_out.outputs.INSTANCE_NAME }}
           azext_edge_sp_object_id: ${{ secrets.AZURE_CLIENT_ID }}
         run: |
-          tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- --durations=0 --dist=loadfile -n auto
+          PYTEST_ARGS=""
+          if [[ "${{ matrix.scenario.parallel }}" == "true" ]]; then
+            PYTEST_ARGS="--dist=loadfile -n auto"
+          fi
+          tox r -e "${{ matrix.scenario.tox_env }}" --skip-pkg-install -- --durations=0 $PYTEST_ARGS
           tox r -e report
       - name: "Upload coverage artifacts"
         if: ${{ always() }}

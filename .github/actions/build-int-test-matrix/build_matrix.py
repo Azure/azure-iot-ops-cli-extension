@@ -17,25 +17,19 @@ KNOWN_FIELDS = {
     "create_args",
     "test_redeploy",
     "env",
+    "parallel",
 }
 
 
 def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
-    custom_scenarios = [item.strip() for item in user_selected.split(",") if item.strip()]
+    selected_scenarios = [item.strip() for item in user_selected.split(",") if item.strip()]
 
     processed_scenarios: list[dict] = []
     for scenario in scenarios:
         name = scenario["name"]
 
-        # If user provided test selection, match on those
-        if custom_scenarios:
-            include = name in custom_scenarios
-        # By default, do not include `custom` scenario
-        else:
-            include = name != "custom"
-
-        # Skip scenario if not included
-        if not include:
+        # If user provided test selection, only include matching scenarios
+        if selected_scenarios and name not in selected_scenarios:
             continue
 
         # Warn if unknown fields present
@@ -64,6 +58,7 @@ def process_scenarios(scenarios: list[dict], user_selected: str) -> list[dict]:
             "create_args": scenario.get("create_args", ""),
             "test_redeploy": bool(scenario.get("test_redeploy", False)),
             "env": formatted_env,
+            "parallel": bool(scenario.get("parallel", True)),
         }
 
         processed_scenarios.append(normalized)
