@@ -1,0 +1,33 @@
+name: Build Test Matrix
+description: Build matrix of test scenarios from YAML config
+
+inputs:
+  config-file:
+    description: Path to test scenarios YAML file
+    required: false
+    default: .github/test-scenarios.yml
+  test-scenarios:
+    description: Comma-separated list of scenarios to run
+    required: false
+    default: ''
+
+outputs:
+  matrix:
+    description: JSON array of scenarios to run
+    value: ${{ steps.build.outputs.scenarios }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: python -m pip install --disable-pip-version-check --quiet pyyaml
+
+    - name: Build matrix
+      id: build
+      shell: bash
+      env:
+        TEST_SCENARIO_FILE: ${{ inputs.config-file }}
+        TEST_SCENARIOS: ${{ inputs.test-scenarios }}
+      run: |
+        python "${{ github.action_path }}/build_matrix.py"

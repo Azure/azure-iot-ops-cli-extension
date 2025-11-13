@@ -1,0 +1,32 @@
+# Integration test scenarios.
+# Fields: name (required), description, tox_env (optional), needs_trust (bool), test_redeploy (bool), init_args, create_args, env (array of single-key maps).
+
+scenarios:
+  - name: custom
+    description: "Custom init/create arguments"
+    tox_env: python-all-int
+
+  - name: edge
+    description: "Edge tests"
+    tox_env: python-edge-int
+
+  - name: insecure-listener
+    description: "Insecure listener deployment tests"
+    create_args: "--add-insecure-listener --persist-max-size 10Gi"
+    env:
+      - AIO_CLI_INIT_PREFLIGHT_DISABLED: "true"
+
+  - name: rpsaas
+    description: "Cloud tests"
+    tox_env: python-rpsaas-int
+
+  - name: redeploy
+    description: "Redeployment tests"
+    test_redeploy: true
+
+  - name: trustbundle
+    description: "Workload identity tests"
+    tox_env: python-wlif-int
+    needs_trust: true
+    init_args: "--user-trust"
+    create_args: "--trust-settings configMapName=example-bundle configMapKey=trust-bundle.pem issuerKind=Issuer issuerName=selfsigned-issuer"
