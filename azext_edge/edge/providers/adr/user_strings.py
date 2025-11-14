@@ -4,6 +4,27 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
+from .common import TopicRetain, DestinationQos
+
+
+def _format_enum_list(values: list) -> str:
+    """
+    Format a list of enum values with proper grammar.
+    - 2 values: `Value1` and `Value2`
+    - 3+ values: `Value1`, `Value2`, and `Value3`
+    """
+    if len(values) == 0:
+        return ""
+    elif len(values) == 1:
+        return f"`{values[0]}`"
+    elif len(values) == 2:
+        return f"`{values[0]}` and `{values[1]}`"
+    else:
+        # 3 or more values: use commas with "and" before last
+        formatted = ", ".join(f"`{v}`" for v in values[:-1])
+        return f"{formatted}, and `{values[-1]}`"
+
+
 # Base Strings
 CUSTOM_LOCATION_DOES_NOT_EXIST_ERROR = "Cluster associated with custom location {0} does not exist."
 CUSTOM_LOCATION_NOT_FOUND_MSG = "Custom location {0} not found. The command may fail."
@@ -40,3 +61,68 @@ REMOVED_CERT_REF_MSG = "Previously used certificate reference was removed."
 REMOVED_USERPASS_REF_MSG = "Previously used username and password references were removed."
 UNRECOGNIZED_TRANS_AUTH_PROP_ERROR = "Transport authentication ({0}) has unrecognized inputs. Accepted inputs are "\
     "`thumbprint`, `secret`, and `password`."
+
+
+# Destination Help Text Constants
+# These are calculated once to avoid repeated list comprehension on every help call
+_RETAIN_VALUES = _format_enum_list(TopicRetain.list())
+_QOS_VALUES = _format_enum_list(DestinationQos.list())
+
+# Common help text fragments for destinations
+DEST_HELP_MQTT_VALUES = (
+    f"Allowed values for `retain` are {_RETAIN_VALUES} and "
+    f"allowed values for `qos` are {_QOS_VALUES}."
+)
+
+DEST_HELP_DATASET_FULL = (
+    "Key=value pairs representing the destination for dataset. "
+    "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+    f"`topic`, `retain`, `qos`, and `ttl` for MQTT. {DEST_HELP_MQTT_VALUES}"
+)
+
+DEST_HELP_DATASET_BROKER_OR_MQTT = (
+    "Key=value pairs representing the destination for datasets. "
+    "Allowed arguments include: `key` for BrokerStateStore or "
+    f"`topic`, `retain`, `qos`, and `ttl` for MQTT. {DEST_HELP_MQTT_VALUES}"
+)
+
+DEST_HELP_DATASET_MQTT_ONLY = (
+    "Key=value pairs representing the destination for datasets. "
+    "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.  "
+    f"{DEST_HELP_MQTT_VALUES}"
+)
+
+DEST_HELP_EVENT_FULL = (
+    "Key=value pairs representing the destination for events. "
+    "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+    f"`topic`, `retain`, `qos`, and `ttl` for MQTT. {DEST_HELP_MQTT_VALUES}"
+)
+
+DEST_HELP_EVENT_MQTT_ONLY = (
+    "Key=value pairs representing the destination for events. "
+    f"Allowed arguments include: `topic`, `retain`, `qos`, and `ttl` for MQTT. {DEST_HELP_MQTT_VALUES}"
+)
+
+DEST_HELP_EVENT_GROUP_FULL = (
+    "Key=value pairs representing the destination for event groups. "
+    "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+    f"`topic`, `retain`, `qos`, and `ttl` for MQTT. {DEST_HELP_MQTT_VALUES}"
+)
+
+DEST_HELP_EVENT_GROUP_MQTT_ONLY = (
+    "Key=value pairs representing the destination for events. "
+    "Allowed and required arguments are `topic`, `retain`, `qos`, and `ttl` for MQTT destinations.  "
+    f"{DEST_HELP_MQTT_VALUES}"
+)
+
+DEST_HELP_STREAM_FULL = (
+    "Key=value pairs representing the destination for streams. "
+    "Allowed arguments include: `key` for BrokerStateStore; `path` for Storage; or "
+    f"`topic`, `retain`, `qos`, and `ttl` for MQTT. {DEST_HELP_MQTT_VALUES}"
+)
+
+DEST_HELP_STREAM_STORAGE_OR_MQTT = (
+    "Key=value pairs representing the destination for streams. "
+    "Allowed arguments include: `path` for Storage; or "
+    f"`topic`, `retain`, `qos`, and `ttl` for MQTT. {DEST_HELP_MQTT_VALUES}"
+)

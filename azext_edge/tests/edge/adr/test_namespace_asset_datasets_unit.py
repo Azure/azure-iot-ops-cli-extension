@@ -15,12 +15,14 @@ from azext_edge.edge.commands_namespaces import (
     add_namespace_custom_asset_dataset,
     add_namespace_opcua_asset_dataset,
     add_namespace_rest_asset_dataset,
+    add_namespace_sse_asset_dataset,
     list_namespace_asset_datasets,
     remove_namespace_asset_dataset,
     show_namespace_asset_dataset,
     update_namespace_custom_asset_dataset,
     update_namespace_opcua_asset_dataset,
     update_namespace_rest_asset_dataset,
+    update_namespace_sse_asset_dataset,
     add_namespace_custom_asset_dataset_point,
     add_namespace_opcua_asset_dataset_point,
     list_namespace_asset_dataset_points,
@@ -97,6 +99,8 @@ def generate_dataset(dataset_name: Optional[str] = None, num_data_points: int = 
     ("rest", add_namespace_rest_asset_dataset, {
         "rest_dataset_sampling_interval": 1000
     }),
+    # SSE asset dataset with minimal config
+    ("sse", add_namespace_sse_asset_dataset, {}),
 ])
 @pytest.mark.parametrize("destination_params", [
     {},  # No destinations
@@ -308,7 +312,8 @@ def test_add_namespace_asset_dataset(
 @pytest.mark.parametrize("asset_type, command_func", [
     ("custom", add_namespace_custom_asset_dataset),
     ("opcua", add_namespace_opcua_asset_dataset),
-    ("rest", add_namespace_rest_asset_dataset)
+    ("rest", add_namespace_rest_asset_dataset),
+    ("sse", add_namespace_sse_asset_dataset)
 ])
 def test_add_namespace_asset_dataset_error(
     mocked_cmd,
@@ -742,6 +747,8 @@ def test_show_namespace_asset_dataset(
     ("rest", update_namespace_rest_asset_dataset, {
         "rest_dataset_sampling_interval": 1000
     }),
+    # SSE asset dataset with minimal config
+    ("sse", update_namespace_sse_asset_dataset, {}),
 ])
 def test_update_namespace_asset_dataset(
     mocked_cmd,

@@ -838,6 +838,38 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns device endpoint inbound add sse"
+    ] = """
+        type: command
+        short-summary: Add an SSE inbound endpoint to a device in a Device Registry namespace.
+
+        examples:
+        - name: Add a basic SSE endpoint to a device
+          text: >
+            az iot ops ns device endpoint inbound add sse --device mydevice --instance myInstance -g myInstanceResourceGroup --name mySSEEndpoint --endpoint-address "https://events.example.com/stream"
+
+        - name: Add an SSE endpoint with authentication
+          text: >
+            az iot ops ns device endpoint inbound add sse --device mydevice --instance myInstance -g myInstanceResourceGroup --name mySSEEndpoint --endpoint-address "https://events.example.com/stream" --user-ref auth-secret/username --pass-ref auth-secret/password
+
+        - name: Add an SSE endpoint with certificate authentication
+          text: >
+            az iot ops ns device endpoint inbound add sse --device mydevice --instance myInstance -g myInstanceResourceGroup --name mySSEEndpoint --endpoint-address "https://events.example.com/stream" --cert-ref cert-secret/certificate
+
+        - name: Add an SSE endpoint with enhanced certificate authentication including private key
+          text: >
+            az iot ops ns device endpoint inbound add sse --device mydevice --instance myInstance -g myInstanceResourceGroup --name mySSEEndpoint --endpoint-address "https://events.example.com/stream" --cert-ref cert-secret/certificate --key-ref cert-secret/privateKey
+
+        - name: Add an SSE endpoint with certificate authentication including intermediate certificates
+          text: >
+            az iot ops ns device endpoint inbound add sse --device mydevice --instance myInstance -g myInstanceResourceGroup --name mySSEEndpoint --endpoint-address "https://events.example.com/stream" --cert-ref cert-secret/certificate --icr cert-secret/intermediateCerts
+
+        - name: Add an SSE endpoint with full certificate chain authentication
+          text: >
+            az iot ops ns device endpoint inbound add sse --device mydevice --instance myInstance -g myInstanceResourceGroup --name mySSEEndpoint --endpoint-address "https://events.example.com/stream" --cert-ref cert-secret/certificate --key-ref cert-secret/privateKey --icr cert-secret/intermediateCerts
+    """
+
+    helps[
         "iot ops ns asset"
     ] = """
         type: group
@@ -2703,4 +2735,340 @@ def load_iotops_adr_help():
             az iot ops ns asset rest dataset update --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name metricsData
             --dest key="updated-rest-metrics"
+    """
+
+    helps[
+        "iot ops ns asset sse"
+    ] = """
+        type: group
+        short-summary: Manage namespaced assets that point to SSE (Server-Sent Events) device endpoints.
+    """
+
+    helps[
+        "iot ops ns asset sse create"
+    ] = """
+        type: command
+        short-summary: Create an SSE namespaced asset in an IoT Operations instance.
+        long-summary: The device endpoint must be of type Microsoft.SSEHttp.
+
+        examples:
+        - name: Create a basic SSE asset
+          text: >
+            az iot ops ns asset sse create --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --device myssedevice --endpoint mySSEEndpoint
+
+        - name: Create an SSE asset with dataset destination
+          text: >
+            az iot ops ns asset sse create --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --device myssedevice --endpoint mySSEEndpoint
+            --dataset-dest topic="factory/sse/events" retain=Never qos=Qos1 ttl=3600
+
+        - name: Create an SSE asset with event destination
+          text: >
+            az iot ops ns asset sse create --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --device myssedevice --endpoint mySSEEndpoint
+            --event-dest topic="factory/sse/alerts" retain=Keep qos=Qos1 ttl=7200
+
+        - name: Create an SSE asset with both dataset and event destinations
+          text: >
+            az iot ops ns asset sse create --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --device myssedevice --endpoint mySSEEndpoint
+            --dataset-dest topic="factory/sse/data" retain=Never qos=Qos1 ttl=3600
+            --event-dest topic="factory/sse/events" retain=Keep qos=Qos1 ttl=7200
+
+        - name: Create an SSE asset with BrokerStateStore destinations
+          text: >
+            az iot ops ns asset sse create --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --device myssedevice --endpoint mySSEEndpoint
+            --dataset-dest key="sse-data-cache"
+            --event-dest topic="factory/sse/events" retain=Keep qos=Qos1 ttl=7200
+
+        - name: Create an SSE asset with additional metadata
+          text: >
+            az iot ops ns asset sse create --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --device myssedevice --endpoint mySSEEndpoint --description "Real-time event stream from IoT sensors"
+            --display-name "Facility Event Monitor" --model "EventStream-5000" --manufacturer "StreamCorp"
+            --serial-number "ES-67890" --documentation-uri "https://example.com/docs/sse-api"
+
+        - name: Create an SSE asset with custom attributes
+          text: >
+            az iot ops ns asset sse create --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --device myssedevice --endpoint mySSEEndpoint --attribute location=warehouse
+            --attribute stream-type=events --attribute format=json
+    """
+
+    helps[
+        "iot ops ns asset sse update"
+    ] = """
+        type: command
+        short-summary: Update an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Update SSE asset dataset destination
+          text: >
+            az iot ops ns asset sse update --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --dataset-dest topic="updated/sse/data" retain=Keep qos=Qos1 ttl=7200
+
+        - name: Update SSE asset event destination
+          text: >
+            az iot ops ns asset sse update --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --event-dest topic="updated/sse/alerts" retain=Never qos=Qos0 ttl=3600
+
+        - name: Update SSE asset metadata
+          text: >
+            az iot ops ns asset sse update --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --description "Updated real-time event stream" --display-name "Updated Event Monitor"
+
+        - name: Update SSE asset attributes
+          text: >
+            az iot ops ns asset sse update --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --attribute location=factory --attribute priority=high
+
+        - name: Disable SSE asset
+          text: >
+            az iot ops ns asset sse update --name mysseAsset --instance myInstance -g myInstanceResourceGroup
+            --disable
+    """
+
+    helps[
+        "iot ops ns asset sse dataset"
+    ] = """
+        type: group
+        short-summary: Manage datasets for SSE namespaced assets.
+    """
+
+    helps[
+        "iot ops ns asset sse dataset add"
+    ] = """
+        type: command
+        short-summary: Add a dataset to an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Add a basic dataset to an SSE asset
+          text: >
+            az iot ops ns asset sse dataset add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData --data-source "temperature"
+
+        - name: Add a dataset with MQTT destination
+          text: >
+            az iot ops ns asset sse dataset add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name eventData --data-source "events"
+            --dest topic="factory/sse/events" retain=Never qos=Qos1 ttl=3600
+
+        - name: Add a dataset with BrokerStateStore destination
+          text: >
+            az iot ops ns asset sse dataset add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name cacheData --data-source "metrics"
+            --dest key="sse-metrics-cache"
+
+        - name: Replace an existing dataset
+          text: >
+            az iot ops ns asset sse dataset add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData --data-source "humidity" --replace
+    """
+
+    helps[
+        "iot ops ns asset sse dataset list"
+    ] = """
+        type: command
+        short-summary: List datasets for an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: List all datasets for an SSE asset
+          text: >
+            az iot ops ns asset sse dataset list --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset sse dataset remove"
+    ] = """
+        type: command
+        short-summary: Remove a dataset from an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Remove a dataset from an SSE asset
+          text: >
+            az iot ops ns asset sse dataset remove --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+    """
+
+    helps[
+        "iot ops ns asset sse dataset show"
+    ] = """
+        type: command
+        short-summary: Show details of a dataset for an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Show dataset details
+          text: >
+            az iot ops ns asset sse dataset show --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+    """
+
+    helps[
+        "iot ops ns asset sse dataset update"
+    ] = """
+        type: command
+        short-summary: Update a dataset for an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Update dataset destination to MQTT
+          text: >
+            az iot ops ns asset sse dataset update --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name sensorData
+            --dest topic="factory/sse/updated/sensor" retain=Keep qos=Qos1 ttl=3600
+
+        - name: Update dataset destination to BrokerStateStore
+          text: >
+            az iot ops ns asset sse dataset update --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name metricsData
+            --dest key="updated-sse-metrics"
+    """
+
+    helps[
+        "iot ops ns asset sse event-group"
+    ] = """
+        type: group
+        short-summary: Manage event groups for SSE namespaced assets.
+    """
+
+    helps[
+        "iot ops ns asset sse event-group add"
+    ] = """
+        type: command
+        short-summary: Add an event group to an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Add a basic event group to an SSE asset
+          text: >
+            az iot ops ns asset sse event-group add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name alertEvents --data-source "alert"
+
+        - name: Add an event group with MQTT destination
+          text: >
+            az iot ops ns asset sse event-group add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name systemEvents --data-source "system"
+            --dest topic="factory/sse/system/alerts" retain=Keep qos=Qos1 ttl=7200
+
+        - name: Replace an existing event group
+          text: >
+            az iot ops ns asset sse event-group add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name alertEvents --data-source "critical-alert" --replace
+    """
+
+    helps[
+        "iot ops ns asset sse event-group list"
+    ] = """
+        type: command
+        short-summary: List event groups for an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: List all event groups for an SSE asset
+          text: >
+            az iot ops ns asset sse event-group list --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup
+    """
+
+    helps[
+        "iot ops ns asset sse event-group remove"
+    ] = """
+        type: command
+        short-summary: Remove an event group from an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Remove an event group from an SSE asset
+          text: >
+            az iot ops ns asset sse event-group remove --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name alertEvents
+    """
+
+    helps[
+        "iot ops ns asset sse event-group show"
+    ] = """
+        type: command
+        short-summary: Show details of an event group for an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Show event group details
+          text: >
+            az iot ops ns asset sse event-group show --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name alertEvents
+    """
+
+    helps[
+        "iot ops ns asset sse event-group update"
+    ] = """
+        type: command
+        short-summary: Update an event group for an SSE namespaced asset in an IoT Operations instance.
+
+        examples:
+        - name: Update event group data source
+          text: >
+            az iot ops ns asset sse event-group update --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name alertEvents --data-source "emergency-alert"
+
+        - name: Update event group destination
+          text: >
+            az iot ops ns asset sse event-group update --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --name systemEvents
+            --dest topic="factory/sse/updated/system" retain=Never qos=Qos0 ttl=3600
+    """
+
+    helps[
+        "iot ops ns asset sse event"
+    ] = """
+        type: group
+        short-summary: Manage individual events for SSE event groups in Device Registry namespaces.
+    """
+
+    helps[
+        "iot ops ns asset sse event add"
+    ] = """
+        type: command
+        short-summary: Add an event to an SSE asset event group in a Device Registry namespace.
+
+        examples:
+        - name: Add a basic SSE event
+          text: >
+            az iot ops ns asset sse event add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --event-group alertEvents --name temperature --data-source "/events/temperature"
+
+        - name: Add an SSE event with MQTT destination
+          text: >
+            az iot ops ns asset sse event add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --event-group alertEvents --name pressure --data-source "/events/pressure"
+            --dest topic="factory/sse/pressure" retain=Keep qos=Qos1 ttl=3600
+
+        - name: Replace an SSE event with same name
+          text: >
+            az iot ops ns asset sse event add --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --event-group alertEvents --name temperature --data-source "/events/temperature/updated"
+            --replace
+    """
+
+    helps[
+        "iot ops ns asset sse event list"
+    ] = """
+        type: command
+        short-summary: List events for an SSE asset event group in a Device Registry namespace.
+
+        examples:
+        - name: List all events for an event group
+          text: >
+            az iot ops ns asset sse event list --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --event-group alertEvents
+    """
+
+    helps[
+        "iot ops ns asset sse event remove"
+    ] = """
+        type: command
+        short-summary: Remove an event from an SSE asset event group in a Device Registry namespace.
+
+        examples:
+        - name: Remove an event from an event group
+          text: >
+            az iot ops ns asset sse event remove --asset mysseAsset --instance myInstance
+            -g myInstanceResourceGroup --event-group alertEvents --name temperature
     """

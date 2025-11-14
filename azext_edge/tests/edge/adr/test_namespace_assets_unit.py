@@ -17,6 +17,7 @@ from azext_edge.edge.commands_namespaces import (
     create_namespace_onvif_asset,
     create_namespace_opcua_asset,
     create_namespace_rest_asset,
+    create_namespace_sse_asset,
     show_namespace_asset,
     delete_namespace_asset,
     update_namespace_custom_asset,
@@ -24,6 +25,7 @@ from azext_edge.edge.commands_namespaces import (
     update_namespace_onvif_asset,
     update_namespace_opcua_asset,
     update_namespace_rest_asset,
+    update_namespace_sse_asset,
     query_namespace_assets
 )
 from azext_edge.edge.providers.adr.namespace_assets import _process_configs
@@ -150,6 +152,7 @@ def add_device_get_call(
     ["onvif", {}],
     ["opcua", {}],
     ["rest", {}],
+    ["sse", {}],
     # CUSTOM
     [
         "custom",
@@ -216,6 +219,22 @@ def add_device_get_call(
         {
             "rest_dataset_sampling_interval": 1000,
         }
+    ],
+    # SSE (Server-Sent Events)
+    [
+        "sse",
+        {
+            "default_dataset_destinations": ["topic=/contoso/sse/data", "retain=Keep", "qos=Qos1", "ttl=3600"],
+            "default_event_destinations": ["topic=/contoso/sse/events", "retain=Never", "qos=Qos0", "ttl=7200"]
+        }
+    ],
+    # SSE with BrokerStateStore destinations
+    [
+        "sse",
+        {
+            "default_dataset_destinations": ["key=sse-data-cache"],
+            "default_event_destinations": ["topic=/contoso/sse/alerts", "retain=Keep", "qos=Qos1", "ttl=3600"]
+        }
     ]
 ])
 def test_create_namespace_asset(
@@ -281,6 +300,7 @@ def test_create_namespace_asset(
         "onvif": create_namespace_onvif_asset,
         "opcua": create_namespace_opcua_asset,
         "rest": create_namespace_rest_asset,
+        "sse": create_namespace_sse_asset,
     }
     result = type_to_command[asset_type](
         cmd=mocked_cmd,
@@ -324,7 +344,8 @@ def test_create_namespace_asset(
     ["media", create_namespace_media_asset],
     ["onvif", create_namespace_onvif_asset],
     ["opcua", create_namespace_opcua_asset],
-    ["rest", create_namespace_rest_asset]
+    ["rest", create_namespace_rest_asset],
+    ["sse", create_namespace_sse_asset]
 ])
 def test_create_namespace_asset_error(
     mocked_cmd,
@@ -359,7 +380,8 @@ def test_create_namespace_asset_error(
         "media": DeviceEndpointType.REST.value,
         "onvif": DeviceEndpointType.MEDIA.value,
         "opcua": DeviceEndpointType.ONVIF.value,
-        "rest": DeviceEndpointType.OPCUA.value
+        "rest": DeviceEndpointType.OPCUA.value,
+        "sse": DeviceEndpointType.MEDIA.value
     }
     mock_device_record["properties"]["endpoints"]["inbound"] = {
         device_endpoint_name: {"endpointType": incorrect_types[asset_type]}
@@ -573,6 +595,7 @@ def test_show_namespace_asset(
     ["onvif", {}],
     ["opcua", {}],
     ["rest", {}],
+    ["sse", {}],
     # Custom
     [
         "custom",
@@ -638,6 +661,14 @@ def test_show_namespace_asset(
         "rest",
         {
             "rest_dataset_sampling_interval": 1000,
+        }
+    ],
+    # SSE (Server-Sent Events)
+    [
+        "sse",
+        {
+            "default_dataset_destinations": ["topic=/contoso/sse/updated-data", "retain=Keep", "qos=Qos1", "ttl=1800"],
+            "default_event_destinations": ["topic=/contoso/sse/updated-events", "retain=Never", "qos=Qos0", "ttl=3600"]
         }
     ]
 ])
@@ -764,6 +795,7 @@ def test_update_namespace_asset(
         "onvif": update_namespace_onvif_asset,
         "opcua": update_namespace_opcua_asset,
         "rest": update_namespace_rest_asset,
+        "sse": update_namespace_sse_asset,
     }
 
     # Execute the update command

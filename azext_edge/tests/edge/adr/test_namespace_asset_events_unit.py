@@ -15,14 +15,17 @@ from azext_edge.edge.commands_namespaces import (
     add_namespace_custom_asset_event_group,
     add_namespace_onvif_asset_event_group,
     add_namespace_opcua_asset_event_group,
+    add_namespace_sse_asset_event_group,
     list_namespace_asset_event_groups,
     show_namespace_asset_event_group,
     remove_namespace_asset_event_group,
     update_namespace_custom_asset_event_group,
     update_namespace_onvif_asset_event_group,
     update_namespace_opcua_asset_event_group,
+    update_namespace_sse_asset_event_group,
     add_namespace_custom_asset_event_group_event,
     add_namespace_opcua_asset_event_group_event,
+    add_namespace_sse_asset_event_group_event,
     list_namespace_asset_event_group_events,
     remove_namespace_asset_event_group_event
 )
@@ -101,7 +104,9 @@ def generate_event_group(
     # OPCUA asset dataset with minimal config
     ("opcua", add_namespace_opcua_asset_event_group, {}),
     # ONVIF asset dataset with minimal config
-    ("onvif", add_namespace_onvif_asset_event_group, {})
+    ("onvif", add_namespace_onvif_asset_event_group, {}),
+    # SSE asset event group with minimal config (event-driven, no sampling intervals)
+    ("sse", add_namespace_sse_asset_event_group, {})
 ])
 @pytest.mark.parametrize("destination_params", [
     {},  # No destinations
@@ -679,7 +684,9 @@ def test_remove_namespace_asset_event_group(
         "opcua_event_queue_size": 10,
     }),
     # ONVIF asset event
-    ("onvif", update_namespace_onvif_asset_event_group, {})
+    ("onvif", update_namespace_onvif_asset_event_group, {}),
+    # SSE asset event group (event-driven, no sampling intervals)
+    ("sse", update_namespace_sse_asset_event_group, {})
 ])
 def test_update_namespace_asset_event_group(
     mocked_cmd,
@@ -886,6 +893,21 @@ def test_update_namespace_asset_event_group(
         "opcua",
         add_namespace_opcua_asset_event_group_event,
         {}
+    ),
+    # SSE asset event point with event destinations (event-driven, no sampling intervals)
+    (
+        "sse",
+        add_namespace_sse_asset_event_group_event,
+        {
+            "event_destinations": ["topic=factory/sse/events", "qos=Qos1", "retain=Keep", "ttl=3600"],
+            "type_ref": f"sseevent{randint(0, 100)}"
+        }
+    ),
+    # SSE asset event point with minimal parameters (event-driven)
+    (
+        "sse",
+        add_namespace_sse_asset_event_group_event,
+        {}
     )
 ])
 @pytest.mark.parametrize("has_points, replace", [
@@ -984,6 +1006,11 @@ def test_add_namespace_asset_event_group_event(
             config["samplingInterval"] = config_params["sampling_interval"]
         if config:
             expected_event["eventConfiguration"] = json.dumps(config)
+    elif asset_type == "sse":
+        # SSE events support type_ref and event destinations
+        expected_event["typeRef"] = config_params.get("type_ref")
+        # SSE uses empty eventConfiguration since it's event-driven
+        expected_event["eventConfiguration"] = "{}"
 
     # Create the updated asset for the mock response
     updated_asset = deepcopy(mocked_asset)

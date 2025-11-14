@@ -25,7 +25,8 @@ from azext_edge.edge.commands_namespaces import (
     add_inbound_media_device_endpoint,
     add_inbound_onvif_device_endpoint,
     add_inbound_opcua_device_endpoint,
-    add_inbound_rest_device_endpoint
+    add_inbound_rest_device_endpoint,
+    add_inbound_sse_device_endpoint
 )
 from azext_edge.edge.providers.adr.common import ADRAuthModes
 from azext_edge.edge.providers.adr.namespace_devices import DeviceEndpointType
@@ -1754,6 +1755,7 @@ def test_add_inbound_opcua_device_endpoint(
     (DeviceEndpointType.MEDIA.value, add_inbound_media_device_endpoint),
     (DeviceEndpointType.OPCUA.value, add_inbound_opcua_device_endpoint),
     (DeviceEndpointType.REST.value, add_inbound_rest_device_endpoint),
+    (DeviceEndpointType.SSE.value, add_inbound_sse_device_endpoint),
     ("custom", add_inbound_custom_device_endpoint)
 ])
 def test_add_inbound_device_endpoint_error(
@@ -1999,6 +2001,190 @@ def test_add_inbound_rest_device_endpoint(
     patch_body = json.loads(mocked_responses.calls[1].request.body)
     endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
     assert endpoint_patch["endpointType"] == DeviceEndpointType.REST.value
+    assert endpoint_patch["version"] == endpoint_version
+    assert endpoint_patch["address"] == endpoint_address
+    assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
+    assert endpoint_patch["authentication"] == expected_endpoint["authentication"]
+
+
+@pytest.mark.parametrize("response_status", [200, 400])
+@pytest.mark.parametrize("cert_ref, key_ref, intermediate_cert_ref, username_ref, password_ref", [
+    (None, None, None, None, None),  # Anonymous auth
+    ("cert-ref", None, None, None, None),  # X509 auth with cert only
+    ("cert-ref", "key-ref", None, None, None),  # X509 auth with cert and key
+    ("cert-ref", "key-ref", "intermediate-cert-ref", None, None),  # X509 auth with cert, key and intermediate cert
+    (None, None, None, "user-ref", "pass-ref"),  # Username/password auth
+])
+@pytest.mark.parametrize("endpoint_version", [None, "1.1"])
+@pytest.mark.parametrize("endpoints_present, replace", [
+    (False, False),  # Endpoint does not exist, do not replace
+    (True, False),   # Endpoint exists, do not replace
+    (True, True)     # Endpoint exists, replace it
+])
+def test_add_inbound_sse_device_endpoint(
+    mocked_cmd,
+    mocked_responses: responses,
+    cert_ref: Optional[str],
+    key_ref: Optional[str],
+    intermediate_cert_ref: Optional[str],
+    username_ref: Optional[str],
+    password_ref: Optional[str],
+    response_status: int,
+    endpoint_version: Optional[str],
+    endpoints_present: bool,
+    replace: bool,
+    mocked_get_namespace_for_instance
+):
+    # Setup test data
+    device_name = generate_random_string()
+    instance_name = f"test-inst-{generate_random_string()}"
+    instance_resource_group = f"inst-rg-{generate_random_string()}"
+    endpoint_name = f"sse-endpoint-{generate_random_string()}"
+    endpoint_address = "https://192.168.1.100:8080/events"
+
+    # Mock namespace information returned by get_namespace_for_instance
+    namespace_name = mocked_get_namespace_for_instance.return_value["name"]
+    resource_group_name = mocked_get_namespace_for_instance.return_value["resource_group"]
+
+    # Create original device record with no endpoints
+    original_device = get_namespace_device_record(
+        device_name=device_name,
+        namespace_name=namespace_name,
+        resource_group_name=resource_group_name,
+    )
+    original_device["properties"]["endpoints"] = {
+        "inbound": generate_device_inbound_endpoint() if endpoints_present else {}
+    }
+    if replace:
+        original_device["properties"]["endpoints"]["inbound"].update(
+            generate_device_inbound_endpoint(endpoint_name=endpoint_name)
+        )
+
+    # Create expected endpoint structure
+    expected_endpoint = {
+        "endpointType": DeviceEndpointType.SSE.value,
+        "address": endpoint_address,
+        "version": endpoint_version
+    }
+
+    # Set up authentication structure based on auth type
+    if cert_ref:
+        x509_credentials = {"certificateSecretName": cert_ref}
+        if key_ref:
+            x509_credentials["keySecretName"] = key_ref
+        if intermediate_cert_ref:
+            x509_credentials["intermediateCertificatesSecretName"] = intermediate_cert_ref
+
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.certificate.value,
+            "x509Credentials": x509_credentials
+        }
+    elif username_ref and password_ref:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.userpass.value,
+            "usernamePasswordCredentials": {
+                "usernameSecretName": username_ref,
+                "passwordSecretName": password_ref
+            }
+        }
+    else:
+        expected_endpoint["authentication"] = {
+            "method": ADRAuthModes.anonymous.value
+        }
+
+    # Create updated device record for PATCH response
+    updated_device = deepcopy(original_device)
+    updated_device["properties"]["endpoints"] = {
+        "inbound": {endpoint_name: expected_endpoint}
+    }
+
+    # Mock the GET call to get the original device
+    mocked_responses.add(
+        method=responses.GET,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=original_device,
+        status=200,
+        content_type="application/json",
+    )
+
+    # Mock the PATCH call to update the endpoints
+    mocked_responses.add(
+        method=responses.PATCH,
+        url=get_namespace_device_mgmt_uri(
+            namespace_name=namespace_name,
+            resource_group_name=resource_group_name,
+            device_name=device_name
+        ),
+        json=updated_device if response_status == 200 else {"error": "Bad Request"},
+        status=response_status,
+        content_type="application/json",
+    )
+
+    if response_status == 200:
+        # Mock the GET call to show_namespace_device after adding endpoint
+        mocked_responses.add(
+            method=responses.GET,
+            url=get_namespace_device_mgmt_uri(
+                namespace_name=namespace_name,
+                resource_group_name=resource_group_name,
+                device_name=device_name
+            ),
+            json=updated_device,
+            status=200,
+            content_type="application/json",
+        )
+    else:
+        # Execute test based on status code
+        with pytest.raises(Exception):
+            add_inbound_sse_device_endpoint(
+                cmd=mocked_cmd,
+                device_name=device_name,
+                instance_name=instance_name,
+                instance_resource_group=instance_resource_group,
+                endpoint_name=endpoint_name,
+                endpoint_address=endpoint_address,
+                certificate_reference=cert_ref,
+                username_reference=username_ref,
+                password_reference=password_ref,
+                endpoint_version=endpoint_version,
+                replace=replace,
+                wait_sec=0
+            )
+        return
+
+    # Test add_inbound_sse_device_endpoint for success case
+    result = add_inbound_sse_device_endpoint(
+        cmd=mocked_cmd,
+        device_name=device_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        endpoint_name=endpoint_name,
+        endpoint_address=endpoint_address,
+        certificate_reference=cert_ref,
+        key_reference=key_ref,
+        intermediate_certificate_reference=intermediate_cert_ref,
+        username_reference=username_ref,
+        password_reference=password_ref,
+        endpoint_version=endpoint_version,
+        replace=replace,
+        wait_sec=0
+    )
+    assert result == updated_device["properties"]["endpoints"]["inbound"]
+
+    # Verify that both GET and PATCH calls were made
+    assert len(mocked_responses.calls) == 3
+    assert mocked_responses.calls[0].request.method == "GET"
+    assert mocked_responses.calls[1].request.method == "PATCH"
+    assert mocked_responses.calls[2].request.method == "GET"
+
+    # Verify request body contains expected endpoint
+    patch_body = json.loads(mocked_responses.calls[1].request.body)
+    endpoint_patch = patch_body["properties"]["endpoints"]["inbound"][endpoint_name]
+    assert endpoint_patch["endpointType"] == DeviceEndpointType.SSE.value
     assert endpoint_patch["version"] == endpoint_version
     assert endpoint_patch["address"] == endpoint_address
     assert endpoint_patch["authentication"]["method"] == expected_endpoint["authentication"]["method"]
