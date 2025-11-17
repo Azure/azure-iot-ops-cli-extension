@@ -1137,6 +1137,78 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset custom datapoint export"
+    ] = """
+        type: command
+        short-summary: Export datapoints from a custom asset dataset to a file.
+
+        examples:
+        - name: Export datapoints to JSON
+          text: >
+            az iot ops ns asset custom datapoint export --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myDataset
+
+        - name: Export datapoints to CSV
+          text: >
+            az iot ops ns asset custom datapoint export --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myDataset --format csv
+
+        - name: Export to a specific directory
+          text: >
+            az iot ops ns asset custom datapoint export --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myDataset --output-dir ./backups
+    """
+
+    helps[
+        "iot ops ns asset custom datapoint import"
+    ] = """
+        type: command
+        short-summary: Import datapoints into a custom asset dataset from a file.
+
+        examples:
+        - name: Import datapoints from JSON file
+          text: >
+            az iot ops ns asset custom datapoint import --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myDataset --input-file datapoints.json
+
+        - name: Import datapoints from CSV file
+          text: >
+            az iot ops ns asset custom datapoint import --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --dataset myDataset --input-file datapoints.csv
+    """
+
+    helps[
+        "iot ops ns asset custom dataset export"
+    ] = """
+        type: command
+        short-summary: Export datasets from a custom asset to a file.
+
+        examples:
+        - name: Export datasets to JSON
+          text: >
+            az iot ops ns asset custom dataset export --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup
+
+        - name: Export datasets to YAML
+          text: >
+            az iot ops ns asset custom dataset export --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --format yaml
+    """
+
+    helps[
+        "iot ops ns asset custom dataset import"
+    ] = """
+        type: command
+        short-summary: Import datasets into a custom asset from a file.
+
+        examples:
+        - name: Import datasets from JSON file
+          text: >
+            az iot ops ns asset custom dataset import --asset mycustomasset --instance myInstance
+            -g myInstanceResourceGroup --input-file datasets.json
+    """
+
+    helps[
         "iot ops ns asset custom event-group"
     ] = """
         type: group
@@ -2248,6 +2320,78 @@ def load_iotops_adr_help():
     """
 
     helps[
+        "iot ops ns asset opcua datapoint export"
+    ] = """
+        type: command
+        short-summary: Export datapoints from an OPC UA asset dataset to a file.
+
+        examples:
+        - name: Export datapoints to JSON
+          text: >
+            az iot ops ns asset opcua datapoint export --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --dataset temperatureData
+
+        - name: Export datapoints to CSV
+          text: >
+            az iot ops ns asset opcua datapoint export --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --dataset temperatureData --format csv
+
+        - name: Export to a specific directory
+          text: >
+            az iot ops ns asset opcua datapoint export --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --dataset temperatureData --output-dir ./backups
+    """
+
+    helps[
+        "iot ops ns asset opcua datapoint import"
+    ] = """
+        type: command
+        short-summary: Import datapoints into an OPC UA asset dataset from a file.
+
+        examples:
+        - name: Import datapoints from JSON file
+          text: >
+            az iot ops ns asset opcua datapoint import --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --dataset temperatureData --input-file datapoints.json
+
+        - name: Import datapoints from CSV file
+          text: >
+            az iot ops ns asset opcua datapoint import --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --dataset temperatureData --input-file datapoints.csv
+    """
+
+    helps[
+        "iot ops ns asset opcua dataset export"
+    ] = """
+        type: command
+        short-summary: Export datasets from an OPC UA asset to a file.
+
+        examples:
+        - name: Export datasets to JSON
+          text: >
+            az iot ops ns asset opcua dataset export --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup
+
+        - name: Export datasets to YAML
+          text: >
+            az iot ops ns asset opcua dataset export --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --format yaml
+    """
+
+    helps[
+        "iot ops ns asset opcua dataset import"
+    ] = """
+        type: command
+        short-summary: Import datasets into an OPC UA asset from a file.
+
+        examples:
+        - name: Import datasets from JSON file
+          text: >
+            az iot ops ns asset opcua dataset import --asset myopcuaasset --instance myInstance
+            -g myInstanceResourceGroup --input-file datasets.json
+    """
+
+    helps[
         "iot ops ns asset opcua event-group"
     ] = """
         type: group
@@ -2660,6 +2804,37 @@ def load_iotops_adr_help():
           text: >
             az iot ops ns asset rest dataset remove --asset myrestasset --instance myInstance
             -g myInstanceResourceGroup --name temperatureData
+    """
+
+    helps[
+        "iot ops ns asset rest dataset export"
+    ] = """
+        type: command
+        short-summary: Export datasets from a REST asset to a file.
+
+        examples:
+        - name: Export datasets to JSON
+          text: >
+            az iot ops ns asset rest dataset export --asset myrestasset --instance myInstance
+            -g myInstanceResourceGroup
+
+        - name: Export datasets to YAML
+          text: >
+            az iot ops ns asset rest dataset export --asset myrestasset --instance myInstance
+            -g myInstanceResourceGroup --format yaml
+    """
+
+    helps[
+        "iot ops ns asset rest dataset import"
+    ] = """
+        type: command
+        short-summary: Import datasets into a REST asset from a file.
+
+        examples:
+        - name: Import datasets from JSON file
+          text: >
+            az iot ops ns asset rest dataset import --asset myrestasset --instance myInstance
+            -g myInstanceResourceGroup --input-file datasets.json
     """
 
     helps[
