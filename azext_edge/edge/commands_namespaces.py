@@ -1764,6 +1764,78 @@ def remove_namespace_asset_dataset_point(
     )
 
 
+def export_namespace_asset_dataset_points(
+    cmd,
+    asset_name: str,
+    dataset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    format: str = "json",
+    output_dir: str = ".",
+) -> dict:
+    return NamespaceAssets(cmd).export_dataset_datapoints(
+        asset_name=asset_name,
+        dataset_name=dataset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        format=format,
+        output_dir=output_dir,
+    )
+
+
+def import_namespace_asset_dataset_points(
+    cmd,
+    asset_name: str,
+    dataset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    input_file: str,
+    **kwargs
+) -> list:
+    return NamespaceAssets(cmd).import_dataset_datapoints(
+        asset_name=asset_name,
+        dataset_name=dataset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        input_file=input_file,
+        **kwargs
+    )
+
+
+def export_namespace_asset_datasets(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    format: str = "json",
+    output_dir: str = ".",
+) -> dict:
+    return NamespaceAssets(cmd).export_datasets(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        format=format,
+        output_dir=output_dir,
+    )
+
+
+def import_namespace_asset_datasets(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    input_file: str,
+    **kwargs
+) -> list:
+    return NamespaceAssets(cmd).import_datasets(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        input_file=input_file,
+        **kwargs
+    )
+
+
 # ASSET EVENT GROUP COMMANDS
 def add_namespace_custom_asset_event_group(
     cmd,
