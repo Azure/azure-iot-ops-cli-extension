@@ -385,6 +385,40 @@ def add_inbound_rest_device_endpoint(
     )
 
 
+def add_inbound_sse_device_endpoint(
+    cmd,
+    device_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    endpoint_name: str,
+    endpoint_address: str,
+    endpoint_version: Optional[str] = None,
+    certificate_reference: Optional[str] = None,
+    key_reference: Optional[str] = None,
+    intermediate_certificate_reference: Optional[str] = None,
+    password_reference: Optional[str] = None,
+    username_reference: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+):
+    return NamespaceDevices(cmd).add_inbound_endpoint(
+        device_name=device_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        endpoint_name=endpoint_name,
+        endpoint_type=DeviceEndpointType.SSE.value,
+        endpoint_address=endpoint_address,
+        endpoint_version=endpoint_version,
+        certificate_reference=certificate_reference,
+        key_reference=key_reference,
+        intermediate_certificate_reference=intermediate_certificate_reference,
+        password_reference=password_reference,
+        username_reference=username_reference,
+        replace=replace,
+        **kwargs
+    )
+
+
 def list_inbound_device_endpoints(
     cmd,
     device_name: str,
@@ -738,6 +772,60 @@ def create_namespace_rest_asset(
     )
 
 
+def create_namespace_sse_asset(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    device_name: str,
+    device_endpoint_name: str,
+    asset_type_refs: Optional[List[str]] = None,
+    attributes: Optional[List[str]] = None,
+    dataset_destinations: Optional[str] = None,
+    event_destinations: Optional[str] = None,
+    description: Optional[str] = None,
+    disabled: Optional[bool] = None,
+    display_name: Optional[str] = None,
+    documentation_uri: Optional[str] = None,
+    external_asset_id: Optional[str] = None,
+    hardware_revision: Optional[str] = None,
+    manufacturer: Optional[str] = None,
+    manufacturer_uri: Optional[str] = None,
+    model: Optional[str] = None,
+    product_code: Optional[str] = None,
+    serial_number: Optional[str] = None,
+    software_revision: Optional[str] = None,
+    tags: Optional[Dict[str, str]] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).create(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        asset_type=DeviceEndpointType.SSE.value,
+        device_name=device_name,
+        device_endpoint_name=device_endpoint_name,
+        dataset_destinations=dataset_destinations,
+        event_destinations=event_destinations,
+        asset_type_refs=asset_type_refs,
+        attributes=attributes,
+        description=description,
+        disabled=disabled,
+        display_name=display_name,
+        documentation_uri=documentation_uri,
+        external_asset_id=external_asset_id,
+        hardware_revision=hardware_revision,
+        manufacturer=manufacturer,
+        manufacturer_uri=manufacturer_uri,
+        model=model,
+        product_code=product_code,
+        serial_number=serial_number,
+        software_revision=software_revision,
+        tags=tags,
+        **kwargs
+    )
+
+
 def show_namespace_asset(
     cmd,
     asset_name: str,
@@ -1065,6 +1153,56 @@ def update_namespace_rest_asset(
     )
 
 
+def update_namespace_sse_asset(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    dataset_destinations: Optional[str] = None,
+    event_destinations: Optional[str] = None,
+    asset_type_refs: Optional[List[str]] = None,
+    attributes: Optional[List[str]] = None,
+    description: Optional[str] = None,
+    disabled: Optional[bool] = None,
+    display_name: Optional[str] = None,
+    documentation_uri: Optional[str] = None,
+    external_asset_id: Optional[str] = None,
+    hardware_revision: Optional[str] = None,
+    manufacturer: Optional[str] = None,
+    manufacturer_uri: Optional[str] = None,
+    model: Optional[str] = None,
+    product_code: Optional[str] = None,
+    serial_number: Optional[str] = None,
+    software_revision: Optional[str] = None,
+    tags: Optional[Dict[str, str]] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        asset_type=DeviceEndpointType.SSE.value,
+        dataset_destinations=dataset_destinations,
+        event_destinations=event_destinations,
+        asset_type_refs=asset_type_refs,
+        attributes=attributes,
+        description=description,
+        disabled=disabled,
+        display_name=display_name,
+        documentation_uri=documentation_uri,
+        external_asset_id=external_asset_id,
+        hardware_revision=hardware_revision,
+        manufacturer=manufacturer,
+        manufacturer_uri=manufacturer_uri,
+        model=model,
+        product_code=product_code,
+        serial_number=serial_number,
+        software_revision=software_revision,
+        tags=tags,
+        **kwargs
+    )
+
+
 def query_namespace_assets(
     cmd,
     asset_name: Optional[str] = None,
@@ -1195,6 +1333,31 @@ def add_namespace_rest_asset_dataset(
     )
 
 
+def add_namespace_sse_asset_dataset(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    dataset_name: str,
+    data_source: str,
+    dataset_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_dataset(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        dataset_name=dataset_name,
+        asset_type=DeviceEndpointType.SSE.value,
+        data_source=data_source,
+        dataset_destinations=dataset_destinations,
+        replace=replace,
+        **kwargs
+    )
+
+
 def list_namespace_asset_datasets(
     cmd,
     asset_name: str,
@@ -1296,6 +1459,26 @@ def update_namespace_rest_asset_dataset(
         dataset_name=dataset_name,
         asset_type=DeviceEndpointType.REST.value,
         rest_dataset_sampling_interval=rest_dataset_sampling_interval,
+        dataset_destinations=dataset_destinations,
+        **kwargs
+    )
+
+
+def update_namespace_sse_asset_dataset(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    dataset_name: str,
+    dataset_destinations: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_dataset(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        dataset_name=dataset_name,
+        asset_type=DeviceEndpointType.SSE.value,
         dataset_destinations=dataset_destinations,
         **kwargs
     )
@@ -1490,6 +1673,30 @@ def add_namespace_onvif_asset_event_group(
     )
 
 
+def add_namespace_sse_asset_event_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    data_source: str,
+    event_destinations: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_event_group(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        asset_type=DeviceEndpointType.SSE.value,
+        data_source=data_source,
+        event_destinations=event_destinations,
+        replace=replace,
+        **kwargs
+    )
+
+
 def list_namespace_asset_event_groups(
     cmd,
     asset_name: str,
@@ -1592,6 +1799,28 @@ def update_namespace_onvif_asset_event_group(
     )
 
 
+def update_namespace_sse_asset_event_group(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    data_source: Optional[str] = None,
+    event_destinations: Optional[str] = None,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).update_event_group(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        asset_type=DeviceEndpointType.SSE.value,
+        data_source=data_source,
+        event_destinations=event_destinations,
+        **kwargs
+    )
+
+
 def remove_namespace_asset_event_group(
     cmd,
     asset_name: str,
@@ -1664,6 +1893,34 @@ def add_namespace_opcua_asset_event_group_event(
         data_source=data_source,
         queue_size=queue_size,
         sampling_interval=sampling_interval,
+        replace=replace,
+        **kwargs
+    )
+
+
+def add_namespace_sse_asset_event_group_event(
+    cmd,
+    asset_name: str,
+    instance_name: str,
+    instance_resource_group: str,
+    group_name: str,
+    event_name: str,
+    data_source: str,
+    event_destinations: Optional[str] = None,
+    type_ref: Optional[str] = None,
+    replace: Optional[bool] = False,
+    **kwargs
+) -> dict:
+    return NamespaceAssets(cmd).add_event_group_event(
+        asset_name=asset_name,
+        instance_name=instance_name,
+        instance_resource_group=instance_resource_group,
+        group_name=group_name,
+        event_name=event_name,
+        asset_type=DeviceEndpointType.SSE.value,
+        data_source=data_source,
+        event_destinations=event_destinations,
+        type_ref=type_ref,
         replace=replace,
         **kwargs
     )

@@ -326,10 +326,12 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
     endpoint_name_opcua = f"opcua-{generate_random_string(8)}"
     endpoint_name_media = f"media-{generate_random_string(8)}"
     endpoint_name_rest = f"rest-{generate_random_string(8)}"
+    endpoint_name_sse = f"sse-{generate_random_string(8)}"
     asset_name_onvif = f"onvif-{generate_random_string(8, force_lower=True)}"
     asset_name_opcua = f"opcua-{generate_random_string(8, force_lower=True)}"
     asset_name_media = f"media-{generate_random_string(8, force_lower=True)}"
     asset_name_rest = f"rest-{generate_random_string(8, force_lower=True)}"
+    asset_name_sse = f"sse-{generate_random_string(8, force_lower=True)}"
 
     # Tags and attributes
     common_tags = {"env": "test", "purpose": "automation"}
@@ -348,6 +350,7 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
         (endpoint_name_opcua, "opcua"),
         (endpoint_name_media, "media"),
         (endpoint_name_rest, "rest"),
+        (endpoint_name_sse, "sse"),
     ]:
         command = (
             f"az iot ops ns device endpoint inbound add {endpoint_type} --name {endpoint_name} "
@@ -475,6 +478,36 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
         custom_location=custom_location,
     )
 
+    # 5. Create SSE asset with maximum inputs
+    asset_sse = run(
+        f"az iot ops ns asset sse create --name {asset_name_sse} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name_sse} "
+        "--description \"SSE Event Source\" --display-name \"Event Stream Processor\" "
+        "--model \"EventProcessor-Y2\" --manufacturer \"EventCorp\" --serial-number \"EVT789012\" "
+        "--documentation-uri \"https://example.com/docs/events\" "
+        "--external-asset-id \"EXT-EVT-01\" --hardware-revision \"v2.1\" "
+        f"--attribute {' '.join(common_attrs)} --tags {' '.join([f'{k}={v}' for k, v in common_tags.items()])}"
+    )
+    tracked_resources.append(asset_sse["id"])
+
+    assert_asset_properties(
+        asset_sse,
+        name=asset_name_sse,
+        device=device_name,
+        endpoint=endpoint_name_sse,
+        description="SSE Event Source",
+        display_name="Event Stream Processor",
+        model="EventProcessor-Y2",
+        manufacturer="EventCorp",
+        serial_number="EVT789012",
+        documentation_uri="https://example.com/docs/events",
+        external_asset_id="EXT-EVT-01",
+        attributes=common_attrs,
+        tags=common_tags,
+        hardware_revision="v2.1",
+        custom_location=custom_location,
+    )
+
     # 1. Update ONVIF asset
     updated_onvif = run(
         f"az iot ops ns asset onvif update --name {asset_name_onvif} --instance {instance_name} "
@@ -530,6 +563,17 @@ def test_namespace_asset_1p_types(require_init, tracked_resources: List[str]):
         name=asset_name_rest,
         description="Updated Rest Camera",
         sampling_int=500,
+    )
+
+    # 5. Update SSE asset
+    updated_sse = run(
+        f"az iot ops ns asset sse update --name {asset_name_sse} --instance {instance_name} "
+        f"-g {resource_group} --description \"Updated SSE Event Source\""
+    )
+    assert_asset_properties(
+        updated_sse,
+        name=asset_name_sse,
+        description="Updated SSE Event Source",
     )
 
 

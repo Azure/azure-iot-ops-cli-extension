@@ -43,6 +43,7 @@ class DeviceEndpointType(ListableEnum):
     ONVIF = "Microsoft.Onvif"
     MEDIA = "Microsoft.Media"
     REST = "Microsoft.Http"
+    SSE = "Microsoft.SSEHttp"
 
     @classmethod
     def get_type_from_keyword(cls, keyword: str, return_custom_keyword: bool = True) -> Optional[str]:

@@ -451,3 +451,198 @@ def test_namespace_onvif_asset_event_lifecycle_operations(require_init, tracked_
 
     remaining_event_group_names = [ev["name"] for ev in remaining_event_groups]
     assert event_group_name not in remaining_event_group_names
+
+
+def test_namespace_sse_asset_event_lifecycle_operations(require_init, tracked_resources: List[str]):
+    """Test complete lifecycle of SSE asset event-group operations (events only)."""
+    # Setup test variables
+    instance_name = require_init["instanceName"]
+    resource_group = require_init["resourceGroup"]
+    device_name = f"dev-{generate_random_string(8, force_lower=True)}"
+    endpoint_name = f"sse-{generate_random_string(8)}"
+    asset_name = f"sse-{generate_random_string(8, force_lower=True)}"
+    event_group_name = f"event-group-{generate_random_string(6, force_lower=True)}"
+
+    # Create Device
+    result = run(
+        f"az iot ops ns device create --name {device_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+    tracked_resources.append(result["id"])
+
+    # Create device endpoint
+    run(
+        f"az iot ops ns device endpoint inbound add sse --name {endpoint_name} "
+        f"--instance {instance_name} -g {resource_group} --device {device_name} "
+        f"--endpoint-address 'https://events.example.com/stream'"
+    )
+
+    # Create SSE asset
+    asset_sse = run(
+        f"az iot ops ns asset sse create --name {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --device {device_name} --endpoint {endpoint_name} "
+        f"--description \"SSE Event Stream for Testing\" --display \"SSE Event Stream\" "
+        f"--model \"SSE-EV100\" --manufacturer \"EventStreamDevices\""
+    )
+    tracked_resources.append(asset_sse["id"])
+
+    # 1. CREATE EVENT GROUP
+    data_source = "/events/alerts"
+    event_destinations = "topic=factory/sse/events qos=Qos1 retain=Never ttl=1800"
+
+    event_result = run(
+        f"az iot ops ns asset sse event-group add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name} --data-source {data_source} "
+        f"--destination {event_destinations}"
+    )
+
+    assert_event_properties(
+        event_result,
+        name=event_group_name,
+        data_source=data_source,
+    )
+
+    # 2. LIST EVENT GROUPS
+    event_groups_list = run(
+        f"az iot ops ns asset sse event-group list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+
+    assert len(event_groups_list) >= 1
+    event_group_names = [ev["name"] for ev in event_groups_list]
+    assert event_group_name in event_group_names
+
+    # 3. SHOW EVENT GROUP
+    event_show = run(
+        f"az iot ops ns asset sse event-group show --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name}"
+    )
+
+    assert_event_properties(
+        event_show,
+        name=event_group_name,
+        data_source=data_source
+    )
+
+    # 4. UPDATE EVENT GROUP
+    updated_data_source = "/events/alerts/critical"
+    updated_event_destinations = "topic=factory/sse/events/critical qos=Qos0 retain=Keep ttl=3600"
+
+    updated_event = run(
+        f"az iot ops ns asset sse event-group update --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name} --data-source {updated_data_source} "
+        f"--destination {updated_event_destinations}"
+    )
+
+    assert_event_properties(
+        updated_event,
+        name=event_group_name,
+        data_source=updated_data_source,
+    )
+
+    # 5. CREATE EVENT WITH REPLACE
+    replaced_data_source = "/events/alerts/replaced"
+    replaced_event = run(
+        f"az iot ops ns asset sse event-group add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name} --data-source {replaced_data_source} "
+        f"--replace"
+    )
+
+    assert_event_properties(
+        replaced_event,
+        name=event_group_name,
+        data_source=replaced_data_source
+    )
+
+    # 6. ADD INDIVIDUAL EVENTS TO EVENT GROUP
+    datapoint_name_1 = f"event-{generate_random_string(6, force_lower=True)}"
+    datapoint_name_2 = f"event-{generate_random_string(6, force_lower=True)}"
+    datapoint_data_source = "/events/temperature/severity"
+    event_destinations = "topic=factory/sse/temperature/severity qos=Qos1 retain=Keep ttl=1800"
+
+    # Add first individual event (SSE uses event destinations, not sampling intervals)
+    datapoint_result = run(
+        f"az iot ops ns asset sse event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name} --name {datapoint_name_1} "
+        f"--data-source {datapoint_data_source} --destination {event_destinations}"
+    )
+
+    assert_point_properties(
+        datapoint_result,
+        name=datapoint_name_1,
+        data_source=datapoint_data_source,
+    )
+
+    # 7. ADD SECOND INDIVIDUAL EVENT
+    datapoint_2_data_source = "/events/pressure/alert"
+    datapoint_2_destinations = "topic=factory/sse/pressure/alert qos=Qos0 retain=Never ttl=900"
+
+    datapoint_2_result = run(
+        f"az iot ops ns asset sse event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name} --name {datapoint_name_2} "
+        f"--data-source {datapoint_2_data_source} --destination {datapoint_2_destinations}"
+    )
+
+    assert_point_properties(
+        datapoint_2_result,
+        name=datapoint_name_2,
+        data_source=datapoint_2_data_source,
+    )
+
+    # 8. LIST INDIVIDUAL EVENTS IN EVENT GROUP
+    events_list = run(
+        f"az iot ops ns asset sse event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name}"
+    )
+
+    event_names = [ev["name"] for ev in events_list]
+    assert datapoint_name_1 in event_names
+    assert datapoint_name_2 in event_names
+    assert len(events_list) >= 2
+
+    # 9. UPDATE INDIVIDUAL EVENT WITH REPLACE
+    updated_datapoint_destinations = "topic=factory/sse/temperature/updated qos=Qos0 retain=Never ttl=600"
+
+    updated_datapoint = run(
+        f"az iot ops ns asset sse event add --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name} --name {datapoint_name_1} "
+        f"--data-source {datapoint_data_source} --destination {updated_datapoint_destinations} "
+        f"--replace"
+    )
+
+    assert_point_properties(
+        updated_datapoint,
+        name=datapoint_name_1,
+        data_source=datapoint_data_source,
+    )
+
+    # 10. REMOVE INDIVIDUAL EVENT
+    run(
+        f"az iot ops ns asset sse event remove --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name} --name {datapoint_name_1}"
+    )
+
+    # Verify individual event removal
+    remaining_events_after_remove = run(
+        f"az iot ops ns asset sse event list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --event-group {event_group_name}"
+    )
+
+    remaining_event_names = [ev["name"] for ev in remaining_events_after_remove]
+    assert datapoint_name_1 not in remaining_event_names
+    assert datapoint_name_2 in remaining_event_names
+
+    # 11. REMOVE EVENT GROUP
+    run(
+        f"az iot ops ns asset sse event-group remove --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group} --name {event_group_name}"
+    )
+
+    # Verify removal by listing
+    remaining_event_groups = run(
+        f"az iot ops ns asset sse event-group list --asset {asset_name} --instance {instance_name} "
+        f"-g {resource_group}"
+    )
+
+    remaining_event_group_names = [ev["name"] for ev in remaining_event_groups]
+    assert event_group_name not in remaining_event_group_names
