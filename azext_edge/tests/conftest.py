@@ -14,6 +14,7 @@ import responses
 
 class MarkerDefinition(NamedTuple):
     """Metadata for a pytest marker"""
+
     name: str
     description: str
     edge_exclude: bool  # If True, prevents auto-marking test as 'edge'
@@ -41,11 +42,11 @@ def pytest_collection_modifyitems(items):
     """Auto-mark tests without specific marks as 'edge' tests"""
     # Get marks to be excluded from edge (default) mark
     exclude_marks = {m.name for m in MARKERS if m.edge_exclude}
-    
+
     for item in items:
         # Get all marks on the test
         existing_marks = {mark.name for mark in item.iter_markers()}
-        
+
         # Auto-mark as 'edge' if no exclude marks exist
         if not existing_marks.intersection(exclude_marks):
             item.add_marker(pytest.mark.edge)
