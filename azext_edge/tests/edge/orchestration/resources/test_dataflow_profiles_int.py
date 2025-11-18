@@ -6,9 +6,12 @@
 
 import pytest
 from time import sleep
+from knack.log import get_logger
 
 from ....generators import generate_random_string
 from ....helpers import run
+
+logger = get_logger(__name__)
 
 # pytest mark for rpsaas (cloud-side) tests
 pytestmark = pytest.mark.rpsaas
@@ -52,7 +55,9 @@ def test_dataflow_profile(dataflow_profile_test_setup, tracked_resources):
     )
 
     # UPDATE
-    sleep(30)  # TODO: Follow up on profile being returned too early.
+    sleep(60)  # TODO: Still investigating profile update errors
+    show_profile1 = run(f"az iot ops dataflow profile show -n {profile1_name} -g {rg} -i {instance}")
+    logger.info(f"Profile before update - systemData: {show_profile1.get('systemData', {})}")
     log_level = "error"
     update_profile1 = run(
         f"az iot ops dataflow profile create -n {profile1_name} -g {rg} -i {instance} --log-level {log_level}"

@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 from random import randint
+from time import sleep
 import json
 import pytest
 from knack.log import get_logger
@@ -54,6 +55,9 @@ def test_schema_lifecycle(settings_with_rg, tracked_resources, tracked_files):
         f"--rn {registry_namespace} --sa-resource-id {storage_account['id']} "
     )
     tracked_resources.append(registry["id"])
+    # TODO - debugging sleep only
+    logger.info(f"Registry {registry_name} created, waiting 30s before continuing...")
+    sleep(30)
 
     # CREATE 1 with min version args
     schema_name1 = f"schema-{generate_random_string(force_lower=True, size=6)}"
