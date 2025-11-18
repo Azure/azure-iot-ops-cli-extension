@@ -7,7 +7,8 @@ scenarios:
     tox_env: python-edge-int
 
   - name: insecure-listener
-    description: "Insecure listener deployment tests"
+    description: "Insecure listener deploy, long running tests"
+    tox_env: python-long-int
     create_args: "--add-insecure-listener --persist-max-size 10Gi"
     env:
       - AIO_CLI_INIT_PREFLIGHT_DISABLED: "true"

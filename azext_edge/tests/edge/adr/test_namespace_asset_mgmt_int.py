@@ -15,7 +15,7 @@ from .namespace_helpers import (
 )
 
 
-pytestmark = pytest.mark.long_running
+pytestmark = [pytest.mark.rpsaas, pytest.mark.long_running]
 
 
 def test_namespace_custom_asset_management_group_lifecycle_operations(
