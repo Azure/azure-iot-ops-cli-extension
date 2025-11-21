@@ -4,8 +4,10 @@
 # Licensed under the MIT License. See License file in the project root for license information.
 # ----------------------------------------------------------------------------------------------
 
-import pytest
 from time import sleep
+
+import pytest
+from azure.cli.core.azclierror import CLIInternalError
 from knack.log import get_logger
 
 from ....generators import generate_random_string
@@ -55,13 +57,25 @@ def test_dataflow_profile(dataflow_profile_test_setup, tracked_resources):
     )
 
     # UPDATE
-    sleep(60)  # TODO: Still investigating profile update errors
-    show_profile1 = run(f"az iot ops dataflow profile show -n {profile1_name} -g {rg} -i {instance}")
-    logger.info(f"Profile before update - systemData: {show_profile1.get('systemData', {})}")
     log_level = "error"
-    update_profile1 = run(
-        f"az iot ops dataflow profile create -n {profile1_name} -g {rg} -i {instance} --log-level {log_level}"
-    )
+    # Dataflow profile updates can conflict for a while after create
+    max_update_retries = 5
+    retry_delay = 5
+    for attempt in range(max_update_retries):
+        try:
+            update_profile1 = run(
+                f"az iot ops dataflow profile create -n {profile1_name} -g {rg} -i {instance} --log-level {log_level}"
+            )
+            break
+        except CLIInternalError as e:
+            if "Conflict" in str(e) and attempt < max_update_retries - 1:
+                logger.warning(
+                    f"Conflict during update (attempt {attempt+1}/{max_update_retries}). Retrying in {retry_delay}s..."
+                )
+                sleep(retry_delay)
+            else:
+                raise
+
     assert_dataflow_profile(
         profile=update_profile1,
         name=profile1_name,
