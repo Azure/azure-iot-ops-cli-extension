@@ -1818,7 +1818,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
-            .set_user_kwargs(ops_version="1.2.36")  # Current 1.0.0 is below min v1 version (1.1.59) required for v2 upgrade
+            .set_user_kwargs(ops_version="1.2.36")  # Current is below min v1 version (1.1.59) required for v2 upgrade
             .expecting_validation_error(r"min compatible upgrade version.*1\.1\.59"),
             {},  # No operations should happen
         ),
