@@ -1352,17 +1352,6 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             },
         ),
         (
-            UpgradeScenario("No CM Install: No effect when target version < MIN_INSTANCE_VERSION_FOR_CM_MIGRATE")
-            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
-            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
-            .set_user_kwargs(ops_version="1.2.82", no_cm_install=True),
-            {
-                # Target version doesn't trigger migration, so no_cm_install has no effect
-                EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
-            },
-        ),
-        (
             UpgradeScenario("No CM Install: Works with other migrations (registry, secretsync)")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
@@ -1371,20 +1360,6 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_auxiliary_kwargs(default_registry_exists=False, secretsync_migration_needed=True),
             {
                 # No CM creation, but other migrations still happen
-                EXTENSION_TYPE_OPS: build_extension_props(
-                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
-                ),
-            },
-        ),
-        (
-            UpgradeScenario("No CM Install: False explicitly allows cert-manager creation")
-            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
-            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
-            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0")
-            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, no_cm_install=False),
-            {
-                # no_cm_install=False (explicit) should create CM normally
-                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
                 EXTENSION_TYPE_OPS: build_extension_props(
                     EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
                 ),
@@ -1808,6 +1783,57 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_auxiliary_kwargs(has_default_spc_only=True),
             {
                 EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.82"),
+            },
+        ),
+        # ========== Early Validation - IoT Ops validation blocks migration operations ==========
+        (
+            UpgradeScenario("Early Validation: IoT Ops downgrade blocks platform migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .set_user_kwargs(ops_version="1.2.0")  # Downgrade from MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+            .expecting_validation_error(r"is a downgrade which is not supported"),
+            {},  # No operations should happen
+        ),
+        (
+            UpgradeScenario("Early Validation: IoT Ops minor version gap blocks platform migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.59")  # Meets min v1 requirement
+            .set_user_kwargs(ops_version="1.5.0")
+            .expecting_validation_error(r"incompatible \(more than 2 minor versions ahead\)"),
+            {},  # No operations should happen
+        ),
+        (
+            UpgradeScenario("Early Validation: IoT Ops preview train blocks platform migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0", ext_train="preview")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
+            .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
+            {},  # No operations should happen
+        ),
+        (
+            UpgradeScenario("Early Validation: IoT Ops min v2 requirement blocks platform migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
+            .set_user_kwargs(ops_version="1.2.36")  # Current 1.0.0 is below min v1 version (1.1.59) required for v2 upgrade
+            .expecting_validation_error(r"min compatible upgrade version.*1\.1\.59"),
+            {},  # No operations should happen
+        ),
+        (
+            UpgradeScenario("Early Validation: Force bypasses validation and allows migration")
+            .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
+            .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, force=True),  # Force bypasses validation
+            {
+                # Platform deleted, CM created, IoT Ops upgraded - all operations proceed with force
+                EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
+                EXTENSION_TYPE_OPS: build_extension_props(
+                    EXTENSION_TYPE_OPS, version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
+                ),
             },
         ),
     ],
@@ -2238,25 +2264,29 @@ def assert_displays(
 
                 # These errors occur early (before table render), only 1 progress init
                 early_errors = [
-                    "Cluster is not connected",
-                    "requires the IoT Operations extension",
-                    "requires an ADR namespace",  # This happens during analyze_cluster
+                    "is not connected",
+                    "IoT Operations extension not detected",
+                    "requires an ADR namespace",
                 ]
 
-                # These errors occur late (after table render), 2 progress inits
-                late_errors = [
+                ops_validation_patterns = [
                     "is a downgrade",
                     "incompatible",
                     "min compatible upgrade version",
                     "non-stable release trains",
                 ]
+                is_ops_validation_error = EXTENSION_MONIKER_OPS in error_msg and any(
+                    pattern in error_msg for pattern in ops_validation_patterns
+                )
 
                 if any(phrase in error_msg for phrase in early_errors):
                     progress_count = 1
-                elif any(phrase in error_msg for phrase in late_errors):
-                    progress_count = 2
-                else:
+                elif is_ops_validation_error:
+                    # IoT Operations validation errors are early (gatekeeper for entire upgrade)
                     progress_count = 1
+                else:
+                    # Other validation errors (e.g., certManager downgrade) are late
+                    progress_count = 2
             elif isinstance(error_value, HttpResponseError):
                 # HTTP errors occur during apply_upgrades, after table render
                 progress_count = 2

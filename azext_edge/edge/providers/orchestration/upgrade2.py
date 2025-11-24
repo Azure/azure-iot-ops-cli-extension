@@ -35,6 +35,7 @@ from .common import (
     MIN_INSTANCE_VERSION_FOR_CM_MIGRATE,
     MIN_INSTANCE_VERSION_V1_FOR_V2_UPGRADE,
     MIN_INSTANCE_VERSION_V2,
+    PROVISIONING_STATE_SUCCESS,
     ConfigSyncModeType,
 )
 from .migration import SecretSyncMigrationManager
@@ -399,7 +400,7 @@ def format_extension_row(ext: "ExtensionUpgradeState") -> Tuple[str, str, str]:
     """
     try:
         status_indicator = ""
-        if ext.provisioning_state and ext.provisioning_state.lower() != "succeeded":
+        if ext.provisioning_state and ext.provisioning_state.lower() != PROVISIONING_STATE_SUCCESS.lower():
             status_indicator = f" [yellow]({ext.provisioning_state})[/yellow]"
 
         if ext.operation_type == ExtensionOperation.DELETE:
@@ -645,7 +646,7 @@ class ConfigOverride:
         self.version = version
         self.train = train
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return not any([self.config, self.config_sync_mode, self.version, self.train])
 
 
@@ -790,12 +791,23 @@ class ClusterUpgradeState:
     def _refresh_upgrade_state(self) -> List["ExtensionUpgradeState"]:
         ext_queue: List["ExtensionUpgradeState"] = []
 
-        if not self.extensions_map.get(EXTENSION_TYPE_OPS):
+        ops_extension = self.extensions_map.get(EXTENSION_TYPE_OPS)
+        if not ops_extension:
             raise ValidationError(
                 "The cluster backing the instance has an invalid state. IoT Operations extension not detected."
             )
 
-        # Check what operations we need
+        # Build IoT Operations extension state first and validate upgrade compatibility.
+        ops_moniker = EXTENSION_TYPE_TO_MONIKER_MAP[EXTENSION_TYPE_OPS]
+        ops_upgrade_state = ExtensionUpgradeState(
+            extension=ops_extension,
+            desired_version_map=self.init_version_map.get(ops_moniker, {}),
+            desired_config=self.desired_config_map.get(ops_moniker),
+            override=self.override_map.get(ops_moniker),
+            force=self.force,
+        )
+        ops_upgrade_state.validate_upgrade()
+
         should_delete_platform = self._should_delete_platform()
         should_create_certmanager = self._should_create_certmanager(deleting_platform=should_delete_platform)
 
@@ -840,6 +852,11 @@ class ClusterUpgradeState:
 
             # Skip certmanager if we're creating it (already handled above)
             if ext_type == EXTENSION_TYPE_CM and should_create_certmanager:
+                continue
+
+            # Use pre-built ops_upgrade_state for IoT Operations extension
+            if ext_type == EXTENSION_TYPE_OPS:
+                ext_queue.append(ops_upgrade_state)
                 continue
 
             if extension:
@@ -888,7 +905,7 @@ class ClusterUpgradeState:
         if not ops_extension:
             return False
 
-        ops_override = self.override_map.get(EXTENSION_MONIKER_OPS, ConfigOverride())
+        ops_override = self.override_map.get(EXTENSION_MONIKER_OPS) or ConfigOverride()
 
         # Priority: override > init_version_map > current version
         target_version = (
@@ -1011,6 +1028,18 @@ class ExtensionUpgradeState:
             payload["properties"]["configurationSettings"] = config_settings
 
         return payload
+
+    def validate_upgrade(self) -> None:
+        """Validate the upgrade path for this extension.
+
+        Should be called early to ensure upgrade compatibility before
+        computing dependent operations (e.g., platform deletion, certmanager creation).
+
+        Raises:
+            ValidationError: If the upgrade is not valid (e.g., downgrade, incompatible versions).
+        """
+        if self._has_delta_in_version() or self._has_non_success_state():
+            self._validate_version_upgrade()
 
     def _should_migrate_mqtt_config(self) -> bool:
         if not self.extension:
@@ -1135,7 +1164,7 @@ class ExtensionUpgradeState:
         """
         Determines if the extension has a non-success provisioning state.
         """
-        return self.provisioning_state.lower() not in {"succeeded"}
+        return self.provisioning_state.lower() != PROVISIONING_STATE_SUCCESS.lower()
 
     def _validate_version_upgrade(self):
         # Skip validation for CREATE/DELETE operations
