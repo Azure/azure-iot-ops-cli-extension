@@ -262,8 +262,8 @@ class UpgradeScenario:
     def set_extension(
         self: T,
         ext_type: str,
-        ext_vers: Optional[str] = None,
-        ext_train: Optional[str] = None,
+        ext_vers: Optional[str] = BUILT_IN_VALUE,
+        ext_train: Optional[str] = BUILT_IN_VALUE,
         config_settings: Optional[dict] = None,
         provisioning_state: Optional[str] = None,
         remove: bool = False,
@@ -276,18 +276,32 @@ class UpgradeScenario:
                 self.expect_exception = ValidationError
             return self
 
-        # Create extension if it doesn't exist (for adding platform in tests)
-        if ext_type not in self.extensions:
-            ext_moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
-            # Get version from init_version_map or use defaults
-            default_vers = self.init_version_map.get(ext_moniker, {}).get("version", "1.0.0")
-            default_train = self.init_version_map.get(ext_moniker, {}).get("train", "stable")
+        ext_moniker = EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]
 
+        # Resolve BUILT_IN_VALUE to actual defaults from init_version_map
+        actual_vers = None
+        if ext_vers == BUILT_IN_VALUE:
+            actual_vers = self.init_version_map.get(ext_moniker, {}).get("version", "1.0.0")
+        elif ext_vers:
+            actual_vers = ext_vers
+
+        actual_train = None
+        if ext_train == BUILT_IN_VALUE:
+            actual_train = self.init_version_map.get(ext_moniker, {}).get("train", "stable")
+            # Override train to "stable" for IoT Operations extension to avoid
+            # triggering preview train validation during tests (matches _build_defaults behavior)
+            if ext_type == EXTENSION_TYPE_OPS and actual_train.lower() != "stable":
+                actual_train = "stable"
+        elif ext_train:
+            actual_train = ext_train
+
+        # Create extension if it doesn't exist
+        if ext_type not in self.extensions:
             self.extensions[ext_type] = {
                 "properties": {
                     "extensionType": ext_type,
-                    "version": ext_vers or default_vers,
-                    "releaseTrain": ext_train or default_train,
+                    "version": actual_vers,
+                    "releaseTrain": actual_train,
                     "configurationSettings": config_settings or {},
                     "provisioningState": provisioning_state or PROVISIONING_STATE_SUCCESS,
                 },
@@ -295,12 +309,8 @@ class UpgradeScenario:
             }
         else:
             # Update existing extension
-            if ext_vers:
-                if ext_vers == BUILT_IN_VALUE:
-                    ext_vers = self.init_version_map[EXTENSION_TYPE_TO_MONIKER_MAP[ext_type]]["version"]
-                self.extensions[ext_type]["properties"]["version"] = ext_vers
-            if ext_train:
-                self.extensions[ext_type]["properties"]["releaseTrain"] = ext_train
+            self.extensions[ext_type]["properties"]["version"] = actual_vers
+            self.extensions[ext_type]["properties"]["releaseTrain"] = actual_train
             if provisioning_state:
                 self.extensions[ext_type]["properties"]["provisioningState"] = provisioning_state
             if config_settings is not None:
@@ -1787,6 +1797,34 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
         ),
         # ========== Early Validation - IoT Ops validation blocks migration operations ==========
         (
+            UpgradeScenario("Missing data: Current version is None blocks upgrade")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=None)
+            .set_user_kwargs(ops_version="1.2.0")
+            .expecting_validation_error(r"Unable to determine installed version for.*Cannot validate upgrade path"),
+            {},
+        ),
+        (
+            UpgradeScenario("Missing data: Current train is None blocks upgrade")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train=None)
+            .set_user_kwargs(ops_version="1.2.0")
+            .expecting_validation_error(
+                r"Unable to determine release train for installed.*Cannot validate upgrade path"
+            ),
+            {},
+        ),
+        (
+            UpgradeScenario("Missing data: Force bypasses missing version check")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=None)
+            .set_user_kwargs(ops_version="1.2.0", force=True),
+            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.0")},
+        ),
+        (
+            UpgradeScenario("Missing data: Force bypasses missing train check")
+            .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.0", ext_train=None)
+            .set_user_kwargs(ops_version="1.2.0", force=True),
+            {EXTENSION_TYPE_OPS: build_extension_props(EXTENSION_TYPE_OPS, version="1.2.0")},
+        ),
+        (
             UpgradeScenario("Early Validation: IoT Ops downgrade blocks platform migration")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
@@ -2274,6 +2312,7 @@ def assert_displays(
                     "incompatible",
                     "min compatible upgrade version",
                     "non-stable release trains",
+                    "Unable to determine",
                 ]
                 is_ops_validation_error = EXTENSION_MONIKER_OPS in error_msg and any(
                     pattern in error_msg for pattern in ops_validation_patterns
