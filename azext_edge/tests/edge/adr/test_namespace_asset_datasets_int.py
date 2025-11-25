@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------------------------------------
 
 import json
+import logging
 import pytest
 from typing import List
 
@@ -13,6 +14,7 @@ from ...helpers import run
 from .namespace_helpers import create_config_file, assert_point_properties, assert_dataset_properties
 
 
+logger = logging.getLogger(__name__)
 pytestmark = pytest.mark.long_running
 
 
@@ -658,6 +660,7 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
     WHY: Validates most common backup/restore workflow - ensures data integrity
     through full export → delete → import cycle.
     """
+    logger.warning("Starting test_namespace_asset_datapoint_export_import_json_roundtrip")
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     device_name = f"dev-export-{generate_random_string(8, force_lower=True)}"
@@ -666,18 +669,21 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
     dataset_name = f"dataset-{generate_random_string(6, force_lower=True)}"
 
     # Setup: Create device, endpoint, and asset
+    logger.warning("Creating device...")
     result = run(
         f"az iot ops ns device create --name {device_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
     tracked_resources.append(result["id"])
 
+    logger.warning("Creating endpoint...")
     run(
         f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
         f"--instance {instance_name} -g {resource_group} --device {device_name} "
         f"--endpoint-address 'http://192.168.1.100:8000/api' --endpoint-type custom"
     )
 
+    logger.warning("Creating asset...")
     asset = run(
         f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
@@ -685,6 +691,7 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
     tracked_resources.append(asset["id"])
 
     # Create dataset
+    logger.warning("Creating dataset...")
     run(
         f"az iot ops ns asset custom dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
@@ -700,6 +707,7 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
         {"name": f"dp3-{generate_random_string(4)}", "source": "sensor/pressure", "config": custom_config_path},
     ]
 
+    logger.warning(f"Adding {len(datapoint_configs)} datapoints...")
     for dp in datapoint_configs:
         run(
             f"az iot ops ns asset custom datapoint add --asset {asset_name} "
@@ -708,6 +716,7 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
         )
 
     # EXPORT datapoints to JSON
+    logger.warning("Exporting datapoints...")
     export_result = run(
         f"az iot ops ns asset custom datapoint export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
@@ -716,6 +725,7 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
     
     exported_file = export_result["file_path"]
     tracked_files.append(exported_file)
+    logger.warning(f"Exported to {exported_file}")
     
     # Verify file exists and contains expected datapoints
     with open(exported_file, 'r') as f:
@@ -726,6 +736,7 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
     assert all(dp["name"] in exported_names for dp in datapoint_configs)
 
     # Delete all datapoints
+    logger.warning("Deleting datapoints...")
     for dp in datapoint_configs:
         run(
             f"az iot ops ns asset custom datapoint remove --asset {asset_name} "
@@ -741,12 +752,14 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
     assert len(datapoints_after_delete) == 0
 
     # IMPORT datapoints back from file
+    logger.warning("Importing datapoints...")
     imported_datapoints = run(
         f"az iot ops ns asset custom datapoint import --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
         f"--input-file {exported_file}"
     )
 
+    logger.warning("Verifying import...")
     # Verify all datapoints restored
     assert len(imported_datapoints) == 3
     imported_names = [dp["name"] for dp in imported_datapoints]
@@ -756,6 +769,8 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
     for original_dp in datapoint_configs:
         restored_dp = next(dp for dp in imported_datapoints if dp["name"] == original_dp["name"])
         assert restored_dp["dataSource"] == original_dp["source"]
+    
+    logger.warning("Test completed successfully.")
 
 
 def test_namespace_asset_datapoint_export_import_csv_format(
@@ -765,6 +780,7 @@ def test_namespace_asset_datapoint_export_import_csv_format(
     Test CSV format export/import for DOE web UI compatibility.
     WHY: CSV is critical for interoperability with DOE web interface.
     """
+    logger.warning("Starting test_namespace_asset_datapoint_export_import_csv_format")
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     device_name = f"dev-csv-{generate_random_string(8, force_lower=True)}"
@@ -773,18 +789,21 @@ def test_namespace_asset_datapoint_export_import_csv_format(
     dataset_name = f"dataset-csv-{generate_random_string(6, force_lower=True)}"
 
     # Setup OPC UA asset (CSV commonly used with OPC UA)
+    logger.warning("Creating device...")
     result = run(
         f"az iot ops ns device create --name {device_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
     tracked_resources.append(result["id"])
 
+    logger.warning("Creating endpoint...")
     run(
         f"az iot ops ns device endpoint inbound add opcua --name {endpoint_name} "
         f"--instance {instance_name} -g {resource_group} --device {device_name} "
         f"--endpoint-address 'opc.tcp://192.168.1.200:4840'"
     )
 
+    logger.warning("Creating asset...")
     asset = run(
         f"az iot ops ns asset opcua create --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
@@ -792,10 +811,11 @@ def test_namespace_asset_datapoint_export_import_csv_format(
     tracked_resources.append(asset["id"])
 
     # Create dataset and datapoints
+    logger.warning("Creating dataset and datapoints...")
     run(
         f"az iot ops ns asset opcua dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
-        f"--data-source ns=2;i=1000 --publish-int 1000"
+        f"--data-source \"ns=2;i=1000\" --publish-int 1000"
     )
 
     datapoints = [
@@ -812,6 +832,7 @@ def test_namespace_asset_datapoint_export_import_csv_format(
         )
 
     # EXPORT to CSV
+    logger.warning("Exporting to CSV...")
     export_result = run(
         f"az iot ops ns asset opcua datapoint export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
@@ -820,9 +841,11 @@ def test_namespace_asset_datapoint_export_import_csv_format(
     
     csv_file = export_result["file_path"]
     tracked_files.append(csv_file)
+    logger.warning(f"Exported to {csv_file}")
     assert csv_file.endswith('.csv')
 
     # Delete datapoints
+    logger.warning("Deleting datapoints...")
     for dp in datapoints:
         run(
             f"az iot ops ns asset opcua datapoint remove --asset {asset_name} "
@@ -831,6 +854,7 @@ def test_namespace_asset_datapoint_export_import_csv_format(
         )
 
     # IMPORT from CSV
+    logger.warning("Importing from CSV...")
     imported_datapoints = run(
         f"az iot ops ns asset opcua datapoint import --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
@@ -838,9 +862,11 @@ def test_namespace_asset_datapoint_export_import_csv_format(
     )
 
     # Verify CSV round-trip successful
+    logger.warning("Verifying CSV round-trip...")
     assert len(imported_datapoints) == 2
     imported_names = [dp["name"] for dp in imported_datapoints]
     assert all(dp["name"] in imported_names for dp in datapoints)
+    logger.warning("Test completed successfully.")
 
 
 def test_namespace_asset_dataset_export_import_roundtrip(
@@ -850,6 +876,7 @@ def test_namespace_asset_dataset_export_import_roundtrip(
     Test bulk dataset export/import workflow.
     WHY: Validates backup/restore of entire dataset configurations (without datapoints).
     """
+    logger.warning("Starting test_namespace_asset_dataset_export_import_roundtrip")
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     device_name = f"dev-bulk-{generate_random_string(8, force_lower=True)}"
@@ -857,18 +884,21 @@ def test_namespace_asset_dataset_export_import_roundtrip(
     asset_name = f"asset-bulk-{generate_random_string(8, force_lower=True)}"
 
     # Setup REST asset
+    logger.warning("Creating device...")
     result = run(
         f"az iot ops ns device create --name {device_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
     tracked_resources.append(result["id"])
 
+    logger.warning("Creating endpoint...")
     run(
         f"az iot ops ns device endpoint inbound add rest --name {endpoint_name} "
         f"--instance {instance_name} -g {resource_group} --device {device_name} "
         f"--endpoint-address 'https://api.example.com/data'"
     )
 
+    logger.warning("Creating asset...")
     asset = run(
         f"az iot ops ns asset rest create --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
@@ -876,6 +906,7 @@ def test_namespace_asset_dataset_export_import_roundtrip(
     tracked_resources.append(asset["id"])
 
     # Create multiple datasets with different configurations
+    logger.warning("Creating datasets...")
     datasets = [
         {"name": f"dataset1-{generate_random_string(4)}", "source": "/api/temp", "sampling": 5000},
         {"name": f"dataset2-{generate_random_string(4)}", "source": "/api/humidity", "sampling": 10000},
@@ -890,6 +921,7 @@ def test_namespace_asset_dataset_export_import_roundtrip(
         )
 
     # EXPORT all datasets to JSON
+    logger.warning("Exporting datasets...")
     export_result = run(
         f"az iot ops ns asset rest dataset export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --format json"
@@ -897,6 +929,7 @@ def test_namespace_asset_dataset_export_import_roundtrip(
     
     exported_file = export_result["file_path"]
     tracked_files.append(exported_file)
+    logger.warning(f"Exported to {exported_file}")
 
     # Verify exported content
     with open(exported_file, 'r') as f:
@@ -910,6 +943,7 @@ def test_namespace_asset_dataset_export_import_roundtrip(
         assert "dataSource" in ds
 
     # Delete all datasets
+    logger.warning("Deleting datasets...")
     for ds in datasets:
         run(
             f"az iot ops ns asset rest dataset remove --asset {asset_name} "
@@ -924,15 +958,18 @@ def test_namespace_asset_dataset_export_import_roundtrip(
     assert len(datasets_after_delete) == 0
 
     # IMPORT datasets back
+    logger.warning("Importing datasets...")
     imported_datasets = run(
         f"az iot ops ns asset rest dataset import --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --input-file {exported_file}"
     )
 
     # Verify all datasets restored
+    logger.warning("Verifying import...")
     assert len(imported_datasets) == 3
     imported_names = [ds["name"] for ds in imported_datasets]
     assert all(ds["name"] in imported_names for ds in datasets)
+    logger.warning("Test completed successfully.")
 
 
 def test_namespace_asset_datapoint_import_skip_duplicates(
@@ -942,6 +979,7 @@ def test_namespace_asset_datapoint_import_skip_duplicates(
     Test duplicate-skip behavior during datapoint import.
     WHY: Prevents data loss - ensures existing datapoints not overwritten accidentally.
     """
+    logger.warning("Starting test_namespace_asset_datapoint_import_skip_duplicates")
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     device_name = f"dev-dup-{generate_random_string(8, force_lower=True)}"
@@ -950,24 +988,28 @@ def test_namespace_asset_datapoint_import_skip_duplicates(
     dataset_name = f"dataset-dup-{generate_random_string(6, force_lower=True)}"
 
     # Setup
+    logger.warning("Creating device...")
     result = run(
         f"az iot ops ns device create --name {device_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
     tracked_resources.append(result["id"])
 
+    logger.warning("Creating endpoint...")
     run(
         f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
         f"--instance {instance_name} -g {resource_group} --device {device_name} "
         f"--endpoint-address 'http://192.168.1.100:8000/api' --endpoint-type custom"
     )
 
+    logger.warning("Creating asset...")
     asset = run(
         f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
     )
     tracked_resources.append(asset["id"])
 
+    logger.warning("Creating dataset...")
     run(
         f"az iot ops ns asset custom dataset add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name} "
@@ -975,6 +1017,7 @@ def test_namespace_asset_datapoint_import_skip_duplicates(
     )
 
     # Add initial datapoints
+    logger.warning("Adding initial datapoints...")
     custom_config_path, _ = create_config_file(tracked_files)
     
     initial_datapoints = [
@@ -990,6 +1033,7 @@ def test_namespace_asset_datapoint_import_skip_duplicates(
         )
 
     # Export initial datapoints
+    logger.warning("Exporting initial datapoints...")
     export_result = run(
         f"az iot ops ns asset custom datapoint export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
@@ -997,8 +1041,10 @@ def test_namespace_asset_datapoint_import_skip_duplicates(
     
     exported_file = export_result["file_path"]
     tracked_files.append(exported_file)
+    logger.warning(f"Exported to {exported_file}")
 
     # Add more datapoints manually (creating a mixed state)
+    logger.warning("Adding more datapoints manually...")
     run(
         f"az iot ops ns asset custom datapoint add --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
@@ -1006,6 +1052,7 @@ def test_namespace_asset_datapoint_import_skip_duplicates(
     )
 
     # Now import from file (contains dp1, dp2 which exist + dp3 was added manually)
+    logger.warning("Importing from file (should skip duplicates)...")
     imported_datapoints = run(
         f"az iot ops ns asset custom datapoint import --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
@@ -1013,11 +1060,13 @@ def test_namespace_asset_datapoint_import_skip_duplicates(
     )
 
     # Verify: Should have all 3 datapoints (2 from file skipped as duplicates, manual dp3 preserved)
+    logger.warning("Verifying results...")
     assert len(imported_datapoints) == 3
     datapoint_names = [dp["name"] for dp in imported_datapoints]
     assert "dp1" in datapoint_names
     assert "dp2" in datapoint_names
     assert "dp3" in datapoint_names
+    logger.warning("Test completed successfully.")
 
 
 def test_namespace_asset_dataset_export_yaml_format(
@@ -1027,6 +1076,7 @@ def test_namespace_asset_dataset_export_yaml_format(
     Test YAML format export for datasets.
     WHY: YAML is human-readable and commonly used in DevOps workflows.
     """
+    logger.warning("Starting test_namespace_asset_dataset_export_yaml_format")
     instance_name = require_init["instanceName"]
     resource_group = require_init["resourceGroup"]
     device_name = f"dev-yaml-{generate_random_string(8, force_lower=True)}"
@@ -1034,18 +1084,21 @@ def test_namespace_asset_dataset_export_yaml_format(
     asset_name = f"asset-yaml-{generate_random_string(8, force_lower=True)}"
 
     # Setup
+    logger.warning("Creating device...")
     result = run(
         f"az iot ops ns device create --name {device_name} --instance {instance_name} "
         f"-g {resource_group}"
     )
     tracked_resources.append(result["id"])
 
+    logger.warning("Creating endpoint...")
     run(
         f"az iot ops ns device endpoint inbound add custom --name {endpoint_name} "
         f"--instance {instance_name} -g {resource_group} --device {device_name} "
         f"--endpoint-address 'http://192.168.1.100:8000/api' --endpoint-type custom"
     )
 
+    logger.warning("Creating asset...")
     asset = run(
         f"az iot ops ns asset custom create --name {asset_name} --instance {instance_name} "
         f"-g {resource_group} --device {device_name} --endpoint {endpoint_name}"
@@ -1053,6 +1106,7 @@ def test_namespace_asset_dataset_export_yaml_format(
     tracked_resources.append(asset["id"])
 
     # Create dataset
+    logger.warning("Creating dataset...")
     custom_config_path, _ = create_config_file(tracked_files)
     
     dataset_name = f"dataset-yaml-{generate_random_string(6)}"
@@ -1063,6 +1117,7 @@ def test_namespace_asset_dataset_export_yaml_format(
     )
 
     # EXPORT to YAML
+    logger.warning("Exporting to YAML...")
     export_result = run(
         f"az iot ops ns asset custom dataset export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --format yaml"
@@ -1070,20 +1125,25 @@ def test_namespace_asset_dataset_export_yaml_format(
     
     yaml_file = export_result["file_path"]
     tracked_files.append(yaml_file)
+    logger.warning(f"Exported to {yaml_file}")
     assert yaml_file.endswith('.yaml')
 
     # Delete dataset
+    logger.warning("Deleting dataset...")
     run(
         f"az iot ops ns asset custom dataset remove --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --name {dataset_name}"
     )
 
     # IMPORT from YAML
+    logger.warning("Importing from YAML...")
     imported_datasets = run(
         f"az iot ops ns asset custom dataset import --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --input-file {yaml_file}"
     )
 
     # Verify YAML round-trip successful
+    logger.warning("Verifying YAML round-trip...")
     assert len(imported_datasets) == 1
     assert imported_datasets[0]["name"] == dataset_name
+    logger.warning("Test completed successfully.")
