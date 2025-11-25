@@ -772,6 +772,10 @@ class NamespaceAssets(Queryable):
             point_key="name",
             replace=False  # Default: skip duplicates
         )
+
+        # Remove observabilityMode if present (not supported in ADR)
+        for point in dataset["dataPoints"]:
+            point.pop("observabilityMode", None)
         
         update_payload = {
             "properties": {
