@@ -358,6 +358,17 @@ class Assets(Queryable):
             queue_size=queue_size,
             sampling_interval=sampling_interval,
         )
+        
+        # Validate datapoint configuration against connector metadata
+        logger.info(f"Validating data point '{data_point_name}' against connector metadata...")
+        try:
+            from .validator import ConnectorMetadataValidator
+            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset)
+            validator.validate_datapoint(sub_point)
+            logger.info(f"Data point '{data_point_name}' validation passed.")
+        except Exception as e:
+            logger.warning(f"Data point validation failed or skipped: {e}")
+        
         dataset["dataPoints"].append(sub_point)
 
         # note that update does not return the properties
@@ -426,12 +437,35 @@ class Assets(Queryable):
         )
         # should get the direct object so this should be enough
         dataset = get_default_dataset(asset, dataset_name, create_if_none=True)
-        dataset["dataPoints"] = _process_asset_sub_points_file_path(
+        new_data_points = _process_asset_sub_points_file_path(
             file_path=file_path,
             original_items=dataset.get("dataPoints", []),
             point_key="name",
             replace=replace
         )
+        
+        # Validate all data points against connector metadata
+        logger.info(f"Validating {len(new_data_points)} data points against connector metadata...")
+        try:
+            from .validator import ConnectorMetadataValidator
+            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset)
+            validation_errors = []
+            for idx, point in enumerate(new_data_points):
+                try:
+                    validator.validate_datapoint(point)
+                    logger.debug(f"Data point {idx + 1}/{len(new_data_points)} ('{point.get('name', 'unnamed')}') validation passed.")
+                except Exception as e:
+                    validation_errors.append(f"Data point '{point.get('name', 'unnamed')}': {e}")
+                    logger.warning(f"Data point '{point.get('name', 'unnamed')}' validation failed: {e}")
+            
+            if validation_errors:
+                logger.warning(f"{len(validation_errors)} data point(s) failed validation. Errors:\n" + "\n".join(validation_errors))
+            else:
+                logger.info(f"All {len(new_data_points)} data points validated successfully.")
+        except Exception as e:
+            logger.warning(f"Data point validation failed or skipped: {e}")
+        
+        dataset["dataPoints"] = new_data_points
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
@@ -587,12 +621,35 @@ class Assets(Queryable):
             resource_group_name=resource_group_name,
             check_cluster=True
         )
-        asset["properties"]["events"] = _process_asset_sub_points_file_path(
+        new_events = _process_asset_sub_points_file_path(
             file_path=file_path,
             original_items=asset["properties"].get("events", []),
             point_key="name",
             replace=replace
         )
+        
+        # Validate all events against connector metadata
+        logger.info(f"Validating {len(new_events)} events against connector metadata...")
+        try:
+            from .validator import ConnectorMetadataValidator
+            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset)
+            validation_errors = []
+            for idx, event in enumerate(new_events):
+                try:
+                    validator.validate_event(event)
+                    logger.debug(f"Event {idx + 1}/{len(new_events)} ('{event.get('name', 'unnamed')}') validation passed.")
+                except Exception as e:
+                    validation_errors.append(f"Event '{event.get('name', 'unnamed')}': {e}")
+                    logger.warning(f"Event '{event.get('name', 'unnamed')}' validation failed: {e}")
+            
+            if validation_errors:
+                logger.warning(f"{len(validation_errors)} event(s) failed validation. Errors:\n" + "\n".join(validation_errors))
+            else:
+                logger.info(f"All {len(new_events)} events validated successfully.")
+        except Exception as e:
+            logger.warning(f"Event validation failed or skipped: {e}")
+        
+        asset["properties"]["events"] = new_events
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
