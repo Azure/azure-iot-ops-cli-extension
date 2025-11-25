@@ -1007,11 +1007,11 @@ def test_export_namespace_asset_dataset_datapoints(
     dataset_name = "temperatureDataset"
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     # Create mock asset with dataset and datapoints
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
@@ -1035,7 +1035,7 @@ def test_export_namespace_asset_dataset_datapoints(
             ]
         }
     ]
-    
+
     # Mock GET asset response
     mocked_responses.add(
         method=responses.GET,
@@ -1048,16 +1048,16 @@ def test_export_namespace_asset_dataset_datapoints(
         status=200,
         content_type="application/json",
     )
-    
+
     # Mock dump_content_to_file
     expected_file_path = f"./{asset_name}_datapoint_{dataset_name}.json"
     mock_dump = mocker.patch(
         "azext_edge.edge.util.dump_content_to_file",
         return_value=expected_file_path
     )
-    
+
     from azext_edge.edge.commands_namespaces import export_namespace_asset_dataset_points
-    
+
     result = export_namespace_asset_dataset_points(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -1067,10 +1067,10 @@ def test_export_namespace_asset_dataset_datapoints(
         format="json",
         output_dir="."
     )
-    
+
     # Verify result
     assert result == {"file_path": expected_file_path}
-    
+
     # Verify dump_content_to_file was called with correct datapoints
     assert mock_dump.call_count == 1
     call_kwargs = mock_dump.call_args[1]
@@ -1091,11 +1091,11 @@ def test_export_namespace_asset_dataset_datapoints_csv(
     dataset_name = "pressureDataset"
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
@@ -1110,7 +1110,7 @@ def test_export_namespace_asset_dataset_datapoints_csv(
             ]
         }
     ]
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -1122,15 +1122,15 @@ def test_export_namespace_asset_dataset_datapoints_csv(
         status=200,
         content_type="application/json",
     )
-    
+
     expected_file_path = f"./{asset_name}_datapoint_{dataset_name}.csv"
     mock_dump = mocker.patch(
         "azext_edge.edge.util.dump_content_to_file",
         return_value=expected_file_path
     )
-    
+
     from azext_edge.edge.commands_namespaces import export_namespace_asset_dataset_points
-    
+
     result = export_namespace_asset_dataset_points(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -1140,7 +1140,7 @@ def test_export_namespace_asset_dataset_datapoints_csv(
         format="csv",
         output_dir="."
     )
-    
+
     assert result == {"file_path": expected_file_path}
     assert mock_dump.call_count == 1
     call_kwargs = mock_dump.call_args[1]
@@ -1160,11 +1160,11 @@ def test_import_namespace_asset_dataset_datapoints(
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
     input_file = "/tmp/datapoints.json"
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     # Existing asset with one datapoint
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
@@ -1179,13 +1179,13 @@ def test_import_namespace_asset_dataset_datapoints(
             ]
         }
     ]
-    
+
     # File contains new datapoints
-    file_datapoints = [
+    [
         {"name": "new1", "dataSource": "newSource1"},
         {"name": "new2", "dataSource": "newSource2"}
     ]
-    
+
     # Mock _process_asset_sub_points_file_path (merge logic)
     # This function internally handles file deserialization
     merged_datapoints = [
@@ -1197,7 +1197,7 @@ def test_import_namespace_asset_dataset_datapoints(
         "azext_edge.edge.providers.adr.assets._process_asset_sub_points_file_path",
         return_value=merged_datapoints
     )
-    
+
     # Mock GET asset response (initial)
     mocked_responses.add(
         method=responses.GET,
@@ -1210,7 +1210,7 @@ def test_import_namespace_asset_dataset_datapoints(
         status=200,
         content_type="application/json",
     )
-    
+
     # Mock PATCH update response
     updated_asset = deepcopy(mock_asset_record)
     updated_asset["properties"]["datasets"][0]["dataPoints"] = merged_datapoints
@@ -1225,7 +1225,7 @@ def test_import_namespace_asset_dataset_datapoints(
         status=200,
         content_type="application/json",
     )
-    
+
     # Mock GET asset response (final)
     mocked_responses.add(
         method=responses.GET,
@@ -1238,9 +1238,9 @@ def test_import_namespace_asset_dataset_datapoints(
         status=200,
         content_type="application/json",
     )
-    
+
     from azext_edge.edge.commands_namespaces import import_namespace_asset_dataset_points
-    
+
     result = import_namespace_asset_dataset_points(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -1250,10 +1250,10 @@ def test_import_namespace_asset_dataset_datapoints(
         input_file=input_file,
         wait_sec=0
     )
-    
+
     # Verify result contains merged datapoints
     assert result == merged_datapoints
-    
+
     # Verify _process_asset_sub_points_file_path was called with correct parameters
     mock_process.assert_called_once()
     call_kwargs = mock_process.call_args[1]
@@ -1272,11 +1272,11 @@ def test_export_namespace_asset_datasets(
     asset_name = generate_random_string()
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     # Create mock asset with multiple datasets
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
@@ -1299,7 +1299,7 @@ def test_export_namespace_asset_datasets(
             ]
         }
     ]
-    
+
     # Mock GET asset response
     mocked_responses.add(
         method=responses.GET,
@@ -1312,16 +1312,16 @@ def test_export_namespace_asset_datasets(
         status=200,
         content_type="application/json",
     )
-    
+
     # Mock dump_content_to_file
     expected_file_path = f"./{asset_name}_dataset.json"
     mock_dump = mocker.patch(
         "azext_edge.edge.util.dump_content_to_file",
         return_value=expected_file_path
     )
-    
+
     from azext_edge.edge.commands_namespaces import export_namespace_asset_datasets
-    
+
     result = export_namespace_asset_datasets(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -1330,15 +1330,15 @@ def test_export_namespace_asset_datasets(
         format="json",
         output_dir="."
     )
-    
+
     # Verify result
     assert result == {"file_path": expected_file_path}
-    
+
     # Verify dump_content_to_file was called with datasets WITHOUT dataPoints
     assert mock_dump.call_count == 1
     call_kwargs = mock_dump.call_args[1]
     exported_datasets = call_kwargs["content"]
-    
+
     # Check that dataPoints are removed
     for dataset in exported_datasets:
         assert "dataPoints" not in dataset
@@ -1356,11 +1356,11 @@ def test_export_namespace_asset_datasets_yaml(
     asset_name = generate_random_string()
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
@@ -1369,7 +1369,7 @@ def test_export_namespace_asset_datasets_yaml(
     mock_asset_record["properties"]["datasets"] = [
         {"name": "dataset1", "dataPoints": []}
     ]
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -1381,15 +1381,15 @@ def test_export_namespace_asset_datasets_yaml(
         status=200,
         content_type="application/json",
     )
-    
+
     expected_file_path = f"./{asset_name}_dataset.yaml"
     mock_dump = mocker.patch(
         "azext_edge.edge.util.dump_content_to_file",
         return_value=expected_file_path
     )
-    
+
     from azext_edge.edge.commands_namespaces import export_namespace_asset_datasets
-    
+
     result = export_namespace_asset_datasets(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -1398,7 +1398,7 @@ def test_export_namespace_asset_datasets_yaml(
         format="yaml",
         output_dir="."
     )
-    
+
     assert result == {"file_path": expected_file_path}
     call_kwargs = mock_dump.call_args[1]
     assert call_kwargs["extension"] == "yaml"
@@ -1416,11 +1416,11 @@ def test_import_namespace_asset_datasets(
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
     input_file = "/tmp/datasets.json"
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     # Existing asset with one dataset
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
@@ -1433,19 +1433,19 @@ def test_import_namespace_asset_datasets(
             "dataPoints": [{"name": "existingDp", "dataSource": "existingSource"}]
         }
     ]
-    
+
     # File contains new datasets
     file_datasets = [
         {"name": "newDataset1", "datasetConfiguration": json.dumps({"publishingInterval": 1000})},
         {"name": "newDataset2", "datasetConfiguration": json.dumps({"publishingInterval": 2000})}
     ]
-    
+
     # Mock deserialize_file_content
     mock_deserialize = mocker.patch(
         "azext_edge.edge.util.deserialize_file_content",
         return_value=file_datasets
     )
-    
+
     # Mock GET asset response (initial)
     mocked_responses.add(
         method=responses.GET,
@@ -1458,7 +1458,7 @@ def test_import_namespace_asset_datasets(
         status=200,
         content_type="application/json",
     )
-    
+
     # Mock PATCH update response
     updated_asset = deepcopy(mock_asset_record)
     # Merge logic: keep existing, add new datasets
@@ -1467,7 +1467,7 @@ def test_import_namespace_asset_datasets(
         file_datasets[0],  # new1
         file_datasets[1]   # new2
     ]
-    
+
     mocked_responses.add(
         method=responses.PATCH,
         url=get_namespace_asset_mgmt_uri(
@@ -1479,7 +1479,7 @@ def test_import_namespace_asset_datasets(
         status=200,
         content_type="application/json",
     )
-    
+
     # Mock GET asset response (final)
     mocked_responses.add(
         method=responses.GET,
@@ -1492,9 +1492,9 @@ def test_import_namespace_asset_datasets(
         status=200,
         content_type="application/json",
     )
-    
+
     from azext_edge.edge.commands_namespaces import import_namespace_asset_datasets
-    
+
     result = import_namespace_asset_datasets(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -1503,14 +1503,14 @@ def test_import_namespace_asset_datasets(
         input_file=input_file,
         wait_sec=0
     )
-    
+
     # Verify result contains all datasets
     assert len(result) == 3
     dataset_names = [ds["name"] for ds in result]
     assert "existingDataset" in dataset_names
     assert "newDataset1" in dataset_names
     assert "newDataset2" in dataset_names
-    
+
     # Verify mocks were called
     mock_deserialize.assert_called_once_with(file_path=input_file)
 
@@ -1530,11 +1530,11 @@ def test_export_dataset_datapoints_dataset_not_found(
     dataset_name = "nonexistentDataset"
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     # Asset has no matching dataset
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
@@ -1544,7 +1544,7 @@ def test_export_dataset_datapoints_dataset_not_found(
     mock_asset_record["properties"]["datasets"] = [
         {"name": "otherDataset", "dataPoints": []}
     ]
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -1556,9 +1556,9 @@ def test_export_dataset_datapoints_dataset_not_found(
         status=200,
         content_type="application/json",
     )
-    
+
     from azext_edge.edge.commands_namespaces import export_namespace_asset_dataset_points
-    
+
     # Should raise InvalidArgumentValueError
     with pytest.raises(InvalidArgumentValueError) as exc_info:
         export_namespace_asset_dataset_points(
@@ -1568,7 +1568,7 @@ def test_export_dataset_datapoints_dataset_not_found(
             instance_name=instance_name,
             instance_resource_group=instance_resource_group,
         )
-    
+
     assert f"Dataset '{dataset_name}' not found" in str(exc_info.value)
 
 
@@ -1586,11 +1586,11 @@ def test_export_dataset_datapoints_empty_datapoints(
     dataset_name = "emptyDataset"
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
@@ -1599,7 +1599,7 @@ def test_export_dataset_datapoints_empty_datapoints(
     mock_asset_record["properties"]["datasets"] = [
         {"name": dataset_name, "dataPoints": []}  # Empty array
     ]
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -1611,15 +1611,15 @@ def test_export_dataset_datapoints_empty_datapoints(
         status=200,
         content_type="application/json",
     )
-    
+
     expected_file_path = f"./{asset_name}_datapoint_{dataset_name}.json"
     mock_dump = mocker.patch(
         "azext_edge.edge.util.dump_content_to_file",
         return_value=expected_file_path
     )
-    
+
     from azext_edge.edge.commands_namespaces import export_namespace_asset_dataset_points
-    
+
     result = export_namespace_asset_dataset_points(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -1627,7 +1627,7 @@ def test_export_dataset_datapoints_empty_datapoints(
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
     )
-    
+
     # Should still succeed and export empty array
     assert result == {"file_path": expected_file_path}
     call_kwargs = mock_dump.call_args[1]
@@ -1650,17 +1650,17 @@ def test_import_dataset_datapoints_all_duplicates(
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
     input_file = "/tmp/duplicates.json"
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     # Existing datapoints
     existing_datapoints = [
         {"name": "dp1", "dataSource": "source1"},
         {"name": "dp2", "dataSource": "source2"}
     ]
-    
+
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
@@ -1669,13 +1669,13 @@ def test_import_dataset_datapoints_all_duplicates(
     mock_asset_record["properties"]["datasets"] = [
         {"name": dataset_name, "dataPoints": existing_datapoints}
     ]
-    
+
     # Mock returns same datapoints (all duplicates skipped)
-    mock_process = mocker.patch(
+    mocker.patch(
         "azext_edge.edge.providers.adr.assets._process_asset_sub_points_file_path",
         return_value=existing_datapoints
     )
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -1687,7 +1687,7 @@ def test_import_dataset_datapoints_all_duplicates(
         status=200,
         content_type="application/json",
     )
-    
+
     # Update response (no changes)
     mocked_responses.add(
         method=responses.PATCH,
@@ -1700,7 +1700,7 @@ def test_import_dataset_datapoints_all_duplicates(
         status=200,
         content_type="application/json",
     )
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -1712,9 +1712,9 @@ def test_import_dataset_datapoints_all_duplicates(
         status=200,
         content_type="application/json",
     )
-    
+
     from azext_edge.edge.commands_namespaces import import_namespace_asset_dataset_points
-    
+
     result = import_namespace_asset_dataset_points(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -1724,7 +1724,7 @@ def test_import_dataset_datapoints_all_duplicates(
         input_file=input_file,
         wait_sec=0
     )
-    
+
     # Result should be unchanged
     assert result == existing_datapoints
     assert len(result) == 2
@@ -1743,18 +1743,18 @@ def test_export_datasets_no_datasets(
     asset_name = generate_random_string()
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=namespace_resource_group
     )
     mock_asset_record["properties"]["datasets"] = []  # No datasets
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -1766,22 +1766,22 @@ def test_export_datasets_no_datasets(
         status=200,
         content_type="application/json",
     )
-    
+
     expected_file_path = f"./{asset_name}_dataset.json"
     mock_dump = mocker.patch(
         "azext_edge.edge.util.dump_content_to_file",
         return_value=expected_file_path
     )
-    
+
     from azext_edge.edge.commands_namespaces import export_namespace_asset_datasets
-    
+
     result = export_namespace_asset_datasets(
         cmd=mocked_cmd,
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
     )
-    
+
     assert result == {"file_path": expected_file_path}
     call_kwargs = mock_dump.call_args[1]
     assert call_kwargs["content"] == []
@@ -1802,37 +1802,37 @@ def test_import_datasets_duplicate_skip(
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
     input_file = "/tmp/datasets_with_dup.json"
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     existing_dataset = {
         "name": "dataset1",
         "dataPoints": [{"name": "existingDp", "dataSource": "existingSource"}]
     }
-    
+
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
         resource_group_name=namespace_resource_group
     )
     mock_asset_record["properties"]["datasets"] = [existing_dataset]
-    
+
     # File contains: 1 duplicate (dataset1) + 1 new (dataset2)
     file_datasets = [
         {"name": "dataset1", "datasetConfiguration": json.dumps({"publishingInterval": 9999})},  # Duplicate
         {"name": "dataset2", "datasetConfiguration": json.dumps({"publishingInterval": 2000})}   # New
     ]
-    
-    mock_deserialize = mocker.patch(
+
+    mocker.patch(
         "azext_edge.edge.util.deserialize_file_content",
         return_value=file_datasets
     )
-    
+
     # Mock logger to verify warning is logged
     mock_logger = mocker.patch("azext_edge.edge.providers.adr.namespace_assets.logger")
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -1844,14 +1844,14 @@ def test_import_datasets_duplicate_skip(
         status=200,
         content_type="application/json",
     )
-    
+
     # Updated asset: existing dataset unchanged, only new dataset added
     updated_asset = deepcopy(mock_asset_record)
     updated_asset["properties"]["datasets"] = [
         existing_dataset,  # Original preserved
         {"name": "dataset2", "dataPoints": [], "datasetConfiguration": json.dumps({"publishingInterval": 2000})}
     ]
-    
+
     mocked_responses.add(
         method=responses.PATCH,
         url=get_namespace_asset_mgmt_uri(
@@ -1863,7 +1863,7 @@ def test_import_datasets_duplicate_skip(
         status=200,
         content_type="application/json",
     )
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -1875,9 +1875,9 @@ def test_import_datasets_duplicate_skip(
         status=200,
         content_type="application/json",
     )
-    
+
     from azext_edge.edge.commands_namespaces import import_namespace_asset_datasets
-    
+
     result = import_namespace_asset_datasets(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -1886,17 +1886,17 @@ def test_import_datasets_duplicate_skip(
         input_file=input_file,
         wait_sec=0
     )
-    
+
     # Verify: 2 datasets total, duplicate was skipped
     assert len(result) == 2
     dataset_names = [ds["name"] for ds in result]
     assert "dataset1" in dataset_names
     assert "dataset2" in dataset_names
-    
+
     # Verify existing dataset is unchanged (not overwritten)
     existing_in_result = next(ds for ds in result if ds["name"] == "dataset1")
     assert existing_in_result == existing_dataset
-    
+
     # Verify warning was logged for duplicate
     mock_logger.warning.assert_called_once()
     warning_msg = mock_logger.warning.call_args[0][0]
@@ -1917,11 +1917,11 @@ def test_export_datasets_with_complex_configurations(
     asset_name = generate_random_string()
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     # Complex dataset with nested configurations
     complex_config = {
         "publishingInterval": 1000,
@@ -1932,7 +1932,7 @@ def test_export_datasets_with_complex_configurations(
             "encryption": {"enabled": True, "algorithm": "AES256"}
         }
     }
-    
+
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
         namespace_name=namespace_name,
@@ -1945,7 +1945,7 @@ def test_export_datasets_with_complex_configurations(
             "dataPoints": [{"name": "dp1", "dataSource": "src1"}]  # Will be removed in export
         }
     ]
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -1957,25 +1957,25 @@ def test_export_datasets_with_complex_configurations(
         status=200,
         content_type="application/json",
     )
-    
+
     expected_file_path = f"./{asset_name}_dataset.json"
     mock_dump = mocker.patch(
         "azext_edge.edge.util.dump_content_to_file",
         return_value=expected_file_path
     )
-    
+
     from azext_edge.edge.commands_namespaces import export_namespace_asset_datasets
-    
+
     result = export_namespace_asset_datasets(
         cmd=mocked_cmd,
         asset_name=asset_name,
         instance_name=instance_name,
         instance_resource_group=instance_resource_group,
     )
-    
+
     # Verify export succeeded
     assert result == {"file_path": expected_file_path}
-    
+
     # Verify complex configuration is preserved but dataPoints removed
     exported_datasets = mock_dump.call_args[1]["content"]
     assert len(exported_datasets) == 1
@@ -1999,11 +1999,11 @@ def test_import_dataset_datapoints_into_empty_dataset(
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
     input_file = "/tmp/first_datapoints.json"
-    
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
-    
+
     # Dataset with no datapoints
     mock_asset_record = get_namespace_asset_record(
         asset_name=asset_name,
@@ -2013,19 +2013,19 @@ def test_import_dataset_datapoints_into_empty_dataset(
     mock_asset_record["properties"]["datasets"] = [
         {"name": dataset_name, "dataPoints": []}  # Empty
     ]
-    
+
     # File contains first datapoints
     new_datapoints = [
         {"name": "dp1", "dataSource": "source1"},
         {"name": "dp2", "dataSource": "source2"},
         {"name": "dp3", "dataSource": "source3"}
     ]
-    
-    mock_process = mocker.patch(
+
+    mocker.patch(
         "azext_edge.edge.providers.adr.assets._process_asset_sub_points_file_path",
         return_value=new_datapoints
     )
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -2037,10 +2037,10 @@ def test_import_dataset_datapoints_into_empty_dataset(
         status=200,
         content_type="application/json",
     )
-    
+
     updated_asset = deepcopy(mock_asset_record)
     updated_asset["properties"]["datasets"][0]["dataPoints"] = new_datapoints
-    
+
     mocked_responses.add(
         method=responses.PATCH,
         url=get_namespace_asset_mgmt_uri(
@@ -2052,7 +2052,7 @@ def test_import_dataset_datapoints_into_empty_dataset(
         status=200,
         content_type="application/json",
     )
-    
+
     mocked_responses.add(
         method=responses.GET,
         url=get_namespace_asset_mgmt_uri(
@@ -2064,9 +2064,9 @@ def test_import_dataset_datapoints_into_empty_dataset(
         status=200,
         content_type="application/json",
     )
-    
+
     from azext_edge.edge.commands_namespaces import import_namespace_asset_dataset_points
-    
+
     result = import_namespace_asset_dataset_points(
         cmd=mocked_cmd,
         asset_name=asset_name,
@@ -2076,7 +2076,7 @@ def test_import_dataset_datapoints_into_empty_dataset(
         input_file=input_file,
         wait_sec=0
     )
-    
+
     # All datapoints should be imported
     assert result == new_datapoints
     assert len(result) == 3

@@ -711,7 +711,7 @@ class NamespaceAssets(Queryable):
     ):
         """Export datapoints from a dataset to a file."""
         from ...util import dump_content_to_file
-        
+
         asset = self.show(
             asset_name=asset_name,
             instance_name=instance_name,
@@ -719,7 +719,7 @@ class NamespaceAssets(Queryable):
         )
         dataset = _get_sub_property(asset, dataset_name, property_key="datasets")
         datapoints = dataset.get("dataPoints", [])
-        
+
         fieldnames = None
         if format == "csv":
             # Convert to CSV format
@@ -733,7 +733,7 @@ class NamespaceAssets(Queryable):
                 default_configuration=default_configuration,
                 portal_friendly=True
             )
-        
+
         file_path = dump_content_to_file(
             content=datapoints,
             file_name=f"{asset_name}_datapoint_{dataset_name}",
@@ -761,9 +761,9 @@ class NamespaceAssets(Queryable):
             check_cluster=True
         )
         namespace = parse_resource_id(asset["id"])
-        
+
         dataset = _get_sub_property(asset, dataset_name, property_key="datasets")
-        
+
         # Process file and merge with existing datapoints
         from .assets import _process_asset_sub_points_file_path
         dataset["dataPoints"] = _process_asset_sub_points_file_path(
@@ -776,13 +776,13 @@ class NamespaceAssets(Queryable):
         # Remove observabilityMode if present (not supported in ADR)
         for point in dataset["dataPoints"]:
             point.pop("observabilityMode", None)
-        
+
         update_payload = {
             "properties": {
                 "datasets": asset["properties"]["datasets"]
             }
         }
-        
+
         with console.status(f"Updating asset {asset_name}..."):
             poller = self.ops.begin_update(
                 resource_group_name=namespace["resource_group"],
@@ -808,21 +808,21 @@ class NamespaceAssets(Queryable):
     ):
         """Export all datasets from an asset to a file."""
         from ...util import dump_content_to_file
-        
+
         asset = self.show(
             asset_name=asset_name,
             instance_name=instance_name,
             resource_group=instance_resource_group
         )
         datasets = asset["properties"].get("datasets", [])
-        
+
         # Remove dataPoints from each dataset for cleaner export
         datasets_export = []
         for dataset in datasets:
             dataset_copy = dataset.copy()
             dataset_copy.pop("dataPoints", None)
             datasets_export.append(dataset_copy)
-        
+
         file_path = dump_content_to_file(
             content=datasets_export,
             file_name=f"{asset_name}_dataset",
@@ -843,7 +843,7 @@ class NamespaceAssets(Queryable):
     ):
         """Import datasets into an asset from a file."""
         from ...util import deserialize_file_content
-        
+
         asset = self.show(
             asset_name=asset_name,
             instance_name=instance_name,
@@ -851,14 +851,14 @@ class NamespaceAssets(Queryable):
             check_cluster=True
         )
         namespace = parse_resource_id(asset["id"])
-        
+
         # Deserialize file
         file_datasets = list(deserialize_file_content(file_path=input_file))
-        
+
         # Get existing datasets
         existing_datasets = asset["properties"].get("datasets", [])
         existing_datasets_dict = {ds["name"]: ds for ds in existing_datasets}
-        
+
         # Merge: skip duplicates by default
         for file_dataset in file_datasets:
             dataset_name = file_dataset.get("name")
@@ -871,13 +871,13 @@ class NamespaceAssets(Queryable):
                 if "dataPoints" not in file_dataset:
                     file_dataset["dataPoints"] = []
                 existing_datasets_dict[dataset_name] = file_dataset
-        
+
         update_payload = {
             "properties": {
                 "datasets": list(existing_datasets_dict.values())
             }
         }
-        
+
         with console.status(f"Updating asset {asset_name}..."):
             poller = self.ops.begin_update(
                 resource_group_name=namespace["resource_group"],
