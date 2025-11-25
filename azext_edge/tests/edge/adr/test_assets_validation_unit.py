@@ -10,7 +10,7 @@ Tests that validation is properly called during add/import operations.
 """
 
 import pytest
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, patch
 from azure.cli.core.azclierror import ValidationError
 from azext_edge.edge.providers.adr.assets import Assets
 
@@ -22,7 +22,10 @@ def mock_asset():
         "id": "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.DeviceRegistry/assets/test-asset",
         "name": "test-asset",
         "extendedLocation": {
-            "name": "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.ExtendedLocation/customLocations/test-instance",
+            "name": (
+                "/subscriptions/sub-id/resourceGroups/rg/providers/"
+                "Microsoft.ExtendedLocation/customLocations/test-instance"
+            ),
             "type": "CustomLocation",
         },
         "properties": {
@@ -48,7 +51,7 @@ def test_add_data_point_with_validation_success(mock_validator_class, mock_conso
     assets = Assets(mocked_cmd)
 
     # Mock show() and ops to prevent Azure calls
-    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops") as mock_ops:
+    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops"):
         # Mock validator
         mock_validator = Mock()
         mock_validator_class.from_asset.return_value = mock_validator
@@ -84,7 +87,7 @@ def test_add_data_point_validation_fails_but_continues(
     """Test add_dataset_data_point continues even if validation fails."""
     assets = Assets(mocked_cmd)
 
-    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops") as mock_ops:
+    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops"):
         # Mock validator to raise ValidationError
         mock_validator = Mock()
         mock_validator_class.from_asset.return_value = mock_validator
@@ -116,7 +119,7 @@ def test_add_data_point_validator_import_fails(mock_validator_class, mock_consol
     """Test add_dataset_data_point handles validator import failure gracefully."""
     assets = Assets(mocked_cmd)
 
-    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops") as mock_ops:
+    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops"):
         # Mock validator import failure
         mock_validator_class.from_asset.side_effect = ImportError("Cannot import validator")
 
@@ -148,7 +151,7 @@ def test_import_data_points_with_validation_all_pass(
     """Test import_dataset_data_points validates all points successfully."""
     assets = Assets(mocked_cmd)
 
-    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops") as mock_ops:
+    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops"):
         # Mock file processing
         new_points = [
             {"name": "point1", "dataSource": "tag1"},
@@ -195,7 +198,7 @@ def test_import_data_points_with_validation_some_fail(
     """Test import_dataset_data_points logs errors when some validations fail."""
     assets = Assets(mocked_cmd)
 
-    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops") as mock_ops:
+    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops"):
         new_points = [{"name": "valid-point", "dataSource": "tag1"}, {"name": "invalid-point", "dataSource": "tag2"}]
         mock_process_file.return_value = new_points
 
@@ -235,7 +238,7 @@ def test_import_data_points_empty_list(
     """Test import_dataset_data_points handles empty data points list."""
     assets = Assets(mocked_cmd)
 
-    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops") as mock_ops:
+    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops"):
         mock_process_file.return_value = []
 
         mock_validator = Mock()
@@ -268,7 +271,7 @@ def test_import_events_with_validation_all_pass(
     """Test import_events validates all events successfully."""
     assets = Assets(mocked_cmd)
 
-    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops") as mock_ops:
+    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops"):
         new_events = [
             {"name": "event1", "eventNotifier": "notifier1"},
             {"name": "event2", "eventNotifier": "notifier2"},
@@ -308,7 +311,7 @@ def test_import_events_with_validation_failure(
     """Test import_events logs errors but continues when validation fails."""
     assets = Assets(mocked_cmd)
 
-    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops") as mock_ops:
+    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops"):
         new_events = [
             {"name": "valid-event", "eventNotifier": "notifier1"},
             {"name": "invalid-event", "eventNotifier": "notifier2"},
@@ -344,7 +347,7 @@ def test_import_events_validator_creation_fails(
     """Test import_events handles validator creation failure gracefully."""
     assets = Assets(mocked_cmd)
 
-    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops") as mock_ops:
+    with patch.object(assets, "show", return_value=mock_asset), patch.object(assets, "ops"):
         new_events = [{"name": "event1", "eventNotifier": "notifier1"}]
         mock_process_file.return_value = new_events
 

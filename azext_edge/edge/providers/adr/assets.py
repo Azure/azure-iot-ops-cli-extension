@@ -414,7 +414,8 @@ class Assets(Queryable):
                 try:
                     validator.validate_datapoint(point)
                     logger.debug(
-                        f"Data point {idx + 1}/{len(new_data_points)} ('{point.get('name', 'unnamed')}') validation passed."
+                        f"Data point {idx + 1}/{len(new_data_points)} "
+                        f"('{point.get('name', 'unnamed')}') validation passed."
                     )
                 except Exception as e:
                     validation_errors.append(f"Data point '{point.get('name', 'unnamed')}': {e}")

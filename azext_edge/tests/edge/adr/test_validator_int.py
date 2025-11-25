@@ -19,7 +19,10 @@ pytestmark = pytest.mark.integration
 
 # Real metadata examples from actual connector metadata files
 REST_HTTP_METADATA = {
-    "$schema": "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/doc/akri_connector/connector-metadata-schema.json",
+    "$schema": (
+        "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/"
+        "doc/akri_connector/connector-metadata-schema.json"
+    ),
     "name": "Azure IoT Operations connector for REST/HTTP",
     "version": "1.0.5",
     "inboundEndpoints": [
@@ -47,7 +50,10 @@ REST_HTTP_METADATA = {
 }
 
 ONVIF_METADATA = {
-    "$schema": "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/doc/akri_connector/connector-metadata-schema.json",
+    "$schema": (
+        "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/"
+        "doc/akri_connector/connector-metadata-schema.json"
+    ),
     "name": "Azure IoT Operations connector for ONVIF",
     "version": "1.2.37",
     "inboundEndpoints": [

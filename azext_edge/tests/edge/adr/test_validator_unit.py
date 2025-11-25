@@ -10,7 +10,10 @@ from azure.cli.core.azclierror import ValidationError
 
 # Mock Metadata for REST
 REST_METADATA = {
-    "$schema": "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/doc/akri_connector/connector-metadata-schema.json",
+    "$schema": (
+        "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/"
+        "doc/akri_connector/connector-metadata-schema.json"
+    ),
     "name": "Azure IoT Operations connector for REST/HTTP",
     "version": "1.0.4",
     "inboundEndpoints": [
@@ -35,7 +38,10 @@ REST_METADATA = {
 
 # Mock Metadata for ONVIF
 ONVIF_METADATA = {
-    "$schema": "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/doc/akri_connector/connector-metadata-schema.json",
+    "$schema": (
+        "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/"
+        "doc/akri_connector/connector-metadata-schema.json"
+    ),
     "name": "Azure IoT Operations connector for ONVIF",
     "version": "1.2.37",
     "inboundEndpoints": [

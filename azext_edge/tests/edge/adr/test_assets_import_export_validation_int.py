@@ -22,7 +22,10 @@ pytestmark = pytest.mark.integration
 
 # Sample metadata for REST HTTP connector
 REST_HTTP_METADATA = {
-    "$schema": "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/doc/akri_connector/connector-metadata-schema.json",
+    "$schema": (
+        "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/"
+        "doc/akri_connector/connector-metadata-schema.json"
+    ),
     "name": "Azure IoT Operations connector for REST/HTTP",
     "version": "1.0.5",
     "inboundEndpoints": [
@@ -57,7 +60,10 @@ REST_HTTP_METADATA = {
 
 # Sample metadata for ONVIF connector
 ONVIF_METADATA = {
-    "$schema": "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/doc/akri_connector/connector-metadata-schema.json",
+    "$schema": (
+        "https://raw.githubusercontent.com/Azure/iot-operations-sdks/refs/heads/main/"
+        "doc/akri_connector/connector-metadata-schema.json"
+    ),
     "name": "Azure IoT Operations connector for ONVIF",
     "version": "1.2.37",
     "inboundEndpoints": [
@@ -102,11 +108,17 @@ class TestAssetDataPointImportWithValidation:
             "type": "Microsoft.DeviceRegistry/assets",
             "extendedLocation": {
                 "type": "CustomLocation",
-                "name": "/subscriptions/test-sub/resourcegroups/test-rg/providers/microsoft.extendedlocation/customlocations/test-cl",
+                "name": (
+                    "/subscriptions/test-sub/resourcegroups/test-rg/providers/"
+                    "microsoft.extendedlocation/customlocations/test-cl"
+                ),
             },
             "properties": {
                 "assetEndpointProfileRef": "test-endpoint-profile",
-                "adrNamespace": "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.IoTOperations/instances/test-instance/namespaces/aio-adr-ns-test-instance",
+                "adrNamespace": (
+                    "/subscriptions/test-sub/resourceGroups/test-rg/providers/"
+                    "Microsoft.IoTOperations/instances/test-instance/namespaces/aio-adr-ns-test-instance"
+                ),
                 "deviceRef": {"deviceName": "test-device", "endpointName": "test-endpoint"},
                 "datasets": [{"name": "default", "dataPoints": []}],
             },
@@ -130,7 +142,9 @@ class TestAssetDataPointImportWithValidation:
             "name": f"{endpoint_type.lower()}-connector-template",
             "properties": {
                 "deviceInboundEndpointTypes": [{"endpointType": endpoint_type, "version": version}],
-                "connectorMetadataRef": f"mcr.microsoft.com/azureiotoperations/akri-connectors/{endpoint_type.lower()}-metadata:1.0.0",
+                "connectorMetadataRef": (
+                    f"mcr.microsoft.com/azureiotoperations/akri-connectors/{endpoint_type.lower()}-metadata:1.0.0"
+                ),
             },
         }
 
@@ -433,16 +447,25 @@ class TestAssetEventImportWithValidation:
     def _create_mock_asset(self, endpoint_type="Microsoft.Onvif"):
         """Helper to create a mock asset for ONVIF."""
         return {
-            "id": "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.DeviceRegistry/assets/test-camera",
+            "id": (
+                "/subscriptions/test-sub/resourceGroups/test-rg/providers/"
+                "Microsoft.DeviceRegistry/assets/test-camera"
+            ),
             "name": "test-camera",
             "type": "Microsoft.DeviceRegistry/assets",
             "extendedLocation": {
                 "type": "CustomLocation",
-                "name": "/subscriptions/test-sub/resourcegroups/test-rg/providers/microsoft.extendedlocation/customlocations/test-cl",
+                "name": (
+                    "/subscriptions/test-sub/resourcegroups/test-rg/providers/"
+                    "microsoft.extendedlocation/customlocations/test-cl"
+                ),
             },
             "properties": {
                 "assetEndpointProfileRef": "test-onvif-profile",
-                "adrNamespace": "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.IoTOperations/instances/test-instance/namespaces/aio-adr-ns-test-instance",
+                "adrNamespace": (
+                    "/subscriptions/test-sub/resourceGroups/test-rg/providers/"
+                    "Microsoft.IoTOperations/instances/test-instance/namespaces/aio-adr-ns-test-instance"
+                ),
                 "deviceRef": {"deviceName": "test-device", "endpointName": "test-endpoint"},
                 "events": [],
             },
@@ -454,12 +477,16 @@ class TestAssetEventImportWithValidation:
             "name": f"{endpoint_type.lower()}-connector-template",
             "properties": {
                 "deviceInboundEndpointTypes": [{"endpointType": endpoint_type}],
-                "connectorMetadataRef": f"mcr.microsoft.com/azureiotoperations/akri-connectors/{endpoint_type.lower()}-metadata:1.2.37",
+                "connectorMetadataRef": (
+                    f"mcr.microsoft.com/azureiotoperations/akri-connectors/{endpoint_type.lower()}-metadata:1.2.37"
+                ),
             },
         }
 
     @patch("azext_edge.edge.providers.adr.validator.get_iotops_mgmt_client")
-    @patch("azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator.fetch_oci_artifact")
+    @patch(
+        "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator.fetch_oci_artifact"
+    )
     def test_import_events_json_with_valid_data(self, mock_fetch_oci, mock_get_client):
         """Test importing valid events from JSON file with validation."""
         cmd = self._create_mock_cmd()
@@ -789,11 +816,17 @@ class TestExportWithImportRoundTrip:
 
             # Now import the exported file
             import_asset = {
-                "id": "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.DeviceRegistry/assets/test-asset-2",
+                "id": (
+                    "/subscriptions/test-sub/resourceGroups/test-rg/providers/"
+                    "Microsoft.DeviceRegistry/assets/test-asset-2"
+                ),
                 "name": "test-asset-2",
                 "properties": {
                     "assetEndpointProfileRef": "test-profile",
-                    "adrNamespace": "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.IoTOperations/instances/test-instance/namespaces/aio-adr-ns-test-instance",
+                    "adrNamespace": (
+                        "/subscriptions/test-sub/resourceGroups/test-rg/providers/"
+                        "Microsoft.IoTOperations/instances/test-instance/namespaces/aio-adr-ns-test-instance"
+                    ),
                     "deviceRef": {"deviceName": "test-device", "endpointName": "test-endpoint"},
                     "datasets": [{"name": "default", "dataPoints": []}],
                 },
