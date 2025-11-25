@@ -1793,7 +1793,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
             .set_user_kwargs(ops_version="1.2.0")  # Downgrade from MIN_INSTANCE_VERSION_FOR_CM_MIGRATE
             .expecting_validation_error(r"is a downgrade which is not supported"),
-            {},  # No operations should happen
+            {},
         ),
         (
             UpgradeScenario("Early Validation: IoT Ops minor version gap blocks platform migration")
@@ -1802,7 +1802,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.1.59")  # Meets min v1 requirement
             .set_user_kwargs(ops_version="1.5.0")
             .expecting_validation_error(r"incompatible \(more than 2 minor versions ahead\)"),
-            {},  # No operations should happen
+            {},
         ),
         (
             UpgradeScenario("Early Validation: IoT Ops preview train blocks platform migration")
@@ -1811,7 +1811,7 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.2.0", ext_train="preview")
             .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE)
             .expecting_validation_error(r"Upgrades to or from non-stable release trains are not supported"),
-            {},  # No operations should happen
+            {},
         ),
         (
             UpgradeScenario("Early Validation: IoT Ops min v2 requirement blocks platform migration")
@@ -1820,14 +1820,14 @@ def assert_operation_order(target_scenario: UpgradeScenario, upgrade_result: Lis
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
             .set_user_kwargs(ops_version="1.2.36")  # Current is below min v1 version (1.1.59) required for v2 upgrade
             .expecting_validation_error(r"min compatible upgrade version.*1\.1\.59"),
-            {},  # No operations should happen
+            {},
         ),
         (
             UpgradeScenario("Early Validation: Force bypasses validation and allows migration")
             .set_extension(ext_type=EXTENSION_TYPE_PLATFORM, ext_vers="1.0.0")
             .set_extension(ext_type=EXTENSION_TYPE_CM, remove=True)
             .set_extension(ext_type=EXTENSION_TYPE_OPS, ext_vers="1.0.0")
-            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, force=True),  # Force bypasses validation
+            .set_user_kwargs(ops_version=MIN_INSTANCE_VERSION_FOR_CM_MIGRATE, force=True),
             {
                 # Platform deleted, CM created, IoT Ops upgraded - all operations proceed with force
                 EXTENSION_TYPE_CM: build_extension_props(EXTENSION_TYPE_CM, version=BUILT_IN_VALUE),
