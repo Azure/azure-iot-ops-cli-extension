@@ -700,7 +700,7 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
 
     # Add multiple datapoints with different properties
     custom_config_path, custom_config = create_config_file(tracked_files)
-    
+
     datapoint_configs = [
         {"name": f"dp1-{generate_random_string(4)}", "source": "sensor/temp", "config": custom_config_path},
         {"name": f"dp2-{generate_random_string(4)}", "source": "sensor/humidity", "config": custom_config_path},
@@ -722,15 +722,15 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
         f"--format json"
     )
-    
+
     exported_file = export_result["file_path"]
     tracked_files.append(exported_file)
     logger.warning(f"Exported to {exported_file}")
-    
+
     # Verify file exists and contains expected datapoints
     with open(exported_file, 'r') as f:
         exported_data = json.load(f)
-    
+
     assert len(exported_data) == 3
     exported_names = [dp["name"] for dp in exported_data]
     assert all(dp["name"] in exported_names for dp in datapoint_configs)
@@ -764,12 +764,12 @@ def test_namespace_asset_datapoint_export_import_json_roundtrip(
     assert len(imported_datapoints) == 3
     imported_names = [dp["name"] for dp in imported_datapoints]
     assert all(dp["name"] in imported_names for dp in datapoint_configs)
-    
+
     # Verify properties preserved
     for original_dp in datapoint_configs:
         restored_dp = next(dp for dp in imported_datapoints if dp["name"] == original_dp["name"])
         assert restored_dp["dataSource"] == original_dp["source"]
-    
+
     logger.warning("Test completed successfully.")
 
 
@@ -838,7 +838,7 @@ def test_namespace_asset_datapoint_export_import_csv_format(
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name} "
         f"--format csv"
     )
-    
+
     csv_file = export_result["file_path"]
     tracked_files.append(csv_file)
     logger.warning(f"Exported to {csv_file}")
@@ -926,7 +926,7 @@ def test_namespace_asset_dataset_export_import_roundtrip(
         f"az iot ops ns asset rest dataset export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --format json"
     )
-    
+
     exported_file = export_result["file_path"]
     tracked_files.append(exported_file)
     logger.warning(f"Exported to {exported_file}")
@@ -934,7 +934,7 @@ def test_namespace_asset_dataset_export_import_roundtrip(
     # Verify exported content
     with open(exported_file, 'r') as f:
         exported_datasets = json.load(f)
-    
+
     assert len(exported_datasets) == 3
     # Verify dataPoints arrays removed in export
     for ds in exported_datasets:
@@ -1019,7 +1019,7 @@ def test_namespace_asset_datapoint_import_skip_duplicates(
     # Add initial datapoints
     logger.warning("Adding initial datapoints...")
     custom_config_path, _ = create_config_file(tracked_files)
-    
+
     initial_datapoints = [
         {"name": "dp1", "source": "sensor/temp"},
         {"name": "dp2", "source": "sensor/humidity"},
@@ -1038,7 +1038,7 @@ def test_namespace_asset_datapoint_import_skip_duplicates(
         f"az iot ops ns asset custom datapoint export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --dataset {dataset_name}"
     )
-    
+
     exported_file = export_result["file_path"]
     tracked_files.append(exported_file)
     logger.warning(f"Exported to {exported_file}")
@@ -1108,7 +1108,7 @@ def test_namespace_asset_dataset_export_yaml_format(
     # Create dataset
     logger.warning("Creating dataset...")
     custom_config_path, _ = create_config_file(tracked_files)
-    
+
     dataset_name = f"dataset-yaml-{generate_random_string(6)}"
     run(
         f"az iot ops ns asset custom dataset add --asset {asset_name} "
@@ -1122,7 +1122,7 @@ def test_namespace_asset_dataset_export_yaml_format(
         f"az iot ops ns asset custom dataset export --asset {asset_name} "
         f"--instance {instance_name} -g {resource_group} --format yaml"
     )
-    
+
     yaml_file = export_result["file_path"]
     tracked_files.append(yaml_file)
     logger.warning(f"Exported to {yaml_file}")
