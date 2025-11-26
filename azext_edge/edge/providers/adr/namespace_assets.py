@@ -766,16 +766,53 @@ class NamespaceAssets(Queryable):
 
         # Process file and merge with existing datapoints
         from .assets import _process_asset_sub_points_file_path
-        dataset["dataPoints"] = _process_asset_sub_points_file_path(
+        new_data_points = _process_asset_sub_points_file_path(
             file_path=input_file,
             original_items=dataset.get("dataPoints", []),
             point_key="name",
             replace=False  # Default: skip duplicates
         )
 
+        # Validate all data points against connector metadata
+        logger.info(f"Validating {len(new_data_points)} data points against connector metadata...")
+        try:
+            from .validator import ConnectorMetadataValidator
+            from azure.cli.core.azclierror import ValidationError
+
+            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset)
+            validation_errors = []
+            for idx, point in enumerate(new_data_points):
+                try:
+                    validator.validate_datapoint(point)
+                    logger.debug(
+                        f"Data point {idx + 1}/{len(new_data_points)} "
+                        f"('{point.get('name', 'unnamed')}') validation passed."
+                    )
+                except Exception as e:
+                    validation_errors.append(f"Data point '{point.get('name', 'unnamed')}': {e}")
+                    logger.error(
+                        f"Data point '{point.get('name', 'unnamed')}' validation failed: {e}"
+                    )
+
+            if validation_errors:
+                error_msg = (
+                    f"{len(validation_errors)} data point(s) failed validation and cannot be imported. "
+                    f"These errors will cause the backend to reject the request.\n\nValidation errors:\n"
+                    + "\n".join(f"  - {err}" for err in validation_errors)
+                )
+                raise ValidationError(error_msg)
+            else:
+                logger.info(f"All {len(new_data_points)} data points validated successfully.")
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.warning(f"Data point validation skipped due to error: {e}")
+
         # Remove observabilityMode if present (not supported in ADR)
-        for point in dataset["dataPoints"]:
+        for point in new_data_points:
             point.pop("observabilityMode", None)
+
+        dataset["dataPoints"] = new_data_points
 
         update_payload = {
             "properties": {
@@ -859,7 +896,8 @@ class NamespaceAssets(Queryable):
         existing_datasets = asset["properties"].get("datasets", [])
         existing_datasets_dict = {ds["name"]: ds for ds in existing_datasets}
 
-        # Merge: skip duplicates by default
+        # Collect new datasets for validation
+        new_datasets = []
         for file_dataset in file_datasets:
             dataset_name = file_dataset.get("name")
             if dataset_name in existing_datasets_dict:
@@ -870,7 +908,63 @@ class NamespaceAssets(Queryable):
                 # Initialize dataPoints as empty array if not present
                 if "dataPoints" not in file_dataset:
                     file_dataset["dataPoints"] = []
+                new_datasets.append(file_dataset)
                 existing_datasets_dict[dataset_name] = file_dataset
+
+        # Validate all new datasets and their datapoints against connector metadata
+        if new_datasets:
+            logger.info(f"Validating {len(new_datasets)} new dataset(s) against connector metadata...")
+            try:
+                from .validator import ConnectorMetadataValidator
+                from azure.cli.core.azclierror import ValidationError
+
+                validator = ConnectorMetadataValidator.from_asset(self.cmd, asset)
+                validation_errors = []
+                
+                for dataset in new_datasets:
+                    dataset_name = dataset.get("name", "unnamed")
+                    
+                    # Validate dataset itself if it has datasetConfiguration
+                    try:
+                        validator.validate_dataset(dataset)
+                        logger.debug(f"Dataset '{dataset_name}' configuration validation passed.")
+                    except Exception as e:
+                        validation_errors.append(f"Dataset '{dataset_name}' configuration: {e}")
+                        logger.error(f"Dataset '{dataset_name}' configuration validation failed: {e}")
+                    
+                    # Validate all datapoints in the dataset
+                    datapoints = dataset.get("dataPoints", [])
+                    if datapoints:
+                        logger.debug(f"Validating {len(datapoints)} datapoint(s) in dataset '{dataset_name}'...")
+                        for idx, point in enumerate(datapoints):
+                            try:
+                                validator.validate_datapoint(point)
+                                logger.debug(
+                                    f"  Datapoint {idx + 1}/{len(datapoints)} "
+                                    f"('{point.get('name', 'unnamed')}') validation passed."
+                                )
+                            except Exception as e:
+                                validation_errors.append(
+                                    f"Dataset '{dataset_name}', datapoint '{point.get('name', 'unnamed')}': {e}"
+                                )
+                                logger.error(
+                                    f"Dataset '{dataset_name}', datapoint '{point.get('name', 'unnamed')}' "
+                                    f"validation failed: {e}"
+                                )
+
+                if validation_errors:
+                    error_msg = (
+                        f"{len(validation_errors)} validation error(s) found and cannot be imported. "
+                        f"These errors will cause the backend to reject the request.\n\nValidation errors:\n"
+                        + "\n".join(f"  - {err}" for err in validation_errors)
+                    )
+                    raise ValidationError(error_msg)
+                else:
+                    logger.info(f"All {len(new_datasets)} dataset(s) validated successfully.")
+            except ValidationError:
+                raise
+            except Exception as e:
+                logger.warning(f"Dataset validation skipped due to error: {e}")
 
         update_payload = {
             "properties": {

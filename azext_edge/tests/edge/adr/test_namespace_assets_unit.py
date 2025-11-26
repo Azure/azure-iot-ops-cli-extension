@@ -1161,6 +1161,14 @@ def test_import_namespace_asset_dataset_datapoints(
     instance_resource_group = generate_random_string()
     input_file = "/tmp/datapoints.json"
 
+    # Mock validator to skip validation
+    mock_validator = mocker.Mock()
+    mock_validator.validate_datapoint.return_value = None
+    mocker.patch(
+        "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator.from_asset",
+        return_value=mock_validator
+    )
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
@@ -1417,6 +1425,15 @@ def test_import_namespace_asset_datasets(
     instance_resource_group = generate_random_string()
     input_file = "/tmp/datasets.json"
 
+    # Mock validator to skip validation
+    mock_validator = mocker.Mock()
+    mock_validator.validate_dataset.return_value = None
+    mock_validator.validate_datapoint.return_value = None
+    mocker.patch(
+        "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator.from_asset",
+        return_value=mock_validator
+    )
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
@@ -1651,6 +1668,14 @@ def test_import_dataset_datapoints_all_duplicates(
     instance_resource_group = generate_random_string()
     input_file = "/tmp/duplicates.json"
 
+    # Mock validator to skip validation
+    mock_validator = mocker.Mock()
+    mock_validator.validate_datapoint.return_value = None
+    mocker.patch(
+        "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator.from_asset",
+        return_value=mock_validator
+    )
+
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
     namespace_resource_group = namespace_resource["resource_group"]
@@ -1802,6 +1827,15 @@ def test_import_datasets_duplicate_skip(
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
     input_file = "/tmp/datasets_with_dup.json"
+
+    # Mock validator to skip validation
+    mock_validator = mocker.Mock()
+    mock_validator.validate_dataset.return_value = None
+    mock_validator.validate_datapoint.return_value = None
+    mocker.patch(
+        "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator.from_asset",
+        return_value=mock_validator
+    )
 
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]
@@ -1999,6 +2033,14 @@ def test_import_dataset_datapoints_into_empty_dataset(
     instance_name = generate_random_string()
     instance_resource_group = generate_random_string()
     input_file = "/tmp/first_datapoints.json"
+
+    # Mock validator to skip validation
+    mock_validator = mocker.Mock()
+    mock_validator.validate_datapoint.return_value = None
+    mocker.patch(
+        "azext_edge.edge.providers.adr.validator.ConnectorMetadataValidator.from_asset",
+        return_value=mock_validator
+    )
 
     namespace_resource = mocked_get_namespace_for_instance.return_value
     namespace_name = namespace_resource["name"]

@@ -394,50 +394,29 @@ class Assets(Queryable):
         file_path: str,
         resource_group_name: str,
         replace: bool = False,
-        **kwargs,
+        **kwargs
     ):
-        asset = self.show(asset_name=asset_name, resource_group_name=resource_group_name, check_cluster=True)
+        asset = self.show(
+            asset_name=asset_name,
+            resource_group_name=resource_group_name,
+            check_cluster=True
+        )
         # should get the direct object so this should be enough
         dataset = get_default_dataset(asset, dataset_name, create_if_none=True)
-        new_data_points = _process_asset_sub_points_file_path(
-            file_path=file_path, original_items=dataset.get("dataPoints", []), point_key="name", replace=replace
+        dataset["dataPoints"] = _process_asset_sub_points_file_path(
+            file_path=file_path,
+            original_items=dataset.get("dataPoints", []),
+            point_key="name",
+            replace=replace
         )
-
-        # Validate all data points against connector metadata
-        logger.info(f"Validating {len(new_data_points)} data points against connector metadata...")
-        try:
-            from .validator import ConnectorMetadataValidator
-
-            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset)
-            validation_errors = []
-            for idx, point in enumerate(new_data_points):
-                try:
-                    validator.validate_datapoint(point)
-                    logger.debug(
-                        f"Data point {idx + 1}/{len(new_data_points)} "
-                        f"('{point.get('name', 'unnamed')}') validation passed."
-                    )
-                except Exception as e:
-                    validation_errors.append(f"Data point '{point.get('name', 'unnamed')}': {e}")
-                    logger.warning(
-                        f"Data point '{point.get('name', 'unnamed')}' validation failed: {e}"
-                    )
-
-            if validation_errors:
-                logger.warning(
-                    f"{len(validation_errors)} data point(s) failed validation. Errors:\n"
-                    + "\n".join(validation_errors)
-                )
-            else:
-                logger.info(f"All {len(new_data_points)} data points validated successfully.")
-        except Exception as e:
-            logger.warning(f"Data point validation failed or skipped: {e}")
-
-        dataset["dataPoints"] = new_data_points
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.ops.begin_create_or_replace(resource_group_name, asset_name, asset)
+            poller = self.ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
             asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
