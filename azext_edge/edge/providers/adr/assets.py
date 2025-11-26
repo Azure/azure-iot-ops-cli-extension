@@ -42,7 +42,9 @@ VALID_EVENT_OBSERVABILITY_MODES = frozenset(["None", "Log"])
 class Assets(Queryable):
     def __init__(self, cmd):
         super().__init__(cmd=cmd)
-        self.deviceregistry_mgmt_client = get_registry_mgmt_client(subscription_id=self.default_subscription_id)
+        self.deviceregistry_mgmt_client = get_registry_mgmt_client(
+            subscription_id=self.default_subscription_id
+        )
         self.ops: "AssetsOperations" = self.deviceregistry_mgmt_client.assets
 
     def create(
@@ -78,15 +80,14 @@ class Assets(Queryable):
         ev_sampling_interval: int = 500,
         ev_queue_size: int = 1,
         tags: Optional[Dict[str, str]] = None,
-        **kwargs,
+        **kwargs
     ):
         from .helpers import get_extended_location
-
         extended_location = get_extended_location(
             cmd=self.cmd,
             instance_name=instance_name,
             instance_resource_group=instance_resource_group or resource_group_name,
-            instance_subscription=instance_subscription,
+            instance_subscription=instance_subscription
         )
         cluster_location = extended_location.pop("cluster_location")
         extended_location.pop("namespace", None)
@@ -97,7 +98,9 @@ class Assets(Queryable):
             "events": _process_asset_sub_points("event_notifier", events),
         }
         if events_file_path:
-            properties["events"].extend(_process_asset_sub_points_file_path(file_path=events_file_path))
+            properties["events"].extend(
+                _process_asset_sub_points_file_path(file_path=events_file_path)
+            )
 
         # Other properties
         _update_properties(
@@ -132,11 +135,19 @@ class Assets(Queryable):
             "tags": tags,
         }
         with console.status(f"Creating {asset_name}..."):
-            poller = self.ops.begin_create_or_replace(resource_group_name, asset_name, resource=asset_body)
+            poller = self.ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                resource=asset_body
+            )
             return wait_for_terminal_state(poller, **kwargs)
 
     def delete(self, asset_name: str, resource_group_name: str, **kwargs):
-        self.show(asset_name=asset_name, resource_group_name=resource_group_name, check_cluster=True)
+        self.show(
+            asset_name=asset_name,
+            resource_group_name=resource_group_name,
+            check_cluster=True
+        )
         with console.status(f"Deleting {asset_name}..."):
             poller = self.ops.begin_delete(
                 resource_group_name,
@@ -144,11 +155,14 @@ class Assets(Queryable):
             )
             return wait_for_terminal_state(poller, **kwargs)
 
-    def show(self, asset_name: str, resource_group_name: str, check_cluster: bool = False) -> dict:
-        asset = self.ops.get(resource_group_name=resource_group_name, asset_name=asset_name)
+    def show(
+        self, asset_name: str, resource_group_name: str, check_cluster: bool = False
+    ) -> dict:
+        asset = self.ops.get(
+            resource_group_name=resource_group_name, asset_name=asset_name
+        )
         if check_cluster:
             from .helpers import check_cluster_connectivity
-
             check_cluster_connectivity(self.cmd, asset)
         return asset
 
@@ -200,23 +214,21 @@ class Assets(Queryable):
             product_code=product_code,
             resource_group_name=resource_group_name,
             serial_number=serial_number,
-            software_revision=software_revision,
+            software_revision=software_revision
         )
-        query = f'Resources | where type =~"{ASSET_RESOURCE_TYPE}" ' + query_body
+        query = f"Resources | where type =~\"{ASSET_RESOURCE_TYPE}\" " + query_body
 
         if any([instance_name, instance_resource_group]):
             instance_query = "Resources | where type =~ 'microsoft.iotoperations/instances' "
             if instance_name:
-                instance_query += f'| where name =~ "{instance_name}"'
+                instance_query += f"| where name =~ \"{instance_name}\""
             if instance_resource_group:
-                instance_query += f'| where resourceGroup =~ "{instance_resource_group}"'
+                instance_query += f"| where resourceGroup =~ \"{instance_resource_group}\""
 
             # fetch the custom location + join on innerunique. Then remove the extra customLocation1 generated
-            query = (
-                f"{instance_query} | extend customLocation = tostring(extendedLocation.name) "
-                f"| project customLocation | join kind=innerunique ({query}) on customLocation "
+            query = f"{instance_query} | extend customLocation = tostring(extendedLocation.name) "\
+                f"| project customLocation | join kind=innerunique ({query}) on customLocation "\
                 "| project-away customLocation1"
-            )
         return self.query(query=query)
 
     def update(
@@ -244,10 +256,14 @@ class Assets(Queryable):
         ev_sampling_interval: Optional[int] = None,
         ev_queue_size: Optional[int] = None,
         tags: Optional[Dict[str, str]] = None,
-        **kwargs,
+        **kwargs
     ):
         # get the asset
-        original_asset = self.show(asset_name=asset_name, resource_group_name=resource_group_name, check_cluster=True)
+        original_asset = self.show(
+            asset_name=asset_name,
+            resource_group_name=resource_group_name,
+            check_cluster=True
+        )
         if tags:
             original_asset["tags"] = tags
 
@@ -277,7 +293,11 @@ class Assets(Queryable):
         )
 
         with console.status(f"Updating {asset_name}..."):
-            poller = self.ops.begin_create_or_replace(resource_group_name, asset_name, original_asset)
+            poller = self.ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                original_asset
+            )
             return wait_for_terminal_state(poller, **kwargs)
 
     # Dataset
@@ -299,7 +319,10 @@ class Assets(Queryable):
         dataset_name: str,
         resource_group_name: str,
     ):
-        asset = self.show(asset_name=asset_name, resource_group_name=resource_group_name)
+        asset = self.show(
+            asset_name=asset_name,
+            resource_group_name=resource_group_name
+        )
         return get_default_dataset(asset, dataset_name)
 
     # Data points
@@ -314,14 +337,20 @@ class Assets(Queryable):
         queue_size: Optional[int] = None,
         sampling_interval: Optional[int] = None,
         replace: bool = False,
-        **kwargs,
+        **kwargs
     ):
-        asset = self.show(asset_name=asset_name, resource_group_name=resource_group_name, check_cluster=True)
+        asset = self.show(
+            asset_name=asset_name,
+            resource_group_name=resource_group_name,
+            check_cluster=True
+        )
         dataset = get_default_dataset(asset, dataset_name, create_if_none=True)
         dataset["dataPoints"] = dataset.get("dataPoints", [])
         point_names = [point["name"] for point in dataset["dataPoints"]]
         if not replace and data_point_name in point_names:
-            raise InvalidArgumentValueError(DUPLICATE_POINT_ERROR.format(data_point_name))
+            raise InvalidArgumentValueError(
+                DUPLICATE_POINT_ERROR.format(data_point_name)
+            )
         sub_point = _build_asset_sub_point(
             data_source=data_source,
             name=data_point_name,
@@ -329,23 +358,15 @@ class Assets(Queryable):
             queue_size=queue_size,
             sampling_interval=sampling_interval,
         )
-
-        # Validate datapoint configuration against connector metadata
-        logger.info(f"Validating data point '{data_point_name}' against connector metadata...")
-        try:
-            from .validator import ConnectorMetadataValidator
-
-            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset)
-            validator.validate_datapoint(sub_point)
-            logger.info(f"Data point '{data_point_name}' validation passed.")
-        except Exception as e:
-            logger.warning(f"Data point validation failed or skipped: {e}")
-
         dataset["dataPoints"].append(sub_point)
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.ops.begin_create_or_replace(resource_group_name, asset_name, asset)
+            poller = self.ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
             asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
@@ -359,11 +380,13 @@ class Assets(Queryable):
         resource_group_name: str,
         extension: str = FileType.json.value,
         output_dir: str = ".",
-        replace: Optional[bool] = False,
+        replace: Optional[bool] = False
     ):
         from ...util import dump_content_to_file
-
-        asset = self.show(asset_name=asset_name, resource_group_name=resource_group_name)
+        asset = self.show(
+            asset_name=asset_name,
+            resource_group_name=resource_group_name
+        )
         dataset = get_default_dataset(asset, dataset_name)
         fieldnames = None
         if extension in [FileType.csv.value]:
@@ -374,7 +397,7 @@ class Assets(Queryable):
                 sub_points=dataset.get("dataPoints", []),
                 sub_point_type="dataPoints",
                 default_configuration=default_configuration,
-                portal_friendly=extension == FileType.csv.value,
+                portal_friendly=extension == FileType.csv.value
             )
             extension = extension.replace("-", ".")
         file_path = dump_content_to_file(
@@ -383,7 +406,7 @@ class Assets(Queryable):
             extension=extension,
             fieldnames=fieldnames,
             output_dir=output_dir,
-            replace=replace,
+            replace=replace
         )
         return {"file_path": file_path}
 
@@ -443,14 +466,22 @@ class Assets(Queryable):
         resource_group_name: str,
         **kwargs,
     ):
-        asset = self.show(asset_name=asset_name, resource_group_name=resource_group_name, check_cluster=True)
+        asset = self.show(
+            asset_name=asset_name,
+            resource_group_name=resource_group_name,
+            check_cluster=True
+        )
         dataset = get_default_dataset(asset, dataset_name)
 
         dataset["dataPoints"] = [dp for dp in dataset.get("dataPoints", []) if dp["name"] != data_point_name]
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.ops.begin_create_or_replace(resource_group_name, asset_name, asset)
+            poller = self.ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
             asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
@@ -470,28 +501,41 @@ class Assets(Queryable):
         topic_path: Optional[str] = None,
         topic_retain: Optional[str] = None,
         replace: bool = False,
-        **kwargs,
+        **kwargs
     ):
-        asset = self.show(asset_name=asset_name, resource_group_name=resource_group_name, check_cluster=True)
+        asset = self.show(
+            asset_name=asset_name,
+            resource_group_name=resource_group_name,
+            check_cluster=True
+        )
 
         asset["properties"]["events"] = asset["properties"].get("events", [])
         event_names = [event["name"] for event in asset["properties"]["events"]]
         if not replace and event_name in event_names:
-            raise InvalidArgumentValueError(DUPLICATE_EVENT_ERROR.format(event_name))
+            raise InvalidArgumentValueError(
+                DUPLICATE_EVENT_ERROR.format(event_name)
+            )
         sub_point = _build_asset_sub_point(
             event_notifier=event_notifier,
             name=event_name,
             observability_mode=observability_mode,
             queue_size=queue_size,
-            sampling_interval=sampling_interval,
+            sampling_interval=sampling_interval
         )
         if topic_path:
-            sub_point["topic"] = {"path": topic_path, "retain": topic_retain or "Never"}
+            sub_point["topic"] = {
+                "path": topic_path,
+                "retain": topic_retain or "Never"
+            }
         asset["properties"]["events"].append(sub_point)
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.ops.begin_create_or_replace(resource_group_name, asset_name, asset)
+            poller = self.ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
             asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
@@ -503,10 +547,9 @@ class Assets(Queryable):
         resource_group_name: str,
         extension: str = FileType.json.value,
         output_dir: str = ".",
-        replace: Optional[bool] = False,
+        replace: Optional[bool] = False
     ):
         from ...util import dump_content_to_file
-
         asset_props = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
@@ -518,7 +561,7 @@ class Assets(Queryable):
                 sub_points=asset_props.get("events", []),
                 sub_point_type="events",
                 default_configuration=default_configuration,
-                portal_friendly=extension == FileType.csv.value,
+                portal_friendly=extension == FileType.csv.value
             )
             extension = extension.replace("-", ".")
         file_path = dump_content_to_file(
@@ -527,53 +570,47 @@ class Assets(Queryable):
             extension=extension,
             fieldnames=fieldnames,
             output_dir=output_dir,
-            replace=replace,
+            replace=replace
         )
         return {"file_path": file_path}
 
-    def import_events(self, asset_name: str, file_path: str, resource_group_name: str, replace: bool = False, **kwargs):
-        asset = self.show(asset_name=asset_name, resource_group_name=resource_group_name, check_cluster=True)
-        new_events = _process_asset_sub_points_file_path(
-            file_path=file_path, original_items=asset["properties"].get("events", []), point_key="name", replace=replace
+    def import_events(
+        self,
+        asset_name: str,
+        file_path: str,
+        resource_group_name: str,
+        replace: bool = False,
+        **kwargs
+    ):
+        asset = self.show(
+            asset_name=asset_name,
+            resource_group_name=resource_group_name,
+            check_cluster=True
         )
-
-        # Validate all events against connector metadata
-        logger.info(f"Validating {len(new_events)} events against connector metadata...")
-        try:
-            from .validator import ConnectorMetadataValidator
-
-            validator = ConnectorMetadataValidator.from_asset(self.cmd, asset)
-            validation_errors = []
-            for idx, event in enumerate(new_events):
-                try:
-                    validator.validate_event(event)
-                    logger.debug(
-                        f"Event {idx + 1}/{len(new_events)} ('{event.get('name', 'unnamed')}') validation passed."
-                    )
-                except Exception as e:
-                    validation_errors.append(f"Event '{event.get('name', 'unnamed')}': {e}")
-                    logger.warning(f"Event '{event.get('name', 'unnamed')}' validation failed: {e}")
-
-            if validation_errors:
-                logger.warning(
-                    f"{len(validation_errors)} event(s) failed validation. Errors:\n" + "\n".join(validation_errors)
-                )
-            else:
-                logger.info(f"All {len(new_events)} events validated successfully.")
-        except Exception as e:
-            logger.warning(f"Event validation failed or skipped: {e}")
-
-        asset["properties"]["events"] = new_events
+        asset["properties"]["events"] = _process_asset_sub_points_file_path(
+            file_path=file_path,
+            original_items=asset["properties"].get("events", []),
+            point_key="name",
+            replace=replace
+        )
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.ops.begin_create_or_replace(resource_group_name, asset_name, asset)
+            poller = self.ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
             asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
         return asset["properties"]["events"]
 
-    def list_events(self, asset_name: str, resource_group_name: str):
+    def list_events(
+        self,
+        asset_name: str,
+        resource_group_name: str
+    ):
         asset = self.show(
             asset_name=asset_name,
             resource_group_name=resource_group_name,
@@ -581,13 +618,29 @@ class Assets(Queryable):
 
         return asset["properties"].get("events", [])
 
-    def remove_event(self, asset_name: str, event_name: str, resource_group_name: str, **kwargs):
-        asset = self.show(asset_name=asset_name, resource_group_name=resource_group_name, check_cluster=True)
-        asset["properties"]["events"] = [ev for ev in asset["properties"].get("events", []) if ev["name"] != event_name]
+    def remove_event(
+        self,
+        asset_name: str,
+        event_name: str,
+        resource_group_name: str,
+        **kwargs
+    ):
+        asset = self.show(
+            asset_name=asset_name,
+            resource_group_name=resource_group_name,
+            check_cluster=True
+        )
+        asset["properties"]["events"] = [
+            ev for ev in asset["properties"].get("events", []) if ev["name"] != event_name
+        ]
 
         # note that update does not return the properties
         with console.status(f"Updating {asset_name}..."):
-            poller = self.ops.begin_create_or_replace(resource_group_name, asset_name, asset)
+            poller = self.ops.begin_create_or_replace(
+                resource_group_name,
+                asset_name,
+                asset
+            )
             asset = wait_for_terminal_state(poller, **kwargs)
         if not isinstance(asset, dict):
             asset = asset.as_dict()
@@ -598,7 +651,7 @@ class Assets(Queryable):
 def _build_topic(
     original_topic: Optional[Dict[str, str]] = None,
     topic_path: Optional[str] = None,
-    topic_retain: Optional[str] = None,
+    topic_retain: Optional[str] = None
 ) -> Dict[str, str]:
     if not original_topic:
         original_topic = {}
@@ -616,10 +669,12 @@ def _build_topic(
 
 
 def _process_asset_sub_points_file_path(
-    file_path: str, original_items: Optional[List[dict]] = None, point_key: Optional[str] = None, replace: bool = False
+    file_path: str,
+    original_items: Optional[List[dict]] = None,
+    point_key: Optional[str] = None,
+    replace: bool = False
 ) -> List[Dict[str, str]]:
     from ...util import deserialize_file_content
-
     file_points = list(deserialize_file_content(file_path=file_path))
     _convert_sub_points_from_csv(file_points)
 
@@ -660,48 +715,46 @@ def _build_query_body(
 ) -> str:
     query_body = ""
     if resource_group_name:
-        query_body += f'| where resourceGroup =~ "{resource_group_name}"'
+        query_body += f"| where resourceGroup =~ \"{resource_group_name}\""
     if location:
-        query_body += f'| where location =~ "{location}"'
+        query_body += f"| where location =~ \"{location}\""
     if asset_name:
-        query_body += f'| where name =~ "{asset_name}"'
+        query_body += f"| where name =~ \"{asset_name}\""
     if default_topic_path:
-        query_body += f'| where properties.defaultTopic.path =~ "{default_topic_path}"'
+        query_body += f"| where properties.defaultTopic.path =~ \"{default_topic_path}\""
     if default_topic_retain:
-        query_body += f'| where properties.defaultTopic.retain =~ "{default_topic_retain}"'
+        query_body += f"| where properties.defaultTopic.retain =~ \"{default_topic_retain}\""
     if description:
-        query_body += f'| where properties.description =~ "{description}"'
+        query_body += f"| where properties.description =~ \"{description}\""
     if display_name:
-        query_body += f'| where properties.displayName =~ "{display_name}"'
+        query_body += f"| where properties.displayName =~ \"{display_name}\""
     if disabled is not None:
         query_body += f"| where properties.enabled == {not disabled}"
     if documentation_uri:
-        query_body += f'| where properties.documentationUri =~ "{documentation_uri}"'
+        query_body += f"| where properties.documentationUri =~ \"{documentation_uri}\""
     if endpoint_profile:
-        query_body += f'| where properties.assetEndpointProfileUri =~ "{endpoint_profile}"'
+        query_body += f"| where properties.assetEndpointProfileUri =~ \"{endpoint_profile}\""
     if external_asset_id:
-        query_body += f'| where properties.externalAssetId =~ "{external_asset_id}"'
+        query_body += f"| where properties.externalAssetId =~ \"{external_asset_id}\""
     if hardware_revision:
-        query_body += f'| where properties.hardwareRevision =~ "{hardware_revision}"'
+        query_body += f"| where properties.hardwareRevision =~ \"{hardware_revision}\""
     if manufacturer:
-        query_body += f'| where properties.manufacturer =~ "{manufacturer}"'
+        query_body += f"| where properties.manufacturer =~ \"{manufacturer}\""
     if manufacturer_uri:
-        query_body += f'| where properties.manufacturerUri =~ "{manufacturer_uri}"'
+        query_body += f"| where properties.manufacturerUri =~ \"{manufacturer_uri}\""
     if model:
-        query_body += f'| where properties.model =~ "{model}"'
+        query_body += f"| where properties.model =~ \"{model}\""
     if product_code:
-        query_body += f'| where properties.productCode =~ "{product_code}"'
+        query_body += f"| where properties.productCode =~ \"{product_code}\""
     if serial_number:
-        query_body += f'| where properties.serialNumber =~ "{serial_number}"'
+        query_body += f"| where properties.serialNumber =~ \"{serial_number}\""
     if software_revision:
-        query_body += f'| where properties.softwareRevision =~ "{software_revision}"'
+        query_body += f"| where properties.softwareRevision =~ \"{software_revision}\""
 
-    query_body += (
-        "| extend customLocation = tostring(extendedLocation.name) "
-        "| extend provisioningState = properties.provisioningState "
-        "| project id, customLocation, location, name, resourceGroup, provisioningState, tags, "
+    query_body += "| extend customLocation = tostring(extendedLocation.name) "\
+        "| extend provisioningState = properties.provisioningState "\
+        "| project id, customLocation, location, name, resourceGroup, provisioningState, tags, "\
         "type, subscriptionId "
-    )
     return query_body
 
 
@@ -715,7 +768,9 @@ def _build_asset_sub_point(
     sampling_interval: Optional[int] = None,
 ) -> Dict[str, str]:
     custom_configuration = _build_default_configuration(
-        original_configuration="{}", sampling_interval=sampling_interval, queue_size=queue_size
+        original_configuration="{}",
+        sampling_interval=sampling_interval,
+        queue_size=queue_size
     )
     result = {"name": name}
     observability_mode = observability_mode.capitalize() if observability_mode else "None"
@@ -725,14 +780,14 @@ def _build_asset_sub_point(
         result["dataPointConfiguration"] = custom_configuration
         if observability_mode not in VALID_DATA_OBSERVABILITY_MODES:
             raise InvalidArgumentValueError(
-                INVALID_OBSERVABILITY_MODE_ERROR.format(data_source, ", ".join(VALID_DATA_OBSERVABILITY_MODES))
+                INVALID_OBSERVABILITY_MODE_ERROR.format(data_source, ', '.join(VALID_DATA_OBSERVABILITY_MODES))
             )
     elif event_notifier:
         result["eventNotifier"] = event_notifier
         result["eventConfiguration"] = custom_configuration
         if observability_mode not in VALID_EVENT_OBSERVABILITY_MODES:
             raise InvalidArgumentValueError(
-                INVALID_OBSERVABILITY_MODE_ERROR.format(event_notifier, ", ".join(VALID_EVENT_OBSERVABILITY_MODES))
+                INVALID_OBSERVABILITY_MODE_ERROR.format(event_notifier, ', '.join(VALID_EVENT_OBSERVABILITY_MODES))
             )
 
     result["observabilityMode"] = observability_mode
@@ -758,7 +813,6 @@ def _build_default_configuration(
 def _build_ordered_csv_conversion_map(sub_point_type: str, portal_friendly: bool = False) -> Dict[str, str]:
     """Results in an ordered dict for headers"""
     from collections import OrderedDict
-
     csv_conversion_map = [
         ("queueSize", "QueueSize" if portal_friendly else "Queue Size"),
         ("observabilityMode", "ObservabilityMode" if portal_friendly else "Observability Mode"),
@@ -793,7 +847,7 @@ def _convert_sub_points_from_csv(sub_points: List[Dict[str, str]]):
         "QueueSize": "queueSize",
         "Queue Size": "queueSize",
         "Sampling Interval Milliseconds": "samplingInterval",
-        "TagName": "name",
+        "TagName" : "name",
     }
     for point in sub_points:
         # point has csv values
@@ -819,7 +873,10 @@ def _convert_sub_points_from_csv(sub_points: List[Dict[str, str]]):
 
 
 def _convert_sub_points_to_csv(
-    sub_points: List[Dict[str, str]], sub_point_type: str, default_configuration: str, portal_friendly: bool = False
+    sub_points: List[Dict[str, str]],
+    sub_point_type: str,
+    default_configuration: str,
+    portal_friendly: bool = False
 ) -> List[str]:
     csv_conversion_map = _build_ordered_csv_conversion_map(sub_point_type, portal_friendly)
     default_configuration = json.loads(default_configuration) if portal_friendly else {}
@@ -917,21 +974,23 @@ def _update_properties(
     if custom_attributes:
         if "attributes" not in properties:
             properties["attributes"] = {}
-        _process_custom_attributes(properties["attributes"], custom_attributes=custom_attributes)
+        _process_custom_attributes(
+            properties["attributes"], custom_attributes=custom_attributes
+        )
 
     # Defaults
     properties["defaultDatasetsConfiguration"] = _build_default_configuration(
         original_configuration=properties.get("defaultDatasetsConfiguration", "{}"),
         publishing_interval=ds_publishing_interval,
         sampling_interval=ds_sampling_interval,
-        queue_size=ds_queue_size,
+        queue_size=ds_queue_size
     )
 
     properties["defaultEventsConfiguration"] = _build_default_configuration(
         original_configuration=properties.get("defaultEventsConfiguration", "{}"),
         publishing_interval=ev_publishing_interval,
         sampling_interval=ev_sampling_interval,
-        queue_size=ev_queue_size,
+        queue_size=ev_queue_size
     )
 
     # TODO: unit test
@@ -939,5 +998,5 @@ def _update_properties(
         properties["defaultTopic"] = _build_topic(
             original_topic=properties.get("defaultTopic"),
             topic_path=default_topic_path,
-            topic_retain=default_topic_retain,
+            topic_retain=default_topic_retain
         )
