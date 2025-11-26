@@ -232,7 +232,7 @@ class ConnectorMetadataValidator:
             return {}
 
     @staticmethod
-    def fetch_oci_artifact(image_ref: str) -> Dict[str, Any]:
+    def fetch_oci_artifact(image_ref: str) -> Dict[str, Any]:  # noqa: C901
         """
         Fetches a JSON artifact from an OCI registry without requiring the 'oras' CLI.
 
@@ -287,38 +287,49 @@ class ConnectorMetadataValidator:
             raise ValidationError(f"Failed to fetch manifest for {image_ref}: {response.status_code} {response.text}")
 
         manifest = response.json()
+        logger.debug(f"Manifest structure: {json.dumps(manifest, indent=2)}")
 
-        # 3. Find the config layer or the specific JSON layer
-        # We look for a layer with a specific media type or just the first application/json layer
+        # 3. Find the connector-metadata.json layer
+        # The connector metadata is stored as a file named "connector-metadata.json" in the OCI artifact
         target_digest = None
 
-        # Common media types for OCI artifacts containing config
-        target_media_types = [
-            "application/vnd.microsoft.akri-connector.v1+json",  # Example custom type
-            "application/json",
-            "application/octet-stream",  # Sometimes used for generic blobs
-        ]
-
         layers = manifest.get("layers", [])
-        # Also check config blob if it's not a standard image
-        config = manifest.get("config", {})
+        logger.debug(f"Found {len(layers)} layers in manifest")
 
-        # Strategy: Look for the specific artifact layer
-        for layer in layers:
-            if (
-                layer.get("mediaType") in target_media_types
-                or layer.get("annotations", {}).get("org.opencontainers.image.title") == "connector-metadata.json"
-            ):
+        # Strategy 1: Look for layer with title annotation containing "connector-metadata.json"
+        for idx, layer in enumerate(layers):
+            media_type = layer.get("mediaType", "")
+            annotations = layer.get("annotations", {})
+            title = annotations.get("org.opencontainers.image.title", "")
+            logger.debug(f"Layer {idx}: mediaType={media_type}, title={title}, digest={layer.get('digest')}")
+
+            # Match if title ends with connector-metadata.json
+            # (handles paths like "azure_iot_operations_rest_connector/connector-metadata.json")
+            if title.endswith("connector-metadata.json"):
                 target_digest = layer["digest"]
+                logger.info(f"Found connector-metadata.json layer: {target_digest}")
                 break
 
+        # Strategy 2: If not found by title, look for application/json media type
         if not target_digest:
-            # Fallback: try the config blob if it's small and json
-            if config.get("mediaType") in target_media_types:
-                target_digest = config["digest"]
+            logger.debug("connector-metadata.json not found by title, trying by media type")
+            for layer in layers:
+                media_type = layer.get("mediaType", "")
+                if "json" in media_type.lower():
+                    target_digest = layer["digest"]
+                    logger.info(f"Found JSON layer by media type: {target_digest}")
+                    break
+
+        # Strategy 3: Try the first layer as fallback
+        if not target_digest and len(layers) > 0:
+            target_digest = layers[0]["digest"]
+            logger.warning(f"Using first layer as fallback: {target_digest}")
 
         if not target_digest:
-            raise ValidationError(f"Could not find suitable JSON layer in {image_ref}")
+            raise ValidationError(
+                f"Could not find connector-metadata.json layer in {image_ref}. "
+                f"Manifest has {len(layers)} layers but none match expected structure."
+            )
 
         # 4. Fetch the Blob
         blob_url = f"{base_url}/blobs/{target_digest}"
@@ -328,10 +339,78 @@ class ConnectorMetadataValidator:
         if blob_response.status_code != 200:
             raise ValidationError(f"Failed to fetch blob {target_digest}: {blob_response.status_code}")
 
-        try:
-            return blob_response.json()
-        except json.JSONDecodeError:
-            raise ValidationError(f"Artifact at {image_ref} is not valid JSON.")
+        # Check if the blob is a tar file (common for OCI artifacts)
+        content_type = blob_response.headers.get("Content-Type", "")
+        logger.debug(f"Blob content-type: {content_type}, size: {len(blob_response.content)} bytes")
+
+        # If it's a tar file, extract the connector-metadata.json from it
+        if "tar" in content_type or blob_response.content[:2] == b"\x1f\x8b":  # Check for gzip magic number too
+            logger.debug("Blob appears to be a tar archive, extracting connector-metadata.json")
+            import tarfile
+            import io
+
+            try:
+                # Create tar file object from bytes
+                tar_bytes = io.BytesIO(blob_response.content)
+                with tarfile.open(fileobj=tar_bytes, mode="r:*") as tar:
+                    # List all files in tar
+                    member_names = tar.getnames()
+                    logger.debug(f"Tar contains {len(member_names)} files: {member_names[:10]}")  # Show first 10
+
+                    # Find connector-metadata.json file (may be in root or subdirectory)
+                    metadata_file = None
+                    for member in member_names:
+                        if member.endswith("connector-metadata.json"):
+                            metadata_file = member
+                            logger.info(f"Found connector-metadata.json in tar: {metadata_file}")
+                            break
+
+                    # If not found with path, try exact match (ONVIF case)
+                    if not metadata_file and "connector-metadata.json" in member_names:
+                        metadata_file = "connector-metadata.json"
+                        logger.info("Found connector-metadata.json in tar root")
+
+                    if not metadata_file:
+                        raise ValidationError(
+                            f"connector-metadata.json not found in tar archive. "
+                            f"Files: {member_names[:10]}"
+                        )
+
+                    # Extract and parse the JSON file
+                    extracted = tar.extractfile(metadata_file)
+                    if not extracted:
+                        raise ValidationError(f"Could not extract {metadata_file} from tar")
+
+                    json_content = extracted.read().decode("utf-8")
+                    metadata = json.loads(json_content)
+                    logger.debug(f"Successfully extracted and parsed JSON, keys: {list(metadata.keys())}")
+
+            except (tarfile.TarError, IOError) as e:
+                logger.error(f"Failed to extract tar archive: {e}")
+                raise ValidationError(f"Failed to extract connector metadata from tar: {e}")
+        else:
+            # Try to parse as direct JSON
+            try:
+                metadata = blob_response.json()
+                logger.debug(f"Successfully parsed blob as JSON, keys: {list(metadata.keys())}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Blob is not valid JSON: {e}")
+                logger.debug(f"Blob content preview: {blob_response.text[:500]}")
+                raise ValidationError(f"Artifact at {image_ref} is not valid JSON.")
+
+        # Validate the metadata structure
+        if "inboundEndpoints" in metadata:
+            endpoint_count = len(metadata.get('inboundEndpoints', []))
+            logger.info(
+                f"Found valid connector metadata with {endpoint_count} inbound endpoints"
+            )
+            return metadata
+        else:
+            logger.warning(f"Metadata does not contain 'inboundEndpoints', keys found: {list(metadata.keys())}")
+            raise ValidationError(
+                f"Artifact at {image_ref} does not contain expected connector metadata structure. "
+                f"Found keys: {list(metadata.keys())}"
+            )
 
     @staticmethod
     def _get_auth_token(registry: str, repository: str) -> Optional[str]:
@@ -393,32 +472,126 @@ class ConnectorMetadataValidator:
             logger.warning(f"Failed to obtain auth token: {e}")
         return None
 
-    def validate_dataset(self, dataset_config: Dict[str, Any]):
-        logger.debug(f"Validating dataset configuration: {dataset_config}")
+    def validate_dataset(self, dataset: Dict[str, Any]):
+        """Validate a dataset object or its configuration.
+
+        Args:
+            dataset: Can be either:
+                - A full dataset object with 'datasetConfiguration' as JSON string
+                - A parsed configuration dictionary (for backward compatibility)
+        """
+        logger.debug(f"Validating dataset: {dataset}")
+
+        # Check if this is a full dataset object or just the configuration
+        if "datasetConfiguration" in dataset:
+            # Full dataset object - extract and parse configuration
+            config_str = dataset.get("datasetConfiguration")
+            if not config_str:
+                logger.debug("No datasetConfiguration found, skipping validation")
+                return
+
+            try:
+                config = json.loads(config_str) if isinstance(config_str, str) else config_str
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.error(f"Invalid JSON in datasetConfiguration: {e}")
+                raise ValidationError(f"Invalid datasetConfiguration JSON: {e}")
+        else:
+            # Assume it's already a parsed configuration dict (backward compatibility)
+            config = dataset
+
         schema = self._get_schema("datasetConfigurationSchema")
         if schema:
             logger.debug("Found dataset schema, performing validation")
-            self._validate(dataset_config, schema, "Dataset")
+            self._validate(config, schema, "Dataset")
         else:
             logger.warning(f"No dataset schema found for endpoint type '{self.endpoint_type}' - skipping validation")
 
-    def validate_datapoint(self, datapoint_config: Dict[str, Any]):
-        logger.debug(f"Validating datapoint configuration: {datapoint_config}")
+    def validate_datapoint(self, datapoint: Dict[str, Any]):
+        """Validate a datapoint object or its configuration.
+
+        Args:
+            datapoint: Can be either:
+                - A full datapoint object with 'dataPointConfiguration' as JSON string
+                - A parsed configuration dictionary (for backward compatibility)
+        """
+        logger.debug(f"Validating datapoint: {datapoint}")
+
+        # Check if this is a full datapoint object or just the configuration
+        if "dataPointConfiguration" in datapoint:
+            # Full datapoint object - extract and parse configuration
+            config_str = datapoint.get("dataPointConfiguration")
+            if not config_str:
+                logger.debug("No dataPointConfiguration found, skipping validation")
+                return
+
+            try:
+                config = json.loads(config_str) if isinstance(config_str, str) else config_str
+            except (json.JSONDecodeError, TypeError) as e:
+                datapoint_name = datapoint.get('name', 'unnamed')
+                logger.error(
+                    f"Invalid JSON in dataPointConfiguration for datapoint '{datapoint_name}': {e}"
+                )
+                raise ValidationError(
+                    f"Invalid dataPointConfiguration JSON for datapoint '{datapoint_name}': {e}"
+                )
+        elif "name" in datapoint or "dataSource" in datapoint:
+            # Has datapoint fields but no configuration - skip validation
+            datapoint_name = datapoint.get('name', 'unnamed')
+            logger.debug(
+                f"Datapoint '{datapoint_name}' has no dataPointConfiguration, skipping validation"
+            )
+            return
+        else:
+            # Assume it's already a parsed configuration dict (backward compatibility)
+            config = datapoint
+
         schema = self._get_schema("dataPointConfigurationSchema")
         if schema:
             logger.debug("Found datapoint schema, performing validation")
-            self._validate(datapoint_config, schema, "Datapoint")
+            self._validate(config, schema, "Datapoint")
         else:
             logger.warning(f"No datapoint schema found for endpoint type '{self.endpoint_type}' - skipping validation")
 
-    def validate_event(self, event_config: Dict[str, Any]):
-        logger.debug(f"Validating event configuration: {event_config}")
+    def validate_event(self, event: Dict[str, Any]):
+        """Validate an event object or its configuration.
+
+        Args:
+            event: Can be either:
+                - A full event object with 'eventConfiguration' as JSON string
+                - A parsed configuration dictionary (for backward compatibility)
+        """
+        logger.debug(f"Validating event: {event}")
+
+        # Check if this is a full event object or just the configuration
+        if "eventConfiguration" in event:
+            # Full event object - extract and parse configuration
+            config_str = event.get("eventConfiguration")
+            if not config_str:
+                logger.debug("No eventConfiguration found, skipping validation")
+                return
+
+            try:
+                config = json.loads(config_str) if isinstance(config_str, str) else config_str
+            except (json.JSONDecodeError, TypeError) as e:
+                event_name = event.get('name', 'unnamed')
+                logger.error(
+                    f"Invalid JSON in eventConfiguration for event '{event_name}': {e}"
+                )
+                raise ValidationError(
+                    f"Invalid eventConfiguration JSON for event '{event_name}': {e}"
+                )
+        else:
+            # Assume it's already a parsed configuration dict (backward compatibility)
+            config = event
+
         schema = self._get_schema("eventConfigurationSchema")
         if schema:
             logger.debug("Found event schema, performing validation")
-            self._validate(event_config, schema, "Event")
+            self._validate(config, schema, "Event")
         else:
-            logger.warning(f"No event schema found for endpoint type '{self.endpoint_type}' - skipping validation")
+            logger.warning(
+                f"No event schema found for endpoint type '{self.endpoint_type}' - skipping validation"
+            )
 
     def _get_schema(self, schema_key: str) -> Optional[Dict[str, Any]]:
         """
